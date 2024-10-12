@@ -2,10 +2,10 @@ import path from "path";
 import fs from "fs/promises";
 
 interface Subject {
-    code: string;
+    id: string;
     name: string;
     credits: number;
-    prerequisites: string[];
+    dependencies: string[];
     credits_required: number;
 }
 
@@ -30,14 +30,14 @@ async function getSubjectByPlan(planId: string): Promise<Subject[]> {
                         entries.forEach((entry: any) => {
                             if (entry.type === "subject") {
                                 const dependencies = entry.dependencies ? entry.dependencies.dependency : [];
-                                const prerequisites = Array.isArray(dependencies) ? 
+                                const dependencies_all = Array.isArray(dependencies) ? 
                                 dependencies.map((dep: string) => dep) : [dependencies];
 
                                 const subject: Subject = {
                                     name: entry.name,
-                                    code: entry.code,
+                                    id: entry.code,
                                     credits: parseInt(entry.credits, 10),
-                                    prerequisites: prerequisites,
+                                    dependencies: dependencies_all,
                                     credits_required: entry.creditsRequired ? parseInt(entry.creditsRequired, 10) : 0
                                 };
                                 subjects.push(subject);
@@ -60,18 +60,21 @@ async function getAllSubjects(): Promise<Subject[]> {
     const careersData = await fs.readFile(careersFilePath, 'utf-8');
     const careers: Record<string, Career> = JSON.parse(careersData);
 
-    const allSubjects: Subject[] = [];
+    const allSubjects: Map<String, Subject> = new Map();
 
     for (const careerKey in careers) {
-        if (careers.hasOwnProperty(careerKey)) {
-            const career = careers[careerKey];
-            const latestPlan = career.careerPlans[0]; // The latest plan is the first one in the list
-            const subjects = await getSubjectByPlan(latestPlan);
-            allSubjects.push(...subjects.filter ((subject) => !allSubjects.some((s) => s.code === subject.code)));
-        }
+    if (careers.hasOwnProperty(careerKey)) {
+        const career = careers[careerKey];
+        const latestPlan = career.careerPlans[0]; // The latest plan is the first one in the list
+        const subjects = await getSubjectByPlan(latestPlan);
+       
+        subjects.forEach((subject) => {
+            allSubjects.set(subject.id ,subject);
+        });
     }
-
-    return allSubjects;
+}
+    
+    return Array.from(allSubjects.values());;
 }
 
 

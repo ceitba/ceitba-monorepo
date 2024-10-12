@@ -1,0 +1,353 @@
+"name","id","credits","dependencies","credits_required"
+"Química General","12.67",6,"[]",0
+"Informática General","71.58",3,"[]",0
+"Análisis Matemático I","92.01",6,"[]",0
+"Álgebra Lineal","93.18",6,"[]",0
+"Tecnología y Sociedad","94.33",3,"[]",0
+"Fundamentos de Química Orgánica","13.02",6,"[""12.67""]",0
+"Biología","16.55",3,"[]",0
+"Sistemas de Representación","31.08",3,"[]",0
+"Análisis Matemático II","92.02",6,"[""92.01"",""93.18""]",0
+"Física I","93.41",6,"[""92.01""]",0
+"Inglés I","94.51",0,"[]",0
+"Biología Molecular y Celular","16.01",6,"[""13.02"",""16.55""]",0
+"Estructura de Datos y Programación","71.59",6,"[""71.58"",""71.90""]",0
+"Análisis Matemático III","92.03",6,"[""92.01"",""93.18""]",0
+"Física II","93.42",6,"[""92.02""]",0
+"Histología y Anatomía","16.02",6,"[""16.01""]",0
+"Análisis Matemàtico IV","92.04",6,"[""92.02"",""92.03""]",0
+"Probabilidad y Estadística","93.24",6,"[""92.02""]",0
+"Física III","93.43",6,"[""92.03"",""93.41""]",0
+"Inglés II","94.52",0,"[""94.51""]",0
+"Fisiología","16.03",6,"[""16.02""]",0
+"Mecánica de biomateriales y tejidos","16.64",8,"[""16.02"",""93.41""]",0
+"Electrotecnia","21.06",3,"[""93.43""]",0
+"Física IV","93.61",4,"[""93.42"",""93.43""]",0
+"Metodología del Diseño","94.43",3,"[]",72
+"Ingeniería de Rehabilitación","16.24",3,"[""16.03""]",0
+"Física Médica","16.44",3,"[""93.61""]",0
+"Señales y Sistemas","16.68",6,"[""92.04""]",0
+"Electrónica Analógica y Digital","23.02",6,"[""71.59"",""21.06"",""92.04""]",0
+"Métodos Numéricos","93.54",3,"[""71.59"",""92.03""]",0
+"Proyecto Interdisciplinario","94.44",3,"[""94.43""]",0
+"Organización Industrial","11.15",3,"[""93.24""]",0
+"Instrumentación Biomédica I","16.17",6,"[""16.68"",""23.02""]",0
+"Procesamiento de Señales e Imágenes Biomédicas","16.63",6,"[""16.68""]",0
+"Sistemas de Control","23.16",3,"[""92.04""]",0
+"Análisis de Coyuntura Económica","61.27",3,"[""93.24""]",0
+"Seguridad Ocupacional y Ambiental","12.83",3,"[]",168
+"Instrumentación Biomédica II","16.18",6,"[""16.17""]",0
+"Ingeniería Clínica","16.25",6,"[""16.17""]",0
+"Introducción a las Finanzas","61.16",3,"[""11.15"",""61.27""]",0
+"Derecho para Ingenieros","61.31",3,"[]",144
+"Proyecto Final de Carrera (Anual)","16.30",6,"[""16.63""]",192
+"Practica Profesional supervisada","94.65",0,"[]",144
+"Instrucción a la temática social","67.04",3,"[]",0
+"Certificaciones tecnológicas","71.90",0,"[]",0
+"Estática","67.02",6,"[""93.18"",""93.41""]",0
+"Mecánica de Fluidos","31.22",6,"[""31.21"",""92.03"",""93.42"",""93.41""]",0
+"Tecnología de materiales","67.01",3,"[""93.41"",""12.67""]",0
+"Resistencia de Materiales","67.03",6,"[""67.02""]",0
+"Tecnología del Hormigón","67.05",3,"[""67.01"",""93.22""]",0
+"Construcciones","67.06",6,"[""67.01""]",0
+"Análisis Estructural","67.08",4,"[""67.03""]",0
+"Métodos Numéricos","93.07",3,"[""92.03""]",0
+"Geología I","46.21",3,"[""46.01"",""93.42""]",0
+"Geotopografía","67.07",6,"[""93.18"",""93.42"",""93.22""]",0
+"Instalaciones","67.09",6,"[""67.06""]",0
+"Hormigón I","67.10",4,"[""67.03"",""67.06"",""67.05""]",0
+"Evaluación de Impacto Ambiental y Social","67.11",2,"[""16.55"",""12.67"",""67.06""]",0
+"Geotecnia","67.12",6,"[""31.22"",""67.03"",""67.07""]",0
+"Hidrología y obras hidráulicas","67.13",4,"[""67.03"",""31.22"",""67.07""]",0
+"Hormigón II","67.14",4,"[""67.10"",""93.07"",""67.08""]",0
+"Planeamiento territorial y urbano","67.15",3,"[""94.33"",""61.31"",""67.07"",""67.06"",""67.11""]",0
+"Vías de Comunicación","67.16",6,"[""67.07"",""67.12"",""67.06"",""67.05"",""67.13""]",0
+"Higiene y Seguridad en Obras Civiles","67.17",3,"[""94.33"",""67.06""]",0
+"Agua y Efluentes Líquidos","17.20",3,"[""67.09"",""67.12"",""67.13""]",0
+"Proyecto Final","67.18",6,"[]",144
+"Cimentaciones","67.19",4,"[""67.10"",""67.08"",""67.12"",""67.13""]",0
+"Estructuras Metálicas y de Madera","67.20",4,"[""67.10"",""67.08""]",0
+"Organización y conducción de obras","67.21",3,"[""11.15"",""67.10"",""67.09"",""67.12"",""67.06""]",0
+"Auditorías ambientales","67.22",3,"[""67.11""]",0
+"Química I","12.01",6,"[]",0
+"Introducción a la Computación","22.06",6,"[]",0
+"Matemática I","93.17",6,"[]",0
+"Programación I","22.07",6,"[""22.06""]",0
+"Matemática II","93.02",6,"[""93.18"",""93.17""]",0
+"Formación General I","94.21",3,"[]",0
+"Estática y Resistencia de Materiales","31.19",6,"[""92.03"",""31.08""]",0
+"Matemática III","93.03",6,"[""93.18"",""93.17""]",0
+"Termodinámica","31.21",6,"[""93.42"",""93.41""]",0
+"Matemática IV","93.65",6,"[""93.02"",""93.03""]",0
+"Metodología del Aprendizaje","94.24",3,"[]",0
+"Tecnología de Mat. Eléctricos","21.32",6,"[""93.65"",""93.43""]",0
+"Electrotecnia I","21.71",6,"[""93.65""]",0
+"Algoritmos y Estructura de Datos","22.08",6,"[""93.02"",""22.07""]",0
+"Física IV","93.44",6,"[""93.42"",""93.43""]",0
+"Instrumentos y Mediciones Eléctricas","21.74",3,"[""21.71""]",0
+"Máquinas Eléctricas I","21.80",6,"[""21.71"",""21.32""]",0
+"Electrónica General","22.20",3,"[""21.71""]",0
+"Electromagnetismo","22.37",3,"[""93.65"",""93.43""]",0
+"Laboratorio de Electrónica","22.42",6,"[""21.71""]",0
+"Mecánica de Fluidos","31.24",3,"[""92.03"",""93.41""]",0
+"Mecanismos y Elementos de Máquinas","31.27",3,"[""31.17""]",0
+"Electrotecnia II","21.79",3,"[""21.71""]",0
+"Máquinas Eléctricas II","21.81",6,"[""21.80""]",0
+"Instrumentación y Control","22.58",6,"[""22.20""]",0
+"Turbomáquinas","31.38",6,"[""31.21"",""31.24""]",0
+"Instalaciones Eléctricas y Luminotecnia","21.65",6,"[""21.81""]",0
+"Centrales Eléctricas","21.82",6,"[""21.74"",""22.58"",""21.81""]",0
+"Transmisión de la Energía Eléctrica","21.83",6,"[""21.79"",""22.37""]",0
+"Economía para Ingenieros","61.23",3,"[]",120
+"Eficiencia Energética","21.45",3,"[""21.65""]",0
+"Proyecto Final  (Anual)","21.84",6,"[""21.83"",""21.82"",""21.65""]",0
+"Sistemas Eléctricos de Potencia","21.85",6,"[""21.83"",""21.81""]",0
+"Diseño de Líneas de Transmisión y Estaciones Transformadoras","21.86",6,"[""21.83""]",0
+"Electrónica de Potencia","22.28",3,"[""22.20""]",0
+"Mantenimiento de Máquinas e Instalaciones Eléctricas","21.72",3,"[""21.65"",""21.81""]",0
+"Energías Alternativas","21.73",6,"[""30.49"",""21.08""]",0
+"Mercado Eléctrico","21.87",3,"[""21.83"",""61.23""]",0
+"Distribución de la Energía Eléctrica","21.88",3,"[""21.83"",""21.65""]",0
+"Práctica Laboral","21.98",0,"[]",0
+"Principios de Informática","71.93",3,"[]",0
+"Fundamentos de Electrónica","25.01",3,"[""71.93""]",0
+"Programación I","25.02",6,"[""71.93""]",0
+"Algoritmos y Estructuras de Datos","25.03",3,"[""25.02""]",0
+"Matemática Discreta","93.16",3,"[]",0
+"Teoría de Circuitos 1","25.10",6,"[""92.03"",""25.01""]",0
+"Tecnología de Materiales Electrónicos","25.12",4,"[""93.42"",""25.10""]",0
+"Laboratorio de Electrónica 1","25.13",6,"[""25.10""]",0
+"Física Electrónica","25.18",3,"[""92.04"",""25.10""]",0
+"Análisis Matemático V","92.07",4,"[""92.04""]",0
+"Teoría de Circuitos 2","25.14",6,"[""25.10"",""25.12"",""92.07""]",0
+"Electrónica I","25.15",6,"[""25.18""]",0
+"Laboratorio de Electrónica 2","25.16",3,"[""25.13""]",0
+"Electrónica II","25.17",6,"[""25.13""]",0
+"Análisis de Señales y Sistemas Digitales","25.20",6,"[""25.14""]",0
+"Electrónica III","25.21",4,"[""25.15""]",0
+"Electromagnetismo","25.22",4,"[""93.43"",""92.07""]",0
+"Sistemas de Control","25.23",6,"[""92.07""]",0
+"Laboratorio de Electrónica 3","25.24",4,"[""25.16""]",0
+"Transmisión de la Información","25.26",6,"[""25.22"",""25.20""]",0
+"Sistemas Embebidos","25.27",6,"[""25.17"",""25.16"",""25.03""]",0
+"Electrónica IV","25.28",4,"[""25.24"",""25.23"",""25.12""]",0
+"Electrónica V","25.30",4,"[""25.27""]",0
+"Proyectos Electrónicos","25.31",4,"[]",168
+"Proyecto Integrador (anual) (Anual)","25.32",6,"[]",168
+"Introducción a la Informática","72.03",3,"[]",0
+"Análisis Matemático I","93.26",6,"[]",0
+"Álgebra","93.58",9,"[]",0
+"Programación Imperativa","72.31",9,"[""93.58"",""72.03""]",0
+"Análisis Matemático II","93.28",6,"[""93.58"",""93.26""]",0
+"Matemática Discreta","93.59",6,"[""93.58""]",0
+"Química","12.09",3,"[]",0
+"Diseño y Procesamiento de Documentos XML","72.32",3,"[""72.31""]",0
+"Programación Orientada a Objetos","72.33",6,"[""72.31""]",0
+"Lógica Computacional","93.35",6,"[""93.58""]",0
+"Arquitectura de Computadoras","72.08",6,"[""72.31""]",0
+"Estructura de Datos y Algoritmos","72.34",6,"[""93.59"",""72.33""]",0
+"Sistemas Operativos","72.11",6,"[""72.08"",""72.34""]",0
+"Ingenieria de Software I","72.35",6,"[""72.33""]",0
+"Interacción Hombre-Computadora (HCI)","72.36",6,"[""72.33"",""72.32""]",0
+"Base de Datos I","72.37",6,"[""72.34"",""93.35""]",0
+"Protocolos de Comunicación","72.07",6,"[""72.11""]",0
+"Proyecto de Aplicaciones Web","72.38",6,"[""72.11"",""72.37"",""72.36"",""72.35""]",0
+"Autómatas, Teoría de Lenguajes y Compiladores","72.39",6,"[""72.34""]",0
+"Derecho para Ingenieros","61.32",3,"[]",120
+"Ingenieria del Software II","72.40",3,"[""72.35""]",0
+"Base de Datos II","72.41",6,"[""72.37"",""72.11""]",0
+"Programación de Objetos Distribuidos","72.42",3,"[""72.07"",""72.37""]",0
+"Métodos Numéricos Avanzados","93.75",6,"[""93.07""]",0
+"Simulación de Sistemas","72.25",6,"[""72.34"",""93.07""]",140
+"Sistemas de Inteligencia Artificial","72.27",6,"[""93.24"",""72.34""]",120
+"Gestión de Proyectos Informáticos","72.43",3,"[]",0
+"Criptografía y Seguridad","72.44",6,"[""72.07""]",0
+"Redes de Información","72.20",6,"[""72.07""]",171
+"Proyecto Final  (Anual)","72.45",12,"[]",160
+"Práctica Laboral","72.98",0,"[]",144
+"Formación General III","94.23",3,"[]",168
+"Química Orgánica para Petroleo","12.34",6,"[""12.67""]",0
+"Introducción a la Ingeniería en Petróleo","46.01",3,"[]",0
+"Análisis Matemático IV","92.05",4,"[""92.02"",""92.03""]",0
+"Geofísica de Reservorios","46.22",3,"[""46.21""]",0
+"Máquinas Eléctricas","21.09",3,"[""21.06""]",0
+"Introducción a Mecánica de Rocas","30.70",3,"[""31.19""]",0
+"Petrofísica y Fluidos de Reservorio","46.41",6,"[""31.21"",""31.22"",""46.21""]",0
+"Ingeniería de Perforación I","46.61",3,"[""46.21"",""31.19""]",0
+"Geología II","46.23",3,"[""46.22"",""46.41""]",0
+"Registros de Pozo I","46.42",6,"[""93.61"",""46.41""]",0
+"Análisis de Transientes de Presión","46.44",3,"[""30.70"",""92.05"",""46.41""]",0
+"Ingeniería de Reservorios","46.46",6,"[""46.41""]",0
+"Ingeniería de Workover I","46.63",3,"[""46.61""]",0
+"Instalaciones de Superficie","46.65",3,"[""31.21"",""12.34"",""46.61""]",0
+"Gas y Gasolina Natural","46.66",3,"[""46.65""]",0
+"Ingeniería de Producción I","46.67",6,"[""46.65"",""46.41"",""21.09""]",0
+"Gestión Ambiental en la Industria","46.81",3,"[""12.83""]",0
+"Evaluación de Proyectos","46.82",3,"[""46.46""]",0
+"Transporte y Cadena de Valor de los Hidrocarburos","46.69",3,"[""46.66"",""46.67""]",0
+"Desarrollo de Yacimientos","46.83",3,"[""46.23"",""46.66"",""46.82"",""46.67"",""46.42""]",0
+"Práctica de Campo I","46.02",0,"[""46.21"",""46.41"",""46.67""]",72
+"Práctica de Campo II","46.03",0,"[""46.02"",""46.63"",""46.46""]",144
+"Industrialización y Economía de los Hidrocarburos","46.70",3,"[""46.69""]",0
+"Informática General","71.20",3,"[]",0
+"Gestión de Datos","71.88",6,"[""71.30"",""71.20""]",0
+"Mecánica de Sólidos","30.89",3,"[""93.41""]",0
+"Probabilidad","93.36",3,"[""93.16"",""82.15""]",0
+"Sistemas Complejos","11.28",3,"[]",0
+"Estadística Aplicada","11.67",6,"[""93.36""]",0
+"Organización de la Producción I","11.10",6,"[]",0
+"Materiales y Procesos","11.16",6,"[""30.89""]",0
+"Principios y Aplicaciones Eléctricas","21.30",5,"[""93.43""]",0
+"Supply Chain","11.20",6,"[""11.10""]",0
+"Investigación Operativa","11.51",6,"[""11.67""]",0
+"Termodinámica y sus aplicaciones","30.32",6,"[""93.42""]",0
+"Tecnologías y Procesos de Producción","11.75",3,"[""11.16""]",0
+"Electrónica e Instrumentación","23.17",3,"[]",0
+"Economía Empresaria","61.09",6,"[""11.10""]",0
+"Gestión Ambiental","10.02",3,"[""11.75""]",0
+"Simulación","11.63",3,"[""11.87""]",0
+"Economía","61.28",6,"[""61.09""]",0
+"Proyecto Final de Ingeniería Industrial (Anual)","10.01",6,"[]",160
+"Ciencia de Materiales I","30.26",6,"[""12.67""]",0
+"Introducción a la Ingeniería Mecánica","30.51",3,"[]",0
+"Diseño Mecánico I","30.41",6,"[""93.41"",""30.26"",""31.08""]",0
+"Laboratorio de Diseño Mecánico","30.46",3,"[""93.41"",""31.08"",""30.26""]",0
+"Diseño Mecánico II","30.42",6,"[""92.02"",""92.03"",""93.41""]",0
+"Electrotecnia","21.08",6,"[""93.43""]",0
+"Ciencia de Materiales II","30.25",3,"[""30.26""]",0
+"Diseño Mecánico III A","30.43",4,"[""30.42"",""92.03"",""93.07"",""92.04""]",0
+"Diseño Mecánico III B","30.44",4,"[""30.42"",""92.03"",""93.07"",""92.04""]",0
+"Diseño Mecánico IV","30.45",6,"[""30.43"",""30.25"",""30.44""]",0
+"Termofluidos I","30.47",6,"[""31.21"",""92.03"",""93.42"",""93.41""]",0
+"Electrónica e Instrumentación","23.18",6,"[""92.04"",""21.08""]",0
+"Termofluidos II","30.48",3,"[""93.07"",""30.47""]",0
+"Instalaciones Industriales","31.68",6,"[""30.44"",""30.47""]",0
+"Motores de Combustión Interna","30.09",6,"[""31.21""]",0
+"Introducción a la Dinámica del Autómovil","30.19",3,"[""30.43""]",0
+"Mantenimiento Industrial","30.23",3,"[""30.43"",""30.46"",""30.47""]",0
+"Máquinas Térmicas e Hidráulicas","30.49",6,"[""31.22""]",0
+"Sistemas Mecatrónicos del Autómovil","30.40",4,"[""30.49"",""23.16"",""23.18""]",0
+"Proyecto Final (Anual)","30.80",6,"[]",192
+"Estructuras Automotrices","31.84",3,"[""30.44""]",0
+"Transmisiones Automotrices","31.85",3,"[""30.49"",""30.45""]",0
+"Diseño Mecánico Avanzado","30.12",6,"[""30.48"",""23.16"",""23.18"",""30.45""]",0
+"Accionamientos Industriales","30.28",6,"[""23.16"",""23.18"",""30.45"",""30.47""]",0
+"Procesos de Manufactura I","31.67",3,"[""30.41"",""30.44"",""30.46""]",0
+"Procesos de Manufactura II","31.65",3,"[""30.25"",""30.44""]",0
+"Bioenergía","30.64",2,"[""31.21"",""16.55""]",0
+"Energía Eólica","30.65",2,"[""30.48""]",0
+"Energía Geotérmica","30.66",2,"[""31.21"",""30.47""]",0
+"Energía Hidráulica","30.67",2,"[""30.48""]",0
+"Energía Solar","30.68",2,"[""30.43""]",0
+"Tecnologías del Hidrógeno","30.69",2,"[""31.21"",""30.49"",""30.25""]",0
+"Instalaciones Eléctricas","21.41",6,"[""21.08""]",0
+"Hidráulica, Neumática y PLC","31.66",3,"[""30.43"",""23.16"",""23.18"",""30.47""]",0
+"Aire Acondicionado y Refrigeración","31.73",6,"[""31.21"",""30.47""]",0
+"Metalurgia Física I","30.24",4,"[""30.25""]",0
+"Introducción al Proceso de Fabricación de Aceros","12.46",3,"[""31.21"",""30.25""]",0
+"Integridad Estructural","31.90",3,"[""30.25"",""30.44""]",0
+"Deformación y Fractura de Materiales","31.96",3,"[""30.25"",""30.44""]",0
+"Corrosión y Degradación de Materiales","31.97",3,"[""30.25"",""30.44""]",0
+"Física y Mecánica de Aceros","31.95",3,"[""30.24""]",0
+"Materiales Poliméricos","31.30",3,"[""30.25""]",0
+"Tecnología de Materiales Compuestos","31.94",3,"[""30.25"",""30.44""]",0
+"Mecánica de Fluidos Computacional","30.14",3,"[""30.48""]",0
+"Mecánica del Continuo","30.50",3,"[""30.42""]",0
+"Mecánica de Sólidos Computacional","30.53",4,"[""93.07"",""30.44""]",0
+"Mecánica de Sólidos Computacional Avanzada","30.54",3,"[""30.53""]",0
+"Microprocesadores y Control","22.57",6,"[""23.16"",""23.18""]",0
+"Electrónica Industrial","23.07",3,"[""23.16"",""23.18""]",0
+"Automación Industrial","22.90",6,"[""23.16"",""23.18""]",0
+"Sistemas Mecatrónicos","31.82",3,"[""22.57""]",0
+"Estructura de Buques","32.49",6,"[""30.44""]",0
+"Construcción Naval","32.54",6,"[""32.66"",""30.44""]",0
+"Hidrostática y Estabilidad","32.66",6,"[""92.03"",""93.41"",""31.08""]",0
+"Resistencia y Propulsión","32.69",6,"[""32.66""]",0
+"Dinámica del Autómovil Avanzada","30.20",3,"[""30.19""]",0
+"Ciclos Reales en Motores de Combustión Interna","30.21",3,"[""30.09""]",0
+"Proceso de Combustión en Motores de Combustión Interna","30.22",3,"[""30.21""]",0
+"Sensores y Actuadores","22.56",3,"[""23.16"",""23.18""]",0
+"Control Discreto","22.94",6,"[""22.57""]",0
+"Introducción a la Ing. Naval","32.06",3,"[]",0
+"Electrónica e Instrumentación","22.10",6,"[""92.04"",""21.08""]",0
+"Motores Marinos","32.03",6,"[""30.49""]",0
+"Alistamiento Naval","32.56",6,"[""31.21"",""31.22"",""32.66""]",0
+"Plantas Propulsoras Marinas","32.64",6,"[""22.10"",""30.45"",""32.03""]",0
+"Proyecto de Buques","32.72",6,"[""32.54"",""32.56"",""30.45"",""32.03""]",0
+"Astilleros y Mantenimiento de Buques","32.05",4,"[]",144
+"Práctica de Embarque","32.70",0,"[]",200
+"Proyecto de Embarcaciones de Trabajo","32.71",4,"[""32.54"",""32.56"",""30.45"",""32.03""]",0
+"Proyecto Final (Anual)","32.73",3,"[""32.72""]",0
+"Química Inorgánica","13.01",6,"[""12.67""]",0
+"Introducción a la Ingeniería Química","17.01",3,"[""12.67""]",0
+"Química Orgánica I","13.03",6,"[""13.01""]",0
+"Procesos Industriales","17.02",3,"[""93.41"",""17.01""]",0
+"Química Orgánica II","12.33",6,"[""13.03""]",0
+"Química Analítica","12.19",6,"[""13.01"",""93.24""]",0
+"Química-Física","12.20",6,"[""92.03"",""17.02""]",0
+"Bioquímica y Microbiología Aplicadas","17.03",5,"[""12.33"",""16.55""]",0
+"Materiales para la Industria Química","30.62",3,"[""13.01"",""93.42""]",0
+"Termodinámica","12.26",6,"[""12.20""]",0
+"Fenómenos de Transporte","17.04",6,"[""12.20""]",0
+"Instalaciones Mecánicas en Plantas de Proceso","30.61",6,"[""30.62"",""93.41"",""31.08""]",0
+"Operaciones Unitarias I","12.11",6,"[""30.61"",""17.04"",""12.26""]",0
+"Operaciones Unitarias II","12.12",6,"[""17.04"",""12.26""]",0
+"Ingenieria de Reacciones y Reactores I","12.24",6,"[""17.04"",""93.07""]",0
+"Operaciones Unitarias III","12.13",6,"[""12.11""]",0
+"Ingeniería de Reacciones y Reactores II","12.25",4,"[""12.24"",""12.11"",""17.03""]",0
+"Simulación de Procesos","12.27",3,"[""12.11"",""12.12""]",0
+"Control de Procesos","17.05",4,"[""12.12"",""92.05""]",0
+"Diseño Conceptual de Procesos","12.85",4,"[""12.24"",""12.13"",""12.27""]",0
+"Proyecto Final de Carrera I","17.06",6,"[""12.13"",""12.27"",""17.05""]",0
+"Gestión de la Salud y la Seguridad en el Trabajo","12.66",3,"[]",168
+"Proyecto Final de Carrera II","17.07",3,"[""17.06""]",0
+"Introducción a la Ingeniería Ambiental","17.15",3,"[""12.11""]",0
+"Introducción a la Administración","81.06",6,"[]",0
+"Sistemas Contables","81.07",6,"[]",0
+"Álgebra","93.21",6,"[]",0
+"Análisis Matemático","93.20",6,"[]",0
+"Panorama Histórico Global","94.60",3,"[]",0
+"Filosofía","94.61",3,"[]",0
+"Microeconomía","61.81",3,"[""93.20""]",0
+"Contabilidad Gerencial","81.11",6,"[""81.07""]",0
+"Estadística","93.39",6,"[""71.20"",""93.20""]",0
+"Ética en los Negocios","94.62",3,"[]",0
+"Gestión Financiera","61.12",6,"[""81.11"",""81.07"",""93.21""]",0
+"Macroeconomía","61.82",3,"[""93.20""]",0
+"Comercialización","81.20",3,"[""81.06""]",0
+"Epistemología y Heurística","94.63",3,"[""94.61""]",0
+"Inglés I (analista)","94.90",0,"[]",0
+"Gestión de Operaciones","11.83",6,"[""93.39"",""81.06""]",0
+"Gestión de Ventas","81.21",3,"[""81.20""]",0
+"Estructura de las Organizaciones","94.40",3,"[""81.06""]",0
+"Gestión de Proyectos","11.84",3,"[""93.39"",""81.06""]",0
+"Toma de Decisiones","11.85",6,"[""93.39"",""81.06""]",0
+"Formación para Emprendedores","10.09",3,"[""94.40""]",0
+"Comercio Exterior","81.26",3,"[]",0
+"Comercio Electrónico","81.23",3,"[""81.53""]",0
+"Inglés II (licenciado)","94.91",0,"[""94.90""]",0
+"Utilitarios en Informática","71.80",6,"[]",0
+"Matemática Aplicada","82.15",6,"[""93.20"",""93.21""]",0
+"Estructura de Datos y Programación","71.45",6,"[""71.20""]",0
+"Visualización de Información","72.74",3,"[""71.20""]",0
+"Derecho Público y Privado I","61.87",3,"[""94.60"",""94.61""]",0
+"Proyecto I","82.01",3,"[]",96
+"Gestión del Ciclo de Vida de la Información","82.03",3,"[""71.88""]",0
+"Analítica Descriptiva","82.04",6,"[""71.88""]",0
+"Investigación de Operaciones I","11.86",3,"[""11.67"",""93.20"",""93.21""]",0
+"Análisis Predictivo","82.05",6,"[""11.67""]",0
+"Investigación de Operaciones II","11.87",3,"[""11.67"",""11.86""]",0
+"Proyecto Final - Analítica","82.02",3,"[""82.05"",""72.74"",""82.04"",""11.87"",""82.03"",""82.01""]",0
+"Introducción a la tecnología informática","71.30",3,"[]",0
+"Programación web","71.38",3,"[""71.30""]",0
+"Negocios en Internet","81.53",3,"[""71.30"",""81.06""]",0
+"Gestión organizacional basada en procesos de negocio","81.29",6,"[""81.06"",""71.20""]",0
+"Análisis funcional de aplicaciones informáticas","81.32",3,"[""71.20""]",0
+"Prácticas Expositivas","94.64",3,"[]",24
+"Impuestos para la toma de decisiones I","81.47",3,"[""81.11"",""61.82"",""61.87""]",0
+"Arquitectura de soluciones digitales","81.57",3,"[""81.32"",""71.88"",""81.53""]",0
+"Impuestos para la toma de decisiones II","81.48",3,"[""81.47""]",0
+"Sistemas Integrados de Gestión I","81.68",3,"[""81.11"",""81.29""]",0
+"Administración de Recursos Humanos","94.27",3,"[""61.87""]",0
+"Arquitectura empresarial","81.34",3,"[""81.57"",""81.29""]",0
+"Estrategia Empresarial","81.42",3,"[]",144
