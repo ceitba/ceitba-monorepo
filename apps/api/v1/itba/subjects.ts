@@ -5,8 +5,15 @@ interface Subject {
     id: string;
     name: string;
     credits: number;
-    dependencies: string[];
-    credits_required: number;
+}
+
+interface SubjectPlan{
+    subjectId: string;
+    planId: string;
+    year: number;
+    semester: number;
+    dependencies: string[] | null;
+    creditsRequired: number;
 }
 
 interface Career {
@@ -14,13 +21,13 @@ interface Career {
     careerPlans: string[];
 }
 
-
 async function getSubjectByPlan(planId: string): Promise<Subject[]> {
     const url = `https://itbagw.itba.edu.ar/api/v1/careerPlans/${process.env.ITBA_API_TOKEN}?plan=${planId}`;
+    const subjects: Subject[] = [];
+
     try {
         const data: Response = await fetch(url);
         const jsonData = await data.json();
-        const subjects: Subject[] = [];
     
         jsonData.careerplan.section.forEach((section: any) => {
             if (section.terms && section.terms.term) {
@@ -37,8 +44,6 @@ async function getSubjectByPlan(planId: string): Promise<Subject[]> {
                                     name: entry.name,
                                     id: entry.code,
                                     credits: parseInt(entry.credits, 10),
-                                    dependencies: dependencies_all,
-                                    credits_required: entry.creditsRequired ? parseInt(entry.creditsRequired, 10) : 0
                                 };
                                 subjects.push(subject);
                             }
@@ -56,6 +61,7 @@ async function getSubjectByPlan(planId: string): Promise<Subject[]> {
 }
 
 async function getAllSubjects(): Promise<Subject[]> {
+    const subjectPlans: SubjectPlan[] = [];
     const careersFilePath = path.join(__dirname, 'careers.json');
     const careersData = await fs.readFile(careersFilePath, 'utf-8');
     const careers: Record<string, Career> = JSON.parse(careersData);
