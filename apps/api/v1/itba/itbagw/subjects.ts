@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs/promises";
-import { ITBACareerPlans } from "./modules";
+import { ITBACareerPlans } from "./modules/career-plan-modules";
 import careersData from "../careers";
 import { SubjectPlan, Subject } from "../ceitbapi/modules";
 import { ITBA_API_TOKEN } from "../../../server";
@@ -33,6 +33,7 @@ async function getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
             }
 
         })
+        console.log(subjectPlan);
         return subjectPlan;
     } catch (error) {
         throw new Error("Error fetching data from ITBA API for planId: " + planId + " - " + (error as Error).message);
