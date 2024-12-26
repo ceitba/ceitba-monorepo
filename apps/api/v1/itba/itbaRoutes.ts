@@ -1,6 +1,6 @@
 import express from "express";
 import { Request, Response } from "express";
-import { getSubjectByPlan, getAllSubjects } from "./subjects";
+import { getSubjectsByPlan, getAllSubjects } from "./itbagw/subjects";
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.get("/subjects", async (req: Request, res: Response) => {
     }
 
     try { 
-        const subjects: any = await getSubjectByPlan(planId);
+        const subjects: any = await getSubjectsByPlan(planId);
         res.status(201).json(subjects);
 
     } catch (error) {

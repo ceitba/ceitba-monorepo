@@ -1,12 +1,13 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
+dotenv.config();
 import process from "process";
 import itbaRouter from "./v1/itba/itbaRoutes";
-dotenv.config();
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN
 
 app.use(express.json());
 
