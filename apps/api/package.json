@@ -10,6 +10,7 @@
   "author": "urielsv",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
     "chai": "^5.1.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.0",

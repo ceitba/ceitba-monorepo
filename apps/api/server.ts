@@ -8,6 +8,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN
+export const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN!
 
 app.use(express.json());
 

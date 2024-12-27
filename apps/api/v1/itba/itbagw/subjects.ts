@@ -11,21 +11,33 @@ async function getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
 
     try {
         const data: Response = await fetch(url);
-        const jsonData : ITBACareerPlans = await data.json();
+        const jsonData: ITBACareerPlans = await data.json();
 
         jsonData.careerplan.section.forEach(jsonSection => {
             if (jsonSection.terms != null) {
                 jsonSection.terms?.term.forEach(jsonPeriod => {
                     jsonPeriod.entries.entry.forEach(jsonSubject => {
-                        if (jsonSubject.type == "subject"){
+                        if (jsonSubject.type == "subject") {
+                            var dependencies: string[] | null = null;
+                            if (jsonSubject.dependencies?.dependency != null) {
+                                if (jsonSubject.dependencies?.dependency instanceof Array) {
+                                     dependencies= jsonSubject.dependencies?.dependency
+                                } else {
+                                     dependencies= [jsonSubject.dependencies?.dependency];
+                                }
+                            }
+
+
                             subjectPlan.push({
-                                subjectId: jsonSubject.code!,
-                                planId: planId,
+                                subject_id: jsonSubject.code!,
+                                name: jsonSubject.name,
+                                credits: parseInt(jsonSubject.credits),
+                                plan_id: planId,
                                 section: jsonSection.name,
                                 year: parseInt(jsonPeriod.year),
                                 semester: parseInt(jsonPeriod.period),
-                                dependencies: jsonSubject.dependencies?.dependency,
-                                creditsRequired: jsonSubject.creditsRequired != null ? parseInt(jsonSubject.creditsRequired) : null
+                                dependencies: dependencies ?? null,
+                                credits_required: jsonSubject.creditsRequired != null ? parseInt(jsonSubject.creditsRequired) : null
                             })
                         }
                     })

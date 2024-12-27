@@ -5,13 +5,15 @@ export interface Subject {
 }
 
 export interface SubjectPlan{
-    subjectId: string;
-    planId: string;
+    subject_id: string;
+    plan_id: string;
     section: string;
     year: number;
     semester: number;
     dependencies: string[] | null;
-    creditsRequired: number | null;
+    credits_required: number | null;
+    credits:number;
+    name:string;
 }
 
 export interface Career {
