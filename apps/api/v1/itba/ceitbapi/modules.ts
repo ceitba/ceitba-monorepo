@@ -4,6 +4,16 @@ export interface Subject {
     credits: number;
 }
 
+export interface DatabaseSubjectPlan{
+    subject_id: string;
+    plan_id: string;
+    section: string;
+    year: number;
+    semester: number;
+    dependencies: string[] | null;
+    credits_required: number | null;
+}
+
 export interface SubjectPlan{
     subject_id: string;
     plan_id: string;
