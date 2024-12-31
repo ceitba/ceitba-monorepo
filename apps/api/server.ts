@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import process from "process";
 import itbaRouter from "./v1/itba/itbaRoutes";
+import schedulerRouter from "./v1/scheduler/scheduler_routes";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.get("/api", (req: Request, res: Response) => {
 });
 
 app.use('/api/v1/itba', itbaRouter);
+app.use('/api/v1/scheduler', schedulerRouter);
 
 app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
