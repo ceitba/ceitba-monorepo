@@ -2,10 +2,10 @@ import careersData from "../careers";
 import { getSubjectsByPlan } from "./subjects";
 import { Database,Tables } from "../ceitbapi/database.types";
 import { createClient } from "@supabase/supabase-js";
-import { SUPABASE_ACCESS_TOKEN } from "../../../server";
+import { ITBA_API_TOKEN, SUPABASE_ACCESS_TOKEN } from "../../../server";
 import { DatabaseSubjectPlan, Subject, SubjectPlan } from "../ceitbapi/modules";
 
-async function UpdateDatabase() {
+async function UpdateSubjects() {
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
     const { data: plans } = await supabase.from("plan").select().returns<Tables<"plan">[]>();
 
@@ -59,6 +59,15 @@ async function UpdateDatabase() {
     
 }
 
+async function UpdateCommissions(){
+    const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
+    const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=GRADUATE&year=2025&period=FirstSemester`;
 
-UpdateDatabase();
+    const data = await fetch(url);
+    
+    
+}
+
+
+UpdateSubjects();
 
