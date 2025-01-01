@@ -1,10 +1,12 @@
 import express, { Request, Response } from 'express';
 import supabase from '../config/supabase';
 
+ 
+
 interface SubjectResponse {
     subject_id: string;
-    year: number;
-    semester: number;
+    year: number | null;
+    semester: number | null;
     credits_required: number;
     dependencies: string[];
     subject_name: string;
@@ -15,6 +17,7 @@ interface SubjectResponse {
     building: string;
     hour_from: string;
     hour_to: string;
+    section:string;
 }
 
 interface SubjectOutput {
@@ -56,7 +59,7 @@ router.get("/subjects", async (req: Request, res: Response) => {
         return;
     }
 
-    type GroupedSubjects = Record<number, Record<number, SubjectOutput[]>>;
+    type GroupedSubjects = Record<string,Record<number, Record<number, SubjectOutput[]>>>;
     
     // First, group by subjects to combine commissions
     const subjectsMap = (data as SubjectResponse[]).reduce((acc, item) => {
@@ -68,8 +71,9 @@ router.get("/subjects", async (req: Request, res: Response) => {
                 credits: item.credits,
                 dependencies: item.dependencies || [],
                 credits_required: item.credits_required,
-                year: item.year,
-                semester: item.semester,
+                year: item.year??0,
+                semester: item.semester??0,
+                section:item.section,
                 commissions: new Map()
             });
         }
@@ -96,25 +100,40 @@ router.get("/subjects", async (req: Request, res: Response) => {
     // Convert to final grouped structure
     const groupedData = Array.from(subjectsMap.values()).reduce<GroupedSubjects>(
         (acc, item) => {
-            const { year, semester, ...subjectData } = item;
+            const { year, semester,section, ...subjectData } = item;
+            
+            
             const outputItem: SubjectOutput = {
                 ...subjectData,
                 commissions: Array.from(item.commissions.values())
             };
-            
-            if (!acc[year]) {
-                acc[year] = {};
+            console.log(year,semester,section,outputItem);
+            if (!acc[section]) {
+                acc[section] = {};
             }
-            if (!acc[year][semester]) {
-                acc[year][semester] = [];
+            console.log(acc);
+            if (!acc[section][year]) {
+                acc[section][year] = {};
             }
-            acc[year][semester].push(outputItem);
+            console.log(acc);
+            if (!acc[section][year][semester]) {
+                acc[section] [year][semester] = [];
+            }
+            console.log(acc);
+            acc[section][year][semester].push(outputItem);
+            console.log(acc);
             return acc;
         },
         {}
     );
 
-    res.status(200).json(groupedData);
+    //sort the grouped data so the 0 0 sections go last
+    const sortedData = Object.keys(groupedData).sort().reduce((acc, key) => {
+        acc[key] = groupedData[key];
+        return acc;
+    }, {} as GroupedSubjects);
+
+    res.status(200).json(sortedData);
 });
 
 export default router;
