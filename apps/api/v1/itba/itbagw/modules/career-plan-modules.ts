@@ -45,17 +45,9 @@ export interface ITBADependencies {
 }
 
 export interface ITBAWithoutTerms {
-    withoutTerm: ITBAWithoutTerm[]
+    withoutTerm: ITBASubject[]
 }
 
-export interface ITBAWithoutTerm {
-    type: string
-    name: string
-    code: string
-    credits: string
-    creditsRequired?: string
-    dependencies?: ITBADependencies
-}
 
 
   

@@ -14,6 +14,7 @@ async function UpdateSubjects() {
 
     const missingSubjects: Subject[] = []
     const { data: subjects } = await supabase.from("subject").select().returns<Tables<"subject">[]>();
+    console.log(plans);
 
     for (const plan of plans!) {
         const planData : SubjectPlan[] = await getSubjectsByPlan(plan.id);
@@ -116,7 +117,7 @@ async function UpdateCommissions(){
 }
 
 
-//UpdateSubjects();
+UpdateSubjects();
 
-UpdateCommissions();
+//UpdateCommissions();
 
