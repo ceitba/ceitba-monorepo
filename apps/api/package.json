@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
     "chai": "^5.1.1",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.0",
     "fs": "^0.0.1-security",
@@ -20,6 +21,7 @@
     "parse": "^5.3.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.7.4"
   }
