@@ -1,49 +1,118 @@
-import { createClient } from '@supabase/supabase-js';
 import express, { Request, Response } from 'express';
-import { SUPABASE_ACCESS_TOKEN } from '../../server';
+import supabase from '../config/supabase';
+
+interface SubjectResponse {
+    subject_id: string;
+    year: number;
+    semester: number;
+    credits_required: number;
+    dependencies: string[];
+    subject_name: string;
+    credits: number;
+    commission_name: string;
+    day: string;
+    class_room: string;
+    building: string;
+    hour_from: string;
+    hour_to: string;
+}
+
+interface SubjectOutput {
+    subject_id: string;
+    name: string;
+    credits: number;
+    dependencies: string[];
+    credits_required: number;
+    commissions: {
+        name: string;
+        schedule: {
+            day: string;
+            classroom: string;
+            building: string;
+            timeFrom: string;
+            timeTo: string;
+        }[]
+    }[]
+}
 
 const router = express.Router();
 
-
-
 router.get("/subjects", async (req: Request, res: Response) => {
-    const { plan } = req.query
+    const { plan } = req.query;
     
-    if ( !plan ) {
+    if (!plan) {
         res.status(400).json({ error: "Invalid query parameters" });
-        return
+        return;
     }
 
-    const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
     const { data, error } = await supabase
-        .from("plan_subject")
-        .select('subject_id, year, semester, credits_required, dependencies, subject(name, credits)')
-        .eq("plan_id", plan as string)
-        .returns<any[]>()
+        .rpc('get_subjects_by_plan', { 
+            input_plan_id: plan as string 
+        });
 
     if (error) {
+        console.error('Supabase error:', error);
         res.status(500).json({ error: error.message });
-        return
+        return;
     }
 
-    const groupedData = data.reduce((acc, item) => {
-        const { year, semester, subject, subject_id, credits_required, dependencies } = item;
-        const newItem = {
-            subject_id,
-            name: subject.name,
-            credits: subject.credits,
-            dependencies,
-            credits_required
-        };
-        if (!acc[year]) {
-            acc[year] = {};
+    type GroupedSubjects = Record<number, Record<number, SubjectOutput[]>>;
+    
+    // First, group by subjects to combine commissions
+    const subjectsMap = (data as SubjectResponse[]).reduce((acc, item) => {
+        const key = item.subject_id;
+        if (!acc.has(key)) {
+            acc.set(key, {
+                subject_id: item.subject_id,
+                name: item.subject_name,
+                credits: item.credits,
+                dependencies: item.dependencies || [],
+                credits_required: item.credits_required,
+                year: item.year,
+                semester: item.semester,
+                commissions: new Map()
+            });
         }
-        if (!acc[year][semester]) {
-            acc[year][semester] = [];
+        
+        const subject = acc.get(key)!;
+        if (!subject.commissions.has(item.commission_name)) {
+            subject.commissions.set(item.commission_name, {
+                name: item.commission_name,
+                schedule: []
+            });
         }
-        acc[year][semester].push(newItem);
+        
+        subject.commissions.get(item.commission_name)!.schedule.push({
+            day: item.day,
+            classroom: item.class_room,
+            building: item.building,
+            timeFrom: item.hour_from,
+            timeTo: item.hour_to
+        });
+        
         return acc;
-    }, {});
+    }, new Map());
+
+    // Convert to final grouped structure
+    const groupedData = Array.from(subjectsMap.values()).reduce<GroupedSubjects>(
+        (acc, item) => {
+            const { year, semester, ...subjectData } = item;
+            const outputItem: SubjectOutput = {
+                ...subjectData,
+                commissions: Array.from(item.commissions.values())
+            };
+            
+            if (!acc[year]) {
+                acc[year] = {};
+            }
+            if (!acc[year][semester]) {
+                acc[year][semester] = [];
+            }
+            acc[year][semester].push(outputItem);
+            return acc;
+        },
+        {}
+    );
 
     res.status(200).json(groupedData);
 });
