@@ -5,6 +5,7 @@ import careersData from "../careers";
 import { SubjectPlan, Subject } from "../ceitbapi/modules";
 import { ITBA_API_TOKEN } from "../../../server";
 
+
 async function getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
     const url = `https://itbagw.itba.edu.ar/api/v1/careerPlans/${ITBA_API_TOKEN}?plan=${planId}`;
     const subjectPlan: SubjectPlan[] = [];
@@ -47,6 +48,34 @@ async function getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
                     }
                     
                 })
+            } else if (jsonSection.withoutTerm != null) {
+                console.log(jsonSection);
+                jsonSection.withoutTerm.withoutTerm = jsonSection.withoutTerm.withoutTerm instanceof Array ? jsonSection.withoutTerm.withoutTerm : [jsonSection.withoutTerm.withoutTerm];
+                for (const jsonSubject of jsonSection.withoutTerm.withoutTerm) 
+               {
+                    if (jsonSubject.type == "subject") {
+                        var dependencies: string[] | null = null;
+                        if (jsonSubject.dependencies?.dependency != null) {
+                            if (jsonSubject.dependencies?.dependency instanceof Array) {
+                                dependencies= jsonSubject.dependencies?.dependency
+                            } else {
+                                dependencies= [jsonSubject.dependencies?.dependency];
+                            }
+                        }
+
+                        subjectPlan.push({
+                            subject_id: jsonSubject.code!,
+                            name: jsonSubject.name,
+                            credits: parseInt(jsonSubject.credits),
+                            plan_id: planId,
+                            section: jsonSection.name,
+                            year: null,
+                            semester: null,
+                            dependencies: dependencies ?? null,
+                            credits_required: jsonSubject.creditsRequired != null ? parseInt(jsonSubject.creditsRequired) : null
+                        })
+                    }
+                }
             }
 
         })

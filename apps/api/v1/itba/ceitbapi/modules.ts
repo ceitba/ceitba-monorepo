@@ -8,8 +8,8 @@ export interface DatabaseSubjectPlan{
     subject_id: string;
     plan_id: string;
     section: string;
-    year: number;
-    semester: number;
+    year: number | null;
+    semester: number | null ;
     dependencies: string[] | null;
     credits_required: number | null;
 }
@@ -18,8 +18,8 @@ export interface SubjectPlan{
     subject_id: string;
     plan_id: string;
     section: string;
-    year: number;
-    semester: number;
+    year: number | null;
+    semester: number| null;
     dependencies: string[] | null;
     credits_required: number | null;
     credits:number;
