@@ -6,6 +6,8 @@ import supabase from '../config/supabase';
 interface SubjectResponse {
     subject_id: string;
     year: number | null;
+    course_start: Date;
+    course_end: Date;
     semester: number | null;
     credits_required: number;
     dependencies: string[];
@@ -18,6 +20,7 @@ interface SubjectResponse {
     hour_from: string;
     hour_to: string;
     section:string;
+    
 }
 
 interface SubjectOutput {
@@ -26,14 +29,16 @@ interface SubjectOutput {
     credits: number;
     dependencies: string[];
     credits_required: number;
+    course_start: Date;
+    course_end: Date;
     commissions: {
         name: string;
         schedule: {
             day: string;
             classroom: string;
             building: string;
-            timeFrom: string;
-            timeTo: string;
+            time_from: string;
+            time_to: string;
         }[]
     }[]
 }
@@ -59,6 +64,8 @@ router.get("/subjects", async (req: Request, res: Response) => {
         return;
     }
 
+    console.log(data);
+
     type GroupedSubjects = Record<string,Record<number, Record<number, SubjectOutput[]>>>;
     
     // First, group by subjects to combine commissions
@@ -72,6 +79,8 @@ router.get("/subjects", async (req: Request, res: Response) => {
                 dependencies: item.dependencies || [],
                 credits_required: item.credits_required,
                 year: item.year??0,
+                course_start: item.course_start,
+                course_end: item.course_end,
                 semester: item.semester??0,
                 section:item.section,
                 commissions: new Map()
@@ -90,8 +99,8 @@ router.get("/subjects", async (req: Request, res: Response) => {
             day: item.day,
             classroom: item.class_room,
             building: item.building,
-            timeFrom: item.hour_from,
-            timeTo: item.hour_to
+            time_from: item.hour_from,
+            time_to: item.hour_to
         });
         
         return acc;
