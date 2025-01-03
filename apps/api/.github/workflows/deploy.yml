@@ -17,5 +17,6 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }} 
           script: |
             cd CEITBA-API/
-            git pull -v
-          
+            npm install
+            git pull https://CEITBA-git:${{ secrets.GITHUB_TOKEN}}@github.com/CEITBA-git/CEITBA-API.git
+            pm2 restart CEITBA-api
