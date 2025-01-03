@@ -31,6 +31,8 @@ interface SubjectOutput {
     credits_required: number;
     course_start: Date;
     course_end: Date;
+    section:string;
+    category:string;
     commissions: {
         name: string;
         schedule: {
@@ -113,6 +115,7 @@ router.get("/subjects", async (req: Request, res: Response) => {
             
             
             const outputItem: SubjectOutput = {
+                section:section,
                 ...subjectData,
                 commissions: Array.from(item.commissions.values())
             };
