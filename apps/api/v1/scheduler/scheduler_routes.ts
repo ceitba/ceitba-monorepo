@@ -33,9 +33,9 @@ interface SubjectOutput {
     course_end: Date;
     section:string;
     category:string;
-    commissions: {
+    commissions?: {
         name: string;
-        schedule: {
+        schedule?: {
             day: string;
             classroom: string;
             building: string;
