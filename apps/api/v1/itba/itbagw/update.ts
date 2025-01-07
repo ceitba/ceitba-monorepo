@@ -146,7 +146,7 @@ async function UpdateCommissions(){
 }
 
 
-//UpdateSubjects();
+UpdateSubjects();
 
 UpdateCommissions();
 
