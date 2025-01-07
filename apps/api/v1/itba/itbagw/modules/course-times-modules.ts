@@ -22,9 +22,9 @@ export interface Root {
   export interface Comissions{
     subject_code: string
     subject_type: string
-    course_start: string
-    course_end: string
-    comission_name: string
+    course_start: Date
+    course_end: Date
+    commission_name: string
     id: string
     quota: string
     enrolled_students: string

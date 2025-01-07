@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ITBA_API_TOKEN, SUPABASE_ACCESS_TOKEN } from "../../../server";
 import { DatabaseSubjectPlan, Subject, SubjectPlan } from "../ceitbapi/modules";
 import { Root,CourseCommission ,Comissions,CourseCommissionTime} from "./modules/course-times-modules";
+import { parse } from 'date-fns';
 
 async function UpdateSubjects() {
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
@@ -68,25 +69,48 @@ async function UpdateCommissions(){
     const data = await fetch(url);
     const jsonData: Root = await data.json();
 
+
     const comissions:Comissions[]=[];
     const comissionTimes:CourseCommissionTime[]=[];
 
     for (const course of jsonData.courseCommissions.courseCommission) {
         course.courseCommissionTimes = course.courseCommissionTimes instanceof Array? course.courseCommissionTimes: [course.courseCommissionTimes];
+        const courseStart = parse(course.courseStart, 'dd/MM/yy', new Date());
+        const courseEnd = parse(course.courseEnd, 'dd/MM/yy', new Date());
+        
+        switch (course.subjectCode){
+            case "99.52":
+                continue;
+            case "99.56":
+                continue;
+        }
         comissions.push({
             subject_code:course.subjectCode,
             subject_type:course.subjectType,
-            course_start:course.courseStart,
-            course_end:course.courseEnd,
-            comission_name:course.commissionName,
+            course_start:courseStart,
+            course_end:courseEnd,
+            commission_name:course.commissionName,
             id:course.commissionId,
             quota:course.quota,
             enrolled_students:course.enrolledStudents})
+        
 
         
 
         for (const time of course.courseCommissionTimes){
             if (time == undefined) continue;
+            switch (time.building){
+                case "External":
+                    time.building = "Online";
+                    break;
+                case "Sede Distrito Financiero":
+                    time.building = "SDF";
+                    break;
+                case "Sede Rectorado":
+                    time.building = "SDR";
+                    break;
+            }
+            
             comissionTimes.push({
                 course_id:course.commissionId,
                 day:time.day,
@@ -100,24 +124,29 @@ async function UpdateCommissions(){
     }
 
     await supabase
-        .from('course')
-        .upsert(comissions, { ignoreDuplicates: true })
+        .from('commission')
+        .upsert(comissions, { ignoreDuplicates: false })
         .select().then((data) => { console.log(data) });
-
+    //Drop table commission_time
+    // Medio parche ya que el upsert toma como diferentes el id de la tabla commission_time. Se podria sacar ya que no es necesaria, pero hay que ver.
+    // TODO: arreglar esto antes de que cambie el cuatrimestre. 
     await supabase
-    .from('course_time')
+    .from('commission_time')
+    .delete()
+    .neq('id', 0);
+    
+    await supabase
+    .from('commission_time')
     .upsert(comissionTimes, { ignoreDuplicates: true })
     .select().then((data) => {
-        if (data.error != null) {
-            console.log(data);
-        }
+        console.log(data);
     });
     
     
 }
 
 
-UpdateSubjects();
+//UpdateSubjects();
 
-//UpdateCommissions();
+UpdateCommissions();
 
