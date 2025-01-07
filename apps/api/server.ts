@@ -3,10 +3,14 @@ import dotenv from "dotenv";
 import cors from 'cors';
 dotenv.config();
 import process from "process";
+import cron from "node-cron";
 import itbaRouter from "./v1/itba/itbaRoutes";
 import schedulerRouter from "./v1/scheduler/scheduler_routes";
+import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
 
 const app = express();
+
+
 
 const PORT = process.env.PORT || 3000;
 export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN
@@ -31,5 +35,10 @@ app.use('/api/v1/scheduler', schedulerRouter);
 app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
 });
+
+cron.schedule('0 0 * * *', UpdateCommissions);
+cron.schedule('0 0 * * *', UpdateSubjects);
+
+
 
 export default app;

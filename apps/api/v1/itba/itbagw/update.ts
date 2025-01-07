@@ -7,7 +7,7 @@ import { DatabaseSubjectPlan, Subject, SubjectPlan } from "../ceitbapi/modules";
 import { Root,CourseCommission ,Comissions,CourseCommissionTime} from "./modules/course-times-modules";
 import { parse } from 'date-fns';
 
-async function UpdateSubjects() {
+export async function UpdateSubjects() {
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
     const { data: plans } = await supabase.from("plan").select().returns<Tables<"plan">[]>();
 
@@ -62,7 +62,7 @@ async function UpdateSubjects() {
     
 }
 
-async function UpdateCommissions(){
+export async function UpdateCommissions(){
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
     const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=GRADUATE&year=2025&period=FirstSemester`;
 
@@ -78,10 +78,10 @@ async function UpdateCommissions(){
         const courseStart = parse(course.courseStart, 'dd/MM/yy', new Date());
         const courseEnd = parse(course.courseEnd, 'dd/MM/yy', new Date());
         
-        switch (course.subjectCode){
-            case "99.52":
+        switch (course.subjectCode){ // Ignorar materias opcionales de intercambio
+            case "99.52": // Español B2 para extranjeros
                 continue;
-            case "99.56":
+            case "99.56": // Español C1 para extranjeros
                 continue;
         }
         comissions.push({
@@ -127,13 +127,6 @@ async function UpdateCommissions(){
         .from('commission')
         .upsert(comissions, { ignoreDuplicates: false })
         .select().then((data) => { console.log(data) });
-    //Drop table commission_time
-    // Medio parche ya que el upsert toma como diferentes el id de la tabla commission_time. Se podria sacar ya que no es necesaria, pero hay que ver.
-    // TODO: arreglar esto antes de que cambie el cuatrimestre. 
-    await supabase
-    .from('commission_time')
-    .delete()
-    .neq('id', 0);
     
     await supabase
     .from('commission_time')
@@ -144,9 +137,4 @@ async function UpdateCommissions(){
     
     
 }
-
-
-UpdateSubjects();
-
-UpdateCommissions();
 
