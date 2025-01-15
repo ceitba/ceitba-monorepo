@@ -19,4 +19,4 @@ jobs:
             cd CEITBA-API/
             npm install
             git pull https://CEITBA-git:${{ secrets.GITHUB_TOKEN}}@github.com/CEITBA-git/CEITBA-API.git
-            pm2 restart CEITBA-api
+            pm2 restart api
