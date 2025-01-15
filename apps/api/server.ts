@@ -36,8 +36,8 @@ app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
 });
 
-cron.schedule('0 0 * * *', UpdateCommissions);
-cron.schedule('0 0 * * *', UpdateSubjects);
+cron.schedule('0 0,12 * * *', UpdateCommissions);
+cron.schedule('0 0,12 * * *', UpdateSubjects);
 
 
 
