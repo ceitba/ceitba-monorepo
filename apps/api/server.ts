@@ -6,11 +6,10 @@ import process from "process";
 import cron from "node-cron";
 import itbaRouter from "./v1/itba/itbaRoutes";
 import schedulerRouter from "./v1/scheduler/scheduler_routes";
+import minecraftRouter from "./v1/minecraft/whitelist";
 import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
 
 const app = express();
-
-
 
 const PORT = process.env.PORT || 3000;
 export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN
@@ -31,6 +30,7 @@ app.get("/api", (req: Request, res: Response) => {
 
 app.use('/api/v1/itba', itbaRouter);
 app.use('/api/v1/scheduler', schedulerRouter);
+app.use('/api/v1/minecraft', minecraftRouter);
 
 app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
@@ -38,7 +38,5 @@ app.listen(PORT, () => {
 
 cron.schedule('0 0,12 * * *', UpdateCommissions);
 cron.schedule('0 0,12 * * *', UpdateSubjects);
-
-
 
 export default app;
