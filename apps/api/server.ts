@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Allowing the website to access the API
 app.use(cors({
-    origin: 'http://localhost:3000', // TODO: Change to the actual website URL
+    origin: 'https://ceitba.org.ar',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
