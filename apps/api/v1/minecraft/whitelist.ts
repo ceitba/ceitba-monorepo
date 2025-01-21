@@ -68,7 +68,7 @@ const handleWhitelist: RequestHandler = async (req, res) => {
     res.status(200).json({ message: 'Usuario agregado a la whitelist' });
   } catch (error) {
     console.error('Error updating whitelist:', error);
-    res.status(500).json({ error: 'Error al agregar a la whitelist' });
+    res.status(500).json({ error: 'Error al agregar a la whitelist', details: error });
   }
 };
 
