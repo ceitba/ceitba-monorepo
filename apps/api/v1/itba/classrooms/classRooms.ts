@@ -5,6 +5,27 @@ const router = express.Router();
 
 /**
  * @openapi
+ * components:
+ *   schemas:
+ *     ClassroomData:
+ *       type: object
+ *       properties:
+ *         class_room:
+ *           type: string
+ *         building:
+ *           type: string
+ *         day:
+ *           type: string
+ *         hour_from:
+ *           type: string
+ *         hour_to:
+ *           type: string
+ *     ClassroomOutput:
+ *       type: object
+ *       additionalProperties:
+ *         type: array
+ *         items:
+ *           $ref: '#/components/schemas/ClassroomData'
  * /itba/classrooms:
  *   get:
  *     tags:
@@ -24,8 +45,12 @@ const router = express.Router();
  *     responses:
  *       200:
  *         description: A map of buildings to arrays of classroom data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ClassroomOutput'
  *       500:
- *         description: An error occurred during processing.
+ *         description: Internal server error
  */
 router.get("/classrooms", async (req, res) => {
     const { current_semester } = req.query;
