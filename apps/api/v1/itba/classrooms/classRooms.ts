@@ -11,6 +11,7 @@ router.get("/classrooms", async (req, res) => {
     //Current semester toma segun la fecha de hoy, se podria cambiar para que tome la fecha del cuatrimestre mas cercano, ya que durante las vacaciones
     //se muestra la info de las clases de vacaciones nada mas.
     
+    
     const {data,error} = await supabase.rpc('get_classrooms',{current_semester:current_semester ?? false});
         if (error) {
             res.status(500).json({ error: error.message });
