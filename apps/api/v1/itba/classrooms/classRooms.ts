@@ -3,8 +3,30 @@ import supabase from "../../config/supabase";
 import { ClassroomResponse,ClassroomData } from "./models";
 const router = express.Router();
 
-
-  
+/**
+ * @openapi
+ * /itba/classrooms:
+ *   get:
+ *     tags:
+ *       - ITBA
+ *     summary: Retrieve classroom data
+ *     description: >
+ *       Retrieves a list of classrooms.
+ *       The optional "current_semester" query parameter determines whether to filter
+ *       results only for the current semester. Otherwise, all classrooms in the database are returned.
+ *     parameters:
+ *       - in: query
+ *         name: current_semester
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *         description: If set to true, only returns active classrooms for the current semester.
+ *     responses:
+ *       200:
+ *         description: A map of buildings to arrays of classroom data.
+ *       500:
+ *         description: An error occurred during processing.
+ */
 router.get("/classrooms", async (req, res) => {
     const { current_semester } = req.query;
 

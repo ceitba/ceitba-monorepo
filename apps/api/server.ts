@@ -8,6 +8,32 @@ import itbaRouter from "./v1/itba/itbaRoutes";
 import schedulerRouter from "./v1/scheduler/scheduler_routes";
 import minecraftRouter from "./v1/minecraft/whitelist";
 import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'CEITBA API',
+            version: '1.0.0'
+        },
+        servers:[
+          {
+            url:"/api/v1"
+          }
+        ]
+    },
+    apis: ['./v1/**/*.ts'] // Adjust paths to match your routes
+};
+
+var options = {
+  explorer: true
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+
 
 const app = express();
 
@@ -19,6 +45,7 @@ export const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN!
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec,options));
 // Allowing the website to access the API
 app.use(cors({
     origin: 'https://ceitba.org.ar',
