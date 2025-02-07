@@ -47,6 +47,138 @@ interface SubjectOutput {
 
 const router = express.Router();
 
+/**
+ * @openapi
+ * tags:
+ *   - name: Scheduler
+ *     description: Endpoints related to the scheduler
+ * components:
+ *   schemas:
+ *     SubjectResponse:
+ *       type: object
+ *       properties:
+ *         subject_id:
+ *           type: string
+ *         year:
+ *           type: integer
+ *           nullable: true
+ *         course_start:
+ *           type: string
+ *           format: date-time
+ *         course_end:
+ *           type: string
+ *           format: date-time
+ *         semester:
+ *           type: integer
+ *           nullable: true
+ *         credits_required:
+ *           type: integer
+ *         dependencies:
+ *           type: array
+ *           items:
+ *             type: string
+ *         subject_name:
+ *           type: string
+ *         credits:
+ *           type: integer
+ *         commission_name:
+ *           type: string
+ *         day:
+ *           type: string
+ *         class_room:
+ *           type: string
+ *         building:
+ *           type: string
+ *         hour_from:
+ *           type: string
+ *         hour_to:
+ *           type: string
+ *         section:
+ *           type: string
+ *     SubjectOutput:
+ *       type: object
+ *       properties:
+ *         subject_id:
+ *           type: string
+ *         name:
+ *           type: string
+ *         credits:
+ *           type: integer
+ *         dependencies:
+ *           type: array
+ *           items:
+ *             type: string
+ *         credits_required:
+ *           type: integer
+ *         course_start:
+ *           type: string
+ *           format: date-time
+ *         course_end:
+ *           type: string
+ *           format: date-time
+ *         section:
+ *           type: string
+ *         category:
+ *           type: string
+ *         commissions:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               schedule:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     day:
+ *                       type: string
+ *                     classroom:
+ *                       type: string
+ *                     building:
+ *                       type: string
+ *                     time_from:
+ *                       type: string
+ *                     time_to:
+ *                       type: string
+ */
+
+/**
+ * @openapi
+ * /scheduler/subjects:
+ *   get:
+ *     tags:
+ *       - Scheduler
+ *     summary: Get subjects by plan
+ *     description: Retrieve subjects by plan ID.
+ *     parameters:
+ *       - in: query
+ *         name: plan
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The plan ID to filter subjects by.
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved subjects.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties:
+ *                 type: object
+ *                 additionalProperties:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: array
+ *                     items:
+ *                       $ref: '#/components/schemas/SubjectOutput'
+ *       400:
+ *         description: Invalid query parameters
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/subjects", async (req: Request, res: Response) => {
     const { plan } = req.query;
     
