@@ -200,6 +200,42 @@ export type Database = {
           },
         ]
       }
+      proposal_vote: {
+        Row: {
+          is_positive: boolean
+          proposal_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          is_positive: boolean
+          proposal_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          is_positive?: boolean
+          proposal_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_vote_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_vote_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       study_group: {
         Row: {
           created_at: string
@@ -298,42 +334,6 @@ export type Database = {
     }
   }
 }
-
-export type Proposal = {
-  author_id: string | null;
-  authorized: boolean;
-  created_at: string;
-  description: string | null;
-  files_url: string[] | null;
-  id: string;
-  status: Database["ceitbapp"]["Enums"]["proposal_status"];
-  title: string;
-  topic: string | null;
-};
-
-export type ProposalComment = {
-  author_id: string;
-  comment: string;
-  created_at: string;
-  id: string;
-  proposal_id: string | null;
-};
-
-export type ProposalRejection = {
-  created_at: string;
-  id: string;
-  mod_id: string;
-  proposal_id: string;
-  rejection_reason: string;
-};
-
-export type ProposalReply = {
-  author_id: string;
-  comment_id: string;
-  created_at: string;
-  id: string;
-  reply: string;
-};
 
 type PublicSchema = Database[Extract<keyof Database, "public">]
 

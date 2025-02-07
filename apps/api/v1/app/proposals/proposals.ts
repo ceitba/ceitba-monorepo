@@ -8,7 +8,7 @@ const router = express.Router();
 //TODO: Add authentication
 
 
-const TABLES = ['proposal', 'proposal_comment', 'proposal_rejection', 'proposal_reply'];
+const TABLES = ['proposal', 'proposal_comment', 'proposal_rejection', 'proposal_reply', 'proposal_vote'];
 
 
 /**
@@ -87,6 +87,18 @@ const TABLES = ['proposal', 'proposal_comment', 'proposal_rejection', 'proposal_
  *         id:
  *           type: string
  *         reply:
+ *           type: string
+ *     ProposalVote:
+ *       type: object
+ *       properties:
+ *         is_positive:
+ *           type: boolean
+ *         proposal_id:
+ *           type: string
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *         user_id:
  *           type: string
  */
 
@@ -250,6 +262,41 @@ router.get("/:table", async (req: Request, res: Response) => {
 
 /**
  * @openapi
+ * /app/proposals/proposal_vote:
+ *   get:
+ *     tags:
+ *       - App
+ *       - Proposals
+ *     summary: Get all proposal votes
+ *     description: Retrieve all votes for proposals. You can filter the results by providing query parameters.
+ *     parameters:
+ *       - in: query
+ *         name: proposal_id
+ *         schema:
+ *           type: string
+ *         description: Filter by proposal ID
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *         description: Filter by user ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved all proposal votes.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ProposalVote'
+ *       400:
+ *         description: Invalid table
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
  * /app/proposals/proposal/{id}:
  *   get:
  *     tags:
@@ -372,6 +419,41 @@ router.get('/:table/:id', async (req, res) => {
 
 /**
  * @openapi
+ * /app/proposals/proposal_vote/{proposal_id}/{user_id}:
+ *   get:
+ *     tags:
+ *       - App
+ *       - Proposals
+ *     summary: Get a proposal vote by proposal ID and user ID
+ *     description: Retrieve a single proposal vote by proposal ID and user ID.
+ *     parameters:
+ *       - name: proposal_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the proposal to retrieve the vote for.
+ *       - name: user_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user to retrieve the vote for.
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the proposal vote by proposal ID and user ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProposalVote'
+ *       400:
+ *         description: Invalid table
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
  * /app/proposals/proposal:
  *   post:
  *     tags:
@@ -480,6 +562,34 @@ router.post('/:table', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ProposalReply'
+ *       400:
+ *         description: Invalid table
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
+ * /app/proposals/proposal_vote:
+ *   post:
+ *     tags:
+ *       - App
+ *       - Proposals
+ *     summary: Insert a new proposal vote
+ *     description: Insert a new proposal vote.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ProposalVote'
+ *     responses:
+ *       200:
+ *         description: Successfully inserted the new proposal vote.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProposalVote'
  *       400:
  *         description: Invalid table
  *       500:
@@ -632,6 +742,47 @@ router.put('/:table/:id', async (req, res) => {
 
 /**
  * @openapi
+ * /app/proposals/proposal_vote/{proposal_id}/{user_id}:
+ *   put:
+ *     tags:
+ *       - App
+ *       - Proposals
+ *     summary: Update a proposal vote by proposal ID and user ID
+ *     description: Update a proposal vote by proposal ID and user ID.
+ *     parameters:
+ *       - name: proposal_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the proposal to update the vote for.
+ *       - name: user_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user to update the vote for.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ProposalVote'
+ *     responses:
+ *       200:
+ *         description: Successfully updated the proposal vote.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProposalVote'
+ *       400:
+ *         description: Invalid table
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
  * /app/proposals/proposal/{id}:
  *   delete:
  *     tags:
@@ -728,6 +879,37 @@ router.delete('/:table/:id', async (req, res) => {
  *     responses:
  *       200:
  *         description: Successfully deleted the proposal reply by ID.
+ *       400:
+ *         description: Invalid table
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
+ * /app/proposals/proposal_vote/{proposal_id}/{user_id}:
+ *   delete:
+ *     tags:
+ *       - App
+ *       - Proposals
+ *     summary: Delete a proposal vote by proposal ID and user ID
+ *     description: Delete a proposal vote by proposal ID and user ID.
+ *     parameters:
+ *       - name: proposal_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the proposal to delete the vote for.
+ *       - name: user_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user to delete the vote for.
+ *     responses:
+ *       200:
+ *         description: Successfully deleted the proposal vote.
  *       400:
  *         description: Invalid table
  *       500:
