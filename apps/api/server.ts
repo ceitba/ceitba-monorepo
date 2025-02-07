@@ -5,6 +5,7 @@ dotenv.config();
 import process from "process";
 import cron from "node-cron";
 import itbaRouter from "./v1/itba/itbaRoutes";
+import appRouter from "./v1/app/appRoutes";
 import schedulerRouter from "./v1/scheduler/scheduler_routes";
 import minecraftRouter from "./v1/minecraft/whitelist";
 import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
@@ -22,7 +23,25 @@ const swaggerOptions = {
           {
             url:"/api/v1"
           }
-        ]
+        ],
+        tags: [
+          {
+              name: "ITBA",
+              description: "Endpoints related to ITBA data"
+          },
+          {
+              name: "App",
+              description: "Endpoints related to the application"
+          },
+          {
+              name: "Scheduler",
+              description: "Endpoints related to scheduling"
+          },
+          {
+              name: "Minecraft",
+              description: "Endpoints related to Minecraft"
+          }
+      ]
     },
     apis: ['./v1/**/*.ts'] // Adjust paths to match your routes
 };
@@ -60,6 +79,7 @@ app.get("/api", (req: Request, res: Response) => {
 app.use('/api/v1/itba', itbaRouter);
 app.use('/api/v1/scheduler', schedulerRouter);
 app.use('/api/v1/minecraft', minecraftRouter);
+app.use('/api/v1/app', appRouter);
 
 app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
