@@ -59,7 +59,7 @@ router.get("/classrooms", async (req, res) => {
     //se muestra la info de las clases de vacaciones nada mas.
     
     
-    const {data,error} = await supabase.rpc('get_classrooms',{current_semester:current_semester ?? false});
+    const {data,error} = await supabase.rpc('get_classrooms',{current_semester:current_semester ?? true});
         if (error) {
             res.status(500).json({ error: error.message });
             return;
