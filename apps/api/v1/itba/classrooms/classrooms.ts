@@ -8,6 +8,13 @@ const router = express.Router();
  * @openapi
  * components:
  *   schemas:
+ *     ClassroomDataReduced:
+ *       type: object
+ *       properties:
+ *         class_room:
+ *           type: string
+ *         building:
+ *           type: string
  *     ClassroomData:
  *       type: object
  *       properties:
@@ -29,13 +36,13 @@ const router = express.Router();
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/ClassroomData'
- * /itba/classrooms:
+ * /itba/classrooms/occupied:
  *   get:
  *     tags:
  *       - ITBA
- *     summary: Retrieve classroom data
+ *     summary: Retrieve occupied classroom data
  *     description: >
- *       Retrieves a list of classrooms.
+ *       Retrieves a list of occupied classrooms.
  *       The optional "current_semester" query parameter determines whether to filter
  *       results only for the current semester. Otherwise, all classrooms in the database are returned.
  *       The results are grouped by weekday and building.
@@ -56,7 +63,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.get("/classrooms", async (req, res) => {
+router.get("/occupied", async (req, res) => {
     const { current_semester } = req.query;
 
     //Current semester toma segun la fecha de hoy, se podria cambiar para que tome la fecha del cuatrimestre mas cercano, ya que durante las vacaciones
@@ -68,7 +75,7 @@ router.get("/classrooms", async (req, res) => {
         return;
     }
     const classroomsMap = (data as ClassroomResponse).reduce((acc, classroom) => {
-        const day = classroom.day;
+        const day = classroom.day!;
         const building = classroom.building;
         // Exclude online classrooms
         if (building == "Online"){
@@ -96,4 +103,49 @@ router.get("/classrooms", async (req, res) => {
     
     res.status(200).json(plainObject);
 });
+
+/**
+ * @openapi
+ * /itba/classrooms/all:
+ *   get:
+ *     tags:
+ *       - ITBA
+ *     summary: Retrieve all classroom data
+ *     description: >
+ *       Retrieves a list of all classrooms in the database.
+ *       The results are grouped by building.
+ *     responses:
+ *       200:
+ *         description: A map of buildings to arrays of classroom data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/ClassroomDataReduced'
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/all", async (req, res) => {
+    const { data, error } = await supabase.rpc("get_all_classrooms");
+    if (error) {
+        res.status(500).json({ error: error.message });
+        return;
+    }
+    const classroomsMap = (data as ClassroomResponse).reduce((acc, classroom) => {
+        const building = classroom.building;
+        if (building == "Online"){
+            return acc;
+        }
+        if (!acc[building]) {
+            acc[building] = new Array<ClassroomData>();
+        }
+        acc[building].push(classroom);
+        return acc;
+    }, {} as Record<string, ClassroomData[]>);
+    res.status(200).json(classroomsMap);
+});
+
 export default router;
