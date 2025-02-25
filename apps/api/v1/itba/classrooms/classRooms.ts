@@ -1,6 +1,7 @@
 import express from "express";
 import supabase from "../../config/supabase";
-import { ClassroomResponse,ClassroomData } from "./models";
+import { ClassroomResponse,ClassroomData,ClassroomOutput } from "./models";
+import { json } from "stream/consumers";
 const router = express.Router();
 
 /**
@@ -23,9 +24,11 @@ const router = express.Router();
  *     ClassroomOutput:
  *       type: object
  *       additionalProperties:
- *         type: array
- *         items:
- *           $ref: '#/components/schemas/ClassroomData'
+ *         type: object
+ *         additionalProperties:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ClassroomData'
  * /itba/classrooms:
  *   get:
  *     tags:
@@ -35,6 +38,7 @@ const router = express.Router();
  *       Retrieves a list of classrooms.
  *       The optional "current_semester" query parameter determines whether to filter
  *       results only for the current semester. Otherwise, all classrooms in the database are returned.
+ *       The results are grouped by weekday and building.
  *     parameters:
  *       - in: query
  *         name: current_semester
@@ -44,7 +48,7 @@ const router = express.Router();
  *         description: If set to true, only returns active classrooms for the current semester.
  *     responses:
  *       200:
- *         description: A map of days to arrays of classroom data.
+ *         description: A map of days to maps of buildings to arrays of classroom data.
  *         content:
  *           application/json:
  *             schema:
@@ -58,22 +62,38 @@ router.get("/classrooms", async (req, res) => {
     //Current semester toma segun la fecha de hoy, se podria cambiar para que tome la fecha del cuatrimestre mas cercano, ya que durante las vacaciones
     //se muestra la info de las clases de vacaciones nada mas.
     
-    
-    const {data,error} = await supabase.rpc('get_classrooms',{current_semester:current_semester ?? true});
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        const classroomsMap = (data as ClassroomResponse).reduce((acc, classroom) => {
-            const day = classroom.day;
-            if (!acc[day]) {
-            acc[day] = [];
-            }
-            acc[day].push(classroom);
+    const { data, error } = await supabase.rpc('get_classrooms', { current_semester: current_semester ?? true });
+    if (error) {
+        res.status(500).json({ error: error.message });
+        return;
+    }
+    const classroomsMap = (data as ClassroomResponse).reduce((acc, classroom) => {
+        const day = classroom.day;
+        const building = classroom.building;
+        // Exclude online classrooms
+        if (building == "Online"){
             return acc;
-        }, {} as { [key: string]: ClassroomData[] });
+        }
+        if (!acc[day]) {
+            acc[day] = new Map<string, ClassroomData[]>();
+        }
+        if (!acc[day].get(building)) {
+            acc[day].set(building, new Array<ClassroomData>());
+        }
+        acc[day].get(building)!.push(classroom);
+        
+        
+        return acc;
+    }, {} as ClassroomOutput);  
+    
+    
+    // Magia negra de gpt para que se pueda parsear a JSON
+    const plainObject = Object.fromEntries(
+        Object.entries(classroomsMap).map(([day, buildingsMap]) => [day, Object.fromEntries(buildingsMap)])
+    );
 
-        res.status(200).json(classroomsMap);
-
+    
+    
+    res.status(200).json(plainObject);
 });
 export default router;

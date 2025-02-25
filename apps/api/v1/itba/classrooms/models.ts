@@ -9,4 +9,4 @@ export interface ClassroomData {
     hour_to: string
   }
 
-export type ClassroomOutput = Map<string,ClassroomData[]>
+export type ClassroomOutput = Record<string,Map<string,ClassroomData[]>>
