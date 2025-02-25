@@ -796,22 +796,46 @@ router.put('/:table/:id', async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the proposal to delete.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uuid:
+ *                 type: string
+ *                 description: The UUID of the moderator performing the delete action.
  *     responses:
  *       200:
  *         description: Successfully deleted the proposal by ID.
  *       400:
  *         description: Invalid table
+ *       403:
+ *         description: Unauthorized
+ *       418:
+ *         description: No UUID; need to be Moderator to delete.
  *       500:
  *         description: Internal server error
  */
+
 router.delete('/:table/:id', async (req, res) => {
     const { table, id } = req.params;
-    if (!TABLES.includes(table)) { res.status(400).json({ error: 'Invalid table' }); return; }
+    const { uuid } = req.body;
 
-    const { error } = await supabase.from(`${table}`).delete().eq('id', id);
+    if (!TABLES.includes(table)) { res.status(400).json({ error: 'Invalid table' }); return; }
+    if (!uuid) { res.status(418).json({ error: 'No UUID; need to be Moderator to delete.' }); return; }
+
+    // Check if user is moderator
+    const { data, error: userError } = await supabase.schema("ceitbapp").from('user').select('is_moderator').eq('user_id', uuid).single();
+    if (userError) { res.status(500).json({ error: userError.message }); return; }
+    if (!data?.is_moderator) { res.status(403).json({ error: 'Unauthorized' }); return; }
+
+    const { error } = await supabase.schema("ceitbapp").from(`${table}`).delete().eq('id', id);
     if (error) { res.status(500).json({ error: error.message }); return; }
     res.json({ message: 'Deleted successfully' });
 });
+
 
 /**
  * @openapi
@@ -828,11 +852,25 @@ router.delete('/:table/:id', async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the proposal comment to delete.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uuid:
+ *                 type: string
+ *                 description: The UUID of the moderator performing the delete action.
  *     responses:
  *       200:
  *         description: Successfully deleted the proposal comment by ID.
  *       400:
  *         description: Invalid table
+ *       403:
+ *         description: Unauthorized
+ *       418:
+ *         description: No UUID; need to be Moderator to delete.
  *       500:
  *         description: Internal server error
  */
@@ -852,11 +890,25 @@ router.delete('/:table/:id', async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the proposal rejection to delete.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uuid:
+ *                 type: string
+ *                 description: The UUID of the moderator performing the delete action.
  *     responses:
  *       200:
  *         description: Successfully deleted the proposal rejection by ID.
  *       400:
  *         description: Invalid table
+ *       403:
+ *         description: Unauthorized
+ *       418:
+ *         description: No UUID; need to be Moderator to delete.
  *       500:
  *         description: Internal server error
  */
@@ -876,11 +928,25 @@ router.delete('/:table/:id', async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the proposal reply to delete.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uuid:
+ *                 type: string
+ *                 description: The UUID of the moderator performing the delete action.
  *     responses:
  *       200:
  *         description: Successfully deleted the proposal reply by ID.
  *       400:
  *         description: Invalid table
+ *       403:
+ *         description: Unauthorized
+ *       418:
+ *         description: No UUID; need to be Moderator to delete.
  *       500:
  *         description: Internal server error
  */
@@ -907,11 +973,25 @@ router.delete('/:table/:id', async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the user to delete the vote for.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uuid:
+ *                 type: string
+ *                 description: The UUID of the moderator performing the delete action.
  *     responses:
  *       200:
  *         description: Successfully deleted the proposal vote.
  *       400:
  *         description: Invalid table
+ *       403:
+ *         description: Unauthorized
+ *       418:
+ *         description: No UUID; need to be Moderator to delete.
  *       500:
  *         description: Internal server error
  */
