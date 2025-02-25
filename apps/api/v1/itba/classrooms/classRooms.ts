@@ -44,7 +44,7 @@ const router = express.Router();
  *         description: If set to true, only returns active classrooms for the current semester.
  *     responses:
  *       200:
- *         description: A map of buildings to arrays of classroom data.
+ *         description: A map of days to arrays of classroom data.
  *         content:
  *           application/json:
  *             schema:
@@ -65,11 +65,11 @@ router.get("/classrooms", async (req, res) => {
             return;
         }
         const classroomsMap = (data as ClassroomResponse).reduce((acc, classroom) => {
-            const building = classroom.building;
-            if (!acc[building]) {
-            acc[building] = [];
+            const day = classroom.day;
+            if (!acc[day]) {
+            acc[day] = [];
             }
-            acc[building].push(classroom);
+            acc[day].push(classroom);
             return acc;
         }, {} as { [key: string]: ClassroomData[] });
 
