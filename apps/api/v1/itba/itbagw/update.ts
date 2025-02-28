@@ -147,5 +147,3 @@ export async function UpdateCommissions(){
         console.log(data);
     });
 }
-
-UpdateCommissions()
