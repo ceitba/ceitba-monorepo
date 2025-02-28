@@ -63,70 +63,74 @@ export async function UpdateSubjects() {
 }
 
 export async function UpdateCommissions(){
+    const levels = ["GRADUATE","UNDERGRADUATE"];
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
-    const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=GRADUATE&year=2025&period=FirstSemester`;
-
-    const data = await fetch(url);
-    const jsonData: Root = await data.json();
-
 
     const comissions:Comissions[]=[];
     const comissionTimes:CourseCommissionTime[]=[];
 
-    for (const course of jsonData.courseCommissions.courseCommission) {
-        course.courseCommissionTimes = course.courseCommissionTimes instanceof Array? course.courseCommissionTimes: [course.courseCommissionTimes];
-        const courseStart = parse(course.courseStart, 'dd/MM/yy', new Date());
-        const courseEnd = parse(course.courseEnd, 'dd/MM/yy', new Date());
-        
-        switch (course.subjectCode){ // Ignorar materias opcionales de intercambio
-            case "99.52": // Español B2 para extranjeros
-                continue;
-            case "99.56": // Español C1 para extranjeros
-                continue;
-        }
-        comissions.push({
-            subject_code:course.subjectCode,
-            subject_type:course.subjectType,
-            course_start:courseStart,
-            course_end:courseEnd,
-            commission_name:course.commissionName,
-            id:course.commissionId,
-            quota:course.quota,
-            enrolled_students:course.enrolledStudents})
-        
+    for (const level of levels) {
+        const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=${level}&year=2025&period=FirstSemester`;
+        const data = await fetch(url);
+        const jsonData: Root = await data.json();
 
-        
-
-        for (const time of course.courseCommissionTimes){
-            if (time == undefined) continue;
-            switch (time.building){
-                case "External":
-                    time.building = "Online";
-                    break;
-                case "Sede Distrito Financiero":
-                    time.building = "SDF";
-                    break;
-                case "Sede Rectorado":
-                    time.building = "SDR";
-                    break;
-            }
+        for (const course of jsonData.courseCommissions.courseCommission) {
+            course.courseCommissionTimes = course.courseCommissionTimes instanceof Array? course.courseCommissionTimes: [course.courseCommissionTimes];
+            const courseStart = parse(course.courseStart, 'dd/MM/yy', new Date());
+            const courseEnd = parse(course.courseEnd, 'dd/MM/yy', new Date());
             
-            comissionTimes.push({
-                course_id:course.commissionId,
-                day:time.day,
-                class_room:time.classRoom,
-                building:time.building,
-                hour_from:time.hourFrom,
-                hour_to:time.hourTo
-            });
+            switch (course.subjectCode){ // Ignorar materias opcionales de intercambio
+                // No me acuerdo cual era la razon de ignorar estas materias
+                case "99.52": // Español B2 para extranjeros
+                    continue;
+                case "99.56": // Español C1 para extranjeros
+                    continue;
+            }
+            comissions.push({
+                subject_code:course.subjectCode,
+                subject_type:course.subjectType,
+                course_start:courseStart,
+                course_end:courseEnd,
+                commission_name:course.commissionName,
+                id:course.commissionId,
+                quota:course.quota,
+                enrolled_students:course.enrolledStudents})
+            
+            for (const time of course.courseCommissionTimes){
+                if (time == undefined) continue;
+                switch (time.building){
+                    case "External":
+                        time.building = "Online";
+                        break;
+                    case "Sede Distrito Financiero":
+                        time.building = "SDF";
+                        break;
+                    case "Sede Rectorado":
+                        time.building = "SDR";
+                        break;
+                }
+                
+                comissionTimes.push({
+                    course_id:course.commissionId,
+                    day:time.day,
+                    class_room:time.classRoom,
+                    building:time.building,
+                    hour_from:time.hourFrom,
+                    hour_to:time.hourTo
+                });
+            }
         }
-
     }
 
+    
+    await supabase.from('commission_time').delete()
+    await supabase.from('commission').delete()
     await supabase
         .from('commission')
         .upsert(comissions, { ignoreDuplicates: false })
         .select().then((data) => { console.log(data) });
+
+    
     
     await supabase
     .from('commission_time')
@@ -134,7 +138,4 @@ export async function UpdateCommissions(){
     .select().then((data) => {
         console.log(data);
     });
-    
-    
 }
-
