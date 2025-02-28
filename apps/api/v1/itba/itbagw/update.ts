@@ -123,8 +123,16 @@ export async function UpdateCommissions(){
     }
 
     
-    await supabase.from('commission_time').delete()
-    await supabase.from('commission').delete()
+    // Delete all commission time
+    await supabase.from('commission_time').delete().neq("day",0).then((data) => 
+        console.log(data)
+    );
+
+    // Delete all commission
+    await supabase.from('commission').delete().neq("id",0).then((data) => 
+        console.log(data)
+    );
+
     await supabase
         .from('commission')
         .upsert(comissions, { ignoreDuplicates: false })
@@ -139,3 +147,5 @@ export async function UpdateCommissions(){
         console.log(data);
     });
 }
+
+UpdateCommissions()
