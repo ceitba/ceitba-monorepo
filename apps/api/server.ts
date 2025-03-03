@@ -11,6 +11,7 @@ import minecraftRouter from "./v1/minecraft/whitelist";
 import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import userRouter from "./v1/user/user_routes";
 
 const swaggerOptions = {
     definition: {
@@ -40,6 +41,10 @@ const swaggerOptions = {
           {
               name: "Minecraft",
               description: "Endpoints related to Minecraft"
+          },
+          {
+              name: "User",
+              description: "Endpoints related to user management"
           }
       ]
     },
@@ -67,7 +72,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec,options));
 // Allowing the website to access the API
 app.use(cors({
-    origin: 'https://ceitba.org.ar',
+    origin: ['https://ceitba.org.ar'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -80,6 +85,7 @@ app.use('/api/v1/itba', itbaRouter);
 app.use('/api/v1/scheduler', schedulerRouter);
 app.use('/api/v1/minecraft', minecraftRouter);
 app.use('/api/v1/app', appRouter);
+app.use('/api/v1/user', userRouter);
 
 app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
