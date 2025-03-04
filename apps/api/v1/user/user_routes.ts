@@ -1,7 +1,8 @@
 import { Branch, Role, StaffType, User } from "./modules"
 import express from "express"
 import { Request, Response } from "express"
-import { getUserByEmail, updateUserRole, createUser } from "./user";
+import { getUserByEmail, updateUserRole, createUser, getAllUsers } from "./user";
+import { getStaffMembers } from "./staff";
 
 const router = express.Router();
 
@@ -335,6 +336,60 @@ router.post("/", async (req: Request, res: Response) => {
     } catch (error) {
         res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
+});
+
+/**
+ * @openapi
+ * /user/staff:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: Get all staff members
+ *     description: Retrieves all staff members from the database
+ *     responses:
+ *       200:
+ *         description: Staff members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/StaffMember'
+ */
+router.get("/staff", async (req: Request, res: Response) => {
+    const {staff, error} = await getStaffMembers();
+    if (error) {
+        res.status(400).json({ error: error });
+        return;
+    }
+    res.status(200).json(staff);
+});
+
+/**
+ * @openapi
+ * /user/all:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: Get all users
+ *     description: Retrieves all users from the database
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ */
+router.get("/all", async (req: Request, res: Response) => {
+    const {users, error} = await getAllUsers();
+    if (error) {
+        res.status(400).json({ error: error });
+        return;
+    }
+    res.status(200).json(users);
 });
 
 export default router;

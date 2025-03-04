@@ -132,4 +132,14 @@ const createUser = async (email: string, userData: {
     }
 };
 
-export { getUserByEmail, updateUserRole, createUser };
+// Ver si queremos obtener tambien por ejemplo los mails necesitamos auth.users
+const getAllUsers = async (): Promise<{ users: any[], error: string | null }> => {
+    const { data, error } = await supabase.rpc('get_all_users');
+    if (error) {
+        return { users: [], error: error.message };
+    }
+    console.log('All users fetched:', data);
+    return { users: data || [], error: null };
+}
+
+export { getUserByEmail, updateUserRole, createUser, getAllUsers };
