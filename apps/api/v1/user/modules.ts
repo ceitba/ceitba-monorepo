@@ -9,7 +9,8 @@ export enum Branch {
     INFRA = "INFRA",
     DEPORTES = "DEPORTES",
     NAUTICA = "NAUTICA",
-    EVENTOS = "EVENTOS"
+    EVENTOS = "EVENTOS",
+    DIRECTIVOS = "DIRECTIVOS"
 }
 
 /**
