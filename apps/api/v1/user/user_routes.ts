@@ -394,7 +394,7 @@ router.get("/all", async (req: Request, res: Response) => {
 
 /**
  * @openapi
- * /signature:
+ * /user/signature:
  *   get:
  *     tags:
  *       - Signature
