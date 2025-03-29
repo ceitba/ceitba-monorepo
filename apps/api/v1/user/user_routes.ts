@@ -2,7 +2,7 @@ import { Branch, Role, StaffType, User } from "./modules"
 import express from "express"
 import { Request, Response } from "express"
 import { getUserByEmail, updateUserRole, createUser, getAllUsers } from "./user";
-import { getStaffMembers } from "./staff";
+import { getStaffMembers, getSignatureData } from "./staff";
 
 const router = express.Router();
 
@@ -390,6 +390,85 @@ router.get("/all", async (req: Request, res: Response) => {
         return;
     }
     res.status(200).json(users);
+});
+
+
+router.get("/signature", async (req: Request, res: Response): Promise<void> => {
+    const file_signature = Number(req.query.user);
+
+    if (isNaN(file_signature)) {
+        res.status(400).send(`
+            <html>
+                <head><title>Error</title></head>
+                <body>
+                    <h1>Error: User's file number is required and must be a number</h1>
+                </body>
+            </html>
+        `);
+        return;
+    }
+
+    try {
+        const { data, error } = await getSignatureData(file_signature);
+
+        if (error) {
+            res.status(500).send(`
+                <html>
+                    <head><title>Error</title></head>
+                    <body>
+                        <p>Error: ${error}<p1>
+                    </body>
+                </html>
+            `);
+            return;
+        }
+        if (data[0]){
+            res.send(`
+                <table style="font-family: Arial, sans-serif; font-size: 13px; color: #333333; border-collapse: collapse;">
+                <tr>
+                    <td style="vertical-align: middle; padding-right: 15px;">
+                    <img src="https://ugc.production.linktr.ee/ewY3xbDRRQa5Ylkb7XNK_W3qED1Xpn5JbnqJJ?io=true&size=avatar-v3_0" alt="CEITBA Logo" width="100" height="auto" style="display: block; margin-bottom: 5px;" />
+                    </td>
+                    <td style="vertical-align: middle; padding-left: 15px; border-left: 2px solid #0e2a47;">
+                    <p style="margin: 0; font-weight: bold; font-size: 15px; color: #0e2a47;">${data[0].name}</p>
+                    <p style="margin: 0; margin-bottom: 8px; color: #555; font-size: 12px;">${data[0].role}</p>
+                    
+                    <div style="margin-top: 8px;">
+                        <a href="https://linkedin.com/company/ceitba" style="text-decoration: none; display: inline-block; margin-right: 10px;">
+                        <img src="https://logospng.org/download/linkedin/logo-linkedin-icon-1536.png" alt="LinkedIn" width="20" height="20" style="border: none;" />
+                        </a>
+                        <a href="https://github.com/ceitba" style="text-decoration: none; display: inline-block; margin-right: 10px;">
+                        <img src="https://static-00.iconduck.com/assets.00/github-icon-2048x2048-91rgqivh.png" alt="GitHub" width="20" height="20" style="border: none;" />
+                        </a>
+                        <a href="https://instagram.com/ceitba" style="text-decoration: none; display: inline-block;">
+                        <img src="https://freepngimg.com/download/logo/69768-logo-computer-layout-instagram-icons-png-file-hd.png" alt="Instagram" width="20" height="20" style="border: none;" />
+                        </a>
+                    </div>
+                    </td>
+                </tr>
+                </table>
+            `);
+        } else {
+            res.status(404).send(`
+                <html>
+                    <head><title>Error</title></head>
+                    <body>
+                        <p>Error: User not found</p>
+                    </body>
+                </html>
+            `);
+            return;
+        }
+    } catch (err) {
+        res.status(500).send(`
+            <html>
+                <head><title>Error</title></head>
+                <body>
+                    <h1>Internal Server Error</h1>
+                </body>
+            </html>
+        `);
+    }
 });
 
 export default router;
