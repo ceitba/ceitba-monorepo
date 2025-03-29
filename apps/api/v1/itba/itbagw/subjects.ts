@@ -1,7 +1,6 @@
 import path from "path";
 import fs from "fs/promises";
 import { ITBACareerPlans } from "./modules/career-plan-modules";
-import careersData from "../careers";
 import { SubjectPlan, Subject } from "../ceitbapi/modules";
 import { ITBA_API_TOKEN } from "../../../server";
 

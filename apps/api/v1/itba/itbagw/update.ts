@@ -1,4 +1,3 @@
-import careersData from "../careers";
 import { getSubjectsByPlan } from "./subjects";
 import { Database,Tables } from "../ceitbapi/database.types";
 import { createClient } from "@supabase/supabase-js";

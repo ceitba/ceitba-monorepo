@@ -27,7 +27,7 @@ export interface SubjectPlan{
 }
 
 export interface Career {
-    // careerId: string;
-    careerName: string;
-    careerPlans: string[];
+    id: string;
+    name: string;
+    plans: string[];
 }
