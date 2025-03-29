@@ -397,7 +397,7 @@ router.get("/all", async (req: Request, res: Response) => {
  * /user/signature:
  *   get:
  *     tags:
- *       - Signature
+ *       - User
  *     summary: Get user signature information
  *     description: Retrieves the signature information for a specific user based on the provided user ID.
  *     parameters:
