@@ -270,8 +270,8 @@ router.put("/role", async (req: Request, res: Response) => {
  *   post:
  *     tags:
  *       - User
- *     summary: Create a new user
- *     description: Creates a new user record in the database
+ *     summary: Create or update a user
+ *     description: Creates a new user record in the database or updates the current record
  *     requestBody:
  *       required: true
  *       content:
