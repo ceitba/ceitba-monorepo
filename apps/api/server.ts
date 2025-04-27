@@ -12,6 +12,8 @@ import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import userRouter from "./v1/user/user_routes";
+import benefitsRouter from "./v1/benefits/router";
+
 
 const swaggerOptions = {
     definition: {
@@ -86,6 +88,8 @@ app.use('/api/v1/scheduler', schedulerRouter);
 app.use('/api/v1/minecraft', minecraftRouter);
 app.use('/api/v1/app', appRouter);
 app.use('/api/v1/user', userRouter);
+app.use('/api/v1/benefits', benefitsRouter);
+
 
 app.listen(PORT, () => {
     console.log('Server running on port ' + PORT);
