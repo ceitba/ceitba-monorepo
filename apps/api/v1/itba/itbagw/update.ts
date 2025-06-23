@@ -69,7 +69,7 @@ export async function UpdateCommissions(){
     const comissionTimes:CourseCommissionTime[]=[];
 
     for (const level of levels) {
-        const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=${level}&year=2025&period=FirstSemester`;
+        const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=${level}&year=2025&period=SecondSemester`;
         const data = await fetch(url);
         const jsonData: Root = await data.json();
 
