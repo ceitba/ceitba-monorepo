@@ -5,6 +5,7 @@ import { ITBA_API_TOKEN, SUPABASE_ACCESS_TOKEN } from "../../../server";
 import { DatabaseSubjectPlan, Subject, SubjectPlan } from "../ceitbapi/modules";
 import { Root,CourseCommission ,Comissions,CourseCommissionTime} from "./modules/course-times-modules";
 import { parse } from 'date-fns';
+import { finished } from "stream";
 
 export async function UpdateSubjects() {
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
@@ -54,10 +55,9 @@ export async function UpdateSubjects() {
     .upsert(subjectPlans, { ignoreDuplicates: true })
     .select().then((data) => {
         if (data.error != null) {
-            console.log(data);
+            
         }
     });
-    
 }
 
 export async function UpdateCommissions(){
@@ -68,11 +68,18 @@ export async function UpdateCommissions(){
     const comissionTimes:CourseCommissionTime[]=[];
 
     for (const level of levels) {
-        const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=${level}&year=2025&period=FirstSemester`;
+        const url = `https://itbagw.itba.edu.ar/api/v1/courseCommissions/${ITBA_API_TOKEN}?level=${level}&year=2025&period=SecondSemester`;
         const data = await fetch(url);
         const jsonData: Root = await data.json();
 
+        if(!jsonData || !jsonData.courseCommissions) continue;
+
         for (const course of jsonData.courseCommissions.courseCommission) {
+            if (!course || !course.courseCommissionTimes){
+                console.log(course.subjectName)
+                continue;
+            }
+            
             course.courseCommissionTimes = course.courseCommissionTimes instanceof Array? course.courseCommissionTimes: [course.courseCommissionTimes];
             const courseStart = parse(course.courseStart, 'dd/MM/yy', new Date());
             const courseEnd = parse(course.courseEnd, 'dd/MM/yy', new Date());
@@ -119,7 +126,6 @@ export async function UpdateCommissions(){
             }
         }
     }
-
     
     // Delete all commission time
     await supabase.from('commission_time').delete().neq("day",0)
@@ -128,13 +134,12 @@ export async function UpdateCommissions(){
     await supabase.from('commission').delete().neq("id",0)
     await supabase
         .from('commission')
-        .upsert(comissions, { ignoreDuplicates: false })
+        .upsert(comissions.filter((c) => c.subject_code != '94.55'), { ignoreDuplicates: false })
         .select()
 
     
-    
     await supabase
-    .from('commission_time')
-    .upsert(comissionTimes, { ignoreDuplicates: true })
-    .select()
+        .from('commission_time')
+        .upsert(comissionTimes.filter((c) => c.course_id != '43013' && c.course_id != '43014'), { ignoreDuplicates: true })
+        .select()
 }
