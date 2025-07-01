@@ -75,7 +75,7 @@ const updateUserRole = async (email: string, role: Role): Promise<{ success: boo
             };
         }
 
-        console.log('Role updated successfully:', data);
+        
         return { success: true };
     } catch (e) {
         console.error('updateUserRole error:', e);
@@ -138,7 +138,7 @@ const getAllUsers = async (): Promise<{ users: any[], error: string | null }> =>
     if (error) {
         return { users: [], error: error.message };
     }
-    console.log('All users fetched:', data);
+    
     return { users: data || [], error: null };
 }
 

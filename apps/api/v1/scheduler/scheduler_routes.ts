@@ -198,7 +198,7 @@ router.get("/subjects", async (req: Request, res: Response) => {
         return;
     }
 
-    console.log(data);
+    
 
     type GroupedSubjects = Record<string,Record<number, Record<number, SubjectOutput[]>>>;
     
@@ -251,21 +251,21 @@ router.get("/subjects", async (req: Request, res: Response) => {
                 ...subjectData,
                 commissions: Array.from(item.commissions.values())
             };
-            console.log(year,semester,section,outputItem);
+            
             if (!acc[section]) {
                 acc[section] = {};
             }
-            console.log(acc);
+            
             if (!acc[section][year]) {
                 acc[section][year] = {};
             }
-            console.log(acc);
+            
             if (!acc[section][year][semester]) {
                 acc[section] [year][semester] = [];
             }
-            console.log(acc);
+            
             acc[section][year][semester].push(outputItem);
-            console.log(acc);
+            
             return acc;
         },
         {}

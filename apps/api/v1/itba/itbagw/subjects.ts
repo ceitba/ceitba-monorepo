@@ -48,7 +48,7 @@ async function getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
                     
                 })
             } else if (jsonSection.withoutTerm != null) {
-                console.log(jsonSection);
+             
                 jsonSection.withoutTerm.withoutTerm = jsonSection.withoutTerm.withoutTerm instanceof Array ? jsonSection.withoutTerm.withoutTerm : [jsonSection.withoutTerm.withoutTerm];
                 for (const jsonSubject of jsonSection.withoutTerm.withoutTerm) 
                {

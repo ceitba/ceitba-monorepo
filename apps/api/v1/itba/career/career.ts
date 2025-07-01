@@ -72,7 +72,6 @@ async function getPlansByCareer(): Promise<Record<string, Career>> {
 
     }
 
-    console.log(careers);
     // Convert Map to an object for easier usage
     return Object.fromEntries(careers);
 }

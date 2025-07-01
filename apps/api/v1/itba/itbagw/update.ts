@@ -14,7 +14,6 @@ export async function UpdateSubjects() {
 
     const missingSubjects: Subject[] = []
     const { data: subjects } = await supabase.from("subject").select().returns<Tables<"subject">[]>();
-    console.log(plans);
 
     for (const plan of plans!) {
         const planData : SubjectPlan[] = await getSubjectsByPlan(plan.id);
@@ -48,7 +47,7 @@ export async function UpdateSubjects() {
     await supabase
         .from('subject')
         .upsert(missingSubjects, { ignoreDuplicates: true })
-        .select().then((data) => { console.log(data) });
+        .select().then((data) => {  });
 
     await supabase
     .from('plan_subject')
@@ -123,26 +122,19 @@ export async function UpdateCommissions(){
 
     
     // Delete all commission time
-    await supabase.from('commission_time').delete().neq("day",0).then((data) => 
-        console.log(data)
-    );
+    await supabase.from('commission_time').delete().neq("day",0)
 
     // Delete all commission
-    await supabase.from('commission').delete().neq("id",0).then((data) => 
-        console.log(data)
-    );
-
+    await supabase.from('commission').delete().neq("id",0)
     await supabase
         .from('commission')
         .upsert(comissions, { ignoreDuplicates: false })
-        .select().then((data) => { console.log(data) });
+        .select()
 
     
     
     await supabase
     .from('commission_time')
     .upsert(comissionTimes, { ignoreDuplicates: true })
-    .select().then((data) => {
-        console.log(data);
-    });
+    .select()
 }
