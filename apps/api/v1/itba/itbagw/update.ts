@@ -6,6 +6,7 @@ import { DatabaseSubjectPlan, Subject, SubjectPlan } from "../ceitbapi/modules";
 import { Root,CourseCommission ,Comissions,CourseCommissionTime} from "./modules/course-times-modules";
 import { parse } from 'date-fns';
 import { finished } from "stream";
+import { update } from "parse/types/ParseHooks";
 
 export async function UpdateSubjects() {
     const supabase = createClient("https://yafawebqzogkzwhxojbh.supabase.co", SUPABASE_ACCESS_TOKEN);
@@ -118,7 +119,7 @@ export async function UpdateCommissions(){
                 comissionTimes.push({
                     course_id:course.commissionId,
                     day:time.day,
-                    class_room:time.classRoom,
+                    class_room:time.classRoom? time.classRoom : "Virtual Asincrónico",
                     building:time.building,
                     hour_from:time.hourFrom,
                     hour_to:time.hourTo
@@ -128,18 +129,26 @@ export async function UpdateCommissions(){
     }
     
     // Delete all commission time
-    await supabase.from('commission_time').delete().neq("day",0)
+    await supabase.from('commission_time').delete().not('day', 'eq', 0)
 
     // Delete all commission
-    await supabase.from('commission').delete().neq("id",0)
-    await supabase
+    await supabase.from('commission').delete().not('id', 'eq', 0)
+    const commissionResult = await supabase
         .from('commission')
         .upsert(comissions.filter((c) => c.subject_code != '94.55'), { ignoreDuplicates: false })
-        .select()
+        .select();
 
-    
-    await supabase
+    if (commissionResult.error != null) {
+        console.error(commissionResult.error);
+    }
+
+    const commissionTimeResult = await supabase
         .from('commission_time')
         .upsert(comissionTimes.filter((c) => c.course_id != '43013' && c.course_id != '43014'), { ignoreDuplicates: true })
-        .select()
+        .select();
+    if (commissionTimeResult.error != null) {
+        console.error(commissionTimeResult.error);
+    }
 }
+
+

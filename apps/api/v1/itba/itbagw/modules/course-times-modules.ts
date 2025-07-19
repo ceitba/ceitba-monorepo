@@ -16,7 +16,7 @@ export interface Root {
     commissionId: string
     quota: string
     enrolledStudents: string
-    courseCommissionTimes: any
+    courseCommissionTimes: any[]
   }
   
   export interface Comissions{
