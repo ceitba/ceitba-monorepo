@@ -127,28 +127,93 @@ export async function UpdateCommissions(){
             }
         }
     }
-    
-    // Delete all commission time
-    await supabase.from('commission_time').delete().not('day', 'eq', 0)
+    // Fetch existing subjects to avoid FK violations when inserting commissions
+    const { data: existingSubjects, error: subjectFetchError } = await supabase.from('subject').select('id');
+    if (subjectFetchError) {
+        console.error('Failed to fetch subjects, aborting commission update to prevent inconsistent state.', subjectFetchError);
+        return;
+    }
+    const subjectSet = new Set(existingSubjects?.map(s => (s as any).id));
 
-    // Delete all commission
-    await supabase.from('commission').delete().not('id', 'eq', 0)
-    const commissionResult = await supabase
-        .from('commission')
-        .upsert(comissions.filter((c) => c.subject_code != '94.55'), { ignoreDuplicates: false })
-        .select();
-
-    if (commissionResult.error != null) {
-        console.error(commissionResult.error);
+    // Filter out commissions whose subject does not yet exist (prevents FK error 23503)
+    const filteredCommissions = comissions.filter(c => c.subject_code != '94.55' && subjectSet.has(c.subject_code));
+    const skippedMissingSubject = comissions.length - filteredCommissions.length;
+    if (skippedMissingSubject > 0) {
+        console.warn(`Skipped ${skippedMissingSubject} commission(s) due to missing subject reference.`);
     }
 
-    const commissionTimeResult = await supabase
-        .from('commission_time')
-        .upsert(comissionTimes.filter((c) => c.course_id != '43013' && c.course_id != '43014'), { ignoreDuplicates: true })
-        .select();
-    if (commissionTimeResult.error != null) {
-        console.error(commissionTimeResult.error);
+    // Full refresh strategy: wipe existing data first (order matters: child table first)
+    try {
+        await supabase.from('commission_time').delete().not('day', 'eq', 0);
+    } catch (e) {
+        console.error('Error deleting commission_time (continuing):', e);
     }
+    try {
+        await supabase.from('commission').delete().not('id', 'eq', 0);
+    } catch (e) {
+        console.error('Error deleting commission (continuing):', e);
+    }
+
+    // Upsert commissions in chunks to reduce chance entire batch fails
+    const insertedCommissionIds = new Set<string>();
+    const chunkSize = 5; // adjustable
+    for (let i = 0; i < filteredCommissions.length; i += chunkSize) {
+        const chunk = filteredCommissions.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+            .from('commission')
+            .upsert(chunk, { ignoreDuplicates: false })
+            .select();
+        if (error) {
+            console.error(`Commission upsert chunk starting at index ${i} failed (continuing):`, error);
+            // Attempt row-by-row salvage if FK error: insert individually skipping failing ones
+            if (error.code === '23503') {
+                for (const row of chunk) {
+                    const { error: rowError, data: rowData } = await supabase.from('commission').upsert(row, { ignoreDuplicates: false }).select();
+                    if (rowError) {
+                        console.warn('Skipping commission due to error:', row.id, rowError.message);
+                        continue;
+                    }
+                    rowData?.forEach(r => insertedCommissionIds.add((r as any).id));
+                }
+            }
+        } else {
+            data?.forEach(r => insertedCommissionIds.add((r as any).id));
+        }
+    }
+
+    console.log(`Inserted/updated ${insertedCommissionIds.size} commission(s).`);
+
+    // Filter times to only those with an inserted commission id & explicit exclusions
+    const filteredTimes = comissionTimes
+        .filter(c => insertedCommissionIds.has(c.course_id) && c.course_id != '43013' && c.course_id != '43014');
+
+    const skippedTimes = comissionTimes.length - filteredTimes.length;
+    if (skippedTimes > 0) {
+        console.warn(`Skipped ${skippedTimes} commission time entries due to missing commission reference or exclusion.`);
+    }
+
+    // Upsert commission times in chunks
+    for (let i = 0; i < comissionTimes.length; i += chunkSize) {
+        const chunk = comissionTimes.slice(i, i + chunkSize);
+        const { error } = await supabase
+            .from('commission_time')
+            .upsert(chunk, { ignoreDuplicates: true })
+            .select();
+        if (error) {
+            console.error(`commission_time upsert chunk starting at index ${i} failed (continuing):`, error);
+            if (error.code === '23503') {
+                // Try row-by-row salvage
+                for (const row of chunk) {
+                    const { error: rowError } = await supabase.from('commission_time').upsert(row, { ignoreDuplicates: true }).select();
+                    if (rowError) {
+                        console.warn('Skipping commission_time due to error:', row.course_id, rowError.message);
+                    }
+                }
+            }
+        }
+    }
+
+    console.log('Commission update process finished');
 }
 
 
