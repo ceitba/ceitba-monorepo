@@ -93,7 +93,7 @@ app.use(errorHandler);
 
 const server = app.listen(PORT, () => {
     console.log(`CEITBA API Server running on port ${PORT}`);
-    console.log(`API Documentation available at: http://localhost:${PORT}/api-docs`);
+    console.log(`API Documentation available at: http://localhost:${PORT}/api/docs`);
     console.log(`Health check available at: http://localhost:${PORT}/api/health`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

@@ -186,12 +186,12 @@ export function setupSwagger(app: Express) {
 
         app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
         
-        app.get('/api-docs.json', (req: Request, res: Response) => {
+        app.get('/api/docs.json', (req: Request, res: Response) => {
             res.setHeader('Content-Type', 'application/json');
             res.json(swaggerDocument);
         });
 
-        app.get('/api-docs.yaml', (req: Request, res: Response) => {
+        app.get('/api/docs.yaml', (req: Request, res: Response) => {
             res.setHeader('Content-Type', 'text/yaml');
             res.send(YAML.stringify(swaggerDocument, 4));
         });
