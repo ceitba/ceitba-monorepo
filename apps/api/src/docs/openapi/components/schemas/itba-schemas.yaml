@@ -1,0 +1,205 @@
+# ITBA Domain Schemas
+Subject:
+  type: object
+  properties:
+    id:
+      type: string
+      description: Subject ID
+    name:
+      type: string
+      description: Subject name
+    credits:
+      type: number
+      description: Number of credits for the subject
+      minimum: 0
+  required:
+    - id
+    - name
+    - credits
+
+SubjectPlan:
+  type: object
+  properties:
+    subjectId:
+      type: string
+      description: Subject ID
+    planId:
+      type: string
+      description: Plan ID
+    section:
+      type: string
+      description: Section name
+    year:
+      type: number
+      nullable: true
+      description: Academic year
+      minimum: 1
+    semester:
+      type: number
+      nullable: true
+      description: Semester (1 or 2)
+      minimum: 1
+      maximum: 2
+    dependencies:
+      type: array
+      items:
+        type: string
+      description: List of subject IDs that are dependencies
+    creditsRequired:
+      type: number
+      nullable: true
+      description: Credits required for this subject
+      minimum: 0
+    subject:
+      $ref: '#/components/schemas/Subject'
+  required:
+    - subjectId
+    - planId
+    - section
+    - dependencies
+    - subject
+
+CreateSubjectPlanRequest:
+  type: object
+  properties:
+    subjectId:
+      type: string
+      description: Subject ID
+    planId:
+      type: string
+      description: Plan ID
+    section:
+      type: string
+      description: Section name
+    year:
+      type: number
+      nullable: true
+      description: Academic year
+      minimum: 1
+    semester:
+      type: number
+      nullable: true
+      description: Semester (1 or 2)
+      minimum: 1
+      maximum: 2
+    dependencies:
+      type: array
+      items:
+        type: string
+      description: List of subject IDs that are dependencies
+      default: []
+    creditsRequired:
+      type: number
+      nullable: true
+      description: Credits required for this subject
+      minimum: 0
+  required:
+    - subjectId
+    - planId
+    - section
+
+Career:
+  type: object
+  properties:
+    id:
+      type: string
+      description: Career ID
+    name:
+      type: string
+      description: Career name
+    plans:
+      type: array
+      items:
+        type: string
+      description: List of plan IDs associated with this career
+  required:
+    - id
+    - name
+    - plans
+
+CreateCareerRequest:
+  type: object
+  properties:
+    id:
+      type: string
+      description: Career ID
+    name:
+      type: string
+      description: Career name
+  required:
+    - id
+    - name
+
+UpdateCareerRequest:
+  type: object
+  properties:
+    name:
+      type: string
+      description: Career name
+
+Classroom:
+  type: object
+  properties:
+    name:
+      type: string
+      description: Classroom name
+    building:
+      type: string
+      description: Building name
+  required:
+    - name
+    - building
+
+ClassroomSchedule:
+  type: object
+  properties:
+    classroom:
+      type: string
+      description: Classroom name
+    building:
+      type: string
+      description: Building name
+    day:
+      type: string
+      description: Day of the week
+    hourFrom:
+      type: string
+      description: Start time (HH:MM format)
+      pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+    hourTo:
+      type: string
+      description: End time (HH:MM format)
+      pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+  required:
+    - classroom
+    - building
+    - day
+    - hourFrom
+    - hourTo
+
+ClassroomConflictRequest:
+  type: object
+  properties:
+    classroom:
+      type: string
+      description: Classroom name
+    building:
+      type: string
+      description: Building name
+    day:
+      type: string
+      description: Day of the week
+    hourFrom:
+      type: string
+      description: Start time (HH:MM format)
+      pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+    hourTo:
+      type: string
+      description: End time (HH:MM format)
+      pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+  required:
+    - classroom
+    - building
+    - day
+    - hourFrom
+    - hourTo
