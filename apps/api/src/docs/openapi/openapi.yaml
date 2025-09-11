@@ -2,11 +2,16 @@
 openapi: 3.1.0
 info:
   title: CEITBA API
-  description: API for CEITBA
+  description: |
+    Centro de Estudiantes - ITBA
+    
   version: 1.0.0
   contact:
-    name: CEITBA Team
+    name: CEITBA IT Team
     email: ceitba@itba.edu.ar
+  license:
+    name: License MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: http://localhost:3000/api/v1
@@ -14,14 +19,27 @@ servers:
   - url: https://ceitba.org.ar/api/v1
     description: Production server
 
+tags:
+  - name: ITBA Careers
+    description: Career management and study plans
+  - name: ITBA Subject Plans
+    description: Subject plan management and academic structure
+  - name: ITBA Classrooms
+    description: Classroom schedules and availability
+  - name: System
+    description: System health and information endpoints
+
 paths:
+  # System endpoints
   /:
     get:
-      summary: Get the root endpoint
-      description: Returns a simple message
+      tags:
+        - System
+      summary: API root endpoint
+      description: Returns basic API information
       responses:
         200:
-          description: A simple message
+          description: API information
           content:
             application/json:
               schema:
@@ -29,3 +47,45 @@ paths:
                 properties:
                   message:
                     type: string
+                    example: "CEITBA API is running"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  environment:
+                    type: string
+                    example: "development"
+                  timestamp:
+                    type: string
+                    format: date-time
+  
+  /health:
+    get:
+      tags:
+        - System
+      summary: Health check endpoint
+      description: Returns API health status
+      responses:
+        200:
+          description: API health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
+                    example: 3600.5
+                  memory:
+                    type: object
+                  version:
+                    type: string
+                    example: "1.0.0"
+
+# Note: The paths and components below will be dynamically loaded from separate files
+# This is handled by the swagger-setup.ts file which merges the modular YAML files
