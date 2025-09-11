@@ -101,33 +101,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}/subject/{subjectId}/dependencies:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get subject dependencies
-     *     description: Retrieves all dependencies for a specific subject in a plan
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *       - in: path
-     *         name: subjectId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Subject ID
-     *     responses:
-     *       200:
-     *         description: List of subject dependencies
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectDependencies(req: Request, res: Response): Promise<void> {
         try {
             const { planId, subjectId } = req.params;
