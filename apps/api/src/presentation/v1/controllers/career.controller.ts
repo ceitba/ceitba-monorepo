@@ -4,36 +4,6 @@ import { CareerService } from '../../../domain/itba/services/career.service';
 export class CareerController {
     constructor(private readonly careerService: CareerService) {}
 
-    /**
-     * @openapi
-     * /api/v1/itba/career/plans:
-     *   get:
-     *     tags:
-     *       - ITBA Careers
-     *     summary: Retrieve career plans
-     *     description: >
-     *       Retrieves a list of career plans grouped by career ID and name.
-     *     responses:
-     *       200:
-     *         description: A map of career IDs to career details, including plans.
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: object
-     *               additionalProperties:
-     *                 type: object
-     *                 properties:
-     *                   id:
-     *                     type: string
-     *                   name:
-     *                     type: string
-     *                   plans:
-     *                     type: array
-     *                     items:
-     *                       type: string
-     *       500:
-     *         description: Internal server error
-     */
     async getCareerPlans(req: Request, res: Response): Promise<void> {
         try {
             const careerPlans = await this.careerService.getCareersWithPlans();
@@ -44,35 +14,7 @@ export class CareerController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/career:
-     *   get:
-     *     tags:
-     *       - ITBA Careers
-     *     summary: Get all careers
-     *     description: Retrieves a list of all careers
-     *     responses:
-     *       200:
-     *         description: List of careers
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: array
-     *               items:
-     *                 type: object
-     *                 properties:
-     *                   id:
-     *                     type: string
-     *                   name:
-     *                     type: string
-     *                   plans:
-     *                     type: array
-     *                     items:
-     *                       type: string
-     *       500:
-     *         description: Internal server error
-     */
+    
     async getAllCareers(req: Request, res: Response): Promise<void> {
         try {
             const careers = await this.careerService.getAllCareers();
@@ -83,42 +25,6 @@ export class CareerController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/career/{id}:
-     *   get:
-     *     tags:
-     *       - ITBA Careers
-     *     summary: Get career by ID
-     *     description: Retrieves a specific career by its ID
-     *     parameters:
-     *       - in: path
-     *         name: id
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Career ID
-     *     responses:
-     *       200:
-     *         description: Career details
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: object
-     *               properties:
-     *                 id:
-     *                   type: string
-     *                 name:
-     *                   type: string
-     *                 plans:
-     *                   type: array
-     *                   items:
-     *                     type: string
-     *       404:
-     *         description: Career not found
-     *       500:
-     *         description: Internal server error
-     */
     async getCareerById(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -136,36 +42,6 @@ export class CareerController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/career:
-     *   post:
-     *     tags:
-     *       - ITBA Careers
-     *     summary: Create a new career
-     *     description: Creates a new career
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - id
-     *               - name
-     *             properties:
-     *               id:
-     *                 type: string
-     *               name:
-     *                 type: string
-     *     responses:
-     *       201:
-     *         description: Career created successfully
-     *       400:
-     *         description: Invalid request data
-     *       500:
-     *         description: Internal server error
-     */
     async createCareer(req: Request, res: Response): Promise<void> {
         try {
             const { id, name } = req.body;
@@ -183,38 +59,6 @@ export class CareerController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/career/{id}:
-     *   put:
-     *     tags:
-     *       - ITBA Careers
-     *     summary: Update a career
-     *     description: Updates an existing career
-     *     parameters:
-     *       - in: path
-     *         name: id
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Career ID
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             properties:
-     *               name:
-     *                 type: string
-     *     responses:
-     *       200:
-     *         description: Career updated successfully
-     *       404:
-     *         description: Career not found
-     *       500:
-     *         description: Internal server error
-     */
     async updateCareer(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -234,29 +78,6 @@ export class CareerController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/career/{id}:
-     *   delete:
-     *     tags:
-     *       - ITBA Careers
-     *     summary: Delete a career
-     *     description: Deletes an existing career
-     *     parameters:
-     *       - in: path
-     *         name: id
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Career ID
-     *     responses:
-     *       204:
-     *         description: Career deleted successfully
-     *       404:
-     *         description: Career not found
-     *       500:
-     *         description: Internal server error
-     */
     async deleteCareer(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;

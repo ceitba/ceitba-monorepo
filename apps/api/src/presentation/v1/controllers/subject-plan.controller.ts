@@ -4,62 +4,6 @@ import { SubjectPlanService } from '../../../domain/itba/services/subject-plan.s
 export class SubjectPlanController {
     constructor(private readonly subjectPlanService: SubjectPlanService) {}
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get subjects by plan ID
-     *     description: Retrieves all subjects for a specific plan from the database
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *     responses:
-     *       200:
-     *         description: List of subjects in the plan
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: array
-     *               items:
-     *                 type: object
-     *                 properties:
-     *                   subjectId:
-     *                     type: string
-     *                   planId:
-     *                     type: string
-     *                   section:
-     *                     type: string
-     *                   year:
-     *                     type: number
-     *                     nullable: true
-     *                   semester:
-     *                     type: number
-     *                     nullable: true
-     *                   dependencies:
-     *                     type: array
-     *                     items:
-     *                       type: string
-     *                   creditsRequired:
-     *                     type: number
-     *                     nullable: true
-     *                   subject:
-     *                     type: object
-     *                     properties:
-     *                       id:
-     *                         type: string
-     *                       name:
-     *                         type: string
-     *                       credits:
-     *                         type: number
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectsByPlan(req: Request, res: Response): Promise<void> {
         try {
             const { planId } = req.params;
@@ -71,62 +15,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}/api:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get subjects by plan ID from ITBA API
-     *     description: Retrieves all subjects for a specific plan from the external ITBA API
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *     responses:
-     *       200:
-     *         description: List of subjects in the plan from ITBA API
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: array
-     *               items:
-     *                 type: object
-     *                 properties:
-     *                   subjectId:
-     *                     type: string
-     *                   planId:
-     *                     type: string
-     *                   section:
-     *                     type: string
-     *                   year:
-     *                     type: number
-     *                     nullable: true
-     *                   semester:
-     *                     type: number
-     *                     nullable: true
-     *                   dependencies:
-     *                     type: array
-     *                     items:
-     *                       type: string
-     *                   creditsRequired:
-     *                     type: number
-     *                     nullable: true
-     *                   subject:
-     *                     type: object
-     *                     properties:
-     *                       id:
-     *                         type: string
-     *                       name:
-     *                         type: string
-     *                       credits:
-     *                         type: number
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectsByPlanFromApi(req: Request, res: Response): Promise<void> {
         try {
             const { planId } = req.params;
@@ -138,27 +26,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/{subjectId}/plans:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get plans by subject ID
-     *     description: Retrieves all plans that contain a specific subject
-     *     parameters:
-     *       - in: path
-     *         name: subjectId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Subject ID
-     *     responses:
-     *       200:
-     *         description: List of subject plans containing the subject
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectPlansBySubject(req: Request, res: Response): Promise<void> {
         try {
             const { subjectId } = req.params;
@@ -170,33 +37,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}/section/{section}:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get subjects by plan and section
-     *     description: Retrieves all subjects in a specific plan section
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *       - in: path
-     *         name: section
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Section name
-     *     responses:
-     *       200:
-     *         description: List of subjects in the plan section
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectsBySection(req: Request, res: Response): Promise<void> {
         try {
             const { planId, section } = req.params;
@@ -208,27 +48,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}/electives:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get elective subjects
-     *     description: Retrieves all elective subjects for a specific plan
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *     responses:
-     *       200:
-     *         description: List of elective subjects
-     *       500:
-     *         description: Internal server error
-     */
     async getElectiveSubjects(req: Request, res: Response): Promise<void> {
         try {
             const { planId } = req.params;
@@ -240,33 +59,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}/year/{year}:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get subjects by year
-     *     description: Retrieves all subjects for a specific plan and year
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *       - in: path
-     *         name: year
-     *         required: true
-     *         schema:
-     *           type: integer
-     *         description: Academic year
-     *     responses:
-     *       200:
-     *         description: List of subjects for the year
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectsByYear(req: Request, res: Response): Promise<void> {
         try {
             const { planId, year } = req.params;
@@ -285,41 +77,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan/{planId}/year/{year}/semester/{semester}:
-     *   get:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Get subjects by semester
-     *     description: Retrieves all subjects for a specific plan, year, and semester
-     *     parameters:
-     *       - in: path
-     *         name: planId
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: Plan ID
-     *       - in: path
-     *         name: year
-     *         required: true
-     *         schema:
-     *           type: integer
-     *         description: Academic year
-     *       - in: path
-     *         name: semester
-     *         required: true
-     *         schema:
-     *           type: integer
-     *         description: Semester (1 or 2)
-     *     responses:
-     *       200:
-     *         description: List of subjects for the semester
-     *       400:
-     *         description: Invalid year or semester
-     *       500:
-     *         description: Internal server error
-     */
     async getSubjectsBySemester(req: Request, res: Response): Promise<void> {
         try {
             const { planId, year, semester } = req.params;
@@ -382,52 +139,6 @@ export class SubjectPlanController {
         }
     }
 
-    /**
-     * @openapi
-     * /api/v1/itba/subjects/plan:
-     *   post:
-     *     tags:
-     *       - ITBA Subject Plans
-     *     summary: Create a subject plan
-     *     description: Creates a new subject plan relationship
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - subjectId
-     *               - planId
-     *               - section
-     *             properties:
-     *               subjectId:
-     *                 type: string
-     *               planId:
-     *                 type: string
-     *               section:
-     *                 type: string
-     *               year:
-     *                 type: number
-     *                 nullable: true
-     *               semester:
-     *                 type: number
-     *                 nullable: true
-     *               dependencies:
-     *                 type: array
-     *                 items:
-     *                   type: string
-     *               creditsRequired:
-     *                 type: number
-     *                 nullable: true
-     *     responses:
-     *       201:
-     *         description: Subject plan created successfully
-     *       400:
-     *         description: Invalid request data
-     *       500:
-     *         description: Internal server error
-     */
     async createSubjectPlan(req: Request, res: Response): Promise<void> {
         try {
             const createData = req.body;
