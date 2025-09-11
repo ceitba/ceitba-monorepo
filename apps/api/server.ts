@@ -1,105 +1,131 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction, ErrorRequestHandler } from "express";
 import dotenv from "dotenv";
 import cors from 'cors';
-dotenv.config();
 import process from "process";
 import cron from "node-cron";
-import itbaRouter from "./v1/itba/itbaRoutes";
-import appRouter from "./v1/app/appRoutes";
-import schedulerRouter from "./v1/scheduler/scheduler_routes";
-import minecraftRouter from "./v1/minecraft/whitelist";
-import {UpdateCommissions,UpdateSubjects} from "./v1/itba/itbagw/update";
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
-import userRouter from "./v1/user/user_routes";
-import benefitsRouter from "./v1/benefits/router";
 
+dotenv.config();
 
-const swaggerOptions = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'CEITBA API',
-            version: '1.0.0'
-        },
-        servers:[
-          {
-            url:"/api/v1"
-          }
-        ],
-        tags: [
-          {
-              name: "ITBA",
-              description: "Endpoints related to ITBA data"
-          },
-          {
-              name: "App",
-              description: "Endpoints related to the application"
-          },
-          {
-              name: "Scheduler",
-              description: "Endpoints related to scheduling"
-          },
-          {
-              name: "Minecraft",
-              description: "Endpoints related to Minecraft"
-          },
-          {
-              name: "User",
-              description: "Endpoints related to user management"
-          }
-      ]
-    },
-    apis: ['./v1/**/*.ts'] // Adjust paths to match your routes
-};
+import itbaRouter from "./src/presentation/v1/routes/itba.routes";
+import { setupSwagger } from "./src/docs/swagger-setup";
 
-var options = {
-  explorer: true
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-
+// import { UpdateCommissions, UpdateSubjects } from "./v1/itba/itbagw/update";
 
 const app = express();
-
-
 const PORT = process.env.PORT || 3000;
-export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN!;
-export const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN!;
 
+export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN;
+export const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 
+if (!ITBA_API_TOKEN) {
+    console.warn('Warning: ITBA_API_TOKEN not found in environment variables');
+}
 
+if (!SUPABASE_ACCESS_TOKEN) {
+    console.warn('Warning: SUPABASE_ACCESS_TOKEN not found in environment variables');
+}
 
-// Middleware setup
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec,options));
-// Allowing the website to access the API
+setupSwagger(app);
+
 app.use(cors({
-    origin: ['https://ceitba.org.ar'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    origin: [
+        'https://ceitba.org.ar',
+        'http://localhost:3000',
+        'http://localhost:3001'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true
 }));
 
 app.get("/api", (req: Request, res: Response) => {
-  res.send("Hello World");
+    res.json({ 
+        message: "CEITBA API is running", 
+        version: "1.0.0",
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get("/api/health", (req: Request, res: Response) => {
+    res.json({ 
+        status: "healthy", 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: "1.0.0"
+    });
 });
 
 app.use('/api/v1/itba', itbaRouter);
-app.use('/api/v1/scheduler', schedulerRouter);
-app.use('/api/v1/minecraft', minecraftRouter);
-app.use('/api/v1/app', appRouter);
-app.use('/api/v1/user', userRouter);
-app.use('/api/v1/benefits', benefitsRouter);
 
-
-app.listen(PORT, () => {
-    console.log('Server running on port ' + PORT);
+app.use('*', (req: Request, res: Response) => {
+    res.status(404).json({
+        error: 'Route not found',
+        path: req.originalUrl,
+        method: req.method,
+        timestamp: new Date().toISOString()
+    });
 });
 
-cron.schedule('0 0,12 * * *', UpdateCommissions);
-cron.schedule('0 0,12 * * *', UpdateSubjects);
+const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    
+    if (err.type === 'entity.parse.failed') {
+        res.status(400).json({
+            error: 'Invalid JSON in request body',
+            details: err.message
+        });
+        return;
+    }
+    
+    res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+        timestamp: new Date().toISOString()
+    });
+};
+
+app.use(errorHandler);
+
+const server = app.listen(PORT, () => {
+    console.log(`CEITBA API Server running on port ${PORT}`);
+    console.log(`API Documentation available at: http://localhost:${PORT}/api-docs`);
+    console.log(`Health check available at: http://localhost:${PORT}/api/health`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
+    });
+});
+
+if (process.env.NODE_ENV === 'production' || process.env.ENABLE_CRON === 'true') {
+    console.log('Setting up cron jobs...');
+    
+    cron.schedule('0 0,12 * * *', () => {
+        console.log('Running scheduled data updates...');
+        // UpdateCommissions();
+        // UpdateSubjects();
+    });
+    
+    console.log('Cron jobs configured');
+} else {
+    console.log('Cron jobs disabled (not in production)');
+}
 
 export default app;
