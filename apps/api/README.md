@@ -159,7 +159,7 @@ ENABLE_CRON=false
 To view the API documentation, start the server and open:
 
 ```
-http://localhost:3000/docs
+http://localhost:3000/api/docs
 ```
 
 This will display the interactive API docs (Swagger UI or similar, if enabled in your configuration).
