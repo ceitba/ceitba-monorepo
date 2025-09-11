@@ -1,0 +1,61 @@
+# Multi-stage build for CEITBA API
+# Stage 1: Build dependencies and compile TypeScript
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache python3 make g++
+
+COPY package*.json ./
+
+RUN npm ci --only=production=false
+
+COPY . .
+
+# Stage 2: Production runtime
+FROM node:20-alpine AS production
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S ceitba -u 1001
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+COPY --from=builder --chown=ceitba:nodejs /app .
+
+RUN rm -rf tests/ docs/ .git/ .github/ *.md
+
+RUN chown -R ceitba:nodejs /app
+USER ceitba
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
+
+CMD ["npm", "start"]
+
+# Stage 3: Development environment
+FROM node:20-alpine AS development
+
+RUN apk add --no-cache python3 make g++
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S ceitba -u 1001
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm ci
+
+RUN chown -R ceitba:nodejs /app
+USER ceitba
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
