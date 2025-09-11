@@ -1,5 +1,5 @@
 import express from "express";
-import supabase from "../../config/supabase";
+import supabase from "../../../src/shared/config/supabase";
 import { ClassroomResponse,ClassroomData,ClassroomOutput } from "./models";
 import { json } from "stream/consumers";
 const router = express.Router();

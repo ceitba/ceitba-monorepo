@@ -1,5 +1,5 @@
 import express from "express";
-import supabase from "../../config/supabase";
+import supabase from "../../../src/shared/config/supabase";
 import { Career } from "../ceitbapi/modules";
 const router = express.Router();
 interface PlanSupabase {

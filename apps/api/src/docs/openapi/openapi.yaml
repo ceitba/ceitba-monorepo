@@ -1,0 +1,31 @@
+# src/docs/openapi/openapi.yaml
+openapi: 3.1.0
+info:
+  title: CEITBA API
+  description: API for CEITBA
+  version: 1.0.0
+  contact:
+    name: CEITBA Team
+    email: ceitba@itba.edu.ar
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+  - url: https://ceitba.org.ar/api/v1
+    description: Production server
+
+paths:
+  /:
+    get:
+      summary: Get the root endpoint
+      description: Returns a simple message
+      responses:
+        200:
+          description: A simple message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string

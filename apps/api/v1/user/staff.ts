@@ -1,4 +1,4 @@
-import supabase from "../config/supabase";
+import supabase from "../../src/shared/config/supabase";
 
 const getStaffMembers = async (): Promise<{ staff: any[], error: string | null }> => {
     const { data, error } = await supabase.rpc('get_staff_members');

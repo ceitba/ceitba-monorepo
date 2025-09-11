@@ -1,7 +1,7 @@
 import express from "express";
 import { Request, Response } from "express";
-import supabase from "../../config/supabase";
-import { Database } from "../models/database.types";
+import supabase from "../../../src/shared/config/supabase";
+import { Database } from "../../../src/shared/types/database.types";
 
 const router = express.Router();
 

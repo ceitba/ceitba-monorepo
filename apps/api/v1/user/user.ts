@@ -1,4 +1,4 @@
-import supabase from "../config/supabase";
+import supabase from "../../src/shared/config/supabase";
 import { Role, User, Organization } from "./modules"
 
 /**

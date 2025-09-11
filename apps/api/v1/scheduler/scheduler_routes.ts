@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import supabase from '../config/supabase';
+import supabase from '../../src/shared/config/supabase';
 
  
 
