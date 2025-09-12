@@ -83,10 +83,13 @@ export class ItbaContainer {
 
     get itbaApiService(): ItbaApiServiceImpl {
         if (!this._itbaApiService) {
-            const apiToken = process.env.ITBA_API_TOKEN || 'default-token';
-            this._itbaApiService = new ItbaApiServiceImpl(apiToken);
+            throw new Error('ItbaApiService not configured. Call setItbaApiService() first.');
         }
         return this._itbaApiService;
+    }
+
+    setItbaApiService(service: ItbaApiServiceImpl): void {
+        this._itbaApiService = service;
     }
 
     get careerService(): CareerService {

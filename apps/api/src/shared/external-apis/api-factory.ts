@@ -30,13 +30,4 @@ export class ApiFactory {
         this.clients.clear();
     }
 
-    static createItbaApiClient(apiToken: string): ApiClient {
-        return this.createClient('itba-api', {
-            baseUrl: 'https://itbagw.itba.edu.ar/api/v1',
-            defaultHeaders: {
-                'Content-Type': 'application/json',
-            },
-            timeout: 30000
-        });
-    }
 }

@@ -7,14 +7,15 @@ import {
     ITBASubject 
 } from '@/domain/itba/interfaces/repositories/itba-api.service.interface';
 import { ApiClient, ApiFactory } from '@/shared/external-apis';
+import { ExternalApiConfig } from '@/shared/external-apis/api-client.interface';
 
 export class ItbaApiServiceImpl implements ItbaApiService {
     private readonly apiClient: ApiClient;
     private readonly apiToken: string;
 
-    constructor(apiToken: string, apiClient?: ApiClient) {
+    constructor(apiToken: string, apiConfig?: ExternalApiConfig, apiClient?: ApiClient) {
         this.apiToken = apiToken;
-        this.apiClient = apiClient || ApiFactory.createItbaApiClient(apiToken);
+        this.apiClient = apiClient!;
     }
 
     async getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {

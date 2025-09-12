@@ -6,24 +6,41 @@ import cron from "node-cron";
 
 dotenv.config();
 
-import itbaRouter from "./src/presentation/v1/routes/itba.routes";
-import { setupSwagger } from "./src/docs/swagger-setup";
-
+import createItbaRoutes from "@/presentation/v1/routes/itba.routes";
+import { setupSwagger } from "@/docs/swagger-setup";
+import { ItbaContainer } from "@/shared/container/itba.container";
+import { ApiFactory } from "@/shared/external-apis";
+import { ItbaApiServiceImpl } from "@/domain/itba/repositories/itba-api.service.impl";
 // import { UpdateCommissions, UpdateSubjects } from "./v1/itba/itbagw/update";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN;
-export const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
+export const ITBA_API_TOKEN = process.env.ITBA_API_TOKEN!;
+export const ITBA_API_BASE_URL = process.env.ITBA_API_BASE_URL!;
+export const ITBA_API_TIMEOUT = process.env.ITBA_API_TIMEOUT || '30000';
 
-if (!ITBA_API_TOKEN) {
-    console.warn('Warning: ITBA_API_TOKEN not found in environment variables');
+export const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN!;
+
+function configureExternalServices(): void {
+
+    const itbaApiClient = ApiFactory.createClient('itba-api', {
+        baseUrl: ITBA_API_BASE_URL,
+        timeout: parseInt(ITBA_API_TIMEOUT),
+        defaultHeaders: {
+            'Content-Type': 'application/json'
+        }
+    });
+
+    const itbaApiService = new ItbaApiServiceImpl(ITBA_API_TOKEN, undefined, itbaApiClient);
+    
+    const container = ItbaContainer.getInstance();
+    container.setItbaApiService(itbaApiService);
+
+    console.log('External API services configured successfully');
 }
 
-if (!SUPABASE_ACCESS_TOKEN) {
-    console.warn('Warning: SUPABASE_ACCESS_TOKEN not found in environment variables');
-}
+configureExternalServices();
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -60,6 +77,7 @@ app.get("/api/health", (req: Request, res: Response) => {
     });
 });
 
+const itbaRouter = createItbaRoutes();
 app.use('/api/v1/itba', itbaRouter);
 
 app.use('*', (req: Request, res: Response) => {
