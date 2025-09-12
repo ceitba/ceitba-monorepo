@@ -9,6 +9,21 @@ export class ClassroomService implements ClassroomServiceInterface {
         return await this.classroomRepository.findAllClassrooms();
     }
 
+    async getClassroomsWithFilters(filters: {
+        status?: 'occupied' | 'available';
+        current_semester?: boolean;
+    }): Promise<ClassroomSchedule[]> {
+        if (filters.status === 'occupied') {
+            return await this.getOccupiedClassrooms(filters.current_semester);
+        }
+        
+        if (filters.status === 'available') {
+            return await this.getAvailableClassrooms();
+        }
+        
+        return await this.getAllClassrooms();
+    }
+
     async getOccupiedClassrooms(currentSemester?: boolean): Promise<ClassroomSchedule[]> {
         return await this.classroomRepository.findOccupiedClassrooms(currentSemester);
     }

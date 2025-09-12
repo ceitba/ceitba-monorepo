@@ -1,31 +1,30 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { CareerService } from '@/domain/itba/services/career.service';
+import { CreateCareerRequest, UpdateCareerRequest } from '@/shared/validation/subject-plan.schemas';
 
 export class CareerController {
     constructor(private readonly careerService: CareerService) {}
 
-    async getCareerPlans(req: Request, res: Response): Promise<void> {
+    async getCareerPlans(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const careerPlans = await this.careerService.getCareersWithPlans();
             res.json(careerPlans);
         } catch (error) {
-            console.error('Error fetching career plans:', error);
-            res.status(500).json({ error: 'Error fetching career plans' });
+            next(error);
         }
     }
 
     
-    async getAllCareers(req: Request, res: Response): Promise<void> {
+    async getAllCareers(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const careers = await this.careerService.getAllCareers();
             res.json(careers);
         } catch (error) {
-            console.error('Error fetching careers:', error);
-            res.status(500).json({ error: 'Error fetching careers' });
+            next(error);
         }
     }
 
-    async getCareerById(req: Request, res: Response): Promise<void> {
+    async getCareerById(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
             const career = await this.careerService.getCareerById(id);
@@ -37,32 +36,24 @@ export class CareerController {
 
             res.json(career);
         } catch (error) {
-            console.error('Error fetching career:', error);
-            res.status(500).json({ error: 'Error fetching career' });
+            next(error);
         }
     }
 
-    async createCareer(req: Request, res: Response): Promise<void> {
+    async createCareer(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { id, name } = req.body;
-
-            if (!id || !name) {
-                res.status(400).json({ error: 'ID and name are required' });
-                return;
-            }
-
-            const career = await this.careerService.createCareer({ id, name });
+            const createData = req.body as CreateCareerRequest;
+            const career = await this.careerService.createCareer(createData);
             res.status(201).json(career);
         } catch (error) {
-            console.error('Error creating career:', error);
-            res.status(500).json({ error: 'Error creating career' });
+            next(error);
         }
     }
 
-    async updateCareer(req: Request, res: Response): Promise<void> {
+    async updateCareer(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const updateData = req.body;
+            const updateData = req.body as UpdateCareerRequest;
 
             const career = await this.careerService.updateCareer(id, updateData);
             
@@ -73,12 +64,11 @@ export class CareerController {
 
             res.json(career);
         } catch (error) {
-            console.error('Error updating career:', error);
-            res.status(500).json({ error: 'Error updating career' });
+            next(error);
         }
     }
 
-    async deleteCareer(req: Request, res: Response): Promise<void> {
+    async deleteCareer(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
             const deleted = await this.careerService.deleteCareer(id);
@@ -90,8 +80,7 @@ export class CareerController {
 
             res.status(204).send();
         } catch (error) {
-            console.error('Error deleting career:', error);
-            res.status(500).json({ error: 'Error deleting career' });
+            next(error);
         }
     }
 }

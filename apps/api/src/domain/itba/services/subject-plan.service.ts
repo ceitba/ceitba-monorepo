@@ -4,6 +4,7 @@ import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject
 import { ItbaApiService } from '@/domain/itba/interfaces/repositories/itba-api.service.interface';
 import { SubjectPlanServiceInterface } from '@/domain/itba/interfaces/services/subject-plan.service.interface';
 import { SubjectPlanDto, CreateSubjectPlanDto } from '@/domain/itba/dto/subjectPlan.dto';
+import { ValidationException, ResourceNotFoundException } from '@/shared/exceptions/domain.exceptions';
 
 export class SubjectPlanService implements SubjectPlanServiceInterface {
     constructor(
@@ -14,6 +15,34 @@ export class SubjectPlanService implements SubjectPlanServiceInterface {
 
     async getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
         return await this.subjectPlanRepository.findByPlanId(planId);
+    }
+
+    async getSubjectsByPlanWithFilters(
+        planId: string,
+        filters: {
+            year?: number;
+            semester?: number;
+            section?: string;
+            type?: 'elective';
+        }
+    ): Promise<SubjectPlan[]> {
+        if (filters.year !== undefined && filters.semester !== undefined) {
+            return await this.getSubjectsBySemester(planId, filters.year, filters.semester);
+        }
+        
+        if (filters.year !== undefined) {
+            return await this.getSubjectsByYear(planId, filters.year);
+        }
+        
+        if (filters.section) {
+            return await this.getSubjectsBySection(planId, filters.section);
+        }
+        
+        if (filters.type === 'elective') {
+            return await this.getElectiveSubjects(planId);
+        }
+        
+        return await this.getSubjectsByPlan(planId);
     }
 
     async getSubjectsByPlanFromApi(planId: string): Promise<SubjectPlan[]> {
@@ -29,11 +58,24 @@ export class SubjectPlanService implements SubjectPlanServiceInterface {
     }
 
     async createSubjectPlan(createSubjectPlanDto: CreateSubjectPlanDto): Promise<SubjectPlan> {
-        // Get the subject information
         const subject = await this.subjectRepository.findById(createSubjectPlanDto.subjectId);
         if (!subject) {
-            throw new Error(`Subject with ID ${createSubjectPlanDto.subjectId} not found`);
+            throw new ResourceNotFoundException('Subject', createSubjectPlanDto.subjectId);
         }
+
+        const existingSubjectPlan = await this.subjectPlanRepository.findByPlanAndSubject(
+            createSubjectPlanDto.planId, 
+            createSubjectPlanDto.subjectId
+        );
+        if (existingSubjectPlan) {
+            throw new ValidationException(
+                'subjectPlan', 
+                `${createSubjectPlanDto.planId}-${createSubjectPlanDto.subjectId}`, 
+                'Subject plan already exists for this plan and subject combination'
+            );
+        }
+
+        const dependencies = createSubjectPlanDto.dependencies || [];
 
         const subjectPlan = new SubjectPlan(
             createSubjectPlanDto.subjectId,
@@ -41,7 +83,7 @@ export class SubjectPlanService implements SubjectPlanServiceInterface {
             createSubjectPlanDto.section,
             createSubjectPlanDto.year,
             createSubjectPlanDto.semester,
-            createSubjectPlanDto.dependencies,
+            dependencies,
             createSubjectPlanDto.creditsRequired,
             subject
         );

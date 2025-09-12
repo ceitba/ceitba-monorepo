@@ -1,5 +1,5 @@
-# Career Controller Endpoints
-/itba/career/plans:
+# Career Controller Endpoints - RESTful Design
+/itba/careers/plans:
   get:
     tags:
       - ITBA Careers
@@ -18,7 +18,7 @@
       500:
         description: Internal server error
 
-/itba/career:
+/itba/careers:
   get:
     tags:
       - ITBA Careers
@@ -58,7 +58,7 @@
       500:
         description: Internal server error
 
-/itba/career/{id}:
+/itba/careers/{id}:
   get:
     tags:
       - ITBA Careers

@@ -1,56 +1,47 @@
-# Classroom Controller Endpoints
-/itba/classrooms/occupied:
+# Classroom Controller Endpoints - RESTful Design
+/itba/classrooms:
   get:
     tags:
       - ITBA Classrooms
-    summary: Retrieve occupied classroom data
+    summary: Retrieve classroom data
     description: >
-      Retrieves a list of occupied classrooms.
-      The optional "current_semester" query parameter determines whether to filter
-      results only for the current semester. Otherwise, all classrooms in the database are returned.
-      The results are grouped by weekday and building.
+      Retrieves a list of classrooms with optional filtering by status.
+      Results are grouped by building or by weekday and building depending on status.
     parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum: [occupied, available]
+        description: Filter by classroom status (occupied or available)
       - in: query
         name: current_semester
         required: false
         schema:
           type: boolean
-        description: If set to true, only returns active classrooms for the current semester.
+        description: When status=occupied, filter for current semester only
     responses:
       200:
-        description: A map of days to maps of buildings to arrays of classroom data.
+        description: Classroom data grouped by building or by day and building
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties:
-                type: object
-                additionalProperties:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ClassroomSchedule'
-      500:
-        description: Internal server error
-
-/itba/classrooms/all:
-  get:
-    tags:
-      - ITBA Classrooms
-    summary: Retrieve all classroom data
-    description: >
-      Retrieves a list of all classrooms in the database.
-      The results are grouped by building.
-    responses:
-      200:
-        description: A map of buildings to arrays of classroom data.
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Classroom'
+              oneOf:
+                - type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Classroom'
+                  description: Grouped by building (for all/available classrooms)
+                - type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ClassroomSchedule'
+                  description: Grouped by day and building (for occupied classrooms)
       500:
         description: Internal server error
 
@@ -101,26 +92,6 @@
               type: array
               items:
                 $ref: '#/components/schemas/ClassroomSchedule'
-      500:
-        description: Internal server error
-
-/itba/classrooms/available:
-  get:
-    tags:
-      - ITBA Classrooms
-    summary: Get available classrooms
-    description: Retrieves all available (unoccupied) classrooms grouped by building
-    responses:
-      200:
-        description: Map of buildings to available classrooms
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Classroom'
       500:
         description: Internal server error
 

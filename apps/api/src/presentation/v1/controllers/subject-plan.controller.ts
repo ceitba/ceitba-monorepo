@@ -1,138 +1,128 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { SubjectPlanService } from '@/domain/itba/services/subject-plan.service';
+import { SubjectPlanQuery, CreateSubjectPlanRequest, UpdateSubjectPlanRequest } from '@/shared/validation/subject-plan.schemas';
 
 export class SubjectPlanController {
     constructor(private readonly subjectPlanService: SubjectPlanService) {}
 
-    async getSubjectsByPlan(req: Request, res: Response): Promise<void> {
+    async getSubjectsByPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { planId } = req.params;
-            const subjects = await this.subjectPlanService.getSubjectsByPlan(planId);
+            const query = req.query as unknown as SubjectPlanQuery;
+            
+            const subjects = await this.subjectPlanService.getSubjectsByPlanWithFilters(planId, {
+                year: query.year || undefined,
+                semester: query.semester || undefined,
+                section: query.section,
+                type: query.type
+            });
+            
             res.json(subjects);
         } catch (error) {
-            console.error('Error fetching subjects by plan:', error);
-            res.status(500).json({ error: 'Error fetching subjects by plan' });
+            next(error);
         }
     }
 
-    async getSubjectsByPlanFromApi(req: Request, res: Response): Promise<void> {
+    async getSubjectsByPlanFromApi(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { planId } = req.params;
             const subjects = await this.subjectPlanService.getSubjectsByPlanFromApi(planId);
             res.json(subjects);
         } catch (error) {
-            console.error('Error fetching subjects from ITBA API:', error);
-            res.status(500).json({ error: 'Error fetching subjects from ITBA API' });
+            next(error);
         }
     }
 
-    async getSubjectPlansBySubject(req: Request, res: Response): Promise<void> {
+    async getSubjectPlansBySubject(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { subjectId } = req.params;
             const subjectPlans = await this.subjectPlanService.getSubjectPlansBySubject(subjectId);
             res.json(subjectPlans);
         } catch (error) {
-            console.error('Error fetching subject plans by subject:', error);
-            res.status(500).json({ error: 'Error fetching subject plans by subject' });
+            next(error);
         }
     }
 
-    async getSubjectsBySection(req: Request, res: Response): Promise<void> {
-        try {
-            const { planId, section } = req.params;
-            const subjects = await this.subjectPlanService.getSubjectsBySection(planId, section);
-            res.json(subjects);
-        } catch (error) {
-            console.error('Error fetching subjects by section:', error);
-            res.status(500).json({ error: 'Error fetching subjects by section' });
-        }
-    }
-
-    async getElectiveSubjects(req: Request, res: Response): Promise<void> {
-        try {
-            const { planId } = req.params;
-            const subjects = await this.subjectPlanService.getElectiveSubjects(planId);
-            res.json(subjects);
-        } catch (error) {
-            console.error('Error fetching elective subjects:', error);
-            res.status(500).json({ error: 'Error fetching elective subjects' });
-        }
-    }
-
-    async getSubjectsByYear(req: Request, res: Response): Promise<void> {
-        try {
-            const { planId, year } = req.params;
-            const yearNum = parseInt(year, 10);
-            
-            if (isNaN(yearNum)) {
-                res.status(400).json({ error: 'Year must be a valid number' });
-                return;
-            }
-
-            const subjects = await this.subjectPlanService.getSubjectsByYear(planId, yearNum);
-            res.json(subjects);
-        } catch (error) {
-            console.error('Error fetching subjects by year:', error);
-            res.status(500).json({ error: 'Error fetching subjects by year' });
-        }
-    }
-
-    async getSubjectsBySemester(req: Request, res: Response): Promise<void> {
-        try {
-            const { planId, year, semester } = req.params;
-            const yearNum = parseInt(year, 10);
-            const semesterNum = parseInt(semester, 10);
-            
-            if (isNaN(yearNum) || isNaN(semesterNum)) {
-                res.status(400).json({ error: 'Year and semester must be valid numbers' });
-                return;
-            }
-
-            if (semesterNum < 1 || semesterNum > 2) {
-                res.status(400).json({ error: 'Semester must be 1 or 2' });
-                return;
-            }
-
-            const subjects = await this.subjectPlanService.getSubjectsBySemester(planId, yearNum, semesterNum);
-            res.json(subjects);
-        } catch (error) {
-            console.error('Error fetching subjects by semester:', error);
-            res.status(500).json({ error: 'Error fetching subjects by semester' });
-        }
-    }
-
-    async getSubjectDependencies(req: Request, res: Response): Promise<void> {
+    async getSubjectPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { planId, subjectId } = req.params;
+            const subjectPlan = await this.subjectPlanService.getSubjectPlan(planId, subjectId);
+            
+            if (!subjectPlan) {
+                res.status(404).json({ error: 'Subject plan not found' });
+                return;
+            }
+            
+            res.json(subjectPlan);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async createSubjectPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { planId } = req.params;
+            const createData = req.body as CreateSubjectPlanRequest;
+
+            // Add planId from route parameter to the request data
+            const createSubjectPlanDto = {
+                ...createData,
+                planId,
+                year: createData.year ?? null,
+                semester: createData.semester ?? null,
+                creditsRequired: createData.creditsRequired ?? null
+            };
+
+            const subjectPlan = await this.subjectPlanService.createSubjectPlan(createSubjectPlanDto);
+            res.status(201).json(subjectPlan);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async updateSubjectPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { planId, subjectId } = req.params;
+            const updateData = req.body as UpdateSubjectPlanRequest;
+
+            const updatedSubjectPlan = await this.subjectPlanService.updateSubjectPlan(planId, subjectId, updateData);
+            
+            if (!updatedSubjectPlan) {
+                res.status(404).json({ error: 'Subject plan not found' });
+                return;
+            }
+
+            res.json(updatedSubjectPlan);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async deleteSubjectPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { planId, subjectId } = req.params;
+            const deleted = await this.subjectPlanService.deleteSubjectPlan(planId, subjectId);
+            
+            if (!deleted) {
+                res.status(404).json({ error: 'Subject plan not found' });
+                return;
+            }
+
+            res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getSubjectDependencies(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { subjectId } = req.params;
+            const { planId } = req.query as { planId: string };
+            
             const dependencies = await this.subjectPlanService.getSubjectDependencies(planId, subjectId);
             res.json(dependencies);
         } catch (error) {
-            console.error('Error fetching subject dependencies:', error);
-            res.status(500).json({ error: 'Error fetching subject dependencies' });
-        }
-    }
-
-    async createSubjectPlan(req: Request, res: Response): Promise<void> {
-        try {
-            const createData = req.body;
-
-            if (!createData.subjectId || !createData.planId || !createData.section) {
-                res.status(400).json({ 
-                    error: 'Subject ID, plan ID, and section are required' 
-                });
-                return;
-            }
-
-            // Ensure dependencies is an array
-            if (!createData.dependencies) {
-                createData.dependencies = [];
-            }
-
-            const subjectPlan = await this.subjectPlanService.createSubjectPlan(createData);
-            res.status(201).json(subjectPlan);
-        } catch (error) {
-            console.error('Error creating subject plan:', error);
-            res.status(500).json({ error: 'Error creating subject plan' });
+            next(error);
         }
     }
 }

@@ -3,6 +3,15 @@ import { CreateSubjectPlanDto } from '@/domain/itba/dto/subjectPlan.dto';
 
 export interface SubjectPlanServiceInterface {
     getSubjectsByPlan(planId: string): Promise<SubjectPlan[]>;
+    getSubjectsByPlanWithFilters(
+        planId: string,
+        filters: {
+            year?: number;
+            semester?: number;
+            section?: string;
+            type?: 'elective'; // TODO: Make this a type
+        }
+    ): Promise<SubjectPlan[]>;
     getSubjectsByPlanFromApi(planId: string): Promise<SubjectPlan[]>;
     getSubjectPlansBySubject(subjectId: string): Promise<SubjectPlan[]>;
     getSubjectPlan(planId: string, subjectId: string): Promise<SubjectPlan | null>;
