@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { Branch, StaffType } from "../../../shared/types/ceitba.types";
+import { Branch, StaffType } from "@/shared/types/ceitba.types";
 
 export interface UserDTO {
     id: UUID;

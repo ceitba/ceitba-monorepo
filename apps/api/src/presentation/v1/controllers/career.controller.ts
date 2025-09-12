@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CareerService } from '../../../domain/itba/services/career.service';
+import { CareerService } from '@/domain/itba/services/career.service';
 
 export class CareerController {
     constructor(private readonly careerService: CareerService) {}

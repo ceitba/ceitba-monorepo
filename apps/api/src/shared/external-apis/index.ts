@@ -1,3 +1,3 @@
-export * from './api-client.interface';
-export * from './fetch-api-client';
-export * from './api-factory';
+export * from '@/shared/external-apis/api-client.interface';
+export * from '@/shared/external-apis/fetch-api-client';
+export * from '@/shared/external-apis/api-factory';

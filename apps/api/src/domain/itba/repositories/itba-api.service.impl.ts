@@ -1,12 +1,12 @@
-import { SubjectPlan } from '../models/subject-plan.model';
-import { Subject } from '../models/subject.model';
+import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
+import { Subject } from '@/domain/itba/models/subject.model';
 import { 
     ItbaApiService, 
     ITBACareerPlans,
     ITBASection,
     ITBASubject 
-} from '../interfaces/itba-api.service.interface';
-import { ApiClient, ApiFactory } from '../../../shared/external-apis';
+} from '@/domain/itba/interfaces/repositories/itba-api.service.interface';
+import { ApiClient, ApiFactory } from '@/shared/external-apis';
 
 export class ItbaApiServiceImpl implements ItbaApiService {
     private readonly apiClient: ApiClient;

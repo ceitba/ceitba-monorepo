@@ -1,4 +1,4 @@
-import { SubjectPlan } from '../models/subject-plan.model';
+import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
 
 export interface ItbaApiService {
     getSubjectsByPlan(planId: string): Promise<SubjectPlan[]>;

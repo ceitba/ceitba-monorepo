@@ -1,9 +1,8 @@
-import { SubjectPlan } from '../models/subject-plan.model';
-import { Subject } from '../models/subject.model';
-import { SubjectPlanRepository } from '../interfaces/subject-plan.repository.interface';
-import { SubjectRepository } from '../interfaces/subject.repository.interface';
-import { ItbaApiService } from '../interfaces/itba-api.service.interface';
-import { SubjectPlanDto, CreateSubjectPlanDto } from '../dto/subjectPlan.dto';
+import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
+import { SubjectPlanRepository } from '@/domain/itba/interfaces/repositories/subject-plan.repository.interface';
+import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
+import { ItbaApiService } from '@/domain/itba/interfaces/repositories/itba-api.service.interface';
+import { SubjectPlanDto, CreateSubjectPlanDto } from '@/domain/itba/dto/subjectPlan.dto';
 
 export class SubjectPlanService {
     constructor(

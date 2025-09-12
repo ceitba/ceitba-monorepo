@@ -1,7 +1,7 @@
-import { SubjectPlan } from '../models/subject-plan.model';
-import { Subject } from '../models/subject.model';
-import { SubjectPlanRepository } from '../interfaces/subject-plan.repository.interface';
-import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '../../../shared/database';
+import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
+import { Subject } from '@/domain/itba/models/subject.model';
+import { SubjectPlanRepository } from '@/domain/itba/interfaces/repositories/subject-plan.repository.interface';
+import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
 
 export class SubjectPlanRepositoryImpl implements SubjectPlanRepository {
     private readonly db: DatabaseClient;

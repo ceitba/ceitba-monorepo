@@ -1,4 +1,4 @@
-import { Branch, StaffType } from "../../../shared/types/ceitba.types";
+import { Branch, StaffType } from "@/shared/types/ceitba.types";
 
 export class UserRole {
     constructor(

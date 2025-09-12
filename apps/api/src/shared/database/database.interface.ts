@@ -1,4 +1,4 @@
-import { DatabaseError } from './database-errors';
+import { DatabaseError } from '@/shared/database/database-errors';
 
 export interface DatabaseResult<T> {
     data: T | null;

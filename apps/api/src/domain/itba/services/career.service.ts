@@ -1,6 +1,6 @@
-import { Career } from '../models/career.model';
-import { CareerRepository } from '../interfaces/career.repository.interface';
-import { CareerDto, CreateCareerDto } from '../dto/career.dto';
+import { Career } from '@/domain/itba/models/career.model';
+import { CareerRepository } from '@/domain/itba/interfaces/repositories/career.repository.interface';
+import { CareerDto, CreateCareerDto } from '@/domain/itba/dto/career.dto';
 
 export class CareerService {
     constructor(private readonly careerRepository: CareerRepository) {}

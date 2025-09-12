@@ -1,6 +1,6 @@
-import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek } from '../models/classroom.model';
-import { ClassroomRepository } from '../interfaces/classroom.repository.interface';
-import { DatabaseClient, DatabaseFactory } from '../../../shared/database';
+import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek } from '@/domain/itba/models/classroom.model';
+import { ClassroomRepository } from '@/domain/itba/interfaces/repositories/classroom.repository.interface';
+import { DatabaseClient, DatabaseFactory } from '@/shared/database';
 
 export class ClassroomRepositoryImpl implements ClassroomRepository {
     private readonly db: DatabaseClient;

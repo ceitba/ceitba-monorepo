@@ -1,4 +1,4 @@
-import { Career } from '../models/career.model';
+import { Career } from '@/domain/itba/models/career.model';
 
 export interface CareerRepository {
     findAll(): Promise<Career[]>;

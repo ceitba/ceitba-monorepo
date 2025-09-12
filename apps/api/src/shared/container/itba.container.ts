@@ -1,19 +1,19 @@
-import { DatabaseFactory } from '../database/database.factory';
+import { DatabaseFactory } from '@/shared/database/database.factory';
 
-import { CareerService } from '../../domain/itba/services/career.service';
-import { ClassroomService } from '../../domain/itba/services/classroom.service';
-import { SubjectPlanService } from '../../domain/itba/services/subject-plan.service';
-import { SubjectService } from '../../domain/itba/services/subject.service';
+import { CareerService } from '@/domain/itba/services/career.service';
+import { ClassroomService } from '@/domain/itba/services/classroom.service';
+import { SubjectPlanService } from '@/domain/itba/services/subject-plan.service';
+import { SubjectService } from '@/domain/itba/services/subject.service';
 
-import { CareerRepositoryImpl } from '../../domain/itba/repositories/career.repository.impl';
-import { ClassroomRepositoryImpl } from '../../domain/itba/repositories/classroom.repository.impl';
-import { SubjectPlanRepositoryImpl } from '../../domain/itba/repositories/subject-plan.repository.impl';
-import { SubjectRepositoryImpl } from '../../domain/itba/repositories/subject.repository.impl';
-import { ItbaApiServiceImpl } from '../../domain/itba/repositories/itba-api.service.impl';
+import { CareerRepositoryImpl } from '@/domain/itba/repositories/career.repository.impl';
+import { ClassroomRepositoryImpl } from '@/domain/itba/repositories/classroom.repository.impl';
+import { SubjectPlanRepositoryImpl } from '@/domain/itba/repositories/subject-plan.repository.impl';
+import { SubjectRepositoryImpl } from '@/domain/itba/repositories/subject.repository.impl';
+import { ItbaApiServiceImpl } from '@/domain/itba/repositories/itba-api.service.impl';
 
-import { CareerController } from '../../presentation/v1/controllers/career.controller';
-import { ClassroomController } from '../../presentation/v1/controllers/classroom.controller';
-import { SubjectPlanController } from '../../presentation/v1/controllers/subject-plan.controller';
+import { CareerController } from '@/presentation/v1/controllers/career.controller';
+import { ClassroomController } from '@/presentation/v1/controllers/classroom.controller';
+import { SubjectPlanController } from '@/presentation/v1/controllers/subject-plan.controller';
 
 /**
  * 

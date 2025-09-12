@@ -6,9 +6,9 @@ import {
     UpdateOptions,
     DeleteOptions,
     JoinOptions
-} from './database.interface';
-import { DatabaseError } from './database-errors';
-import supabase from '../config/supabase';
+} from '@/shared/database/database.interface';
+import { DatabaseError } from '@/shared/database/database-errors';
+import supabase from '@/shared/config/supabase';
 
 export class SupabaseDatabaseClient implements DatabaseClient {
     async select<T>(table: string, options: QueryOptions = {}): Promise<DatabaseResult<T[]>> {

@@ -1,11 +1,11 @@
-import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek } from '../models/classroom.model';
-import { ClassroomRepository } from '../interfaces/classroom.repository.interface';
+import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek } from '@/domain/itba/models/classroom.model';
+import { ClassroomRepository } from '@/domain/itba/interfaces/repositories/classroom.repository.interface';
 import { 
     ClassroomDto, 
     ClassroomScheduleDto, 
     ClassroomsByBuildingDto, 
     ClassroomsByDayAndBuildingDto 
-} from '../dto/classroom.dto';
+} from '@/domain/itba/dto/classroom.dto';
 
 export class ClassroomService {
     constructor(private readonly classroomRepository: ClassroomRepository) {}

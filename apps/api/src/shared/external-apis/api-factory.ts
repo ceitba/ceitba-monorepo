@@ -1,5 +1,5 @@
-import { ApiClient, ExternalApiConfig } from './api-client.interface';
-import { FetchApiClient } from './fetch-api-client';
+import { ApiClient, ExternalApiConfig } from '@/shared/external-apis/api-client.interface';
+import { FetchApiClient } from '@/shared/external-apis/fetch-api-client';
 
 export class ApiFactory {
     private static clients: Map<string, ApiClient> = new Map();

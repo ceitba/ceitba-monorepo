@@ -1,8 +1,8 @@
-import { DatabaseClient, DatabaseFactory } from "../../../shared/database";
-import { UserDTO } from "../dto/user.dto";
-import { UserRepository } from "../interfaces/user.repository.interface";
-import { UserRole } from "../models/user-role.model";
-import { User } from "../models/user.model";
+import { DatabaseClient, DatabaseFactory } from "@/shared/database";
+import { UserDTO } from "@/domain/user/dto/user.dto";
+import { UserRepository } from "@/domain/user/interfaces/user.repository.interface";
+import { UserRole } from "@/domain/user/models/user-role.model";
+import { User } from "@/domain/user/models/user.model";
 
 export class UserRepositoryImpl implements UserRepository {
     private readonly db: DatabaseClient;

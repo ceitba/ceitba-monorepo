@@ -1,6 +1,6 @@
-import { Subject } from '../models/subject.model';
-import { SubjectRepository } from '../interfaces/subject.repository.interface';
-import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '../../../shared/database';
+import { Subject } from '@/domain/itba/models/subject.model';
+import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
+import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
 
 export class SubjectRepositoryImpl implements SubjectRepository {
     private readonly db: DatabaseClient;

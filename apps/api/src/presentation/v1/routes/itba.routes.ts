@@ -1,5 +1,5 @@
 import express from 'express';
-import { ItbaContainer } from '../../../shared/container/itba.container';
+import { ItbaContainer } from '@/shared/container/itba.container';
 
 const router = express.Router();
 

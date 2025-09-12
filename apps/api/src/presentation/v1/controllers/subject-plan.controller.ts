@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { SubjectPlanService } from '../../../domain/itba/services/subject-plan.service';
+import { SubjectPlanService } from '@/domain/itba/services/subject-plan.service';
 
 export class SubjectPlanController {
     constructor(private readonly subjectPlanService: SubjectPlanService) {}

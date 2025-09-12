@@ -1,8 +1,8 @@
-import { Career } from '../models/career.model';
-import { CareerRepository } from '../interfaces/career.repository.interface';
-import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '../../../shared/database';
-import { CareerAlreadyExistsException } from '../exceptions/itba.exceptions';
-import { GenericDomainException } from '../../../shared/exceptions';
+import { Career } from '@/domain/itba/models/career.model';
+import { CareerRepository } from '@/domain/itba/interfaces/repositories/career.repository.interface';
+import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
+import { CareerAlreadyExistsException } from '@/domain/itba/exceptions/itba.exceptions';
+import { GenericDomainException } from '@/shared/exceptions';
 
 export class CareerRepositoryImpl implements CareerRepository {
     private readonly db: DatabaseClient;

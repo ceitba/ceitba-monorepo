@@ -1,4 +1,4 @@
-import { ClassroomSchedule } from '../models/classroom.model';
+import { ClassroomSchedule } from '@/domain/itba/models/classroom.model';
 
 export interface ClassroomRepository {
     findAllClassrooms(): Promise<ClassroomSchedule[]>;

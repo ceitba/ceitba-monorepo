@@ -1,4 +1,4 @@
-import { Subject } from '../models/subject.model';
+import { Subject } from '@/domain/itba/models/subject.model';
 
 export interface SubjectRepository {
     findAll(): Promise<Subject[]>;

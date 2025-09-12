@@ -1,4 +1,4 @@
-import { DomainException } from '../../../shared/exceptions';
+import { DomainException } from '@/shared/exceptions';
 
 export class CareerNotFoundException extends DomainException {
     constructor(careerId: string, cause?: Error) {

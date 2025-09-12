@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { UserRole } from "./user-role.model";
+import { UserRole } from "@/domain/user/models/user-role.model";
 
 // TODO: Model each attribute correctly (values, types, etc)
 // TODO: Make email model, file_number model, name model, career_id model, plan model

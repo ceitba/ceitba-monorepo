@@ -1,4 +1,4 @@
-import { Subject } from './subject.model';
+import { Subject } from '@/domain/itba/models/subject.model';
 
 export class SubjectPlan {
     constructor(

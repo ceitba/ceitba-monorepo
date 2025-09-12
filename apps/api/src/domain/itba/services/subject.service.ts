@@ -1,6 +1,6 @@
-import { Subject } from '../models/subject.model';
-import { SubjectRepository } from '../interfaces/subject.repository.interface';
-import { SubjectDto, CreateSubjectDto } from '../dto/subject.dto';
+import { Subject } from '@/domain/itba/models/subject.model';
+import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
+import { SubjectDto, CreateSubjectDto } from '@/domain/itba/dto/subject.dto';
 
 export class SubjectService {
     constructor(private readonly subjectRepository: SubjectRepository) {}

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ClassroomService } from '../../../domain/itba/services/classroom.service';
+import { ClassroomService } from '@/domain/itba/services/classroom.service';
 
 export class ClassroomController {
     constructor(private readonly classroomService: ClassroomService) {}
