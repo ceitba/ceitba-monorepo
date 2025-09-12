@@ -14,6 +14,8 @@ import { ItbaApiServiceImpl } from '@/domain/itba/repositories/itba-api.service.
 import { CareerController } from '@/presentation/v1/controllers/career.controller';
 import { ClassroomController } from '@/presentation/v1/controllers/classroom.controller';
 import { SubjectPlanController } from '@/presentation/v1/controllers/subject-plan.controller';
+import { CareerRepository, ClassroomRepository, ItbaApiService, SubjectPlanRepository, SubjectRepository } from '@/domain/itba';
+import { ContainerInterface } from "@/shared/container/container.interface";
 
 /**
  * 
@@ -23,14 +25,14 @@ import { SubjectPlanController } from '@/presentation/v1/controllers/subject-pla
  * @description Container for ITBA dependencies
  * 
  */
-export class ItbaContainer {
+export class ItbaContainer implements ContainerInterface {
     private static instance: ItbaContainer | null = null;
     
-    private _careerRepository: CareerRepositoryImpl | null = null;
-    private _classroomRepository: ClassroomRepositoryImpl | null = null;
-    private _subjectRepository: SubjectRepositoryImpl | null = null;
-    private _subjectPlanRepository: SubjectPlanRepositoryImpl | null = null;
-    private _itbaApiService: ItbaApiServiceImpl | null = null;
+    private _careerRepository: CareerRepository | null = null;
+    private _classroomRepository: ClassroomRepository | null = null;
+    private _subjectRepository: SubjectRepository | null = null;
+    private _subjectPlanRepository: SubjectPlanRepository | null = null;
+    private _itbaApiService: ItbaApiService | null = null;
     
     private _careerService: CareerService | null = null;
     private _classroomService: ClassroomService | null = null;
@@ -50,7 +52,7 @@ export class ItbaContainer {
         return this.instance;
     }
 
-    get careerRepository(): CareerRepositoryImpl {
+    get careerRepository(): CareerRepository {
         if (!this._careerRepository) {
             const db = DatabaseFactory.getInstance();
             this._careerRepository = new CareerRepositoryImpl(db);
@@ -58,7 +60,7 @@ export class ItbaContainer {
         return this._careerRepository;
     }
 
-    get classroomRepository(): ClassroomRepositoryImpl {
+    get classroomRepository(): ClassroomRepository {
         if (!this._classroomRepository) {
             const db = DatabaseFactory.getInstance();
             this._classroomRepository = new ClassroomRepositoryImpl(db);
@@ -66,7 +68,7 @@ export class ItbaContainer {
         return this._classroomRepository;
     }
 
-    get subjectRepository(): SubjectRepositoryImpl {
+    get subjectRepository(): SubjectRepository {
         if (!this._subjectRepository) {
             const db = DatabaseFactory.getInstance();
             this._subjectRepository = new SubjectRepositoryImpl(db);
@@ -74,21 +76,21 @@ export class ItbaContainer {
         return this._subjectRepository;
     }
 
-    get subjectPlanRepository(): SubjectPlanRepositoryImpl {
+    get subjectPlanRepository(): SubjectPlanRepository {
         if (!this._subjectPlanRepository) {
             this._subjectPlanRepository = new SubjectPlanRepositoryImpl();
         }
         return this._subjectPlanRepository;
     }
 
-    get itbaApiService(): ItbaApiServiceImpl {
+    get itbaApiService(): ItbaApiService {
         if (!this._itbaApiService) {
             throw new Error('ItbaApiService not configured. Call setItbaApiService() first.');
         }
         return this._itbaApiService;
     }
 
-    setItbaApiService(service: ItbaApiServiceImpl): void {
+    setItbaApiService(service: ItbaApiService): void {
         this._itbaApiService = service;
     }
 
@@ -145,9 +147,14 @@ export class ItbaContainer {
         return this._subjectPlanController;
     }
 
-    static reset(): void {
+    reset(): void {
         // TODO: Add reset logic
-        this.instance = null;
+        ItbaContainer.instance = null;
         DatabaseFactory.reset();
     }
+
+    getInstance(): ItbaContainer {
+        return this;
+    }
+
 }
