@@ -1,38 +1,28 @@
-import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek } from '@/domain/itba/models/classroom.model';
+import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek, DayOfWeekMapper } from '@/domain/itba/models/classroom.model';
 import { ClassroomRepository } from '@/domain/itba/interfaces/repositories/classroom.repository.interface';
-import { 
-    ClassroomDto, 
-    ClassroomScheduleDto, 
-    ClassroomsByBuildingDto, 
-    ClassroomsByDayAndBuildingDto 
-} from '@/domain/itba/dto/classroom.dto';
+import { ClassroomServiceInterface } from '@/domain/itba/interfaces/services/classroom.service.interface';
 
-export class ClassroomService {
+export class ClassroomService implements ClassroomServiceInterface {
     constructor(private readonly classroomRepository: ClassroomRepository) {}
 
-    async getAllClassrooms(): Promise<ClassroomsByBuildingDto> {
-        const classrooms = await this.classroomRepository.findAllClassrooms();
-        return this.groupClassroomsByBuilding(classrooms);
+    async getAllClassrooms(): Promise<ClassroomSchedule[]> {
+        return await this.classroomRepository.findAllClassrooms();
     }
 
-    async getOccupiedClassrooms(currentSemester?: boolean): Promise<ClassroomsByDayAndBuildingDto> {
-        const occupiedClassrooms = await this.classroomRepository.findOccupiedClassrooms(currentSemester);
-        return this.groupClassroomsByDayAndBuilding(occupiedClassrooms);
+    async getOccupiedClassrooms(currentSemester?: boolean): Promise<ClassroomSchedule[]> {
+        return await this.classroomRepository.findOccupiedClassrooms(currentSemester);
     }
 
-    async getClassroomsByBuilding(building: string): Promise<ClassroomDto[]> {
-        const classrooms = await this.classroomRepository.findByBuilding(building);
-        return classrooms.map(this.mapToClassroomDto);
+    async getClassroomsByBuilding(building: string): Promise<ClassroomSchedule[]> {
+        return await this.classroomRepository.findByBuilding(building);
     }
 
-    async getClassroomsByDay(day: string): Promise<ClassroomScheduleDto[]> {
-        const classrooms = await this.classroomRepository.findByDay(day);
-        return classrooms.map(this.mapToScheduleDto);
+    async getClassroomsByDay(day: string): Promise<ClassroomSchedule[]> {
+        return await this.classroomRepository.findByDay(day);
     }
 
-    async getAvailableClassrooms(): Promise<ClassroomsByBuildingDto> {
-        const availableClassrooms = await this.classroomRepository.findAvailableClassrooms();
-        return this.groupClassroomsByBuilding(availableClassrooms);
+    async getAvailableClassrooms(): Promise<ClassroomSchedule[]> {
+        return await this.classroomRepository.findAvailableClassrooms();
     }
 
     async checkForConflicts(
@@ -41,109 +31,16 @@ export class ClassroomService {
         day: string,
         hourFrom: string,
         hourTo: string
-    ): Promise<ClassroomScheduleDto[]> {
+    ): Promise<ClassroomSchedule[]> {
         try {
             const classroom = new Classroom(classroomName, building);
             const timeSlot = new TimeSlot(hourFrom, hourTo);
-            const dayOfWeek = this.mapStringToDayOfWeek(day);
+            const dayOfWeek = DayOfWeekMapper.fromString(day);
             const schedule = new ClassroomSchedule(classroom, dayOfWeek, timeSlot);
 
-            const conflicts = await this.classroomRepository.findConflicts(schedule);
-            return conflicts.map(this.mapToScheduleDto);
+            return await this.classroomRepository.findConflicts(schedule);
         } catch (error) {
             throw new Error(`Invalid schedule data: ${(error as Error).message}`);
         }
-    }
-
-    private groupClassroomsByBuilding(classrooms: ClassroomSchedule[]): ClassroomsByBuildingDto {
-        const result: ClassroomsByBuildingDto = {};
-
-        for (const schedule of classrooms) {
-            const building = schedule.classroom.building;
-            
-            // Skip online classrooms
-            if (schedule.classroom.isOnline()) {
-                continue;
-            }
-
-            if (!result[building]) {
-                result[building] = [];
-            }
-
-            result[building].push(this.mapToClassroomDto(schedule));
-        }
-
-        return result;
-    }
-
-    private groupClassroomsByDayAndBuilding(classrooms: ClassroomSchedule[]): ClassroomsByDayAndBuildingDto {
-        const result: ClassroomsByDayAndBuildingDto = {};
-
-        for (const schedule of classrooms) {
-            if (!schedule.day || !schedule.isOccupied()) {
-                continue;
-            }
-
-            const day = schedule.day;
-            const building = schedule.classroom.building;
-
-            // Skip online classrooms
-            if (schedule.classroom.isOnline()) {
-                continue;
-            }
-
-            if (!result[day]) {
-                result[day] = {};
-            }
-
-            if (!result[day][building]) {
-                result[day][building] = [];
-            }
-
-            result[day][building].push(this.mapToScheduleDto(schedule));
-        }
-
-        return result;
-    }
-
-    private mapToClassroomDto(schedule: ClassroomSchedule): ClassroomDto {
-        return {
-            name: schedule.classroom.name,
-            building: schedule.classroom.building,
-            day: schedule.day,
-            hourFrom: schedule.timeSlot?.hourFrom ?? null,
-            hourTo: schedule.timeSlot?.hourTo ?? null
-        };
-    }
-
-    private mapToScheduleDto(schedule: ClassroomSchedule): ClassroomScheduleDto {
-        return {
-            classroom: schedule.classroom.name,
-            building: schedule.classroom.building,
-            day: schedule.day,
-            hourFrom: schedule.timeSlot?.hourFrom ?? null,
-            hourTo: schedule.timeSlot?.hourTo ?? null
-        };
-    }
-
-    private mapStringToDayOfWeek(day: string): DayOfWeek {
-        const dayMap: Record<string, DayOfWeek> = {
-            'monday': DayOfWeek.MONDAY,
-            'tuesday': DayOfWeek.TUESDAY,
-            'wednesday': DayOfWeek.WEDNESDAY,
-            'thursday': DayOfWeek.THURSDAY,
-            'friday': DayOfWeek.FRIDAY,
-            'saturday': DayOfWeek.SATURDAY,
-            'sunday': DayOfWeek.SUNDAY
-        };
-
-        const normalizedDay = day.toLowerCase();
-        const dayOfWeek = dayMap[normalizedDay];
-        
-        if (!dayOfWeek) {
-            throw new Error(`Invalid day: ${day}`);
-        }
-
-        return dayOfWeek;
     }
 }

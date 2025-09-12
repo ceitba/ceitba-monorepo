@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ClassroomService } from '@/domain/itba/services/classroom.service';
+import { ItbaMappers } from '@/presentation/mappers/itba.mappers';
 
 export class ClassroomController {
     constructor(private readonly classroomService: ClassroomService) {}
@@ -10,7 +11,8 @@ export class ClassroomController {
             const currentSemester = current_semester === 'true' || current_semester === undefined;
             
             const occupiedClassrooms = await this.classroomService.getOccupiedClassrooms(currentSemester);
-            res.json(occupiedClassrooms);
+            const dto = ItbaMappers.groupClassroomsByDayAndBuilding(occupiedClassrooms);
+            res.json(dto);
         } catch (error) {
             console.error('Error fetching occupied classrooms:', error);
             res.status(500).json({ error: 'Error fetching occupied classrooms' });
@@ -20,7 +22,8 @@ export class ClassroomController {
     async getAllClassrooms(req: Request, res: Response): Promise<void> {
         try {
             const allClassrooms = await this.classroomService.getAllClassrooms();
-            res.json(allClassrooms);
+            const dto = ItbaMappers.groupClassroomsByBuilding(allClassrooms);
+            res.json(dto);
         } catch (error) {
             console.error('Error fetching all classrooms:', error);
             res.status(500).json({ error: 'Error fetching all classrooms' });
@@ -31,7 +34,8 @@ export class ClassroomController {
         try {
             const { building } = req.params;
             const classrooms = await this.classroomService.getClassroomsByBuilding(building);
-            res.json(classrooms);
+            const dto = ItbaMappers.classroomSchedulesToDto(classrooms);
+            res.json(dto);
         } catch (error) {
             console.error('Error fetching classrooms by building:', error);
             res.status(500).json({ error: 'Error fetching classrooms by building' });
@@ -41,7 +45,8 @@ export class ClassroomController {
     async getAvailableClassrooms(req: Request, res: Response): Promise<void> {
         try {
             const availableClassrooms = await this.classroomService.getAvailableClassrooms();
-            res.json(availableClassrooms);
+            const dto = ItbaMappers.groupClassroomsByBuilding(availableClassrooms);
+            res.json(dto);
         } catch (error) {
             console.error('Error fetching available classrooms:', error);
             res.status(500).json({ error: 'Error fetching available classrooms' });
@@ -52,7 +57,8 @@ export class ClassroomController {
         try {
             const { day } = req.params;
             const classrooms = await this.classroomService.getClassroomsByDay(day);
-            res.json(classrooms);
+            const dto = ItbaMappers.classroomSchedulesToScheduleDto(classrooms);
+            res.json(dto);
         } catch (error) {
             console.error('Error fetching classrooms by day:', error);
             res.status(500).json({ error: 'Error fetching classrooms by day' });
@@ -73,7 +79,8 @@ export class ClassroomController {
             const conflicts = await this.classroomService.checkForConflicts(
                 classroom, building, day, hourFrom, hourTo
             );
-            res.json(conflicts);
+            const dto = ItbaMappers.classroomSchedulesToScheduleDto(conflicts);
+            res.json(dto);
         } catch (error) {
             console.error('Error checking classroom conflicts:', error);
             res.status(500).json({ error: 'Error checking classroom conflicts' });

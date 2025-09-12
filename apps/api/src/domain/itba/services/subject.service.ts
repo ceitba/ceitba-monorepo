@@ -1,36 +1,33 @@
 import { Subject } from '@/domain/itba/models/subject.model';
 import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
+import { SubjectServiceInterface } from '@/domain/itba/interfaces/services/subject.service.interface';
 import { SubjectDto, CreateSubjectDto } from '@/domain/itba/dto/subject.dto';
 
-export class SubjectService {
+export class SubjectService implements SubjectServiceInterface {
     constructor(private readonly subjectRepository: SubjectRepository) {}
 
-    async getAllSubjects(): Promise<SubjectDto[]> {
-        const subjects = await this.subjectRepository.findAll();
-        return subjects.map(this.mapToDto);
+    async getAllSubjects(): Promise<Subject[]> {
+        return await this.subjectRepository.findAll();
     }
 
-    async getSubjectById(id: string): Promise<SubjectDto | null> {
-        const subject = await this.subjectRepository.findById(id);
-        return subject ? this.mapToDto(subject) : null;
+    async getSubjectById(id: string): Promise<Subject | null> {
+        return await this.subjectRepository.findById(id);
     }
 
-    async getSubjectsByName(name: string): Promise<SubjectDto[]> {
-        const subjects = await this.subjectRepository.findByName(name);
-        return subjects.map(this.mapToDto);
+    async getSubjectsByName(name: string): Promise<Subject[]> {
+        return await this.subjectRepository.findByName(name);
     }
 
-    async createSubject(createSubjectDto: CreateSubjectDto): Promise<SubjectDto> {
+    async createSubject(createSubjectDto: CreateSubjectDto): Promise<Subject> {
         const subject = new Subject(
             createSubjectDto.id,
             createSubjectDto.name,
             createSubjectDto.credits
         );
-        const savedSubject = await this.subjectRepository.create(subject);
-        return this.mapToDto(savedSubject);
+        return await this.subjectRepository.create(subject);
     }
 
-    async updateSubject(id: string, updateData: Partial<CreateSubjectDto>): Promise<SubjectDto | null> {
+    async updateSubject(id: string, updateData: Partial<CreateSubjectDto>): Promise<Subject | null> {
         const existingSubject = await this.subjectRepository.findById(id);
         if (!existingSubject) {
             return null;
@@ -42,8 +39,7 @@ export class SubjectService {
             updateData.credits ?? existingSubject.credits
         );
 
-        const savedSubject = await this.subjectRepository.update(updatedSubject);
-        return this.mapToDto(savedSubject);
+        return await this.subjectRepository.update(updatedSubject);
     }
 
     async deleteSubject(id: string): Promise<boolean> {
@@ -56,16 +52,7 @@ export class SubjectService {
         return true;
     }
 
-    async getSubjectsByIds(ids: string[]): Promise<SubjectDto[]> {
-        const subjects = await this.subjectRepository.findByIds(ids);
-        return subjects.map(this.mapToDto);
-    }
-
-    private mapToDto(subject: Subject): SubjectDto {
-        return {
-            id: subject.id,
-            name: subject.name,
-            credits: subject.credits
-        };
+    async getSubjectsByIds(ids: string[]): Promise<Subject[]> {
+        return await this.subjectRepository.findByIds(ids);
     }
 }

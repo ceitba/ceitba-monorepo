@@ -2,36 +2,33 @@ import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
 import { SubjectPlanRepository } from '@/domain/itba/interfaces/repositories/subject-plan.repository.interface';
 import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
 import { ItbaApiService } from '@/domain/itba/interfaces/repositories/itba-api.service.interface';
+import { SubjectPlanServiceInterface } from '@/domain/itba/interfaces/services/subject-plan.service.interface';
 import { SubjectPlanDto, CreateSubjectPlanDto } from '@/domain/itba/dto/subjectPlan.dto';
 
-export class SubjectPlanService {
+export class SubjectPlanService implements SubjectPlanServiceInterface {
     constructor(
         private readonly subjectPlanRepository: SubjectPlanRepository,
         private readonly subjectRepository: SubjectRepository,
         private readonly itbaApiService: ItbaApiService
     ) {}
 
-    async getSubjectsByPlan(planId: string): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.subjectPlanRepository.findByPlanId(planId);
-        return subjectPlans.map(this.mapToDto);
+    async getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
+        return await this.subjectPlanRepository.findByPlanId(planId);
     }
 
-    async getSubjectsByPlanFromApi(planId: string): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.itbaApiService.getSubjectsByPlan(planId);
-        return subjectPlans.map(this.mapToDto);
+    async getSubjectsByPlanFromApi(planId: string): Promise<SubjectPlan[]> {
+        return await this.itbaApiService.getSubjectsByPlan(planId);
     }
 
-    async getSubjectPlansBySubject(subjectId: string): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.subjectPlanRepository.findBySubjectId(subjectId);
-        return subjectPlans.map(this.mapToDto);
+    async getSubjectPlansBySubject(subjectId: string): Promise<SubjectPlan[]> {
+        return await this.subjectPlanRepository.findBySubjectId(subjectId);
     }
 
-    async getSubjectPlan(planId: string, subjectId: string): Promise<SubjectPlanDto | null> {
-        const subjectPlan = await this.subjectPlanRepository.findByPlanAndSubject(planId, subjectId);
-        return subjectPlan ? this.mapToDto(subjectPlan) : null;
+    async getSubjectPlan(planId: string, subjectId: string): Promise<SubjectPlan | null> {
+        return await this.subjectPlanRepository.findByPlanAndSubject(planId, subjectId);
     }
 
-    async createSubjectPlan(createSubjectPlanDto: CreateSubjectPlanDto): Promise<SubjectPlanDto> {
+    async createSubjectPlan(createSubjectPlanDto: CreateSubjectPlanDto): Promise<SubjectPlan> {
         // Get the subject information
         const subject = await this.subjectRepository.findById(createSubjectPlanDto.subjectId);
         if (!subject) {
@@ -49,15 +46,14 @@ export class SubjectPlanService {
             subject
         );
 
-        const savedSubjectPlan = await this.subjectPlanRepository.create(subjectPlan);
-        return this.mapToDto(savedSubjectPlan);
+        return await this.subjectPlanRepository.create(subjectPlan);
     }
 
     async updateSubjectPlan(
         planId: string,
         subjectId: string,
         updateData: Partial<CreateSubjectPlanDto>
-    ): Promise<SubjectPlanDto | null> {
+    ): Promise<SubjectPlan | null> {
         const existingSubjectPlan = await this.subjectPlanRepository.findByPlanAndSubject(planId, subjectId);
         if (!existingSubjectPlan) {
             return null;
@@ -74,8 +70,7 @@ export class SubjectPlanService {
             existingSubjectPlan.subject
         );
 
-        const savedSubjectPlan = await this.subjectPlanRepository.update(updatedSubjectPlan);
-        return this.mapToDto(savedSubjectPlan);
+        return await this.subjectPlanRepository.update(updatedSubjectPlan);
     }
 
     async deleteSubjectPlan(planId: string, subjectId: string): Promise<boolean> {
@@ -88,57 +83,36 @@ export class SubjectPlanService {
         return true;
     }
 
-    async getSubjectsBySection(planId: string, section: string): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.subjectPlanRepository.findBySection(planId, section);
-        return subjectPlans.map(this.mapToDto);
+    async getSubjectsBySection(planId: string, section: string): Promise<SubjectPlan[]> {
+        return await this.subjectPlanRepository.findBySection(planId, section);
     }
 
-    async getElectiveSubjects(planId: string): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.subjectPlanRepository.findElectives(planId);
-        return subjectPlans.map(this.mapToDto);
+    async getElectiveSubjects(planId: string): Promise<SubjectPlan[]> {
+        return await this.subjectPlanRepository.findElectives(planId);
     }
 
-    async getSubjectsByYear(planId: string, year: number): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.subjectPlanRepository.findByYear(planId, year);
-        return subjectPlans.map(this.mapToDto);
+    async getSubjectsByYear(planId: string, year: number): Promise<SubjectPlan[]> {
+        return await this.subjectPlanRepository.findByYear(planId, year);
     }
 
-    async getSubjectsBySemester(planId: string, year: number, semester: number): Promise<SubjectPlanDto[]> {
-        const subjectPlans = await this.subjectPlanRepository.findBySemester(planId, year, semester);
-        return subjectPlans.map(this.mapToDto);
+    async getSubjectsBySemester(planId: string, year: number, semester: number): Promise<SubjectPlan[]> {
+        return await this.subjectPlanRepository.findBySemester(planId, year, semester);
     }
 
-    async getSubjectDependencies(planId: string, subjectId: string): Promise<SubjectPlanDto[]> {
+    async getSubjectDependencies(planId: string, subjectId: string): Promise<SubjectPlan[]> {
         const subjectPlan = await this.subjectPlanRepository.findByPlanAndSubject(planId, subjectId);
         if (!subjectPlan || !subjectPlan.hasDependencies()) {
             return [];
         }
 
-        const dependencies: SubjectPlanDto[] = [];
+        const dependencies: SubjectPlan[] = [];
         for (const depId of subjectPlan.dependencies) {
             const depSubjectPlan = await this.subjectPlanRepository.findByPlanAndSubject(planId, depId);
             if (depSubjectPlan) {
-                dependencies.push(this.mapToDto(depSubjectPlan));
+                dependencies.push(depSubjectPlan);
             }
         }
 
         return dependencies;
-    }
-
-    private mapToDto(subjectPlan: SubjectPlan): SubjectPlanDto {
-        return {
-            subjectId: subjectPlan.subjectId,
-            planId: subjectPlan.planId,
-            section: subjectPlan.section,
-            year: subjectPlan.year,
-            semester: subjectPlan.semester,
-            dependencies: [...subjectPlan.dependencies],
-            creditsRequired: subjectPlan.creditsRequired,
-            subject: {
-                id: subjectPlan.subject.id,
-                name: subjectPlan.subject.name,
-                credits: subjectPlan.subject.credits
-            }
-        };
     }
 }

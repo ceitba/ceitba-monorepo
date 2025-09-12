@@ -5,7 +5,52 @@ export enum DayOfWeek {
     THURSDAY = 'Thursday',
     FRIDAY = 'Friday',
     SATURDAY = 'Saturday',
-    SUNDAY = 'Sunday'
+    SUNDAY = 'Sunday',
+    INVALID = 'Invalid'
+}
+
+export class DayOfWeekMapper {
+    private static readonly dayMap: Record<string, DayOfWeek> = {
+        'monday': DayOfWeek.MONDAY,
+        'tuesday': DayOfWeek.TUESDAY,
+        'wednesday': DayOfWeek.WEDNESDAY,
+        'thursday': DayOfWeek.THURSDAY,
+        'friday': DayOfWeek.FRIDAY,
+        'saturday': DayOfWeek.SATURDAY,
+        'sunday': DayOfWeek.SUNDAY
+    };
+
+    public static fromString(day: string): DayOfWeek {
+        const normalizedDay = day.toLowerCase();
+        const dayOfWeek = this.dayMap[normalizedDay];
+        
+        if (!dayOfWeek) {
+            throw new Error(`Invalid day: ${day}. Valid days are: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday`);
+        }
+
+        return dayOfWeek;
+    }
+
+    public static fromStringOrNull(day: string | null): DayOfWeek | null {
+        if (!day) {
+            return null;
+        }
+        
+        try {
+            return this.fromString(day);
+        } catch {
+            return DayOfWeek.INVALID;
+        }
+    }
+
+    public static isValid(day: string): boolean {
+        const normalizedDay = day.toLowerCase();
+        return normalizedDay in this.dayMap;
+    }
+
+    public static getAllValidDays(): string[] {
+        return Object.keys(this.dayMap);
+    }
 }
 
 export class TimeSlot {
@@ -22,9 +67,10 @@ export class TimeSlot {
     }
 
     private validateTimeFormat(time: string): void {
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        // Support both HH:MM and HH:MM:SS formats
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
         if (!timeRegex.test(time)) {
-            throw new Error(`Invalid time format: ${time}. Expected HH:MM`);
+            throw new Error(`Invalid time format: ${time}. Expected HH:MM or HH:MM:SS`);
         }
     }
 

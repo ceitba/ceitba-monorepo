@@ -1,4 +1,4 @@
-import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek } from '@/domain/itba/models/classroom.model';
+import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek, DayOfWeekMapper } from '@/domain/itba/models/classroom.model';
 import { ClassroomRepository } from '@/domain/itba/interfaces/repositories/classroom.repository.interface';
 import { DatabaseClient, DatabaseFactory } from '@/shared/database';
 
@@ -64,33 +64,9 @@ export class ClassroomRepositoryImpl implements ClassroomRepository {
             timeSlot = new TimeSlot(data.hour_from, data.hour_to);
         }
 
-        let dayOfWeek: DayOfWeek | null = null;
-        if (data.day) {
-            dayOfWeek = this.mapStringToDayOfWeek(data.day);
-        }
+        const dayOfWeek = DayOfWeekMapper.fromStringOrNull(data.day);
 
         return new ClassroomSchedule(classroom, dayOfWeek, timeSlot);
     }
 
-    private mapStringToDayOfWeek(day: string): DayOfWeek {
-        const dayMap: Record<string, DayOfWeek> = {
-            'monday': DayOfWeek.MONDAY,
-            'tuesday': DayOfWeek.TUESDAY,
-            'wednesday': DayOfWeek.WEDNESDAY,
-            'thursday': DayOfWeek.THURSDAY,
-            'friday': DayOfWeek.FRIDAY,
-            'saturday': DayOfWeek.SATURDAY,
-            'sunday': DayOfWeek.SUNDAY
-        };
-
-        const normalizedDay = day.toLowerCase();
-        const dayOfWeek = dayMap[normalizedDay];
-        
-        if (!dayOfWeek) {
-            // Fallback to first value if mapping fails
-            return DayOfWeek.MONDAY;
-        }
-
-        return dayOfWeek;
-    }
 }

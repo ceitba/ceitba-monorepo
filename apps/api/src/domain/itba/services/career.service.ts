@@ -1,27 +1,25 @@
 import { Career } from '@/domain/itba/models/career.model';
 import { CareerRepository } from '@/domain/itba/interfaces/repositories/career.repository.interface';
+import { CareerServiceInterface } from '@/domain/itba/interfaces/services/career.service.interface';
 import { CareerDto, CreateCareerDto } from '@/domain/itba/dto/career.dto';
 
-export class CareerService {
+export class CareerService implements CareerServiceInterface {
     constructor(private readonly careerRepository: CareerRepository) {}
 
-    async getAllCareers(): Promise<CareerDto[]> {
-        const careers = await this.careerRepository.findAll();
-        return careers.map(this.mapToDto);
+    async getAllCareers(): Promise<Career[]> {
+        return await this.careerRepository.findAll();
     }
 
-    async getCareerById(id: string): Promise<CareerDto | null> {
-        const career = await this.careerRepository.findById(id);
-        return career ? this.mapToDto(career) : null;
+    async getCareerById(id: string): Promise<Career | null> {
+        return await this.careerRepository.findById(id);
     }
 
-    async createCareer(createCareerDto: CreateCareerDto): Promise<CareerDto> {
+    async createCareer(createCareerDto: CreateCareerDto): Promise<Career> {
         const career = new Career(createCareerDto.id, createCareerDto.name, []);
-        const savedCareer = await this.careerRepository.create(career);
-        return this.mapToDto(savedCareer);
+        return await this.careerRepository.create(career);
     }
 
-    async updateCareer(id: string, updateData: Partial<CreateCareerDto>): Promise<CareerDto | null> {
+    async updateCareer(id: string, updateData: Partial<CreateCareerDto>): Promise<Career | null> {
         const existingCareer = await this.careerRepository.findById(id);
         if (!existingCareer) {
             return null;
@@ -33,8 +31,7 @@ export class CareerService {
             existingCareer.plans
         );
 
-        const savedCareer = await this.careerRepository.update(updatedCareer);
-        return this.mapToDto(savedCareer);
+        return await this.careerRepository.update(updatedCareer);
     }
 
     async deleteCareer(id: string): Promise<boolean> {
@@ -47,44 +44,27 @@ export class CareerService {
         return true;
     }
 
-    async getCareersWithPlans(): Promise<Record<string, CareerDto>> {
-        const careersMap = await this.careerRepository.findCareersWithPlans();
-        const result: Record<string, CareerDto> = {};
-        
-        for (const [key, career] of Object.entries(careersMap)) {
-            result[key] = this.mapToDto(career);
-        }
-        
-        return result;
+    async getCareersWithPlans(): Promise<Record<string, Career>> {
+        return await this.careerRepository.findCareersWithPlans();
     }
 
-    async addPlanToCareer(careerId: string, planId: string): Promise<CareerDto | null> {
+    async addPlanToCareer(careerId: string, planId: string): Promise<Career | null> {
         const existingCareer = await this.careerRepository.findById(careerId);
         if (!existingCareer) {
             return null;
         }
 
         const updatedCareer = existingCareer.addPlan(planId);
-        const savedCareer = await this.careerRepository.update(updatedCareer);
-        return this.mapToDto(savedCareer);
+        return await this.careerRepository.update(updatedCareer);
     }
 
-    async removePlanFromCareer(careerId: string, planId: string): Promise<CareerDto | null> {
+    async removePlanFromCareer(careerId: string, planId: string): Promise<Career | null> {
         const existingCareer = await this.careerRepository.findById(careerId);
         if (!existingCareer) {
             return null;
         }
 
         const updatedCareer = existingCareer.removePlan(planId);
-        const savedCareer = await this.careerRepository.update(updatedCareer);
-        return this.mapToDto(savedCareer);
-    }
-
-    private mapToDto(career: Career): CareerDto {
-        return {
-            id: career.id,
-            name: career.name,
-            plans: [...career.plans]
-        };
+        return await this.careerRepository.update(updatedCareer);
     }
 }
