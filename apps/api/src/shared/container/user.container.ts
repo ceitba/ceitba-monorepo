@@ -1,14 +1,14 @@
 import { UserRepository, UserRepositoryImpl, UserService } from "@/domain/user";
 import { DatabaseFactory } from "@/shared/database";
 import { ContainerInterface } from "@/shared/container/container.interface";
+import { UserController } from "@/presentation/v1/controllers/user.controller";
 
 export class UserContainer implements ContainerInterface {
     private static instance: UserContainer | null = null;
 
     private _userRepository: UserRepository | null = null;
     private _userService: UserService | null = null;
-
-    // private _userController: UserController | null = null;
+    private _userController: UserController | null = null;
 
     private constructor() {}
 
@@ -32,6 +32,13 @@ export class UserContainer implements ContainerInterface {
             this._userService = new UserService(this.userRepository);
         }
         return this._userService;
+    }
+
+    get userController(): UserController {
+        if (!this._userController) {
+            this._userController = new UserController(this.userService);
+        }
+        return this._userController;
     }
 
     reset(): void {

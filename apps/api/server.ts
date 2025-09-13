@@ -11,6 +11,7 @@ import { setupSwagger } from "@/docs/swagger-setup";
 import { ItbaContainer } from "@/shared/container/itba.container";
 import { ApiFactory } from "@/shared/external-apis";
 import { ItbaApiServiceImpl } from "@/domain/itba/repositories/itba-api.service.impl";
+import createUserRoutes from "@/presentation/v1/routes/user.routes";
 // import { UpdateCommissions, UpdateSubjects } from "./v1/itba/itbagw/update";
 
 const app = express();
@@ -79,6 +80,8 @@ app.get("/api/health", (req: Request, res: Response) => {
 
 const itbaRouter = createItbaRoutes();
 app.use('/api/v1/itba', itbaRouter);
+const userRouter = createUserRoutes();
+app.use('/api/v1/users', userRouter);
 
 app.use('*', (req: Request, res: Response) => {
     res.status(404).json({
