@@ -1,0 +1,32 @@
+services:
+  # Development API service
+  ceitba-api-dev:
+    build:
+      context: ../../  # Build from project root
+      dockerfile: infrastructure/docker/Dockerfile
+      target: development
+    container_name: ceitba-api-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../:/app  # Mount project root
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://ceitba_user:ceitba_password@postgres:5432/ceitba_db
+    env_file:
+      - ../../.env
+    networks:
+      - ceitba-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ../../src
+          target: /app/src
+        - action: rebuild
+          path: ../../package*.json
