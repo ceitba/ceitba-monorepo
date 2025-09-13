@@ -1,6 +1,7 @@
 import { DatabaseClient } from './database.interface';
 import { SupabaseDatabaseClient } from './supabase.client';
 
+// TODO: Check if this is a correct factory implementation
 export class DatabaseFactory {
     private static instance: DatabaseClient | null = null;
     
@@ -8,7 +9,8 @@ export class DatabaseFactory {
         if (this.instance) {
             return this.instance;
         }
-        
+       
+        // TODO: Change to PrismaDatabaseClient
         this.instance = new SupabaseDatabaseClient();
         return this.instance;
     }
@@ -25,6 +27,7 @@ export class DatabaseFactory {
     }
     
     static createNew(): DatabaseClient {
+        // TODO: Change to PrismaDatabaseClient
         return new SupabaseDatabaseClient();
     }
 }
