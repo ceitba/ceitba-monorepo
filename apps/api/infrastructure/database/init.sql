@@ -1,2 +1,0 @@
--- TODO: Add schemas, triggers, indexes, views, functions, and tables
--- FROM supabase
