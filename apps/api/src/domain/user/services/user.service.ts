@@ -1,12 +1,15 @@
+import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@/domain/user/models/user.model';
 import { UserRole } from '@/domain/user/models/user-role.model';
 import { UserRepository } from '@/domain/user/interfaces/user.repository.interface';
 import { UserServiceInterface } from '@/domain/user/interfaces/user.service.interface';
 import { CreateUserDto, UpdateUserDto } from '@/domain/user/dto/create-user.dto';
 import { UUID } from 'crypto';
+import { USER_REPOSITORY } from '@/shared/constants/injection-tokens';
 
+@Injectable()
 export class UserService implements UserServiceInterface {
-    constructor(private readonly userRepository: UserRepository) {}
+    constructor(@Inject(USER_REPOSITORY) private readonly userRepository: UserRepository) {}
 
     async createUser(createUserDto: CreateUserDto): Promise<User> {
         // Create a new User domain object

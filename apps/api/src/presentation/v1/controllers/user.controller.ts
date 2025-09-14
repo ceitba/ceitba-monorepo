@@ -1,26 +1,58 @@
-import { Request, Response, NextFunction } from "express";
-import { CreateUserDto, UserService } from "@/domain/user";
-import { CreateUserRequest } from "@/shared/validation/user.schemas";
+import { Controller, Get, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { UserService } from "@/domain/user/services/user.service";
+import { CreateUserDto } from "../dto/create-user.dto";
 
+@ApiTags('Users')
+@Controller('v1/users')
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const createUserRequest = req.body as CreateUserRequest;
-            const user = await this.userService.createUser(createUserRequest);
-            res.status(201).json(user);
-        } catch (error) { 
-            next(error);
+    @Post('create')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a new user' })
+    @ApiBody({ type: CreateUserDto })
+    @ApiResponse({ 
+        status: 201, 
+        description: 'User created successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                id: { type: 'string' },
+                email: { type: 'string' },
+                name: { type: 'string' },
+                file_number: { type: 'number' },
+                career_id: { type: 'string' },
+                plan: { type: 'string' },
+            }
         }
+    })
+    @ApiResponse({ status: 400, description: 'Invalid request data' })
+    async createUser(@Body() createUserDto: CreateUserDto) {
+        return await this.userService.createUser(createUserDto);
     }
 
-    async getAllUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const users = await this.userService.getAllUsers();
-            res.status(200).json(users);
-        } catch (error) {
-            next(error);
+    @Get()
+    @ApiOperation({ summary: 'Get all users' })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'List of all users',
+        schema: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string' },
+                    email: { type: 'string' },
+                    name: { type: 'string' },
+                    file_number: { type: 'number' },
+                    career_id: { type: 'string' },
+                    plan: { type: 'string' },
+                }
+            }
         }
+    })
+    async getAllUsers() {
+        return await this.userService.getAllUsers();
     }
 }
