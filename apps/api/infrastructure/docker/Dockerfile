@@ -12,6 +12,8 @@ RUN npm ci --only=production=false
 
 COPY . .
 
+RUN npm run build
+
 # Stage 2: Production runtime
 FROM node:20-alpine AS production
 
@@ -24,7 +26,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
-COPY --from=builder --chown=ceitba:nodejs /app .
+COPY --from=builder --chown=ceitba:nodejs /app/dist ./dist
+COPY --from=builder --chown=ceitba:nodejs /app/package*.json ./
 
 RUN rm -rf tests/ docs/ .git/ .github/ *.md
 
@@ -36,7 +39,7 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "start:prod"]
 
 # Stage 3: Development environment
 FROM node:20-alpine AS development
@@ -58,4 +61,4 @@ USER ceitba
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start:dev"]
