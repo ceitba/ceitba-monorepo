@@ -1,10 +1,13 @@
+import { Injectable, Inject } from '@nestjs/common';
 import { Career } from '@/domain/itba/models/career.model';
 import { CareerRepository } from '@/domain/itba/interfaces/repositories/career.repository.interface';
 import { CareerServiceInterface } from '@/domain/itba/interfaces/services/career.service.interface';
 import { CareerDto, CreateCareerDto } from '@/domain/itba/dto/career.dto';
+import { CAREER_REPOSITORY } from '@/shared/constants/injection-tokens';
 
+@Injectable()
 export class CareerService implements CareerServiceInterface {
-    constructor(private readonly careerRepository: CareerRepository) {}
+    constructor(@Inject(CAREER_REPOSITORY) private readonly careerRepository: CareerRepository) {}
 
     async getAllCareers(): Promise<Career[]> {
         return await this.careerRepository.findAll();

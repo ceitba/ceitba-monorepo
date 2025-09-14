@@ -1,3 +1,4 @@
+import { Injectable, Inject } from '@nestjs/common';
 import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
 import { SubjectPlanRepository } from '@/domain/itba/interfaces/repositories/subject-plan.repository.interface';
 import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
@@ -5,12 +6,14 @@ import { ItbaApiService } from '@/domain/itba/interfaces/repositories/itba-api.s
 import { SubjectPlanServiceInterface } from '@/domain/itba/interfaces/services/subject-plan.service.interface';
 import { SubjectPlanDto, CreateSubjectPlanDto } from '@/domain/itba/dto/subjectPlan.dto';
 import { ValidationException, ResourceNotFoundException } from '@/shared/exceptions/domain.exceptions';
+import { SUBJECT_PLAN_REPOSITORY, SUBJECT_REPOSITORY, ITBA_API_SERVICE } from '@/shared/constants/injection-tokens';
 
+@Injectable()
 export class SubjectPlanService implements SubjectPlanServiceInterface {
     constructor(
-        private readonly subjectPlanRepository: SubjectPlanRepository,
-        private readonly subjectRepository: SubjectRepository,
-        private readonly itbaApiService: ItbaApiService
+        @Inject(SUBJECT_PLAN_REPOSITORY) private readonly subjectPlanRepository: SubjectPlanRepository,
+        @Inject(SUBJECT_REPOSITORY) private readonly subjectRepository: SubjectRepository,
+        @Inject(ITBA_API_SERVICE) private readonly itbaApiService: ItbaApiService
     ) {}
 
     async getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
