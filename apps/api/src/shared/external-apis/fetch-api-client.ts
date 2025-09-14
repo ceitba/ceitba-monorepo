@@ -122,7 +122,7 @@ export class FetchApiClient implements ApiClient {
         }
 
         if (contentType?.includes('application/json')) {
-            return response.json();
+            return response.json() as Promise<T>;
         }
 
         if (contentType?.includes('text/')) {

@@ -1,0 +1,146 @@
+/* CEITBA API Swagger UI Custom Styles */
+
+/* Hide Swagger branding */
+.swagger-ui .topbar { 
+  display: none !important; 
+}
+
+/* Main info section styling */
+.swagger-ui .info { 
+  margin: 20px 0; 
+}
+
+.swagger-ui .info .title { 
+  color: #1976d2; 
+  font-size: 2.5em;
+  font-weight: bold;
+}
+
+.swagger-ui .info .description { 
+  color: #424242; 
+  font-size: 1.1em;
+  margin-top: 10px;
+}
+
+/* Scheme container styling */
+.swagger-ui .scheme-container { 
+  background: #f5f5f5; 
+  padding: 15px; 
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+/* HTTP Method color coding */
+.swagger-ui .opblock.opblock-get { 
+  border-color: #61affe; 
+  background: rgba(97, 175, 254, 0.1);
+}
+
+.swagger-ui .opblock.opblock-post { 
+  border-color: #49cc90; 
+  background: rgba(73, 204, 144, 0.1);
+}
+
+.swagger-ui .opblock.opblock-put { 
+  border-color: #fca130; 
+  background: rgba(252, 161, 48, 0.1);
+}
+
+.swagger-ui .opblock.opblock-delete { 
+  border-color: #f93e3e; 
+  background: rgba(249, 62, 62, 0.1);
+}
+
+.swagger-ui .opblock.opblock-patch { 
+  border-color: #50e3c2; 
+  background: rgba(80, 227, 194, 0.1);
+}
+
+/* Enhanced typography */
+.swagger-ui .opblock-summary { 
+  font-weight: 600;
+}
+
+/* Authorization button styling */
+.swagger-ui .btn.authorize { 
+  background: #1976d2;
+  border-color: #1976d2;
+  color: white;
+}
+
+.swagger-ui .btn.authorize:hover { 
+  background: #1565c0;
+  border-color: #1565c0;
+}
+
+/* Response status styling */
+.swagger-ui .response-col_status { 
+  font-weight: bold;
+}
+
+/* Parameter styling */
+.swagger-ui .parameters-col_description { 
+  color: #424242;
+}
+
+/* Model section styling */
+.swagger-ui .model-box { 
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+/* Try it out button */
+.swagger-ui .btn.try-out__btn { 
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+}
+
+.swagger-ui .btn.try-out__btn:hover { 
+  background: #1565c0;
+  border-color: #1565c0;
+}
+
+/* Execute button */
+.swagger-ui .btn.execute { 
+  background: #49cc90;
+  color: white;
+  border-color: #49cc90;
+}
+
+.swagger-ui .btn.execute:hover { 
+  background: #3db87a;
+  border-color: #3db87a;
+}
+
+/* Clear button */
+.swagger-ui .btn.btn-clear { 
+  background: #f93e3e;
+  color: white;
+  border-color: #f93e3e;
+}
+
+.swagger-ui .btn.btn-clear:hover { 
+  background: #e53935;
+  border-color: #e53935;
+}
+
+/* Scrollbar styling for webkit browsers */
+.swagger-ui ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
