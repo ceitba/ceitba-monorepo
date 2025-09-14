@@ -5,14 +5,176 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public"]
 }
 
-// TODO: Complete
+// SCHEMA PUBLIC
 model User {
-  id                         String    @id @default(uuid()) @db.Uuid
-  email                      String    @unique @db.VarChar(255)
-  
-  @@map("users")
+  id                      String       @id @default(uuid()) @db.Uuid
+  email       String       @unique @db.VarChar(255)
+  fileNumber               Int?      @unique @map("file_number") @db.Integer
+  careerId                 String?    @map("career_id") @db.Uuid
+  plan                     String?   @map("plan") @db.VarChar(255)
+  name                     String?   @map("name") @db.VarChar(255)
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  preferedLanguage         String?   @map("prefered_language") @db.VarChar(5) @default("es")
+
+  ceitbaStaff              CeitbaStaff?
+
+  @@index([email])
+  @@index([fileNumber])
+  @@index([careerId])
+  @@index([plan])
+  @@index([name])
+  @@map("user")
+  @@schema("public")
 }
 
-// TODO: Add other models
+
+model Career {
+  id                       String @id @db.VarChar(25)
+  name                     String @db.VarChar(255)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  plans                    Plan[]
+
+  @@index([id])
+  @@map("careers")
+  @@schema("public")
+}
+
+
+model Plan {
+  id                       String   @id @db.VarChar(25)
+  careerId                 String   @map("career_id") @db.VarChar(25)
+  name                     String?  @db.VarChar(255)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  career                   Career   @relation(fields: [careerId], references: [id])
+
+  @@index([careerId])
+  @@map("plan")
+  @@schema("public")
+}
+
+
+model Subject{
+  id          String @id @db.VarChar(25)
+  name        String @db.VarChar(255)
+  credits     Int @db.Integer
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([id])
+  @@map("subject")
+  @@schema("public")
+}
+
+// 93.12 A
+// 93.12 B
+// 93.12 C
+model Comission {
+  id String @id @default(uuid()) @db.Uuid
+  subjectCode String @db.VarChar(10) @map("subject_code")
+  commisionName String @db.VarChar(10) @map("commision_name")
+  courseStart DateTime @db.Date @map("course_start")
+  courseEnd   DateTime @db.Date @map("course_end")
+  enrolledStudents Int @db.Integer @map("enrolled_students")
+  quota Int @db.Integer
+  subjectType SubjectType @map("subject_type") @default(SEMESTRAL)
+  
+  times CommisionTime[]
+
+  @@map("commission") 
+  @@schema("public")
+}
+
+enum SubjectType {
+  ANNUAL
+  SEMESTRAL
+  SAMINARY
+
+  @@map("subject_type")
+  @@schema("public")
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+
+  @@map("day_of_week")
+  @@schema("public")
+}
+
+model PlanSubject {
+  dependencies String[] @db.VarChar(255)
+  section String @db.VarChar(255)
+  subjectId String @map("subject_id") @db.VarChar(32)
+  planId String @map("plan_id") @db.VarChar(32)
+  year Int @db.Integer
+  semester Int @db.Integer
+  creditsRequired Int @map("credits_required") @db.Integer
+
+
+  @@id([subjectId, planId])
+  @@map("plan_subject")
+  @@schema("public")
+}
+
+model CommisionTime {
+  courseId String @map("course_id") @db.Uuid
+  day      DayOfWeek
+  classroom String @db.VarChar(50)
+  building  String @db.VarChar(50)
+  hourFrom DateTime @map("hour_from") @db.Timestamptz
+  hourTo   DateTime @map("hour_to") @db.Timestamptz
+
+  comission Comission @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([courseId, day, hourFrom])
+  @@map("commision_time")
+  @@schema("public")
+}
+
+enum CeitbaBranch {
+  IT
+  MEDIA
+  INFRASTRUCTURE
+  NAUTICAL
+  EVENTS
+  DIRECTIVES
+
+  @@map("ceitba_branch")
+  @@schema("public")
+}
+
+enum CeitbaStaffRole {
+  PRESIDENT
+  VICEPRESIDENT
+  SECRETARY
+  TREASURER
+  LEADER
+  MEMBER
+
+  @@map("ceitba_staff_role")
+  @@schema("public")
+}
+
+
+model CeitbaStaff {
+  userId String @map("user_id") @id @db.Uuid
+  branch CeitbaBranch @map("branch")
+  role CeitbaStaffRole @map("role") @default(MEMBER)
+  start DateTime @map("start") @db.Timestamptz
+  end DateTime @map("end") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("ceitba_staff")
+  @@schema("public")
+}

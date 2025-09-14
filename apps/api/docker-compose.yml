@@ -3,6 +3,9 @@ services:
     extends:
       file: infrastructure/docker/docker-compose.base.yml
       service: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ceitba_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceitba_password}
 
   ceitba-api-dev:
     extends:

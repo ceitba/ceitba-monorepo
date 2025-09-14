@@ -3,19 +3,17 @@ services:
     image: postgres:16-alpine
     container_name: ceitba-postgres
     environment:
-      POSTGRES_DB: ceitba_db
-      POSTGRES_USER: ceitba_user
-      POSTGRES_PASSWORD: ceitba_password
+      POSTGRES_DB: ${POSTGRES_DB:-ceitba_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceitba_password}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ceitba-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ceitba_user -d ceitba_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-ceitba_db}"]
       interval: 30s
       timeout: 10s
       retries: 3

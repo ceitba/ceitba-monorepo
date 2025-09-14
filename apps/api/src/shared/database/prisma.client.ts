@@ -170,26 +170,12 @@ export class PrismaDatabaseClient implements DatabaseClient {
     }
 
     async transaction<T>(callback: (client: DatabaseClient) => Promise<T>): Promise<T> {
-        return this.prisma.$transaction(async (prismaTransaction: PrismaClient) => {
-            const transactionClient = new PrismaDatabaseClient();
-            // TODO: Fix this with transaction client
-            (transactionClient as any).prisma = prismaTransaction;
-            return callback(transactionClient);
-        });
+        // TODO: Implement transaction
+        return callback(this);
     }
 
     private getModel(table: string): any {
-        const modelMap: Record<string, any> = {
-            users: this.prisma.user,
-            proposals: this.prisma.proposal,
-        };
-
-        const model = modelMap[table];
-        if (!model) {
-            throw new Error(`Unknown table: ${table}`);
-        }
-
-        return model;
+        return this.prisma[table as keyof PrismaClient];
     }
 
     private buildWhereClause(options: QueryOptions): any {
