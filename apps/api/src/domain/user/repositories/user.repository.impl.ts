@@ -3,12 +3,13 @@ import { UserDTO } from "@/domain/user/dto/user.dto";
 import { UserRepository } from "@/domain/user/interfaces/user.repository.interface";
 import { UserRole } from "@/domain/user/models/user-role.model";
 import { User } from "@/domain/user/models/user.model";
+import { PrismaService } from "@/shared/database/prisma.service";
 
 export class UserRepositoryImpl implements UserRepository {
-    private readonly db: DatabaseClient;
+    private readonly prisma: PrismaService;
 
-    constructor(db?: DatabaseClient) {
-        this.db = db || DatabaseFactory.getInstance();
+    constructor(prisma: PrismaService) {
+        this.prisma = prisma;
     }
 
     async create(user: User): Promise<User> {

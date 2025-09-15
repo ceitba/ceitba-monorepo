@@ -1,13 +1,15 @@
 import { Subject } from '@/domain/itba/models/subject.model';
 import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
 import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
+import { PrismaService } from '@/shared/database/prisma.service';
 
 export class SubjectRepositoryImpl implements SubjectRepository {
-    private readonly db: DatabaseClient;
+    private readonly prisma: PrismaService;
 
-    constructor(db?: DatabaseClient) {
-        this.db = db || DatabaseFactory.getInstance();
+    constructor(prisma: PrismaService) {
+        this.prisma = prisma;
     }
+    
     async findAll(): Promise<Subject[]> {
         const result = await this.db.select<any>('subject');
 

@@ -3,12 +3,14 @@ import { CareerRepository } from '@/domain/itba/interfaces/repositories/career.r
 import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
 import { CareerAlreadyExistsException } from '@/domain/itba/exceptions/itba.exceptions';
 import { GenericDomainException } from '@/shared/exceptions';
+import { PrismaService } from '@/shared/database/prisma.service';
 
 export class CareerRepositoryImpl implements CareerRepository {
-    private readonly db: DatabaseClient;
+    
+    private readonly prisma: PrismaService;
 
-    constructor(db?: DatabaseClient) {
-        this.db = db || DatabaseFactory.getInstance();
+    constructor(prisma: PrismaService) {
+        this.prisma = prisma;
     }
 
     async findAll(): Promise<Career[]> {

@@ -73,17 +73,17 @@ model Subject{
 // 93.12 A
 // 93.12 B
 // 93.12 C
-model Comission {
+model Commission {
   id String @id @default(uuid()) @db.Uuid
   subjectCode String @db.VarChar(10) @map("subject_code")
-  commisionName String @db.VarChar(10) @map("commision_name")
+  commissionName String @db.VarChar(10) @map("commission_name")
   courseStart DateTime @db.Date @map("course_start")
   courseEnd   DateTime @db.Date @map("course_end")
   enrolledStudents Int @db.Integer @map("enrolled_students")
   quota Int @db.Integer
   subjectType SubjectType @map("subject_type") @default(SEMESTRAL)
   
-  times CommisionTime[]
+  times CommissionTime[]
 
   @@map("commission") 
   @@schema("public")
@@ -126,7 +126,7 @@ model PlanSubject {
   @@schema("public")
 }
 
-model CommisionTime {
+model CommissionTime {
   courseId String @map("course_id") @db.Uuid
   day      DayOfWeek
   classroom String @db.VarChar(50)
@@ -134,10 +134,10 @@ model CommisionTime {
   hourFrom DateTime @map("hour_from") @db.Timestamptz
   hourTo   DateTime @map("hour_to") @db.Timestamptz
 
-  comission Comission @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  commission Commission @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([courseId, day, hourFrom])
-  @@map("commision_time")
+  @@map("commission_time")
   @@schema("public")
 }
 

@@ -1,34 +1,46 @@
 import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek, DayOfWeekMapper } from '@/domain/itba/models/classroom.model';
 import { ClassroomRepository } from '@/domain/itba/interfaces/repositories/classroom.repository.interface';
 import { DatabaseClient, DatabaseFactory } from '@/shared/database';
+import { PrismaService } from '@/shared/database/prisma.service';
 
 export class ClassroomRepositoryImpl implements ClassroomRepository {
-    private readonly db: DatabaseClient;
 
-    constructor(db?: DatabaseClient) {
-        this.db = db || DatabaseFactory.getInstance();
+    private readonly prisma: PrismaService;
+    
+    constructor(prisma: PrismaService) {
+        this.prisma = prisma;
     }
 
     async findAllClassrooms(): Promise<ClassroomSchedule[]> {
-        const result = await this.db.rpc<any[]>('get_all_classrooms');
+        const result = await this.prisma.commissionTime.findMany({
+            distinct: ['building', 'classroom'],  
+            select: { building: true, classroom: true },
+            orderBy: [{ building: 'asc' }, { classroom: 'asc' }],
+            });
 
-        if (result.error) {
-            throw new Error(`Error fetching all classrooms: ${result.error.message}`);
-        }
-
-        return result.data!.map(this.mapToClassroomSchedule);
+        return result.map(this.mapToClassroomSchedule);
     }
 
     async findOccupiedClassrooms(currentSemester: boolean = true): Promise<ClassroomSchedule[]> {
-        const result = await this.db.rpc<any[]>('get_classrooms', { 
-            current_semester: currentSemester 
+
+        const today = new Date();
+
+        const result = await this.prisma.commissionTime.findMany({ 
+           where: currentSemester
+            ? {
+            commission: {
+                courseStart: { lte: today },
+                courseEnd:   { gte: today },
+                },
+            }
+        : {},
+        select: { building: true, classroom: true, day: true, hourFrom: true, hourTo: true
+        },
+        distinct: ['building', 'classroom', 'day', 'hourFrom', 'hourTo'],
+        orderBy: [{ building: 'asc' }, { classroom: 'asc' }, { day: 'asc' }, { hourFrom: 'asc' }, { hourTo: 'asc' } ],
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching occupied classrooms: ${result.error.message}`);
-        }
-
-        return result.data!.map(this.mapToClassroomSchedule);
+        return result.map(this.mapToClassroomSchedule);
     }
 
     async findByBuilding(building: string): Promise<ClassroomSchedule[]> {
