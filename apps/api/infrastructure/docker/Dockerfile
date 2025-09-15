@@ -12,6 +12,8 @@ RUN npm ci --only=production=false
 
 COPY . .
 
+RUN npx prisma generate
+
 RUN npm run build
 
 # Stage 2: Production runtime
@@ -28,6 +30,8 @@ RUN npm ci --only=production && npm cache clean --force
 
 COPY --from=builder --chown=ceitba:nodejs /app/dist ./dist
 COPY --from=builder --chown=ceitba:nodejs /app/package*.json ./
+COPY --from=builder --chown=ceitba:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
 
 RUN rm -rf tests/ docs/ .git/ .github/ *.md
 
@@ -55,6 +59,9 @@ WORKDIR /app
 COPY package*.json ./
 
 RUN npm ci
+
+COPY prisma ./prisma
+RUN npx prisma generate
 
 RUN chown -R ceitba:nodejs /app
 USER ceitba

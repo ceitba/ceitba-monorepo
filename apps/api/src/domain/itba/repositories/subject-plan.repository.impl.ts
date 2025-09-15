@@ -1,6 +1,8 @@
 import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
 import { Subject } from '@/domain/itba/models/subject.model';
 import { SubjectPlanRepository } from '@/domain/itba/interfaces/repositories/subject-plan.repository.interface';
+import { SubjectPlanNotFoundException, SubjectPlanAlreadyExistsException, ForeignKeyConstraintViolationException } from '@/domain/itba/exceptions/itba.exceptions';
+import { GenericDomainException } from '@/shared/exceptions';
 import { PrismaService } from '@/shared/database/prisma.service';
 
 export class SubjectPlanRepositoryImpl implements SubjectPlanRepository {
@@ -11,249 +13,332 @@ export class SubjectPlanRepositoryImpl implements SubjectPlanRepository {
     }
 
     async findAll(): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            orderBy: [{ planId: 'asc' }, { subjectId: 'asc' }]
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subject plans: ${result.error.message}`);
-        }
+        // Get all unique subject IDs
+        const subjectIds = [...new Set(planSubjects.map(ps => ps.subjectId))];
+        
+        // Fetch 
+        const subjects = await this.prisma.subject.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true, credits: true }
+        });
 
-        return result.data!.map(this.mapToSubjectPlan);
+      
+        const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subjectMap.get(ps.subjectId)!));
     }
 
     async findByPlanId(planId: string): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            eq: { plan_id: planId },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            where: { planId },
+            orderBy: { subjectId: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subject plans by plan ID: ${result.error.message}`);
+        if (planSubjects.length === 0) {
+            return [];
         }
 
-        return result.data!.map(this.mapToSubjectPlan);
+        const subjectIds = planSubjects.map(ps => ps.subjectId);
+        
+        const subjects = await this.prisma.subject.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true, credits: true }
+        });
+
+        const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subjectMap.get(ps.subjectId)!));
     }
 
     async findBySubjectId(subjectId: string): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            eq: { subject_id: subjectId },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            where: { subjectId },
+            orderBy: { planId: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subject plans by subject ID: ${result.error.message}`);
+        if (planSubjects.length === 0) {
+            return [];
         }
 
-        return result.data!.map(this.mapToSubjectPlan);
+        const subject = await this.prisma.subject.findUnique({
+            where: { id: subjectId },
+            select: { id: true, name: true, credits: true }
+        });
+
+        if (!subject) {
+            throw new Error(`Subject with ID ${subjectId} not found`);
+        }
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subject));
     }
 
     async findByPlanAndSubject(planId: string, subjectId: string): Promise<SubjectPlan | null> {
-        const result = await this.db.selectOne<any>('plan_subject', {
-            select: '*',
-            eq: { plan_id: planId, subject_id: subjectId },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubject = await this.prisma.planSubject.findUnique({
+            where: {
+                subjectId_planId: {
+                    subjectId,
+                    planId
+                }
+            }
         });
 
-        if (result.error) {
-            if (result.error.isNotFound()) {
-                return null;
-            }
-            throw new Error(`Error fetching subject plan: ${result.error.message}`);
-        }
-
-        if (!result.data) {
+        if (!planSubject) {
             return null;
         }
 
-        return this.mapToSubjectPlan(result.data);
+        const subject = await this.prisma.subject.findUnique({
+            where: { id: subjectId },
+            select: { id: true, name: true, credits: true }
+        });
+
+        if (!subject) {
+            throw new Error(`Subject with ID ${subjectId} not found`);
+        }
+
+        return this.mapToSubjectPlan(planSubject, subject);
     }
 
     async create(subjectPlan: SubjectPlan): Promise<SubjectPlan> {
-        const result = await this.db.insert<any>('plan_subject', {
+        const planSubjectResult = await this.prisma.planSubject.create({
             data: {
-                subject_id: subjectPlan.subjectId,
-                plan_id: subjectPlan.planId,
+                subjectId: subjectPlan.subjectId,
+                planId: subjectPlan.planId,
                 section: subjectPlan.section,
                 year: subjectPlan.year,
                 semester: subjectPlan.semester,
                 dependencies: subjectPlan.dependencies,
-                credits_required: subjectPlan.creditsRequired
+                creditsRequired: subjectPlan.creditsRequired
+            }
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2002':
+                    throw new SubjectPlanAlreadyExistsException(
+                        `Subject plan for plan ${subjectPlan.planId} and subject ${subjectPlan.subjectId} already exists`, 
+                        err
+                    );
+                case 'P2003':
+                    throw new ForeignKeyConstraintViolationException(
+                        `Invalid foreign key reference in subject plan`, 
+                        err
+                    );
+                default:
+                    throw new GenericDomainException(`Failed to create subject plan`, err);
             }
         });
 
-        if (result.error) {
-            throw new Error(`Error creating subject plan: ${result.error.message}`);
+        // Fetch the subject
+        const subject = await this.prisma.subject.findUnique({
+            where: { id: subjectPlan.subjectId },
+            select: { id: true, name: true, credits: true }
+        });
+
+        if (!subject) {
+            throw new Error(`Subject with ID ${subjectPlan.subjectId} not found`);
         }
 
-        const insertedData = Array.isArray(result.data) ? result.data[0] : result.data;
-        
-        // Now fetch the created record with the joined subject data
-        const createdRecord = await this.findByPlanAndSubject(
-            subjectPlan.planId, 
-            subjectPlan.subjectId
-        );
-
-        if (!createdRecord) {
-            throw new Error('Failed to retrieve created subject plan');
-        }
-
-        return createdRecord;
+        return this.mapToSubjectPlan(planSubjectResult, subject);
     }
 
     async update(subjectPlan: SubjectPlan): Promise<SubjectPlan> {
-        const result = await this.db.update<any>('plan_subject', {
+        const planSubjectResult = await this.prisma.planSubject.update({
+            where: {
+                subjectId_planId: {
+                    subjectId: subjectPlan.subjectId,
+                    planId: subjectPlan.planId
+                }
+            },
             data: {
                 section: subjectPlan.section,
                 year: subjectPlan.year,
                 semester: subjectPlan.semester,
                 dependencies: subjectPlan.dependencies,
-                credits_required: subjectPlan.creditsRequired
-            },
-            where: { 
-                plan_id: subjectPlan.planId,
-                subject_id: subjectPlan.subjectId 
+                creditsRequired: subjectPlan.creditsRequired
+            }
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2025':
+                    throw new SubjectPlanNotFoundException(
+                        subjectPlan.planId,
+                        subjectPlan.subjectId,
+                        err
+                    );
+                case 'P2002':
+                    throw new SubjectPlanAlreadyExistsException(
+                        `Subject plan for plan ${subjectPlan.planId} and subject ${subjectPlan.subjectId} already exists`, 
+                        err
+                    );
+                case 'P2003':
+                    throw new ForeignKeyConstraintViolationException(
+                        `Invalid foreign key reference in subject plan`, 
+                        err
+                    );
+                default:
+                    throw new GenericDomainException('Failed to update subject plan', err);
             }
         });
 
-        if (result.error) {
-            throw new Error(`Error updating subject plan: ${result.error.message}`);
+        const subject = await this.prisma.subject.findUnique({
+            where: { id: subjectPlan.subjectId },
+            select: { id: true, name: true, credits: true }
+        });
+
+        if (!subject) {
+            throw new Error(`Subject with ID ${subjectPlan.subjectId} not found`);
         }
 
-        // Fetch the updated record with joined subject data
-        const updatedRecord = await this.findByPlanAndSubject(
-            subjectPlan.planId,
-            subjectPlan.subjectId
-        );
-
-        if (!updatedRecord) {
-            throw new Error('Failed to retrieve updated subject plan');
-        }
-
-        return updatedRecord;
+        return this.mapToSubjectPlan(planSubjectResult, subject);
     }
 
     async delete(planId: string, subjectId: string): Promise<void> {
-        const result = await this.db.delete('plan_subject', {
-            where: { 
-                plan_id: planId,
-                subject_id: subjectId 
+        await this.prisma.planSubject.delete({
+            where: {
+                subjectId_planId: {
+                    subjectId,
+                    planId
+                }
+            }
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2025':
+                    throw new SubjectPlanNotFoundException(
+                        planId,
+                        subjectId,
+                        err
+                    );
+                case 'P2003':
+                    throw new ForeignKeyConstraintViolationException(
+                        `Cannot delete subject plan: it has related records`, 
+                        err
+                    );
+                default:
+                    throw new GenericDomainException('Failed to delete subject plan', err);
             }
         });
-
-        if (result.error) {
-            throw new Error(`Error deleting subject plan: ${result.error.message}`);
-        }
     }
 
     async findBySection(planId: string, section: string): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            eq: { plan_id: planId, section: section },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            where: { 
+                planId, 
+                section 
+            },
+            orderBy: { subjectId: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subject plans by section: ${result.error.message}`);
+        if (planSubjects.length === 0) {
+            return [];
         }
 
-        return result.data!.map(this.mapToSubjectPlan);
+        const subjectIds = planSubjects.map(ps => ps.subjectId);
+        
+        const subjects = await this.prisma.subject.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true, credits: true }
+        });
+
+        const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subjectMap.get(ps.subjectId)!));
     }
 
     async findElectives(planId: string): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            eq: { plan_id: planId },
-            is: { year: null, semester: null },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            where: { 
+                planId,
+                year: null,
+                semester: null
+            },
+            orderBy: { subjectId: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching elective subjects: ${result.error.message}`);
+        if (planSubjects.length === 0) {
+            return [];
         }
 
-        return result.data!.map(this.mapToSubjectPlan);
+        const subjectIds = planSubjects.map(ps => ps.subjectId);
+        
+        const subjects = await this.prisma.subject.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true, credits: true }
+        });
+
+        const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subjectMap.get(ps.subjectId)!));
     }
 
     async findByYear(planId: string, year: number): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            eq: { plan_id: planId, year: year },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            where: { 
+                planId, 
+                year 
+            },
+            orderBy: [{ semester: 'asc' }, { subjectId: 'asc' }]
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subject plans by year: ${result.error.message}`);
+        if (planSubjects.length === 0) {
+            return [];
         }
 
-        return result.data!.map(this.mapToSubjectPlan);
+        const subjectIds = planSubjects.map(ps => ps.subjectId);
+        
+        const subjects = await this.prisma.subject.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true, credits: true }
+        });
+
+        const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subjectMap.get(ps.subjectId)!));
     }
 
     async findBySemester(planId: string, year: number, semester: number): Promise<SubjectPlan[]> {
-        const result = await this.db.select<any>('plan_subject', {
-            select: '*',
-            eq: { plan_id: planId, year: year, semester: semester },
-            joins: [{
-                table: 'subject',
-                foreignKey: 'subject_id',
-                select: 'id, name, credits'
-            }]
+        const planSubjects = await this.prisma.planSubject.findMany({
+            where: { 
+                planId, 
+                year, 
+                semester 
+            },
+            orderBy: { subjectId: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subject plans by semester: ${result.error.message}`);
+        if (planSubjects.length === 0) {
+            return [];
         }
 
-        return result.data!.map(this.mapToSubjectPlan);
+        const subjectIds = planSubjects.map(ps => ps.subjectId);
+        
+        const subjects = await this.prisma.subject.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true, credits: true }
+        });
+
+        const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+        return planSubjects.map(ps => this.mapToSubjectPlan(ps, subjectMap.get(ps.subjectId)!));
     }
 
-    private mapToSubjectPlan(data: any): SubjectPlan {
+    private mapToSubjectPlan(planSubjectData: any, subjectData: any): SubjectPlan {
         const subject = new Subject(
-            data.subject.id,
-            data.subject.name,
-            data.subject.credits
+            subjectData.id,
+            subjectData.name,
+            subjectData.credits
         );
 
         return new SubjectPlan(
-            data.subject_id,
-            data.plan_id,
-            data.section,
-            data.year,
-            data.semester,
-            data.dependencies || [],
-            data.credits_required,
+            planSubjectData.subjectId,
+            planSubjectData.planId,
+            planSubjectData.section,
+            planSubjectData.year,
+            planSubjectData.semester,
+            planSubjectData.dependencies || [],
+            planSubjectData.creditsRequired,
             subject
         );
     }
 }
+

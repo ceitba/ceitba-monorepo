@@ -68,11 +68,11 @@ export class ClassroomRepositoryImpl implements ClassroomRepository {
     }
 
     private mapToClassroomSchedule(data: any): ClassroomSchedule {
-        const classroom = new Classroom(data.class_room, data.building);
+        const classroom = new Classroom(data.classroom, data.building);
         
         let timeSlot: TimeSlot | null = null;
-        if (data.hour_from && data.hour_to) {
-            timeSlot = new TimeSlot(data.hour_from, data.hour_to);
+        if (data.hourFrom && data.hourTo) {
+            timeSlot = new TimeSlot(data.hourFrom, data.hourTo);
         }
 
         const dayOfWeek = DayOfWeekMapper.fromStringOrNull(data.day);

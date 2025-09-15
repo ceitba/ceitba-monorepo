@@ -1,5 +1,3 @@
-import { DatabaseClient, DatabaseFactory } from "@/shared/database";
-import { UserDTO } from "@/domain/user/dto/user.dto";
 import { UserRepository } from "@/domain/user/interfaces/user.repository.interface";
 import { UserRole } from "@/domain/user/models/user-role.model";
 import { User } from "@/domain/user/models/user.model";
@@ -12,76 +10,98 @@ export class UserRepositoryImpl implements UserRepository {
         this.prisma = prisma;
     }
 
+
+    delete(id: string): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+
     async create(user: User): Promise<User> {
-        const result = await this.db.rpc('create_user', {
-            email_param: user.email,
-            file_number_param: user.file_number,
-            name_param: user.name,
-            career_id_param: user.career_id,
-            plan_param: user.plan
-        });
-
-        if (result.error) {
-            throw new Error(`Error creating user: ${result.error.message}`);
-        }
-
-        const data = result.data as UserDTO;
-        return new User(data.id, data.email, data.file_number, data.name, data.career_id, data.plan, data.role);
-        
+        // TODO: Replace RPC call 'create_user' with Prisma equivalent
+        // Original RPC parameters: email_param, file_number_param, name_param, career_id_param, plan_param
+        throw new Error('RPC call create_user needs to be replaced with Prisma query - please provide the equivalent query');
     }
 
     async update(user: User): Promise<User> {
-        // TODO: Implement
-        throw new Error('Not implemented');
-    }
+        return null;
+    //     const result = await this.prisma.user.update({
+    //         where: { id: user.id },
+    //         data: {
+    //             email: user.email,
+    //             fileNumber: user.file_number,
+    //             name: user.name,
+    //             careerId: user.career_id,
+    //             plan: user.plan
+    //         },
+    //         include: {
+    //             role: true
+    //         }
+    //     }).catch(err => {
+    //         switch (err.code) {
+    //             case 'P2025':
+    //                 throw new UserNotFoundException(`User ${user.id} not found`, err);
+    //             case 'P2002':
+    //                 throw new UserAlreadyExistsException(`User with email ${user.email} already exists`, err);
+    //             case 'P2003':
+    //                 throw new ForeignKeyConstraintViolationException(`Invalid foreign key reference`, err);
+    //             default:
+    //                 throw new GenericDomainException('Failed to update user', err);
+    //         }
+    //     });
 
-    async delete(id: string): Promise<void> {
-        // TODO: Implement
-        throw new Error('Not implemented');
+    //     const role = new UserRole(result.role.branch, result.role.role, result.role.start, result.role.end);
+    //     return new User(result.id, result.email, result.fileNumber, result.name, result.careerId, result.plan, role);
+    // }
+
+    // async delete(id: string): Promise<void> {
+    //     await this.prisma.user.delete({ 
+    //         where: { id } 
+    //     }).catch(err => {
+    //         switch (err.code) {
+    //             case 'P2025':
+    //                 throw new UserNotFoundException(`User ${id} not found`, err);
+    //             case 'P2003':
+    //                 throw new ForeignKeyConstraintViolationException(
+    //                     `Cannot delete user ${id}: it has related records`,
+    //                     err
+    //                 );
+    //             default:
+    //                 throw new GenericDomainException('Failed to delete user', err);
+    //         }
+    //     });
     }
 
     async findById(id: string): Promise<User | null> {
-        // TODO: Implement
-        throw new Error('Not implemented');
+        return null;
+        // const result = await this.prisma.user.findUnique({
+        //     where: { id },
+        //     include: {
+        //         role: true
+        //     }
+        // });
+
+        // if (!result) {
+        //     return null;
+        // }
+
+        // const role = new UserRole(result.role.branch, result.role.role, result.role.start, result.role.end);
+        // return new User(result.id, result.email, result.fileNumber, result.name, result.careerId, result.plan, role);
     }
 
     async findByEmail(email: string): Promise<User | null> {
-        const result = await this.db.rpc('get_user_with_details', {
-            email_param: email
-        });
-        if (result.error) {
-            throw new Error(`Error finding user by email: ${result.error.message}`);
-        }
-
-        const data = result.data as UserDTO;
-        return new User(data.id, data.email, data.file_number, data.name, data.career_id, data.plan, data.role);
+        // TODO: Replace RPC call 'get_user_with_details' with Prisma equivalent
+        // Original RPC parameters: email_param
+        throw new Error('RPC call get_user_with_details needs to be replaced with Prisma query - please provide the equivalent query');
     }
 
     async findAll(): Promise<User[]> {
-        const result = await this.db.rpc('get_all_users');
-        if (result.error) {
-            throw new Error(`Error finding all users: ${result.error.message}`);
-        }
-
-        const data = result.data as Array<UserDTO>;
-
-        return data.map(user => {
-            const role = new UserRole(user.role.branch, user.role.role, user.role.start, user.role.end);
-            return new User(user.id, user.email, user.file_number, user.name, user.career_id, user.plan, role);
-        });
+        // TODO: Replace RPC call 'get_all_users' with Prisma equivalent
+        // Original RPC parameters: none
+        throw new Error('RPC call get_all_users needs to be replaced with Prisma query - please provide the equivalent query');
     }
 
     async updateUserRole(email: string, role: UserRole): Promise<void> {
-        const result = await this.db.rpc('update_user_role', {
-            email_param: email,
-            branch_param: role.branch,
-            role_param: role.role,
-            start_param: role.start,
-            end_param: role.end
-        });
-
-        if (result.error) {
-            throw new Error(`Error updating user role: ${result.error.message}`);
-        }
+        // TODO: Replace RPC call 'update_user_role' with Prisma equivalent
+        // Original RPC parameters: email_param, branch_param, role_param, start_param, end_param
+        throw new Error('RPC call update_user_role needs to be replaced with Prisma query - please provide the equivalent query');
     }
 }

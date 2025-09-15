@@ -14,7 +14,7 @@ import { SubjectPlanRepositoryImpl } from '@/domain/itba/repositories/subject-pl
 import { SubjectRepositoryImpl } from '@/domain/itba/repositories/subject.repository.impl';
 import { ItbaApiServiceImpl } from '@/domain/itba/repositories/itba-api.service.impl';
 
-import { DatabaseFactory } from '@/shared/database';
+import { PrismaService } from '@/shared/database/prisma.service';
 import { ApiFactory } from '@/shared/external-apis';
 import { 
   CAREER_REPOSITORY, 
@@ -31,6 +31,7 @@ import {
     SubjectPlanController,
   ],
   providers: [
+    PrismaService,
     CareerService,
     ClassroomService,
     SubjectService,
@@ -38,28 +39,31 @@ import {
     
     {
       provide: CAREER_REPOSITORY,
-      useFactory: () => {
-        const db = DatabaseFactory.getInstance();
-        return new CareerRepositoryImpl(db);
+      useFactory: (prismaService: PrismaService) => {
+        return new CareerRepositoryImpl(prismaService);
       },
+      inject: [PrismaService],
     },
     {
       provide: CLASSROOM_REPOSITORY,
-      useFactory: () => {
-        const db = DatabaseFactory.getInstance();
-        return new ClassroomRepositoryImpl(db);
+      useFactory: (prismaService: PrismaService) => {
+        return new ClassroomRepositoryImpl(prismaService);
       },
+      inject: [PrismaService],
     },
     {
       provide: SUBJECT_REPOSITORY,
-      useFactory: () => {
-        const db = DatabaseFactory.getInstance();
-        return new SubjectRepositoryImpl(db);
+      useFactory: (prismaService: PrismaService) => {
+        return new SubjectRepositoryImpl(prismaService);
       },
+      inject: [PrismaService],
     },
     {
       provide: SUBJECT_PLAN_REPOSITORY,
-      useClass: SubjectPlanRepositoryImpl,
+      useFactory: (prismaService: PrismaService) => {
+        return new SubjectPlanRepositoryImpl(prismaService);
+      },
+      inject: [PrismaService],
     },
     {
       provide: ITBA_API_SERVICE,

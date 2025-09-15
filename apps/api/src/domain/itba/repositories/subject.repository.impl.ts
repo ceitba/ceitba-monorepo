@@ -1,5 +1,7 @@
 import { Subject } from '@/domain/itba/models/subject.model';
 import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
+import { SubjectNotFoundException, SubjectAlreadyExistsException, ForeignKeyConstraintViolationException } from '@/domain/itba/exceptions/itba.exceptions';
+import { GenericDomainException } from '@/shared/exceptions';
 import { PrismaService } from '@/shared/database/prisma.service';
 
 export class SubjectRepositoryImpl implements SubjectRepository {
@@ -10,88 +12,100 @@ export class SubjectRepositoryImpl implements SubjectRepository {
     }
     
     async findAll(): Promise<Subject[]> {
-        const result = await this.db.select<any>('subject');
+        const result = await this.prisma.subject.findMany({
+            select: { id: true, name: true, credits: true },
+            orderBy: { id: 'asc' },
+        });
 
-        if (result.error) {
-            throw new Error(`Error fetching subjects: ${result.error.message}`);
-        }
-
-        return result.data!.map(subject => new Subject(subject.id, subject.name, subject.credits));
+        return result.map(subject => new Subject(subject.id, subject.name, subject.credits));
     }
 
     async findById(id: string): Promise<Subject | null> {
-        const result = await this.db.selectOne<any>('subject', {
-            eq: { id }
+        const result = await this.prisma.subject.findUnique({
+            where: { id },
+            select: { id: true, name: true, credits: true }
         });
 
-        if (result.error) {
-            if (result.error.isNotFound()) {
-                return null;
-            }
-            throw new Error(`Error fetching subject: ${result.error.message}`);
-        }
-
-        if (!result.data) {
+        if (!result) {
             return null;
         }
 
-        return new Subject(result.data.id, result.data.name, result.data.credits);
+        return new Subject(result.id, result.name, result.credits);
     }
 
     async findByName(name: string): Promise<Subject[]> {
-        const result = await this.db.select<any>('subject', {
-            ilike: { name: `%${name}%` }
+        const result = await this.prisma.subject.findMany({
+            where: {
+                name: {
+                    contains: name,
+                    mode: 'insensitive'
+                }
+            },
+            select: { id: true, name: true, credits: true },
+            orderBy: { name: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subjects by name: ${result.error.message}`);
-        }
-
-        return result.data!.map(subject => new Subject(subject.id, subject.name, subject.credits));
+        return result.map(subject => new Subject(subject.id, subject.name, subject.credits));
     }
 
     async create(subject: Subject): Promise<Subject> {
-        const result = await this.db.insert<any>('subject', {
+        const result = await this.prisma.subject.create({
             data: {
                 id: subject.id,
                 name: subject.name,
                 credits: subject.credits
+            },
+            select: { id: true, name: true, credits: true }
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2002':
+                    throw new SubjectAlreadyExistsException(subject.id, err);
+                default:
+                    throw new GenericDomainException(`Failed to create subject`, err);
             }
         });
-
-        if (result.error) {
-            throw new Error(`Error creating subject: ${result.error.message}`);
-        }
-
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        return new Subject(data.id, data.name, data.credits);
+        
+        return new Subject(result.id, result.name, result.credits);
     }
 
     async update(subject: Subject): Promise<Subject> {
-        const result = await this.db.update<any>('subject', {
+        const result = await this.prisma.subject.update({
+            where: { id: subject.id },
             data: {
                 name: subject.name,
                 credits: subject.credits
             },
-            where: { id: subject.id }
+            select: { id: true, name: true, credits: true }
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2025':
+                    throw new SubjectNotFoundException(`Subject ${subject.id} not found`, err);
+                case 'P2002':
+                    throw new SubjectAlreadyExistsException(subject.id, err);
+                default:
+                    throw new GenericDomainException('Failed to update subject', err);
+            }
         });
-
-        if (result.error) {
-            throw new Error(`Error updating subject: ${result.error.message}`);
-        }
-
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        return new Subject(data.id, data.name, data.credits);
+        
+        return new Subject(result.id, result.name, result.credits);
     }
 
     async delete(id: string): Promise<void> {
-        const result = await this.db.delete('subject', {
-            where: { id }
+        await this.prisma.subject.delete({ 
+            where: { id } 
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2025':
+                    throw new SubjectNotFoundException(`Subject ${id} not found`, err);
+                case 'P2003':
+                    throw new ForeignKeyConstraintViolationException(
+                        `Cannot delete subject ${id}: it has related records (e.g., plans).`,
+                        err
+                    );
+                default:
+                    throw new GenericDomainException('Failed to delete subject', err);
+            }
         });
-
-        if (result.error) {
-            throw new Error(`Error deleting subject: ${result.error.message}`);
-        }
     }
 
     async findByIds(ids: string[]): Promise<Subject[]> {
@@ -99,14 +113,16 @@ export class SubjectRepositoryImpl implements SubjectRepository {
             return [];
         }
 
-        const result = await this.db.select<any>('subject', {
-            in: { id: ids }
+        const result = await this.prisma.subject.findMany({
+            where: {
+                id: {
+                    in: ids
+                }
+            },
+            select: { id: true, name: true, credits: true },
+            orderBy: { id: 'asc' }
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching subjects by IDs: ${result.error.message}`);
-        }
-
-        return result.data!.map(subject => new Subject(subject.id, subject.name, subject.credits));
+        return result.map(subject => new Subject(subject.id, subject.name, subject.credits));
     }
 }

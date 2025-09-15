@@ -36,6 +36,12 @@ export class SubjectAlreadyExistsException extends DomainException {
     }
 }
 
+export class SubjectPlanAlreadyExistsException extends DomainException {
+    constructor(message: string, cause?: Error) {
+        super(message, cause);
+    }
+}
+
 export class SubjectPlanDependencyException extends DomainException {
     constructor(subjectId: string, missingDependencies: string[], cause?: Error) {
         super(

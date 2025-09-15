@@ -13,7 +13,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - PORT=${PORT:-3000}
+      - PORT=3000
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-ceitba_password}@postgres:5432/${POSTGRES_DB:-ceitba_db}
     env_file:
       - ../../.env
