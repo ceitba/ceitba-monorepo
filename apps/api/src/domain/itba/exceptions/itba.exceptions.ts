@@ -24,6 +24,12 @@ export class CareerAlreadyExistsException extends DomainException {
     }
 }
 
+export class ForeignKeyConstraintViolationException extends DomainException {
+    constructor(entity: string, cause?: Error) {
+        super(`Operation failed due to foreign key constraint on '${entity}'`, cause);
+    }
+}
+
 export class SubjectAlreadyExistsException extends DomainException {
     constructor(subjectId: string, cause?: Error) {
         super(`Subject with ID '${subjectId}' already exists`, cause);

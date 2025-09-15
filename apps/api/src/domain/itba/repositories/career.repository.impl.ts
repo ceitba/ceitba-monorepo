@@ -1,7 +1,6 @@
 import { Career } from '@/domain/itba/models/career.model';
 import { CareerRepository } from '@/domain/itba/interfaces/repositories/career.repository.interface';
-import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
-import { CareerAlreadyExistsException } from '@/domain/itba/exceptions/itba.exceptions';
+import { CareerAlreadyExistsException, CareerNotFoundException, ForeignKeyConstraintViolationException } from '@/domain/itba/exceptions/itba.exceptions';
 import { GenericDomainException } from '@/shared/exceptions';
 import { PrismaService } from '@/shared/database/prisma.service';
 
@@ -14,126 +13,104 @@ export class CareerRepositoryImpl implements CareerRepository {
     }
 
     async findAll(): Promise<Career[]> {
-        const result = await this.db.select<any>('career');
+         const result = await this.prisma.career.findMany({
+            select: { id: true, name: true }, 
+            orderBy: { id: 'asc' },
+            });;
 
-        if (result.error) {
-            throw new Error(`Error fetching careers: ${result.error.message}`);
-        }
-
-        return result.data!.map(career => new Career(career.id, career.name, []));
+         return result.map(r => new Career(r.id, r.name, []));
     }
 
     async findById(id: string): Promise<Career | null> {
-        const result = await this.db.selectOne<any>('career', {
-            eq: { id }
+        const result = await this.prisma.career.findUnique({
+            where: {id},
+            select: {id: true, name: true}
         });
 
-        if (result.error) {
-            if (result.error.isNotFound()) {
-                return null;
-            }
-            throw new Error(`Error fetching career: ${result.error.message}`);
-        }
-
-        if (!result.data) {
+        if (!result) {
             return null;
         }
 
-        return new Career(result.data.id, result.data.name, []);
+        return new Career(result.id, result.name, []);
     }
 
     async findByName(name: string): Promise<Career | null> {
-        const result = await this.db.selectOne<any>('career', {
-            eq: { name }
+        const result = await this.prisma.career.findFirst({
+            where: { name },
+            select: { id: true, name: true }
         });
 
-        if (result.error) {
-            if (result.error.isNotFound()) {
-                return null;
-            }
-            throw new Error(`Error fetching career: ${result.error.message}`);
-        }
-
-        if (!result.data) {
+        if (!result) {
             return null;
         }
 
-        return new Career(result.data.id, result.data.name, []);
+        return new Career(result.id, result.name, []);
     }
 
     async create(career: Career): Promise<Career> {
-        const result = await this.db.insert<any>('career', {
-            data: {
+            const row = await this.prisma.career.create({
+                data: {
                 id: career.id,
-                name: career.name
+                name: career.name,
+        },
+            select: { id: true, name: true },
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2002':
+                    throw new CareerAlreadyExistsException(career.id, err);
+                default:
+                    throw new GenericDomainException(`Failed to create career`, err);
             }
         });
-
-        if (result.error) {
-            if (result.error.is(DatabaseErrorCode.UNIQUE_VIOLATION)) {
-                throw new CareerAlreadyExistsException(career.id, result.error);
-            }
-            
-            throw new GenericDomainException(
-                `Failed to create career: ${result.error.message}`,
-                result.error
-            );
-        }
-
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        return new Career(data.id, data.name, career.plans);
+        return new Career(row.id, row.name, career.plans);
     }
 
-    async update(career: Career): Promise<Career> {
-        const result = await this.db.update<any>('career', {
-            data: {
-                name: career.name
-            },
-            where: { id: career.id }
+   async update(career: Career): Promise<Career> {
+        const result = await this.prisma.career.update({
+        where: { id: career.id },
+        data:  { name: career.name },
+        select:{ id: true, name: true },
+        }).catch(err => {
+            switch (err.code) {
+                case 'P2025': 
+                    throw new CareerNotFoundException(`Career ${career.id} not found`, err);
+                case 'P2002':
+                    throw new CareerAlreadyExistsException(career.id, err);
+                default:
+                    throw new GenericDomainException('Failed to update career', err);
+            }
         });
-
-        if (result.error) {
-            throw new Error(`Error updating career: ${result.error.message}`);
-        }
-
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        return new Career(data.id, data.name, career.plans);
+        return new Career(result.id, result.name, career.plans); 
     }
 
     async delete(id: string): Promise<void> {
-        const result = await this.db.delete('career', {
-            where: { id }
+        await this.prisma.career.delete({ where: { id } }).catch(err => {
+            switch (err.code) {
+                case 'P2025': 
+                    throw new CareerNotFoundException(`Career ${id} not found`, err);
+                case 'P2003':
+                    throw new ForeignKeyConstraintViolationException(
+                        `Cannot delete career ${id}: it has related records (e.g., plans).`,
+                        err
+                    );
+                default:
+                    throw new GenericDomainException('Failed to delete career', err);
+            }
         });
-
-        if (result.error) {
-            throw new Error(`Error deleting career: ${result.error.message}`);
-        }
     }
 
+    
     async findCareersWithPlans(): Promise<Record<string, Career>> {
-        const result = await this.db.select<any>('plan', {
-            select: 'id, career (id, name)'
+        const result = await this.prisma.career.findMany({
+            include: { plans: { select: { id: true } } },
+            orderBy: { id: 'asc' },
         });
 
-        if (result.error) {
-            throw new Error(`Error fetching career plans: ${result.error.message}`);
-        }
+        const entries = result.map(r => {
+            const planIds = r.plans.map(p => p.id);
+            return [r.id, new Career(r.id, r.name, planIds)] as const;
+        });
 
-        const careersMap = new Map<string, Career>();
-
-        for (const plan of result.data!) {
-            if (!careersMap.has(plan.career.id)) {
-                careersMap.set(plan.career.id, new Career(
-                    plan.career.id,
-                    plan.career.name,
-                    []
-                ));
-            }
-            const career = careersMap.get(plan.career.id)!;
-            const updatedCareer = career.addPlan(plan.id);
-            careersMap.set(plan.career.id, updatedCareer);
-        }
-
-        return Object.fromEntries(careersMap);
+        return Object.fromEntries(entries);
     }
 }

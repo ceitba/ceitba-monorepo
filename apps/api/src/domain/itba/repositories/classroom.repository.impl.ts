@@ -1,6 +1,5 @@
 import { ClassroomSchedule, Classroom, TimeSlot, DayOfWeek, DayOfWeekMapper } from '@/domain/itba/models/classroom.model';
 import { ClassroomRepository } from '@/domain/itba/interfaces/repositories/classroom.repository.interface';
-import { DatabaseClient, DatabaseFactory } from '@/shared/database';
 import { PrismaService } from '@/shared/database/prisma.service';
 
 export class ClassroomRepositoryImpl implements ClassroomRepository {

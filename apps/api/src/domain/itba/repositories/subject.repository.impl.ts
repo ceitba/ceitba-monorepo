@@ -1,6 +1,5 @@
 import { Subject } from '@/domain/itba/models/subject.model';
 import { SubjectRepository } from '@/domain/itba/interfaces/repositories/subject.repository.interface';
-import { DatabaseClient, DatabaseFactory, DatabaseErrorCode } from '@/shared/database';
 import { PrismaService } from '@/shared/database/prisma.service';
 
 export class SubjectRepositoryImpl implements SubjectRepository {
