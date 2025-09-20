@@ -11,9 +11,6 @@ infrastructure/
 │   ├── docker-compose.base.yml      # Base services (postgres, networks, volumes)
 │   ├── docker-compose.dev.yml       # Development-specific configuration
 │   └── docker-compose.prod.yml      # Production-specific configuration
-├── database/
-│   ├── init.sql                     # Database initialization script
-│   └── README.md                    # Database documentation
 ├── scripts/
 │   └── deploy.sh                    # Deployment scripts
 └── README.md                        # This file

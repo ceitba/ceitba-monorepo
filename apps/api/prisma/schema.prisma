@@ -59,7 +59,7 @@ model Plan {
 model Subject {
   id        String   @id @db.VarChar(25)
   name      String   @db.VarChar(255)
-  credits   Int      @db.Integer
+  credits   Int      @default(0) @db.Integer
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([id])
@@ -113,9 +113,9 @@ model PlanSubject {
   section         String   @db.VarChar(255)
   subjectId       String   @map("subject_id") @db.VarChar(32)
   planId          String   @map("plan_id") @db.VarChar(32)
-  year            Int?     @db.Integer
-  semester        Int?     @db.Integer
-  creditsRequired Int?     @map("credits_required") @db.Integer
+  year            Int      @default(0) @db.Integer
+  semester        Int      @default(0) @db.Integer
+  creditsRequired Int      @map("credits_required") @db.Integer
 
   @@id([subjectId, planId])
   @@map("plan_subject")
