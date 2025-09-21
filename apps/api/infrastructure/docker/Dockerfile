@@ -30,6 +30,8 @@ RUN npm ci --only=production && npm cache clean --force
 
 COPY --from=builder --chown=ceitba:nodejs /app/dist ./dist
 COPY --from=builder --chown=ceitba:nodejs /app/package*.json ./
+COPY --from=builder --chown=ceitba:nodejs /app/tsconfig.json ./
+COPY --from=builder --chown=ceitba:nodejs /app/nest-cli.json ./
 COPY --from=builder --chown=ceitba:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
 
@@ -60,6 +62,7 @@ COPY package*.json ./
 
 RUN npm ci
 
+COPY . .
 COPY prisma ./prisma
 RUN npx prisma generate
 
