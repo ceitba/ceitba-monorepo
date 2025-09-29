@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { CareerController } from "../controllers/career.controller";
 import { ClassroomController } from "../controllers/classroom.controller";
+import { SubjectController } from "../controllers/subject.controller";
 import { SubjectPlanController } from "../controllers/subject-plan.controller";
 import { DataSyncController } from "../controllers/data-sync.controller";
 
@@ -21,6 +22,10 @@ import { ItbaApiServiceImpl } from "@/domain/itba/repositories/itba-api.service.
 import { PrismaService } from "@/shared/database/prisma.service";
 import { CronService } from "@/shared/services/cron.service";
 import { ApiFactory } from "@/shared/external-apis";
+
+import { WikiBookmarkController } from '../controllers/wiki-bookmark.controller';
+import { WikiBookmarkService } from '@/domain/itba/services/wiki-bookmark.service';
+
 import {
   CAREER_REPOSITORY,
   CLASSROOM_REPOSITORY,
@@ -34,8 +39,10 @@ import {
   controllers: [
     CareerController,
     ClassroomController,
+    SubjectController,
     SubjectPlanController,
     DataSyncController,
+    WikiBookmarkController
   ],
   providers: [
     PrismaService,
@@ -46,6 +53,7 @@ import {
     CommissionServiceImpl,
     DataSyncService,
     CronService,
+    WikiBookmarkService,
 
     {
       provide: CAREER_REPOSITORY,
@@ -109,6 +117,7 @@ import {
     CommissionServiceImpl,
     DataSyncService,
     CronService,
+    WikiBookmarkService
   ],
 })
-export class ItbaModule {}
+export class ItbaModule { }

@@ -22,16 +22,17 @@ model User {
 
   ceitbaStaff CeitbaStaff?
 
-subjectDifficulties SubjectDifficulty[]   @relation("User_SubjectDifficulties")
-  subjectComments     SubjectComment[]      @relation("User_SubjectComments")
-  subjectCommentVotes SubjectCommentVote[]  @relation("User_SubjectCommentVotes")
-  subjectNotes        SubjectNote[]         @relation("User_SubjectNotes")
-  subjectNoteVotes    SubjectNoteVote[]     @relation("User_SubjectNoteVotes")
-  careerNotes         CareerNote[]          @relation("User_CareerNotes")
-  careerNoteVotes     CareerNoteVote[]      @relation("User_CareerNoteVotes")
-  wikiPagesEdited     SubjectWikiPage[]     @relation("User_WikiPagesEdited")
+  subjectDifficulties   SubjectDifficulty[]       @relation("User_SubjectDifficulties")
+  subjectComments       SubjectComment[]          @relation("User_SubjectComments")
+  subjectCommentVotes   SubjectCommentVote[]      @relation("User_SubjectCommentVotes")
+  subjectNotes          SubjectNote[]             @relation("User_SubjectNotes")
+  subjectNoteVotes      SubjectNoteVote[]         @relation("User_SubjectNoteVotes")
+  careerNotes           CareerNote[]              @relation("User_CareerNotes")
+  careerNoteVotes       CareerNoteVote[]          @relation("User_CareerNoteVotes")
+  wikiPagesEdited       SubjectWikiPage[]         @relation("User_WikiPagesEdited")
   wikiProposalsAuthored SubjectWikiEditProposal[] @relation("User_WikiProposalsAuthored")
   wikiProposalsReviewed SubjectWikiEditProposal[] @relation("User_WikiProposalsReviewed")
+  SubjectBookmark       SubjectBookmark[]         @relation("User_SubjectBookmarks")
 
   @@index([email])
   @@index([fileNumber])
@@ -75,12 +76,12 @@ model Subject {
   credits   Int      @default(0) @db.Integer
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-
-  difficulties SubjectDifficulty[] @relation("Subject_Difficulties")
-  comments     SubjectComment[]    @relation("Subject_Comments")
-  notes        SubjectNote[]       @relation("Subject_Notes")
-  wikiPage     SubjectWikiPage?    @relation("Subject_WikiPage")
-  wikiProposals SubjectWikiEditProposal[] @relation("Subject_WikiProposals")
+  difficulties    SubjectDifficulty[]       @relation("Subject_Difficulties")
+  comments        SubjectComment[]          @relation("Subject_Comments")
+  notes           SubjectNote[]             @relation("Subject_Notes")
+  wikiPage        SubjectWikiPage?          @relation("Subject_WikiPage")
+  wikiProposals   SubjectWikiEditProposal[] @relation("Subject_WikiProposals")
+  SubjectBookmark SubjectBookmark[]         @relation("Subject_Bookmarks")
 
   @@index([id])
   @@map("subject")
@@ -211,15 +212,16 @@ enum ProposalStatus {
   @@map("proposal_status")
   @@schema("wiki")
 }
+
 model SubjectDifficulty {
-  subjectId String  @map("subject_id") @db.VarChar(25)
-  userId    String  @map("user_id")    @db.Uuid
-  value     Int     @db.Integer
-  createdAt DateTime @default(now())   @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt        @map("updated_at") @db.Timestamptz
+  subjectId String   @map("subject_id") @db.VarChar(25)
+  userId    String   @map("user_id") @db.Uuid
+  value     Int      @db.Integer
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   subject Subject @relation("Subject_Difficulties", fields: [subjectId], references: [id])
-  user    User    @relation("User_SubjectDifficulties", fields: [userId],    references: [id])
+  user    User    @relation("User_SubjectDifficulties", fields: [userId], references: [id])
 
   @@id([subjectId, userId])
   @@index([subjectId])
@@ -231,13 +233,13 @@ model SubjectDifficulty {
 model SubjectComment {
   id        String   @id @default(uuid()) @db.Uuid
   subjectId String   @map("subject_id") @db.VarChar(25)
-  userId    String   @map("user_id")    @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   content   String   @db.Text
-  createdAt DateTime @default(now())     @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt          @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  subject Subject @relation("Subject_Comments", fields: [subjectId], references: [id])
-  user    User    @relation("User_SubjectComments", fields: [userId],    references: [id])
+  subject Subject              @relation("Subject_Comments", fields: [subjectId], references: [id])
+  user    User                 @relation("User_SubjectComments", fields: [userId], references: [id])
   votes   SubjectCommentVote[]
 
   @@index([subjectId])
@@ -248,11 +250,11 @@ model SubjectComment {
 
 model SubjectCommentVote {
   commentId String   @map("comment_id") @db.Uuid
-  userId    String   @map("user_id")    @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   type      VoteType
 
   comment SubjectComment @relation(fields: [commentId], references: [id])
-  user    User           @relation("User_SubjectCommentVotes", fields: [userId],    references: [id])
+  user    User           @relation("User_SubjectCommentVotes", fields: [userId], references: [id])
 
   @@id([commentId, userId])
   @@index([userId])
@@ -266,11 +268,11 @@ model SubjectNote {
   ownerName  String   @map("owner_name") @db.VarChar(255)
   link       String   @db.VarChar(1024)
   uploaderId String   @map("uploader_id") @db.Uuid
-  createdAt  DateTime @default(now())      @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt           @map("updated_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  subject  Subject @relation("Subject_Notes", fields: [subjectId], references: [id])
-  uploader User    @relation("User_SubjectNotes", fields: [uploaderId], references: [id])
+  subject  Subject           @relation("Subject_Notes", fields: [subjectId], references: [id])
+  uploader User              @relation("User_SubjectNotes", fields: [uploaderId], references: [id])
   votes    SubjectNoteVote[]
 
   @@index([subjectId])
@@ -295,16 +297,16 @@ model SubjectNoteVote {
 
 model CareerNote {
   id         String   @id @default(uuid()) @db.Uuid
-  careerId   String   @map("career_id")  @db.VarChar(25)
+  careerId   String   @map("career_id") @db.VarChar(25)
   name       String   @db.VarChar(255)
   ownerName  String   @map("owner_name") @db.VarChar(255)
   link       String   @db.VarChar(1024)
   uploaderId String   @map("uploader_id") @db.Uuid
-  createdAt  DateTime @default(now())      @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt           @map("updated_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  career   Career @relation("Career_CareerNotes", fields: [careerId], references: [id])
-  uploader User   @relation("User_CareerNotes", fields: [uploaderId], references: [id])
+  career   Career           @relation("Career_CareerNotes", fields: [careerId], references: [id])
+  uploader User             @relation("User_CareerNotes", fields: [uploaderId], references: [id])
   votes    CareerNoteVote[]
 
   @@index([careerId])
@@ -328,29 +330,29 @@ model CareerNoteVote {
 }
 
 model SubjectWikiPage {
-  subjectId  String   @id @map("subject_id") @db.VarChar(25)
-  content    String   @db.Text
-  updatedBy  String   @map("updated_by") @db.Uuid
-  updatedAt  DateTime @updatedAt          @map("updated_at") @db.Timestamptz
-  createdAt  DateTime @default(now())     @map("created_at") @db.Timestamptz
+  subjectId String   @id @map("subject_id") @db.VarChar(25)
+  content   String   @db.Text
+  updatedBy String   @map("updated_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  subject  Subject @relation("Subject_WikiPage", fields: [subjectId], references: [id])
-  editor   User    @relation("User_WikiPagesEdited", fields: [updatedBy], references: [id])
+  subject Subject @relation("Subject_WikiPage", fields: [subjectId], references: [id])
+  editor  User    @relation("User_WikiPagesEdited", fields: [updatedBy], references: [id])
 
   @@map("subject_wiki_page")
   @@schema("wiki")
 }
 
 model SubjectWikiEditProposal {
-  id               String         @id @default(uuid()) @db.Uuid
-  subjectId        String         @map("subject_id") @db.VarChar(25)
-  proposedBy       String         @map("proposed_by") @db.Uuid
-  proposedAt       DateTime       @default(now())     @map("proposed_at") @db.Timestamptz
-  proposedContent  String         @map("proposed_content") @db.Text
-  status           ProposalStatus @default(PENDING)
-  reviewedBy       String?        @map("reviewed_by") @db.Uuid
-  reviewedAt       DateTime?      @map("reviewed_at") @db.Timestamptz
-  reviewComment    String?        @map("review_comment") @db.VarChar(1024)
+  id              String         @id @default(uuid()) @db.Uuid
+  subjectId       String         @map("subject_id") @db.VarChar(25)
+  proposedBy      String         @map("proposed_by") @db.Uuid
+  proposedAt      DateTime       @default(now()) @map("proposed_at") @db.Timestamptz
+  proposedContent String         @map("proposed_content") @db.Text
+  status          ProposalStatus @default(PENDING)
+  reviewedBy      String?        @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?      @map("reviewed_at") @db.Timestamptz
+  reviewComment   String?        @map("review_comment") @db.VarChar(1024)
 
   subject  Subject @relation("Subject_WikiProposals", fields: [subjectId], references: [id])
   proposer User    @relation("User_WikiProposalsAuthored", fields: [proposedBy], references: [id])
@@ -360,5 +362,20 @@ model SubjectWikiEditProposal {
   @@index([proposedBy])
   @@index([reviewedBy])
   @@map("subject_wiki_edit_proposal")
+  @@schema("wiki")
+}
+
+model SubjectBookmark {
+  subjectId String   @map("subject_id") @db.VarChar(25)
+  userId    String   @map("user_id") @db.Uuid
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  subject Subject @relation("Subject_Bookmarks", fields: [subjectId], references: [id])
+  user    User    @relation("User_SubjectBookmarks", fields: [userId], references: [id])
+
+  @@id([subjectId, userId])
+  @@index([subjectId])
+  @@index([userId])
+  @@map("Subject_Bookmarks")
   @@schema("wiki")
 }

@@ -109,6 +109,8 @@ The API documentation is automatically generated from code decorators and availa
 - `GET /api/v1/itba/careers` - Get all careers
 - `GET /api/v1/itba/careers/plans` - Get careers with plans
 - `GET /api/v1/itba/classrooms` - Get classroom information
+- `GET /api/v1/itba/subjects` - List subjects (materias) with optional `name` filter
+- `GET /api/v1/itba/subjects/:id` - Get a subject (materia) by ID
 - `GET /api/v1/itba/subject-plans/plan/:planId/subjects` - Get subjects by plan
 
 ## Development

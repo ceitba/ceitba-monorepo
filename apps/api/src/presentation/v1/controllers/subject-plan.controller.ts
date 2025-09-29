@@ -6,7 +6,7 @@ import { SubjectPlanQueryDto, CreateSubjectPlanDto, UpdateSubjectPlanDto } from 
 @ApiTags('Subject Plans')
 @Controller('v1/itba/subject-plans')
 export class SubjectPlanController {
-    constructor(private readonly subjectPlanService: SubjectPlanService) {}
+    constructor(private readonly subjectPlanService: SubjectPlanService) { }
 
     @Get('plan/:planId/subjects')
     @ApiOperation({ summary: 'Get subjects by plan with filters' })
@@ -51,11 +51,11 @@ export class SubjectPlanController {
         @Param('subjectId') subjectId: string
     ) {
         const subjectPlan = await this.subjectPlanService.getSubjectPlan(planId, subjectId);
-        
+
         if (!subjectPlan) {
             throw new NotFoundException('Subject plan not found');
         }
-        
+
         return subjectPlan;
     }
 
@@ -94,7 +94,7 @@ export class SubjectPlanController {
         @Body() updateData: UpdateSubjectPlanDto
     ) {
         const updatedSubjectPlan = await this.subjectPlanService.updateSubjectPlan(planId, subjectId, updateData);
-        
+
         if (!updatedSubjectPlan) {
             throw new NotFoundException('Subject plan not found');
         }
@@ -114,7 +114,7 @@ export class SubjectPlanController {
         @Param('subjectId') subjectId: string
     ) {
         const deleted = await this.subjectPlanService.deleteSubjectPlan(planId, subjectId);
-        
+
         if (!deleted) {
             throw new NotFoundException('Subject plan not found');
         }
