@@ -108,10 +108,10 @@ export class SubjectPlanRepositoryImpl implements SubjectPlanRepository {
                 subjectId: subjectPlan.subjectId,
                 planId: subjectPlan.planId,
                 section: subjectPlan.section,
-                year: subjectPlan.year,
-                semester: subjectPlan.semester,
+                year: subjectPlan.year ?? 0,
+                semester: subjectPlan.semester ?? 0,
                 dependencies: subjectPlan.dependencies,
-                creditsRequired: subjectPlan.creditsRequired
+                creditsRequired: subjectPlan.creditsRequired ?? 0
             }
         }).catch(err => {
             switch (err.code) {
@@ -153,10 +153,10 @@ export class SubjectPlanRepositoryImpl implements SubjectPlanRepository {
             },
             data: {
                 section: subjectPlan.section,
-                year: subjectPlan.year,
-                semester: subjectPlan.semester,
+                year: subjectPlan.year ?? 0,
+                semester: subjectPlan.semester ?? 0,
                 dependencies: subjectPlan.dependencies,
-                creditsRequired: subjectPlan.creditsRequired
+                creditsRequired: subjectPlan.creditsRequired ?? 0
             }
         }).catch(err => {
             switch (err.code) {
@@ -249,8 +249,8 @@ export class SubjectPlanRepositoryImpl implements SubjectPlanRepository {
         const planSubjects = await this.prisma.planSubject.findMany({
             where: { 
                 planId,
-                year: null,
-                semester: null
+                year: 0,
+                semester: 0
             },
             orderBy: { subjectId: 'asc' }
         });

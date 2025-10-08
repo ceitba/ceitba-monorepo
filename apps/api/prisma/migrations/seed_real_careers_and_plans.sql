@@ -23,6 +23,9 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Insert real ITBA plans
 INSERT INTO "plan" (id, career_id, name, updated_at) VALUES
+-- LAES plans
+('A17', 'LAES', 'A17', NOW()),
+('A22', 'LAES', 'A22', NOW()),
 -- BIO plans
 ('Bio-13', 'BIO', 'Bio-13', NOW()),
 ('BIO 22', 'BIO', 'BIO 22', NOW()),
@@ -35,6 +38,8 @@ INSERT INTO "plan" (id, career_id, name, updated_at) VALUES
 ('I-13', 'I', 'I-13', NOW()),
 ('I-13T', 'I', 'I-13T', NOW()),
 ('I22', 'I', 'I22', NOW()),
+-- X plans
+('IN23', 'X', 'IN23', NOW()),
 -- K plans
 ('K07A-Rev.18', 'K', 'K07A-Rev.18', NOW()),
 ('K07-Rev.18', 'K', 'K07-Rev.18', NOW()),
@@ -43,9 +48,6 @@ INSERT INTO "plan" (id, career_id, name, updated_at) VALUES
 ('L09', 'L', 'L09', NOW()),
 ('L09-REV13', 'L', 'L09-REV13', NOW()),
 ('L09T', 'L', 'L09T', NOW()),
--- LAES plans
-('A17', 'LAES', 'A17', NOW()),
-('A22', 'LAES', 'A22', NOW()),
 -- LN plans
 ('L20', 'LN', 'L20', NOW()),
 -- M plans
@@ -69,9 +71,7 @@ INSERT INTO "plan" (id, career_id, name, updated_at) VALUES
 -- S plans
 ('S10 A - Rev18', 'S', 'S10 A - Rev18', NOW()),
 ('S10 - Rev18', 'S', 'S10 - Rev18', NOW()),
-('S10-Rev23', 'S', 'S10-Rev23', NOW()),
--- X plans
-('IN23', 'X', 'IN23', NOW())
+('S10-Rev23', 'S', 'S10-Rev23', NOW())
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     updated_at = NOW();

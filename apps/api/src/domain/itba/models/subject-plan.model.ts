@@ -5,10 +5,10 @@ export class SubjectPlan {
     public readonly subjectId: string,
     public readonly planId: string,
     public readonly section: string,
-    public readonly year: number = 0,
-    public readonly semester: number = 0,
+    public readonly year: number | null = 0,
+    public readonly semester: number | null = 0,
     public readonly dependencies: string[] = [],
-    public readonly creditsRequired: number = 0,
+    public readonly creditsRequired: number | null = 0,
     public readonly subject: Subject,
   ) {
     if (!section.trim()) {
@@ -34,7 +34,7 @@ export class SubjectPlan {
   }
 
   public isElective(): boolean {
-    return this.year === null && this.semester === null;
+    return this.year === 0 && this.semester === 0;
   }
 
   public getAcademicPeriod(): string {
