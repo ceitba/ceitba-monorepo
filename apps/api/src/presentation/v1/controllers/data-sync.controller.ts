@@ -22,7 +22,7 @@ import { CommissionQueryParams } from "@/domain/itba/interfaces/repositories/itb
 import { CronService } from "@/shared/services/cron.service";
 
 @ApiTags("Data Sync")
-@Controller("v1/admin/sync")
+@Controller("v1/sync")
 export class DataSyncController {
   constructor(
     private readonly dataSyncService: DataSyncService,

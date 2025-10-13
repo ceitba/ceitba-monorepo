@@ -4,7 +4,7 @@ import { CareerService } from '@/domain/itba/services/career.service';
 import { CreateCareerDto, UpdateCareerDto } from '../dto/career.dto';
 
 @ApiTags('Careers')
-@Controller('v1/itba/careers')
+@Controller('v1/careers')
 export class CareerController {
     constructor(private readonly careerService: CareerService) {}
 

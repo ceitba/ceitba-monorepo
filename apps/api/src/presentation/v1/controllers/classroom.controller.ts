@@ -5,7 +5,7 @@ import { ItbaMappers } from '@/shared/mappers/itba.mappers';
 import { ClassroomQueryDto, ClassroomConflictDto } from '../dto/classroom.dto';
 
 @ApiTags('Classrooms')
-@Controller('v1/itba/classrooms')
+@Controller('v1/classrooms')
 export class ClassroomController {
     constructor(private readonly classroomService: ClassroomService) {}
 
