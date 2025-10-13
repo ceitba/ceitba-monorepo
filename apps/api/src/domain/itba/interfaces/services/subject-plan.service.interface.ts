@@ -1,5 +1,6 @@
 import { SubjectPlan } from '@/domain/itba/models/subject-plan.model';
 import { CreateSubjectPlanDto } from '@/domain/itba/dto/subjectPlan.dto';
+import { SectionSubjectsDto } from '@/presentation/v1/dto/subject-plan-response.dto';
 
 export interface SubjectPlanServiceInterface {
     getSubjectsByPlan(planId: string): Promise<SubjectPlan[]>;
@@ -27,4 +28,5 @@ export interface SubjectPlanServiceInterface {
     getSubjectsByYear(planId: string, year: number): Promise<SubjectPlan[]>;
     getSubjectsBySemester(planId: string, year: number, semester: number): Promise<SubjectPlan[]>;
     getSubjectDependencies(planId: string, subjectId: string): Promise<SubjectPlan[]>;
+    getSubjectsByPlanOrganized(planId: string): Promise<SectionSubjectsDto>;
 }

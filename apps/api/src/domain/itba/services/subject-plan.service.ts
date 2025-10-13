@@ -4,6 +4,7 @@ import { SubjectPlanRepository } from "@/domain/itba/interfaces/repositories/sub
 import { SubjectRepository } from "@/domain/itba/interfaces/repositories/subject.repository.interface";
 import { ItbaApiService } from "@/domain/itba/interfaces/repositories/itba-api.service.interface";
 import { SubjectPlanServiceInterface } from "@/domain/itba/interfaces/services/subject-plan.service.interface";
+import { CommissionService } from "@/domain/itba/interfaces/services/commission.service.interface";
 import {
   SubjectPlanDto,
   CreateSubjectPlanDto,
@@ -16,7 +17,10 @@ import {
   SUBJECT_PLAN_REPOSITORY,
   SUBJECT_REPOSITORY,
   ITBA_API_SERVICE,
+  COMMISSION_REPOSITORY,
 } from "@/shared/constants/injection-tokens";
+import { SectionSubjectsDto, SubjectDetailDto, CommissionDto, ScheduleDto } from "@/presentation/v1/dto/subject-plan-response.dto";
+import { CommissionRepository } from "@/domain/itba/interfaces/repositories/commission.repository.interface";
 
 @Injectable()
 export class SubjectPlanService implements SubjectPlanServiceInterface {
@@ -26,6 +30,8 @@ export class SubjectPlanService implements SubjectPlanServiceInterface {
     @Inject(SUBJECT_REPOSITORY)
     private readonly subjectRepository: SubjectRepository,
     @Inject(ITBA_API_SERVICE) private readonly itbaApiService: ItbaApiService,
+    @Inject(COMMISSION_REPOSITORY)
+    private readonly commissionRepository: CommissionRepository,
   ) {}
 
   async getSubjectsByPlan(planId: string): Promise<SubjectPlan[]> {
@@ -212,5 +218,67 @@ export class SubjectPlanService implements SubjectPlanServiceInterface {
     }
 
     return dependencies;
+  }
+
+  async getSubjectsByPlanOrganized(planId: string): Promise<SectionSubjectsDto> {
+    const subjectPlans = await this.getSubjectsByPlanFromApi(planId);
+    
+    if (!subjectPlans || subjectPlans.length === 0) {
+      return {};
+    }
+
+    const allCommissions = await this.commissionRepository.findAll();
+    const organizedSubjects: SectionSubjectsDto = {};
+
+    for (const subjectPlan of subjectPlans) {
+      const section = subjectPlan.section;
+      const year = subjectPlan.year?.toString() || '0';
+      const semester = subjectPlan.semester?.toString() || '0';
+
+      if (!organizedSubjects[section]) {
+        organizedSubjects[section] = {};
+      }
+      if (!organizedSubjects[section][year]) {
+        organizedSubjects[section][year] = {};
+      }
+      if (!organizedSubjects[section][year][semester]) {
+        organizedSubjects[section][year][semester] = [];
+      }
+
+      const subjectCommissions = allCommissions.filter(
+        commission => commission.subjectCode === subjectPlan.subjectId
+      );
+
+      const commissions: CommissionDto[] = subjectCommissions.map(commission => ({
+        name: commission.commissionName,
+        schedule: commission.times.map(time => ({
+          day: time.day.toString(),
+          classroom: time.classroom,
+          building: time.building,
+          time_from: time.hourFrom.toTimeString().slice(0, 8),
+          time_to: time.hourTo.toTimeString().slice(0, 8)
+        }))
+      }));
+
+      const subjectDetail: SubjectDetailDto = {
+        section: subjectPlan.section,
+        subject_id: subjectPlan.subjectId,
+        name: subjectPlan.subject.name,
+        credits: subjectPlan.subject.credits,
+        dependencies: subjectPlan.dependencies,
+        credits_required: subjectPlan.creditsRequired,
+        course_start: subjectCommissions.length > 0 
+          ? subjectCommissions[0].courseStart.toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+        course_end: subjectCommissions.length > 0 
+          ? subjectCommissions[0].courseEnd.toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+        commissions: commissions
+      };
+
+      organizedSubjects[section][year][semester].push(subjectDetail);
+    }
+
+    return organizedSubjects;
   }
 }
