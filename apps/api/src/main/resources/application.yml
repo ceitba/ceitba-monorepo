@@ -10,6 +10,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+      naming:
+        # Default Spring strategy lowercases even backtick-quoted names,
+        # which breaks the wiki."Subject_Bookmarks" mixed-case table.
+        # Standard strategy respects whatever the @Table/@Column says.
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
       hibernate:
         jdbc:
