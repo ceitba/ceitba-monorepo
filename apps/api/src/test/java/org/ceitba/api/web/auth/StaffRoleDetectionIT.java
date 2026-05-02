@@ -30,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 // Drives the converter directly with a constructed Jwt — verifies that
 // ROLE_STAFF is granted iff the user has an active CeitbaStaff row.
+// Allowlist enforcement is tested at the HTTP layer in SubjectBookmarkAuthIT
+// and UserEndpointsIT (via the AuthorizationManager in SecurityConfig).
 @SpringBootTest
 @Testcontainers
 @TestPropertySource(properties = "auth.allowed-domains=itba.edu.ar")
@@ -74,8 +76,7 @@ class StaffRoleDetectionIT {
 
     @Test
     void freshUserGetsRoleUserOnly() {
-        // No User row, no CeitbaStaff row. Allowlist accepts the email; baseline
-        // ROLE_USER is granted, no ROLE_STAFF.
+        // No User row, no CeitbaStaff row. Baseline ROLE_USER is granted, no ROLE_STAFF.
         var auth = (JwtAuthenticationToken) converter.convert(jwtFor("alice@itba.edu.ar"));
         assertThat(auth.getAuthorities()).extracting(Object::toString)
             .containsExactly("ROLE_USER");
@@ -129,15 +130,5 @@ class StaffRoleDetectionIT {
         var auth = (JwtAuthenticationToken) converter.convert(jwtFor("alice@itba.edu.ar"));
         assertThat(auth.getAuthorities()).extracting(Object::toString)
             .containsExactly("ROLE_USER");
-    }
-
-    @Test
-    void disallowedEmailIsRejected() {
-        try {
-            converter.convert(jwtFor("evil@gmail.com"));
-            assertThat(false).as("expected AccessDeniedException").isTrue();
-        } catch (org.springframework.security.access.AccessDeniedException expected) {
-            // good
-        }
     }
 }
