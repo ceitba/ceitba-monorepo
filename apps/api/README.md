@@ -61,12 +61,13 @@ All config flows through env vars; see [`.env.example`](.env.example). Highlight
 
 ## Auth
 
-* Frontend uses **Google Sign-In**, sends the resulting ID token as `Authorization: Bearer <id_token>`.
-* Spring Security validates the JWT against Google's JWKS, then a custom converter applies the two-rule allowlist (`AUTH_ALLOWED_DOMAINS` ∪ `AUTH_ALLOWED_EMAILS`). Mismatched email → 403.
-* On first sight of a valid token for a new email, a `User` row is JIT-provisioned (no signup endpoint).
-* `/api/v1/sync/**` is gated by a static `X-API-Key` header (env `AUTH_SYNC_API_KEY`) — for cron / ops, not human users.
+Roles are `Anonymous`, `USER`, `STAFF`, and `SYNC` (machine). Full guide — including how to bootstrap the first STAFF member, assign/revoke roles, and add new authorized users — is in [`docs/AUTH-AND-ROLES.md`](docs/AUTH-AND-ROLES.md).
 
-Adding a new authorized user without an ITBA-domain email = a one-line PR adding their address to `AUTH_ALLOWED_EMAILS`.
+Quick version:
+* Frontend uses **Google Sign-In**, sends the resulting ID token as `Authorization: Bearer <id_token>`.
+* Spring Security validates the JWT against Google's JWKS; a custom converter applies the two-rule allowlist (`AUTH_ALLOWED_DOMAINS` ∪ `AUTH_ALLOWED_EMAILS`) and adds `ROLE_STAFF` if the user has an active `ceitba_staff` row.
+* `User` rows are JIT-provisioned (no signup endpoint). The first `STAFF` member is bootstrapped via SQL — see the guide.
+* `/api/v1/sync/**` is gated by a static `X-API-Key` header (env `AUTH_SYNC_API_KEY`).
 
 ## Endpoints
 
@@ -80,9 +81,12 @@ Adding a new authorized user without an ITBA-domain email = a one-line PR adding
 | `/api/v1/users/**` | GET, POST `/create` | public _(parity with NestJS — TODO lock down)_ |
 | `/api/v1/wiki/bookmarks/{id}` | GET | public |
 | `/api/v1/wiki/bookmarks/{id}` | POST/PUT/DELETE | Google JWT |
+| `/api/v1/staff/**` | GET, POST, DELETE | Google JWT + `ROLE_STAFF` |
 | `/api/v1/sync/**` | POST | `X-API-Key` |
 
 Full list (with examples + schemas) in `/api/docs`.
+
+**Migration parity** (i.e. how the Spring API differs from the previous NestJS version): see [`docs/MIGRATION-PARITY.md`](docs/MIGRATION-PARITY.md). TL;DR: ~92% of NestJS endpoints have a Spring equivalent; the gaps are admin-style write endpoints redundant with the data-sync job.
 
 ## Database
 
