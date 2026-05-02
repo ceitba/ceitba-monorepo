@@ -1,0 +1,11 @@
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+logging:
+  level:
+    org.ceitba.api: DEBUG
+    org.hibernate.SQL: DEBUG

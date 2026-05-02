@@ -130,3 +130,17 @@ dist
 .pnp.*
 
 /generated/prisma
+
+# Java / Maven
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+.vscode/
+
+# Spring Boot
+HELP.md
+.DS_Store
