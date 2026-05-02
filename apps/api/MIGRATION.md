@@ -434,25 +434,35 @@ Strategy is **endpoint-by-endpoint cutover via a reverse proxy**: in dev/staging
 - We use **Google as the OIDC provider** rather than building our own login. Frontend uses Google Sign-In (standard at ITBA), gets an ID token, sends as `Authorization: Bearer <id_token>`. Spring Security validates the JWT against Google's JWKS — **zero login code, no password storage, no email verification, no session table**. Google does all of it.
 - For sync endpoints (called by cron / ops, not humans), a static `X-API-Key` header is enough. Don't put OAuth on machine-to-machine paths.
 
+**Allowlist model**:
+Not every ITBA-affiliated user has an `@itba.edu.ar` Google account. The allowlist is therefore a **two-rule check** (admit if either passes):
+
+1. **Domain rule** — `email` ends with one of `auth.allowed-domains` (default: `itba.edu.ar`).
+2. **Explicit allowlist** — `email` is exactly one of `auth.allowed-emails` (a list, e.g. personal `@gmail.com` addresses for staff or alumni without ITBA accounts).
+
+Both lists live in `application.yml` under `auth.*` and are overridable via env (`AUTH_ALLOWED_DOMAINS`, `AUTH_ALLOWED_EMAILS`). New entries land via PR — **do not** build an admin UI for managing this list now; the allowlist is small and slow-changing.
+
 **Endpoint policy**:
 | Path | Auth |
 |---|---|
 | `GET /api/health`, `GET /api/v1/careers/**`, `GET /api/v1/subjects/**`, `GET /api/v1/plans/**`, `GET /api/v1/classrooms/**`, `GET /api/v1/wiki/bookmarks/:id` | Public |
-| `POST/PUT/DELETE /api/v1/wiki/bookmarks/:id`, all of `/api/v1/users/**` | Google ID token, email must end in `@itba.edu.ar` |
+| `POST/PUT/DELETE /api/v1/wiki/bookmarks/:id`, all of `/api/v1/users/**` | Google ID token, email must pass the allowlist (see above) |
 | `POST /api/v1/sync/**` | `X-API-Key` matching env `SYNC_API_KEY` |
 
 **Reviewer must check**:
 - `application.yml` has `spring.security.oauth2.resourceserver.jwt.issuer-uri: https://accounts.google.com` and `audiences:` set to the Google OAuth client ID.
 - The JIT-provisioning code is **idempotent**: first call creates a `User` row from `(email, name)` claims; subsequent calls do not duplicate. Use `INSERT ... ON CONFLICT (email) DO NOTHING RETURNING ...` (or repo `findByEmail` + `save`).
-- Email domain is enforced (`@itba.edu.ar`) inside the JWT converter, not in every controller. Reject with 403 if mismatched.
+- Allowlist enforcement (`auth.allowed-domains` + `auth.allowed-emails`) lives **once**, inside the JWT converter, not duplicated across controllers. Reject with 403 if neither rule matches.
+- The two config lists are bound via `@ConfigurationProperties("auth")` to a record, not read with raw `@Value` strings (so a typo in the YAML fails fast at startup).
 - API key is read from env, not hardcoded. Missing/wrong key returns 401, not 500.
 - The four wiki endpoints (`GET`, `POST`, `PUT`, `DELETE /:subjectId`) match in path and verb. `DELETE` returns 204 idempotently. `GET` returns `{ count, bookmarked: false }` for anonymous users (no auth required for read).
 - A `@CurrentUser User user` controller-method param works for the protected endpoints (no boilerplate `SecurityContextHolder` lookups in controllers).
 
 **Acceptance**:
 - `POST /api/v1/wiki/bookmarks/93.12` with no token → 401.
-- With a valid Google ID token whose email is `@gmail.com` → 403.
-- With a valid token whose email is `@itba.edu.ar` → 200, and a `User` row exists.
+- With a valid Google ID token whose email is `@gmail.com` and **not** in `auth.allowed-emails` → 403.
+- With a valid token whose email is `@itba.edu.ar` (matched by `auth.allowed-domains`) → 200, and a `User` row exists.
+- With a valid token whose email is in `auth.allowed-emails` (e.g. an explicit `someone@gmail.com`) → 200.
 - `POST /api/v1/sync/all` with no `X-API-Key` → 401. With wrong key → 401. With correct key → 200.
 
 **Decisions**:
