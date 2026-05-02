@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Run Maven inside a containerized JDK 21 — no host JDK required.
+# Usage: ./scripts/mvn <maven-args>      e.g.  ./scripts/mvn -B verify
+# Caches ~/.m2 on the host so dependency downloads survive across runs.
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+M2_CACHE="${M2_CACHE:-$HOME/.m2}"
+mkdir -p "$M2_CACHE"
+
+exec docker run --rm \
+  -v "$PROJECT_ROOT":/app \
+  -v "$M2_CACHE":/root/.m2 \
+  -w /app \
+  eclipse-temurin:21-jdk \
+  ./mvnw "$@"
