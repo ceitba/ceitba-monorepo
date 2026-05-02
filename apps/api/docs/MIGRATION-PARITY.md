@@ -41,8 +41,8 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `POST /api/v1/sync/commissions` | `POST /api/v1/sync/commissions` | API key | ✅ |
 | `POST /api/v1/sync/plan/{planId}/subjects` | `POST /api/v1/sync/plan/{planId}/subjects` | API key | ✅ |
 | `POST /api/v1/sync/subject/{subjectCode}/commissions` | `POST /api/v1/sync/subject/{subjectCode}/commissions` | API key | ✅ |
-| `POST /api/v1/users/create` | `POST /api/v1/users/create` | public _(TODO)_ | ✅ |
-| `GET /api/v1/users` | `GET /api/v1/users` | public _(TODO)_ | ✅ |
+| `POST /api/v1/users/create` | `POST /api/v1/users/create` | STAFF | ✅ |
+| `GET /api/v1/users` | `GET /api/v1/users` | STAFF | ✅ |
 | `GET /api/v1/wiki/bookmarks/{subjectId}` | `GET /api/v1/wiki/bookmarks/{subjectId}` | public | ✅ |
 | `POST /api/v1/wiki/bookmarks/{subjectId}` | `POST /api/v1/wiki/bookmarks/{subjectId}` | Google JWT | ✅ |
 | `PUT /api/v1/wiki/bookmarks/{subjectId}` | `PUT /api/v1/wiki/bookmarks/{subjectId}` | Google JWT | ✅ |
@@ -73,6 +73,8 @@ These endpoints exist in both stacks but behave subtly differently:
 | `subjectName` on commission backfill | Saved as the subject code | Saved as the real name from the wire payload, falling back to the code |
 | Career writes | No auth | `ROLE_STAFF` required |
 | SubjectPlan writes | No auth | `ROLE_STAFF` required |
+| `POST /v1/users/create` | No auth | `ROLE_STAFF` required (self-service signup is JIT, this is for staff to pre-create users) |
+| `GET /v1/users[/{id}]` | No auth | `ROLE_STAFF` required (response leaks email + file_number) |
 | `GET /api/v1/plans/{planId}/subject/{subjectId}` | Returns 404 with body `"Subject plan not found"` | Returns the uniform `ErrorResponse` with `error: "ResourceNotFound"` |
 | `POST /api/v1/plans/{planId}/subject` | No FK validation; could save rows referencing missing plan/subject | Validates `planId` + `subjectId` exist in the DB; returns 404 if either is unknown (the schema has no FKs on `plan_subject`, so this is app-level enforcement) |
 | `SubjectPlanResponse.subject` | Returned as part of the model when API-fetched, missing on DB-only paths | Always populated by looking up the `Subject` row when serializing the response |

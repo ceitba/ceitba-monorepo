@@ -27,9 +27,12 @@ import java.util.List;
 // Endpoint policy:
 //   public:        GET on health/careers/subjects/plans/classrooms;
 //                  GET on wiki bookmarks; POST /v1/classrooms/conflicts.
-//   API key:       /v1/sync/**
-//   Google OIDC:   POST/PUT/DELETE on wiki bookmarks; everything under /v1/users.
-//                  /v1/staff/**                  -> ROLE_STAFF (active CeitbaStaff row)
+//   API key:       /v1/sync/**                       -> ROLE_SYNC
+//   Google OIDC:   POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
+//                  /v1/staff/**                      -> ROLE_STAFF (path matcher)
+//                  /v1/users/**                      -> ROLE_STAFF (@PreAuthorize)
+//                  /v1/careers/{POST,PUT,DELETE}     -> ROLE_STAFF (@PreAuthorize)
+//                  /v1/plans/.../subject writes      -> ROLE_STAFF (@PreAuthorize)
 //
 // Allowlist (auth.allowed-domains + auth.allowed-emails) is enforced as an
 // AuthorizationManager: post-decode, pre-controller. Living here (vs in the

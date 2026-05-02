@@ -51,15 +51,24 @@ class UserEndpointsIT {
         careerRepository.save(new Career("S", "Sistemas"));
     }
 
-    private static RequestPostProcessor authedAs(String email) {
-        return jwt().jwt(t -> t.claim("email", email).claim("name", email).subject(email));
+    private static RequestPostProcessor user() {
+        return jwt().jwt(t -> t.claim("email", "regular@itba.edu.ar")).authorities(
+            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"));
     }
+
+    private static RequestPostProcessor staff() {
+        return jwt().jwt(t -> t.claim("email", "boss@itba.edu.ar")).authorities(
+            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"),
+            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_STAFF"));
+    }
+
+    // ----- auth gating -----
 
     @Test
     void anonymousCreateReturns401() throws Exception {
-        var body = """
-            {"email":"alice@itba.edu.ar","name":"Alice"}""";
-        mvc.perform(post("/v1/users/create").contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(post("/v1/users/create")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"alice@itba.edu.ar\",\"name\":\"Alice\"}"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -69,12 +78,33 @@ class UserEndpointsIT {
     }
 
     @Test
-    void createUserReturns201WithBody() throws Exception {
-        var body = """
-            {"email":"alice@itba.edu.ar","name":"Alice","file_number":12345,"career_id":"S","plan":"S10-Rev23"}""";
-        mvc.perform(post("/v1/users/create")
-                .with(authedAs("admin@itba.edu.ar"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+    void regularUserCreateReturns403() throws Exception {
+        mvc.perform(post("/v1/users/create").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"alice@itba.edu.ar\",\"name\":\"Alice\"}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void regularUserListReturns403() throws Exception {
+        mvc.perform(get("/v1/users").with(user()))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void regularUserGetByIdReturns403() throws Exception {
+        var id = java.util.UUID.randomUUID();
+        mvc.perform(get("/v1/users/" + id).with(user()))
+            .andExpect(status().isForbidden());
+    }
+
+    // ----- STAFF happy path -----
+
+    @Test
+    void staffCanCreateUserReturns201WithBody() throws Exception {
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"alice@itba.edu.ar\",\"name\":\"Alice\",\"file_number\":12345,\"career_id\":\"S\",\"plan\":\"S10-Rev23\"}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").exists())
             .andExpect(jsonPath("$.email").value("alice@itba.edu.ar"))
@@ -84,66 +114,60 @@ class UserEndpointsIT {
     }
 
     @Test
-    void createWithUnknownCareerReturns404() throws Exception {
-        var body = """
-            {"email":"bob@itba.edu.ar","name":"Bob","career_id":"NOPE"}""";
-        mvc.perform(post("/v1/users/create")
-                .with(authedAs("admin@itba.edu.ar"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+    void staffCreateWithUnknownCareerReturns404() throws Exception {
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"bob@itba.edu.ar\",\"name\":\"Bob\",\"career_id\":\"NOPE\"}"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.error").value("ResourceNotFound"));
     }
 
     @Test
-    void createDuplicateEmailReturns409() throws Exception {
-        var body = """
-            {"email":"dup@itba.edu.ar"}""";
-        mvc.perform(post("/v1/users/create")
-                .with(authedAs("admin@itba.edu.ar"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+    void staffCreateDuplicateEmailReturns409() throws Exception {
+        var body = "{\"email\":\"dup@itba.edu.ar\"}";
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andExpect(status().isCreated());
-        mvc.perform(post("/v1/users/create")
-                .with(authedAs("admin@itba.edu.ar"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error").value("ResourceAlreadyExists"));
     }
 
     @Test
-    void createWithBadEmailReturns400() throws Exception {
-        var body = """
-            {"email":"not-an-email"}""";
-        mvc.perform(post("/v1/users/create")
-                .with(authedAs("admin@itba.edu.ar"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+    void staffCreateWithBadEmailReturns400() throws Exception {
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("ValidationError"));
     }
 
     @Test
-    void getAllReturnsCreatedUsers() throws Exception {
-        var body = """
-            {"email":"alice@itba.edu.ar","name":"Alice"}""";
-        mvc.perform(post("/v1/users/create")
-                .with(authedAs("admin@itba.edu.ar"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+    void staffCanListUsers() throws Exception {
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"alice@itba.edu.ar\",\"name\":\"Alice\"}"))
             .andExpect(status().isCreated());
 
-        // JIT provisioning only fires for endpoints whose controller asks for
-        // @CurrentUser. /v1/users does not, so listing returns just alice.
-        mvc.perform(get("/v1/users").with(authedAs("admin@itba.edu.ar")))
+        mvc.perform(get("/v1/users").with(staff()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].email").value("alice@itba.edu.ar"));
     }
 
     @Test
-    void disallowedEmailIsRejectedWith403() throws Exception {
-        var body = """
-            {"email":"alice@itba.edu.ar"}""";
+    void disallowedEmailReturns403EvenWithStaffAuthorities() throws Exception {
+        // The .authorities() override on .with(jwt()) bypasses the converter, but
+        // the AuthorizationManager-based allowlist runs at request authorization
+        // time and rejects evil@gmail.com regardless of authority claims.
         mvc.perform(post("/v1/users/create")
-                .with(authedAs("evil@gmail.com"))
-                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .with(jwt().jwt(t -> t.claim("email", "evil@gmail.com"))
+                    .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_STAFF")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"alice@itba.edu.ar\"}"))
             .andExpect(status().isForbidden());
     }
 }

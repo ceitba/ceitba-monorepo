@@ -242,6 +242,11 @@ Controller method invoked
 | STAFF can list/assign/revoke | `StaffEndpointsIT.staffCan*` |
 | Duplicate staff assignment → 409 | `StaffEndpointsIT.assigningSamePersonTwiceReturns409` |
 | Revoke end-dates active membership | `StaffEndpointsIT.revokeEndDatesActiveMembershipSoListingDropsIt` |
+| `/v1/users/**` requires STAFF | `UserEndpointsIT.regularUser*Returns403` |
+| Anonymous can't create/list users | `UserEndpointsIT.anonymous*Returns401` |
+| STAFF can create/list users | `UserEndpointsIT.staffCan*` |
+| Disallowed email rejected even with claimed STAFF authority | `UserEndpointsIT.disallowedEmailReturns403EvenWithStaffAuthorities` |
+
 
 ---
 
@@ -251,4 +256,3 @@ Controller method invoked
 - **`AUTH_JWT_AUDIENCE` enforcement.** Env var exists but isn't wired into the JWT decoder. Set it once you fix the Google OAuth client ID.
 - **API key compare.** Currently `String.equals`; switch to `MessageDigest.isEqual` for constant-time.
 - **Cache the staff lookup** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT request). Caffeine with TTL ≤ minimum role-validity window would be enough.
-- **Lock down `POST /v1/users/create` and `GET /v1/users/**`.** Currently public for NestJS parity; should require STAFF (or be removed entirely once JIT provisioning covers all signup flows).

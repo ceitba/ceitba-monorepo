@@ -78,7 +78,7 @@ Quick version:
 | `/api/v1/subjects/**`, `/api/v1/plans/**` | GET | public |
 | `/api/v1/classrooms/**` | GET | public |
 | `/api/v1/classrooms/conflicts` | POST | public |
-| `/api/v1/users/**` | GET, POST `/create` | public _(parity with NestJS — TODO lock down)_ |
+| `/api/v1/users/**` | GET, POST `/create` | Google JWT + `ROLE_STAFF` |
 | `/api/v1/wiki/bookmarks/{id}` | GET | public |
 | `/api/v1/wiki/bookmarks/{id}` | POST/PUT/DELETE | Google JWT |
 | `/api/v1/staff/**` | GET, POST, DELETE | Google JWT + `ROLE_STAFF` |
