@@ -1,0 +1,24 @@
+services:
+  ceitba-api-spring:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile.spring
+    container_name: ceitba-api-spring
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ceitba_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceitba_password}
+      ITBA_API_TOKEN: ${ITBA_API_TOKEN:-}
+      ITBA_API_BASE_URL: ${ITBA_API_BASE_URL:-}
+      SYNC_API_KEY: ${SYNC_API_KEY:-dev-sync-key-change-me}
+      AUTH_ALLOWED_DOMAINS: ${AUTH_ALLOWED_DOMAINS:-itba.edu.ar}
+      AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:-}
+    networks:
+      - ceitba-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
