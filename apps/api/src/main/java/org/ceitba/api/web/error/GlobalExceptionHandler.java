@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -70,6 +72,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleExternalApi(ExternalApiException ex, HttpServletRequest req) {
         log.error("External API error at {}", req.getRequestURI(), ex);
         return build(HttpStatus.BAD_GATEWAY, "ExternalApiError", ex.getMessage(), req);
+    }
+
+    // @PreAuthorize denial throws AuthorizationDeniedException (Spring 6.1+)
+    // which extends AccessDeniedException. The @ControllerAdvice fires before
+    // Spring Security's ExceptionTranslationFilter could translate it, so we
+    // map it here. Order matters: place this before the catch-all Exception
+    // handler so it gets matched first.
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDenied(Exception ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "AccessDenied", "Insufficient permissions", req);
     }
 
     @ExceptionHandler(Exception.class)

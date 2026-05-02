@@ -1,11 +1,18 @@
 package org.ceitba.api.service.plan;
 
+import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
+import org.ceitba.api.domain.PlanSubject;
+import org.ceitba.api.domain.PlanSubjectId;
+import org.ceitba.api.domain.Subject;
 import org.ceitba.api.external.itba.ItbaApiClient;
-import org.ceitba.api.external.itba.SubjectPlanProjection;
 import org.ceitba.api.repository.CommissionRepository;
+import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
+import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.web.plan.dto.CreateSubjectPlanRequest;
 import org.ceitba.api.web.plan.dto.SubjectPlanResponse;
+import org.ceitba.api.web.plan.dto.UpdateSubjectPlanRequest;
 import org.ceitba.api.web.subject.dto.OrganizedSubjectsResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +33,19 @@ public class SubjectPlanService {
     private final ItbaApiClient itbaApiClient;
     private final CommissionRepository commissionRepository;
     private final PlanSubjectRepository planSubjectRepository;
+    private final PlanRepository planRepository;
+    private final SubjectRepository subjectRepository;
 
     public SubjectPlanService(ItbaApiClient itbaApiClient,
                               CommissionRepository commissionRepository,
-                              PlanSubjectRepository planSubjectRepository) {
+                              PlanSubjectRepository planSubjectRepository,
+                              PlanRepository planRepository,
+                              SubjectRepository subjectRepository) {
         this.itbaApiClient = itbaApiClient;
         this.commissionRepository = commissionRepository;
         this.planSubjectRepository = planSubjectRepository;
+        this.planRepository = planRepository;
+        this.subjectRepository = subjectRepository;
     }
 
     // GET /api/v1/subjects?plan=... — the "organized" response. Subjects come
@@ -109,6 +122,85 @@ public class SubjectPlanService {
         return rows.stream().map(this::toResponse).toList();
     }
 
+    // GET /api/v1/plans/subjects/{subjectId}/plans — every plan that contains
+    // a subject. Used by frontends that show "this subject appears in plans X, Y, Z".
+    @Transactional(readOnly = true)
+    public List<SubjectPlanResponse> getPlansForSubject(String subjectId) {
+        return planSubjectRepository.findBySubjectId(subjectId).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    // GET /api/v1/plans/{planId}/subject/{subjectId} — one specific row.
+    @Transactional(readOnly = true)
+    public SubjectPlanResponse getOne(String planId, String subjectId) {
+        var ps = planSubjectRepository.findById(new PlanSubjectId(subjectId, planId))
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "SubjectPlan", planId + "/" + subjectId));
+        return toResponse(ps);
+    }
+
+    // POST /api/v1/plans/{planId}/subject — STAFF only.
+    // Validates planId + subjectId exist (no FK in the schema, so we have to
+    // check at the application layer — otherwise rows reference nothing).
+    @Transactional
+    public SubjectPlanResponse create(String planId, CreateSubjectPlanRequest req) {
+        if (!planRepository.existsById(planId)) {
+            throw new ResourceNotFoundException("Plan", planId);
+        }
+        if (!subjectRepository.existsById(req.subjectId())) {
+            throw new ResourceNotFoundException("Subject", req.subjectId());
+        }
+        var id = new PlanSubjectId(req.subjectId(), planId);
+        if (planSubjectRepository.existsById(id)) {
+            throw new ResourceAlreadyExistsException("SubjectPlan", planId + "/" + req.subjectId());
+        }
+
+        var entity = new PlanSubject(
+            req.subjectId(),
+            planId,
+            req.section(),
+            req.year() != null ? req.year() : 0,
+            req.semester() != null ? req.semester() : 0,
+            req.creditsRequired() != null ? req.creditsRequired() : 0,
+            req.dependencies() != null ? req.dependencies() : List.of()
+        );
+        var saved = planSubjectRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public SubjectPlanResponse update(String planId, String subjectId, UpdateSubjectPlanRequest req) {
+        var existing = planSubjectRepository.findById(new PlanSubjectId(subjectId, planId))
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "SubjectPlan", planId + "/" + subjectId));
+
+        // PlanSubject's mutable surface is intentionally narrow — fields are
+        // final on the entity. Replace by save (PK is composite, INSERT or
+        // UPDATE is decided by Hibernate via SELECT-then-decide).
+        planSubjectRepository.delete(existing);
+        planSubjectRepository.flush();
+
+        var merged = new PlanSubject(
+            subjectId, planId,
+            req.section() != null ? req.section() : existing.getSection(),
+            req.year() != null ? req.year() : existing.getYear(),
+            req.semester() != null ? req.semester() : existing.getSemester(),
+            req.creditsRequired() != null ? req.creditsRequired() : existing.getCreditsRequired(),
+            req.dependencies() != null ? req.dependencies() : existing.getDependencies()
+        );
+        return toResponse(planSubjectRepository.save(merged));
+    }
+
+    @Transactional
+    public void delete(String planId, String subjectId) {
+        var id = new PlanSubjectId(subjectId, planId);
+        if (!planSubjectRepository.existsById(id)) {
+            throw new ResourceNotFoundException("SubjectPlan", planId + "/" + subjectId);
+        }
+        planSubjectRepository.deleteById(id);
+    }
+
     private List<org.ceitba.api.domain.PlanSubject> applyFilters(String planId, PlanFilters filters) {
         if (filters.year() != null && filters.semester() != null) {
             return planSubjectRepository.findByPlanIdAndYearAndSemester(planId, filters.year(), filters.semester());
@@ -125,11 +217,13 @@ public class SubjectPlanService {
         return planSubjectRepository.findByPlanId(planId);
     }
 
-    private SubjectPlanResponse toResponse(org.ceitba.api.domain.PlanSubject ps) {
-        // Subject inline shape needs name + credits — fetch lazily would N+1; do the DB lookup
-        // explicitly. PlanSubject doesn't have a JPA association to Subject, intentionally
-        // (the FK isn't even modeled in the schema). Look it up via the subject repo if needed.
-        // For now, fields populated with what PlanSubject has — caller can enrich if needed.
+    // Enriches the response with the subject's name + credits when we have it.
+    // PlanSubject has no JPA association to Subject (the FK isn't in the schema)
+    // so we look it up; subjectRepository.findById is hashable + small.
+    private SubjectPlanResponse toResponse(PlanSubject ps) {
+        var subjectShape = subjectRepository.findById(ps.getSubjectId())
+            .map(s -> new SubjectPlanResponse.SubjectShape(s.getId(), s.getName(), s.getCredits()))
+            .orElse(null);
         return new SubjectPlanResponse(
             ps.getSubjectId(),
             ps.getPlanId(),
@@ -138,7 +232,7 @@ public class SubjectPlanService {
             ps.getSemester(),
             ps.getDependencies(),
             ps.getCreditsRequired(),
-            null
+            subjectShape
         );
     }
 

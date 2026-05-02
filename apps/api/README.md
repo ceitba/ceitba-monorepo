@@ -86,7 +86,7 @@ Quick version:
 
 Full list (with examples + schemas) in `/api/docs`.
 
-**Migration parity** (i.e. how the Spring API differs from the previous NestJS version): see [`docs/MIGRATION-PARITY.md`](docs/MIGRATION-PARITY.md). TL;DR: ~92% of NestJS endpoints have a Spring equivalent; the gaps are admin-style write endpoints redundant with the data-sync job.
+**Migration parity** (i.e. how the Spring API differs from the previous NestJS version): see [`docs/MIGRATION-PARITY.md`](docs/MIGRATION-PARITY.md). TL;DR: 100% migrated; admin-style writes for careers and subject-plans are gated behind `ROLE_STAFF`.
 
 ## Database
 
