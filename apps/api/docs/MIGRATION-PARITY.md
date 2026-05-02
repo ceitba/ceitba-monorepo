@@ -4,62 +4,60 @@ Snapshot of every endpoint that existed in the NestJS app (commit `a7dcdbf`, the
 
 Methodology: read each NestJS controller, list every endpoint, find the equivalent Spring controller method or note it as missing. "Migrated" means the path + HTTP method + response shape match the NestJS endpoint closely enough that a frontend client should not need to be rewritten. "Behavior change" calls out where shapes drifted intentionally.
 
-Last refreshed: 2026-05-02 (after PR #18 + the STAFF role work).
+Last refreshed: 2026-05-02 (after closing the last gap — Career writes + SubjectPlan management).
 
 ---
 
 ## Summary
 
-**~92% of NestJS endpoints have a Spring equivalent.** All read-heavy and user-facing flows are migrated. The gaps are admin-style write endpoints for `Career` and `SubjectPlan` that were redundant with the data-sync pipeline (which the ITBA backend feeds into automatically).
-
-If your frontend / cron used any of the missing endpoints, that integration breaks. The fix is either (a) reinstate the endpoints (~30-60 min each), or (b) drop the dependency in favor of the sync job. See [§What's missing](#whats-missing) for case-by-case recommendations.
+**100% of NestJS endpoints have a Spring equivalent.** All read-heavy and user-facing flows are migrated. The previous 8% gap (Career writes + SubjectPlan management) was closed in the PR that produced this revision; those endpoints are now gated behind `ROLE_STAFF` per the role system.
 
 ---
 
 ## Endpoint-by-endpoint
 
-| NestJS endpoint | Spring endpoint | Status |
-|---|---|---|
-| `GET /api/v1/careers` | `GET /api/v1/careers` | ✅ |
-| `GET /api/v1/careers/{id}` | `GET /api/v1/careers/{id}` | ✅ |
-| `GET /api/v1/careers/plans` | `GET /api/v1/careers/plans` | ✅ |
-| `POST /api/v1/careers` | — | ❌ **Missing** |
-| `PUT /api/v1/careers/{id}` | — | ❌ **Missing** |
-| `DELETE /api/v1/careers/{id}` | — | ❌ **Missing** |
-| `GET /api/v1/classrooms` | `GET /api/v1/classrooms` | ✅ |
-| `GET /api/v1/classrooms/building/{b}` | `GET /api/v1/classrooms/building/{b}` | ✅ |
-| `GET /api/v1/classrooms/day/{d}` | `GET /api/v1/classrooms/day/{d}` | ✅ |
-| `POST /api/v1/classrooms/conflicts` | `POST /api/v1/classrooms/conflicts` | ✅ |
-| `GET /api/v1/subjects?plan=X` | `GET /api/v1/subjects?plan=X` | ✅ |
-| `GET /api/v1/subjects/{id}` | `GET /api/v1/subjects/{id}` | ✅ |
-| `GET /api/v1/plans/{planId}/subjects` | `GET /api/v1/plans/{planId}/subjects` | ✅ |
-| `GET /api/v1/plans/subjects/{subjectId}/plans` | — | ❌ **Missing** |
-| `GET /api/v1/plans/{planId}/subject/{subjectId}` | — | ❌ **Missing** |
-| `POST /api/v1/plans/{planId}/subject` | — | ❌ **Missing** |
-| `PUT /api/v1/plans/{planId}/subject/{subjectId}` | — | ❌ **Missing** |
-| `DELETE /api/v1/plans/{planId}/subject/{subjectId}` | — | ❌ **Missing** |
-| `POST /api/v1/sync/all` | `POST /api/v1/sync/all` | ✅ |
-| `POST /api/v1/sync/subjects` | `POST /api/v1/sync/subjects` | ✅ |
-| `POST /api/v1/sync/commissions` | `POST /api/v1/sync/commissions` | ✅ |
-| `POST /api/v1/sync/plan/{planId}/subjects` | `POST /api/v1/sync/plan/{planId}/subjects` | ✅ |
-| `POST /api/v1/sync/subject/{subjectCode}/commissions` | `POST /api/v1/sync/subject/{subjectCode}/commissions` | ✅ |
-| `POST /api/v1/users/create` | `POST /api/v1/users/create` | ✅ |
-| `GET /api/v1/users` | `GET /api/v1/users` | ✅ |
-| `GET /api/v1/wiki/bookmarks/{subjectId}` | `GET /api/v1/wiki/bookmarks/{subjectId}` | ✅ |
-| `POST /api/v1/wiki/bookmarks/{subjectId}` | `POST /api/v1/wiki/bookmarks/{subjectId}` | ✅ |
-| `PUT /api/v1/wiki/bookmarks/{subjectId}` | `PUT /api/v1/wiki/bookmarks/{subjectId}` | ✅ |
-| `DELETE /api/v1/wiki/bookmarks/{subjectId}` | `DELETE /api/v1/wiki/bookmarks/{subjectId}` | ✅ |
-| `GET /api/health`, `GET /api` | `GET /api/health`, `GET /api` | ✅ |
+| NestJS endpoint | Spring endpoint | Auth | Status |
+|---|---|---|---|
+| `GET /api/v1/careers` | `GET /api/v1/careers` | public | ✅ |
+| `GET /api/v1/careers/{id}` | `GET /api/v1/careers/{id}` | public | ✅ |
+| `GET /api/v1/careers/plans` | `GET /api/v1/careers/plans` | public | ✅ |
+| `POST /api/v1/careers` | `POST /api/v1/careers` | STAFF | ✅ |
+| `PUT /api/v1/careers/{id}` | `PUT /api/v1/careers/{id}` | STAFF | ✅ |
+| `DELETE /api/v1/careers/{id}` | `DELETE /api/v1/careers/{id}` | STAFF | ✅ |
+| `GET /api/v1/classrooms` | `GET /api/v1/classrooms` | public | ✅ |
+| `GET /api/v1/classrooms/building/{b}` | `GET /api/v1/classrooms/building/{b}` | public | ✅ |
+| `GET /api/v1/classrooms/day/{d}` | `GET /api/v1/classrooms/day/{d}` | public | ✅ |
+| `POST /api/v1/classrooms/conflicts` | `POST /api/v1/classrooms/conflicts` | public | ✅ |
+| `GET /api/v1/subjects?plan=X` | `GET /api/v1/subjects?plan=X` | public | ✅ |
+| `GET /api/v1/subjects/{id}` | `GET /api/v1/subjects/{id}` | public | ✅ |
+| `GET /api/v1/plans/{planId}/subjects` | `GET /api/v1/plans/{planId}/subjects` | public | ✅ |
+| `GET /api/v1/plans/subjects/{subjectId}/plans` | `GET /api/v1/plans/subjects/{subjectId}/plans` | public | ✅ |
+| `GET /api/v1/plans/{planId}/subject/{subjectId}` | `GET /api/v1/plans/{planId}/subject/{subjectId}` | public | ✅ |
+| `POST /api/v1/plans/{planId}/subject` | `POST /api/v1/plans/{planId}/subject` | STAFF | ✅ |
+| `PUT /api/v1/plans/{planId}/subject/{subjectId}` | `PUT /api/v1/plans/{planId}/subject/{subjectId}` | STAFF | ✅ |
+| `DELETE /api/v1/plans/{planId}/subject/{subjectId}` | `DELETE /api/v1/plans/{planId}/subject/{subjectId}` | STAFF | ✅ |
+| `POST /api/v1/sync/all` | `POST /api/v1/sync/all` | API key | ✅ |
+| `POST /api/v1/sync/subjects` | `POST /api/v1/sync/subjects` | API key | ✅ |
+| `POST /api/v1/sync/commissions` | `POST /api/v1/sync/commissions` | API key | ✅ |
+| `POST /api/v1/sync/plan/{planId}/subjects` | `POST /api/v1/sync/plan/{planId}/subjects` | API key | ✅ |
+| `POST /api/v1/sync/subject/{subjectCode}/commissions` | `POST /api/v1/sync/subject/{subjectCode}/commissions` | API key | ✅ |
+| `POST /api/v1/users/create` | `POST /api/v1/users/create` | public _(TODO)_ | ✅ |
+| `GET /api/v1/users` | `GET /api/v1/users` | public _(TODO)_ | ✅ |
+| `GET /api/v1/wiki/bookmarks/{subjectId}` | `GET /api/v1/wiki/bookmarks/{subjectId}` | public | ✅ |
+| `POST /api/v1/wiki/bookmarks/{subjectId}` | `POST /api/v1/wiki/bookmarks/{subjectId}` | Google JWT | ✅ |
+| `PUT /api/v1/wiki/bookmarks/{subjectId}` | `PUT /api/v1/wiki/bookmarks/{subjectId}` | Google JWT | ✅ |
+| `DELETE /api/v1/wiki/bookmarks/{subjectId}` | `DELETE /api/v1/wiki/bookmarks/{subjectId}` | Google JWT | ✅ |
+| `GET /api/health`, `GET /api` | `GET /api/health`, `GET /api` | public | ✅ |
 
 **Spring-only additions** (no NestJS equivalent):
 
-| Spring endpoint | Why it's new |
-|---|---|
-| `GET /api/v1/staff` | Backs the new STAFF role; lists currently active staff |
-| `POST /api/v1/staff` | Assign STAFF role to a user (CRUD on `ceitba_staff`) |
-| `DELETE /api/v1/staff/{userId}` | Revoke STAFF (end-dates the row) |
-| `GET /api/actuator/health` | Spring Boot Actuator standard probe |
-| `GET /api/docs`, `GET /api/docs.json` | springdoc-openapi UI + spec |
+| Spring endpoint | Auth | Why it's new |
+|---|---|---|
+| `GET /api/v1/staff` | STAFF | Backs the new STAFF role; lists currently active staff |
+| `POST /api/v1/staff` | STAFF | Assign STAFF role to a user (CRUD on `ceitba_staff`) |
+| `DELETE /api/v1/staff/{userId}` | STAFF | Revoke STAFF (end-dates the row) |
+| `GET /api/actuator/health` | public | Spring Boot Actuator standard probe |
+| `GET /api/docs`, `GET /api/docs.json` | public | springdoc-openapi UI + spec |
 
 ---
 
@@ -73,30 +71,19 @@ These endpoints exist in both stacks but behave subtly differently:
 | `GET /api/health` | Node `process.uptime()` / `process.memoryUsage()` | JVM `RuntimeMXBean.getUptime() / 1000` and `Runtime.totalMemory/freeMemory/maxMemory` — same JSON keys, JVM numbers |
 | Error response shape | Per-endpoint, sometimes `{ message, statusCode }`, sometimes raw | Uniform: `{ error, message, path, timestamp }` from `GlobalExceptionHandler` |
 | `subjectName` on commission backfill | Saved as the subject code | Saved as the real name from the wire payload, falling back to the code |
+| Career writes | No auth | `ROLE_STAFF` required |
+| SubjectPlan writes | No auth | `ROLE_STAFF` required |
+| `GET /api/v1/plans/{planId}/subject/{subjectId}` | Returns 404 with body `"Subject plan not found"` | Returns the uniform `ErrorResponse` with `error: "ResourceNotFound"` |
+| `POST /api/v1/plans/{planId}/subject` | No FK validation; could save rows referencing missing plan/subject | Validates `planId` + `subjectId` exist in the DB; returns 404 if either is unknown (the schema has no FKs on `plan_subject`, so this is app-level enforcement) |
+| `SubjectPlanResponse.subject` | Returned as part of the model when API-fetched, missing on DB-only paths | Always populated by looking up the `Subject` row when serializing the response |
 
 ---
 
 ## What's missing
 
-### Career writes — `POST/PUT/DELETE /v1/careers`
+Nothing.
 
-- **Why missing**: `Career` rows are populated by the data-sync job (`POST /v1/sync/subjects` walks every plan from the ITBA API and upserts subjects/plans/commissions). Manually `POST`-ing a career risks divergence from upstream.
-- **Was it used in NestJS?** Probably never in production — the sync was the canonical ingestion path, and the schema reflects what ITBA sends.
-- **Recommendation**: leave it missing unless a real workflow needs it. If reinstated, gate behind `hasRole("STAFF")`.
-- **Effort to add**: ~30 min. Pattern: extend `CareerService` with `create`/`update`/`delete` methods, add `@PostMapping`/`@PutMapping`/`@DeleteMapping` on `CareerController`.
-
-### SubjectPlan management — 5 endpoints
-
-- `GET /api/v1/plans/subjects/{subjectId}/plans` — find every plan that contains a subject
-- `GET /api/v1/plans/{planId}/subject/{subjectId}` — fetch one specific plan_subject row
-- `POST /api/v1/plans/{planId}/subject` — create a plan_subject
-- `PUT /api/v1/plans/{planId}/subject/{subjectId}` — update one
-- `DELETE /api/v1/plans/{planId}/subject/{subjectId}` — delete one
-
-- **Why missing**: same reasoning as Career writes. The `plan_subject` table is also a sync-target. Manual edits compete with the next sync run.
-- **Was it used?** The two GETs (find-by-subject and find-by-plan-and-subject) might have legitimate read-only frontend uses. The writes almost certainly weren't.
-- **Recommendation**: add the two GETs back if anyone asks for them (~15 min). Skip the writes unless we hear a specific use case; if reinstated, gate behind `hasRole("STAFF")`.
-- **Repository support already in place**: `PlanSubjectRepository.findByPlanIdAndSubjectId(...)` and `findBySubjectId(...)` exist; just need controller plumbing.
+The previous gap — Career writes + 5 of the 6 `/v1/plans/{p}/subject*` endpoints — is closed. Those endpoints are now `ROLE_STAFF`-gated and the controllers/services/tests all live in `web/career/`, `web/plan/`, `service/career/`, `service/plan/`.
 
 ---
 
@@ -120,7 +107,7 @@ When the wiki feature ships, the data layer is ready.
 ## What this means for clients
 
 - **Public frontend**: should be unaffected. Every read endpoint they use is migrated. Wiki bookmark writes now require a Google ID token (previously the request silently went through with no enforcement).
-- **Admin scripts that did `POST /v1/careers` or `POST /v1/plans/.../subject`**: will get 404. Either remove that call (sync handles it) or open a follow-up to reinstate.
+- **Anything that called `POST/PUT/DELETE` on careers or `/v1/plans/.../subject`**: still works, but now requires a Google ID token whose user has an active `ceitba_staff` row. If the caller is a cron / ops script, switch to a STAFF user's token or — for ingestion — use the data-sync endpoints.
 - **Cron**: same paths, same behavior; only need to set `X-API-Key`.
 - **Anyone using the response error shape**: now uniform `{error, message, path, timestamp}`.
 
