@@ -3,6 +3,12 @@ spring:
     name: ceitba-api
   profiles:
     active: dev
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_JWT_ISSUER:https://accounts.google.com}
+          audiences: ${AUTH_JWT_AUDIENCE:}
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ceitba_db}
     username: ${POSTGRES_USER:postgres}
@@ -45,6 +51,21 @@ springdoc:
     path: /docs
   api-docs:
     path: /docs.json
+
+auth:
+  allowed-domains: ${AUTH_ALLOWED_DOMAINS:itba.edu.ar}
+  allowed-emails: ${AUTH_ALLOWED_EMAILS:}
+  sync-api-key: ${AUTH_SYNC_API_KEY:}
+
+itba:
+  api:
+    base-url: ${ITBA_API_BASE_URL:}
+    token: ${ITBA_API_TOKEN:}
+    timeout-millis: ${ITBA_API_TIMEOUT:30000}
+    use-fake: ${ITBA_API_USE_FAKE:false}
+
+sync:
+  enabled: ${SYNC_ENABLED:false}
 
 logging:
   level:
