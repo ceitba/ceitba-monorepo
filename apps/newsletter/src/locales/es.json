@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "home": "ITBA News",
+    "tagline": "Boletín Estudiantil",
+    "articles": "Artículos",
+    "events": "Eventos",
+    "organizations": "Organizaciones",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
+  },
+  "footer": {
+    "tagline": "Escrito por estudiantes, para estudiantes.",
+    "navigate": "Navegar",
+    "contact": "Contacto",
+    "follow": "Seguir",
+    "copyright": "CEITBA — Centro de Estudiantes del ITBA",
+    "institution": "Instituto Tecnológico de Buenos Aires"
+  },
+  "articles": {
+    "pageTitle": "Últimas Noticias",
+    "pageSubtitle": "Noticias, historias y perspectivas del ITBA.",
+    "featured": "DESTACADO",
+    "readMore": "Leer más",
+    "filter": {
+      "label": "Filtrar por categoría"
+    },
+    "empty": {
+      "title": "Sin artículos en {{category}}",
+      "message": "Todavía no hay publicaciones aquí. Volvé pronto."
+    },
+    "error": {
+      "title": "Algo salió mal",
+      "message": "No pudimos cargar los artículos. Revisá tu conexión e intentá de nuevo.",
+      "retry": "Reintentar"
+    },
+    "meta": {
+      "by": "por",
+      "readingTime": "{{time}} de lectura"
+    },
+    "backToArticles": "← Volver a artículos",
+    "moreFrom": "Más de {{category}}"
+  },
+  "events": {
+    "pageTitle": "Eventos",
+    "pageSubtitle": "Lo que pasa en el ITBA este semestre.",
+    "upcoming": "Próximos Eventos",
+    "allEvents": "Todos los Eventos",
+    "eventsOn": "Eventos el {{date}}",
+    "clearSelection": "Limpiar selección — ver todos los próximos",
+    "noUpcoming": "No hay próximos eventos.",
+    "noEventsOnDay": "Nada agendado para este día.",
+    "noEvents": "No hay eventos programados.",
+    "timeRange": "{{start}}–{{end}}"
+  },
+  "orgs": {
+    "pageTitle": "Organizaciones",
+    "pageSubtitle": "Conocé los espacios estudiantiles del ITBA.",
+    "members": "{{count}} miembros",
+    "founded": "Fundada en {{year}}",
+    "latestArticles": "Últimos artículos",
+    "upcomingEvents": "Próximos eventos",
+    "noArticles": "Esta organización no tiene artículos publicados aún.",
+    "noEvents": "Esta organización no tiene eventos próximos.",
+    "viewAll": "Ver todos",
+    "error": {
+      "title": "Organización no encontrada",
+      "message": "El portal que buscás no existe o fue removido."
+    }
+  },
+  "categories": {
+    "Todos": "Todos",
+    "Académico": "Académico",
+    "Campus": "Campus",
+    "Cultura": "Cultura",
+    "Tecnología": "Tecnología",
+    "Deportes": "Deportes",
+    "General": "General"
+  },
+  "common": {
+    "loading": "Cargando…",
+    "backHome": "Volver al inicio",
+    "notFound": "Página no encontrada"
+  }
+}

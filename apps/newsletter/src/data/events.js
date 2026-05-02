@@ -1,0 +1,98 @@
+export const EVENTS = [
+  {
+    id: 'e1',
+    title: 'Simposio Anual de Ingeniería',
+    date: '2025-09-05',
+    time: '09:00',
+    endTime: '18:00',
+    location: 'Aula Magna',
+    category: 'Académico',
+    organization: 'ceitba',
+    description:
+      'Jornada completa con presentaciones de investigación estudiantil, paneles de egresados y talleres en todas las disciplinas de ingeniería.',
+  },
+  {
+    id: 'e2',
+    title: 'Ciclo de Cine CEITBA — La Ciénaga',
+    date: '2025-08-01',
+    time: '20:00',
+    endTime: '22:30',
+    location: 'Terraza del Edificio Central',
+    category: 'Cultura',
+    organization: 'ceitba',
+    description:
+      'Proyección gratuita de La Ciénaga de Lucrecia Martel, seguida de un espacio de intercambio con el colectivo de cine.',
+  },
+  {
+    id: 'e3',
+    title: 'Charla Informativa: Becas de Investigación',
+    date: '2025-08-07',
+    time: '17:00',
+    endTime: '18:30',
+    location: 'Sala de Posgrado 2B',
+    category: 'Académico',
+    organization: 'ceitba',
+    description:
+      'Conocé a los coordinadores de cada departamento, enterate de los proyectos disponibles y resolvé tus dudas antes del cierre de la convocatoria.',
+  },
+  {
+    id: 'e4',
+    title: 'Apertura Café Vectorial — Tercer Piso',
+    date: '2025-08-12',
+    time: '10:00',
+    endTime: '12:00',
+    location: 'Piso 3, Edificio Central',
+    category: 'Campus',
+    organization: 'ceitba',
+    description:
+      'Celebrá la apertura de la segunda sucursal de Café Vectorial con café y medialunas cortesía de los estudiantes de gastronomía.',
+  },
+  {
+    id: 'e5',
+    title: 'Mujeres en Tecnología — Panel y Networking',
+    date: '2025-08-14',
+    time: '18:30',
+    endTime: '20:30',
+    location: 'Sala de Reuniones A',
+    category: 'Tecnología',
+    organization: 'ieee',
+    description:
+      'Panel de ingenieras de cinco empresas tecnológicas porteñas, seguido de un espacio de networking abierto a toda la comunidad.',
+  },
+  {
+    id: 'e6',
+    title: 'Final del Torneo Interfacultades de Fútbol',
+    date: '2025-08-20',
+    time: '16:00',
+    endTime: '18:00',
+    location: 'Cancha Cubierta',
+    category: 'Deportes',
+    organization: 'deportes',
+    description:
+      'La gran final de la liga interna de fútbol. Entrada libre para todos los estudiantes y personal del ITBA.',
+  },
+  {
+    id: 'e7',
+    title: 'Workshop: Contribuir a Proyectos Open Source',
+    date: '2025-08-22',
+    time: '15:00',
+    endTime: '17:30',
+    location: 'Laboratorio de Computación 4',
+    category: 'Tecnología',
+    organization: 'ieee',
+    description:
+      'Sesión práctica sobre cómo encontrar issues accesibles, entender bases de código y enviar tu primer pull request a un proyecto real.',
+  },
+  {
+    id: 'e8',
+    title: 'Defensa de Tesis — Cohorte Ingeniería en Sistemas',
+    date: '2025-08-28',
+    time: '09:00',
+    endTime: '14:00',
+    location: 'Sala de Defensas, Piso 6',
+    category: 'Académico',
+    organization: 'ceitba',
+    description:
+      'Defensas públicas de tesis de la cohorte de graduación de Ingeniería en Sistemas. Abierto a toda la comunidad universitaria.',
+  },
+]

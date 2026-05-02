@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "home": "ITBA News",
+    "tagline": "Student Newsletter",
+    "articles": "Articles",
+    "events": "Events",
+    "organizations": "Organizations",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "footer": {
+    "tagline": "Written by students, for students.",
+    "navigate": "Navigate",
+    "contact": "Contact",
+    "follow": "Follow",
+    "copyright": "CEITBA — Centro de Estudiantes del ITBA",
+    "institution": "Instituto Tecnológico de Buenos Aires"
+  },
+  "articles": {
+    "pageTitle": "Latest Articles",
+    "pageSubtitle": "News, stories, and perspectives from across ITBA.",
+    "featured": "FEATURED",
+    "readMore": "Read more",
+    "filter": {
+      "label": "Filter by category"
+    },
+    "empty": {
+      "title": "No articles in {{category}}",
+      "message": "Nothing published here yet — check back soon."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "message": "We couldn't load the articles. Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "meta": {
+      "by": "by",
+      "readingTime": "{{time}} read"
+    },
+    "backToArticles": "← Back to articles",
+    "moreFrom": "More from {{category}}"
+  },
+  "events": {
+    "pageTitle": "Events",
+    "pageSubtitle": "What's happening at ITBA this semester.",
+    "upcoming": "Upcoming Events",
+    "allEvents": "All Events",
+    "eventsOn": "Events on {{date}}",
+    "clearSelection": "Clear selection — show all upcoming",
+    "noUpcoming": "No upcoming events.",
+    "noEventsOnDay": "Nothing scheduled for this day.",
+    "noEvents": "No events scheduled.",
+    "timeRange": "{{start}}–{{end}}"
+  },
+  "orgs": {
+    "pageTitle": "Organizations",
+    "pageSubtitle": "Explore the student spaces at ITBA.",
+    "members": "{{count}} members",
+    "founded": "Founded in {{year}}",
+    "latestArticles": "Latest articles",
+    "upcomingEvents": "Upcoming events",
+    "noArticles": "This organization hasn't published any articles yet.",
+    "noEvents": "This organization has no upcoming events.",
+    "viewAll": "View all",
+    "error": {
+      "title": "Organization not found",
+      "message": "The portal you're looking for doesn't exist or was removed."
+    }
+  },
+  "categories": {
+    "Todos": "All",
+    "Académico": "Academic",
+    "Campus": "Campus",
+    "Cultura": "Culture",
+    "Tecnología": "Tech",
+    "Deportes": "Sports",
+    "General": "General"
+  },
+  "common": {
+    "loading": "Loading…",
+    "backHome": "Back to home",
+    "notFound": "Page not found"
+  }
+}
