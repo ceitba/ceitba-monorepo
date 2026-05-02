@@ -33,15 +33,20 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
                                    NativeWebRequest req,
                                    WebDataBinderFactory bf) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
-            return null;
+
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String email = jwt.getClaimAsString("email");
+            String name  = jwt.getClaimAsString("name");
+            if (email == null) return null;
+            return provisioning.findOrCreate(email, name);
         }
-        Jwt jwt = jwtAuth.getToken();
-        String email = jwt.getClaimAsString("email");
-        String name = jwt.getClaimAsString("name");
-        if (email == null) {
-            return null;
+
+        // User API key auth: ApiKeyFilter places the User entity as the principal.
+        if (auth != null && auth.getPrincipal() instanceof User user) {
+            return user;
         }
-        return provisioning.findOrCreate(email, name);
+
+        return null;
     }
 }

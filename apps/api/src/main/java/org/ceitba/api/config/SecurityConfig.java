@@ -1,5 +1,7 @@
 package org.ceitba.api.config;
 
+import org.ceitba.api.repository.CeitbaStaffRepository;
+import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.web.auth.ApiKeyFilter;
 import org.ceitba.api.web.auth.StaffAwareJwtAuthenticationConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -72,7 +74,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    AuthProperties auth,
                                                    StaffAwareJwtAuthenticationConverter jwtConverter,
-                                                   JwtDecoder jwtDecoder) throws Exception {
+                                                   JwtDecoder jwtDecoder,
+                                                   ApiKeyService apiKeyService,
+                                                   CeitbaStaffRepository staffRepository) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
         // 403 only for allowlist denials.
@@ -98,7 +102,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsSource()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(new ApiKeyFilter(auth), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository),
+                             UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(reg -> reg
                 .requestMatchers(HttpMethod.GET,
                     "/", "/health",
