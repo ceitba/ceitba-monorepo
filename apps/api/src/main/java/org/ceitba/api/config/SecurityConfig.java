@@ -5,12 +5,16 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -18,21 +22,46 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-// Endpoint policy (per MIGRATION.md PR 10):
+// Endpoint policy:
 //   public:        GET on health/careers/subjects/plans/classrooms;
-//                  GET on wiki bookmarks; POST /v1/classrooms/conflicts;
-//                  POST /v1/users/create  (parity with NestJS — TODO)
+//                  GET on wiki bookmarks; POST /v1/classrooms/conflicts.
 //   API key:       /v1/sync/**
-//   Google OIDC:   everything else (POST/PUT/DELETE on bookmarks)
+//   Google OIDC:   POST/PUT/DELETE on wiki bookmarks; everything under /v1/users.
+//                  Self-service signup is intentionally NOT supported — User rows
+//                  are JIT-provisioned by CurrentUserResolver on first authenticated
+//                  request.
 //
-// Allowlist (auth.allowed-domains + auth.allowed-emails) is enforced once
-// inside the JWT converter — controllers never need to check.
+// Allowlist (auth.allowed-domains + auth.allowed-emails) is enforced as an
+// AuthorizationManager: post-decode, pre-controller. Living here (vs in the
+// JwtAuthenticationConverter) keeps the converter focused on extracting
+// authorities AND lets MockMvc tests with .with(jwt()) actually exercise it.
 @Configuration
 @EnableConfigurationProperties(AuthProperties.class)
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthProperties auth) throws Exception {
+        // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
+        // chaining via allOf lets the framework return 401 for missing auth and
+        // 403 only for allowlist denials.
+        AuthorizationManager<RequestAuthorizationContext> emailAllowlisted =
+            (authentication, context) -> {
+                var a = authentication.get();
+                if (a instanceof JwtAuthenticationToken jwtAuth) {
+                    Jwt jwt = jwtAuth.getToken();
+                    String email = jwt.getClaimAsString("email");
+                    return new AuthorizationDecision(email != null && auth.admits(email));
+                }
+                // Non-JWT authentications (e.g. ROLE_SYNC API-key principal) pass through
+                return new AuthorizationDecision(true);
+            };
+
+        AuthorizationManager<RequestAuthorizationContext> authenticatedAndAllowlisted =
+            AuthorizationManagers.allOf(
+                AuthenticatedAuthorizationManager.authenticated(),
+                emailAllowlisted
+            );
+
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsSource()))
@@ -47,36 +76,16 @@ public class SecurityConfig {
                     "/v1/subjects/**",
                     "/v1/plans/**",
                     "/v1/classrooms/**",
-                    "/v1/wiki/bookmarks/*",
-                    "/v1/users/**"   // parity with NestJS — TODO lock down
+                    "/v1/wiki/bookmarks/*"
                 ).permitAll()
-                // Public POSTs (parity with current NestJS — TODO: lock down post-cutover):
-                //   POST /v1/classrooms/conflicts  — read-style query, no writes
-                //   POST /v1/users/create          — currently no auth; revisit when
-                //                                    self-service signup is ruled out
-                .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts", "/v1/users/create").permitAll()
+                // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
+                .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
-                .anyRequest().authenticated()
+                .anyRequest().access(authenticatedAndAllowlisted)
             )
-            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter(auth))));
+            .oauth2ResourceServer(oauth -> oauth.jwt());
 
         return http.build();
-    }
-
-    private static JwtAuthenticationConverter jwtConverter(AuthProperties auth) {
-        var grants = new JwtGrantedAuthoritiesConverter();
-        grants.setAuthorityPrefix("ROLE_");
-
-        var converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            String email = jwt.getClaimAsString("email");
-            if (email == null || !auth.admits(email)) {
-                throw new AccessDeniedException("Email not authorized: " + email);
-            }
-            var defaults = grants.convert(jwt);
-            return defaults != null ? defaults : List.of();
-        });
-        return converter;
     }
 
     private static CorsConfigurationSource corsSource() {

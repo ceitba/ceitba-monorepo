@@ -10,6 +10,7 @@ import java.util.List;
 public record CommissionProjection(
     String id,
     String subjectCode,
+    String subjectName,
     String commissionName,
     LocalDate courseStart,
     LocalDate courseEnd,

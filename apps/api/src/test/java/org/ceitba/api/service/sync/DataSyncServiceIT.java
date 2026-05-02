@@ -73,7 +73,7 @@ class DataSyncServiceIT {
                 List.of("93.12"), 0, "Algoritmos II", 6)
         ));
         fakeClient.stubCommissions(List.of(
-            new CommissionProjection("93.12-A", "93.12", "A",
+            new CommissionProjection("93.12-A", "93.12", "Algoritmos", "A",
                 LocalDate.of(2025, 7, 21), LocalDate.of(2025, 12, 31),
                 10, 30, SubjectType.SEMESTRAL,
                 List.of(new CommissionProjection.TimeSlot(
@@ -130,18 +130,36 @@ class DataSyncServiceIT {
     }
 
     @Test
-    void backfillsMissingSubjectFromCommission() {
+    void backfillsMissingSubjectFromCommission_usesNameWhenAvailable() {
         fakeClient.stubPlan("S10-Rev23", List.of()); // no subjects in plan
         fakeClient.stubCommissions(List.of(
-            new CommissionProjection("X-A", "99.99", "A",
+            new CommissionProjection("X-A", "99.99", "Some Real Name", "A",
                 LocalDate.now(), LocalDate.now().plusMonths(1),
                 0, 30, SubjectType.SEMESTRAL, List.of())
         ));
 
         var result = syncService.syncAll(CommissionQuery.defaults());
 
-        assertThat(subjectRepository.findById("99.99")).isPresent();
+        var subject = subjectRepository.findById("99.99").orElseThrow();
+        assertThat(subject.getName()).isEqualTo("Some Real Name");
         assertThat(result.subjects().getCreated()).isEqualTo(1);
         assertThat(result.commissions().getCreated()).isEqualTo(1);
+    }
+
+    @Test
+    void backfillsMissingSubject_fallsBackToCodeWhenNameAbsent() {
+        fakeClient.stubPlan("S10-Rev23", List.of());
+        fakeClient.stubCommissions(List.of(
+            // null subjectName — older payloads or sparse responses
+            new CommissionProjection("X-A", "99.99", null, "A",
+                LocalDate.now(), LocalDate.now().plusMonths(1),
+                0, 30, SubjectType.SEMESTRAL, List.of())
+        ));
+
+        syncService.syncAll(CommissionQuery.defaults());
+
+        // Falls back to the code as the name (matches NestJS behavior)
+        assertThat(subjectRepository.findById("99.99").orElseThrow().getName())
+            .isEqualTo("99.99");
     }
 }
