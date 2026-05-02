@@ -210,7 +210,12 @@ public class DataSyncService {
         for (var c : commissions) {
             if (!existingSubjectIds.contains(c.subjectCode())) {
                 try {
-                    subjectRepository.save(new Subject(c.subjectCode(), c.subjectCode(), 0));
+                    // Use the commission's subjectName when available, fall back to the
+                    // code if absent (which is what NestJS used to do for ALL backfills).
+                    String name = c.subjectName() != null && !c.subjectName().isBlank()
+                        ? c.subjectName()
+                        : c.subjectCode();
+                    subjectRepository.save(new Subject(c.subjectCode(), name, 0));
                     existingSubjectIds.add(c.subjectCode());
                     result.subjects().created++;
                 } catch (Exception e) {

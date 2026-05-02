@@ -152,6 +152,7 @@ public class RestClientItbaApiClient implements ItbaApiClient {
         return new CommissionProjection(
             src.commissionId(),
             src.subjectCode(),
+            src.subjectName(),
             src.commissionName(),
             parseDate(src.courseStart()),
             parseDate(src.courseEnd()),
