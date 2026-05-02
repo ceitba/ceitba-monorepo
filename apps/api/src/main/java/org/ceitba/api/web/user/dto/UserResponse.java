@@ -1,0 +1,14 @@
+package org.ceitba.api.web.user.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.UUID;
+
+public record UserResponse(
+    UUID id,
+    String email,
+    String name,
+    @JsonProperty("file_number") Integer fileNumber,
+    @JsonProperty("career_id") String careerId,
+    String plan
+) {}

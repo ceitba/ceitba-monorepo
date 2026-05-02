@@ -1,240 +1,116 @@
 # CEITBA-API
 
-CEITBA-API is a Node.js/TypeScript REST API for managing ITBA student and club data, including proposals, benefits, attendance, user management, and more. It is designed for the CEITBA community to streamline club operations and integrate with ITBA systems.
+REST API for managing ITBA student and club data — careers, plans, subjects, classrooms, commissions, and the wiki layer (bookmarks, notes, comments, edit proposals). Backs the CEITBA community apps and integrates with the ITBA backend.
 
-## Features
+**Stack**: Spring Boot 3.3 / Java 21 / PostgreSQL 16 / Hibernate / Flyway / Spring Security (Google OIDC).
 
-- User and staff management
-- Proposals and voting system
-- Benefits and attendance tracking
-- ITBA career and classroom integration
-- Scheduler and event management
-- Minecraft whitelist management
-- Modular and extensible architecture
+The repo was migrated from NestJS + Prisma in 2026; the migration plan and per-PR record live in [MIGRATION.md](MIGRATION.md).
 
-## Installation
-
-### Local Development
-
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/CEITBA/CEITBA-API.git
-   cd CEITBA-API
-   ```
-
-2. Install dependencies:
-   ```sh
-   npm install
-   ```
-
-3. Configure environment variables:
-   ```sh
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-### Docker Development
-
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/CEITBA/CEITBA-API.git
-   cd CEITBA-API
-   ```
-
-2. Create environment file:
-   ```sh
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. Build and run with Docker Compose:
-   ```sh
-   # Development environment with hot reload
-   docker-compose up ceitba-api-dev
-   
-   # Or build and run manually
-   docker build -t ceitba-api:dev --target development .
-   docker run -p 3000:3000 -v $(pwd):/app -v /app/node_modules ceitba-api:dev
-   ```
-
-## Usage
-
-### Local Development
-
-Start the development server with hot reload:
+## Quick start (Docker — recommended)
 
 ```sh
-npm run dev
+git clone https://github.com/CEITBA/CEITBA-API.git
+cd CEITBA-API
+cp .env.example .env             # edit values, especially AUTH_SYNC_API_KEY
+docker compose up -d             # postgres + ceitba-api
+curl http://localhost:8080/api/actuator/health
 ```
 
-Or start the production server:
+Swagger UI: http://localhost:8080/api/docs · OpenAPI spec: http://localhost:8080/api/docs.json
+
+## Local dev (host JDK)
+
+Requires JDK 21. We recommend [SDKMAN](https://sdkman.io/) (`sdk install java 21-tem`) or the [Adoptium installer](https://adoptium.net/).
 
 ```sh
-npm start
+docker compose up -d postgres                    # just the database
+./mvnw spring-boot:run                            # runs the app on :8080
 ```
 
-The API will be available at `http://localhost:3000`.
+## Local dev (no host JDK)
 
-### Docker Usage
-
-#### Development Environment
-
-The development environment includes hot reload and development dependencies:
+Use `./scripts/mvn` — runs Maven inside a JDK-21 container. Caches `~/.m2` on the host so subsequent runs are fast. Mounts the Docker socket so Testcontainers (used in tests) can spin up sibling Postgres containers.
 
 ```sh
-# Using Docker Compose (recommended)
-docker-compose up ceitba-api-dev
-
-# Using Docker directly
-docker build -t ceitba-api:dev --target development .
-docker run -d \
-  --name ceitba-api-dev \
-  -p 3000:3000 \
-  -v $(pwd):/app \
-  -v /app/node_modules \
-  --env-file .env \
-  ceitba-api:dev
+./scripts/mvn -B verify             # full build + tests
+./scripts/mvn spring-boot:run       # run the app
 ```
 
-#### Production Environment
-
-The production environment is optimized for performance and security:
+## Tests
 
 ```sh
-# Using Docker Compose (recommended)
-docker-compose up ceitba-api-prod
-
-# Using Docker directly
-docker build -t ceitba-api:prod --target production .
-docker run -d \
-  --name ceitba-api-prod \
-  -p 3000:3000 \
-  --env-file .env \
-  --restart unless-stopped \
-  ceitba-api:prod
+./mvnw verify                       # unit + integration (Testcontainers Postgres)
+./mvnw test                         # unit only
+./scripts/mvn -B verify             # same, via container — no host JDK
 ```
 
-#### Docker Commands
+## Configuration
+
+All config flows through env vars; see [`.env.example`](.env.example). Highlights:
+
+| Var | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/ceitba_db` | JDBC URL |
+| `AUTH_ALLOWED_DOMAINS` | `itba.edu.ar` | Comma-separated email domains admitted by the JWT converter |
+| `AUTH_ALLOWED_EMAILS` | _(empty)_ | Comma-separated explicit email allowlist (for accounts not on an allowed domain) |
+| `AUTH_JWT_AUDIENCE` | _(empty)_ | Optional Google OAuth client ID to require in the `aud` claim |
+| `AUTH_SYNC_API_KEY` | _(empty)_ | Required value for the `X-API-Key` header on `/api/v1/sync/**` |
+| `SYNC_ENABLED` | `false` | Toggle the twice-daily `@Scheduled` data-sync job |
+| `ITBA_API_BASE_URL` / `ITBA_API_TOKEN` | _(empty)_ | ITBA backend connection |
+| `ITBA_API_USE_FAKE` | `false` | Swap in `FakeItbaApiClient` (no network) |
+
+## Auth
+
+* Frontend uses **Google Sign-In**, sends the resulting ID token as `Authorization: Bearer <id_token>`.
+* Spring Security validates the JWT against Google's JWKS, then a custom converter applies the two-rule allowlist (`AUTH_ALLOWED_DOMAINS` ∪ `AUTH_ALLOWED_EMAILS`). Mismatched email → 403.
+* On first sight of a valid token for a new email, a `User` row is JIT-provisioned (no signup endpoint).
+* `/api/v1/sync/**` is gated by a static `X-API-Key` header (env `AUTH_SYNC_API_KEY`) — for cron / ops, not human users.
+
+Adding a new authorized user without an ITBA-domain email = a one-line PR adding their address to `AUTH_ALLOWED_EMAILS`.
+
+## Endpoints
+
+| Path | Method | Auth |
+|---|---|---|
+| `/api`, `/api/health`, `/api/actuator/health` | GET | public |
+| `/api/v1/careers/**` | GET | public |
+| `/api/v1/subjects/**`, `/api/v1/plans/**` | GET | public |
+| `/api/v1/classrooms/**` | GET | public |
+| `/api/v1/classrooms/conflicts` | POST | public |
+| `/api/v1/users/**` | GET, POST `/create` | public _(parity with NestJS — TODO lock down)_ |
+| `/api/v1/wiki/bookmarks/{id}` | GET | public |
+| `/api/v1/wiki/bookmarks/{id}` | POST/PUT/DELETE | Google JWT |
+| `/api/v1/sync/**` | POST | `X-API-Key` |
+
+Full list (with examples + schemas) in `/api/docs`.
+
+## Database
+
+* Schema lives in `src/main/resources/db/migration/`. **Flyway is the only thing that changes the schema.**
+* Hibernate runs in `validate` mode — entities are checked against the schema at startup; mismatches fail boot.
+* Two schemas: `public` (academic + identity) and `wiki` (notes, comments, bookmarks, proposals).
+* See [docs/MIGRATION-RUNBOOK.md](docs/MIGRATION-RUNBOOK.md) for first-time prod setup (Flyway baseline against the existing Prisma-managed DB).
+
+To rebuild the local DB from scratch:
 
 ```sh
-# Build development image
-docker build -t ceitba-api:dev --target development .
-
-# Build production image
-docker build -t ceitba-api:prod --target production .
-
-# View logs
-docker logs ceitba-api-dev
-docker logs ceitba-api-prod
-
-# Stop containers
-docker stop ceitba-api-dev ceitba-api-prod
-
-# Remove containers
-docker rm ceitba-api-dev ceitba-api-prod
-
-# Health check
-curl http://localhost:3000/api/health
+docker compose down -v && docker compose up -d postgres
+./mvnw spring-boot:run    # Flyway runs V1__baseline.sql + any later Vn__*.sql
 ```
 
-### Environment Variables
+## Conventions for contributors
 
-Create a `.env` file in the root directory with the following variables:
+Read [MIGRATION.md §8 (Onboarding checklist)](MIGRATION.md). Short version:
 
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-
-# API Tokens
-ITBA_API_TOKEN=your_itba_api_token_here
-SUPABASE_ACCESS_TOKEN=your_supabase_access_token_here
-
-# Cron Jobs (optional)
-ENABLE_CRON=false
-```
-
-## Documentation
-
-To view the API documentation, start the server and open:
-
-```
-http://localhost:3000/api/docs
-```
-
-This will display the interactive API docs (Swagger UI or similar, if enabled in your configuration).
-
-## API Structure
-
-- `v1/app/` – Main application routes and models
-- `v1/benefits/` – Benefits, attendance, and inscription endpoints
-- `v1/itba/` – ITBA integration (careers, classrooms, subjects)
-- `v1/minecraft/` – Minecraft whitelist management
-- `v1/scheduler/` – Scheduler and event routes
-- `v1/user/` – User, staff, and authentication modules
-- `v1/middleware/` – Request validation middleware
-- `v1/config/` – Supabase and other configuration
-
-## Development
-
-### Local Development Setup
-
-- TypeScript is used throughout the project.
-- Linting and formatting are recommended (add ESLint/Prettier as needed).
-- Tests can be run with:
-  ```sh
-  npm test
-  ```
-
-### Docker Development Setup
-
-The Docker development environment provides:
-- Hot reload with nodemon
-- All development dependencies
-- Volume mounting for live code changes
-- Isolated environment consistent across team members
-
-To start developing with Docker:
-
-```sh
-# Start development environment
-docker-compose up ceitba-api-dev
-
-# View logs
-docker-compose logs -f ceitba-api-dev
-
-# Stop development environment
-docker-compose down
-```
-
-### Production Deployment
-
-The production Docker image is optimized with:
-- Multi-stage build for smaller image size
-- Non-root user for security
-- Health checks for monitoring
-- Only production dependencies
-- Automatic restarts
-
-Deploy to production:
-
-```sh
-# Build production image
-docker build -t ceitba-api:latest --target production .
-
-# Run in production
-docker run -d \
-  --name ceitba-api \
-  -p 80:3000 \
-  --env-file .env.production \
-  --restart unless-stopped \
-  ceitba-api:latest
-```
-
-## Contributing
-
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+1. Layers are one-way: `web → service → repository → domain`.
+2. Entities never escape `service/`. Controllers return DTOs (records).
+3. `@Transactional(readOnly=true)` on read methods; plain `@Transactional` on writes.
+4. Throw domain exceptions; the `GlobalExceptionHandler` translates to HTTP. Never `throw new ResponseStatusException`.
+5. Schema changes go in a new `V<n>__<desc>.sql` migration. **Never edit a migration that has merged.**
+6. Composite PKs use `@IdClass`. Pattern lives in `domain/PlanSubject.java`.
+7. External calls go through `external/itba/ItbaApiClient`. Don't `new RestClient()` in a service.
+8. Add an interface only if you have a second implementation or a test fake.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE).

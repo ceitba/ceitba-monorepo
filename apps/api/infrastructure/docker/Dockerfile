@@ -1,74 +1,31 @@
-# Multi-stage build for CEITBA API
-# Stage 1: Build dependencies and compile TypeScript
-FROM node:20-alpine AS builder
+# Multi-stage Dockerfile for the Spring Boot CEITBA API.
 
+# ---------- build ----------
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++
+# Cache dependencies layer first.
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw && ./mvnw -B -ntp dependency:go-offline
 
-COPY package*.json ./
+# Then sources.
+COPY src/ src/
+RUN ./mvnw -B -ntp -DskipTests package && \
+    cp target/*.jar app.jar
 
-RUN npm ci --only=production=false
-
-COPY . .
-
-RUN npx prisma generate
-
-RUN npm run build
-
-# Stage 2: Production runtime
-FROM node:20-alpine AS production
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S ceitba -u 1001
-
+# ---------- runtime ----------
+FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN groupadd -r ceitba && useradd -r -g ceitba ceitba
 
-COPY --from=builder --chown=ceitba:nodejs /app/dist ./dist
-COPY --from=builder --chown=ceitba:nodejs /app/package*.json ./
-COPY --from=builder --chown=ceitba:nodejs /app/tsconfig.json ./
-COPY --from=builder --chown=ceitba:nodejs /app/nest-cli.json ./
-COPY --from=builder --chown=ceitba:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build --chown=ceitba:ceitba /app/app.jar /app/app.jar
 
-
-RUN rm -rf tests/ docs/ .git/ .github/ *.md
-
-RUN chown -R ceitba:nodejs /app
 USER ceitba
+EXPOSE 8080
 
-EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+    CMD wget -qO- http://localhost:8080/api/actuator/health || exit 1
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
-
-CMD ["npm", "run", "start:prod"]
-
-# Stage 3: Development environment
-FROM node:20-alpine AS development
-
-RUN apk add --no-cache python3 make g++
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S ceitba -u 1001
-
-WORKDIR /app
-
-COPY package*.json ./
-
-RUN npm ci
-
-COPY . .
-COPY prisma ./prisma
-RUN npx prisma generate
-
-RUN chown -R ceitba:nodejs /app
-USER ceitba
-
-EXPOSE 3000
-
-CMD ["npm", "run", "start:dev"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
