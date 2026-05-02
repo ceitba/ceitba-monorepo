@@ -3,12 +3,6 @@ spring:
     name: ceitba-api
   profiles:
     active: dev
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${AUTH_JWT_ISSUER:https://accounts.google.com}
-          audiences: ${AUTH_JWT_AUDIENCE:}
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ceitba_db}
     username: ${POSTGRES_USER:postgres}
@@ -56,6 +50,14 @@ auth:
   allowed-domains: ${AUTH_ALLOWED_DOMAINS:itba.edu.ar}
   allowed-emails: ${AUTH_ALLOWED_EMAILS:}
   sync-api-key: ${AUTH_SYNC_API_KEY:}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/callback}
+  jwt:
+    secret: ${AUTH_JWT_SECRET:}
+    ttl-days: ${AUTH_JWT_TTL_DAYS:7}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 itba:
   api:

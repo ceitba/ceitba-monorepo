@@ -14,6 +14,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
@@ -22,17 +24,24 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 import java.util.List;
 
 // Endpoint policy:
 //   public:        GET on health/careers/subjects/plans/classrooms;
 //                  GET on wiki bookmarks; POST /v1/classrooms/conflicts.
-//   API key:       /v1/sync/**                       -> ROLE_SYNC
-//   Google OIDC:   POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
+//                  GET /v1/auth/google, GET /v1/auth/callback  (OAuth flow)
+//   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
+//                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
+//   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
 //                  /v1/staff/**                      -> ROLE_STAFF (path matcher)
 //                  /v1/users/**                      -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/careers/{POST,PUT,DELETE}     -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/plans/.../subject writes      -> ROLE_STAFF (@PreAuthorize)
+//
+// JWTs are now issued by us (HS256, AUTH_JWT_SECRET), not forwarded Google tokens.
+// The JwtDecoder bean below validates against our signing key.
 //
 // Allowlist (auth.allowed-domains + auth.allowed-emails) is enforced as an
 // AuthorizationManager: post-decode, pre-controller. Living here (vs in the
@@ -46,10 +55,24 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    // Validates our own HS256 JWTs issued by JwtIssuerService after Google OAuth.
+    // Requires AUTH_JWT_SECRET env var (base64-encoded, 32+ bytes).
+    @Bean
+    public JwtDecoder jwtDecoder(AuthProperties auth) {
+        if (auth.jwt() == null || auth.jwt().secret() == null || auth.jwt().secret().isBlank()) {
+            throw new IllegalStateException(
+                "auth.jwt.secret (AUTH_JWT_SECRET) must be configured. " +
+                "Generate with: openssl rand -base64 32");
+        }
+        byte[] secret = Base64.getDecoder().decode(auth.jwt().secret());
+        return NimbusJwtDecoder.withSecretKey(new SecretKeySpec(secret, "HmacSHA256")).build();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    AuthProperties auth,
-                                                   StaffAwareJwtAuthenticationConverter jwtConverter) throws Exception {
+                                                   StaffAwareJwtAuthenticationConverter jwtConverter,
+                                                   JwtDecoder jwtDecoder) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
         // 403 only for allowlist denials.
@@ -85,7 +108,8 @@ public class SecurityConfig {
                     "/v1/subjects/**",
                     "/v1/plans/**",
                     "/v1/classrooms/**",
-                    "/v1/wiki/bookmarks/*"
+                    "/v1/wiki/bookmarks/*",
+                    "/v1/auth/google", "/v1/auth/callback"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
@@ -93,7 +117,10 @@ public class SecurityConfig {
                 .requestMatchers("/v1/staff/**").hasRole("STAFF")
                 .anyRequest().access(authenticatedAndAllowlisted)
             )
-            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)));
+            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
+                jwt.jwtAuthenticationConverter(jwtConverter);
+                jwt.decoder(jwtDecoder);
+            }));
 
         return http.build();
     }

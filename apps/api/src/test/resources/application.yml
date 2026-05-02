@@ -1,0 +1,6 @@
+# Test-only overrides. JWT secret is required by JwtDecoder bean at startup.
+# This is a fixed 33-byte key; do NOT use in production.
+auth:
+  jwt:
+    secret: dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch
+    ttl-days: 1
