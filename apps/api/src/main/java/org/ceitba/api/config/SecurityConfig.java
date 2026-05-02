@@ -1,6 +1,7 @@
 package org.ceitba.api.config;
 
 import org.ceitba.api.web.auth.ApiKeyFilter;
+import org.ceitba.api.web.auth.StaffAwareJwtAuthenticationConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,7 @@ import org.springframework.security.authorization.AuthenticatedAuthorizationMana
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.authorization.AuthorizationManagers;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,20 +29,24 @@ import java.util.List;
 //                  GET on wiki bookmarks; POST /v1/classrooms/conflicts.
 //   API key:       /v1/sync/**
 //   Google OIDC:   POST/PUT/DELETE on wiki bookmarks; everything under /v1/users.
-//                  Self-service signup is intentionally NOT supported — User rows
-//                  are JIT-provisioned by CurrentUserResolver on first authenticated
-//                  request.
+//                  /v1/staff/**                  -> ROLE_STAFF (active CeitbaStaff row)
 //
 // Allowlist (auth.allowed-domains + auth.allowed-emails) is enforced as an
 // AuthorizationManager: post-decode, pre-controller. Living here (vs in the
 // JwtAuthenticationConverter) keeps the converter focused on extracting
 // authorities AND lets MockMvc tests with .with(jwt()) actually exercise it.
+// StaffAwareJwtAuthenticationConverter adds ROLE_USER + ROLE_STAFF when the
+// authenticated user has an active CeitbaStaff row. @EnableMethodSecurity
+// activates @PreAuthorize on controller methods for fine-grained checks.
 @Configuration
 @EnableConfigurationProperties(AuthProperties.class)
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthProperties auth) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   AuthProperties auth,
+                                                   StaffAwareJwtAuthenticationConverter jwtConverter) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
         // 403 only for allowlist denials.
@@ -81,9 +87,10 @@ public class SecurityConfig {
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
+                .requestMatchers("/v1/staff/**").hasRole("STAFF")
                 .anyRequest().access(authenticatedAndAllowlisted)
             )
-            .oauth2ResourceServer(oauth -> oauth.jwt());
+            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)));
 
         return http.build();
     }

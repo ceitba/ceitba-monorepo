@@ -49,8 +49,10 @@ public class CeitbaStaff {
 
     public CeitbaStaff(User user, CeitbaBranch branch, CeitbaStaffRole role,
                        OffsetDateTime start, OffsetDateTime end) {
+        // @MapsId derives userId from user.id at flush time. Setting userId
+        // explicitly here used to confuse Hibernate ("null identifier") because
+        // @MapsId nulls the @Id field expecting to fill it from the relationship.
         this.user = user;
-        this.userId = user.getId();
         this.branch = branch;
         this.role = role;
         this.start = start;
