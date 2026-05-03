@@ -108,7 +108,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                     "/", "/health",
                     "/actuator/health", "/actuator/info",
-                    "/docs", "/docs.json", "/docs/**", "/v3/api-docs/**", "/swagger-ui/**",
+                    "/docs", "/docs/**", "/docs.json", "/docs.json/**", "/v3/api-docs/**", "/swagger-ui/**",
                     "/v1/careers/**",
                     "/v1/subjects/**",
                     "/v1/plans/**",
