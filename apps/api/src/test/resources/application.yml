@@ -4,3 +4,11 @@ auth:
   jwt:
     secret: dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch
     ttl-days: 1
+
+spring:
+  flyway:
+    # Never skip V1 in tests — fresh Testcontainers DBs need the full schema.
+    baseline-on-migrate: false
+    # Stop at V4: V5 seeds production-only data (ceitba@itba.edu.ar superadmin)
+    # that breaks count assertions and FK-restricted deleteAll() in @BeforeEach.
+    target: '4'
