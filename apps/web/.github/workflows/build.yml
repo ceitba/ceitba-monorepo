@@ -58,5 +58,5 @@ jobs:
             rm -rf dist dist.zip
             curl -fsSL https://github.com/ceitba/CeitbaPage/releases/latest/download/dist.zip -o dist.zip
             unzip -o dist.zip
-            rsync -r --delete dist/ /var/www/html/
+            rsync -r --delete dist/ /var/www/main/
             rm -rf dist dist.zip
