@@ -54,7 +54,6 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            apt-get install -y unzip rsync
             mkdir -p /var/www/itbanews
             cd /tmp
             rm -rf dist dist.zip
