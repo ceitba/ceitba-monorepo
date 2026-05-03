@@ -1,13 +1,29 @@
-# CEITBA reverse proxy
-# TLS certificates are obtained automatically from Let's Encrypt.
-# Add your domains below once confirmed.
+www.ceitba.org.ar {
+    redir https://ceitba.org.ar{uri} permanent
+}
 
-# API
-# api.ceitba.org.ar {
-#     reverse_proxy ceitba-api:8080
-# }
+ceitba.org.ar {
+    handle /api/* {
+        reverse_proxy ceitba-api:8080
+    }
 
-# Main SPA
-# ceitba.org.ar, www.ceitba.org.ar {
-#     reverse_proxy localhost:3000
-# }
+    handle /scheduler/* {
+        root * /var/www/scheduler
+        uri strip_prefix /scheduler
+        file_server
+        try_files {path} /index.html
+    }
+
+    handle /itbanews/* {
+        root * /var/www/itbanews
+        uri strip_prefix /itbanews
+        file_server
+        try_files {path} /index.html
+    }
+
+    handle {
+        root * /var/www/main
+        file_server
+        try_files {path} /index.html
+    }
+}

@@ -10,6 +10,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - /var/www:/var/www:ro
     networks:
       - ceitba-proxy
     restart: unless-stopped
