@@ -1,0 +1,65 @@
+name: Build
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /itbanews/
+
+      - name: Zip dist
+        if: github.ref == 'refs/heads/main'
+        run: zip -r dist.zip dist/
+
+      - name: Release
+        if: github.ref == 'refs/heads/main'
+        run: |
+          gh release delete latest --yes 2>/dev/null || true
+          git tag -f latest
+          git push origin latest --force
+          gh release create latest dist.zip \
+            --title "Latest build" \
+            --notes "Built from commit ${{ github.sha }}" \
+            --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy to VPS
+        if: github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            mkdir -p /var/www/itbanews
+            cd /tmp
+            rm -rf dist dist.zip
+            gh release download latest --repo ceitba/ItbaNews --pattern "dist.zip" --clobber
+            unzip -o dist.zip
+            rsync -a --delete dist/ /var/www/itbanews/
+            rm -rf dist dist.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
