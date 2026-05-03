@@ -25,8 +25,6 @@ spring:
     enabled: true
     schemas: public,wiki
     default-schema: public
-    baseline-on-migrate: true
-    baseline-version: 1
     locations: classpath:db/migration
 
 server:
