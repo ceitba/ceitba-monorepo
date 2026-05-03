@@ -26,7 +26,12 @@ public class NewsEventService {
 
     public Page<NewsEvent> findAll(String category, String organization,
                                    LocalDate from, LocalDate to, Pageable pageable) {
-        return eventRepo.findFiltered(category, organization, from, to, pageable);
+        return eventRepo.findFiltered(
+            category, organization,
+            from != null ? from : LocalDate.of(1900, 1, 1),
+            to   != null ? to   : LocalDate.of(2999, 12, 31),
+            pageable
+        );
     }
 
     public NewsEvent findById(String id) {

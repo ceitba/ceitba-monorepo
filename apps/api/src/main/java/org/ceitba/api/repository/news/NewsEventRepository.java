@@ -13,10 +13,11 @@ public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
 
     @Query("""
         SELECT e FROM NewsEvent e
+        LEFT JOIN e.organization o
         WHERE (:category IS NULL OR e.category = :category)
-          AND (:organization IS NULL OR e.organization.slug = :organization)
-          AND (:from IS NULL OR e.eventDate >= :from)
-          AND (:to IS NULL OR e.eventDate <= :to)
+          AND (:organization IS NULL OR o.slug = :organization)
+          AND e.eventDate >= :from
+          AND e.eventDate <= :to
         ORDER BY e.eventDate ASC
         """)
     Page<NewsEvent> findFiltered(

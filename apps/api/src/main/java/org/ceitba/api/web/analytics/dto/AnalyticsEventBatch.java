@@ -8,7 +8,7 @@ import java.util.List;
 
 public record AnalyticsEventBatch(
     @NotNull
-    @Size(max = 50, message = "Batch may contain at most 50 events")
+    @Size(min = 1, max = 50, message = "Batch must contain between 1 and 50 events")
     @Valid
     List<EventDto> events
 ) {

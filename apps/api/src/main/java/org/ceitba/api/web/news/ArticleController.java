@@ -46,9 +46,9 @@ public class ArticleController {
             @RequestParam(defaultValue = "20") int limit,
             Authentication auth) {
 
-        // Non-staff callers may only see published articles
+        // Non-staff callers may only see published articles; staff with no param also default to published
         boolean isStaff = hasRole(auth, "ROLE_STAFF");
-        String effectiveStatus = isStaff ? status : "published";
+        String effectiveStatus = (isStaff && status != null) ? status : "published";
 
         var result = service.findAll(category, organization, effectiveStatus,
                                      PageRequest.of(Math.max(page - 1, 0), limit));
@@ -78,9 +78,9 @@ public class ArticleController {
                                   @RequestBody ArticlePatchInput req) {
         var patch = new Article(
             id,
-            req.title()   != null ? req.title()   : "",
-            req.excerpt() != null ? req.excerpt()  : "",
-            req.body(), req.category() != null ? req.category() : "", "");
+            req.title(),
+            req.excerpt(),
+            req.body(), req.category(), null);
         if (req.author()      != null) patch.setAuthor(req.author());
         if (req.publishedAt() != null) patch.setPublishedAt(req.publishedAt());
         if (req.readingTime() != null) patch.setReadingTime(req.readingTime());
