@@ -39,7 +39,7 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
             String email = jwt.getClaimAsString("email");
             String name  = jwt.getClaimAsString("name");
             if (email == null) return null;
-            return provisioning.findOrCreate(email, name);
+            return provisioning.findOrCreate(email, name, null, null);
         }
 
         // User API key auth: ApiKeyFilter places the User entity as the principal.

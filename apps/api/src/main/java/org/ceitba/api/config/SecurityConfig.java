@@ -114,10 +114,18 @@ public class SecurityConfig {
                     "/v1/plans/**",
                     "/v1/classrooms/**",
                     "/v1/wiki/bookmarks/*",
-                    "/v1/auth/google", "/v1/auth/callback"
+                    "/v1/auth/google", "/v1/auth/callback",
+                    // Newsletter public reads
+                    "/v1/organizations/**",
+                    "/v1/articles/**",
+                    "/v1/news/events/**"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
+                // Vote casting and analytics ingestion are public (fingerprint-deduplicated)
+                .requestMatchers(HttpMethod.POST, "/v1/articles/*/votes").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/v1/articles/*/votes").permitAll()
+                .requestMatchers(HttpMethod.POST, "/v1/analytics/events").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
                 .requestMatchers("/v1/staff/**").hasRole("STAFF")
                 .anyRequest().access(authenticatedAndAllowlisted)
@@ -132,7 +140,11 @@ public class SecurityConfig {
 
     private static CorsConfigurationSource corsSource() {
         var c = new CorsConfiguration();
-        c.setAllowedOrigins(List.of("https://ceitba.org.ar", "http://localhost:3000", "http://localhost:3001"));
+        c.setAllowedOrigins(List.of(
+            "https://ceitba.org.ar",
+            "https://itbanews.ar", "https://www.itbanews.ar",
+            "http://localhost:3000", "http://localhost:3001", "http://localhost:5173"
+        ));
         c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         c.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With", ApiKeyFilter.HEADER));
         c.setAllowCredentials(true);

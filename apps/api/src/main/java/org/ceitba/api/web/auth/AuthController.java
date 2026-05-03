@@ -3,6 +3,7 @@ package org.ceitba.api.web.auth;
 import jakarta.validation.Valid;
 import org.ceitba.api.config.AuthProperties;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.service.auth.GoogleOAuthService;
 import org.ceitba.api.service.auth.JwtIssuerService;
@@ -10,6 +11,7 @@ import org.ceitba.api.service.auth.UserProvisioningService;
 import org.ceitba.api.web.auth.dto.ApiKeyCreatedResponse;
 import org.ceitba.api.web.auth.dto.ApiKeyResponse;
 import org.ceitba.api.web.auth.dto.CreateApiKeyRequest;
+import org.ceitba.api.web.auth.dto.UserMeResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
@@ -32,26 +35,32 @@ public class AuthController {
 
     private static final List<String> SAFE_REDIRECT_ORIGINS = List.of(
         "https://ceitba.org.ar",
+        "https://itbanews.ar",
+        "https://www.itbanews.ar",
         "http://localhost:3000",
-        "http://localhost:3001"
+        "http://localhost:3001",
+        "http://localhost:5173"
     );
 
     private final GoogleOAuthService googleOAuth;
     private final JwtIssuerService jwtIssuer;
     private final UserProvisioningService provisioning;
     private final ApiKeyService apiKeyService;
+    private final CeitbaStaffRepository staffRepository;
     private final AuthProperties auth;
 
     public AuthController(GoogleOAuthService googleOAuth,
                           JwtIssuerService jwtIssuer,
                           UserProvisioningService provisioning,
                           ApiKeyService apiKeyService,
+                          CeitbaStaffRepository staffRepository,
                           AuthProperties auth) {
-        this.googleOAuth   = googleOAuth;
-        this.jwtIssuer     = jwtIssuer;
-        this.provisioning  = provisioning;
-        this.apiKeyService = apiKeyService;
-        this.auth          = auth;
+        this.googleOAuth      = googleOAuth;
+        this.jwtIssuer        = jwtIssuer;
+        this.provisioning     = provisioning;
+        this.apiKeyService    = apiKeyService;
+        this.staffRepository  = staffRepository;
+        this.auth             = auth;
     }
 
     // Frontend button links here. redirect_uri is where we send the token
@@ -82,12 +91,26 @@ public class AuthController {
             if (!auth.admits(claims.email())) {
                 return redirect(redirectTo + "?error=unauthorized");
             }
-            var user  = provisioning.findOrCreate(claims.email(), claims.name());
+            var user  = provisioning.findOrCreate(claims.email(), claims.name(), claims.sub(), claims.picture());
             var token = jwtIssuer.issue(user);
             return redirect(redirectTo + "?token=" + token);
         } catch (Exception e) {
             return redirect(redirectTo + "?error=auth_failed");
         }
+    }
+
+    // Returns the authenticated user's profile. Role is "staff" when the user
+    // has an active CeitbaStaff row, otherwise "user".
+    @GetMapping("/me")
+    public UserMeResponse me(@CurrentUser User user) {
+        boolean isStaff = staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now());
+        return new UserMeResponse(
+            user.getId(),
+            user.getName(),
+            user.getEmail(),
+            isStaff ? "staff" : "user",
+            user.getAvatarUrl()
+        );
     }
 
     // -----------------------------------------------------------------------

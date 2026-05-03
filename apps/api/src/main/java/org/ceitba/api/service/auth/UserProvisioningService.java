@@ -24,14 +24,35 @@ public class UserProvisioningService {
     // REQUIRES_NEW so this commits even if the calling controller fails;
     // the next request shouldn't have to re-provision.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public User findOrCreate(String email, String name) {
-        return userRepository.findByEmail(email).orElseGet(() -> {
-            try {
-                return userRepository.save(new User(UUID.randomUUID(), email, name));
-            } catch (DataIntegrityViolationException race) {
-                // Concurrent create — re-read.
-                return userRepository.findByEmail(email).orElseThrow(() -> race);
-            }
-        });
+    public User findOrCreate(String email, String name, String googleSub, String avatarUrl) {
+        return userRepository.findByEmail(email)
+            .map(existing -> syncProfile(existing, name, googleSub, avatarUrl))
+            .orElseGet(() -> {
+                try {
+                    var u = new User(UUID.randomUUID(), email, name);
+                    u.setGoogleSub(googleSub);
+                    u.setAvatarUrl(avatarUrl);
+                    return userRepository.save(u);
+                } catch (DataIntegrityViolationException race) {
+                    return userRepository.findByEmail(email).orElseThrow(() -> race);
+                }
+            });
+    }
+
+    private User syncProfile(User user, String name, String googleSub, String avatarUrl) {
+        boolean dirty = false;
+        if (name != null && !name.equals(user.getName())) {
+            user.setName(name);
+            dirty = true;
+        }
+        if (googleSub != null && !googleSub.equals(user.getGoogleSub())) {
+            user.setGoogleSub(googleSub);
+            dirty = true;
+        }
+        if (avatarUrl != null && !avatarUrl.equals(user.getAvatarUrl())) {
+            user.setAvatarUrl(avatarUrl);
+            dirty = true;
+        }
+        return dirty ? userRepository.save(user) : user;
     }
 }

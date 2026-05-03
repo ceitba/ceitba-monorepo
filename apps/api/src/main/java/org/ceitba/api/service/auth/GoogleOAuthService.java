@@ -64,8 +64,10 @@ public class GoogleOAuthService {
             var jwt    = SignedJWT.parse(resp.idToken());
             var claims = jwt.getJWTClaimsSet();
             return new IdTokenClaims(
+                claims.getStringClaim("sub"),
                 claims.getStringClaim("email"),
                 claims.getStringClaim("name"),
+                claims.getStringClaim("picture"),
                 Boolean.TRUE.equals(claims.getBooleanClaim("email_verified"))
             );
         } catch (Exception e) {
@@ -77,7 +79,7 @@ public class GoogleOAuthService {
         return v == null ? "" : URLEncoder.encode(v, StandardCharsets.UTF_8);
     }
 
-    public record IdTokenClaims(String email, String name, boolean emailVerified) {}
+    public record IdTokenClaims(String sub, String email, String name, String picture, boolean emailVerified) {}
 
     private record TokenResponse(
         @JsonProperty("access_token") String accessToken,

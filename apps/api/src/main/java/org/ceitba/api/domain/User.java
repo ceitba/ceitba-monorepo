@@ -50,6 +50,12 @@ public class User {
     @Column(name = "prefered_language", length = 5)
     private String preferedLanguage;
 
+    @Column(name = "google_sub", unique = true)
+    private String googleSub;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     protected User() {}
 
     public User(UUID id, String email, String name) {
@@ -73,4 +79,9 @@ public class User {
     public void setPlan(String plan) { this.plan = plan; }
     public void setName(String name) { this.name = name; }
     public void setPreferedLanguage(String preferedLanguage) { this.preferedLanguage = preferedLanguage; }
+    public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public String getGoogleSub() { return googleSub; }
+    public String getAvatarUrl() { return avatarUrl; }
 }
