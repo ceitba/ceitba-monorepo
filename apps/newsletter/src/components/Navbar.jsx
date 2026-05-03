@@ -1,12 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { isContributorAuthenticated } from '../store/contributorAuthStore'
+import { getSession } from '../store/authStore'
+import ContributeModal from './ContributeModal'
+
+const ADMIN_ROLES = ['staff', 'admin', 'editor']
 
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [session, setSession] = useState(undefined)
   const drawerRef = useRef(null)
+
+  useEffect(() => {
+    getSession().then(setSession)
+  }, [])
 
   const NAV_LINKS = [
     { to: '/',               label: t('nav.articles'),      end: true },
@@ -42,6 +51,42 @@ export default function Navbar() {
   const toggleLang = () =>
     i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
 
+  function handleContributeClick() {
+    setOpen(false)
+    setModalOpen(true)
+  }
+
+  const btnClass =
+    'min-h-[36px] px-4 inline-flex items-center font-body text-body-sm font-semibold bg-primary text-surface rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded'
+
+  function AuthButton({ mobile }) {
+    const cls = mobile
+      ? 'inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150'
+      : btnClass
+
+    if (session === undefined) return null
+
+    if (session && ADMIN_ROLES.includes(session.role)) {
+      return (
+        <Link to="/admin/articles" onClick={() => setOpen(false)} className={cls}>
+          Panel admin
+        </Link>
+      )
+    }
+    if (session) {
+      return (
+        <Link to="/contribute" onClick={() => setOpen(false)} className={cls}>
+          Contribuir
+        </Link>
+      )
+    }
+    return (
+      <button type="button" onClick={handleContributeClick} className={cls}>
+        Contribuir
+      </button>
+    )
+  }
+
   return (
     <>
       <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-border">
@@ -75,12 +120,7 @@ export default function Navbar() {
                   </li>
                 ))}
               </ul>
-              <Link
-                to={isContributorAuthenticated() ? '/contribute' : '/contribute/login'}
-                className="min-h-[36px] px-4 inline-flex items-center font-body text-body-sm font-semibold bg-primary text-surface rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
-              >
-                Contribute
-              </Link>
+              <AuthButton mobile={false} />
               <LangToggle lang={i18n.language} onToggle={toggleLang} />
             </div>
 
@@ -146,16 +186,12 @@ export default function Navbar() {
             </li>
           ))}
           <li>
-            <Link
-              to={isContributorAuthenticated() ? '/contribute' : '/contribute/login'}
-              onClick={() => setOpen(false)}
-              className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
-            >
-              Contribute
-            </Link>
+            <AuthButton mobile={true} />
           </li>
         </ul>
       </div>
+
+      <ContributeModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   )
 }

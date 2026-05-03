@@ -14,8 +14,8 @@ import {
 } from '../../store/eventStore'
 import { ORGANIZATIONS } from '../../data/organizations'
 
-const ARTICLE_CATEGORIES = ['Académico', 'Campus', 'Cultura', 'Tecnología', 'Deportes', 'Institucional']
-const EVENT_CATEGORIES   = ['Académico', 'Campus', 'Cultura', 'Tecnología', 'Deportes']
+const ARTICLE_CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
+const EVENT_CATEGORIES   = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
 
 const STATUS_META = {
   pending_review:    { label: 'Pendiente',        cls: 'bg-amber-50 text-amber-700' },

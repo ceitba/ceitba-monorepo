@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { signOut, getSession } from '../store/authStore'
-import { getArticles, getPendingArticleSuggestionsCount } from '../store/articleStore'
-import { getEvents, getPendingEventSuggestionsCount } from '../store/eventStore'
+import { getPendingArticleSuggestionsCount } from '../store/articleStore'
+import { getPendingEventSuggestionsCount } from '../store/eventStore'
 
 const NAV = [
   {
@@ -23,10 +23,12 @@ const NAV = [
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const session = getSession()
+  const [session, setSession] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
   const drawerRef = useRef(null)
+
+  useEffect(() => { getSession().then(setSession) }, [])
 
   // Close drawer on navigation
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -47,13 +49,11 @@ export default function AdminLayout() {
     navigate('/admin/login')
   }
 
-  const articleCount     = getArticles().length
-  const eventCount       = getEvents().length
   const pendingSuggestions = getPendingArticleSuggestionsCount() + getPendingEventSuggestionsCount()
 
   const counts = {
-    '/admin/articles':    articleCount,
-    '/admin/events':      eventCount,
+    '/admin/articles':    null,
+    '/admin/events':      null,
     '/admin/suggestions': pendingSuggestions || null,
     '/admin/analytics':   null,
   }

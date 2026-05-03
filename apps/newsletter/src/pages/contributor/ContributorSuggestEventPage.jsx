@@ -4,7 +4,7 @@ import { getContributorSession } from '../../store/contributorAuthStore'
 import { getEventById, submitEventSuggestion, resubmitEventSuggestion } from '../../store/eventStore'
 import { ORGANIZATIONS } from '../../data/organizations'
 
-const EVENT_CATEGORIES = ['Académico', 'Campus', 'Cultura', 'Tecnología', 'Deportes']
+const EVENT_CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
 
 const EMPTY_FORM = {
   title:        '',

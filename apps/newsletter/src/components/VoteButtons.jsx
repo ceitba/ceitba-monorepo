@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { castVote, getVotesForArticle } from '../store/voteStore'
 import { trackEvent } from '../store/analyticsStore'
 
 export default function VoteButtons({ articleId }) {
-  const [state, setState] = useState(() => getVotesForArticle(articleId))
+  const [state, setState] = useState({ up: 0, down: 0, myVote: null })
 
-  function handleVote(type) {
-    const next = castVote(articleId, type)
-    setState(next)
+  useEffect(() => {
+    getVotesForArticle(articleId).then(setState)
+  }, [articleId])
+
+  async function handleVote(type) {
+    // Optimistic myVote flip
+    setState((prev) => ({
+      ...prev,
+      myVote: prev.myVote === type ? null : type,
+    }))
     trackEvent('vote', { articleId, voteType: type })
+    const next = await castVote(articleId, type)
+    setState(next)
   }
 
   return (
@@ -17,18 +26,8 @@ export default function VoteButtons({ articleId }) {
         ¿Te resultó útil?
       </span>
 
-      <VoteButton
-        type="up"
-        active={state.myVote === 'up'}
-        onVote={handleVote}
-        label="Sí, me resultó útil"
-      />
-      <VoteButton
-        type="down"
-        active={state.myVote === 'down'}
-        onVote={handleVote}
-        label="No me resultó útil"
-      />
+      <VoteButton type="up"   active={state.myVote === 'up'}   onVote={handleVote} label="Sí, me resultó útil" />
+      <VoteButton type="down" active={state.myVote === 'down'} onVote={handleVote} label="No me resultó útil" />
     </div>
   )
 }

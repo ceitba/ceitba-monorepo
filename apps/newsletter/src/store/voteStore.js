@@ -1,81 +1,43 @@
-/**
- * Vote store.
- *
- * Aggregate counts: localStorage key 'itbanews_votes_v1'
- *   { [articleId]: { up: number, down: number } }
- *
- * Per-session user vote: sessionStorage key 'itbanews_my_votes'
- *   { [articleId]: 'up' | 'down' }
- *
- * On the real API this becomes:
- *   POST /articles/:id/votes  { type: 'up' | 'down' }
- *   DELETE /articles/:id/votes  (retract)
- * Counts are returned only in authenticated admin responses.
- */
+import { apiRequest } from '../api/client'
 
-const VOTES_KEY    = 'itbanews_votes_v1'
 const MY_VOTES_KEY = 'itbanews_my_votes'
 
-function loadVotes() {
-  try {
-    const raw = localStorage.getItem(VOTES_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveVotes(votes) {
-  try { localStorage.setItem(VOTES_KEY, JSON.stringify(votes)) } catch {}
-}
-
 function loadMyVotes() {
-  try {
-    const raw = sessionStorage.getItem(MY_VOTES_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
+  try { return JSON.parse(sessionStorage.getItem(MY_VOTES_KEY) ?? '{}') } catch { return {} }
 }
 
 function saveMyVotes(mv) {
   try { sessionStorage.setItem(MY_VOTES_KEY, JSON.stringify(mv)) } catch {}
 }
 
-/**
- * Cast or retract a vote. Returns the new state for the article.
- * @returns {{ up: number, down: number, myVote: 'up'|'down'|null }}
- */
-export function castVote(articleId, type) {
-  const votes   = loadVotes()
-  const myVotes = loadMyVotes()
-  const current = votes[articleId] ?? { up: 0, down: 0 }
-  const prev    = myVotes[articleId] ?? null
-
-  if (prev === type) {
-    // Retract
-    current[type] = Math.max(0, current[type] - 1)
-    myVotes[articleId] = null
-  } else {
-    if (prev) current[prev] = Math.max(0, current[prev] - 1)  // undo old vote
-    current[type] = current[type] + 1
-    myVotes[articleId] = type
+export async function getVotesForArticle(articleId) {
+  try {
+    const res = await apiRequest('GET', `/articles/${articleId}/votes`)
+    if (!res || !res.ok) return { up: 0, down: 0, myVote: null }
+    const counts = await res.json()
+    const myVotes = loadMyVotes()
+    return { ...counts, myVote: myVotes[articleId] ?? null }
+  } catch {
+    return { up: 0, down: 0, myVote: null }
   }
+}
 
-  votes[articleId] = current
-  saveVotes(votes)
+// Returns optimistic state immediately; updates counts when API responds.
+// Callers should await and re-render with the final counts.
+export async function castVote(articleId, type) {
+  const myVotes = loadMyVotes()
+  const prev = myVotes[articleId] ?? null
+
+  myVotes[articleId] = prev === type ? null : type
   saveMyVotes(myVotes)
 
-  return { ...current, myVote: myVotes[articleId] ?? null }
-}
+  try {
+    const res = await apiRequest('POST', `/articles/${articleId}/votes`, { type })
+    if (res && res.ok) {
+      const counts = await res.json()
+      return { ...counts, myVote: myVotes[articleId] ?? null }
+    }
+  } catch {}
 
-export function getVotesForArticle(articleId) {
-  const votes   = loadVotes()
-  const myVotes = loadMyVotes()
-  const counts  = votes[articleId] ?? { up: 0, down: 0 }
-  return { ...counts, myVote: myVotes[articleId] ?? null }
-}
-
-export function getAllVotes() {
-  return loadVotes()   // { articleId: { up, down } }
+  return { up: 0, down: 0, myVote: myVotes[articleId] ?? null }
 }

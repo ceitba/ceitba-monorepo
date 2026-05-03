@@ -1,59 +1,45 @@
-/**
- * Auth store.
- *
- * Current implementation: credential check against hardcoded values.
- * Intended replacement: OIDC / Google Sign-In via the ITBA API.
- *
- * To migrate, replace `signInWithCredentials` with a function that:
- *   1. Initiates the Google OAuth flow (redirect or popup)
- *   2. Exchanges the auth code at POST /auth/google/callback
- *   3. Stores the returned JWT in sessionStorage under SESSION_KEY
- *
- * Everything else (getSession, signOut, isAuthenticated) stays the same.
- */
+import { apiRequest, BASE_URL } from '../api/client'
 
-const SESSION_KEY = 'itbanews_admin_session'
+const TOKEN_KEY = 'auth_token'
+let _profile = null
 
-// --- Demo credentials (replace with OIDC) ---
-const DEMO_USER = {
-  username: 'admin',
-  password: 'ceitba2025',
-  name:     'Administrador CEITBA',
-  role:     'community_manager',
+export function startGoogleSignIn() {
+  const redirectUri =
+    import.meta.env.VITE_GOOGLE_REDIRECT_URI ??
+    `${window.location.origin}/admin/callback`
+  window.location.href = `${BASE_URL}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
 }
 
-export function signInWithCredentials(username, password) {
-  if (username === DEMO_USER.username && password === DEMO_USER.password) {
-    const session = {
-      name:      DEMO_USER.name,
-      role:      DEMO_USER.role,
-      expiresAt: Date.now() + 8 * 60 * 60 * 1000, // 8 h
-    }
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    return { ok: true, session }
-  }
-  return { ok: false, error: 'Credenciales incorrectas.' }
+export async function handleCallback() {
+  const token = new URLSearchParams(window.location.search).get('token')
+  if (!token) return false
+  sessionStorage.setItem(TOKEN_KEY, token)
+  return true
 }
 
-export function getSession() {
+export async function getSession() {
+  if (!sessionStorage.getItem(TOKEN_KEY)) { _profile = null; return null }
+  if (_profile) return _profile
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const session = JSON.parse(raw)
-    if (session.expiresAt < Date.now()) {
-      sessionStorage.removeItem(SESSION_KEY)
-      return null
-    }
-    return session
+    const res = await apiRequest('GET', '/auth/me')
+    if (!res || !res.ok) { sessionStorage.removeItem(TOKEN_KEY); _profile = null; return null }
+    _profile = await res.json()
+    return _profile
   } catch {
     return null
   }
 }
 
+// Synchronous — returns cached profile after first getSession() call
+export function getCachedSession() {
+  return _profile
+}
+
 export function isAuthenticated() {
-  return getSession() !== null
+  return Boolean(sessionStorage.getItem(TOKEN_KEY))
 }
 
 export function signOut() {
-  sessionStorage.removeItem(SESSION_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+  _profile = null
 }

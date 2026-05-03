@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getEventById, createEvent, updateEvent } from '../../store/eventStore'
-import { ORGANIZATIONS } from '../../data/organizations'
+import { fetchEventById, createEvent, updateEvent } from '../../api/events'
+import { fetchOrganizations } from '../../api/organizations'
 
-const EVENT_CATEGORIES = ['Académico', 'Campus', 'Cultura', 'Tecnología', 'Deportes']
+const EVENT_CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
 
 const EMPTY_FORM = {
   title:        '',
@@ -21,17 +21,25 @@ export default function AdminEventFormPage() {
   const navigate = useNavigate()
   const isEdit   = Boolean(id)
 
-  const [form, setForm]       = useState(EMPTY_FORM)
-  const [errors, setErrors]   = useState({})
-  const [touched, setTouched] = useState(false)
-  const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
+  const [form, setForm]         = useState(EMPTY_FORM)
+  const [orgs, setOrgs]         = useState([])
+  const [errors, setErrors]     = useState({})
+  const [touched, setTouched]   = useState(false)
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [apiError, setApiError] = useState('')
 
   useEffect(() => {
-    if (isEdit) {
-      const existing = getEventById(id)
-      if (existing) setForm({ ...EMPTY_FORM, ...existing })
-    }
+    fetchOrganizations()
+      .then(({ data }) => setOrgs(data ?? []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!isEdit) return
+    fetchEventById(id)
+      .then((existing) => setForm({ ...EMPTY_FORM, ...existing }))
+      .catch(() => {})
   }, [id, isEdit])
 
   function set(key, value) {
@@ -58,17 +66,20 @@ export default function AdminEventFormPage() {
     if (!validate()) return
 
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 300))
-
-    if (isEdit) {
-      updateEvent(id, form)
-    } else {
-      createEvent(form)
+    setApiError('')
+    try {
+      if (isEdit) {
+        await updateEvent(id, form)
+      } else {
+        await createEvent(form)
+      }
+      setSaved(true)
+      setTimeout(() => navigate('/admin/events'), 800)
+    } catch {
+      setApiError('No se pudo guardar el evento. Intentá de nuevo.')
+    } finally {
+      setSaving(false)
     }
-
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => navigate('/admin/events'), 800)
   }
 
   if (saved) {
@@ -86,12 +97,8 @@ export default function AdminEventFormPage() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6 max-w-2xl">
-      {/* Header */}
       <div className="flex items-center gap-4">
-        <Link
-          to="/admin/events"
-          className="font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2"
-        >
+        <Link to="/admin/events" className="font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
           ← Eventos
         </Link>
         <h1 className="font-display text-h3 font-bold text-ink-primary">
@@ -99,109 +106,56 @@ export default function AdminEventFormPage() {
         </h1>
       </div>
 
-      {/* Card */}
       <div className="bg-white rounded-card border border-border shadow-card p-6 flex flex-col gap-5">
-        {/* Title */}
+        {apiError && (
+          <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
+            {apiError}
+          </p>
+        )}
+
         <Field label="Título" error={errors.title} required>
-          <input
-            type="text"
-            value={form.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="Nombre del evento"
-            className={inputClass(errors.title)}
-          />
+          <input type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Nombre del evento" className={inputClass(errors.title)} />
         </Field>
 
-        {/* Date + Times row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label="Fecha" error={errors.date} required>
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => set('date', e.target.value)}
-              className={inputClass(errors.date)}
-            />
+            <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass(errors.date)} />
           </Field>
           <Field label="Inicio" error={errors.time} required>
-            <input
-              type="time"
-              value={form.time}
-              onChange={(e) => set('time', e.target.value)}
-              className={inputClass(errors.time)}
-            />
+            <input type="time" value={form.time} onChange={(e) => set('time', e.target.value)} className={inputClass(errors.time)} />
           </Field>
           <Field label="Fin" error={errors.endTime} required>
-            <input
-              type="time"
-              value={form.endTime}
-              onChange={(e) => set('endTime', e.target.value)}
-              className={inputClass(errors.endTime)}
-            />
+            <input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} className={inputClass(errors.endTime)} />
           </Field>
         </div>
 
-        {/* Location */}
         <Field label="Lugar" error={errors.location} required>
-          <input
-            type="text"
-            value={form.location}
-            onChange={(e) => set('location', e.target.value)}
-            placeholder="p. ej. Aula Magna, Laboratorio 4…"
-            className={inputClass(errors.location)}
-          />
+          <input type="text" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="p. ej. Aula Magna, Laboratorio 4…" className={inputClass(errors.location)} />
         </Field>
 
-        {/* Category + Organization row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Categoría">
-            <select
-              value={form.category}
-              onChange={(e) => set('category', e.target.value)}
-              className={inputClass(null)}
-            >
-              {EVENT_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputClass(null)}>
+              {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </Field>
           <Field label="Organización">
-            <select
-              value={form.organization}
-              onChange={(e) => set('organization', e.target.value)}
-              className={inputClass(null)}
-            >
-              {ORGANIZATIONS.map((o) => (
-                <option key={o.slug} value={o.slug}>{o.name}</option>
-              ))}
+            <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
+              {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
             </select>
           </Field>
         </div>
 
-        {/* Description */}
         <Field label="Descripción" hint="Opcional. 1–2 oraciones para el calendario.">
-          <textarea
-            rows={4}
-            value={form.description}
-            onChange={(e) => set('description', e.target.value)}
-            placeholder="Breve descripción del evento…"
-            className={inputClass(null)}
-          />
+          <textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Breve descripción del evento…" className={inputClass(null)} />
         </Field>
       </div>
 
-      {/* Actions */}
       <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="min-h-[44px] px-6 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded"
-        >
+        <button type="submit" disabled={saving} className="min-h-[44px] px-6 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
           {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear evento'}
         </button>
-        <Link
-          to="/admin/events"
-          className="min-h-[44px] px-6 inline-flex items-center bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
-        >
+        <Link to="/admin/events" className="min-h-[44px] px-6 inline-flex items-center bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded">
           Cancelar
         </Link>
       </div>
@@ -217,7 +171,7 @@ function Field({ label, hint, error, required, children }) {
           {label}
           {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
         </label>
-        {hint && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
+        {hint  && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
         {error && <span className="font-body text-body-sm text-red-600">{error}</span>}
       </div>
       {children}
@@ -226,11 +180,5 @@ function Field({ label, hint, error, required, children }) {
 }
 
 function inputClass(error) {
-  return [
-    'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white',
-    'focus:outline-none focus:ring-1 transition-colors duration-150',
-    error
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-border focus:border-primary focus:ring-primary/30',
-  ].join(' ')
+  return ['w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { getContributorSession, signOutContributor } from '../store/contributorAuthStore'
+import { getSession, signOut } from '../store/authStore'
 import {
   getNotificationsForUser,
   getUnreadCountForUser,
@@ -9,15 +9,20 @@ import {
 } from '../store/notificationStore'
 
 export default function ContributorLayout() {
-  const session  = getContributorSession()
+  const [session, setSession] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
   const [notifOpen, setNotifOpen] = useState(false)
-  const [notifications, setNotifications] = useState(() =>
-    session ? getNotificationsForUser(session.id) : [],
-  )
+  const [notifications, setNotifications] = useState([])
   const unread = notifications.filter((n) => !n.read).length
   const bellRef = useRef(null)
+
+  useEffect(() => {
+    getSession().then((s) => {
+      setSession(s)
+      if (s) setNotifications(getNotificationsForUser(s.id))
+    })
+  }, [])
 
   useEffect(() => { setNotifOpen(false) }, [location.pathname])
 
@@ -35,8 +40,8 @@ export default function ContributorLayout() {
   }, [])
 
   function handleSignOut() {
-    signOutContributor()
-    navigate('/contribute/login')
+    signOut()
+    navigate('/')
   }
 
   function openNotifs() {
@@ -62,7 +67,7 @@ export default function ContributorLayout() {
     if (n.type === 'changes_requested') {
       return `/contribute/review/${n.resourceType}/${n.resourceId}`
     }
-    return '/contribuir'
+    return '/contribute'
   }
 
   return (
@@ -179,7 +184,7 @@ function ContribNavLink({ to, children }) {
   return (
     <NavLink
       to={to}
-      end={to === '/contribuir'}
+      end={to === '/contribute'}
       className={({ isActive }) => [
         'px-3 py-1.5 rounded-sm font-body text-body-sm font-semibold transition-colors duration-150',
         isActive
