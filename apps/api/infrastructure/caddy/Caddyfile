@@ -7,14 +7,14 @@ ceitba.org.ar {
         reverse_proxy ceitba-api:8080
     }
 
-    handle /scheduler/* {
+    handle /scheduler* {
         root * /var/www/scheduler
         uri strip_prefix /scheduler
         file_server
         try_files {path} /index.html
     }
 
-    handle /itbanews/* {
+    handle /itbanews* {
         root * /var/www/itbanews
         uri strip_prefix /itbanews
         file_server
