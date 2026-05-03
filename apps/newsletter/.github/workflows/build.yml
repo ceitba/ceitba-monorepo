@@ -54,7 +54,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            mkdir -p /var/www/itbanews
+            sudo mkdir -p /var/www/itbanews
+            sudo chown -R $(whoami) /var/www/itbanews
             cd /tmp
             rm -rf dist dist.zip
             curl -fsSL https://github.com/ceitba/ItbaNews/releases/latest/download/dist.zip -o dist.zip
