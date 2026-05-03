@@ -35,8 +35,6 @@ public class AuthController {
 
     private static final List<String> SAFE_REDIRECT_ORIGINS = List.of(
         "https://ceitba.org.ar",
-        "https://itbanews.ar",
-        "https://www.itbanews.ar",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:5173"
