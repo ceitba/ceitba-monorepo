@@ -25,7 +25,7 @@ public record AuthProperties(
 
     public AuthProperties {
         allowedDomains = allowedDomains != null ? allowedDomains : List.of();
-        allowedEmails = allowedEmails != null ? allowedEmails : List.of();
+        allowedEmails  = allowedEmails  != null ? allowedEmails  : List.of();
         frontendUrl = frontendUrl != null ? frontendUrl : "http://localhost:3000";
     }
 

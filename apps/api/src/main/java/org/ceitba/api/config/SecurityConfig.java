@@ -143,7 +143,7 @@ public class SecurityConfig {
         c.setAllowedOrigins(List.of(
             "https://ceitba.org.ar",
             "https://itbanews.ar", "https://www.itbanews.ar",
-            "http://localhost:3000", "http://localhost:3001", "http://localhost:5173"
+            "http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5175"
         ));
         c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         c.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With", ApiKeyFilter.HEADER));

@@ -37,7 +37,8 @@ public class AuthController {
         "https://ceitba.org.ar",
         "http://localhost:3000",
         "http://localhost:3001",
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "http://localhost:5175"
     );
 
     private final GoogleOAuthService googleOAuth;
