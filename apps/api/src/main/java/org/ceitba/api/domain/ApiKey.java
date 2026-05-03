@@ -22,7 +22,7 @@ public class ApiKey {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "key_hash", nullable = false, columnDefinition = "CHAR(64)")
+    @Column(name = "key_hash", nullable = false, length = 64)
     private String keyHash;
 
     @CreationTimestamp
