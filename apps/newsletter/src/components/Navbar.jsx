@@ -216,7 +216,7 @@ function ThemeToggle({ theme, onToggle }) {
       type="button"
       onClick={onToggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="flex items-center justify-center w-9 h-9 min-h-[36px] rounded-sm border border-border dark:border-[#3f3f46] text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+      className="min-h-[36px] w-9 flex items-center justify-center text-ink-secondary hover:text-primary transition-colors duration-150 rounded-sm hover:bg-primary-50 focus-visible:rounded"
     >
       {isDark ? <IconSun /> : <IconMoon />}
     </button>
@@ -229,7 +229,7 @@ function LangToggle({ lang, onToggle }) {
       type="button"
       onClick={onToggle}
       aria-label={lang === 'es' ? 'Switch to English' : 'Cambiar a español'}
-      className="font-mono text-label uppercase tracking-widest px-2.5 py-1.5 min-h-[36px] rounded-sm border border-border dark:border-[#3f3f46] text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+      className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary hover:text-primary transition-colors duration-150 focus-visible:rounded"
     >
       {lang === 'es' ? 'EN' : 'ES'}
     </button>
@@ -238,7 +238,7 @@ function LangToggle({ lang, onToggle }) {
 
 function IconSun() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="4" />
       <line x1="12" y1="2"  x2="12" y2="4"  />
       <line x1="12" y1="20" x2="12" y2="22" />
@@ -254,7 +254,7 @@ function IconSun() {
 
 function IconMoon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   )
