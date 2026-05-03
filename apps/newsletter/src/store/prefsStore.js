@@ -9,7 +9,9 @@ export function setLang(lang) {
 }
 
 export function getTheme() {
-  return localStorage.getItem(KEYS.theme) || 'light'
+  const stored = localStorage.getItem(KEYS.theme)
+  if (stored) return stored
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 export function setTheme(theme) {

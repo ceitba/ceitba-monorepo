@@ -100,7 +100,7 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-border">
+      <header className="sticky top-0 z-40 bg-surface/95 dark:bg-[#18181b]/95 backdrop-blur-sm border-b border-border dark:border-[#3f3f46]">
         <div className="container-content">
           <nav
             className="flex items-center justify-between h-16"
@@ -172,7 +172,7 @@ export default function Navbar() {
         aria-modal="true"
         aria-label={t('nav.openMenu')}
         className={[
-          'fixed top-0 right-0 z-50 h-full w-72 bg-surface shadow-xl flex flex-col pt-20 px-8 gap-6 sm:hidden',
+          'fixed top-0 right-0 z-50 h-full w-72 bg-white shadow-xl flex flex-col pt-20 px-8 gap-6 sm:hidden',
           'transition-transform duration-250',
           open ? 'translate-x-0 animate-slide-in' : 'translate-x-full',
         ].join(' ')}
@@ -216,7 +216,7 @@ function ThemeToggle({ theme, onToggle }) {
       type="button"
       onClick={onToggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="flex items-center justify-center w-9 h-9 min-h-[36px] rounded-sm border border-border text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+      className="flex items-center justify-center w-9 h-9 min-h-[36px] rounded-sm border border-border dark:border-[#3f3f46] text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
     >
       {isDark ? <IconSun /> : <IconMoon />}
     </button>
@@ -229,7 +229,7 @@ function LangToggle({ lang, onToggle }) {
       type="button"
       onClick={onToggle}
       aria-label={lang === 'es' ? 'Switch to English' : 'Cambiar a español'}
-      className="font-mono text-label uppercase tracking-widest px-2.5 py-1.5 min-h-[36px] rounded-sm border border-border text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+      className="font-mono text-label uppercase tracking-widest px-2.5 py-1.5 min-h-[36px] rounded-sm border border-border dark:border-[#3f3f46] text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
     >
       {lang === 'es' ? 'EN' : 'ES'}
     </button>

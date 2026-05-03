@@ -16,7 +16,7 @@ export default function ContributeModal({ open, onClose }) {
         aria-labelledby="contribute-modal-title"
         className="fixed z-50 inset-0 flex items-center justify-center p-4"
       >
-        <div className="bg-surface rounded-card shadow-xl max-w-sm w-full p-8 flex flex-col items-center gap-6 relative">
+        <div className="bg-white rounded-card shadow-xl max-w-sm w-full p-8 flex flex-col items-center gap-6 relative">
           <button
             type="button"
             onClick={onClose}
