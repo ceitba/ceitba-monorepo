@@ -18,6 +18,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -82,6 +83,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> handleAccessDenied(Exception ex, HttpServletRequest req) {
         return build(HttpStatus.FORBIDDEN, "AccessDenied", "Insufficient permissions", req);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, "NotFound", ex.getMessage(), req);
     }
 
     @ExceptionHandler(Exception.class)

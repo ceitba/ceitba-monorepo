@@ -12,3 +12,10 @@ spring:
     # Stop at V4: V5 seeds production-only data (ceitba@itba.edu.ar superadmin)
     # that breaks count assertions and FK-restricted deleteAll() in @BeforeEach.
     target: '4'
+
+# Use the default Springdoc path in tests to avoid suffix-matching ambiguity
+# with the custom /docs.json path under server.servlet.context-path=/api.
+# SecurityConfig already permits /v3/api-docs/**.
+springdoc:
+  api-docs:
+    path: /v3/api-docs

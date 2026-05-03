@@ -59,7 +59,7 @@ class HealthAndErrorIT {
 
     @Test
     void openApiDocsAreServed() throws Exception {
-        mvc.perform(get("/docs.json"))
+        mvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.info.title").value("CEITBA API"))
             .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
