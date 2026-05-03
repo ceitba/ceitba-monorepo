@@ -10,6 +10,8 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     steps:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -26,4 +28,4 @@ jobs:
             docker compose up -d
             docker image prune -f
         env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
