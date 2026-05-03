@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getSession } from '../store/authStore'
+import { setLang, getTheme, setTheme } from '../store/prefsStore'
 import ContributeModal from './ContributeModal'
 
 const ADMIN_ROLES = ['staff', 'admin', 'editor']
@@ -11,6 +12,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [session, setSession] = useState(undefined)
+  const [theme, setThemeState] = useState(getTheme)
   const drawerRef = useRef(null)
 
   useEffect(() => {
@@ -48,8 +50,17 @@ export default function Navbar() {
         : 'text-ink-primary hover:text-primary',
     ].join(' ')
 
-  const toggleLang = () =>
-    i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
+  const toggleLang = () => {
+    const next = i18n.language === 'es' ? 'en' : 'es'
+    i18n.changeLanguage(next)
+    setLang(next)
+  }
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    setThemeState(next)
+  }
 
   function handleContributeClick() {
     setOpen(false)
@@ -122,11 +133,13 @@ export default function Navbar() {
               </ul>
               <AuthButton mobile={false} />
               <LangToggle lang={i18n.language} onToggle={toggleLang} />
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
             </div>
 
             {/* Mobile controls */}
             <div className="flex sm:hidden items-center gap-2">
               <LangToggle lang={i18n.language} onToggle={toggleLang} />
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
               <button
                 type="button"
                 className="flex items-center justify-center w-11 h-11 rounded text-ink-primary hover:text-primary focus-visible:rounded"
@@ -196,6 +209,20 @@ export default function Navbar() {
   )
 }
 
+function ThemeToggle({ theme, onToggle }) {
+  const isDark = theme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className="flex items-center justify-center w-9 h-9 min-h-[36px] rounded-sm border border-border text-ink-secondary hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+    >
+      {isDark ? <IconSun /> : <IconMoon />}
+    </button>
+  )
+}
+
 function LangToggle({ lang, onToggle }) {
   return (
     <button
@@ -206,6 +233,30 @@ function LangToggle({ lang, onToggle }) {
     >
       {lang === 'es' ? 'EN' : 'ES'}
     </button>
+  )
+}
+
+function IconSun() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <line x1="12" y1="2"  x2="12" y2="4"  />
+      <line x1="12" y1="20" x2="12" y2="22" />
+      <line x1="4.22" y1="4.22"  x2="5.64" y2="5.64"  />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="2" y1="12" x2="4"  y2="12" />
+      <line x1="20" y1="12" x2="22" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"  />
+    </svg>
+  )
+}
+
+function IconMoon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
   )
 }
 
