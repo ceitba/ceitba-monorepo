@@ -9,11 +9,8 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// Mixed-case table name "Subject_Bookmarks" is intentional and matches the
-// existing Prisma schema. Required for bit-for-bit compatibility during the
-// dual-run window (NestJS + Spring Boot before PR 11 cutover).
 @Entity
-@Table(schema = "wiki", name = "`Subject_Bookmarks`")
+@Table(schema = "wiki", name = "subject_bookmarks")
 @IdClass(SubjectBookmarkId.class)
 public class SubjectBookmark {
 
