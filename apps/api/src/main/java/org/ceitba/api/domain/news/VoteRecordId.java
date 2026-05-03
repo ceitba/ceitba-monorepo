@@ -1,5 +1,6 @@
 package org.ceitba.api.domain.news;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 import java.io.Serializable;
@@ -8,6 +9,7 @@ import java.util.Objects;
 @Embeddable
 public class VoteRecordId implements Serializable {
 
+    @Column(name = "article_id")
     private String articleId;
     private String fingerprint;
 
