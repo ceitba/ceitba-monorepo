@@ -1,0 +1,88 @@
+{
+  "_readme": "Este archivo es un ejemplo de referencia. NO está conectado a la página. Copiá la estructura que necesites al archivo benefits.json real.",
+
+  "benefit_sin_detalles": {
+    "_descripcion": "Cuando 'details' es null, la tarjeta muestra 'Detalles próximamente'.",
+    "id": "membresias",
+    "colorVar": "--dept-color-media",
+    "order": 2,
+    "details": null
+  },
+
+  "benefit_con_todo": {
+    "_descripcion": "Ejemplo completo con todas las capacidades disponibles.",
+    "id": "deportes",
+    "colorVar": "--dept-color-deportes",
+    "order": 1,
+    "details": {
+      "highlights": {
+        "_descripcion": "Lista de puntos que aparecen debajo de la descripción. Requiere versión en español e inglés.",
+        "es": [
+          "Canchas de fútbol 5 y 11",
+          "Básquet, vóley y padel",
+          "Torneos intercarreras durante el año",
+          "Equipamiento disponible para préstamo"
+        ],
+        "en": [
+          "5-a-side and 11-a-side soccer fields",
+          "Basketball, volleyball and padel",
+          "Inter-major tournaments throughout the year",
+          "Equipment available to borrow"
+        ]
+      },
+      "link": {
+        "_descripcion": "URL opcional. Si se completa, aparece un botón 'Ver más' al pie de la tarjeta.",
+        "_valor": "https://ceitba.org.ar/deportes"
+      },
+      "contact": {
+        "_descripcion": "Email de contacto opcional. Reservado para uso futuro.",
+        "_valor": "deportes@itba.edu.ar"
+      }
+    }
+  },
+
+  "benefit_solo_highlights": {
+    "_descripcion": "Con highlights pero sin link ni contacto.",
+    "id": "academico",
+    "colorVar": "--dept-color-infra",
+    "order": 4,
+    "details": {
+      "highlights": {
+        "es": [
+          "Apuntes colaborativos de todas las carreras",
+          "Grupos de estudio organizados por materia"
+        ],
+        "en": [
+          "Collaborative notes for all degree programs",
+          "Study groups organized by subject"
+        ]
+      },
+      "link": null,
+      "contact": null
+    }
+  },
+
+  "benefit_solo_link": {
+    "_descripcion": "Con link pero sin highlights. El botón 'Ver más' aparece solo.",
+    "id": "eventos",
+    "colorVar": "--dept-color-direct",
+    "order": 3,
+    "details": {
+      "highlights": null,
+      "link": "https://ceitba.org.ar/eventos",
+      "contact": null
+    }
+  },
+
+  "_colores_disponibles": {
+    "_descripcion": "Valores válidos para el campo 'colorVar'.",
+    "opciones": [
+      "--dept-color-it",
+      "--dept-color-media",
+      "--dept-color-infra",
+      "--dept-color-nautica",
+      "--dept-color-deportes",
+      "--dept-color-direct"
+    ]
+  }
+}

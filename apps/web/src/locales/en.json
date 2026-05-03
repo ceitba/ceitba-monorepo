@@ -1,0 +1,104 @@
+{
+  "nav": {
+    "skipToContent": "Skip to content",
+    "tagline": "ITBA Student Center"
+  },
+  "tabs": {
+    "home": "Home",
+    "departments": "Departments",
+    "benefits": "Benefits",
+    "staff": "Staff"
+  },
+  "hero": {
+    "eyebrow": "Student Center",
+    "title": "CEITBA",
+    "subtitle": "The voice and executive arm of students at the Instituto Tecnológico de Buenos Aires.",
+    "description": "We work to improve the university experience for every ITBA student, representing their interests, organizing activities, and building tools that make academic life easier."
+  },
+  "apps": {
+    "sectionTitle": "Our tools",
+    "sectionSubtitle": "Platforms developed by the CEITBA IT team for the student community.",
+    "scheduler": {
+      "label": "Schedule Builder",
+      "description": "Generate all possible schedule combinations for your courses and find the perfect arrangement for your semester.",
+      "cta": "Open"
+    },
+    "newsletter": {
+      "label": "ITBA Newsletter",
+      "description": "Stay up to date with everything happening at ITBA: events, academic news, job opportunities and CEITBA activities.",
+      "cta": "Open"
+    }
+  },
+  "departments": {
+    "sectionTitle": "Departments",
+    "sectionSubtitle": "The teams that keep CEITBA running.",
+    "it": {
+      "name": "IT",
+      "description": "Develops and maintains CEITBA's digital platforms: schedule builder, newsletter, institutional website, and more."
+    },
+    "media": {
+      "name": "Media",
+      "description": "Manages institutional communication, social media, and audiovisual content production for CEITBA."
+    },
+    "infraestructura": {
+      "name": "Infrastructure & Projects",
+      "description": "Manages and improves physical spaces, equipment, and infrastructure initiatives of the student center."
+    },
+    "nautica": {
+      "name": "Nautics",
+      "description": "Organizes nautical activities, regattas, and water sports programs for the ITBA community."
+    },
+    "deportes": {
+      "name": "Sports",
+      "description": "Coordinates inter-major leagues, tournaments, sports activities, and access to facilities for all students."
+    },
+    "directivos": {
+      "name": "Board",
+      "description": "CEITBA leadership, student representation before university authorities, and strategic management."
+    }
+  },
+  "benefits": {
+    "sectionTitle": "Benefits",
+    "sectionSubtitle": "What CEITBA offers its members and the entire student community.",
+    "deportes": {
+      "name": "Sports",
+      "description": "Access to soccer, basketball, volleyball fields and other sports facilities. Leagues, tournaments, and recreational activities throughout the year."
+    },
+    "membresias": {
+      "name": "Memberships & Discounts",
+      "description": "Exclusive discounts at restaurants, bookstores, gyms, digital platforms, and brands associated with CEITBA."
+    },
+    "eventos": {
+      "name": "Events & Culture",
+      "description": "Talks with industry leaders, workshops, cultural activities, shows, and social events organized throughout the year."
+    },
+    "academico": {
+      "name": "Academic Support",
+      "description": "Collaborative notes, study groups, and academic resources shared among students from all degree programs."
+    },
+    "representacion": {
+      "name": "Student Representation",
+      "description": "Active voice and participation in decisions affecting ITBA students, with presence in governance bodies."
+    },
+    "detailsNote": "Details for each benefit will be added soon.",
+    "detailsComingSoon": "Details coming soon",
+    "learnMore": "Learn more"
+  },
+  "staff": {
+    "sectionTitle": "Our team",
+    "sectionSubtitle": "The people behind CEITBA.",
+    "comingSoon": "Coming soon",
+    "comingSoonMessage": "We're working on introducing you to the full team. Check back soon!",
+    "yearLabel": "Filter by year"
+  },
+  "footer": {
+    "itTeam": "CEITBA IT Team",
+    "github": "GitHub",
+    "contact": "Contact",
+    "rights": "All rights reserved."
+  },
+  "errors": {
+    "somethingWrong": "Something went wrong",
+    "retry": "Retry"
+  }
+}

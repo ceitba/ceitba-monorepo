@@ -1,0 +1,32 @@
+[
+  {
+    "id": "it",
+    "colorVar": "--dept-color-it",
+    "order": 1
+  },
+  {
+    "id": "media",
+    "colorVar": "--dept-color-media",
+    "order": 2
+  },
+  {
+    "id": "infraestructura",
+    "colorVar": "--dept-color-infra",
+    "order": 3
+  },
+  {
+    "id": "nautica",
+    "colorVar": "--dept-color-nautica",
+    "order": 4
+  },
+  {
+    "id": "deportes",
+    "colorVar": "--dept-color-deportes",
+    "order": 5
+  },
+  {
+    "id": "directivos",
+    "colorVar": "--dept-color-direct",
+    "order": 6
+  }
+]

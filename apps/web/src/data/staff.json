@@ -1,0 +1,22 @@
+{
+  "departments": {
+    "it": {
+      "members": []
+    },
+    "media": {
+      "members": []
+    },
+    "infraestructura": {
+      "members": []
+    },
+    "nautica": {
+      "members": []
+    },
+    "deportes": {
+      "members": []
+    },
+    "directivos": {
+      "members": []
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "nav": {
+    "skipToContent": "Ir al contenido",
+    "tagline": "Centro de Estudiantes ITBA"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "departments": "Departamentos",
+    "benefits": "Beneficios",
+    "staff": "Staff"
+  },
+  "hero": {
+    "eyebrow": "Centro de Estudiantes",
+    "title": "CEITBA",
+    "subtitle": "La voz y el brazo ejecutor de los estudiantes del Instituto Tecnológico de Buenos Aires.",
+    "description": "Trabajamos para mejorar la experiencia universitaria de cada estudiante ITBA, representando sus intereses, organizando actividades y gestionando herramientas que hacen la vida académica más fácil."
+  },
+  "apps": {
+    "sectionTitle": "Nuestras herramientas",
+    "sectionSubtitle": "Plataformas desarrolladas por el equipo IT de CEITBA para la comunidad estudiantil.",
+    "scheduler": {
+      "label": "Combinador de horarios",
+      "description": "Generá todas las combinaciones posibles de horarios para tus materias y encontrá el arreglo perfecto para tu cuatrimestre.",
+      "cta": "Abrir"
+    },
+    "newsletter": {
+      "label": "Newsletter ITBA",
+      "description": "Enterate de todo lo que pasa en ITBA: eventos, novedades académicas, oportunidades laborales y actividades del CEITBA.",
+      "cta": "Abrir"
+    }
+  },
+  "departments": {
+    "sectionTitle": "Departamentos",
+    "sectionSubtitle": "Los equipos que hacen funcionar al CEITBA.",
+    "it": {
+      "name": "IT",
+      "description": "Desarrolla y mantiene las plataformas digitales de CEITBA: combinador de horarios, newsletter, sitio institucional y más."
+    },
+    "media": {
+      "name": "Media",
+      "description": "Gestiona la comunicación institucional, las redes sociales y la producción de contenido audiovisual del CEITBA."
+    },
+    "infraestructura": {
+      "name": "Infraestructura y Proyectos",
+      "description": "Administra y mejora los espacios físicos, equipamientos e iniciativas de infraestructura del centro de estudiantes."
+    },
+    "nautica": {
+      "name": "Náutica",
+      "description": "Organiza actividades náuticas, regatas y programas relacionados con los deportes acuáticos para la comunidad ITBA."
+    },
+    "deportes": {
+      "name": "Deportes",
+      "description": "Coordina ligas intercarreras, torneos, actividades deportivas y el acceso a instalaciones para todos los estudiantes."
+    },
+    "directivos": {
+      "name": "Directivos",
+      "description": "Conducción del CEITBA, representación estudiantil ante las autoridades de la universidad y gestión estratégica."
+    }
+  },
+  "benefits": {
+    "sectionTitle": "Beneficios",
+    "sectionSubtitle": "Lo que CEITBA ofrece a sus socios y a toda la comunidad estudiantil.",
+    "deportes": {
+      "name": "Deportes",
+      "description": "Acceso a canchas de fútbol, básquet, vóley y otras instalaciones deportivas. Ligas, torneos y actividades recreativas durante el año."
+    },
+    "membresias": {
+      "name": "Membresías y Descuentos",
+      "description": "Descuentos exclusivos en locales gastronómicos, librerías, gimnasios, plataformas digitales y marcas asociadas al CEITBA."
+    },
+    "eventos": {
+      "name": "Eventos y Cultura",
+      "description": "Charlas con referentes de la industria, workshops, actividades culturales, shows y eventos sociales organizados durante el año."
+    },
+    "academico": {
+      "name": "Apoyo Académico",
+      "description": "Apuntes colaborativos, grupos de estudio y recursos académicos compartidos entre estudiantes de todas las carreras."
+    },
+    "representacion": {
+      "name": "Representación Estudiantil",
+      "description": "Voz y participación activa en las decisiones que afectan a los estudiantes de ITBA, con presencia en los órganos de gobierno."
+    },
+    "detailsNote": "Los detalles de cada beneficio se van a ir completando próximamente.",
+    "detailsComingSoon": "Detalles próximamente",
+    "learnMore": "Ver más"
+  },
+  "staff": {
+    "sectionTitle": "Nuestro equipo",
+    "sectionSubtitle": "Las personas detrás del CEITBA.",
+    "comingSoon": "Próximamente",
+    "comingSoonMessage": "Estamos trabajando para presentarte al equipo completo. ¡Volvé pronto!",
+    "yearLabel": "Filtrar por año"
+  },
+  "footer": {
+    "itTeam": "IT Team CEITBA",
+    "github": "GitHub",
+    "contact": "Contacto",
+    "rights": "Todos los derechos reservados."
+  },
+  "errors": {
+    "somethingWrong": "Algo salió mal",
+    "retry": "Reintentar"
+  }
+}

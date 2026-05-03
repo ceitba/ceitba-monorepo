@@ -1,0 +1,94 @@
+{
+  "_readme": "Este archivo es un ejemplo de referencia. NO está conectado a la página. Para agregar un año nuevo, creá un archivo con el formato YYYY.json (ej: 2026.json) en esta misma carpeta y la página lo va a mostrar automáticamente.",
+
+  "_como_agregar_un_año": [
+    "1. Copiar este archivo y renombrarlo con el año: 2026.json",
+    "2. Cambiar el campo 'year' al año correspondiente",
+    "3. Completar los miembros de cada departamento",
+    "4. Guardar — aparece automáticamente como tab en la página"
+  ],
+
+  "archivo_minimo": {
+    "_descripcion": "Estructura mínima para un año nuevo. Todos los miembros vacíos.",
+    "year": 2026,
+    "departments": {
+      "directivos":    { "members": [] },
+      "it":            { "members": [] },
+      "media":         { "members": [] },
+      "infraestructura": { "members": [] },
+      "nautica":       { "members": [] },
+      "deportes":      { "members": [] }
+    }
+  },
+
+  "archivo_completo": {
+    "_descripcion": "Ejemplo con miembros reales y todas las combinaciones de campos.",
+    "year": 2025,
+    "departments": {
+      "directivos": {
+        "members": [
+          {
+            "_descripcion_campos": "Todos los campos disponibles para un miembro.",
+            "name": "María García",
+            "role": {
+              "_descripcion": "Cargo. Requiere versión en español e inglés.",
+              "es": "Presidenta",
+              "en": "President"
+            },
+            "photo": "https://example.com/foto-maria.jpg",
+            "linkedin": "https://linkedin.com/in/mariagarcia",
+            "email": "mgarcia@itba.edu.ar"
+          },
+          {
+            "_descripcion_campos": "Miembro sin foto ni redes — la página muestra las iniciales del nombre.",
+            "name": "Juan Pérez",
+            "role": { "es": "Vicepresidente", "en": "Vice President" },
+            "photo": null,
+            "linkedin": null,
+            "email": null
+          }
+        ]
+      },
+      "it": {
+        "members": [
+          {
+            "name": "Ana López",
+            "role": { "es": "Directora de IT", "en": "IT Director" },
+            "photo": null,
+            "linkedin": "https://linkedin.com/in/analopez",
+            "email": "alopez@itba.edu.ar"
+          },
+          {
+            "_descripcion_campos": "Miembro solo con foto y nombre, sin LinkedIn ni email.",
+            "name": "Carlos Ruiz",
+            "role": { "es": "Desarrollador", "en": "Developer" },
+            "photo": "https://example.com/foto-carlos.jpg",
+            "linkedin": null,
+            "email": null
+          }
+        ]
+      },
+      "media":         { "members": [] },
+      "infraestructura": { "members": [] },
+      "nautica":       { "members": [] },
+      "deportes":      { "members": [] }
+    }
+  },
+
+  "_campos_de_cada_miembro": {
+    "name":     "Nombre completo (obligatorio)",
+    "role":     "Cargo con versión es/en (obligatorio)",
+    "photo":    "URL de foto de perfil, o null para mostrar iniciales",
+    "linkedin": "URL completa al perfil de LinkedIn, o null",
+    "email":    "Email de contacto, o null"
+  },
+
+  "_departamentos_validos": [
+    "directivos",
+    "it",
+    "media",
+    "infraestructura",
+    "nautica",
+    "deportes"
+  ]
+}
