@@ -1,22 +1,29 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Build & Test"]
+    branches: [main]
+    types: [completed]
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy app
-        uses: appleboy/ssh-action@master
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          key: ${{ secrets.SSH_KEY }}
-          username: ${{ secrets.SSH_USERNAME }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_TOKEN
           script: |
-            cd CEITBA-API/
-            git pull https://ceitba:${{ secrets.GITHUB_TOKEN }}@github.com/ceitba/CEITBA-API.git
-            docker compose pull
-            docker compose up -d --build
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u ceitba --password-stdin
+            cd ~/CEITBA-API
+            git pull
+            docker compose pull ceitba-api
+            docker compose up -d
+            docker image prune -f
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

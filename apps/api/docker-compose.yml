@@ -20,6 +20,7 @@ services:
       retries: 3
 
   ceitba-api:
+    image: ghcr.io/ceitba/ceitba-api:latest
     build:
       context: .
       dockerfile: infrastructure/docker/Dockerfile
