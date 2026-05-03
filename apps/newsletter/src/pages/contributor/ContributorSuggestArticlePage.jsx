@@ -9,7 +9,7 @@ import {
 import { ORGANIZATIONS } from '../../data/organizations'
 import ImageUploader from '../../components/ImageUploader'
 
-const CATEGORIES = ['Académico', 'Campus', 'Cultura', 'Tecnología', 'Deportes', 'Institucional']
+const CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
 
 const COLOR_OPTIONS = [
   { value: 'blue',   label: 'Azul',    cls: 'bg-primary-500' },

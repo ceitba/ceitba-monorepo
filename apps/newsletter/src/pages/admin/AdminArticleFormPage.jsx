@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getArticleById,
+  fetchArticleById,
   createArticle,
   updateArticle,
-} from '../../store/articleStore'
-import { ORGANIZATIONS } from '../../data/organizations'
+} from '../../api/articles'
+import { fetchOrganizations } from '../../api/organizations'
 import { CATEGORIES } from '../../data/articles'
 import ImageUploader from '../../components/ImageUploader'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 
 const COLOR_SCHEMES = [
-  { value: 'blue',   bg: 'bg-primary-500',  label: 'Azul'   },
-  { value: 'amber',  bg: 'bg-accent-400',   label: 'Ámbar'  },
-  { value: 'green',  bg: 'bg-emerald-600',  label: 'Verde'  },
+  { value: 'blue',   bg: 'bg-primary-500',  label: 'Azul'    },
+  { value: 'amber',  bg: 'bg-accent-400',   label: 'Ámbar'   },
+  { value: 'green',  bg: 'bg-emerald-600',  label: 'Verde'   },
   { value: 'violet', bg: 'bg-violet-600',   label: 'Violeta' },
 ]
 
@@ -37,17 +37,25 @@ export default function AdminArticleFormPage() {
   const navigate = useNavigate()
   const isEdit = Boolean(id)
 
-  const [form, setForm]       = useState(EMPTY_FORM)
-  const [errors, setErrors]   = useState({})
-  const [touched, setTouched] = useState(false)
-  const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
-  const [viewMode, setViewMode] = useState('edit') // 'edit' | 'preview' | 'split'
+  const [form, setForm]         = useState(EMPTY_FORM)
+  const [orgs, setOrgs]         = useState([])
+  const [errors, setErrors]     = useState({})
+  const [touched, setTouched]   = useState(false)
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [apiError, setApiError] = useState('')
+  const [viewMode, setViewMode] = useState('edit')
 
   useEffect(() => {
-    if (isEdit) {
-      const existing = getArticleById(id)
-      if (existing) {
+    fetchOrganizations()
+      .then(({ data }) => setOrgs(data ?? []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!isEdit) return
+    fetchArticleById(id)
+      .then((existing) => {
         setForm({
           ...EMPTY_FORM,
           ...existing,
@@ -55,8 +63,8 @@ export default function AdminArticleFormPage() {
             ? existing.body
             : [existing.excerpt ?? ''],
         })
-      }
-    }
+      })
+      .catch(() => {})
   }, [id, isEdit])
 
   function set(key, value) {
@@ -66,11 +74,11 @@ export default function AdminArticleFormPage() {
 
   function validate(values = form) {
     const e = {}
-    if (!values.title.trim())         e.title    = 'El título es obligatorio.'
-    if (!values.excerpt.trim())       e.excerpt  = 'El copete es obligatorio.'
-    if (!values.author.trim())        e.author   = 'El autor es obligatorio.'
-    if (!values.date)                 e.date     = 'La fecha es obligatoria.'
-    if (!values.readingTime.trim())   e.readingTime = 'El tiempo de lectura es obligatorio.'
+    if (!values.title.trim())       e.title       = 'El título es obligatorio.'
+    if (!values.excerpt.trim())     e.excerpt     = 'El copete es obligatorio.'
+    if (!values.author.trim())      e.author      = 'El autor es obligatorio.'
+    if (!values.date)               e.date        = 'La fecha es obligatoria.'
+    if (!values.readingTime.trim()) e.readingTime = 'El tiempo de lectura es obligatorio.'
     if (values.body.every((p) => !p.trim())) e.body = 'Escribí al menos un párrafo.'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -81,28 +89,26 @@ export default function AdminArticleFormPage() {
     if (!validate()) return
 
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 300))
-
-    const payload = { ...form, status, body: form.body.filter((p) => p.trim()) }
-
-    if (isEdit) {
-      updateArticle(id, payload)
-    } else {
-      createArticle(payload)
+    setApiError('')
+    try {
+      const payload = { ...form, status, body: form.body.filter((p) => p.trim()) }
+      if (isEdit) {
+        await updateArticle(id, payload)
+      } else {
+        await createArticle(payload)
+      }
+      setSaved(true)
+      setTimeout(() => navigate('/admin/articles'), 800)
+    } catch {
+      setApiError('No se pudo guardar el artículo. Intentá de nuevo.')
+    } finally {
+      setSaving(false)
     }
-
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => navigate('/admin/articles'), 800)
   }
 
-  // Paragraph helpers
-  function updatePara(i, val) {
-    const next = form.body.map((p, idx) => (idx === i ? val : p))
-    set('body', next)
-  }
-  function addPara() { set('body', [...form.body, '']) }
-  function removePara(i) { set('body', form.body.filter((_, idx) => idx !== i)) }
+  function updatePara(i, val) { set('body', form.body.map((p, idx) => (idx === i ? val : p))) }
+  function addPara()          { set('body', [...form.body, '']) }
+  function removePara(i)      { set('body', form.body.filter((_, idx) => idx !== i)) }
 
   if (saved) {
     return (
@@ -117,35 +123,17 @@ export default function AdminArticleFormPage() {
     )
   }
 
-  // Build the live preview article from current form state
-  const previewArticle = {
-    ...form,
-    id: 'preview',
-    body: form.body.filter((p) => p.trim()),
-  }
+  const previewArticle = { ...form, id: 'preview', body: form.body.filter((p) => p.trim()) }
 
   const formFields = (
     <>
-      {/* Main fields */}
       <div className="flex-1 flex flex-col gap-5">
         <FormField label="Título" error={errors.title} required>
-          <input
-            type="text"
-            value={form.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="Título del artículo"
-            className={inputClass(errors.title)}
-          />
+          <input type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Título del artículo" className={inputClass(errors.title)} />
         </FormField>
 
         <FormField label="Copete" hint="2–3 oraciones. Aparece en la tarjeta y en el índice." error={errors.excerpt} required>
-          <textarea
-            rows={3}
-            value={form.excerpt}
-            onChange={(e) => set('excerpt', e.target.value)}
-            placeholder="Resumen breve del artículo…"
-            className={inputClass(errors.excerpt)}
-          />
+          <textarea rows={3} value={form.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Resumen breve del artículo…" className={inputClass(errors.excerpt)} />
         </FormField>
 
         <div className="flex flex-col gap-3">
@@ -153,36 +141,19 @@ export default function AdminArticleFormPage() {
             <label className="font-body text-body-sm font-semibold text-ink-primary">
               Cuerpo <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            {errors.body && (
-              <span className="font-body text-body-sm text-red-600">{errors.body}</span>
-            )}
+            {errors.body && <span className="font-body text-body-sm text-red-600">{errors.body}</span>}
           </div>
           {form.body.map((para, i) => (
             <div key={i} className="relative group">
-              <textarea
-                rows={5}
-                value={para}
-                onChange={(e) => updatePara(i, e.target.value)}
-                placeholder={`Párrafo ${i + 1}…`}
-                className={[inputClass(null), 'pr-10'].join(' ')}
-              />
+              <textarea rows={5} value={para} onChange={(e) => updatePara(i, e.target.value)} placeholder={`Párrafo ${i + 1}…`} className={[inputClass(null), 'pr-10'].join(' ')} />
               {form.body.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removePara(i)}
-                  aria-label={`Eliminar párrafo ${i + 1}`}
-                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded text-ink-secondary hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150"
-                >
+                <button type="button" onClick={() => removePara(i)} aria-label={`Eliminar párrafo ${i + 1}`} className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded text-ink-secondary hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               )}
             </div>
           ))}
-          <button
-            type="button"
-            onClick={addPara}
-            className="self-start min-h-[36px] px-3 flex items-center gap-2 font-body text-body-sm text-primary border border-dashed border-primary/40 hover:border-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded"
-          >
+          <button type="button" onClick={addPara} className="self-start min-h-[36px] px-3 flex items-center gap-2 font-body text-body-sm text-primary border border-dashed border-primary/40 hover:border-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Agregar párrafo
           </button>
@@ -193,23 +164,17 @@ export default function AdminArticleFormPage() {
         </FormField>
       </div>
 
-      {/* Metadata sidebar */}
       <aside className="lg:w-72 flex-shrink-0 flex flex-col gap-4">
         <div className="bg-white rounded-card border border-border shadow-card p-4 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => handleSubmit('published')}
-            disabled={saving}
-            className="min-h-[44px] bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded"
-          >
+          {apiError && (
+            <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
+              {apiError}
+            </p>
+          )}
+          <button type="button" onClick={() => handleSubmit('published')} disabled={saving} className="min-h-[44px] bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
             {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Publicar'}
           </button>
-          <button
-            type="button"
-            onClick={() => handleSubmit('draft')}
-            disabled={saving}
-            className="min-h-[44px] bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60 focus-visible:rounded"
-          >
+          <button type="button" onClick={() => handleSubmit('draft')} disabled={saving} className="min-h-[44px] bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
             Guardar como borrador
           </button>
         </div>
@@ -220,13 +185,13 @@ export default function AdminArticleFormPage() {
 
         <SidebarCard title="Categoría">
           <select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass()}>
-            {CATEGORIES.filter((c) => c !== 'Todos').map((c) => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIES.filter((c) => c !== 'TODOS').map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </SidebarCard>
 
         <SidebarCard title="Organización">
           <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={selectClass()}>
-            {ORGANIZATIONS.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+            {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
           </select>
         </SidebarCard>
 
@@ -265,14 +230,7 @@ export default function AdminArticleFormPage() {
         <SidebarCard title="Color de portada">
           <div className="grid grid-cols-4 gap-2">
             {COLOR_SCHEMES.map(({ value, bg, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => set('colorScheme', value)}
-                aria-label={label}
-                aria-pressed={form.colorScheme === value}
-                className={['h-10 rounded-sm transition-all duration-150 focus-visible:rounded relative', bg, form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-70 hover:opacity-100'].join(' ')}
-              >
+              <button key={value} type="button" onClick={() => set('colorScheme', value)} aria-label={label} aria-pressed={form.colorScheme === value} className={['h-10 rounded-sm transition-all duration-150 focus-visible:rounded relative', bg, form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-70 hover:opacity-100'].join(' ')}>
                 {form.colorScheme === value && (
                   <svg className="absolute inset-0 m-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                 )}
@@ -286,7 +244,6 @@ export default function AdminArticleFormPage() {
 
   return (
     <div className="flex flex-col gap-6" style={{ maxWidth: viewMode === 'split' ? 'none' : '64rem' }}>
-      {/* Page header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <Link to="/admin/articles" className="font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
@@ -299,39 +256,24 @@ export default function AdminArticleFormPage() {
         <ViewModeToggle value={viewMode} onChange={setViewMode} />
       </div>
 
-      {/* Preview-only mode */}
       {viewMode === 'preview' && (
         <div className="bg-white rounded-card border border-border shadow-card p-6">
           <ArticleLivePreview article={previewArticle} />
         </div>
       )}
 
-      {/* Edit mode */}
       {viewMode === 'edit' && (
         <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
           {formFields}
         </div>
       )}
 
-      {/* Split mode */}
       {viewMode === 'split' && (
         <div className="flex -mx-4 sm:-mx-6 lg:-mx-8">
-          {/* Left: form */}
-          <div
-            className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 lg:px-8 pb-16"
-            style={{ maxHeight: 'calc(100vh - 3.5rem)' }}
-          >
-            <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
-              {formFields}
-            </div>
+          <div className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 lg:px-8 pb-16" style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
+            <div className="flex flex-col lg:flex-row gap-6 lg:items-start">{formFields}</div>
           </div>
-
-          {/* Right: live preview */}
-          <div
-            className="w-[44%] flex-shrink-0 border-l border-border bg-surface overflow-y-auto px-6 lg:px-8 pt-6 pb-16"
-            style={{ maxHeight: 'calc(100vh - 3.5rem)' }}
-            aria-label="Vista previa en tiempo real"
-          >
+          <div className="w-[44%] flex-shrink-0 border-l border-border bg-surface overflow-y-auto px-6 lg:px-8 pt-6 pb-16" style={{ maxHeight: 'calc(100vh - 3.5rem)' }} aria-label="Vista previa en tiempo real">
             <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-6 flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" aria-hidden="true" />
               Vista previa en tiempo real
@@ -346,24 +288,14 @@ export default function AdminArticleFormPage() {
 
 function ViewModeToggle({ value, onChange }) {
   const modes = [
-    { key: 'edit',    label: 'Editor',       icon: <IconEdit />    },
-    { key: 'split',   label: 'Split',        icon: <IconSplit />,  desktopOnly: true },
-    { key: 'preview', label: 'Vista previa', icon: <IconEye />     },
+    { key: 'edit',    label: 'Editor',       icon: <IconEdit /> },
+    { key: 'split',   label: 'Split',        icon: <IconSplit />, desktopOnly: true },
+    { key: 'preview', label: 'Vista previa', icon: <IconEye /> },
   ]
   return (
     <div className="flex rounded-sm border border-border overflow-hidden" role="group" aria-label="Modo de vista">
       {modes.map(({ key, label, icon, desktopOnly }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => onChange(key)}
-          aria-pressed={value === key}
-          className={[
-            'flex items-center gap-1.5 min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150',
-            desktopOnly ? 'hidden lg:flex' : 'flex',
-            value === key ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface',
-          ].join(' ')}
-        >
+        <button key={key} type="button" onClick={() => onChange(key)} aria-pressed={value === key} className={['flex items-center gap-1.5 min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150', desktopOnly ? 'hidden lg:flex' : 'flex', value === key ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface'].join(' ')}>
           <span className="w-3.5 h-3.5">{icon}</span>
           <span className="hidden sm:inline">{label}</span>
         </button>
@@ -372,15 +304,9 @@ function ViewModeToggle({ value, onChange }) {
   )
 }
 
-function IconEdit() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-}
-function IconSplit() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-}
-function IconEye() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-}
+function IconEdit()  { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> }
+function IconSplit() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg> }
+function IconEye()   { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> }
 
 function SidebarCard({ title, children }) {
   return (
@@ -399,7 +325,7 @@ function FormField({ label, hint, error, required, small, children }) {
           {label}
           {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
         </label>
-        {hint && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
+        {hint  && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
         {error && <span className="font-body text-body-sm text-red-600">{error}</span>}
       </div>
       {children}
@@ -411,19 +337,7 @@ function StatusToggle({ value, onChange }) {
   return (
     <div className="flex rounded-sm border border-border overflow-hidden">
       {['published', 'draft'].map((s) => (
-        <button
-          key={s}
-          type="button"
-          onClick={() => onChange(s)}
-          className={[
-            'flex-1 min-h-[36px] font-mono text-label uppercase tracking-widest transition-colors duration-150',
-            value === s
-              ? s === 'published'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-amber-500 text-white'
-              : 'text-ink-secondary hover:bg-surface',
-          ].join(' ')}
-        >
+        <button key={s} type="button" onClick={() => onChange(s)} className={['flex-1 min-h-[36px] font-mono text-label uppercase tracking-widest transition-colors duration-150', value === s ? (s === 'published' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white') : 'text-ink-secondary hover:bg-surface'].join(' ')}>
           {s === 'published' ? 'Publicado' : 'Borrador'}
         </button>
       ))}
@@ -432,13 +346,7 @@ function StatusToggle({ value, onChange }) {
 }
 
 function inputClass(error) {
-  return [
-    'w-full px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white',
-    'focus:outline-none focus:ring-1 transition-colors duration-150',
-    error
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-border focus:border-primary focus:ring-primary/30',
-  ].join(' ')
+  return ['w-full px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
 }
 
 function selectClass() {

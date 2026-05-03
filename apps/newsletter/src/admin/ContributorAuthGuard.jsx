@@ -1,17 +1,11 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { isContributorAuthenticated } from '../store/contributorAuthStore'
+import { isAuthenticated } from '../store/authStore'
 
 export default function ContributorAuthGuard({ children }) {
   const location = useLocation()
 
-  if (!isContributorAuthenticated()) {
-    return (
-      <Navigate
-        to="/contribute/login"
-        state={{ from: location.pathname }}
-        replace
-      />
-    )
+  if (!isAuthenticated()) {
+    return <Navigate to="/" state={{ from: location.pathname }} replace />
   }
 
   return children

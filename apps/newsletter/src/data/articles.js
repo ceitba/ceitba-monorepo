@@ -118,4 +118,4 @@ export const ARTICLES = [
   },
 ]
 
-export const CATEGORIES = ['Todos', 'Académico', 'Campus', 'Cultura', 'Tecnología']
+export const CATEGORIES = ['TODOS', 'ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']

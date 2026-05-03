@@ -1,19 +1,4 @@
-/**
- * Base API client.
- *
- * All service functions resolve through `apiRequest`. In production, replace
- * the mock resolver with a real fetch call to BASE_URL.
- *
- * Expected API base: https://api.itbanews.ar/v1
- *
- * Standard error shape:
- *   { code: string, message: string, status: number }
- *
- * Standard list response shape:
- *   { data: T[], meta: { total: number, page: number, limit: number } }
- */
-
-const SIMULATED_DELAY_MS = 600
+export const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/v1'
 
 export class ApiError extends Error {
   constructor(message, status = 500, code = 'UNKNOWN_ERROR') {
@@ -24,15 +9,20 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Wraps a mock resolver so it behaves like a real async HTTP call.
- * Swap `resolver()` with `fetch(BASE_URL + path, options)` when the API is live.
- *
- * @template T
- * @param {() => T} resolver - function that returns the mock response data
- * @returns {Promise<T>}
- */
-export async function apiRequest(resolver) {
-  await new Promise((res) => setTimeout(res, SIMULATED_DELAY_MS))
-  return resolver()
+export async function apiRequest(method, path, body) {
+  const token = sessionStorage.getItem('auth_token')
+  const res = await fetch(BASE_URL + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body != null ? JSON.stringify(body) : undefined,
+  })
+  if (res.status === 401) {
+    sessionStorage.removeItem('auth_token')
+    window.location.replace('/admin/login')
+    return null
+  }
+  return res
 }

@@ -1,18 +1,60 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getArticles, deleteArticle } from '../../store/articleStore'
-import { getAllVotes } from '../../store/voteStore'
+import { fetchArticles, deleteArticle } from '../../api/articles'
+import { fetchAnalyticsSummary } from '../../api/analytics'
 import CategoryBadge from '../../components/CategoryBadge'
 
 export default function AdminArticlesPage() {
-  const [articles, setArticles] = useState(() => getArticles())
+  const [articles, setArticles] = useState([])
+  const [votes, setVotes]       = useState({})
+  const [status, setStatus]     = useState('loading')
   const [confirmId, setConfirmId] = useState(null)
-  const votes = getAllVotes()
 
-  function handleDelete(id) {
-    deleteArticle(id)
-    setArticles(getArticles())
+  function load() {
+    setStatus('loading')
+    Promise.all([
+      fetchArticles({ status: 'all' }),
+      fetchAnalyticsSummary(30),
+    ])
+      .then(([{ data }, summary]) => {
+        setArticles(data)
+        setVotes(
+          Object.fromEntries((summary.voteBreakdown ?? []).map((v) => [v.articleId, { up: v.up, down: v.down }])),
+        )
+        setStatus('success')
+      })
+      .catch(() => setStatus('error'))
+  }
+
+  useEffect(load, [])
+
+  async function handleDelete(id) {
+    try {
+      await deleteArticle(id)
+      setArticles((prev) => prev.filter((a) => a.id !== id))
+    } catch {
+      // leave list unchanged on error
+    }
     setConfirmId(null)
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center py-32" aria-busy="true">
+        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">Cargando artículos…</p>
+      </div>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
+        <p className="font-display text-h5 font-bold text-ink-primary">No se pudieron cargar los artículos</p>
+        <button type="button" onClick={load} className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
+          Reintentar
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -144,11 +186,11 @@ function Th({ children }) {
 }
 
 const STATUS_DISPLAY = {
-  published:          { label: 'Publicado',        cls: 'bg-emerald-50 text-emerald-700' },
-  draft:              { label: 'Borrador',          cls: 'bg-amber-50 text-amber-700'    },
-  pending_review:     { label: 'Pendiente revisión',cls: 'bg-amber-50 text-amber-700'    },
-  changes_requested:  { label: 'Cambios solicitados',cls:'bg-blue-50 text-blue-700'      },
-  rejected:           { label: 'Rechazado',         cls: 'bg-red-50 text-red-600'        },
+  published:          { label: 'Publicado',         cls: 'bg-emerald-50 text-emerald-700' },
+  draft:              { label: 'Borrador',           cls: 'bg-amber-50 text-amber-700'    },
+  pending_review:     { label: 'Pendiente revisión', cls: 'bg-amber-50 text-amber-700'    },
+  changes_requested:  { label: 'Cambios solicitados',cls: 'bg-blue-50 text-blue-700'      },
+  rejected:           { label: 'Rechazado',          cls: 'bg-red-50 text-red-600'        },
 }
 
 function StatusBadge({ status }) {

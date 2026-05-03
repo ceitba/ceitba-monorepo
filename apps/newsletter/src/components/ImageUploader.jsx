@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
+import { apiRequest } from '../api/client'
 
-const MAX_WIDTH = 1200
+const MAX_WIDTH    = 1200
 const JPEG_QUALITY = 0.85
 
 function resizeToDataUrl(file) {
@@ -11,15 +12,10 @@ function resizeToDataUrl(file) {
       const img = new Image()
       img.onerror = reject
       img.onload = () => {
-        let w = img.width
-        let h = img.height
-        if (w > MAX_WIDTH) {
-          h = Math.round((h * MAX_WIDTH) / w)
-          w = MAX_WIDTH
-        }
+        let w = img.width, h = img.height
+        if (w > MAX_WIDTH) { h = Math.round((h * MAX_WIDTH) / w); w = MAX_WIDTH }
         const canvas = document.createElement('canvas')
-        canvas.width  = w
-        canvas.height = h
+        canvas.width = w; canvas.height = h
         canvas.getContext('2d').drawImage(img, 0, 0, w, h)
         resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY))
       }
@@ -29,10 +25,29 @@ function resizeToDataUrl(file) {
   })
 }
 
+async function uploadViaSignedUrl(file) {
+  const signRes = await apiRequest('POST', '/media/sign-upload', {
+    filename:    file.name,
+    contentType: file.type,
+    sizeBytes:   file.size,
+  })
+  if (!signRes || signRes.status === 501) return null  // not configured yet
+  if (!signRes.ok) throw new Error('sign-upload failed')
+  const { uploadUrl, publicUrl } = await signRes.json()
+
+  const putRes = await fetch(uploadUrl, {
+    method:  'PUT',
+    headers: { 'Content-Type': file.type },
+    body:    file,
+  })
+  if (!putRes.ok) throw new Error('PUT to storage failed')
+  return publicUrl
+}
+
 export default function ImageUploader({ value, onChange }) {
-  const [tab, setTab]     = useState(value?.startsWith('http') ? 'url' : 'upload')
-  const [url, setUrl]     = useState(value?.startsWith('http') ? value : '')
-  const [error, setError] = useState('')
+  const [tab, setTab]         = useState(value?.startsWith('http') ? 'url' : 'upload')
+  const [url, setUrl]         = useState(value?.startsWith('http') ? value : '')
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
   const inputRef = useRef(null)
 
@@ -40,15 +55,18 @@ export default function ImageUploader({ value, onChange }) {
 
   async function handleFile(file) {
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setError('El archivo debe ser una imagen.')
-      return
-    }
+    if (!file.type.startsWith('image/')) { setError('El archivo debe ser una imagen.'); return }
     setError('')
     setLoading(true)
     try {
-      const dataUrl = await resizeToDataUrl(file)
-      onChange(dataUrl)
+      // Try presigned upload; fall back to base64 if API returns 501
+      const publicUrl = await uploadViaSignedUrl(file)
+      if (publicUrl) {
+        onChange(publicUrl)
+      } else {
+        const dataUrl = await resizeToDataUrl(file)
+        onChange(dataUrl)
+      }
     } catch {
       setError('No se pudo procesar la imagen.')
     } finally {
@@ -69,7 +87,6 @@ export default function ImageUploader({ value, onChange }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Current image preview */}
       {hasImage && (
         <div className="relative rounded-card overflow-hidden border border-border group">
           <img
@@ -89,7 +106,6 @@ export default function ImageUploader({ value, onChange }) {
         </div>
       )}
 
-      {/* Tab selector */}
       <div className="flex rounded-sm border border-border overflow-hidden text-sm">
         {['upload', 'url'].map((t) => (
           <button
@@ -106,7 +122,6 @@ export default function ImageUploader({ value, onChange }) {
         ))}
       </div>
 
-      {/* Upload tab */}
       {tab === 'upload' && (
         <div
           onDrop={handleDrop}
@@ -139,7 +154,6 @@ export default function ImageUploader({ value, onChange }) {
         </div>
       )}
 
-      {/* URL tab */}
       {tab === 'url' && (
         <div className="flex gap-2">
           <input
@@ -161,9 +175,7 @@ export default function ImageUploader({ value, onChange }) {
         </div>
       )}
 
-      {error && (
-        <p className="font-body text-body-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="font-body text-body-sm text-red-600">{error}</p>}
 
       {!hasImage && (
         <p className="font-mono text-label text-ink-secondary">

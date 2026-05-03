@@ -1,16 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getEvents, deleteEvent } from '../../store/eventStore'
+import { fetchEvents, deleteEvent } from '../../api/events'
 import CategoryBadge from '../../components/CategoryBadge'
 
 export default function AdminEventsPage() {
-  const [events, setEvents]   = useState(() => getEvents())
+  const [events, setEvents]     = useState([])
+  const [status, setStatus]     = useState('loading')
   const [confirmId, setConfirmId] = useState(null)
 
-  function handleDelete(id) {
-    deleteEvent(id)
-    setEvents(getEvents())
+  function load() {
+    setStatus('loading')
+    fetchEvents()
+      .then(({ data }) => { setEvents(data); setStatus('success') })
+      .catch(() => setStatus('error'))
+  }
+
+  useEffect(load, [])
+
+  async function handleDelete(id) {
+    try {
+      await deleteEvent(id)
+      setEvents((prev) => prev.filter((e) => e.id !== id))
+    } catch {}
     setConfirmId(null)
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center py-32" aria-busy="true">
+        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">Cargando eventos…</p>
+      </div>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
+        <p className="font-display text-h5 font-bold text-ink-primary">No se pudieron cargar los eventos</p>
+        <button type="button" onClick={load} className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
+          Reintentar
+        </button>
+      </div>
+    )
   }
 
   const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date))
@@ -55,70 +86,42 @@ export default function AdminEventsPage() {
                   return (
                     <tr
                       key={event.id}
-                      className={[
-                        'border-b border-border last:border-b-0 transition-colors duration-100',
-                        isPast ? 'opacity-50 bg-surface hover:opacity-70' : 'hover:bg-surface',
-                      ].join(' ')}
+                      className={['border-b border-border last:border-b-0 transition-colors duration-100', isPast ? 'opacity-50 bg-surface hover:opacity-70' : 'hover:bg-surface'].join(' ')}
                     >
                       <td className="px-4 py-3">
-                        <span className="font-body text-body-sm font-semibold text-ink-primary line-clamp-1">
-                          {event.title}
-                        </span>
+                        <span className="font-body text-body-sm font-semibold text-ink-primary line-clamp-1">{event.title}</span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-0.5">
                           <time className="font-mono text-label text-ink-primary" dateTime={event.date}>
                             {new Date(event.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </time>
-                          <span className="font-mono text-label text-ink-secondary">
-                            {event.time}–{event.endTime}
-                          </span>
+                          <span className="font-mono text-label text-ink-secondary">{event.time}–{event.endTime}</span>
                         </div>
                       </td>
+                      <td className="px-4 py-3"><CategoryBadge category={event.category} /></td>
                       <td className="px-4 py-3">
-                        <CategoryBadge category={event.category} />
+                        <span className="font-body text-body-sm text-ink-secondary line-clamp-1">{event.location}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-body text-body-sm text-ink-secondary line-clamp-1">
-                          {event.location}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">
-                          {event.organization}
-                        </span>
+                        <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">{event.organization}</span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 justify-end">
-                          <Link
-                            to={`/admin/events/${event.id}/edit`}
-                            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 rounded-sm transition-colors duration-150"
-                          >
+                          <Link to={`/admin/events/${event.id}/edit`} className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 rounded-sm transition-colors duration-150">
                             Editar
                           </Link>
                           {confirmId === event.id ? (
                             <span className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(event.id)}
-                                className="min-h-[36px] px-3 font-body text-body-sm text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150"
-                              >
+                              <button type="button" onClick={() => handleDelete(event.id)} className="min-h-[36px] px-3 font-body text-body-sm text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150">
                                 Confirmar
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmId(null)}
-                                className="min-h-[36px] px-2 font-body text-body-sm text-ink-secondary hover:bg-surface rounded-sm transition-colors duration-150"
-                              >
+                              <button type="button" onClick={() => setConfirmId(null)} className="min-h-[36px] px-2 font-body text-body-sm text-ink-secondary hover:bg-surface rounded-sm transition-colors duration-150">
                                 Cancelar
                               </button>
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmId(event.id)}
-                              className="min-h-[36px] px-3 font-body text-body-sm text-ink-secondary hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150"
-                            >
+                            <button type="button" onClick={() => setConfirmId(event.id)} className="min-h-[36px] px-3 font-body text-body-sm text-ink-secondary hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150">
                               Eliminar
                             </button>
                           )}
@@ -137,11 +140,7 @@ export default function AdminEventsPage() {
 }
 
 function Th({ children }) {
-  return (
-    <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">
-      {children}
-    </th>
-  )
+  return <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">{children}</th>
 }
 
 function EmptyState() {
@@ -153,10 +152,7 @@ function EmptyState() {
       </div>
       <p className="font-display text-h5 font-bold text-ink-primary">Sin eventos</p>
       <p className="font-body text-body-sm text-ink-secondary">Creá el primer evento para el calendario.</p>
-      <Link
-        to="/admin/events/new"
-        className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
-      >
+      <Link to="/admin/events/new" className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
         <PlusIcon /> Nuevo evento
       </Link>
     </div>

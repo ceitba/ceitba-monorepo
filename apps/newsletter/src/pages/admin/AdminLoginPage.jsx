@@ -1,37 +1,8 @@
-import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { signInWithCredentials } from '../../store/authStore'
+import { startGoogleSignIn } from '../../store/authStore'
 
 export default function AdminLoginPage() {
-  const navigate  = useNavigate()
-  const location  = useLocation()
-  const from      = location.state?.from ?? '/admin/articles'
-
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    // Simulate network round-trip; replace with real OAuth redirect
-    await new Promise((r) => setTimeout(r, 400))
-    const result = signInWithCredentials(username.trim(), password)
-    setLoading(false)
-
-    if (result.ok) {
-      navigate(from, { replace: true })
-    } else {
-      setError(result.error)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-primary-900 flex flex-col items-center justify-center px-4">
-      {/* Card */}
       <div className="w-full max-w-sm bg-white rounded-card shadow-card-hover p-8">
         {/* Brand */}
         <div className="mb-8 text-center">
@@ -41,73 +12,30 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-          <Field
-            label="Usuario"
-            id="username"
-            type="text"
-            value={username}
-            onChange={setUsername}
-            autoComplete="username"
-            disabled={loading}
-          />
-          <Field
-            label="Contraseña"
-            id="password"
-            type="password"
-            value={password}
-            onChange={setPassword}
-            autoComplete="current-password"
-            disabled={loading}
-          />
+        <button
+          type="button"
+          onClick={startGoogleSignIn}
+          className="w-full min-h-[44px] flex items-center justify-center gap-3 bg-white border border-border rounded-sm font-body text-body font-semibold text-ink-primary hover:border-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded"
+        >
+          <GoogleIcon />
+          Ingresar con Google (ITBA)
+        </button>
 
-          {error && (
-            <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="min-h-[44px] bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:rounded"
-          >
-            {loading ? 'Ingresando…' : 'Ingresar'}
-          </button>
-        </form>
-
-        {/* OAuth stub note */}
         <p className="mt-6 font-mono text-label text-ink-secondary text-center leading-relaxed">
-          Próximamente: acceso con
-          <br />
-          <span className="text-primary font-medium">Google (ITBA)</span>
-        </p>
-
-        {/* Demo hint */}
-        <p className="mt-4 font-mono text-label text-border text-center">
-          demo: admin / ceitba2025
+          Requiere cuenta <span className="text-primary font-medium">@itba.edu.ar</span>
         </p>
       </div>
     </div>
   )
 }
 
-function Field({ label, id, type, value, onChange, autoComplete, disabled }) {
+function GoogleIcon() {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="font-body text-body-sm font-semibold text-ink-primary">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete={autoComplete}
-        disabled={disabled}
-        required
-        className="w-full min-h-[44px] px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
-      />
-    </div>
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#4285F4" d="M24 9.5c3.2 0 5.9 1.1 8.1 3.2l6-6C34.5 3.2 29.7 1 24 1 15 1 7.4 6.3 4 13.8l7 5.4C12.8 13.2 17.9 9.5 24 9.5z"/>
+      <path fill="#34A853" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.8-2.1 5.1-4.5 6.7l7 5.4c4.1-3.8 6.5-9.4 6.5-16.1z" clipPath="none"/>
+      <path fill="#FBBC05" d="M11 28.2C10.4 26.6 10 24.9 10 23s.4-3.6 1-5.2L4 12.4C2.3 15.6 1 19.2 1 23s1.3 7.4 3 10.6l7-5.4z"/>
+      <path fill="#EA4335" d="M24 46c5.7 0 10.5-1.9 14-5.1l-7-5.4c-1.9 1.3-4.3 2-7 2-6.1 0-11.2-3.7-13-9.1l-7 5.4C7.4 41.7 15 46 24 46z"/>
+    </svg>
   )
 }

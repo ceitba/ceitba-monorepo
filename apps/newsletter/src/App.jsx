@@ -12,6 +12,7 @@ import OrganizationsPage   from './pages/OrganizationsPage'
 import OrgPortalPage       from './pages/OrgPortalPage'
 
 import AdminLoginPage             from './pages/admin/AdminLoginPage'
+import AdminCallbackPage          from './pages/admin/AdminCallbackPage'
 import AdminArticlesPage          from './pages/admin/AdminArticlesPage'
 import AdminArticleFormPage       from './pages/admin/AdminArticleFormPage'
 import AdminEventsPage            from './pages/admin/AdminEventsPage'
@@ -20,7 +21,6 @@ import AdminAnalyticsPage         from './pages/admin/AdminAnalyticsPage'
 import AdminSuggestionsPage       from './pages/admin/AdminSuggestionsPage'
 import AdminSuggestionReviewPage  from './pages/admin/AdminSuggestionReviewPage'
 
-import ContributorLoginPage          from './pages/contributor/ContributorLoginPage'
 import ContributorSuggestionsPage    from './pages/contributor/ContributorSuggestionsPage'
 import ContributorSuggestArticlePage from './pages/contributor/ContributorSuggestArticlePage'
 import ContributorSuggestEventPage   from './pages/contributor/ContributorSuggestEventPage'
@@ -30,7 +30,8 @@ export default function App() {
   return (
     <Routes>
       {/* ── Admin ─────────────────────────────────────── */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin/login"    element={<AdminLoginPage />} />
+      <Route path="/admin/callback" element={<AdminCallbackPage />} />
 
       <Route
         path="/admin"
@@ -53,8 +54,6 @@ export default function App() {
       </Route>
 
       {/* ── Contributor portal ────────────────────────── */}
-      <Route path="/contribute/login" element={<ContributorLoginPage />} />
-
       <Route
         path="/contribute"
         element={
