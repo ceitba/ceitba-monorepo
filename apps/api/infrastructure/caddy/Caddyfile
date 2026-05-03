@@ -1,0 +1,13 @@
+# CEITBA reverse proxy
+# TLS certificates are obtained automatically from Let's Encrypt.
+# Add your domains below once confirmed.
+
+# API
+# api.ceitba.org.ar {
+#     reverse_proxy ceitba-api:8080
+# }
+
+# Main SPA
+# ceitba.org.ar, www.ceitba.org.ar {
+#     reverse_proxy localhost:3000
+# }

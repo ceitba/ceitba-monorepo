@@ -47,6 +47,7 @@ services:
       SYNC_ENABLED: ${SYNC_ENABLED:-true}
     networks:
       - ceitba-network
+      - ceitba-proxy
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,3 +72,5 @@ volumes:
 networks:
   ceitba-network:
     driver: bridge
+  ceitba-proxy:
+    external: true

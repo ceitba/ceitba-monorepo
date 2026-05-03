@@ -16,13 +16,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy config files to VPS
+      - name: Copy infra config to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.yml,Caddyfile"
+          source: "infrastructure/caddy/docker-compose.yml,infrastructure/caddy/Caddyfile"
+          target: "~/infra/"
+          strip_components: 2
+
+      - name: Copy API compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "docker-compose.yml"
           target: "~/CEITBA-API/"
 
       - name: Deploy to VPS
@@ -34,6 +44,12 @@ jobs:
           envs: GHCR_TOKEN
           script: |
             echo "$GHCR_TOKEN" | docker login ghcr.io -u ceitba --password-stdin
+
+            # Bring up infra (Caddy) first — creates the ceitba-proxy network
+            cd ~/infra
+            docker compose up -d
+
+            # Deploy API — joins ceitba-proxy so Caddy can reach it
             cd ~/CEITBA-API
             docker compose pull ceitba-api
             docker compose up -d
