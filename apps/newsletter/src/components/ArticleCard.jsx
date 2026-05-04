@@ -45,7 +45,8 @@ function formatDate(iso, lang) {
 
 export default function ArticleCard({ article, featured = false }) {
   const { t, i18n } = useTranslation()
-  const { id, title, excerpt, category, author, date, readingTime, colorScheme, coverImage } = article
+  const { id, title, excerpt, category, authors, date, readingTime, colorScheme, coverImage } = article
+  const authorLine = (authors ?? []).join(', ')
 
   if (featured) {
     return (
@@ -77,7 +78,7 @@ export default function ArticleCard({ article, featured = false }) {
               {formatDate(date, i18n.language)}
             </time>
             <span className="text-border" aria-hidden="true">·</span>
-            <span className="font-body text-body-sm text-ink-secondary">{author}</span>
+            <span className="font-body text-body-sm text-ink-secondary">{authorLine}</span>
             <span className="text-border" aria-hidden="true">·</span>
             <span className="font-mono text-label text-ink-secondary">
               {t('articles.meta.readingTime', { time: readingTime })}
@@ -107,7 +108,7 @@ export default function ArticleCard({ article, featured = false }) {
             {formatDate(date, i18n.language)}
           </time>
           <span className="text-border" aria-hidden="true">·</span>
-          <span className="font-body text-body-sm text-ink-secondary truncate">{author}</span>
+          <span className="font-body text-body-sm text-ink-secondary truncate">{authorLine}</span>
         </footer>
       </div>
     </Link>

@@ -103,7 +103,7 @@ export default function ArticleDetailPage() {
           <div className="flex flex-wrap items-center gap-3 mt-4 pb-6 border-b border-border">
             <span className="font-body text-body-sm text-ink-secondary">
               {t('articles.meta.by')}{' '}
-              <strong className="text-ink-primary font-semibold">{article.author}</strong>
+              <strong className="text-ink-primary font-semibold">{(article.authors ?? []).join(', ')}</strong>
             </span>
             <span className="text-border" aria-hidden="true">·</span>
             <time className="font-mono text-label text-ink-secondary" dateTime={article.date}>

@@ -62,7 +62,7 @@ function PreviewCard({ article, featured }) {
           <footer className="flex items-center gap-3 pt-2 border-t border-border text-ink-secondary">
             <time className="font-mono text-label">{formatDate(article.date)}</time>
             <span className="text-border">·</span>
-            <span className="font-body text-body-sm">{article.author || 'Sin autor'}</span>
+            <span className="font-body text-body-sm">{(article.authors ?? []).join(', ') || 'Sin autores'}</span>
             {article.readingTime && (
               <>
                 <span className="text-border">·</span>
@@ -90,7 +90,7 @@ function PreviewCard({ article, featured }) {
           <time className="font-mono text-label text-ink-secondary">{formatDate(article.date)}</time>
           <span className="text-border">·</span>
           <span className="font-body text-body-sm text-ink-secondary truncate">
-            {article.author || 'Sin autor'}
+            {(article.authors ?? []).join(', ') || 'Sin autores'}
           </span>
         </footer>
       </div>
@@ -140,7 +140,7 @@ function ArticleFullPreview({ article, orgs }) {
         {/* Meta */}
         <div className="flex flex-wrap items-center gap-3 mt-3 pb-5 border-b border-border">
           <span className="font-body text-body-sm text-ink-secondary">
-            por <strong className="text-ink-primary font-semibold">{article.author || '—'}</strong>
+            por <strong className="text-ink-primary font-semibold">{(article.authors ?? []).join(', ') || '—'}</strong>
           </span>
           <span className="text-border">·</span>
           <time className="font-mono text-label text-ink-secondary">

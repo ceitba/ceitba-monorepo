@@ -23,7 +23,7 @@ const EMPTY_FORM = {
   body:         [''],
   category:     'Académico',
   organization: 'ceitba',
-  author:       '',
+  authors:      [''],
   date:         new Date().toISOString().slice(0, 10),
   readingTime:  '',
   featured:     false,
@@ -62,6 +62,9 @@ export default function AdminArticleFormPage() {
           body: Array.isArray(existing.body) && existing.body.length
             ? existing.body
             : [existing.excerpt ?? ''],
+          authors: Array.isArray(existing.authors) && existing.authors.length
+            ? existing.authors
+            : [''],
         })
       })
       .catch(() => {})
@@ -76,7 +79,7 @@ export default function AdminArticleFormPage() {
     const e = {}
     if (!values.title.trim())       e.title       = 'El título es obligatorio.'
     if (!values.excerpt.trim())     e.excerpt     = 'El copete es obligatorio.'
-    if (!values.author.trim())      e.author      = 'El autor es obligatorio.'
+    if (!values.authors.some((a) => a.trim())) e.authors = 'Agregá al menos un autor.'
     if (!values.date)               e.date        = 'La fecha es obligatoria.'
     if (!values.readingTime.trim()) e.readingTime = 'El tiempo de lectura es obligatorio.'
     if (values.body.every((p) => !p.trim())) e.body = 'Escribí al menos un párrafo.'
@@ -91,7 +94,12 @@ export default function AdminArticleFormPage() {
     setSaving(true)
     setApiError('')
     try {
-      const payload = { ...form, status, body: form.body.filter((p) => p.trim()) }
+      const payload = {
+        ...form,
+        status,
+        body: form.body.filter((p) => p.trim()),
+        authors: form.authors.map((a) => a.trim()).filter(Boolean),
+      }
       if (isEdit) {
         await updateArticle(id, payload)
       } else {
@@ -109,6 +117,10 @@ export default function AdminArticleFormPage() {
   function updatePara(i, val) { set('body', form.body.map((p, idx) => (idx === i ? val : p))) }
   function addPara()          { set('body', [...form.body, '']) }
   function removePara(i)      { set('body', form.body.filter((_, idx) => idx !== i)) }
+
+  function updateAuthor(i, val) { set('authors', form.authors.map((a, idx) => (idx === i ? val : a))) }
+  function addAuthor()          { set('authors', [...form.authors, '']) }
+  function removeAuthor(i)      { set('authors', form.authors.filter((_, idx) => idx !== i)) }
 
   if (saved) {
     return (
@@ -197,8 +209,38 @@ export default function AdminArticleFormPage() {
 
         <SidebarCard title="Metadatos">
           <div className="flex flex-col gap-3">
-            <FormField label="Autor" error={errors.author} required small>
-              <input type="text" value={form.author} onChange={(e) => set('author', e.target.value)} placeholder="Nombre Apellido" className={inputClass(errors.author)} />
+            <FormField label="Autores" error={errors.authors} required small>
+              <div className="flex flex-col gap-2">
+                {form.authors.map((author, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={author}
+                      onChange={(e) => updateAuthor(i, e.target.value)}
+                      placeholder={`Autor ${i + 1}`}
+                      className={[inputClass(errors.authors), 'flex-1'].join(' ')}
+                    />
+                    {form.authors.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeAuthor(i)}
+                        aria-label={`Quitar autor ${i + 1}`}
+                        className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-sm text-ink-secondary hover:text-red-600 hover:bg-red-50 transition-colors duration-150"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addAuthor}
+                  className="self-start min-h-[32px] px-2 flex items-center gap-1.5 font-body text-body-sm text-primary border border-dashed border-primary/40 hover:border-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Agregar autor
+                </button>
+              </div>
             </FormField>
             <FormField label="Fecha" error={errors.date} required small>
               <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass(errors.date)} />
