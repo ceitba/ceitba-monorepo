@@ -49,7 +49,6 @@ public class OrganizationController {
         org.setCategory(req.category());
         org.setColor(req.color());
         org.setMemberCount(req.memberCount());
-        org.setFoundedYear(req.foundedYear());
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(OrganizationResponse.from(service.create(org)));
     }
@@ -65,7 +64,6 @@ public class OrganizationController {
         patch.setCategory(req.category());
         patch.setColor(req.color());
         patch.setMemberCount(req.memberCount());
-        patch.setFoundedYear(req.foundedYear());
         return OrganizationResponse.from(service.update(slug, patch));
     }
 

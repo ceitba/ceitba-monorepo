@@ -9,6 +9,5 @@ public record OrganizationRequest(
     String  description,
     String  category,
     String  color,
-    int     memberCount,
-    Integer foundedYear
+    int     memberCount
 ) {}

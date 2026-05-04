@@ -43,7 +43,6 @@ public class OrganizationService {
         if (patch.getDescription() != null) org.setDescription(patch.getDescription());
         if (patch.getCategory()    != null) org.setCategory(patch.getCategory());
         if (patch.getColor()       != null) org.setColor(patch.getColor());
-        if (patch.getFoundedYear() != null) org.setFoundedYear(patch.getFoundedYear());
         org.setMemberCount(patch.getMemberCount() > 0 ? patch.getMemberCount() : org.getMemberCount());
         return repo.save(org);
     }

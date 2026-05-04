@@ -30,9 +30,6 @@ public class Organization {
     @Column(name = "member_count")
     private int memberCount;
 
-    @Column(name = "founded_year")
-    private Integer foundedYear;
-
     protected Organization() {}
 
     public Organization(String slug, String name, String fullName) {
@@ -48,7 +45,6 @@ public class Organization {
     public String getCategory()    { return category; }
     public String getColor()       { return color; }
     public int getMemberCount()    { return memberCount; }
-    public Integer getFoundedYear(){ return foundedYear; }
 
     public void setName(String name)               { this.name = name; }
     public void setFullName(String fullName)        { this.fullName = fullName; }
@@ -56,5 +52,4 @@ public class Organization {
     public void setCategory(String category)        { this.category = category; }
     public void setColor(String color)              { this.color = color; }
     public void setMemberCount(int memberCount)     { this.memberCount = memberCount; }
-    public void setFoundedYear(Integer foundedYear) { this.foundedYear = foundedYear; }
 }
