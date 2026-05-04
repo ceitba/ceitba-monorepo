@@ -6,6 +6,8 @@ import EventCard from '../components/EventCard'
 import { fetchOrganizationBySlug } from '../api/organizations'
 import { fetchArticles } from '../api/articles'
 import { fetchEvents } from '../api/events'
+import { followOrganization, unfollowOrganization } from '../api/follows'
+import { getSession, isAuthenticated, isFollowing, refreshFollows } from '../store/authStore'
 
 const GEO_BG = {
   blue:   'bg-primary-500',
@@ -22,6 +24,10 @@ export default function OrgPortalPage() {
   const [articles, setArticles] = useState([])
   const [events, setEvents]     = useState([])
   const [status, setStatus]     = useState('loading')
+  const [authed, setAuthed]     = useState(false)
+  const [following, setFollowing] = useState(false)
+  const [followBusy, setFollowBusy] = useState(false)
+  const [followError, setFollowError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -46,6 +52,35 @@ export default function OrgPortalPage() {
 
     return () => { cancelled = true }
   }, [slug])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!isAuthenticated()) { setAuthed(false); setFollowing(false); return }
+    getSession().then((profile) => {
+      if (cancelled) return
+      setAuthed(Boolean(profile))
+      setFollowing(profile ? isFollowing(slug) : false)
+    })
+    return () => { cancelled = true }
+  }, [slug])
+
+  async function toggleFollow() {
+    setFollowBusy(true)
+    setFollowError('')
+    const previously = following
+    setFollowing(!previously)
+    try {
+      if (previously) await unfollowOrganization(slug)
+      else await followOrganization(slug)
+      await refreshFollows()
+      setFollowing(isFollowing(slug))
+    } catch (err) {
+      setFollowing(previously)
+      setFollowError(t('orgs.followError'))
+    } finally {
+      setFollowBusy(false)
+    }
+  }
 
   if (status === 'loading') return <PortalSkeleton />
   if (status === 'error' || !org) return <ErrorState t={t} />
@@ -75,6 +110,26 @@ export default function OrgPortalPage() {
           <p className="font-body text-body text-white/80 mt-1 max-w-xl">
             {org.fullName}
           </p>
+          {authed && (
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={toggleFollow}
+                disabled={followBusy}
+                className={[
+                  'inline-flex items-center gap-2 min-h-[36px] px-4 font-body text-body-sm font-semibold rounded-sm transition-colors duration-150 disabled:opacity-60',
+                  following
+                    ? 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+                    : 'bg-white text-ink-primary hover:bg-white/90',
+                ].join(' ')}
+              >
+                {following ? t('orgs.unfollow') : t('orgs.follow')}
+              </button>
+              {followError && (
+                <span className="font-mono text-label text-red-200">{followError}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

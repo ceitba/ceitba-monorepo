@@ -1,4 +1,5 @@
 import { apiRequest, BASE_URL } from '../api/client'
+import { fetchMyFollows } from '../api/follows'
 
 const TOKEN_KEY = 'auth_token'
 let _profile = null
@@ -53,6 +54,25 @@ export function isStaff() {
 
 export function isAdmin() {
   return ['staff', 'admin', 'editor'].includes(_profile?.role)
+}
+
+export function getFollows() {
+  return _profile?.follows ?? []
+}
+
+export function isFollowing(slug) {
+  return getFollows().includes(slug)
+}
+
+export async function refreshFollows() {
+  if (!_profile) return getFollows()
+  try {
+    const list = await fetchMyFollows()
+    _profile.follows = list.map((f) => f.orgSlug)
+  } catch {
+    /* keep cached follows on error */
+  }
+  return getFollows()
 }
 
 export function signOut() {
