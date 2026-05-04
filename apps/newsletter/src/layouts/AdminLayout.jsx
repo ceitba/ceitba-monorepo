@@ -132,9 +132,9 @@ export default function AdminLayout() {
                   <NavLink to={to} className={linkClass} end={false}>
                     <span className="w-4 h-4 flex-shrink-0">{icon}</span>
                     <span className="flex-1">{itemLabel}</span>
-                    {counts[to] !== null && (
+                    {counts[to] != null && (
                       <span className="font-mono text-label bg-primary-800 text-primary-300 px-1.5 py-0.5 rounded-sm">
-                        {counts[to] ?? 0}
+                        {counts[to]}
                       </span>
                     )}
                   </NavLink>

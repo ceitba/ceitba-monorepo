@@ -21,6 +21,7 @@ import AdminAnalyticsPage         from './pages/admin/AdminAnalyticsPage'
 import AdminSuggestionsPage       from './pages/admin/AdminSuggestionsPage'
 import AdminSuggestionReviewPage  from './pages/admin/AdminSuggestionReviewPage'
 import AdminOrganizationProfilePage from './pages/admin/AdminOrganizationProfilePage'
+import AdminOrganizationsListPage   from './pages/admin/AdminOrganizationsListPage'
 
 import ContributorSuggestionsPage    from './pages/contributor/ContributorSuggestionsPage'
 import ContributorSuggestArticlePage from './pages/contributor/ContributorSuggestArticlePage'
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="suggestions"                    element={<AdminSuggestionsPage />} />
         <Route path="suggestions/:type/:id"          element={<AdminSuggestionReviewPage />} />
         <Route path="org/:slug"                      element={<AdminOrganizationProfilePage />} />
+        <Route path="organizations"                  element={<AdminOrganizationsListPage />} />
       </Route>
 
       {/* ── Contributor portal ────────────────────────── */}
