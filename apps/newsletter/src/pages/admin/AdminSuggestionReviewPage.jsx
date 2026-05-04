@@ -12,7 +12,7 @@ import {
   rejectEventSuggestion,
   requestEventChanges,
 } from '../../store/eventStore'
-import { ORGANIZATIONS } from '../../data/organizations'
+import { fetchOrganizations } from '../../api/organizations'
 
 const ARTICLE_CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
 const EVENT_CATEGORIES   = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
@@ -33,9 +33,16 @@ export default function AdminSuggestionReviewPage() {
     isArticle ? getArticleById(id) : getEventById(id),
   )
   const [form, setForm]       = useState({})
+  const [orgs, setOrgs]       = useState([])
   const [saved, setSaved]     = useState(null) // null | 'approved' | 'changes_requested' | 'rejected'
   const [saving, setSaving]   = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
+
+  useEffect(() => {
+    fetchOrganizations()
+      .then(({ data }) => setOrgs(data ?? []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (resource) {
@@ -288,7 +295,7 @@ function ArticleFields({ form, set, setBodyPara, readOnly }) {
             ? <p className={inputClass(null, true)}>{form.organization}</p>
             : (
               <select value={form.organization ?? ''} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
-                {ORGANIZATIONS.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+                {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
               </select>
             )}
         </Field>
@@ -388,7 +395,7 @@ function EventFields({ form, set, readOnly }) {
             ? <p className={inputClass(null, true)}>{form.organization}</p>
             : (
               <select value={form.organization ?? ''} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
-                {ORGANIZATIONS.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+                {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
               </select>
             )}
         </Field>

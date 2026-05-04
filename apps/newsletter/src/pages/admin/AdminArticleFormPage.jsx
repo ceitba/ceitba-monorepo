@@ -258,7 +258,7 @@ export default function AdminArticleFormPage() {
 
       {viewMode === 'preview' && (
         <div className="bg-white rounded-card border border-border shadow-card p-6">
-          <ArticleLivePreview article={previewArticle} />
+          <ArticleLivePreview article={previewArticle} orgs={orgs} />
         </div>
       )}
 
@@ -278,7 +278,7 @@ export default function AdminArticleFormPage() {
               <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" aria-hidden="true" />
               Vista previa en tiempo real
             </p>
-            <ArticleLivePreview article={previewArticle} />
+            <ArticleLivePreview article={previewArticle} orgs={orgs} />
           </div>
         </div>
       )}

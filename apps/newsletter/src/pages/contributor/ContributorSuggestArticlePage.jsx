@@ -6,7 +6,7 @@ import {
   submitArticleSuggestion,
   resubmitArticleSuggestion,
 } from '../../store/articleStore'
-import { ORGANIZATIONS } from '../../data/organizations'
+import { fetchOrganizations } from '../../api/organizations'
 import ImageUploader from '../../components/ImageUploader'
 
 const CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
@@ -37,10 +37,17 @@ export default function ContributorSuggestArticlePage() {
   const isEdit   = Boolean(id)
 
   const [form, setForm]       = useState(EMPTY_FORM)
+  const [orgs, setOrgs]       = useState([])
   const [errors, setErrors]   = useState({})
   const [touched, setTouched] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [done, setDone]       = useState(false)
+
+  useEffect(() => {
+    fetchOrganizations()
+      .then(({ data }) => setOrgs(data ?? []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (isEdit && id) {
@@ -90,7 +97,7 @@ export default function ContributorSuggestArticlePage() {
 
     const data = {
       ...form,
-      author: session.name,
+      authors: [session.name],
       body: form.body.filter((p) => p.trim()),
     }
 
@@ -170,7 +177,7 @@ export default function ContributorSuggestArticlePage() {
           </Field>
           <Field label="Organización">
             <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
-              {ORGANIZATIONS.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+              {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
             </select>
           </Field>
         </div>

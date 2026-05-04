@@ -1,5 +1,4 @@
 import CategoryBadge from '../CategoryBadge'
-import { ORGANIZATIONS } from '../../data/organizations'
 
 // Mirrors the GeoFill in ArticleCard — kept local so preview has no router dependency
 const GEO_BG = {
@@ -101,9 +100,9 @@ function PreviewCard({ article, featured }) {
 
 // ── Full article preview ────────────────────────────────────────────────────
 
-function ArticleFullPreview({ article }) {
+function ArticleFullPreview({ article, orgs }) {
   const heroBg = GEO_BG[article.colorScheme] ?? GEO_BG.blue
-  const org = ORGANIZATIONS.find((o) => o.slug === article.organization)
+  const org = orgs.find((o) => o.slug === article.organization)
 
   return (
     <div className="bg-surface rounded-card border border-border overflow-hidden">
@@ -184,7 +183,7 @@ function ArticleFullPreview({ article }) {
 
 // ── Public export ────────────────────────────────────────────────────────────
 
-export default function ArticleLivePreview({ article }) {
+export default function ArticleLivePreview({ article, orgs = [] }) {
   return (
     <div className="flex flex-col gap-10 pb-8">
       {/* Card in standard grid */}
@@ -206,7 +205,7 @@ export default function ArticleLivePreview({ article }) {
       {/* Full article */}
       <section>
         <PreviewLabel>Vista del artículo completo</PreviewLabel>
-        <ArticleFullPreview article={article} />
+        <ArticleFullPreview article={article} orgs={orgs} />
       </section>
     </div>
   )
