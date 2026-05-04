@@ -1,6 +1,7 @@
 package org.ceitba.api.web.news.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
@@ -13,7 +14,7 @@ public record ArticleInput(
     @NotNull  List<String> body,
     @NotBlank String       category,
     String       organization,
-    @NotBlank String       author,
+    @NotEmpty List<String> authors,
     LocalDate    publishedAt,
     String       readingTime,
     boolean      featured,

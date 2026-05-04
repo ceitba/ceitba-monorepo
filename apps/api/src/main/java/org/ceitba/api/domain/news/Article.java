@@ -41,8 +41,9 @@ public class Article {
     @JoinColumn(name = "organization")
     private Organization organization;
 
-    @Column(nullable = false)
-    private String author;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
+    private List<String> authors;
 
     @Column(name = "published_at")
     private LocalDate publishedAt;
@@ -76,13 +77,13 @@ public class Article {
     protected Article() {}
 
     public Article(String id, String title, String excerpt, List<String> body,
-                   String category, String author) {
+                   String category, List<String> authors) {
         this.id       = id;
         this.title    = title;
         this.excerpt  = excerpt;
         this.body     = body;
         this.category = category;
-        this.author   = author;
+        this.authors  = authors;
     }
 
     public String getId()              { return id; }
@@ -91,7 +92,7 @@ public class Article {
     public List<String> getBody()      { return body; }
     public String getCategory()        { return category; }
     public Organization getOrganization() { return organization; }
-    public String getAuthor()          { return author; }
+    public List<String> getAuthors()   { return authors; }
     public LocalDate getPublishedAt()  { return publishedAt; }
     public String getReadingTime()     { return readingTime; }
     public boolean isFeatured()        { return featured; }
@@ -107,7 +108,7 @@ public class Article {
     public void setBody(List<String> body)       { this.body = body; }
     public void setCategory(String category)     { this.category = category; }
     public void setOrganization(Organization o)  { this.organization = o; }
-    public void setAuthor(String author)         { this.author = author; }
+    public void setAuthors(List<String> authors) { this.authors = authors; }
     public void setPublishedAt(LocalDate d)      { this.publishedAt = d; }
     public void setReadingTime(String rt)        { this.readingTime = rt; }
     public void setFeatured(boolean featured)    { this.featured = featured; }

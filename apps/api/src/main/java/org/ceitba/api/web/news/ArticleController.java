@@ -81,7 +81,7 @@ public class ArticleController {
             req.title(),
             req.excerpt(),
             req.body(), req.category(), null);
-        if (req.author()      != null) patch.setAuthor(req.author());
+        if (req.authors()     != null) patch.setAuthors(req.authors());
         if (req.publishedAt() != null) patch.setPublishedAt(req.publishedAt());
         if (req.readingTime() != null) patch.setReadingTime(req.readingTime());
         if (req.colorScheme() != null) patch.setColorScheme(req.colorScheme());
@@ -100,7 +100,7 @@ public class ArticleController {
 
     private Article toEntity(ArticleInput req) {
         var a = new Article(req.id(), req.title(), req.excerpt(), req.body(),
-                            req.category(), req.author());
+                            req.category(), req.authors());
         if (req.publishedAt() != null) a.setPublishedAt(req.publishedAt());
         if (req.readingTime() != null) a.setReadingTime(req.readingTime());
         a.setFeatured(req.featured());

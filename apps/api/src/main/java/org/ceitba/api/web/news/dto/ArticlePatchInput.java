@@ -10,7 +10,7 @@ public record ArticlePatchInput(
     List<String> body,
     String       category,
     String       organization,
-    String       author,
+    List<String> authors,
     LocalDate    publishedAt,
     String       readingTime,
     Boolean      featured,

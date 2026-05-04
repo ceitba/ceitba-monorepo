@@ -55,7 +55,7 @@ public class ArticleService {
         if (patch.getExcerpt()    != null) article.setExcerpt(patch.getExcerpt());
         if (patch.getBody()       != null) article.setBody(patch.getBody());
         if (patch.getCategory()   != null) article.setCategory(patch.getCategory());
-        if (patch.getAuthor()     != null) article.setAuthor(patch.getAuthor());
+        if (patch.getAuthors()    != null) article.setAuthors(patch.getAuthors());
         if (patch.getPublishedAt()!= null) article.setPublishedAt(patch.getPublishedAt());
         if (patch.getReadingTime()!= null) article.setReadingTime(patch.getReadingTime());
         if (patch.getColorScheme()!= null) article.setColorScheme(patch.getColorScheme());
@@ -85,7 +85,7 @@ public class ArticleService {
     // Article is immutable after construction for the id field; rebuild if needed.
     private Article rebuildWithId(Article src, String newId) {
         var a = new Article(newId, src.getTitle(), src.getExcerpt(), src.getBody(),
-                            src.getCategory(), src.getAuthor());
+                            src.getCategory(), src.getAuthors());
         a.setPublishedAt(src.getPublishedAt());
         a.setReadingTime(src.getReadingTime());
         a.setFeatured(src.isFeatured());

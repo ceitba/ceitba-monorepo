@@ -13,7 +13,7 @@ public record ArticleResponse(
     List<String>   body,
     String         category,
     String         organization,
-    String         author,
+    List<String>   authors,
     LocalDate      publishedAt,
     String         readingTime,
     boolean        featured,
@@ -28,7 +28,7 @@ public record ArticleResponse(
             a.getId(), a.getTitle(), a.getExcerpt(), a.getBody(),
             a.getCategory(),
             a.getOrganization() != null ? a.getOrganization().getSlug() : null,
-            a.getAuthor(), a.getPublishedAt(), a.getReadingTime(),
+            a.getAuthors(), a.getPublishedAt(), a.getReadingTime(),
             a.isFeatured(), a.getColorScheme(), a.getCoverImage(),
             a.getStatus(), a.getCreatedAt(), a.getUpdatedAt()
         );

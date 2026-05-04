@@ -57,11 +57,11 @@ class ArticleEndpointsIT {
 
         orgRepo.save(new Organization("it", "IT", "IT Branch"));
 
-        var pub = new Article("a1", "Published", "excerpt", List.of("para1"), "tech", "Author");
+        var pub = new Article("a1", "Published", "excerpt", List.of("para1"), "tech", List.of("Author"));
         pub.setStatus("published");
         articleRepo.save(pub);
 
-        var draft = new Article("a2", "Draft Article", "excerpt", List.of("draft para"), "tech", "Author");
+        var draft = new Article("a2", "Draft Article", "excerpt", List.of("draft para"), "tech", List.of("Author"));
         draft.setStatus("draft");
         articleRepo.save(draft);
     }
@@ -114,7 +114,7 @@ class ArticleEndpointsIT {
 
     @Test
     void filterByCategoryReturnsMatchingOnly() throws Exception {
-        var other = new Article("a3", "Other", "e", List.of(), "events", "A");
+        var other = new Article("a3", "Other", "e", List.of(), "events", List.of("A"));
         other.setStatus("published");
         articleRepo.save(other);
 
@@ -171,7 +171,7 @@ class ArticleEndpointsIT {
     void anonymousCannotCreate() throws Exception {
         mvc.perform(post("/v1/articles")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"author\":\"A\"}"))
+                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -179,7 +179,7 @@ class ArticleEndpointsIT {
     void regularUserCannotCreate() throws Exception {
         mvc.perform(post("/v1/articles").with(user())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"author\":\"A\"}"))
+                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
             .andExpect(status().isForbidden());
     }
 
@@ -191,7 +191,7 @@ class ArticleEndpointsIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"title":"New Article","excerpt":"Ex","body":["p1","p2"],
-                     "category":"tech","author":"Staff",
+                     "category":"tech","authors":["Staff","Co-author"],
                      "status":"published","colorScheme":"blue"}
                     """))
             .andExpect(status().isCreated())
@@ -205,7 +205,7 @@ class ArticleEndpointsIT {
     void staffCanCreateDraft() throws Exception {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Draft\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"author\":\"A\",\"status\":\"draft\"}"))
+                .content("{\"title\":\"Draft\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"],\"status\":\"draft\"}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("draft"));
     }
@@ -259,7 +259,7 @@ class ArticleEndpointsIT {
     void createValidationFailsOnMissingTitle() throws Exception {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"author\":\"A\"}"))
+                .content("{\"title\":\"\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
             .andExpect(status().isBadRequest());
     }
 }
