@@ -107,8 +107,8 @@ export default function Navbar() {
             aria-label={t('nav.articles')}
           >
             {/* Logotype */}
-            <Link
-              to="/"
+            <a
+              href="https://ceitba.org.ar/"
               className="flex flex-col leading-none focus-visible:rounded"
               aria-label={t('nav.home')}
             >
@@ -118,7 +118,7 @@ export default function Navbar() {
               <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">
                 {t('nav.tagline')}
               </span>
-            </Link>
+            </a>
 
             {/* Desktop nav */}
             <div className="hidden sm:flex items-center gap-6">
