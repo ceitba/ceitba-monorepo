@@ -1,7 +1,13 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Organization;
+import org.ceitba.api.domain.news.UserFollow;
+import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
+import org.ceitba.api.repository.news.UserFollowRepository;
+
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,9 +50,13 @@ class OrganizationEndpointsIT {
 
     @Autowired MockMvc mvc;
     @Autowired OrganizationRepository orgRepo;
+    @Autowired UserRepository userRepo;
+    @Autowired UserFollowRepository followRepo;
 
     @BeforeEach
     void seed() {
+        followRepo.deleteAll();
+        userRepo.deleteAll();
         orgRepo.deleteAll();
         var it = new Organization("it", "IT", "IT Branch");
         it.setDescription("The tech branch");
@@ -148,6 +158,22 @@ class OrganizationEndpointsIT {
             .andExpect(jsonPath("$.description").value("updated"))
             .andExpect(jsonPath("$.logoUrl").value("https://x/l.png"))
             .andExpect(jsonPath("$.backgroundUrl").value("https://x/bg.png"));
+    }
+
+    @Test
+    void followerCountIsLive() throws Exception {
+        var alice = userRepo.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));
+        var bob   = userRepo.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));
+        followRepo.save(new UserFollow(alice.getId(), "it"));
+        followRepo.save(new UserFollow(bob.getId(), "it"));
+
+        mvc.perform(get("/v1/organizations/it"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.followerCount").value(2));
+
+        mvc.perform(get("/v1/organizations/media"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.followerCount").value(0));
     }
 
     @Test

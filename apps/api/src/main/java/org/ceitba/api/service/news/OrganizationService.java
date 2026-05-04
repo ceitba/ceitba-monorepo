@@ -45,7 +45,6 @@ public class OrganizationService {
         if (patch.getColor()         != null) org.setColor(patch.getColor());
         if (patch.getLogoUrl()       != null) org.setLogoUrl(patch.getLogoUrl());
         if (patch.getBackgroundUrl() != null) org.setBackgroundUrl(patch.getBackgroundUrl());
-        org.setMemberCount(patch.getMemberCount() > 0 ? patch.getMemberCount() : org.getMemberCount());
         return repo.save(org);
     }
 

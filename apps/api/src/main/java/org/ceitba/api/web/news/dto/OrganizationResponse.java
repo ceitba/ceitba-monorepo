@@ -9,15 +9,15 @@ public record OrganizationResponse(
     String  description,
     String  category,
     String  color,
-    int     memberCount,
+    long    followerCount,
     String  logoUrl,
     String  backgroundUrl
 ) {
-    public static OrganizationResponse from(Organization org) {
+    public static OrganizationResponse from(Organization org, long followerCount) {
         return new OrganizationResponse(
             org.getSlug(), org.getName(), org.getFullName(),
             org.getDescription(), org.getCategory(), org.getColor(),
-            org.getMemberCount(), org.getLogoUrl(), org.getBackgroundUrl()
+            followerCount, org.getLogoUrl(), org.getBackgroundUrl()
         );
     }
 }

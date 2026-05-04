@@ -2,6 +2,7 @@ package org.ceitba.api.web.news;
 
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.news.Organization;
+import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.news.OrganizationService;
 import org.ceitba.api.web.news.dto.OrganizationRequest;
 import org.ceitba.api.web.news.dto.OrganizationResponse;
@@ -25,20 +26,23 @@ import java.util.Map;
 public class OrganizationController {
 
     private final OrganizationService service;
+    private final UserFollowRepository followRepo;
 
-    public OrganizationController(OrganizationService service) {
+    public OrganizationController(OrganizationService service,
+                                   UserFollowRepository followRepo) {
         this.service = service;
+        this.followRepo = followRepo;
     }
 
     @GetMapping
     public Map<String, List<OrganizationResponse>> list() {
         return Map.of("data", service.findAll().stream()
-            .map(OrganizationResponse::from).toList());
+            .map(this::toResponse).toList());
     }
 
     @GetMapping("/{slug}")
     public OrganizationResponse get(@PathVariable String slug) {
-        return OrganizationResponse.from(service.findBySlug(slug));
+        return toResponse(service.findBySlug(slug));
     }
 
     @PostMapping
@@ -48,11 +52,10 @@ public class OrganizationController {
         org.setDescription(req.description());
         org.setCategory(req.category());
         org.setColor(req.color());
-        org.setMemberCount(req.memberCount());
         org.setLogoUrl(req.logoUrl());
         org.setBackgroundUrl(req.backgroundUrl());
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(OrganizationResponse.from(service.create(org)));
+            .body(toResponse(service.create(org)));
     }
 
     @PatchMapping("/{slug}")
@@ -65,10 +68,9 @@ public class OrganizationController {
         patch.setDescription(req.description());
         patch.setCategory(req.category());
         patch.setColor(req.color());
-        patch.setMemberCount(req.memberCount());
         patch.setLogoUrl(req.logoUrl());
         patch.setBackgroundUrl(req.backgroundUrl());
-        return OrganizationResponse.from(service.update(slug, patch));
+        return toResponse(service.update(slug, patch));
     }
 
     @DeleteMapping("/{slug}")
@@ -76,5 +78,9 @@ public class OrganizationController {
     public ResponseEntity<Void> delete(@PathVariable String slug) {
         service.delete(slug);
         return ResponseEntity.noContent().build();
+    }
+
+    private OrganizationResponse toResponse(Organization org) {
+        return OrganizationResponse.from(org, followRepo.countByOrganization(org.getSlug()));
     }
 }
