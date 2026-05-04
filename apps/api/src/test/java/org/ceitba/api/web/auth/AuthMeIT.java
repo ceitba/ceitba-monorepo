@@ -96,7 +96,8 @@ class AuthMeIT {
                     .authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.organizations").isArray())
-            .andExpect(jsonPath("$.organizations.length()").value(0));
+            .andExpect(jsonPath("$.organizations.length()").value(0))
+            .andExpect(jsonPath("$.follows").isArray());
     }
 
     @Test

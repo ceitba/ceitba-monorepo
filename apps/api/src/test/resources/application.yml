@@ -14,7 +14,7 @@ spring:
     # deleteAll() in @BeforeEach. Pure-DDL changes that landed after V5 in prod
     # (V8/V9/V10) are mirrored in classpath:db/test-migration as V4.2+, so the
     # entity layer can validate against the full schema without the seeds.
-    target: '4.2'
+    target: '4.3'
     locations: classpath:db/migration,classpath:db/test-migration
 
 # Use the default Springdoc path in tests to avoid suffix-matching ambiguity

@@ -8,6 +8,7 @@ import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.service.auth.GoogleOAuthService;
 import org.ceitba.api.service.auth.JwtIssuerService;
 import org.ceitba.api.service.auth.UserProvisioningService;
+import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.web.auth.dto.ApiKeyCreatedResponse;
 import org.ceitba.api.web.auth.dto.ApiKeyResponse;
@@ -48,6 +49,7 @@ public class AuthController {
     private final ApiKeyService apiKeyService;
     private final CeitbaStaffRepository staffRepository;
     private final OrganizationMembershipService memberships;
+    private final FollowService follows;
     private final AuthProperties auth;
 
     public AuthController(GoogleOAuthService googleOAuth,
@@ -56,6 +58,7 @@ public class AuthController {
                           ApiKeyService apiKeyService,
                           CeitbaStaffRepository staffRepository,
                           OrganizationMembershipService memberships,
+                          FollowService follows,
                           AuthProperties auth) {
         this.googleOAuth      = googleOAuth;
         this.jwtIssuer        = jwtIssuer;
@@ -63,6 +66,7 @@ public class AuthController {
         this.apiKeyService    = apiKeyService;
         this.staffRepository  = staffRepository;
         this.memberships      = memberships;
+        this.follows          = follows;
         this.auth             = auth;
     }
 
@@ -110,13 +114,17 @@ public class AuthController {
         var orgs = memberships.listForUser(user.getId()).stream()
             .map(m -> new UserMeResponse.MembershipDto(m.getOrganization(), m.getRole()))
             .toList();
+        var followSlugs = follows.listForUser(user.getId()).stream()
+            .map(f -> f.getOrganization())
+            .toList();
         return new UserMeResponse(
             user.getId(),
             user.getName(),
             user.getEmail(),
             isStaff ? "staff" : "user",
             user.getAvatarUrl(),
-            orgs
+            orgs,
+            followSlugs
         );
     }
 

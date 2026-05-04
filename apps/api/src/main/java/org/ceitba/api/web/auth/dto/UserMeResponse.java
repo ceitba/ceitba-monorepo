@@ -9,7 +9,8 @@ public record UserMeResponse(
     String email,
     String role,
     String avatarUrl,
-    List<MembershipDto> organizations
+    List<MembershipDto> organizations,
+    List<String> follows
 ) {
     public record MembershipDto(String slug, String role) {}
 }

@@ -2,6 +2,10 @@ package org.ceitba.api.service.auth;
 
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.news.FollowService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -15,10 +19,19 @@ import java.util.UUID;
 @Service
 public class UserProvisioningService {
 
-    private final UserRepository userRepository;
+    private static final Logger log = LoggerFactory.getLogger(UserProvisioningService.class);
 
-    public UserProvisioningService(UserRepository userRepository) {
+    private final UserRepository userRepository;
+    // Optional injection: in test contexts where the FollowService bean
+    // isn't loaded (or the ceitba org isn't seeded) we silently skip the
+    // auto-follow — login must never fail because of newsletter wiring.
+    private final FollowService followService;
+
+    @Autowired
+    public UserProvisioningService(UserRepository userRepository,
+                                    FollowService followService) {
         this.userRepository = userRepository;
+        this.followService = followService;
     }
 
     // REQUIRES_NEW so this commits even if the calling controller fails;
@@ -32,11 +45,21 @@ public class UserProvisioningService {
                     var u = new User(UUID.randomUUID(), email, name);
                     u.setGoogleSub(googleSub);
                     u.setAvatarUrl(avatarUrl);
-                    return userRepository.save(u);
+                    var saved = userRepository.save(u);
+                    autoFollowCeitba(saved.getId());
+                    return saved;
                 } catch (DataIntegrityViolationException race) {
                     return userRepository.findByEmail(email).orElseThrow(() -> race);
                 }
             });
+    }
+
+    private void autoFollowCeitba(UUID userId) {
+        try {
+            followService.followIfMissing(userId, "ceitba");
+        } catch (Exception e) {
+            log.warn("Auto-follow CEITBA failed for user {}: {}", userId, e.getMessage());
+        }
     }
 
     private User syncProfile(User user, String name, String googleSub, String avatarUrl) {
