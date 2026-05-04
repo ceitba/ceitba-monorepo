@@ -49,12 +49,14 @@ public class OrganizationController {
         org.setCategory(req.category());
         org.setColor(req.color());
         org.setMemberCount(req.memberCount());
+        org.setLogoUrl(req.logoUrl());
+        org.setBackgroundUrl(req.backgroundUrl());
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(OrganizationResponse.from(service.create(org)));
     }
 
     @PatchMapping("/{slug}")
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canEditOrg(#slug, authentication)")
     public OrganizationResponse update(@PathVariable String slug,
                                         @RequestBody OrganizationRequest req) {
         var patch = new Organization(slug,
@@ -64,6 +66,8 @@ public class OrganizationController {
         patch.setCategory(req.category());
         patch.setColor(req.color());
         patch.setMemberCount(req.memberCount());
+        patch.setLogoUrl(req.logoUrl());
+        patch.setBackgroundUrl(req.backgroundUrl());
         return OrganizationResponse.from(service.update(slug, patch));
     }
 

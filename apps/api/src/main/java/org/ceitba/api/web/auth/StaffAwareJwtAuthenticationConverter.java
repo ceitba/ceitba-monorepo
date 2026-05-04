@@ -2,6 +2,7 @@ package org.ceitba.api.web.auth;
 
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.repository.news.UserOrganizationRepository;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -32,11 +33,14 @@ public class StaffAwareJwtAuthenticationConverter
 
     private final UserRepository userRepository;
     private final CeitbaStaffRepository staffRepository;
+    private final UserOrganizationRepository membershipRepository;
 
     public StaffAwareJwtAuthenticationConverter(UserRepository userRepository,
-                                                CeitbaStaffRepository staffRepository) {
+                                                CeitbaStaffRepository staffRepository,
+                                                UserOrganizationRepository membershipRepository) {
         this.userRepository = userRepository;
         this.staffRepository = staffRepository;
+        this.membershipRepository = membershipRepository;
     }
 
     @Override
@@ -53,6 +57,9 @@ public class StaffAwareJwtAuthenticationConverter
             userRepository.findByEmail(email).ifPresent(user -> {
                 if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now())) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_STAFF"));
+                }
+                if (!membershipRepository.findByUserId(user.getId()).isEmpty()) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_ORG_MEMBER"));
                 }
             });
         }

@@ -140,6 +140,25 @@ class OrganizationEndpointsIT {
     }
 
     @Test
+    void staffCanPatchProfileFields() throws Exception {
+        mvc.perform(patch("/v1/organizations/it").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"updated\",\"logoUrl\":\"https://x/l.png\",\"backgroundUrl\":\"https://x/bg.png\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.description").value("updated"))
+            .andExpect(jsonPath("$.logoUrl").value("https://x/l.png"))
+            .andExpect(jsonPath("$.backgroundUrl").value("https://x/bg.png"));
+    }
+
+    @Test
+    void regularUserCannotPatch() throws Exception {
+        mvc.perform(patch("/v1/organizations/it").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"x\"}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void patchUnknownSlugReturns404() throws Exception {
         mvc.perform(patch("/v1/organizations/nope").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)

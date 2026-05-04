@@ -59,7 +59,7 @@ public class NewsEventController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#req.organization(), authentication)")
     public ResponseEntity<NewsEventResponse> create(@RequestBody @Valid NewsEventInput req,
                                                      @CurrentUser User user) {
         var event = new NewsEvent(req.id(), req.title(), req.eventDate(),
@@ -70,7 +70,7 @@ public class NewsEventController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForEvent(#id, #req.organization(), authentication)")
     public NewsEventResponse patch(@PathVariable String id,
                                     @RequestBody NewsEventPatchInput req) {
         var patch = new NewsEvent(id, null, null, null, null, null, null);

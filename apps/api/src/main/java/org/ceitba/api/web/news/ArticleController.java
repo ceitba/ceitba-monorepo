@@ -64,7 +64,7 @@ public class ArticleController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#req.organization(), authentication)")
     public ResponseEntity<ArticleResponse> create(@RequestBody @Valid ArticleInput req,
                                                    @CurrentUser User user) {
         var article = toEntity(req);
@@ -73,7 +73,7 @@ public class ArticleController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForArticle(#id, #req.organization(), authentication)")
     public ArticleResponse patch(@PathVariable String id,
                                   @RequestBody ArticlePatchInput req) {
         var patch = new Article(

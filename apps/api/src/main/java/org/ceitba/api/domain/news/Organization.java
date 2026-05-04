@@ -30,6 +30,12 @@ public class Organization {
     @Column(name = "member_count")
     private int memberCount;
 
+    @Column(name = "logo_url")
+    private String logoUrl;
+
+    @Column(name = "background_url")
+    private String backgroundUrl;
+
     protected Organization() {}
 
     public Organization(String slug, String name, String fullName) {
@@ -45,11 +51,15 @@ public class Organization {
     public String getCategory()    { return category; }
     public String getColor()       { return color; }
     public int getMemberCount()    { return memberCount; }
+    public String getLogoUrl()       { return logoUrl; }
+    public String getBackgroundUrl() { return backgroundUrl; }
 
-    public void setName(String name)               { this.name = name; }
-    public void setFullName(String fullName)        { this.fullName = fullName; }
-    public void setDescription(String description)  { this.description = description; }
-    public void setCategory(String category)        { this.category = category; }
-    public void setColor(String color)              { this.color = color; }
-    public void setMemberCount(int memberCount)     { this.memberCount = memberCount; }
+    public void setName(String name)                  { this.name = name; }
+    public void setFullName(String fullName)           { this.fullName = fullName; }
+    public void setDescription(String description)     { this.description = description; }
+    public void setCategory(String category)           { this.category = category; }
+    public void setColor(String color)                 { this.color = color; }
+    public void setMemberCount(int memberCount)        { this.memberCount = memberCount; }
+    public void setLogoUrl(String logoUrl)             { this.logoUrl = logoUrl; }
+    public void setBackgroundUrl(String backgroundUrl) { this.backgroundUrl = backgroundUrl; }
 }

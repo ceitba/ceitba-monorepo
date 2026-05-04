@@ -88,6 +88,18 @@ class AuthMeIT {
     }
 
     @Test
+    void meIncludesEmptyOrganizationsByDefault() throws Exception {
+        mvc.perform(get("/v1/auth/me")
+                .with(jwt().jwt(t -> t
+                    .claim("email", "alice@itba.edu.ar")
+                    .claim("name", "Alice"))
+                    .authorities(new SimpleGrantedAuthority("ROLE_USER"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.organizations").isArray())
+            .andExpect(jsonPath("$.organizations.length()").value(0));
+    }
+
+    @Test
     void meRoleIsUserWithoutActiveCeitbaStaffRow() throws Exception {
         // No CeitbaStaff row for this user → role must be "user" even with ROLE_STAFF authority
         mvc.perform(get("/v1/auth/me")

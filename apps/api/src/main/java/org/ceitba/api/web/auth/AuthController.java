@@ -8,6 +8,7 @@ import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.service.auth.GoogleOAuthService;
 import org.ceitba.api.service.auth.JwtIssuerService;
 import org.ceitba.api.service.auth.UserProvisioningService;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.web.auth.dto.ApiKeyCreatedResponse;
 import org.ceitba.api.web.auth.dto.ApiKeyResponse;
 import org.ceitba.api.web.auth.dto.CreateApiKeyRequest;
@@ -46,6 +47,7 @@ public class AuthController {
     private final UserProvisioningService provisioning;
     private final ApiKeyService apiKeyService;
     private final CeitbaStaffRepository staffRepository;
+    private final OrganizationMembershipService memberships;
     private final AuthProperties auth;
 
     public AuthController(GoogleOAuthService googleOAuth,
@@ -53,12 +55,14 @@ public class AuthController {
                           UserProvisioningService provisioning,
                           ApiKeyService apiKeyService,
                           CeitbaStaffRepository staffRepository,
+                          OrganizationMembershipService memberships,
                           AuthProperties auth) {
         this.googleOAuth      = googleOAuth;
         this.jwtIssuer        = jwtIssuer;
         this.provisioning     = provisioning;
         this.apiKeyService    = apiKeyService;
         this.staffRepository  = staffRepository;
+        this.memberships      = memberships;
         this.auth             = auth;
     }
 
@@ -103,12 +107,16 @@ public class AuthController {
     @GetMapping("/me")
     public UserMeResponse me(@CurrentUser User user) {
         boolean isStaff = staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now());
+        var orgs = memberships.listForUser(user.getId()).stream()
+            .map(m -> new UserMeResponse.MembershipDto(m.getOrganization(), m.getRole()))
+            .toList();
         return new UserMeResponse(
             user.getId(),
             user.getName(),
             user.getEmail(),
             isStaff ? "staff" : "user",
-            user.getAvatarUrl()
+            user.getAvatarUrl(),
+            orgs
         );
     }
 

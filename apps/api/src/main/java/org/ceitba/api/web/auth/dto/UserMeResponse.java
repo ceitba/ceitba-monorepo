@@ -1,5 +1,6 @@
 package org.ceitba.api.web.auth.dto;
 
+import java.util.List;
 import java.util.UUID;
 
 public record UserMeResponse(
@@ -7,5 +8,8 @@ public record UserMeResponse(
     String name,
     String email,
     String role,
-    String avatarUrl
-) {}
+    String avatarUrl,
+    List<MembershipDto> organizations
+) {
+    public record MembershipDto(String slug, String role) {}
+}

@@ -9,5 +9,7 @@ public record OrganizationRequest(
     String  description,
     String  category,
     String  color,
-    int     memberCount
+    int     memberCount,
+    String  logoUrl,
+    String  backgroundUrl
 ) {}
