@@ -9,9 +9,11 @@ spring:
   flyway:
     # Never skip V1 in tests — fresh Testcontainers DBs need the full schema.
     baseline-on-migrate: false
-    # Stop at V4: V5 seeds production-only data (ceitba@itba.edu.ar superadmin)
+    # Stop at V4.1: V5 seeds production-only data (ceitba@itba.edu.ar superadmin)
     # that breaks count assertions and FK-restricted deleteAll() in @BeforeEach.
-    target: '4'
+    # V4.1 carries the article authors-array schema change but no seed data, so
+    # it is safe to include before the V5+ cutoff.
+    target: '4.1'
 
 # Use the default Springdoc path in tests to avoid suffix-matching ambiguity
 # with the custom /docs.json path under server.servlet.context-path=/api.

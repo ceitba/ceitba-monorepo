@@ -26,6 +26,10 @@ spring:
     schemas: public,wiki
     default-schema: public
     locations: classpath:db/migration
+    # Allow applying a lower-numbered migration (e.g. V4.1) after higher
+    # versions are already in flyway_schema_history. Needed when a schema
+    # change is inserted before a seed-only migration that's already live.
+    out-of-order: true
 
 server:
   port: ${PORT:8080}
