@@ -20,6 +20,7 @@ import AdminEventFormPage         from './pages/admin/AdminEventFormPage'
 import AdminAnalyticsPage         from './pages/admin/AdminAnalyticsPage'
 import AdminSuggestionsPage       from './pages/admin/AdminSuggestionsPage'
 import AdminSuggestionReviewPage  from './pages/admin/AdminSuggestionReviewPage'
+import AdminOrganizationProfilePage from './pages/admin/AdminOrganizationProfilePage'
 
 import ContributorSuggestionsPage    from './pages/contributor/ContributorSuggestionsPage'
 import ContributorSuggestArticlePage from './pages/contributor/ContributorSuggestArticlePage'
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="analytics"                      element={<AdminAnalyticsPage />} />
         <Route path="suggestions"                    element={<AdminSuggestionsPage />} />
         <Route path="suggestions/:type/:id"          element={<AdminSuggestionReviewPage />} />
+        <Route path="org/:slug"                      element={<AdminOrganizationProfilePage />} />
       </Route>
 
       {/* ── Contributor portal ────────────────────────── */}

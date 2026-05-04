@@ -39,6 +39,22 @@ export function isAuthenticated() {
   return Boolean(sessionStorage.getItem(TOKEN_KEY))
 }
 
+export function getOrganizations() {
+  return _profile?.organizations ?? []
+}
+
+export function isOrgMember() {
+  return getOrganizations().length > 0
+}
+
+export function isStaff() {
+  return _profile?.role === 'staff'
+}
+
+export function isAdmin() {
+  return ['staff', 'admin', 'editor'].includes(_profile?.role)
+}
+
 export function signOut() {
   sessionStorage.removeItem(TOKEN_KEY)
   _profile = null

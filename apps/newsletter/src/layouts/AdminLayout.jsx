@@ -4,22 +4,50 @@ import { signOut, getSession } from '../store/authStore'
 import { getPendingArticleSuggestionsCount } from '../store/articleStore'
 import { getPendingEventSuggestionsCount } from '../store/eventStore'
 
-const NAV = [
-  {
+function buildNav(profile) {
+  const orgs = profile?.organizations ?? []
+  const adminRole = ['staff', 'admin', 'editor'].includes(profile?.role)
+  const isStaff = profile?.role === 'staff'
+
+  const groups = []
+  groups.push({
     label: 'Contenido',
     items: [
-      { to: '/admin/articles',     label: 'Artículos',    icon: <IconDoc />        },
-      { to: '/admin/events',       label: 'Eventos',      icon: <IconCal />        },
-      { to: '/admin/suggestions',  label: 'Sugerencias',  icon: <IconInbox />      },
+      { to: '/admin/articles', label: 'Artículos', icon: <IconDoc /> },
+      { to: '/admin/events',   label: 'Eventos',   icon: <IconCal /> },
+      ...(adminRole
+        ? [{ to: '/admin/suggestions', label: 'Sugerencias', icon: <IconInbox /> }]
+        : []),
     ],
-  },
-  {
-    label: 'Medios',
-    items: [
-      { to: '/admin/analytics',    label: 'Analíticas',   icon: <IconChart />      },
-    ],
-  },
-]
+  })
+  if (orgs.length > 0) {
+    groups.push({
+      label: 'Organización',
+      items: orgs.map(({ slug }) => ({
+        to: `/admin/org/${slug}`,
+        label: `Perfil · ${slug.toUpperCase()}`,
+        icon: <IconOrg />,
+      })),
+    })
+  }
+  if (adminRole) {
+    groups.push({
+      label: 'Medios',
+      items: [
+        { to: '/admin/analytics', label: 'Analíticas', icon: <IconChart /> },
+      ],
+    })
+  }
+  if (isStaff) {
+    groups.push({
+      label: 'Superadmin',
+      items: [
+        { to: '/admin/organizations', label: 'Todas las organizaciones', icon: <IconOrg /> },
+      ],
+    })
+  }
+  return groups
+}
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -58,6 +86,8 @@ export default function AdminLayout() {
     '/admin/analytics':   null,
   }
 
+  const navGroups = buildNav(session)
+
   const linkClass = ({ isActive }) =>
     [
       'flex items-center gap-3 px-3 py-2 rounded-sm text-body-sm font-semibold transition-colors duration-150',
@@ -91,7 +121,7 @@ export default function AdminLayout() {
 
       {/* Nav groups */}
       <div className="flex-1 px-3 py-4 overflow-y-auto">
-        {NAV.map(({ label, items }) => (
+        {navGroups.map(({ label, items }) => (
           <div key={label} className="mb-6">
             <p className="font-mono text-label uppercase tracking-widest text-primary-500 px-3 mb-2">
               {label}
@@ -228,4 +258,7 @@ function IconChart() {
 }
 function IconMenu() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+}
+function IconOrg() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><line x1="9" y1="9" x2="9" y2="9.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="9" y1="15" x2="9" y2="15.01"/><line x1="9" y1="18" x2="9" y2="18.01"/></svg>
 }

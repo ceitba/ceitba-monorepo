@@ -1,10 +1,29 @@
+import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { isAuthenticated } from '../store/authStore'
+import { getSession, isAdmin, isAuthenticated, isOrgMember } from '../store/authStore'
 
 export default function AdminAuthGuard({ children }) {
   const location = useLocation()
+  const [status, setStatus] = useState('pending')
 
-  if (!isAuthenticated()) {
+  useEffect(() => {
+    let cancelled = false
+    if (!isAuthenticated()) {
+      setStatus('anonymous')
+      return
+    }
+    getSession().then(profile => {
+      if (cancelled) return
+      if (!profile) setStatus('anonymous')
+      else if (isAdmin() || isOrgMember()) setStatus('allowed')
+      else setStatus('denied')
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  if (status === 'pending') return null
+
+  if (status === 'anonymous') {
     return (
       <Navigate
         to="/admin/login"
@@ -12,6 +31,10 @@ export default function AdminAuthGuard({ children }) {
         replace
       />
     )
+  }
+
+  if (status === 'denied') {
+    return <Navigate to="/" replace />
   }
 
   return children

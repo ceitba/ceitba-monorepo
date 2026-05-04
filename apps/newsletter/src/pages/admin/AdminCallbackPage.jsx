@@ -10,7 +10,11 @@ export default function AdminCallbackPage() {
       if (!ok) { navigate('/admin/login', { replace: true }); return }
       const profile = await getSession()
       const adminRoles = ['staff', 'admin', 'editor']
-      if (profile && adminRoles.includes(profile.role)) {
+      const hasAccess = profile && (
+        adminRoles.includes(profile.role) ||
+        (profile.organizations && profile.organizations.length > 0)
+      )
+      if (hasAccess) {
         navigate('/admin/articles', { replace: true })
       } else {
         navigate('/contribute', { replace: true })

@@ -6,6 +6,7 @@ import {
   updateArticle,
 } from '../../api/articles'
 import { fetchOrganizations } from '../../api/organizations'
+import { getOrganizations, isStaff } from '../../store/authStore'
 import { CATEGORIES } from '../../data/articles'
 import ImageUploader from '../../components/ImageUploader'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
@@ -17,19 +18,22 @@ const COLOR_SCHEMES = [
   { value: 'violet', bg: 'bg-violet-600',   label: 'Violeta' },
 ]
 
-const EMPTY_FORM = {
-  title:        '',
-  excerpt:      '',
-  body:         [''],
-  category:     'Académico',
-  organization: 'ceitba',
-  authors:      [''],
-  date:         new Date().toISOString().slice(0, 10),
-  readingTime:  '',
-  featured:     false,
-  colorScheme:  'blue',
-  coverImage:   '',
-  status:       'published',
+function buildEmptyForm() {
+  const myOrgs = getOrganizations()
+  return {
+    title:        '',
+    excerpt:      '',
+    body:         [''],
+    category:     'Académico',
+    organization: myOrgs[0]?.slug ?? 'ceitba',
+    authors:      [''],
+    date:         new Date().toISOString().slice(0, 10),
+    readingTime:  '',
+    featured:     false,
+    colorScheme:  'blue',
+    coverImage:   '',
+    status:       'published',
+  }
 }
 
 export default function AdminArticleFormPage() {
@@ -37,7 +41,7 @@ export default function AdminArticleFormPage() {
   const navigate = useNavigate()
   const isEdit = Boolean(id)
 
-  const [form, setForm]         = useState(EMPTY_FORM)
+  const [form, setForm]         = useState(buildEmptyForm)
   const [orgs, setOrgs]         = useState([])
   const [errors, setErrors]     = useState({})
   const [touched, setTouched]   = useState(false)
@@ -57,7 +61,7 @@ export default function AdminArticleFormPage() {
     fetchArticleById(id)
       .then((existing) => {
         setForm({
-          ...EMPTY_FORM,
+          ...buildEmptyForm(),
           ...existing,
           body: Array.isArray(existing.body) && existing.body.length
             ? existing.body
@@ -202,9 +206,22 @@ export default function AdminArticleFormPage() {
         </SidebarCard>
 
         <SidebarCard title="Organización">
-          <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={selectClass()}>
-            {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-          </select>
+          {(() => {
+            const myOrgs = getOrganizations()
+            const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
+            const visibleOrgs = isStaff() ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
+            const locked = !isStaff() && myOrgs.length === 1
+            return (
+              <select
+                value={form.organization}
+                onChange={(e) => set('organization', e.target.value)}
+                disabled={locked}
+                className={selectClass()}
+              >
+                {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+              </select>
+            )
+          })()}
         </SidebarCard>
 
         <SidebarCard title="Metadatos">

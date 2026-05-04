@@ -2,18 +2,22 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { fetchEventById, createEvent, updateEvent } from '../../api/events'
 import { fetchOrganizations } from '../../api/organizations'
+import { getOrganizations, isStaff } from '../../store/authStore'
 
 const EVENT_CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
 
-const EMPTY_FORM = {
-  title:        '',
-  date:         new Date().toISOString().slice(0, 10),
-  time:         '09:00',
-  endTime:      '10:00',
-  location:     '',
-  category:     'Académico',
-  organization: 'ceitba',
-  description:  '',
+function buildEmptyForm() {
+  const myOrgs = getOrganizations()
+  return {
+    title:        '',
+    date:         new Date().toISOString().slice(0, 10),
+    time:         '09:00',
+    endTime:      '10:00',
+    location:     '',
+    category:     'Académico',
+    organization: myOrgs[0]?.slug ?? 'ceitba',
+    description:  '',
+  }
 }
 
 export default function AdminEventFormPage() {
@@ -21,7 +25,7 @@ export default function AdminEventFormPage() {
   const navigate = useNavigate()
   const isEdit   = Boolean(id)
 
-  const [form, setForm]         = useState(EMPTY_FORM)
+  const [form, setForm]         = useState(buildEmptyForm)
   const [orgs, setOrgs]         = useState([])
   const [errors, setErrors]     = useState({})
   const [touched, setTouched]   = useState(false)
@@ -38,7 +42,7 @@ export default function AdminEventFormPage() {
   useEffect(() => {
     if (!isEdit) return
     fetchEventById(id)
-      .then((existing) => setForm({ ...EMPTY_FORM, ...existing }))
+      .then((existing) => setForm({ ...buildEmptyForm(), ...existing }))
       .catch(() => {})
   }, [id, isEdit])
 
@@ -140,9 +144,22 @@ export default function AdminEventFormPage() {
             </select>
           </Field>
           <Field label="Organización">
-            <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
-              {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-            </select>
+            {(() => {
+              const myOrgs = getOrganizations()
+              const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
+              const visibleOrgs = isStaff() ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
+              const locked = !isStaff() && myOrgs.length === 1
+              return (
+                <select
+                  value={form.organization}
+                  onChange={(e) => set('organization', e.target.value)}
+                  disabled={locked}
+                  className={inputClass(null)}
+                >
+                  {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+                </select>
+              )
+            })()}
           </Field>
         </div>
 
