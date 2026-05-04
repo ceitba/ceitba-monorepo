@@ -56,7 +56,6 @@
     "pageTitle": "Organizations",
     "pageSubtitle": "Explore the student spaces at ITBA.",
     "members": "{{count}} members",
-    "founded": "Founded in {{year}}",
     "latestArticles": "Latest articles",
     "upcomingEvents": "Upcoming events",
     "noArticles": "This organization hasn't published any articles yet.",

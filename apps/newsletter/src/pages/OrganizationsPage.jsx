@@ -98,10 +98,6 @@ function OrgCard({ org, t }) {
           <span className="font-mono text-label text-ink-secondary">
             {t('orgs.members', { count: org.memberCount.toLocaleString() })}
           </span>
-          <span className="text-border" aria-hidden="true">·</span>
-          <span className="font-mono text-label text-ink-secondary">
-            {t('orgs.founded', { year: org.foundedYear })}
-          </span>
         </div>
       </div>
     </Link>

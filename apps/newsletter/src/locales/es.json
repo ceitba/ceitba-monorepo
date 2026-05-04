@@ -56,7 +56,6 @@
     "pageTitle": "Organizaciones",
     "pageSubtitle": "Conocé los espacios estudiantiles del ITBA.",
     "members": "{{count}} miembros",
-    "founded": "Fundada en {{year}}",
     "latestArticles": "Últimos artículos",
     "upcomingEvents": "Próximos eventos",
     "noArticles": "Esta organización no tiene artículos publicados aún.",

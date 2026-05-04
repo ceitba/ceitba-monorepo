@@ -87,7 +87,6 @@ export default function OrgPortalPage() {
             </p>
             <div className="flex sm:flex-col gap-6 sm:gap-3 flex-shrink-0 sm:text-right">
               <Stat label={t('orgs.members', { count: '' }).trim()} value={org.memberCount.toLocaleString()} />
-              <Stat label={t('orgs.founded', { year: '' }).trim()} value={org.foundedYear} />
             </div>
           </div>
 
