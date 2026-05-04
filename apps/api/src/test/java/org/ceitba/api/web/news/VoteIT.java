@@ -48,7 +48,7 @@ class VoteIT {
     void seed() {
         voteRepo.deleteAll();
         articleRepo.deleteAll();
-        articleRepo.save(new Article("v-art", "Votable", "e", List.of(), "tech", "A"));
+        articleRepo.save(new Article("v-art", "Votable", "e", List.of(), "tech", List.of("A")));
     }
 
     // -- GET counts ------------------------------------------------------------

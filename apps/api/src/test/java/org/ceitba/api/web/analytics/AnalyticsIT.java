@@ -51,7 +51,7 @@ class AnalyticsIT {
     void seed() {
         analyticsRepo.deleteAll();
         articleRepo.deleteAll();
-        articleRepo.save(new Article("a1", "Article", "e", List.of(), "tech", "A"));
+        articleRepo.save(new Article("a1", "Article", "e", List.of(), "tech", List.of("A")));
     }
 
     private static RequestPostProcessor staff() {
