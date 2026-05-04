@@ -55,7 +55,7 @@
   "orgs": {
     "pageTitle": "Organizations",
     "pageSubtitle": "Explore the student spaces at ITBA.",
-    "members": "{{count}} members",
+    "followers": "{{count}} followers",
     "follow": "Follow",
     "unfollow": "Unfollow",
     "following": "Following",

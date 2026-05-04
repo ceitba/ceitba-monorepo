@@ -74,6 +74,10 @@ export default function OrgPortalPage() {
       else await followOrganization(slug)
       await refreshFollows()
       setFollowing(isFollowing(slug))
+      try {
+        const updated = await fetchOrganizationBySlug(slug)
+        setOrg(updated)
+      } catch { /* keep stale count on error */ }
     } catch (err) {
       setFollowing(previously)
       setFollowError(t('orgs.followError'))
@@ -141,7 +145,7 @@ export default function OrgPortalPage() {
               {org.description}
             </p>
             <div className="flex sm:flex-col gap-6 sm:gap-3 flex-shrink-0 sm:text-right">
-              <Stat label={t('orgs.members', { count: '' }).trim()} value={org.memberCount.toLocaleString()} />
+              <Stat label={t('orgs.followers', { count: '' }).trim()} value={(org.followerCount ?? 0).toLocaleString()} />
             </div>
           </div>
 

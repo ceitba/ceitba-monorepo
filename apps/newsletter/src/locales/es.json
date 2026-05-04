@@ -55,7 +55,7 @@
   "orgs": {
     "pageTitle": "Organizaciones",
     "pageSubtitle": "Conocé los espacios estudiantiles del ITBA.",
-    "members": "{{count}} miembros",
+    "followers": "{{count}} seguidores",
     "follow": "Seguir",
     "unfollow": "Dejar de seguir",
     "following": "Siguiendo",

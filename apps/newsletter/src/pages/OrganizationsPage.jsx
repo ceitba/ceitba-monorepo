@@ -96,7 +96,7 @@ function OrgCard({ org, t }) {
         </p>
         <div className="flex items-center gap-4 mt-auto pt-3 border-t border-border">
           <span className="font-mono text-label text-ink-secondary">
-            {t('orgs.members', { count: org.memberCount.toLocaleString() })}
+            {t('orgs.followers', { count: (org.followerCount ?? 0).toLocaleString() })}
           </span>
         </div>
       </div>

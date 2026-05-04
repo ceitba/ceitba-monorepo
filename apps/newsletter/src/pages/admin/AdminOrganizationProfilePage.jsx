@@ -29,7 +29,6 @@ export default function AdminOrganizationProfilePage() {
         description:   org.description ?? '',
         category:      org.category ?? '',
         color:         org.color ?? 'blue',
-        memberCount:   org.memberCount ?? 0,
         logoUrl:       org.logoUrl ?? '',
         backgroundUrl: org.backgroundUrl ?? '',
       }))
@@ -80,7 +79,6 @@ export default function AdminOrganizationProfilePage() {
         description:   next.description ?? '',
         category:      next.category ?? '',
         color:         next.color ?? 'blue',
-        memberCount:   next.memberCount ?? 0,
         logoUrl:       next.logoUrl ?? '',
         backgroundUrl: next.backgroundUrl ?? '',
       })
