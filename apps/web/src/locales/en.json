@@ -9,6 +9,50 @@
     "benefits": "Benefits",
     "staff": "Staff"
   },
+  "manage": {
+    "title": "Manage",
+    "subtitle": "Run the CEITBA roster, benefits and permissions.",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "empty": "No data",
+    "tabs": {
+      "staff": "Staff",
+      "benefits": "Benefits",
+      "users": "Users"
+    },
+    "staff": {
+      "year": "Year",
+      "add": "Add member",
+      "addTitle": "New member",
+      "editTitle": "Edit member",
+      "noneForYear": "No members loaded for this year.",
+      "confirmDelete": "Delete this member?",
+      "col": {
+        "name": "Name",
+        "role": "Role",
+        "order": "Order",
+        "department": "Department"
+      }
+    },
+    "benefits": {
+      "linkUrl": "Link",
+      "contact": "Contact email"
+    },
+    "users": {
+      "col": {
+        "user": "User",
+        "staff": "Staff",
+        "organizations": "Organizations"
+      },
+      "staffOn": "STAFF",
+      "staffOff": "Make STAFF",
+      "addOrg": "+ organization",
+      "noOrgs": "—"
+    }
+  },
   "auth": {
     "signIn": "Sign in",
     "signOut": "Sign out",

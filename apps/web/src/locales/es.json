@@ -9,6 +9,50 @@
     "benefits": "Beneficios",
     "staff": "Staff"
   },
+  "manage": {
+    "title": "Administrar",
+    "subtitle": "Gestioná staff, beneficios y permisos del CEITBA.",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "empty": "Sin datos",
+    "tabs": {
+      "staff": "Staff",
+      "benefits": "Beneficios",
+      "users": "Usuarios"
+    },
+    "staff": {
+      "year": "Año",
+      "add": "Agregar miembro",
+      "addTitle": "Nuevo miembro",
+      "editTitle": "Editar miembro",
+      "noneForYear": "No hay miembros cargados para este año.",
+      "confirmDelete": "¿Eliminar este miembro?",
+      "col": {
+        "name": "Nombre",
+        "role": "Rol",
+        "order": "Orden",
+        "department": "Departamento"
+      }
+    },
+    "benefits": {
+      "linkUrl": "Link",
+      "contact": "Email de contacto"
+    },
+    "users": {
+      "col": {
+        "user": "Usuario",
+        "staff": "Staff",
+        "organizations": "Organizaciones"
+      },
+      "staffOn": "STAFF",
+      "staffOff": "Asignar STAFF",
+      "addOrg": "+ organización",
+      "noOrgs": "—"
+    }
+  },
   "auth": {
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",

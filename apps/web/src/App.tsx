@@ -5,6 +5,8 @@ import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
+import ManagePage from './pages/ManagePage'
+import StaffGuard from './components/StaffGuard'
 import { getSession } from './store/authStore'
 
 // Lands here after the API redirects post-OAuth. The session cookie is
@@ -36,6 +38,7 @@ function Layout() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
