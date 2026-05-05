@@ -4,13 +4,16 @@ import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.CareerRepository;
+import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.repository.news.UserOrganizationRepository;
 import org.ceitba.api.web.user.dto.CreateUserRequest;
 import org.ceitba.api.web.user.dto.UserResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,10 +22,17 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CareerRepository careerRepository;
+    private final CeitbaStaffRepository staffRepository;
+    private final UserOrganizationRepository membershipRepository;
 
-    public UserService(UserRepository userRepository, CareerRepository careerRepository) {
+    public UserService(UserRepository userRepository,
+                       CareerRepository careerRepository,
+                       CeitbaStaffRepository staffRepository,
+                       UserOrganizationRepository membershipRepository) {
         this.userRepository = userRepository;
         this.careerRepository = careerRepository;
+        this.staffRepository = staffRepository;
+        this.membershipRepository = membershipRepository;
     }
 
     @Transactional
@@ -52,6 +62,8 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserResponse> getAll() {
+        // N+1 across staff + memberships is fine for the admin user list:
+        // it's gated by ROLE_STAFF, called rarely, and the user table is small.
         return userRepository.findAll().stream().map(this::toResponse).toList();
     }
 
@@ -63,13 +75,20 @@ public class UserService {
     }
 
     private UserResponse toResponse(User u) {
+        var memberships = membershipRepository.findByUserId(u.getId()).stream()
+            .map(m -> new UserResponse.Membership(m.getOrganization(), m.getRole()))
+            .toList();
+        boolean isStaff = staffRepository.isActiveStaff(u.getId(), OffsetDateTime.now());
         return new UserResponse(
             u.getId(),
             u.getEmail(),
             u.getName(),
             u.getFileNumber(),
             u.getCareer() != null ? u.getCareer().getId() : null,
-            u.getPlan()
+            u.getPlan(),
+            u.getAvatarUrl(),
+            isStaff,
+            memberships
         );
     }
 }
