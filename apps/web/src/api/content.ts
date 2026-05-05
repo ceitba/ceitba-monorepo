@@ -16,6 +16,23 @@ export interface BenefitEntry {
   highlightsEn: string[]
 }
 
+export interface BenefitCard {
+  id: string
+  categorySlug: string
+  displayOrder: number
+  titleEs: string
+  titleEn: string
+  summaryEs: string
+  summaryEn: string
+  imageUrl: string | null
+  ctaUrl: string | null
+  ctaLabelEs: string | null
+  ctaLabelEn: string | null
+  price: string | null
+  bulletsEs: string[]
+  bulletsEn: string[]
+}
+
 export interface StaffMember {
   id: string
   year: number
@@ -61,4 +78,20 @@ export function deleteStaffMember(id: string): Promise<void> {
 
 export function updateBenefit(slug: string, payload: Omit<BenefitEntry, 'slug'>): Promise<BenefitEntry> {
   return apiSend('PUT', `/benefits/${slug}`, payload)
+}
+
+export function fetchBenefitCards(): Promise<BenefitCard[]> {
+  return apiGet('/benefit-cards')
+}
+
+export function createBenefitCard(payload: Omit<BenefitCard, 'id'>): Promise<BenefitCard> {
+  return apiSend('POST', '/benefit-cards', payload)
+}
+
+export function updateBenefitCard(id: string, payload: Omit<BenefitCard, 'id'>): Promise<BenefitCard> {
+  return apiSend('PUT', `/benefit-cards/${id}`, payload)
+}
+
+export function deleteBenefitCard(id: string): Promise<void> {
+  return apiSend('DELETE', `/benefit-cards/${id}`)
 }

@@ -43,8 +43,41 @@
       }
     },
     "benefits": {
-      "linkUrl": "Link",
-      "contact": "Email de contacto"
+      "tabs": {
+        "cards": "Tarjetas",
+        "categories": "Categorías"
+      },
+      "categories": {
+        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su color y orden acá.",
+        "colorVar": "Variable de color",
+        "order": "Orden"
+      },
+      "cards": {
+        "filter": "Categoría",
+        "allCategories": "Todas",
+        "add": "Agregar tarjeta",
+        "addTitle": "Nueva tarjeta de beneficio",
+        "editTitle": "Editar tarjeta",
+        "confirmDelete": "¿Eliminar esta tarjeta?",
+        "empty": "No hay tarjetas cargadas todavía.",
+        "titleEs": "Título (ES)",
+        "titleEn": "Título (EN)",
+        "summaryEs": "Descripción (ES)",
+        "summaryEn": "Descripción (EN)",
+        "imageUrl": "URL de imagen",
+        "ctaUrl": "URL del CTA",
+        "ctaLabelEs": "Texto del botón (ES)",
+        "ctaLabelEn": "Texto del botón (EN)",
+        "price": "Precio",
+        "bulletsEs": "Bullets (ES) — uno por línea",
+        "bulletsEn": "Bullets (EN) — uno por línea",
+        "col": {
+          "title": "Título",
+          "category": "Categoría",
+          "price": "Precio",
+          "order": "Orden"
+        }
+      }
     },
     "users": {
       "col": {
@@ -156,8 +189,9 @@
       "name": "Representación Estudiantil",
       "description": "Voz y participación activa en las decisiones que afectan a los estudiantes de ITBA, con presencia en los órganos de gobierno."
     },
-    "detailsNote": "Los detalles de cada beneficio se van a ir completando próximamente.",
-    "detailsComingSoon": "Detalles próximamente",
+    "filterLabel": "Filtrar por categoría",
+    "all": "Todos",
+    "empty": "No hay beneficios cargados para esta categoría todavía.",
     "learnMore": "Ver más"
   },
   "staff": {

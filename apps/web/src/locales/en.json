@@ -43,8 +43,41 @@
       }
     },
     "benefits": {
-      "linkUrl": "Link",
-      "contact": "Contact email"
+      "tabs": {
+        "cards": "Cards",
+        "categories": "Categories"
+      },
+      "categories": {
+        "help": "Categories are the chips users filter benefits by. Edit their color and order here.",
+        "colorVar": "Color variable",
+        "order": "Order"
+      },
+      "cards": {
+        "filter": "Category",
+        "allCategories": "All",
+        "add": "Add card",
+        "addTitle": "New benefit card",
+        "editTitle": "Edit card",
+        "confirmDelete": "Delete this card?",
+        "empty": "No cards yet.",
+        "titleEs": "Title (ES)",
+        "titleEn": "Title (EN)",
+        "summaryEs": "Description (ES)",
+        "summaryEn": "Description (EN)",
+        "imageUrl": "Image URL",
+        "ctaUrl": "CTA URL",
+        "ctaLabelEs": "Button label (ES)",
+        "ctaLabelEn": "Button label (EN)",
+        "price": "Price",
+        "bulletsEs": "Bullets (ES) — one per line",
+        "bulletsEn": "Bullets (EN) — one per line",
+        "col": {
+          "title": "Title",
+          "category": "Category",
+          "price": "Price",
+          "order": "Order"
+        }
+      }
     },
     "users": {
       "col": {
@@ -156,8 +189,9 @@
       "name": "Student Representation",
       "description": "Active voice and participation in decisions affecting ITBA students, with presence in governance bodies."
     },
-    "detailsNote": "Details for each benefit will be added soon.",
-    "detailsComingSoon": "Details coming soon",
+    "filterLabel": "Filter by category",
+    "all": "All",
+    "empty": "No benefits in this category yet.",
     "learnMore": "Learn more"
   },
   "staff": {

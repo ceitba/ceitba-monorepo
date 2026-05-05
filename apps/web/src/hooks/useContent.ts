@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
+  fetchBenefitCards,
   fetchBenefits,
   fetchDepartments,
   fetchStaffMembers,
   fetchStaffYears,
+  type BenefitCard,
   type BenefitEntry,
   type DepartmentEntry,
   type StaffMember,
@@ -35,6 +37,10 @@ export function useDepartments(): AsyncState<DepartmentEntry[]> {
 
 export function useBenefits(): AsyncState<BenefitEntry[]> {
   return useFetch(fetchBenefits)
+}
+
+export function useBenefitCards(): AsyncState<BenefitCard[]> {
+  return useFetch(fetchBenefitCards)
 }
 
 export function useStaffYears(): AsyncState<number[]> {
