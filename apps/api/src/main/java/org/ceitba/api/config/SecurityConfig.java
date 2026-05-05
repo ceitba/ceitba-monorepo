@@ -125,7 +125,8 @@ public class SecurityConfig {
                     "/v1/staff-departments",
                     "/v1/staff-members",
                     "/v1/staff-members/years",
-                    "/v1/benefits"
+                    "/v1/benefits",
+                    "/v1/benefit-cards"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()

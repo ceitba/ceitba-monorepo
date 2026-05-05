@@ -12,10 +12,10 @@ spring:
     # Stop at V4.x: V5+ seed production-only data (ceitba@itba.edu.ar superadmin,
     # careers, organizations) that breaks count assertions and FK-restricted
     # deleteAll() in @BeforeEach. Pure-DDL changes that landed after V5 in prod
-    # (V8/V9/V10/V12/V13/V14) are mirrored in classpath:db/test-migration as
+    # (V8/V9/V10/V12/V13/V14/V15) are mirrored in classpath:db/test-migration as
     # V4.2+, so the entity layer can validate against the full schema without
     # the seeds.
-    target: '4.7'
+    target: '4.8'
     locations: classpath:db/migration,classpath:db/test-migration
 
 # Use the default Springdoc path in tests to avoid suffix-matching ambiguity
