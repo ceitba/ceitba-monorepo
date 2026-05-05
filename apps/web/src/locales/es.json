@@ -1,7 +1,12 @@
 {
   "nav": {
     "skipToContent": "Ir al contenido",
-    "tagline": "Centro de Estudiantes ITBA"
+    "tagline": "Centro de Estudiantes ITBA",
+    "homeAria": "Inicio CEITBA",
+    "langToggleLabel": "EN",
+    "langToggleAria": "Cambiar a inglés",
+    "themeToggleLight": "Cambiar a modo claro",
+    "themeToggleDark": "Cambiar a modo oscuro"
   },
   "tabs": {
     "home": "Inicio",

@@ -1,7 +1,12 @@
 {
   "nav": {
     "skipToContent": "Skip to content",
-    "tagline": "ITBA Student Center"
+    "tagline": "ITBA Student Center",
+    "homeAria": "CEITBA home",
+    "langToggleLabel": "ES",
+    "langToggleAria": "Switch to Spanish",
+    "themeToggleLight": "Switch to light mode",
+    "themeToggleDark": "Switch to dark mode"
   },
   "tabs": {
     "home": "Home",
