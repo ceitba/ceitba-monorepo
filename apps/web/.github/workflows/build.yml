@@ -25,6 +25,8 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /
+          VITE_API_URL: https://ceitba.org.ar/api/v1
+          VITE_GOOGLE_REDIRECT_URI: https://ceitba.org.ar/auth/callback
 
       - name: Upload dist to VPS staging
         if: github.ref == 'refs/heads/main'
