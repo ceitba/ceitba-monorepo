@@ -6,7 +6,11 @@
     "events": "Eventos",
     "organizations": "Organizaciones",
     "openMenu": "Abrir menú",
-    "closeMenu": "Cerrar menú"
+    "closeMenu": "Cerrar menú",
+    "langToggleLabel": "EN",
+    "langToggleAria": "Cambiar a inglés",
+    "themeToggleLight": "Cambiar a modo claro",
+    "themeToggleDark": "Cambiar a modo oscuro"
   },
   "footer": {
     "tagline": "Escrito por estudiantes, para estudiantes.",

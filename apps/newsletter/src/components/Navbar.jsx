@@ -87,14 +87,14 @@ export default function Navbar() {
                 ))}
               </ul>
               <AuthMenu mobile={false} />
-              <LangToggle lang={i18n.language} onToggle={toggleLang} />
-              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+              <LangToggle onToggle={toggleLang} t={t} />
+              <ThemeToggle theme={theme} onToggle={toggleTheme} t={t} />
             </div>
 
             {/* Mobile controls */}
             <div className="flex sm:hidden items-center gap-2">
-              <LangToggle lang={i18n.language} onToggle={toggleLang} />
-              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+              <LangToggle onToggle={toggleLang} t={t} />
+              <ThemeToggle theme={theme} onToggle={toggleTheme} t={t} />
               <button
                 type="button"
                 className="flex items-center justify-center w-11 h-11 rounded text-ink-primary hover:text-primary focus-visible:rounded"
@@ -163,13 +163,13 @@ export default function Navbar() {
   )
 }
 
-function ThemeToggle({ theme, onToggle }) {
+function ThemeToggle({ theme, onToggle, t }) {
   const isDark = theme === 'dark'
   return (
     <button
       type="button"
       onClick={onToggle}
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={isDark ? t('nav.themeToggleLight') : t('nav.themeToggleDark')}
       className="min-h-[36px] w-9 flex items-center justify-center text-ink-secondary hover:text-primary transition-colors duration-150 rounded-sm hover:bg-primary-50 focus-visible:rounded"
     >
       {isDark ? <IconSun /> : <IconMoon />}
@@ -177,15 +177,15 @@ function ThemeToggle({ theme, onToggle }) {
   )
 }
 
-function LangToggle({ lang, onToggle }) {
+function LangToggle({ onToggle, t }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      aria-label={lang === 'es' ? 'Switch to English' : 'Cambiar a español'}
+      aria-label={t('nav.langToggleAria')}
       className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary hover:text-primary transition-colors duration-150 focus-visible:rounded"
     >
-      {lang === 'es' ? 'EN' : 'ES'}
+      {t('nav.langToggleLabel')}
     </button>
   )
 }

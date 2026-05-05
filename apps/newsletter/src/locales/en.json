@@ -6,7 +6,11 @@
     "events": "Events",
     "organizations": "Organizations",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "langToggleLabel": "ES",
+    "langToggleAria": "Switch to Spanish",
+    "themeToggleLight": "Switch to light mode",
+    "themeToggleDark": "Switch to dark mode"
   },
   "footer": {
     "tagline": "Written by students, for students.",
