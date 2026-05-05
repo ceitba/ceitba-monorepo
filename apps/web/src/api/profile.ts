@@ -12,18 +12,24 @@ export interface MeProfile {
   fileNumber: number | null
 }
 
-// /v1/careers/plans returns a Map<id, CareerResponse> on the wire. The
-// SPA only needs the array of careers each with its plans, so flatten.
+// /v1/careers/plans returns Map<careerId, { id, name, plans: string[] }>.
+// Plan IDs double as their display name in the seed (e.g. "A17", "BIO 22"),
+// so we project string → { id, name: id } for the cascading select to use
+// {value, label} consistently with how careers are rendered.
 interface CareerResponseRaw {
   id: string
   name: string
-  plans?: { id: string; name: string }[]
+  plans?: string[]
 }
 
 export async function fetchCareersWithPlans(): Promise<CareerWithPlans[]> {
   const map = await apiGet<Record<string, CareerResponseRaw>>('/careers/plans')
   return Object.values(map)
-    .map((c) => ({ id: c.id, name: c.name, plans: c.plans ?? [] }))
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      plans: (c.plans ?? []).map((id) => ({ id, name: id })),
+    }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
