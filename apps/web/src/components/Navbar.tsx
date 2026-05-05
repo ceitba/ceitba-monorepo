@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useThemeContext } from '../context/ThemeContext'
 import AuthMenu from './AuthMenu'
 
@@ -22,12 +23,16 @@ export default function Navbar() {
         {i18n.language === 'es' ? 'Ir al contenido' : 'Skip to content'}
       </a>
       <div className="container-content h-16 flex items-center justify-between">
-        <div className="flex flex-col justify-center">
+        <Link
+          to="/"
+          aria-label={i18n.language === 'es' ? 'Inicio CEITBA' : 'CEITBA home'}
+          className="flex flex-col justify-center hover:opacity-80 transition-opacity duration-150"
+        >
           <span className="font-display text-h5 font-bold text-primary tracking-tight leading-tight">CEITBA</span>
           <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] uppercase tracking-widest leading-tight">
             {i18n.language === 'es' ? 'Centro de Estudiantes ITBA' : 'ITBA Student Center'}
           </span>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-3">
           <button
