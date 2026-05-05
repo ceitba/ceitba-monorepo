@@ -6,6 +6,9 @@ import SkeletonCard from '../components/SkeletonCard'
 import ContributeModal from '../components/ContributeModal'
 import { fetchArticles } from '../api/articles'
 import { CATEGORIES } from '../data/articles'
+import { useAuthSession } from '../hooks/useAuthSession'
+
+const ADMIN_ROLES = ['staff', 'admin', 'editor']
 
 function useFetchArticles(category) {
   const [state, setState] = useState({ status: 'loading', data: [] })
@@ -151,7 +154,24 @@ function ErrorState({ onRetry }) {
 }
 
 function ContributeBanner() {
+  const { profile, loading } = useAuthSession()
   const [modalOpen, setModalOpen] = useState(false)
+
+  // Don't flash an anonymous-state CTA before the cookie session resolves —
+  // the banner is a non-critical accent, render nothing until we know.
+  if (loading) return null
+
+  const isAdmin = profile && ADMIN_ROLES.includes(profile.role)
+  const ctaTo = isAdmin ? '/admin/articles' : '/contribute'
+  const ctaLabel = isAdmin ? 'Panel admin' : 'Contribuir'
+  const copyBody = profile
+    ? 'Proponé artículos y eventos desde tu portal de contribución. El equipo editorial los revisa antes de publicar.'
+    : 'Iniciá sesión con tu cuenta @itba.edu.ar para proponer artículos y eventos. El equipo editorial los revisa antes de publicar.'
+
+  const ctaIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+  )
+  const ctaClasses = 'inline-flex items-center gap-2 min-h-[44px] px-5 flex-shrink-0 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded'
 
   return (
     <>
@@ -171,18 +191,19 @@ function ContributeBanner() {
           <div className="flex-1 px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
             <div>
               <p className="font-display text-h5 font-bold text-ink-primary">¿Tenés algo para contar?</p>
-              <p className="font-body text-body-sm text-ink-secondary mt-1">
-                Iniciá sesión con tu cuenta <span className="font-semibold text-ink-primary">@itba.edu.ar</span> para proponer artículos y eventos. El equipo editorial los revisa antes de publicar.
-              </p>
+              <p className="font-body text-body-sm text-ink-secondary mt-1">{copyBody}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="inline-flex items-center gap-2 min-h-[44px] px-5 flex-shrink-0 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
-            >
-              Contribuir
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
+            {profile ? (
+              <Link to={ctaTo} className={ctaClasses}>
+                {ctaLabel}
+                {ctaIcon}
+              </Link>
+            ) : (
+              <button type="button" onClick={() => setModalOpen(true)} className={ctaClasses}>
+                Contribuir
+                {ctaIcon}
+              </button>
+            )}
           </div>
         </div>
       </div>
