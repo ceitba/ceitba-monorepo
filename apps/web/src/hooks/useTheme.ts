@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
-
-type Theme = 'light' | 'dark'
+import { useEffect, useState } from 'react'
+import { readLocalTheme, syncPrefToServer, writeLocalTheme, type Theme } from '../store/prefsStore'
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('prefs.theme') as Theme | null
-    if (saved === 'light' || saved === 'dark') return saved
+    const saved = readLocalTheme()
+    if (saved) return saved
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
 
@@ -16,10 +15,19 @@ export function useTheme() {
     } else {
       root.classList.remove('dark')
     }
-    localStorage.setItem('prefs.theme', theme)
+    writeLocalTheme(theme)
   }, [theme])
 
-  const toggle = () => setTheme(prev => prev === 'light' ? 'dark' : 'light')
+  const toggle = () => {
+    setTheme((prev) => {
+      const next: Theme = prev === 'light' ? 'dark' : 'light'
+      void syncPrefToServer({ theme: next })
+      return next
+    })
+  }
 
-  return { theme, toggle }
+  // External writes (auth-hydration callback) bypass the toggle path.
+  const applyExternal = (next: Theme) => setTheme(next)
+
+  return { theme, toggle, applyExternal }
 }

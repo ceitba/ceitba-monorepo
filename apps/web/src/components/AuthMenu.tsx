@@ -80,6 +80,14 @@ export default function AuthMenu() {
               {profile.email}
             </p>
           </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); navigate('/profile') }}
+            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] hover:bg-primary-50 dark:hover:bg-primary-900"
+          >
+            {t('auth.profile')}
+          </button>
           {isStaff && (
             <button
               type="button"

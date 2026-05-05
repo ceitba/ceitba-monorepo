@@ -11,6 +11,11 @@ export interface UserProfile {
   email: string
   role: 'staff' | 'user' | string
   avatarUrl: string | null
+  theme: 'light' | 'dark' | null
+  language: 'es' | 'en' | null
+  careerId: string | null
+  plan: string | null
+  fileNumber: number | null
   organizations: UserMembership[]
   follows: string[]
 }

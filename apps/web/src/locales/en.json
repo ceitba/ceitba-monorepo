@@ -53,7 +53,23 @@
       "noOrgs": "—"
     }
   },
+  "profile": {
+    "title": "My profile",
+    "subtitle": "Your academic info and preferences, shared across every CEITBA site.",
+    "appearance": "Appearance",
+    "academics": "Academics",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "language": "Language",
+    "career": "Career",
+    "plan": "Plan",
+    "fileNumber": "File number",
+    "unset": "Not set",
+    "pickCareerFirst": "Pick a career to see available plans."
+  },
   "auth": {
+    "profile": "My profile",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "manage": "Manage",

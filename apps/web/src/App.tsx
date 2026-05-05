@@ -6,6 +6,7 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
 import ManagePage from './pages/ManagePage'
+import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
 import { getSession } from './store/authStore'
 
@@ -39,6 +40,7 @@ function Layout() {
           <Route path="/" element={<HomePage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

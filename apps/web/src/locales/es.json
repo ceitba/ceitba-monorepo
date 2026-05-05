@@ -53,7 +53,23 @@
       "noOrgs": "—"
     }
   },
+  "profile": {
+    "title": "Mi perfil",
+    "subtitle": "Tus datos académicos y preferencias compartidas en todos los sitios CEITBA.",
+    "appearance": "Apariencia",
+    "academics": "Académico",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "language": "Idioma",
+    "career": "Carrera",
+    "plan": "Plan",
+    "fileNumber": "Legajo",
+    "unset": "Sin definir",
+    "pickCareerFirst": "Elegí una carrera para ver los planes disponibles."
+  },
   "auth": {
+    "profile": "Mi perfil",
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",
     "manage": "Administrar",
