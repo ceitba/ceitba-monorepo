@@ -9,6 +9,11 @@ public record UserMeResponse(
     String email,
     String role,
     String avatarUrl,
+    String theme,
+    String language,
+    String careerId,
+    String plan,
+    Integer fileNumber,
     List<MembershipDto> organizations,
     List<String> follows
 ) {

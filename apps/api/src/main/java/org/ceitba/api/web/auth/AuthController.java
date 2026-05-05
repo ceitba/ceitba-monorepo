@@ -149,6 +149,11 @@ public class AuthController {
             user.getEmail(),
             isStaff ? "staff" : "user",
             user.getAvatarUrl(),
+            user.getTheme(),
+            user.getPreferredLanguage(),
+            user.getCareer() != null ? user.getCareer().getId() : null,
+            user.getPlan(),
+            user.getFileNumber(),
             orgs,
             followSlugs
         );
