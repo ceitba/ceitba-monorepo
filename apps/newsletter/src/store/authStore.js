@@ -1,11 +1,26 @@
 import { apiRequest, BASE_URL } from '../api/client'
 import { fetchMyFollows } from '../api/follows'
-import { applyServerPrefs } from './prefsStore'
 
 // Cookie-based session: the JWT lives in an HttpOnly cookie set by the API,
 // invisible to JS. The only thing we cache here is the user profile fetched
 // from /v1/auth/me — it lets components read role/orgs/follows synchronously
 // after the first hydrate.
+//
+// Server prefs (theme/language) are applied via the inline applyServerPrefs
+// below rather than imported from prefsStore to avoid a circular import
+// (authStore ↔ prefsStore) that Rollup minifies into a TDZ crash on click
+// events. prefsStore can still import from us; we don't import from it.
+
+function applyServerPrefs(profile) {
+  if (!profile) return
+  if (profile.theme === 'light' || profile.theme === 'dark') {
+    localStorage.setItem('prefs.theme', profile.theme)
+    document.documentElement.classList.toggle('dark', profile.theme === 'dark')
+  }
+  if (profile.language === 'es' || profile.language === 'en') {
+    localStorage.setItem('prefs.lang', profile.language)
+  }
+}
 
 let _profile = null
 let _hydrated = false      // true after the first /me round-trip, success or 401

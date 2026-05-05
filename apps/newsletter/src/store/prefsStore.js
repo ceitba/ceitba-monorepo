@@ -24,19 +24,6 @@ export function setTheme(theme) {
   void syncPrefToServer({ theme })
 }
 
-// Apply server-side prefs after login. Called from the auth boot path with
-// the freshly hydrated profile. Local cache wins for anonymous users.
-export function applyServerPrefs(profile) {
-  if (!profile) return
-  if (profile.theme === 'light' || profile.theme === 'dark') {
-    localStorage.setItem(KEYS.theme, profile.theme)
-    document.documentElement.classList.toggle('dark', profile.theme === 'dark')
-  }
-  if (profile.language === 'es' || profile.language === 'en') {
-    localStorage.setItem(KEYS.lang, profile.language)
-  }
-}
-
 // Best-effort PATCH — local state has already updated, network failure is
 // swallowed because the user can retry by toggling again.
 async function syncPrefToServer(patch) {
