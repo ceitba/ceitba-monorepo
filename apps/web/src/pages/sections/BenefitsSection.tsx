@@ -1,20 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import benefitsData from '../../data/benefits.json'
-
-interface BenefitDetails {
-  highlights: { es: string[]; en: string[] } | null
-  link: string | null
-  contact: string | null
-}
-
-interface BenefitEntry {
-  id: string
-  colorVar: string
-  order: number
-  details: BenefitDetails | null
-}
-
-const benefits = (benefitsData as BenefitEntry[]).sort((a, b) => a.order - b.order)
+import { useBenefits } from '../../hooks/useContent'
 
 const ICONS: Record<string, React.ReactNode> = {
   deportes: (
@@ -48,7 +33,9 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default function BenefitsSection() {
   const { t, i18n } = useTranslation()
-  const lang = i18n.language === 'en' ? 'en' : 'es'
+  const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
+  const { data, loading } = useBenefits()
+  const benefits = data ?? []
 
   return (
     <section className="py-section-mobile lg:py-section" aria-labelledby="benefits-heading">
@@ -62,7 +49,6 @@ export default function BenefitsSection() {
           </p>
         </div>
 
-        {/* Details-coming-soon notice */}
         <div className="flex items-center gap-2.5 mb-6 px-4 py-3 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a]">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-ink-secondary dark:text-[#a1a1aa] flex-shrink-0" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
@@ -75,68 +61,72 @@ export default function BenefitsSection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {benefits.map((benefit, i) => {
-            const highlights = benefit.details?.highlights?.[lang] ?? null
-            return (
-              <article
-                key={benefit.id}
-                className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
-                    style={{ backgroundColor: `var(${benefit.colorVar})` }}
+          {loading
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-40 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] skeleton" />
+              ))
+            : benefits.map((benefit, i) => {
+                const highlights = lang === 'es' ? benefit.highlightsEs : benefit.highlightsEn
+                const hasHighlights = highlights && highlights.length > 0
+                return (
+                  <article
+                    key={benefit.slug}
+                    className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
+                    style={{ animationDelay: `${i * 60}ms` }}
                   >
-                    {ICONS[benefit.id]}
-                  </div>
-                  <div className="flex flex-col gap-1 flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5]">
-                      {t(`benefits.${benefit.id}.name`)}
-                    </h3>
-                    <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-                      {t(`benefits.${benefit.id}.description`)}
-                    </p>
-                  </div>
-                </div>
+                    <div className="flex items-start gap-4">
+                      <div
+                        className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
+                        style={{ backgroundColor: `var(${benefit.colorVar})` }}
+                      >
+                        {ICONS[benefit.slug]}
+                      </div>
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5]">
+                          {t(`benefits.${benefit.slug}.name`)}
+                        </h3>
+                        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+                          {t(`benefits.${benefit.slug}.description`)}
+                        </p>
+                      </div>
+                    </div>
 
-                {/* Highlights list (from JSON) or coming-soon chip */}
-                {highlights ? (
-                  <ul className="flex flex-col gap-1.5 border-t border-border dark:border-[#3f3f46] pt-3">
-                    {highlights.map((item) => (
-                      <li key={item} className="flex items-start gap-2 font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-300 dark:bg-[#7FA1D4] flex-shrink-0" aria-hidden="true" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="border-t border-border dark:border-[#3f3f46] pt-3">
-                    <span className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-ink-secondary dark:bg-[#a1a1aa] opacity-50" aria-hidden="true" />
-                      {t('benefits.detailsComingSoon')}
-                    </span>
-                  </div>
-                )}
+                    {hasHighlights ? (
+                      <ul className="flex flex-col gap-1.5 border-t border-border dark:border-[#3f3f46] pt-3">
+                        {highlights.map((item) => (
+                          <li key={item} className="flex items-start gap-2 font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-300 dark:bg-[#7FA1D4] flex-shrink-0" aria-hidden="true" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="border-t border-border dark:border-[#3f3f46] pt-3">
+                        <span className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-ink-secondary dark:bg-[#a1a1aa] opacity-50" aria-hidden="true" />
+                          {t('benefits.detailsComingSoon')}
+                        </span>
+                      </div>
+                    )}
 
-                {/* Optional CTA link */}
-                {benefit.details?.link && (
-                  <a
-                    href={benefit.details.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold self-start"
-                  >
-                    {t('benefits.learnMore')}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </a>
-                )}
-              </article>
-            )
-          })}
+                    {benefit.linkUrl && (
+                      <a
+                        href={benefit.linkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold self-start"
+                      >
+                        {t('benefits.learnMore')}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                          <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                      </a>
+                    )}
+                  </article>
+                )
+              })
+          }
         </div>
       </div>
     </section>

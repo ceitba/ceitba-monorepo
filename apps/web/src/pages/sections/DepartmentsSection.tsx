@@ -1,13 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import departmentsData from '../../data/departments.json'
-
-interface DepartmentEntry {
-  id: string
-  colorVar: string
-  order: number
-}
-
-const departments = (departmentsData as DepartmentEntry[]).sort((a, b) => a.order - b.order)
+import { useDepartments } from '../../hooks/useContent'
 
 const ICONS: Record<string, React.ReactNode> = {
   it: (
@@ -53,6 +45,8 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default function DepartmentsSection() {
   const { t } = useTranslation()
+  const { data, loading } = useDepartments()
+  const departments = data ?? []
 
   return (
     <section className="py-section-mobile lg:py-section" aria-labelledby="departments-heading">
@@ -66,28 +60,33 @@ export default function DepartmentsSection() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {departments.map((dept, i) => (
-            <article
-              key={dept.id}
-              className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <div
-                className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
-                style={{ backgroundColor: `var(${dept.colorVar})` }}
-              >
-                {ICONS[dept.id]}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5]">
-                  {t(`departments.${dept.id}.name`)}
-                </h3>
-                <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-                  {t(`departments.${dept.id}.description`)}
-                </p>
-              </div>
-            </article>
-          ))}
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-36 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] skeleton" />
+              ))
+            : departments.map((dept, i) => (
+                <article
+                  key={dept.slug}
+                  className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
+                    style={{ backgroundColor: `var(${dept.colorVar})` }}
+                  >
+                    {ICONS[dept.slug]}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5]">
+                      {t(`departments.${dept.slug}.name`)}
+                    </h3>
+                    <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+                      {t(`departments.${dept.slug}.description`)}
+                    </p>
+                  </div>
+                </article>
+              ))
+          }
         </div>
       </div>
     </section>
