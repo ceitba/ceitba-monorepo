@@ -32,14 +32,19 @@ public class GoogleOAuthService {
 
     public URI buildAuthorizationUri(String state) {
         var g = auth.google();
-        return UriComponentsBuilder.fromUriString(AUTH_ENDPOINT)
+        var b = UriComponentsBuilder.fromUriString(AUTH_ENDPOINT)
             .queryParam("response_type", "code")
             .queryParam("client_id", g.clientId())
             .queryParam("redirect_uri", g.redirectUri())
             .queryParam("scope", SCOPE)
             .queryParam("state", state)
-            .queryParam("access_type", "offline")
-            .build().toUri();
+            .queryParam("access_type", "offline");
+        // hd= hint pre-filters Google's account-picker to the institution's
+        // workspace. It's only a hint — server-side verification of the hd
+        // claim in exchangeCode() is what actually enforces it.
+        String hint = primaryAllowedDomain();
+        if (hint != null) b.queryParam("hd", hint);
+        return b.build().toUri();
     }
 
     // Exchanges the authorization code for tokens and parses the id_token claims.
@@ -68,18 +73,31 @@ public class GoogleOAuthService {
                 claims.getStringClaim("email"),
                 claims.getStringClaim("name"),
                 claims.getStringClaim("picture"),
-                Boolean.TRUE.equals(claims.getBooleanClaim("email_verified"))
+                Boolean.TRUE.equals(claims.getBooleanClaim("email_verified")),
+                claims.getStringClaim("hd")
             );
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse Google id_token", e);
         }
     }
 
+    private String primaryAllowedDomain() {
+        var domains = auth.allowedDomains();
+        return (domains == null || domains.isEmpty()) ? null : domains.get(0);
+    }
+
     private static String enc(String v) {
         return v == null ? "" : URLEncoder.encode(v, StandardCharsets.UTF_8);
     }
 
-    public record IdTokenClaims(String sub, String email, String name, String picture, boolean emailVerified) {}
+    public record IdTokenClaims(
+        String sub,
+        String email,
+        String name,
+        String picture,
+        boolean emailVerified,
+        String hd
+    ) {}
 
     private record TokenResponse(
         @JsonProperty("access_token") String accessToken,

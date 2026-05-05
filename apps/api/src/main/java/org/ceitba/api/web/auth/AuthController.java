@@ -99,8 +99,18 @@ public class AuthController {
         String redirectTo = decodeState(state);
         try {
             var claims = googleOAuth.exchangeCode(code);
+            // Defense in depth: email allowlist + verified flag + hosted-domain
+            // claim must all line up. `hd` is null for personal Gmail accounts
+            // and a workspace domain otherwise; we accept it only when it
+            // matches one of the allowlisted domains.
+            if (!claims.emailVerified()) {
+                return redirect(redirectTo + "?error=unverified_email");
+            }
             if (!auth.admits(claims.email())) {
                 return redirect(redirectTo + "?error=unauthorized");
+            }
+            if (claims.hd() != null && !auth.admits("anyone@" + claims.hd())) {
+                return redirect(redirectTo + "?error=unauthorized_workspace");
             }
             var user  = provisioning.findOrCreate(claims.email(), claims.name(), claims.sub(), claims.picture());
             var token = jwtIssuer.issue(user);
