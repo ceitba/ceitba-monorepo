@@ -47,8 +47,11 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    @Column(name = "prefered_language", length = 5)
-    private String preferedLanguage;
+    @Column(name = "preferred_language", length = 5)
+    private String preferredLanguage;
+
+    @Column(name = "theme", length = 8)
+    private String theme;
 
     @Column(name = "google_sub", unique = true)
     private String googleSub;
@@ -72,13 +75,15 @@ public class User {
     public String getName() { return name; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
-    public String getPreferedLanguage() { return preferedLanguage; }
+    public String getPreferredLanguage() { return preferredLanguage; }
+    public String getTheme() { return theme; }
 
     public void setFileNumber(Integer fileNumber) { this.fileNumber = fileNumber; }
     public void setCareer(Career career) { this.career = career; }
     public void setPlan(String plan) { this.plan = plan; }
     public void setName(String name) { this.name = name; }
-    public void setPreferedLanguage(String preferedLanguage) { this.preferedLanguage = preferedLanguage; }
+    public void setPreferredLanguage(String preferredLanguage) { this.preferredLanguage = preferredLanguage; }
+    public void setTheme(String theme) { this.theme = theme; }
     public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
