@@ -7,7 +7,7 @@ import { fetchOrganizationBySlug } from '../api/organizations'
 import { fetchArticles } from '../api/articles'
 import { fetchEvents } from '../api/events'
 import { followOrganization, unfollowOrganization } from '../api/follows'
-import { getSession, isAuthenticated, isFollowing, refreshFollows } from '../store/authStore'
+import { getSession, isFollowing, refreshFollows } from '../store/authStore'
 
 const GEO_BG = {
   blue:   'bg-primary-500',
@@ -55,7 +55,8 @@ export default function OrgPortalPage() {
 
   useEffect(() => {
     let cancelled = false
-    if (!isAuthenticated()) { setAuthed(false); setFollowing(false); return }
+    // Cookie auth is invisible to JS — just ask /me. getSession() caches so
+    // this is one round-trip per page load even across multiple components.
     getSession().then((profile) => {
       if (cancelled) return
       setAuthed(Boolean(profile))

@@ -1,16 +1,33 @@
+import { useSearchParams } from 'react-router-dom'
 import { startGoogleSignIn } from '../../store/authStore'
 
+const ERROR_MESSAGES = {
+  unauthorized:           'Solo cuentas @itba.edu.ar pueden iniciar sesión.',
+  unauthorized_workspace: 'Solo cuentas del workspace ITBA pueden iniciar sesión.',
+  unverified_email:       'Tu correo de Google aún no está verificado.',
+  auth_failed:            'No pudimos completar el inicio de sesión. Probá de nuevo.',
+}
+
 export default function AdminLoginPage() {
+  const [params] = useSearchParams()
+  const errorCode = params.get('error')
+  const errorMsg = errorCode ? (ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES.auth_failed) : null
+
   return (
     <div className="min-h-screen bg-primary-900 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white rounded-card shadow-card-hover p-8">
-        {/* Brand */}
         <div className="mb-8 text-center">
           <p className="font-display text-h3 font-bold text-primary">ITBA News</p>
           <p className="font-mono text-label text-ink-secondary uppercase tracking-widest mt-1">
             Panel de Administración
           </p>
         </div>
+
+        {errorMsg && (
+          <p className="mb-4 px-3 py-2 rounded-sm bg-red-50 text-red-700 font-body text-body-sm border border-red-200">
+            {errorMsg}
+          </p>
+        )}
 
         <button
           type="button"

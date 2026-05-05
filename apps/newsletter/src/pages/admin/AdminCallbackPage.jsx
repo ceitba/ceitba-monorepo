@@ -1,26 +1,31 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { handleCallback, getSession } from '../../store/authStore'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { getSession } from '../../store/authStore'
 
+// The API now sets the HttpOnly session cookie before redirecting back here
+// (no token in the URL). We just refresh the profile and route based on role.
 export default function AdminCallbackPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
 
   useEffect(() => {
-    handleCallback().then(async (ok) => {
-      if (!ok) { navigate('/admin/login', { replace: true }); return }
-      const profile = await getSession()
+    const error = params.get('error')
+    if (error) {
+      navigate(`/admin/login?error=${encodeURIComponent(error)}`, { replace: true })
+      return
+    }
+    getSession({ force: true }).then((profile) => {
+      if (!profile) {
+        navigate('/admin/login', { replace: true })
+        return
+      }
       const adminRoles = ['staff', 'admin', 'editor']
-      const hasAccess = profile && (
+      const hasAccess =
         adminRoles.includes(profile.role) ||
         (profile.organizations && profile.organizations.length > 0)
-      )
-      if (hasAccess) {
-        navigate('/admin/articles', { replace: true })
-      } else {
-        navigate('/contribute', { replace: true })
-      }
+      navigate(hasAccess ? '/admin/articles' : '/contribute', { replace: true })
     })
-  }, [navigate])
+  }, [navigate, params])
 
   return (
     <div className="min-h-screen bg-primary-900 flex items-center justify-center">

@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { getSession } from './store/authStore'
 import PublicLayout from './layouts/PublicLayout'
 import AdminLayout from './layouts/AdminLayout'
 import ContributorLayout from './layouts/ContributorLayout'
@@ -29,6 +31,10 @@ import ContributorSuggestEventPage   from './pages/contributor/ContributorSugges
 import ContributorReviewChangesPage  from './pages/contributor/ContributorReviewChangesPage'
 
 export default function App() {
+  // Hydrate the session once at boot so synchronous reads (Navbar avatar,
+  // isStaff(), etc.) have data after the first /me round-trip resolves.
+  useEffect(() => { getSession() }, [])
+
   return (
     <Routes>
       {/* ── Admin ─────────────────────────────────────── */}

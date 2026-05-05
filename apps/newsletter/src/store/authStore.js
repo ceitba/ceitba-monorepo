@@ -1,8 +1,14 @@
 import { apiRequest, BASE_URL } from '../api/client'
 import { fetchMyFollows } from '../api/follows'
 
-const TOKEN_KEY = 'auth_token'
+// Cookie-based session: the JWT lives in an HttpOnly cookie set by the API,
+// invisible to JS. The only thing we cache here is the user profile fetched
+// from /v1/auth/me — it lets components read role/orgs/follows synchronously
+// after the first hydrate.
+
 let _profile = null
+let _hydrated = false      // true after the first /me round-trip, success or 401
+let _hydratePromise = null // dedupe concurrent boot calls
 
 export function startGoogleSignIn() {
   const redirectUri =
@@ -11,33 +17,36 @@ export function startGoogleSignIn() {
   window.location.href = `${BASE_URL}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
 }
 
-export async function handleCallback() {
-  const token = new URLSearchParams(window.location.search).get('token')
-  if (!token) return false
-  sessionStorage.setItem(TOKEN_KEY, token)
-  return true
-}
-
-export async function getSession() {
-  if (!sessionStorage.getItem(TOKEN_KEY)) { _profile = null; return null }
-  if (_profile) return _profile
-  try {
-    const res = await apiRequest('GET', '/auth/me')
-    if (!res || !res.ok) { sessionStorage.removeItem(TOKEN_KEY); _profile = null; return null }
-    _profile = await res.json()
+// Loads the session profile from the API. Subsequent calls return the cache
+// unless `force` is true. Returns null if the cookie is missing/expired.
+export async function getSession({ force = false } = {}) {
+  if (_hydrated && !force) return _profile
+  if (_hydratePromise) return _hydratePromise
+  _hydratePromise = (async () => {
+    try {
+      const res = await apiRequest('GET', '/auth/me')
+      if (res.ok) _profile = await res.json()
+      else _profile = null
+    } catch {
+      _profile = null
+    } finally {
+      _hydrated = true
+      _hydratePromise = null
+    }
     return _profile
-  } catch {
-    return null
-  }
+  })()
+  return _hydratePromise
 }
 
-// Synchronous — returns cached profile after first getSession() call
+// Synchronous — returns cached profile after first getSession() call.
 export function getCachedSession() {
   return _profile
 }
 
+// Synchronous — true if we have a hydrated profile. Anything more accurate
+// requires awaiting getSession() since the cookie itself is invisible to JS.
 export function isAuthenticated() {
-  return Boolean(sessionStorage.getItem(TOKEN_KEY))
+  return _profile != null
 }
 
 export function getOrganizations() {
@@ -75,7 +84,15 @@ export async function refreshFollows() {
   return getFollows()
 }
 
-export function signOut() {
-  sessionStorage.removeItem(TOKEN_KEY)
+// Clears the API cookie + the in-memory cache. Always resolves; logout is
+// best-effort because UX-wise the user expects "logged out" even if the
+// network call fails.
+export async function signOut() {
+  try {
+    await apiRequest('POST', '/auth/logout')
+  } catch {
+    /* ignore */
+  }
   _profile = null
+  _hydrated = true
 }
