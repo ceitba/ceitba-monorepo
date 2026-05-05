@@ -1,5 +1,6 @@
 import { apiRequest, BASE_URL } from '../api/client'
 import { fetchMyFollows } from '../api/follows'
+import { applyServerPrefs } from './prefsStore'
 
 // Cookie-based session: the JWT lives in an HttpOnly cookie set by the API,
 // invisible to JS. The only thing we cache here is the user profile fetched
@@ -25,8 +26,14 @@ export async function getSession({ force = false } = {}) {
   _hydratePromise = (async () => {
     try {
       const res = await apiRequest('GET', '/auth/me')
-      if (res.ok) _profile = await res.json()
-      else _profile = null
+      if (res.ok) {
+        _profile = await res.json()
+        // Server is canonical for theme/language once the user is signed in;
+        // overwrite the localStorage cache so all CEITBA SPAs paint the same.
+        applyServerPrefs(_profile)
+      } else {
+        _profile = null
+      }
     } catch {
       _profile = null
     } finally {

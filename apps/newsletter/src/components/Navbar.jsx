@@ -1,23 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { getSession } from '../store/authStore'
 import { setLang, getTheme, setTheme } from '../store/prefsStore'
-import ContributeModal from './ContributeModal'
-
-const ADMIN_ROLES = ['staff', 'admin', 'editor']
+import AuthMenu from './AuthMenu'
 
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [session, setSession] = useState(undefined)
   const [theme, setThemeState] = useState(getTheme)
   const drawerRef = useRef(null)
-
-  useEffect(() => {
-    getSession().then(setSession)
-  }, [])
 
   const NAV_LINKS = [
     { to: '/',               label: t('nav.articles'),      end: true },
@@ -62,42 +53,6 @@ export default function Navbar() {
     setThemeState(next)
   }
 
-  function handleContributeClick() {
-    setOpen(false)
-    setModalOpen(true)
-  }
-
-  const btnClass =
-    'min-h-[36px] px-4 inline-flex items-center font-body text-body-sm font-semibold bg-primary text-surface rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded'
-
-  function AuthButton({ mobile }) {
-    const cls = mobile
-      ? 'inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150'
-      : btnClass
-
-    if (session === undefined) return null
-
-    if (session && ADMIN_ROLES.includes(session.role)) {
-      return (
-        <Link to="/admin/articles" onClick={() => setOpen(false)} className={cls}>
-          Panel admin
-        </Link>
-      )
-    }
-    if (session) {
-      return (
-        <Link to="/contribute" onClick={() => setOpen(false)} className={cls}>
-          Contribuir
-        </Link>
-      )
-    }
-    return (
-      <button type="button" onClick={handleContributeClick} className={cls}>
-        Contribuir
-      </button>
-    )
-  }
-
   return (
     <>
       <header className="sticky top-0 z-40 bg-surface/95 dark:bg-[#18181b]/95 backdrop-blur-sm border-b border-border dark:border-[#3f3f46]">
@@ -131,7 +86,7 @@ export default function Navbar() {
                   </li>
                 ))}
               </ul>
-              <AuthButton mobile={false} />
+              <AuthMenu mobile={false} />
               <LangToggle lang={i18n.language} onToggle={toggleLang} />
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
             </div>
@@ -199,12 +154,11 @@ export default function Navbar() {
             </li>
           ))}
           <li>
-            <AuthButton mobile={true} />
+            <AuthMenu mobile={true} />
           </li>
         </ul>
       </div>
 
-      <ContributeModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   )
 }
