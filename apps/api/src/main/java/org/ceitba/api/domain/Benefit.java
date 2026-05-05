@@ -33,12 +33,12 @@ public class Benefit {
     @Column(name = "contact_email")
     private String contactEmail;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "highlights_es", columnDefinition = "jsonb", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "highlights_es", columnDefinition = "text[]", nullable = false)
     private List<String> highlightsEs = new ArrayList<>();
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "highlights_en", columnDefinition = "jsonb", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "highlights_en", columnDefinition = "text[]", nullable = false)
     private List<String> highlightsEn = new ArrayList<>();
 
     @CreationTimestamp

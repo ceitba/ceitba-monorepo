@@ -48,11 +48,14 @@ CREATE TABLE benefits (
     display_order  INT          NOT NULL DEFAULT 0,
     link_url       TEXT,
     contact_email  VARCHAR(255),
-    -- highlights are stored per-language as JSONB string arrays. Keeping the
-    -- two columns separate (rather than one nested JSON) lets editors update
-    -- one language without round-tripping the other.
-    highlights_es  JSONB        NOT NULL DEFAULT '[]'::jsonb,
-    highlights_en  JSONB        NOT NULL DEFAULT '[]'::jsonb,
+    -- highlights are stored per-language as Postgres text[]. We keep the two
+    -- columns separate (rather than one nested JSON) so editors can update
+    -- one language without round-tripping the other; using text[] instead
+    -- of jsonb matches the plan_subject.dependencies convention and avoids
+    -- a Hibernate type-resolution clash between JSON and ARRAY for the
+    -- same Java type (List<String>) within this package.
+    highlights_es  TEXT[]       NOT NULL DEFAULT ARRAY[]::TEXT[],
+    highlights_en  TEXT[]       NOT NULL DEFAULT ARRAY[]::TEXT[],
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
