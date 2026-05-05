@@ -120,7 +120,12 @@ public class SecurityConfig {
                     // Newsletter public reads
                     "/v1/organizations/**",
                     "/v1/articles/**",
-                    "/v1/news/events/**"
+                    "/v1/news/events/**",
+                    // CeitbaPage CMS public reads (writes are @PreAuthorize'd)
+                    "/v1/staff-departments",
+                    "/v1/staff-members",
+                    "/v1/staff-members/years",
+                    "/v1/benefits"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
