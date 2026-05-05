@@ -10,6 +10,8 @@ import java.util.List;
 //   AUTH_SYNC_API_KEY=...
 //   GOOGLE_CLIENT_ID=...  GOOGLE_CLIENT_SECRET=...  GOOGLE_REDIRECT_URI=...
 //   AUTH_JWT_SECRET=<base64-encoded 32+ byte secret>  AUTH_JWT_TTL_DAYS=7
+//   AUTH_COOKIE_NAME=ceitba_session  AUTH_COOKIE_DOMAIN=ceitba.org.ar
+//   AUTH_COOKIE_SECURE=true  AUTH_COOKIE_SAMESITE=Lax  AUTH_COOKIE_PATH=/
 //   FRONTEND_URL=https://ceitba.org.ar
 @ConfigurationProperties(prefix = "auth")
 public record AuthProperties(
@@ -18,15 +20,30 @@ public record AuthProperties(
     String syncApiKey,
     Google google,
     Jwt jwt,
+    Cookie cookie,
     String frontendUrl
 ) {
     public record Google(String clientId, String clientSecret, String redirectUri) {}
     public record Jwt(String secret, int ttlDays) {}
 
+    // Session cookie used to carry the issued JWT to all SPAs sharing the
+    // ceitba.org.ar origin. HttpOnly is forced in code; the rest is configurable
+    // because local-dev flips Secure off and `SameSite=None` may be needed for
+    // tunnelled HTTPS dev environments.
+    public record Cookie(String name, String domain, Boolean secure, String sameSite, String path) {
+        public Cookie {
+            name     = (name == null || name.isBlank()) ? "ceitba_session" : name;
+            secure   = secure == null ? Boolean.TRUE : secure;
+            sameSite = (sameSite == null || sameSite.isBlank()) ? "Lax" : sameSite;
+            path     = (path == null || path.isBlank()) ? "/" : path;
+        }
+    }
+
     public AuthProperties {
         allowedDomains = allowedDomains != null ? allowedDomains : List.of();
         allowedEmails  = allowedEmails  != null ? allowedEmails  : List.of();
         frontendUrl = frontendUrl != null ? frontendUrl : "http://localhost:3000";
+        if (cookie == null) cookie = new Cookie(null, null, null, null, null);
     }
 
     public boolean admits(String email) {

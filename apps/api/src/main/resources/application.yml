@@ -59,6 +59,12 @@ auth:
   jwt:
     secret: ${AUTH_JWT_SECRET:}
     ttl-days: ${AUTH_JWT_TTL_DAYS:7}
+  cookie:
+    name:      ${AUTH_COOKIE_NAME:ceitba_session}
+    domain:    ${AUTH_COOKIE_DOMAIN:}
+    secure:    ${AUTH_COOKIE_SECURE:true}
+    same-site: ${AUTH_COOKIE_SAMESITE:Lax}
+    path:      ${AUTH_COOKIE_PATH:/}
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 itba:

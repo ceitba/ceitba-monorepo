@@ -3,6 +3,7 @@ package org.ceitba.api.config;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.web.auth.ApiKeyFilter;
+import org.ceitba.api.web.auth.CookieOrHeaderBearerTokenResolver;
 import org.ceitba.api.web.auth.StaffAwareJwtAuthenticationConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -75,6 +76,7 @@ public class SecurityConfig {
                                                    AuthProperties auth,
                                                    StaffAwareJwtAuthenticationConverter jwtConverter,
                                                    JwtDecoder jwtDecoder,
+                                                   CookieOrHeaderBearerTokenResolver bearerResolver,
                                                    ApiKeyService apiKeyService,
                                                    CeitbaStaffRepository staffRepository) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
@@ -114,7 +116,7 @@ public class SecurityConfig {
                     "/v1/plans/**",
                     "/v1/classrooms/**",
                     "/v1/wiki/bookmarks/*",
-                    "/v1/auth/google", "/v1/auth/callback",
+                    "/v1/auth/google", "/v1/auth/callback", "/v1/auth/logout",
                     // Newsletter public reads
                     "/v1/organizations/**",
                     "/v1/articles/**",
@@ -126,14 +128,19 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/articles/*/votes").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/v1/articles/*/votes").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/analytics/events").permitAll()
+                // Logout must be reachable even with an expired/invalid cookie.
+                .requestMatchers(HttpMethod.POST, "/v1/auth/logout").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
                 .requestMatchers("/v1/staff/**").hasRole("STAFF")
                 .anyRequest().access(authenticatedAndAllowlisted)
             )
-            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
-                jwt.jwtAuthenticationConverter(jwtConverter);
-                jwt.decoder(jwtDecoder);
-            }));
+            .oauth2ResourceServer(oauth -> {
+                oauth.bearerTokenResolver(bearerResolver);
+                oauth.jwt(jwt -> {
+                    jwt.jwtAuthenticationConverter(jwtConverter);
+                    jwt.decoder(jwtDecoder);
+                });
+            });
 
         return http.build();
     }

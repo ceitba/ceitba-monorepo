@@ -14,7 +14,9 @@ import org.ceitba.api.web.auth.dto.ApiKeyCreatedResponse;
 import org.ceitba.api.web.auth.dto.ApiKeyResponse;
 import org.ceitba.api.web.auth.dto.CreateApiKeyRequest;
 import org.ceitba.api.web.auth.dto.UserMeResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -70,10 +73,11 @@ public class AuthController {
         this.auth             = auth;
     }
 
-    // Frontend button links here. redirect_uri is where we send the token
-    // after a successful login; defaults to auth.frontend-url if omitted.
+    // Frontend button links here. redirect_uri is where we send the browser
+    // after a successful login; the JWT is delivered via HttpOnly cookie, not
+    // via URL parameter, so the frontend just lands on a clean URL.
     //
-    // Example: GET /api/v1/auth/google?redirect_uri=http://localhost:3000/auth/callback
+    // Example: GET /api/v1/auth/google?redirect_uri=https://ceitba.org.ar/manage
     @GetMapping("/google")
     public ResponseEntity<Void> initiateGoogleLogin(
             @RequestParam(required = false, name = "redirect_uri") String redirectUri) {
@@ -86,8 +90,8 @@ public class AuthController {
     }
 
     // Google redirects here after the user authenticates.
-    // On success:  redirect to <frontend>?token=<jwt>
-    // On failure:  redirect to <frontend>?error=<reason>
+    // On success: set HttpOnly session cookie and redirect to the SPA URL.
+    // On failure: redirect to <frontend>?error=<reason>
     @GetMapping("/callback")
     public ResponseEntity<Void> handleGoogleCallback(
             @RequestParam String code,
@@ -100,10 +104,22 @@ public class AuthController {
             }
             var user  = provisioning.findOrCreate(claims.email(), claims.name(), claims.sub(), claims.picture());
             var token = jwtIssuer.issue(user);
-            return redirect(redirectTo + "?token=" + token);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(redirectTo))
+                .header(HttpHeaders.SET_COOKIE, sessionCookie(token).toString())
+                .build();
         } catch (Exception e) {
             return redirect(redirectTo + "?error=auth_failed");
         }
+    }
+
+    // Clears the session cookie. Always 204 — does not require an active session,
+    // so a stale-cookie client can call this safely.
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent()
+            .header(HttpHeaders.SET_COOKIE, clearCookie().toString())
+            .build();
     }
 
     // Returns the authenticated user's profile. Role is "staff" when the user
@@ -173,5 +189,30 @@ public class AuthController {
 
     private static ResponseEntity<Void> redirect(String uri) {
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(uri)).build();
+    }
+
+    private ResponseCookie sessionCookie(String token) {
+        var cfg = auth.cookie();
+        int ttlDays = (auth.jwt() != null && auth.jwt().ttlDays() > 0) ? auth.jwt().ttlDays() : 7;
+        var b = ResponseCookie.from(cfg.name(), token)
+            .httpOnly(true)
+            .secure(cfg.secure())
+            .path(cfg.path())
+            .sameSite(cfg.sameSite())
+            .maxAge(Duration.ofDays(ttlDays));
+        if (cfg.domain() != null && !cfg.domain().isBlank()) b.domain(cfg.domain());
+        return b.build();
+    }
+
+    private ResponseCookie clearCookie() {
+        var cfg = auth.cookie();
+        var b = ResponseCookie.from(cfg.name(), "")
+            .httpOnly(true)
+            .secure(cfg.secure())
+            .path(cfg.path())
+            .sameSite(cfg.sameSite())
+            .maxAge(Duration.ZERO);
+        if (cfg.domain() != null && !cfg.domain().isBlank()) b.domain(cfg.domain());
+        return b.build();
     }
 }
