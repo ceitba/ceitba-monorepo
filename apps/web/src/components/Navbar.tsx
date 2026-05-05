@@ -4,13 +4,13 @@ import { useThemeContext } from '../context/ThemeContext'
 import AuthMenu from './AuthMenu'
 
 export default function Navbar() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { theme, toggle } = useThemeContext()
 
   const toggleLanguage = () => {
     const next = i18n.language === 'es' ? 'en' : 'es'
+    // i18n.on('languageChanged') in src/i18n.ts handles localStorage + server sync.
     i18n.changeLanguage(next)
-    localStorage.setItem('prefs.lang', next)
   }
 
   return (
@@ -20,17 +20,17 @@ export default function Navbar() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-sm"
       >
-        {i18n.language === 'es' ? 'Ir al contenido' : 'Skip to content'}
+        {t('nav.skipToContent')}
       </a>
       <div className="container-content h-16 flex items-center justify-between">
         <Link
           to="/"
-          aria-label={i18n.language === 'es' ? 'Inicio CEITBA' : 'CEITBA home'}
+          aria-label={t('nav.homeAria')}
           className="flex flex-col justify-center hover:opacity-80 transition-opacity duration-150"
         >
           <span className="font-display text-h5 font-bold text-primary tracking-tight leading-tight">CEITBA</span>
           <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] uppercase tracking-widest leading-tight">
-            {i18n.language === 'es' ? 'Centro de Estudiantes ITBA' : 'ITBA Student Center'}
+            {t('nav.tagline')}
           </span>
         </Link>
 
@@ -38,15 +38,15 @@ export default function Navbar() {
           <button
             onClick={toggleLanguage}
             className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150"
-            aria-label={i18n.language === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+            aria-label={t('nav.langToggleAria')}
           >
-            {i18n.language === 'es' ? 'EN' : 'ES'}
+            {t('nav.langToggleLabel')}
           </button>
 
           <button
             onClick={toggle}
             className="min-h-[36px] w-9 flex items-center justify-center text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150 rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900"
-            aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            aria-label={theme === 'dark' ? t('nav.themeToggleLight') : t('nav.themeToggleDark')}
           >
             {theme === 'dark' ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
