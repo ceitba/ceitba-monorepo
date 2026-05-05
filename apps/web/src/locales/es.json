@@ -9,6 +9,17 @@
     "benefits": "Beneficios",
     "staff": "Staff"
   },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "manage": "Administrar",
+    "errors": {
+      "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
+      "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
+      "unverified_email": "Tu correo de Google aún no está verificado.",
+      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo."
+    }
+  },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
     "title": "CEITBA",

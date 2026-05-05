@@ -9,6 +9,17 @@
     "benefits": "Benefits",
     "staff": "Staff"
   },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "manage": "Manage",
+    "errors": {
+      "unauthorized": "Only @itba.edu.ar accounts can sign in.",
+      "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
+      "unverified_email": "Your Google email isn't verified yet.",
+      "auth_failed": "We couldn't complete sign-in. Please try again."
+    }
+  },
   "hero": {
     "eyebrow": "Student Center",
     "title": "CEITBA",

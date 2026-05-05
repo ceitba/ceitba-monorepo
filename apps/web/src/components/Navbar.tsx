@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useThemeContext } from '../context/ThemeContext'
+import AuthMenu from './AuthMenu'
 
 export default function Navbar() {
   const { i18n } = useTranslation()
@@ -60,6 +61,8 @@ export default function Navbar() {
               </svg>
             )}
           </button>
+
+          <AuthMenu />
         </div>
       </div>
     </header>
