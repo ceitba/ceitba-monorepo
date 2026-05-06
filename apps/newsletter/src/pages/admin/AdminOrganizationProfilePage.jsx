@@ -195,7 +195,19 @@ export default function AdminOrganizationProfilePage() {
         </div>
       </form>
 
-      <aside className="lg:sticky lg:top-20 self-start">
+      <aside className="lg:sticky lg:top-20 self-start flex flex-col gap-4">
+        <Link
+          to={`/admin/org/${slug}/followers`}
+          className="flex items-center justify-between p-3 border border-border rounded-sm bg-white hover:border-primary transition-colors duration-150"
+        >
+          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">
+            Seguidores
+          </span>
+          <span className="font-mono text-label uppercase tracking-widest text-primary">
+            Ver →
+          </span>
+        </Link>
+
         <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">
           Previsualización
         </p>

@@ -17,3 +17,12 @@ export async function unfollowOrganization(slug) {
   if (!res) throw new ApiError('Failed to unfollow', 0)
   if (res.status !== 204 && !res.ok) throw new ApiError('Failed to unfollow', res.status)
 }
+
+export async function fetchOrganizationFollowers(slug) {
+  const res = await apiRequest('GET', `/organizations/${slug}/followers`)
+  if (!res) throw new ApiError('Request failed', 0)
+  if (res.status === 403) throw new ApiError('No tenés permiso para ver los seguidores', 403, 'FORBIDDEN')
+  if (res.status === 404) throw new ApiError(`Organization "${slug}" not found`, 404, 'NOT_FOUND')
+  if (!res.ok) throw new ApiError('Failed to fetch followers', res.status)
+  return res.json()
+}
