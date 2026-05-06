@@ -5,6 +5,9 @@ import AppsSection from './sections/AppsSection'
 import DepartmentsSection from './sections/DepartmentsSection'
 import BenefitsSection from './sections/BenefitsSection'
 import StaffSection from './sections/StaffSection'
+import HomeDepartmentsPreview from './sections/HomeDepartmentsPreview'
+import HomeBenefitsPreview from './sections/HomeBenefitsPreview'
+import HomeJoinCTA from './sections/HomeJoinCTA'
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
@@ -17,6 +20,9 @@ export default function HomePage() {
           <>
             <HeroSection />
             <AppsSection />
+            <HomeDepartmentsPreview onSeeAll={() => setActiveTab('departments')} />
+            <HomeBenefitsPreview onSeeAll={() => setActiveTab('benefits')} />
+            <HomeJoinCTA />
           </>
         )}
         {activeTab === 'departments' && <DepartmentsSection />}

@@ -124,6 +124,28 @@
     "subtitle": "The voice and executive arm of students at the Instituto Tecnológico de Buenos Aires.",
     "description": "We work to improve the university experience for every ITBA student, representing their interests, organizing activities, and building tools that make academic life easier."
   },
+  "home": {
+    "departments": {
+      "eyebrow": "Who powers CEITBA",
+      "title": "The teams behind every initiative",
+      "subtitle": "Six departments coordinate everything CEITBA does for the ITBA community: from technology and communications to sports and student representation.",
+      "seeAll": "Meet every department",
+      "tileAria": "View the {{name}} department"
+    },
+    "benefits": {
+      "eyebrow": "What we offer members",
+      "title": "Benefits designed for your time at ITBA",
+      "subtitle": "Access to sports, exclusive discounts, events, academic support and student representation. Filter by category in the Benefits tab.",
+      "seeAll": "See every benefit"
+    },
+    "cta": {
+      "eyebrow": "Get involved with CEITBA",
+      "title": "Want to be part of it?",
+      "body": "Whether you'd like to join a team, pitch a project, or raise a topic that matters to you — get in touch. CEITBA is open to the whole ITBA community.",
+      "contact": "Get in touch",
+      "follow": "Follow on Instagram"
+    }
+  },
   "apps": {
     "sectionTitle": "Our tools",
     "sectionSubtitle": "Platforms developed by the CEITBA IT team for the student community.",

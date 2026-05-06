@@ -124,6 +124,28 @@
     "subtitle": "La voz y el brazo ejecutor de los estudiantes del Instituto Tecnológico de Buenos Aires.",
     "description": "Trabajamos para mejorar la experiencia universitaria de cada estudiante ITBA, representando sus intereses, organizando actividades y gestionando herramientas que hacen la vida académica más fácil."
   },
+  "home": {
+    "departments": {
+      "eyebrow": "Quiénes hacemos al CEITBA",
+      "title": "Equipos detrás de cada iniciativa",
+      "subtitle": "Seis departamentos coordinan todo lo que el CEITBA hace por la comunidad ITBA: desde tecnología y comunicación hasta deportes y representación estudiantil.",
+      "seeAll": "Conocer todos los departamentos",
+      "tileAria": "Ver el departamento {{name}}"
+    },
+    "benefits": {
+      "eyebrow": "Lo que ofrecemos a los socios",
+      "title": "Beneficios pensados para tu paso por el ITBA",
+      "subtitle": "Acceso a deportes, descuentos exclusivos, eventos, apoyo académico y representación estudiantil. Filtrá por categoría dentro de la sección Beneficios.",
+      "seeAll": "Ver todos los beneficios"
+    },
+    "cta": {
+      "eyebrow": "Sumate al CEITBA",
+      "title": "¿Querés ser parte?",
+      "body": "Si te interesa formar parte de un equipo, proponer un proyecto o tenés algún tema que te gustaría llevar adelante, escribinos. El CEITBA está abierto a toda la comunidad ITBA.",
+      "contact": "Escribinos",
+      "follow": "Seguinos en Instagram"
+    }
+  },
   "apps": {
     "sectionTitle": "Nuestras herramientas",
     "sectionSubtitle": "Plataformas desarrolladas por el equipo IT de CEITBA para la comunidad estudiantil.",
