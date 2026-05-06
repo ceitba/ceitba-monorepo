@@ -11,6 +11,8 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, UserFoll
 
     List<UserFollow> findByUserId(UUID userId);
 
+    List<UserFollow> findByOrganizationOrderByCreatedAtDesc(String organization);
+
     boolean existsByUserIdAndOrganization(UUID userId, String organization);
 
     long countByOrganization(String organization);

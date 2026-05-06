@@ -3,7 +3,9 @@ package org.ceitba.api.web.news;
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.news.UserFollowRepository;
+import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.news.OrganizationService;
+import org.ceitba.api.web.news.dto.FollowerResponse;
 import org.ceitba.api.web.news.dto.OrganizationRequest;
 import org.ceitba.api.web.news.dto.OrganizationResponse;
 import org.springframework.http.HttpStatus;
@@ -27,11 +29,14 @@ public class OrganizationController {
 
     private final OrganizationService service;
     private final UserFollowRepository followRepo;
+    private final FollowService followService;
 
     public OrganizationController(OrganizationService service,
-                                   UserFollowRepository followRepo) {
+                                   UserFollowRepository followRepo,
+                                   FollowService followService) {
         this.service = service;
         this.followRepo = followRepo;
+        this.followService = followService;
     }
 
     @GetMapping
@@ -78,6 +83,19 @@ public class OrganizationController {
     public ResponseEntity<Void> delete(@PathVariable String slug) {
         service.delete(slug);
         return ResponseEntity.noContent().build();
+    }
+
+    // Followers panel: org admins see who follows their own org, staff sees
+    // anyone's. Mirrors the `canEditOrg` rule used by PATCH so the same set
+    // of people who can edit the profile can read the audience.
+    @GetMapping("/{slug}/followers")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canEditOrg(#slug, authentication)")
+    public Map<String, Object> listFollowers(@PathVariable String slug) {
+        List<FollowerResponse> followers = followService.listFollowers(slug);
+        return Map.of(
+            "data",  followers,
+            "count", (long) followers.size()
+        );
     }
 
     private OrganizationResponse toResponse(Organization org) {
