@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.ceitba.api.service.user.UserService;
+import org.ceitba.api.web.news.dto.PageResponse;
 import org.ceitba.api.web.user.dto.CreateUserRequest;
 import org.ceitba.api.web.user.dto.UserResponse;
 import org.springframework.http.HttpStatus;
@@ -14,10 +15,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 // All endpoints require ROLE_STAFF. Self-service signup is NOT supported —
@@ -48,9 +49,18 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "List all users (STAFF only)")
-    public List<UserResponse> getAllUsers() {
-        return userService.getAll();
+    @Operation(summary = "List users with optional q/organization filter, sort, and pagination (STAFF only)")
+    public PageResponse<UserResponse> getAllUsers(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String organization,
+            @RequestParam(defaultValue = "newest") String sort,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit) {
+        var result = userService.findPaged(q, organization, sort, page, limit);
+        return new PageResponse<>(
+            result.getContent(),
+            new PageResponse.Meta(result.getTotalElements(), page, limit)
+        );
     }
 
     @GetMapping("/{id}")

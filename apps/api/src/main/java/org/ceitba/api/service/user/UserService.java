@@ -10,11 +10,13 @@ import org.ceitba.api.repository.news.UserOrganizationRepository;
 import org.ceitba.api.web.user.dto.CreateUserRequest;
 import org.ceitba.api.web.user.dto.UserResponse;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -60,11 +62,24 @@ public class UserService {
         }
     }
 
+    // Paginated/filtered variant for the admin Manage Users view. `q` is
+    // matched against name OR email (case-insensitive substring); `organization`
+    // narrows to that org's members; `sort` is the only public knob — the rest
+    // (offset, limit) come from the page params. The toResponse mapping stays
+    // N+1, but it's now bounded by `limit` instead of the whole user table.
     @Transactional(readOnly = true)
-    public List<UserResponse> getAll() {
-        // N+1 across staff + memberships is fine for the admin user list:
-        // it's gated by ROLE_STAFF, called rarely, and the user table is small.
-        return userRepository.findAll().stream().map(this::toResponse).toList();
+    public Page<UserResponse> findPaged(String q, String organization, String sort, int page, int limit) {
+        // Normalize to a non-null lowercase string — see UserRepository.findFiltered
+        // for why null binds blow up under Postgres + LIKE.
+        String normalizedQ = (q == null) ? "" : q.trim().toLowerCase();
+        String normalizedOrg = (organization == null || organization.isBlank()) ? null : organization;
+        Sort jpaSort = "oldest".equalsIgnoreCase(sort)
+            ? Sort.by(Sort.Direction.ASC, "createdAt")
+            : Sort.by(Sort.Direction.DESC, "createdAt");
+        return userRepository
+            .findFiltered(normalizedQ, normalizedOrg,
+                PageRequest.of(Math.max(page - 1, 0), Math.min(Math.max(limit, 1), 100), jpaSort))
+            .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

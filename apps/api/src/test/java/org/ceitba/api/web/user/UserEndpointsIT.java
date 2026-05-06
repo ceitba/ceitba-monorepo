@@ -1,8 +1,11 @@
 package org.ceitba.api.web.user;
 
 import org.ceitba.api.domain.Career;
+import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.CareerRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.repository.news.OrganizationRepository;
+import org.ceitba.api.repository.news.UserOrganizationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,9 +46,13 @@ class UserEndpointsIT {
     @Autowired MockMvc mvc;
     @Autowired UserRepository userRepository;
     @Autowired CareerRepository careerRepository;
+    @Autowired OrganizationRepository organizationRepository;
+    @Autowired UserOrganizationRepository userOrganizationRepository;
 
     @BeforeEach
     void seed() {
+        userOrganizationRepository.deleteAll();
+        organizationRepository.deleteAll();
         userRepository.deleteAll();
         careerRepository.deleteAll();
         careerRepository.save(new Career("S", "Sistemas"));
@@ -154,8 +161,79 @@ class UserEndpointsIT {
 
         mvc.perform(get("/v1/users").with(staff()))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].email").value("alice@itba.edu.ar"));
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].email").value("alice@itba.edu.ar"))
+            .andExpect(jsonPath("$.meta.total").value(1))
+            .andExpect(jsonPath("$.meta.page").value(1))
+            .andExpect(jsonPath("$.meta.limit").value(20));
+    }
+
+    @Test
+    void listUsersSupportsSearchSortAndPagination() throws Exception {
+        // Seed three users in a deterministic createdAt order: Alice → Bob → Carol.
+        for (var u : new String[][] {
+                {"alice@itba.edu.ar", "Alice"},
+                {"bob@itba.edu.ar",   "Bob"},
+                {"carol@itba.edu.ar", "Carol"} }) {
+            mvc.perform(post("/v1/users/create").with(staff())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"" + u[0] + "\",\"name\":\"" + u[1] + "\"}"))
+                .andExpect(status().isCreated());
+        }
+
+        // q matches name OR email, case-insensitive substring.
+        mvc.perform(get("/v1/users?q=ALI").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].email").value("alice@itba.edu.ar"));
+
+        // sort=oldest puts the earliest createdAt first.
+        mvc.perform(get("/v1/users?sort=oldest").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[0].email").value("alice@itba.edu.ar"))
+            .andExpect(jsonPath("$.data[2].email").value("carol@itba.edu.ar"));
+
+        // sort=newest (default) reverses it.
+        mvc.perform(get("/v1/users?sort=newest").with(staff()))
+            .andExpect(jsonPath("$.data[0].email").value("carol@itba.edu.ar"));
+
+        // limit + page slice the result. limit=2,page=2 in newest order → just Alice.
+        mvc.perform(get("/v1/users?sort=newest&page=2&limit=2").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].email").value("alice@itba.edu.ar"))
+            .andExpect(jsonPath("$.meta.total").value(3))
+            .andExpect(jsonPath("$.meta.page").value(2))
+            .andExpect(jsonPath("$.meta.limit").value(2));
+    }
+
+    @Test
+    void listUsersFiltersByOrganization() throws Exception {
+        organizationRepository.save(new Organization("ceitba", "CEITBA", "CEITBA"));
+
+        for (var u : new String[][] {
+                {"alice@itba.edu.ar", "Alice"},
+                {"bob@itba.edu.ar",   "Bob"} }) {
+            mvc.perform(post("/v1/users/create").with(staff())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"" + u[0] + "\",\"name\":\"" + u[1] + "\"}"))
+                .andExpect(status().isCreated());
+        }
+        var alice = userRepository.findByEmail("alice@itba.edu.ar").orElseThrow();
+        mvc.perform(post("/v1/users/" + alice.getId() + "/organizations").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"slug\":\"ceitba\",\"role\":\"member\"}"))
+            .andExpect(status().isCreated());
+
+        mvc.perform(get("/v1/users?organization=ceitba").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].email").value("alice@itba.edu.ar"));
+
+        mvc.perform(get("/v1/users?organization=does-not-exist").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(0))
+            .andExpect(jsonPath("$.meta.total").value(0));
     }
 
     @Test
