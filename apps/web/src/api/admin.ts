@@ -29,8 +29,28 @@ export interface StaffGrant {
   end: string
 }
 
-export function fetchUsers(): Promise<AdminUser[]> {
-  return apiGet('/users')
+export interface UsersPage {
+  data: AdminUser[]
+  meta: { total: number; page: number; limit: number }
+}
+
+export interface FetchUsersParams {
+  page?: number
+  limit?: number
+  q?: string
+  sort?: 'newest' | 'oldest'
+  organization?: string
+}
+
+export function fetchUsers(params: FetchUsersParams = {}): Promise<UsersPage> {
+  const qs = new URLSearchParams()
+  if (params.page)         qs.set('page',         String(params.page))
+  if (params.limit)        qs.set('limit',        String(params.limit))
+  if (params.q)            qs.set('q',            params.q)
+  if (params.sort)         qs.set('sort',         params.sort)
+  if (params.organization) qs.set('organization', params.organization)
+  const suffix = qs.toString() ? `?${qs}` : ''
+  return apiGet<UsersPage>(`/users${suffix}`)
 }
 
 export function fetchOrganizations(): Promise<OrganizationSummary[]> {

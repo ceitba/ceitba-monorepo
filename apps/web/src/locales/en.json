@@ -88,7 +88,16 @@
       "staffOn": "STAFF",
       "staffOff": "Make STAFF",
       "addOrg": "+ organization",
-      "noOrgs": "—"
+      "noOrgs": "—",
+      "searchPlaceholder": "Search by name or email…",
+      "sort": {
+        "newest": "Newest first",
+        "oldest": "Oldest first"
+      },
+      "filterAllOrgs": "All organizations",
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} users",
+      "prev": "‹ Prev",
+      "next": "Next ›"
     }
   },
   "profile": {

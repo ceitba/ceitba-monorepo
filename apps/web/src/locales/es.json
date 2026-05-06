@@ -88,7 +88,16 @@
       "staffOn": "STAFF",
       "staffOff": "Asignar STAFF",
       "addOrg": "+ organización",
-      "noOrgs": "—"
+      "noOrgs": "—",
+      "searchPlaceholder": "Buscar por nombre o email…",
+      "sort": {
+        "newest": "Más recientes",
+        "oldest": "Más antiguos"
+      },
+      "filterAllOrgs": "Todas las organizaciones",
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} usuarios",
+      "prev": "‹ Anterior",
+      "next": "Siguiente ›"
     }
   },
   "profile": {
