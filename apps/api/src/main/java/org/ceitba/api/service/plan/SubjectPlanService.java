@@ -59,7 +59,10 @@ public class SubjectPlanService {
             throw new ResourceNotFoundException("Plan", planId);
         }
 
-        var commissions = commissionRepository.findAll();
+        // findAllWithTimes hydrates the times collection in the same query;
+        // c.getTimes() in the loop below would otherwise trigger N+1 selects
+        // on commission_time (1 per commission, ~1k+ on a full plan reload).
+        var commissions = commissionRepository.findAllWithTimes();
 
         var organized = new LinkedHashMap<String, Map<String, Map<String, List<OrganizedSubjectsResponse.SubjectDetail>>>>();
         for (var sp : subjectPlans) {
