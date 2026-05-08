@@ -126,7 +126,9 @@ public class SecurityConfig {
                     "/v1/staff-members",
                     "/v1/staff-members/years",
                     "/v1/benefits",
-                    "/v1/benefit-cards"
+                    "/v1/benefit-cards",
+                    // Public read of share-session by token; writes are JWT-gated.
+                    "/v1/share/sessions/*"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
