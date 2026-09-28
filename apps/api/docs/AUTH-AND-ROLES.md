@@ -319,7 +319,7 @@ REVIEW_LOGIN_EMAIL=appreview@example.com
 REVIEW_LOGIN_PASSWORD_HASH='$2a$12$...'
 ```
 
-Generate the hash with `htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n' | sed 's/^\$2y/$2a/'` (no `htpasswd`? prefix `docker run --rm httpd:2.4-alpine`). The app refuses to start if the hash is not a bcrypt hash, and logs a `WARN` at startup while review login is on. Leave either variable empty to disable it (the default). **Disable it whenever no store review is pending**: with it off, the endpoint 404s, the review account's refresh tokens stop working (`403 unauthorized` on the next refresh, which revokes the family) and its still-unexpired access JWTs are rejected by the allowlist gate (`403`) right away. Rotate the password (new hash) for each review round and put the plain password only in App Store Connect / Play Console review notes.
+Generate the hash with `htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'` (no `htpasswd`? prefix `docker run --rm httpd:2.4-alpine`); `$2a$`, `$2b$` and `$2y$` hashes are all accepted. At startup the app logs one line: `INFO Review login: disabled`, `WARN Review login: ENABLED ...`, or `ERROR Review login: MISCONFIGURED ...` when only one of the two variables is set or the hash is not a well-formed bcrypt string (60 chars, cost 04-31; surrounding whitespace is trimmed, nothing else). A misconfiguration never stops the API: review login is then treated as disabled (404, sessions not admitted) and the error says what to check, without printing the hash. Leave both variables empty to disable it (the default). **Disable it whenever no store review is pending**: with it off, the endpoint 404s, the review account's refresh tokens stop working (`403 unauthorized` on the next refresh, which revokes the family) and its still-unexpired access JWTs are rejected by the allowlist gate (`403`) right away. Rotate the password (new hash) for each review round and put the plain password only in App Store Connect / Play Console review notes.
 
 **What the account is.** A normal **USER**, nothing more:
 
@@ -404,6 +404,7 @@ Guards:
 | Review login: wrong password / other email / blank → 401, success = mobile token shape, USER only (not staff/moderator), allowlist admits only that email, Google login for it still rejected, refresh, no API keys, own rate-limit bucket | `ReviewLoginIT` |
 | Review login disabled → 404 (even with an empty body) | `ReviewLoginDisabledIT` |
 | Review login always runs one bcrypt check (unknown email, wrong/overlong/missing password) | `ReviewLoginServiceTest` |
+| A mangled review hash (unquoted in `.env`, trailing `%`, truncated) disables review login instead of failing startup | `ReviewLoginServiceTest`, `ReviewLoginMisconfiguredIT` |
 | Review email admitted by the session allowlist only while review login is enabled | `SessionAllowlistTest` |
 
 

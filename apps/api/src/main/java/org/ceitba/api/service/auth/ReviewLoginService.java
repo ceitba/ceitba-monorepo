@@ -15,12 +15,14 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 // Email + password gate for the single App Store / Play review account
 // (POST /v1/auth/review-login). Everyone else signs in with Google.
 //
 //   * Disabled (404) unless auth.review-login.email and .password-hash are set.
+//   * A bad value (only one of them set, or a hash that is not a well-formed
+//     bcrypt string) never stops the app from starting: it is logged once as
+//     an ERROR and review login stays disabled.
 //   * The password is only ever stored as a bcrypt hash.
 //   * Constant-time-ish: every attempt runs exactly one bcrypt check, against
 //     the real hash when the email matches and against a dummy hash of the
@@ -36,8 +38,6 @@ public class ReviewLoginService {
 
     static final String DISPLAY_NAME = "App Review";
 
-    // $2a$/$2b$/$2y$, two-digit cost, 53 chars of salt + hash.
-    private static final Pattern BCRYPT = Pattern.compile("^\\$2[aby]?\\$(\\d\\d)\\$[./0-9A-Za-z]{53}$");
     // bcrypt ignores everything past 72 bytes; longer inputs are rejected.
     private static final int MAX_PASSWORD_BYTES = 72;
 
@@ -49,7 +49,7 @@ public class ReviewLoginService {
 
     @Autowired
     public ReviewLoginService(ReviewLoginProperties props, UserProvisioningService provisioning) {
-        this(props, provisioning, new BCryptPasswordEncoder(costOf(props)));
+        this(props, provisioning, new BCryptPasswordEncoder(props.bcryptCost(10)));
     }
 
     ReviewLoginService(ReviewLoginProperties props, UserProvisioningService provisioning,
@@ -57,21 +57,44 @@ public class ReviewLoginService {
         this.props        = props;
         this.provisioning = provisioning;
         this.encoder      = encoder;
-        if (props.enabled()) {
-            if (!BCRYPT.matcher(props.passwordHash()).matches()) {
-                throw new IllegalStateException(
-                    "auth.review-login.password-hash (REVIEW_LOGIN_PASSWORD_HASH) must be a bcrypt hash ($2a$...)");
+        switch (props.status()) {
+            case ENABLED -> {
+                byte[] random = new byte[32];
+                new SecureRandom().nextBytes(random);
+                this.dummyHash     = encoder.encode(Base64.getEncoder().encodeToString(random));
+                this.expectedEmail = sha256(props.email());
+                log.warn("Review login: ENABLED for {}. Unset REVIEW_LOGIN_EMAIL / REVIEW_LOGIN_PASSWORD_HASH "
+                    + "when the app is not under store review.", props.email());
             }
-            byte[] random = new byte[32];
-            new SecureRandom().nextBytes(random);
-            this.dummyHash     = encoder.encode(Base64.getEncoder().encodeToString(random));
-            this.expectedEmail = sha256(props.email());
-            log.warn("Review login is ENABLED for {}. Unset REVIEW_LOGIN_EMAIL / REVIEW_LOGIN_PASSWORD_HASH "
-                + "when the app is not under store review.", props.email());
-        } else {
-            this.dummyHash     = null;
-            this.expectedEmail = null;
+            case MISCONFIGURED -> {
+                this.dummyHash     = null;
+                this.expectedEmail = null;
+                log.error("Review login: MISCONFIGURED, running with it DISABLED (POST /v1/auth/review-login -> 404). {}",
+                    misconfiguration(props));
+            }
+            default -> {
+                this.dummyHash     = null;
+                this.expectedEmail = null;
+                log.info("Review login: disabled");
+            }
         }
+    }
+
+    // Never includes the hash itself, only its length.
+    static String misconfiguration(ReviewLoginProperties props) {
+        if (props.email() == null) {
+            return "REVIEW_LOGIN_PASSWORD_HASH is set but REVIEW_LOGIN_EMAIL is empty: set both, or neither.";
+        }
+        if (props.passwordHash() == null) {
+            return "REVIEW_LOGIN_EMAIL is set but REVIEW_LOGIN_PASSWORD_HASH is empty (if it is set in .env, "
+                + "docker compose probably expanded its `$` parts to nothing): set both, or neither.";
+        }
+        return "REVIEW_LOGIN_PASSWORD_HASH is not a well-formed bcrypt hash (expected 60 chars like "
+            + "$2a$12$<53 chars>, got " + props.passwordHash().length() + " chars). Likely cause: in .env it "
+            + "must be wrapped in SINGLE quotes (REVIEW_LOGIN_PASSWORD_HASH='$2a$12$...'), otherwise docker "
+            + "compose interpolates its `$...` parts as variables; also check for trailing characters "
+            + "(e.g. a `%` pasted from a zsh prompt). Verify with (must print 1): "
+            + "docker compose config | grep -cE 'REVIEW_LOGIN_PASSWORD_HASH: \\$\\$2[aby]\\$\\$[0-9]{2}\\$\\$[./A-Za-z0-9]{53}$'";
     }
 
     // Returns the (JIT-provisioned) review user, or throws
@@ -95,14 +118,6 @@ public class ReviewLoginService {
         }
         log.info("Review account signed in");
         return provisioning.findOrCreate(props.email(), DISPLAY_NAME, null, null);
-    }
-
-    private static int costOf(ReviewLoginProperties props) {
-        if (props.enabled()) {
-            var m = BCRYPT.matcher(props.passwordHash());
-            if (m.matches()) return Integer.parseInt(m.group(1));
-        }
-        return 10;
     }
 
     private static byte[] sha256(String s) {

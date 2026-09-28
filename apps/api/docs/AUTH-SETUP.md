@@ -240,16 +240,31 @@ Apple / Google reviewers get an email + password login instead of Google Sign-In
 1. Pick an email (any domain) and a strong password, and hash it:
 
    ```bash
-   htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n' | sed 's/^\$2y/$2a/'
-   # or: docker run --rm httpd:2.4-alpine htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n' | sed 's/^\$2y/$2a/'
+   htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'
+   # or: docker run --rm httpd:2.4-alpine htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'
    ```
 
-2. Set on the server's `.env` (single quotes around the hash: it contains `$`), then `docker compose up -d ceitba-api`:
+   `$2a$`, `$2b$` and `$2y$` hashes are all accepted. The hash is exactly 60 characters. **zsh pitfall:** because the command prints no final newline, zsh shows a highlighted `%` right after the hash; it is not part of the hash, do not copy it.
+
+2. Set on the server's `.env`, then `docker compose up -d ceitba-api`:
 
    ```bash
    REVIEW_LOGIN_EMAIL=appreview@example.com
    REVIEW_LOGIN_PASSWORD_HASH='$2a$12$...'
    ```
+
+   > **Always use single quotes around the hash.** It contains `$`, and docker compose interpolates unquoted (and double-quoted) values: the `$<salt+hash>` part is read as a variable and replaced with nothing, silently corrupting the hash.
+
+   Check what the container will actually get before (re)starting it. `docker compose config` prints every `$` doubled, so a good value starts with `$$2a$$12$$` (or `$$2b$$`/`$$2y$$` and your cost); the second command checks the whole 60-char shape without printing the hash and must print `1`:
+
+   ```bash
+   docker compose config | grep -oE 'REVIEW_LOGIN_PASSWORD_HASH: .{0,10}'
+   docker compose config | grep -cE 'REVIEW_LOGIN_PASSWORD_HASH: \$\$2[aby]\$\$[0-9]{2}\$\$[./A-Za-z0-9]{53}$'
+   ```
+
+   The prefix alone does not catch everything: an unquoted hash still starts with `$$2a$$12` (compose keeps `$2a`, `$12` since they are not valid variable names) but loses the `$salt...` part, which compose expands as a variable; a trailing `%` also only shows up in the full-shape check.
+
+   After the restart the log has `WARN Review login: ENABLED for ...`. A bad value (hash not a well-formed bcrypt string, or only one of the two variables set) does **not** take the API down: it logs `ERROR Review login: MISCONFIGURED ...` with the likely cause (without printing the hash) and review login stays disabled (404) until it is fixed.
 
 3. Put the email and plain password in the App Store Connect / Play Console review notes.
 4. After the review, blank both variables and recreate the container: the endpoint 404s and the account's sessions die on their next refresh.
