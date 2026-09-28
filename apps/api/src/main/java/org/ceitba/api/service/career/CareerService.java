@@ -3,10 +3,13 @@ package org.ceitba.api.service.career;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.Career;
+import org.ceitba.api.domain.Plan;
 import org.ceitba.api.repository.CareerRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.web.career.dto.CareerResponse;
 import org.ceitba.api.web.career.dto.CreateCareerRequest;
+import org.ceitba.api.web.career.dto.CreatePlanRequest;
+import org.ceitba.api.web.career.dto.PlanResponse;
 import org.ceitba.api.web.career.dto.UpdateCareerRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
@@ -85,6 +88,29 @@ public class CareerService {
         // hit GET /v1/careers/plans afterwards. Update returns a thin echo,
         // matching the NestJS shape.
         return new CareerResponse(saved.getId(), saved.getName(), List.of());
+    }
+
+    // Adds a plan to a career without a migration. The ITBA gateway has no
+    // endpoint that lists careers or plans (docs/ITBA-GATEWAY.md), and the
+    // entrance-program plan codes change every year, so staff register new
+    // plan codes here; the scheduled sync then pulls their subjects.
+    // Plan ids are global (plan.id is the PK), so an id already used by any
+    // career is a conflict.
+    @Transactional
+    public PlanResponse addPlan(String careerId, CreatePlanRequest req) {
+        var career = careerRepository.findById(careerId)
+            .orElseThrow(() -> new ResourceNotFoundException("Career", careerId));
+        var planId = req.id().trim();
+        if (planRepository.existsById(planId)) {
+            throw new ResourceAlreadyExistsException("Plan", planId);
+        }
+        var name = req.name() == null || req.name().isBlank() ? planId : req.name().trim();
+        try {
+            var saved = planRepository.saveAndFlush(new Plan(planId, career, name));
+            return new PlanResponse(saved.getId(), career.getId(), saved.getName());
+        } catch (DataIntegrityViolationException race) {
+            throw new ResourceAlreadyExistsException("Plan", planId);
+        }
     }
 
     // GlobalExceptionHandler already maps DataIntegrityViolationException to a

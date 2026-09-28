@@ -4,17 +4,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.ceitba.api.common.exception.ExternalApiException;
 import org.ceitba.api.common.exception.FeatureNotConfiguredException;
+import org.ceitba.api.common.exception.InvalidStateException;
+import org.ceitba.api.common.exception.RateLimitExceededException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.service.auth.InvalidTokenException;
 import org.ceitba.api.service.auth.LoginRejectedException;
+import org.ceitba.api.service.studygroup.StudyGroupConflictException;
+import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.LastActiveStaffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -48,6 +53,29 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "LastActiveStaff", ex.getMessage(), req);
     }
 
+    @ExceptionHandler(StudyGroupConflictException.class)
+    public ResponseEntity<ErrorResponse> handleStudyGroupConflict(StudyGroupConflictException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, ex.reason().code(), ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(StudyGroupForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleStudyGroupForbidden(StudyGroupForbiddenException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "AccessDenied", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(InvalidStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidState(InvalidStateException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "InvalidState", ex.getMessage(), req);
+    }
+
+    // Same body and headers RateLimitFilter writes for per-IP limits.
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimited(RateLimitExceededException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", Long.toString(ex.retryAfterSeconds()))
+            .body(ErrorResponse.of("TooManyRequests", ex.getMessage(), req.getRequestURI()));
+    }
+
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleDomainValidation(ValidationException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "ValidationError", ex.getMessage(), req);
@@ -69,6 +97,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "BadRequest", ex.getMessage(), req);
+    }
+
+    // Unparseable JSON or a value Jackson can't bind (e.g. an unknown enum
+    // constant). Previously fell through to the catch-all 500. The parser's
+    // message names internal classes, so it isn't echoed back.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "BadRequest", "Malformed or invalid request body", req);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

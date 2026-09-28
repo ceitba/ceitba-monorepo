@@ -76,7 +76,8 @@ class AccountDeletionIT {
 
     @BeforeEach
     void seed() {
-        jdbc.execute("TRUNCATE public.\"user\", public.subject, public.careers, public.organizations CASCADE");
+        jdbc.execute("TRUNCATE public.\"user\", public.subject, public.careers, public.organizations, "
+            + "public.deleted_firebase_accounts CASCADE");
         alice = users.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));
         bob   = users.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));
 
@@ -98,6 +99,14 @@ class AccountDeletionIT {
         jdbc.update("""
             INSERT INTO public.share_sessions (token, creator_user_id) VALUES (?, ?)
             """, u.toString().substring(0, 16), u);
+        jdbc.update("""
+            INSERT INTO public.study_groups (owner_id, title, subject_id, type, locations, due_at)
+            VALUES (?, 'g', '93.41', 'GUIAS', ARRAY['SDR'], now() + interval '1 day')
+            """, u);
+        jdbc.update("""
+            INSERT INTO public.study_group_participants (group_id, user_id)
+            SELECT id, ? FROM public.study_groups WHERE owner_id = ?
+            """, u, u);
         jdbc.update("INSERT INTO wiki.subject_difficulty (subject_id, user_id, value, updated_at) VALUES ('93.41', ?, 3, now())", u);
         jdbc.update("INSERT INTO wiki.subject_bookmarks (subject_id, user_id) VALUES ('93.41', ?)", u);
         jdbc.update("INSERT INTO wiki.\"Subject_Bookmarks\" (subject_id, user_id) VALUES ('93.41', ?)", u);
@@ -106,6 +115,8 @@ class AccountDeletionIT {
             VALUES (?, 'IT', now() - interval '1 day', now() + interval '1 day')
             """, u);
         refreshTokens.issueNewFamily(u, "device");
+        jdbc.update("INSERT INTO public.user_devices (token, user_id, platform) VALUES (?, ?, 'ios')",
+            "tok-" + u, u);
     }
 
     private MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder req, User u) {
@@ -120,11 +131,14 @@ class AccountDeletionIT {
     private void assertPersonalDataGone(UUID u) {
         assertThat(count("public.api_keys", "user_id", u)).isZero();
         assertThat(count("public.refresh_tokens", "user_id", u)).isZero();
+        assertThat(count("public.user_devices", "user_id", u)).isZero();
         assertThat(count("public.user_follows", "user_id", u)).isZero();
         assertThat(count("public.user_organizations", "user_id", u)).isZero();
         assertThat(count("public.saved_schedules", "user_id", u)).isZero();
         assertThat(count("public.share_sessions", "creator_user_id", u)).isZero();
         assertThat(count("public.ceitba_staff", "user_id", u)).isZero();
+        assertThat(count("public.study_groups", "owner_id", u)).isZero();
+        assertThat(count("public.study_group_participants", "user_id", u)).isZero();
         assertThat(count("wiki.subject_difficulty", "user_id", u)).isZero();
         assertThat(count("wiki.subject_bookmarks", "user_id", u)).isZero();
         assertThat(count("wiki.\"Subject_Bookmarks\"", "user_id", u)).isZero();
@@ -133,9 +147,12 @@ class AccountDeletionIT {
     private void assertPersonalDataIntact(UUID u) {
         assertThat(count("public.api_keys", "user_id", u)).isEqualTo(1);
         assertThat(count("public.refresh_tokens", "user_id", u)).isEqualTo(1);
+        assertThat(count("public.user_devices", "user_id", u)).isEqualTo(1);
         assertThat(count("public.user_follows", "user_id", u)).isEqualTo(1);
         assertThat(count("public.saved_schedules", "user_id", u)).isEqualTo(1);
         assertThat(count("public.ceitba_staff", "user_id", u)).isEqualTo(1);
+        assertThat(count("public.study_groups", "owner_id", u)).isEqualTo(1);
+        assertThat(count("public.study_group_participants", "user_id", u)).isEqualTo(1);
         assertThat(count("wiki.subject_bookmarks", "user_id", u)).isEqualTo(1);
     }
 
@@ -238,6 +255,8 @@ class AccountDeletionIT {
         assertThat(users.findById(alice.getId())).isEmpty();
         assertThat(users.findByEmail("alice@itba.edu.ar")).isEmpty();
         assertPersonalDataGone(alice.getId());
+        // Not from the legacy app: nothing to remember.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM public.deleted_firebase_accounts", Integer.class)).isZero();
         assertThat(count("public.share_session_participants", "session_id", aliceSession)).isZero();
         assertThat(jdbc.queryForObject("SELECT created_by FROM public.articles WHERE id = 'a1'", UUID.class)).isNull();
 
@@ -247,6 +266,8 @@ class AccountDeletionIT {
 
     @Test
     void userWithSharedContributionsIsAnonymized() throws Exception {
+        // Linked by the Firestore import (B6): the legacy uid is personal data too.
+        jdbc.update("UPDATE public.\"user\" SET firebase_uid = 'legacy-uid-alice' WHERE id = ?", alice.getId());
         UUID note = UUID.randomUUID();
         jdbc.update("""
             INSERT INTO wiki.subject_note (id, subject_id, owner_name, link, uploader_id, updated_at)
@@ -271,7 +292,14 @@ class AccountDeletionIT {
         assertThat(tombstone.getName()).isNull();
         assertThat(tombstone.getGoogleSub()).isNull();
         assertThat(tombstone.getAvatarUrl()).isNull();
+        assertThat(tombstone.getFirebaseUid()).isNull();
         assertPersonalDataGone(alice.getId());
+        // The legacy uid is remembered (hashed) so the Firestore import never
+        // re-creates the account.
+        assertThat(users.isDeletedFirebaseAccount("legacy-uid-alice")).isTrue();
+        assertThat(users.isDeletedFirebaseAccount("legacy-uid-bob")).isFalse();
+        assertThat(jdbc.queryForList("SELECT firebase_uid_sha256 FROM public.deleted_firebase_accounts", String.class))
+            .singleElement().asString().hasSize(64).doesNotContain("legacy-uid-alice");
 
         // Shared note and Bob's vote on it survive; Alice's comment and the
         // votes on it, and her pending proposal, are gone.
@@ -282,6 +310,116 @@ class AccountDeletionIT {
         assertThat(count("wiki.subject_wiki_edit_proposal", "proposed_by", alice.getId())).isZero();
 
         assertPersonalDataIntact(bob.getId());
+    }
+
+    // Owned groups follow the owner-leave rule: a group with other members
+    // passes to the earliest remaining joiner (ties by user id), a group
+    // where the user was alone is deleted.
+    @Test
+    void deletionHandsOwnedStudyGroupsToTheEarliestJoiner() throws Exception {
+        User carol = users.save(new User(UUID.randomUUID(), "carol@itba.edu.ar", "Carol"));
+        UUID shared = jdbc.queryForObject(
+            "SELECT id FROM public.study_groups WHERE owner_id = ?", UUID.class, alice.getId());
+        jdbc.update("INSERT INTO public.study_group_participants (group_id, user_id, joined_at) "
+            + "VALUES (?, ?, now() + interval '2 hours')", shared, bob.getId());
+        jdbc.update("INSERT INTO public.study_group_participants (group_id, user_id, joined_at) "
+            + "VALUES (?, ?, now() + interval '1 hour')", shared, carol.getId());
+        UUID solo = jdbc.queryForObject("""
+            INSERT INTO public.study_groups (owner_id, title, subject_id, type, locations, due_at)
+            VALUES (?, 'solo', '93.41', 'AHORA', ARRAY['SDF'], now() + interval '1 day') RETURNING id
+            """, UUID.class, alice.getId());
+        jdbc.update("INSERT INTO public.study_group_participants (group_id, user_id) VALUES (?, ?)", solo, alice.getId());
+
+        mvc.perform(as(delete("/v1/me"), alice)).andExpect(status().isNoContent());
+
+        assertPersonalDataGone(alice.getId());
+        assertThat(jdbc.queryForObject("SELECT owner_id FROM public.study_groups WHERE id = ?", UUID.class, shared))
+            .isEqualTo(carol.getId());
+        assertThat(jdbc.queryForList("SELECT user_id FROM public.study_group_participants WHERE group_id = ?",
+            UUID.class, shared)).containsExactlyInAnyOrder(bob.getId(), carol.getId());
+        assertThat(count("public.study_groups", "id", solo)).isZero();
+        assertThat(count("public.study_groups", "owner_id", bob.getId())).isEqualTo(1);
+    }
+
+    // All B4-B6 streams at once: devices, study-group ownership and
+    // membership, and the proposals board (votes undone, comments
+    // tombstoned, approved proposals kept without author, the rest deleted,
+    // aliases removed). Bob's rows only change where Alice's votes/comments
+    // were counted on them.
+    @Test
+    void deletionCleansDevicesStudyGroupsAndProposalsTogether() throws Exception {
+        UUID bobGroup = jdbc.queryForObject(
+            "SELECT id FROM public.study_groups WHERE owner_id = ?", UUID.class, bob.getId());
+        jdbc.update("INSERT INTO public.study_group_participants (group_id, user_id) VALUES (?, ?)", bobGroup, alice.getId());
+
+        UUID approved = proposal(alice.getId(), "APPROVED");
+        UUID pending = proposal(alice.getId(), "PENDING");
+        UUID bobs = proposal(bob.getId(), "APPROVED");
+        alias(approved, alice.getId(), "AlfaRojo");
+        alias(approved, bob.getId(), "BetaAzul");
+        alias(pending, alice.getId(), "GammaVerde");
+        alias(bobs, bob.getId(), "DeltaGris");
+        alias(bobs, alice.getId(), "EtaNegro");
+        vote(approved, bob.getId(), "UP");
+        vote(bobs, alice.getId(), "DOWN");
+        UUID bobComment = comment(approved, bob.getId(), null, "buena idea");
+        UUID aliceReply = comment(approved, alice.getId(), bobComment, "gracias");
+        UUID aliceComment = comment(bobs, alice.getId(), null, "no me convence");
+
+        mvc.perform(as(delete("/v1/me"), alice)).andExpect(status().isNoContent());
+
+        assertThat(users.findById(alice.getId())).isEmpty();
+        assertPersonalDataGone(alice.getId());
+        assertThat(count("public.study_groups", "id", bobGroup)).isEqualTo(1);
+        assertThat(count("public.study_group_participants", "group_id", bobGroup)).isEqualTo(1);
+
+        assertThat(count("public.proposal", "id", pending)).isZero();
+        assertThat(jdbc.queryForMap("SELECT author_id, up_count, comment_count FROM public.proposal WHERE id = ?", approved))
+            .containsEntry("author_id", null).containsEntry("up_count", 1).containsEntry("comment_count", 1);
+        assertThat(jdbc.queryForMap("SELECT down_count, comment_count FROM public.proposal WHERE id = ?", bobs))
+            .containsEntry("down_count", 0).containsEntry("comment_count", 0);
+        for (UUID c : new UUID[] {aliceReply, aliceComment}) {
+            var row = jdbc.queryForMap("SELECT author_id, body, deleted_at FROM public.proposal_comment WHERE id = ?", c);
+            assertThat(row.get("author_id")).isNull();
+            assertThat(row.get("body")).isNull();
+            assertThat(row.get("deleted_at")).isNotNull();
+        }
+        assertThat(jdbc.queryForObject("SELECT body FROM public.proposal_comment WHERE id = ?", String.class, bobComment))
+            .isEqualTo("buena idea");
+        assertThat(count("public.proposal_alias", "user_id", alice.getId())).isZero();
+        assertThat(count("public.proposal_alias", "user_id", bob.getId())).isEqualTo(2);
+        assertThat(count("public.proposal_vote", "user_id", alice.getId())).isZero();
+        assertThat(count("public.proposal_vote", "user_id", bob.getId())).isEqualTo(1);
+
+        assertPersonalDataIntact(bob.getId());
+    }
+
+    private UUID proposal(UUID author, String status) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO public.proposal (id, author_id, title, description, topic, status)
+            VALUES (?, ?, 't', 'd', 'CEITBA', ?)
+            """, id, author, status);
+        return id;
+    }
+
+    private void alias(UUID proposal, UUID user, String alias) {
+        jdbc.update("INSERT INTO public.proposal_alias (proposal_id, user_id, alias) VALUES (?, ?, ?)", proposal, user, alias);
+    }
+
+    private void vote(UUID proposal, UUID user, String value) {
+        jdbc.update("INSERT INTO public.proposal_vote (proposal_id, user_id, value) VALUES (?, ?, ?)", proposal, user, value);
+        String column = value.equals("UP") ? "up_count" : "down_count";
+        jdbc.update("UPDATE public.proposal SET " + column + " = " + column + " + 1 WHERE id = ?", proposal);
+    }
+
+    private UUID comment(UUID proposal, UUID author, UUID parent, String body) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO public.proposal_comment (id, proposal_id, author_id, parent_id, body) VALUES (?, ?, ?, ?, ?)
+            """, id, proposal, author, parent, body);
+        jdbc.update("UPDATE public.proposal SET comment_count = comment_count + 1 WHERE id = ?", proposal);
+        return id;
     }
 
     @Test

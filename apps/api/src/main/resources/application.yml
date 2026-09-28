@@ -80,6 +80,13 @@ auth:
     path:      ${AUTH_COOKIE_PATH:/}
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
+# Root secret for keyed content hashes (service/crypto/ContentHmac): proposal
+# attachment keys and imported Firestore comment ids. Empty = derive from
+# AUTH_JWT_SECRET. Set it (32+ bytes, openssl rand -base64 32) so the JWT
+# secret can be rotated without changing those hashes.
+content:
+  hmac-secret: ${CONTENT_HMAC_SECRET:}
+
 itba:
   api:
     base-url: ${ITBA_API_BASE_URL:}
@@ -101,6 +108,25 @@ mobile-app:
   min-version: ${MOBILE_MIN_VERSION:0.0.0}
   latest-version: ${MOBILE_LATEST_VERSION:0.0.0}
   maintenance: ${MOBILE_MAINTENANCE:false}
+
+# Server-side push notifications through FCM (service/push). Service-account
+# key JSON (raw or base64) or a path to it; both empty = pushes disabled.
+push:
+  fcm:
+    service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
+    service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+
+# S3-compatible object storage (Cloudflare R2) for presigned uploads
+# (StorageProperties). Leave any of endpoint/bucket/keys/public URL empty to
+# disable uploads (sign endpoints answer 501).
+storage:
+  endpoint: ${R2_ENDPOINT:}
+  region: ${R2_REGION:auto}
+  bucket: ${R2_BUCKET:}
+  access-key-id: ${R2_ACCESS_KEY_ID:}
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  public-base-url: ${R2_PUBLIC_URL:}
+  presign-ttl: ${R2_PRESIGN_TTL:10m}
 
 # Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
 # instance. Paths are relative to the /api context path.
@@ -145,6 +171,20 @@ rate-limit:
         - /v1/me/profile/sync-from-sga
       capacity: ${RATE_LIMIT_SGA_SYNC_CAPACITY:60}
       period: ${RATE_LIMIT_SGA_SYNC_PERIOD:1m}
+  # Per authenticated user (service/ratelimit/UserRateLimiter), not per IP.
+  user-rules:
+    # POST /v1/proposals/attachments/sign-upload
+    proposal-attachments:
+      capacity: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:30}
+      period: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD:1h}
+    # POST /v1/proposals
+    proposals:
+      capacity: ${RATE_LIMIT_PROPOSALS_CAPACITY:10}
+      period: ${RATE_LIMIT_PROPOSALS_PERIOD:1h}
+    # POST /v1/proposals/{id}/comments
+    proposal-comments:
+      capacity: ${RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY:30}
+      period: ${RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD:10m}
 
 logging:
   level:

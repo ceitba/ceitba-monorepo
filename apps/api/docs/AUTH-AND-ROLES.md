@@ -11,7 +11,7 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 | **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`) |
 | **USER** | `Authorization: Bearer <jwt>` or the web session cookie (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys, `POST /v1/auth/logout-all`, `DELETE /v1/me` (JWT session only, not API keys) |
 | **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER |
-| **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (none yet; proposals and study groups will use it) |
+| **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (`/v1/staff/proposals/**`, editing/deleting any study group) |
 | **STAFF** | Same JWT or API key, plus an active `ceitba_staff` row | Everything USER and MODERATOR can do, **plus** assign/revoke STAFF and MODERATOR on others |
 | **SYNC** (machine, not human) | `X-Api-Key: <AUTH_SYNC_API_KEY>` | Trigger `/v1/sync/**` jobs |
 
@@ -245,6 +245,7 @@ authorizeHttpRequests() — per-route policy from SecurityConfig
    POST /v1/auth/google/mobile, /refresh, /logout        -> permitAll (token endpoints)
    GET  /v1/app/config                                   -> permitAll
    /v1/sync/**               -> hasRole("SYNC")
+   /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
    /v1/staff/**              -> hasRole("STAFF")   (incl. /v1/staff/moderators)
    anyRequest()              -> authenticated() AND email in allowlist (JWT only)
    │
@@ -292,14 +293,18 @@ Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`ser
 | Data | Policy |
 |---|---|
 | `refresh_tokens`, `api_keys` | Deleted (all sessions and keys revoked) |
+| `user_devices` | Deleted (no more push notifications) |
 | `ceitba_staff`, `user_follows`, `user_organizations` | Deleted |
 | `saved_schedules`, `share_session_participants`, `share_sessions` created by the user (with everyone's participation in them) | Deleted |
+| `study_groups` owned by the user | Passed to the earliest remaining joiner (as when an owner leaves); deleted only when the user was the sole member |
+| The user's `study_group_participants` rows | Deleted |
 | `wiki.subject_difficulty`, all wiki votes cast by the user, both bookmark tables | Deleted |
 | `wiki.subject_comment` by the user, and all votes on those comments | Deleted (personal free text) |
 | `wiki.subject_wiki_edit_proposal` with status `PENDING` | Deleted |
 | `articles.created_by`, `news_events.created_by` | Set to `NULL` (content belongs to the organization) |
 | `wiki.subject_note`, `wiki.career_note`, `wiki.subject_wiki_page.updated_by`, reviewed edit proposals | Kept: shared study material with a NOT NULL author FK |
 | `user` row | Hard-deleted when nothing above is kept; otherwise **anonymized**: every personal column cleared and the email replaced by `deleted-<id>@deleted.invalid` |
+| Legacy Firebase uid (`user.firebase_uid`, set by the Firestore import) | Its SHA-256 goes into `deleted_firebase_accounts`, so a re-run of the Firestore import skips the account instead of re-creating it |
 
 The response clears the web session cookie. Signing in again with the same Google account creates a new, unrelated user.
 
@@ -345,6 +350,7 @@ Guards:
 | MODERATOR grant / revoke / re-grant, audit row kept, 404/409 | `ModeratorIT` |
 | USER and MODERATOR cannot manage moderator grants | `ModeratorIT.userAndModeratorCannotManageGrants` |
 | `moderator` flag on `/v1/auth/me` | `AuthMeIT.meModeratorFlagFollowsActiveGrant`, `ModeratorIT` |
+| Proposal moderation open to MODERATOR, 403 for USER and non-allowlisted, MODERATOR is not STAFF elsewhere | `StaffProposalControllerIT` |
 
 
 ---

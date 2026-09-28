@@ -49,6 +49,27 @@ any of them.
    ```
    Do this only after the cutover (PR 11 of MIGRATION.md) is complete and stable.
 
+## Legacy Firestore app import (mobile app cut-over)
+
+Run once, when the new mobile app replaces the Firestore-backed one. Details
+in `scripts/firestore-export/README.md`.
+
+1. **Prerequisites:** R2 storage configured on the API (`R2_*`), careers/plans
+   loaded, the `convenios` benefit category (V21).
+2. **Export with the attachment copy step** (cut-over prerequisite): run
+   `node export.mjs --copy-attachments` with the API's `R2_*` values. It copies
+   every proposal attachment from Firebase Storage into the R2 bucket
+   (`proposals/legacy/…`) and writes the R2 keys into the export. The importer
+   refuses raw Firebase Storage URLs (each is dropped with a warning), so no
+   imported attachment depends on the legacy Firebase project, and Firebase
+   Storage can be retired right after the import. The script exits non-zero
+   if any attachment could not be copied: fix and re-run it before importing.
+3. **Dry-run, read the report, import.** Keep the content-hash root secret
+   unchanged between import runs (`CONTENT_HMAC_SECRET`, or `AUTH_JWT_SECRET`
+   when that is unset): imported comment ids are keyed on it, and a re-run
+   under a rotated secret would duplicate every legacy comment.
+4. Delete the export file (it holds personal data).
+
 ## Local dev setup
 
 ```sh

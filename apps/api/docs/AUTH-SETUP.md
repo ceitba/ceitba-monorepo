@@ -10,6 +10,7 @@ Read [AUTH-AND-ROLES.md](AUTH-AND-ROLES.md) for the access-control model.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AUTH_JWT_SECRET` | **Yes** | — | Base64-encoded 32+ byte HMAC signing key |
+| `CONTENT_HMAC_SECRET` | No | derived from `AUTH_JWT_SECRET` | Root secret (32+ bytes) for keyed content hashes: proposal attachment keys and imported Firestore comment ids. Each use gets its own derived key; the JWT key is never used for them directly. Without it, rotating `AUTH_JWT_SECRET` also changes those hashes |
 | `GOOGLE_CLIENT_ID` | For login | — | OAuth 2.0 client ID from Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | For login | — | OAuth 2.0 client secret |
 | `GOOGLE_REDIRECT_URI` | For login | `http://localhost:8080/api/v1/auth/callback` | Must match a URI registered in Google Cloud Console |
@@ -226,6 +227,8 @@ DELETE /api/v1/me               (Bearer)                                       �
 ```
 
 See [AUTH-AND-ROLES.md § Account deletion](AUTH-AND-ROLES.md#account-deletion-delete-v1me) for what is deleted or anonymized.
+
+On logout, first unregister the push token with `DELETE /api/v1/me/devices/{token}` (while the access token is still valid). See [PUSH-NOTIFICATIONS.md](PUSH-NOTIFICATIONS.md) for registering it after login.
 
 ### 5e. Release control
 

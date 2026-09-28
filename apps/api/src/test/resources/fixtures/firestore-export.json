@@ -1,0 +1,166 @@
+{
+  "usuarios": [
+    {
+      "id": "uid-alumno-1",
+      "name": "Alumno Uno",
+      "email": "Alumno.Uno@example.test",
+      "fileNo": "60000",
+      "degree": "Ingeniería en Informática",
+      "plan": "S10-Rev23",
+      "events": [],
+      "moderator": false,
+      "notifications": { "submissions": true, "events": false, "polls": false },
+      "socialMedia": {
+        "linkedin": "https://www.linkedin.com/in/alumno-uno",
+        "instagram": "@alumno.uno",
+        "discord": ""
+      },
+      "fcmTokens": ["fake-token"]
+    },
+    {
+      "id": "uid-ingreso-1",
+      "name": "Ingresante Legacy",
+      "email": "ingresante.legacy@example.test",
+      "degree": "ADM",
+      "plan": "Ingreso",
+      "socialMedia": { "linkedin": "", "instagram": "", "discord": "" }
+    },
+    {
+      "id": "uid-ingreso-2",
+      "name": "Ingresante Viejo",
+      "email": "ingresante.viejo@example.test",
+      "degree": "Proceso de Admisión",
+      "plan": "PX-2019"
+    },
+    {
+      "id": "uid-mod-1",
+      "name": "Moderadora",
+      "email": "moderadora@example.test",
+      "degree": "S",
+      "plan": "",
+      "moderator": true,
+      "socialMedia": { "linkedin": "not a linkedin url!", "instagram": "", "discord": "mod_1" }
+    },
+    {
+      "id": "uid-sin-email",
+      "name": "Sin Email"
+    }
+  ],
+  "benefits": [
+    {
+      "id": "benefit-gym",
+      "title": "Gimnasio",
+      "category": "deportes",
+      "tags": ["deportes"],
+      "imageUrl": "https://img.example.test/gym.png",
+      "description": ["20% de descuento", "Pase libre los sábados"],
+      "location": "Calle Falsa 123",
+      "locationUrl": "https://maps.example.test/gym",
+      "inscriptionUrl": "https://forms.example.test/gym",
+      "phone": "+54 11 0000-0000",
+      "website": "https://gym.example.test",
+      "email": "info@gym.example.test"
+    },
+    {
+      "id": "benefit-pizza",
+      "title": "Pizzería",
+      "category": "comida",
+      "description": "2x1 los martes"
+    }
+  ],
+  "propuestas": [
+    {
+      "id": "prop-1",
+      "title": "Más microondas",
+      "description": "Propuesta de prueba",
+      "authorized": 1,
+      "rejectionReason": "",
+      "mod": "uid-mod-1",
+      "author": "uid-alumno-1",
+      "topic": "Vida universitaria",
+      "status": "Aceptado",
+      "dateTime": "2024-05-01T12:00:00.000Z",
+      "filesURL": [
+        "proposals/legacy/5d41402a-bc4b-4a76-b971-9d911017c592.jpg",
+        "https://firebasestorage.example.test/v0/b/legacy.appspot.com/o/Propuestas%2F1714564800000.jpg?alt=media&token=00000000-0000-0000-0000-000000000000",
+        "ftp://not-http.example.test/x.jpg"
+      ],
+      "favourites": [
+        "uid-mod-1"
+      ],
+      "votes": {
+        "uid-alumno-1": {
+          "like": true,
+          "timestamp": "2024-05-02T10:00:00.000Z"
+        },
+        "uid-mod-1": {
+          "like": false,
+          "timestamp": "2024-05-02T11:00:00.000Z"
+        },
+        "uid-no-importado": {
+          "like": true,
+          "timestamp": "2024-05-02T12:00:00.000Z"
+        }
+      },
+      "comments": [
+        {
+          "author": "uid-mod-1",
+          "comment": "Buena idea",
+          "dateTime": "2024-05-03T10:00:00.000Z",
+          "replies": [
+            {
+              "author": "uid-alumno-1",
+              "comment": "Gracias",
+              "dateTime": "2024-05-03T11:00:00.000Z",
+              "replies": []
+            }
+          ]
+        },
+        {
+          "author": "uid-no-importado",
+          "comment": "Comentario sin usuario",
+          "dateTime": "2024-05-04T10:00:00.000Z",
+          "replies": []
+        }
+      ],
+      "userNames": {
+        "uid-alumno-1": "AlfaRojo",
+        "uid-mod-1": "BetaAzul",
+        "uid-no-importado": "GammaVerde"
+      }
+    },
+    {
+      "id": "prop-2",
+      "title": "Torneo de ajedrez",
+      "description": "Pendiente de moderar",
+      "authorized": 0,
+      "rejectionReason": "",
+      "author": "uid-ingreso-1",
+      "topic": "CEITBA",
+      "dateTime": "2024-06-01T12:00:00.000Z",
+      "filesURL": [],
+      "votes": {},
+      "comments": [],
+      "userNames": {}
+    },
+    {
+      "id": "prop-3",
+      "title": "Propuesta rechazada",
+      "description": "x",
+      "authorized": 2,
+      "rejectionReason": "Duplicada",
+      "mod": "uid-mod-1",
+      "author": "uid-no-importado",
+      "topic": "Tema inexistente",
+      "status": "Abierto",
+      "dateTime": "2024-07-01T12:00:00.000Z"
+    },
+    {
+      "id": "prop-invalida",
+      "title": "Estado raro",
+      "authorized": 7,
+      "author": "uid-alumno-1",
+      "dateTime": "2024-07-01T12:00:00.000Z"
+    }
+  ]
+}

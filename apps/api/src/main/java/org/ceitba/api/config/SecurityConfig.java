@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.authorization.AuthorizationManagers;
@@ -46,6 +47,7 @@ import java.util.List;
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
 //   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
+//                  /v1/staff/proposals/**            -> ROLE_MODERATOR (+ allowlist), carved out of:
 //                  /v1/staff/**                      -> ROLE_STAFF (path matcher; incl. /v1/staff/moderators)
 //                  /v1/users/**                      -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/careers/{POST,PUT,DELETE}     -> ROLE_STAFF (@PreAuthorize)
@@ -167,6 +169,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                     "/v1/auth/logout", "/v1/auth/google/mobile", "/v1/auth/refresh").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
+                // Proposal moderation is the narrow MODERATOR grant, not STAFF.
+                .requestMatchers("/v1/staff/proposals", "/v1/staff/proposals/**")
+                    .access(AuthorizationManagers.allOf(
+                        AuthorityAuthorizationManager.hasRole("MODERATOR"), emailAllowlisted))
                 .requestMatchers("/v1/staff/**").hasRole("STAFF")
                 .anyRequest().access(authenticatedAndAllowlisted)
             )

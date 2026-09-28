@@ -44,6 +44,50 @@ class MediaEndpointsIT {
                          new SimpleGrantedAuthority("ROLE_STAFF"));
     }
 
+    private static RequestPostProcessor user() {
+        return jwt().jwt(t -> t.claim("email", "student@itba.edu.ar").claim("name", "Student"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    @Test
+    void signUpload_asUser_returns403() throws Exception {
+        mvc.perform(post("/v1/media/sign-upload").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"filename\":\"a.png\",\"contentType\":\"image/png\",\"sizeBytes\":1024}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void proposalAttachment_anonymous_returns401() throws Exception {
+        mvc.perform(post("/v1/proposals/attachments/sign-upload")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"filename\":\"a.pdf\",\"contentType\":\"application/pdf\",\"sizeBytes\":1024}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void proposalAttachment_withoutStorage_returns501() throws Exception {
+        mvc.perform(post("/v1/proposals/attachments/sign-upload").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"filename\":\"a.pdf\",\"contentType\":\"application/pdf\",\"sizeBytes\":1024}"))
+            .andExpect(status().isNotImplemented())
+            .andExpect(jsonPath("$.error").value("NotImplemented"));
+    }
+
+    @Test
+    void proposalAttachment_validation_returns400() throws Exception {
+        for (String body : new String[] {
+                "{\"filename\":\"a.gif\",\"contentType\":\"image/gif\",\"sizeBytes\":1024}",
+                "{\"filename\":\"a.png\",\"contentType\":\"image/png\",\"sizeBytes\":5242881}",
+                "{\"filename\":\"a.pdf\",\"contentType\":\"application/pdf\",\"sizeBytes\":10485761}",
+                "{\"filename\":\"a.pdf\",\"contentType\":\"application/pdf\",\"sizeBytes\":0}"}) {
+            mvc.perform(post("/v1/proposals/attachments/sign-upload").with(user())
+                    .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("ValidationError"));
+        }
+    }
+
     @Test
     void signUpload_withoutStorage_returns501() throws Exception {
         mvc.perform(post("/v1/media/sign-upload").with(staff())

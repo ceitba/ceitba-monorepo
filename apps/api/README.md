@@ -58,6 +58,9 @@ All config flows through env vars; see [`.env.example`](.env.example). Highlight
 | `SYNC_ENABLED` | `false` | Toggle the twice-daily `@Scheduled` data-sync job |
 | `ITBA_API_BASE_URL` / `ITBA_API_TOKEN` | _(empty)_ | ITBA backend connection |
 | `ITBA_API_USE_FAKE` | `false` | Swap in `FakeItbaApiClient` (no network) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` / `FIREBASE_SERVICE_ACCOUNT_PATH` | _(empty)_ | FCM service account for push notifications; empty = pushes disabled. See [`docs/PUSH-NOTIFICATIONS.md`](docs/PUSH-NOTIFICATIONS.md) |
+| `CONTENT_HMAC_SECRET` | _(empty)_ | Root secret for proposal attachment keys and imported comment ids; empty = derived from `AUTH_JWT_SECRET` |
+| `R2_*` | _(empty)_ | Cloudflare R2 bucket for presigned uploads; any empty value disables uploads. See [`docs/OBJECT-STORAGE.md`](docs/OBJECT-STORAGE.md) (key layout, orphaned uploads) |
 
 ## Auth
 

@@ -3,6 +3,7 @@ package org.ceitba.api.service.sync;
 import org.ceitba.api.domain.Career;
 import org.ceitba.api.domain.DayOfWeek;
 import org.ceitba.api.domain.Plan;
+import org.ceitba.api.domain.PlanSubjectId;
 import org.ceitba.api.domain.SubjectType;
 import org.ceitba.api.external.itba.CommissionProjection;
 import org.ceitba.api.external.itba.CommissionQuery;
@@ -13,6 +14,8 @@ import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.service.career.CareerService;
+import org.ceitba.api.web.career.dto.CreatePlanRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +53,7 @@ class DataSyncServiceIT {
     @Autowired SubjectRepository subjectRepository;
     @Autowired PlanSubjectRepository planSubjectRepository;
     @Autowired CommissionRepository commissionRepository;
+    @Autowired CareerService careerService;
 
     @BeforeEach
     void seed() {
@@ -161,5 +165,24 @@ class DataSyncServiceIT {
         // Falls back to the code as the name (matches NestJS behavior)
         assertThat(subjectRepository.findById("99.99").orElseThrow().getName())
             .isEqualTo("99.99");
+    }
+
+    @Test
+    void planAddedByStaffIsPickedUpByTheNextSync() {
+        // The gateway cannot list plans (docs/ITBA-GATEWAY.md): a new yearly
+        // entrance plan is registered through CareerService.addPlan and the
+        // regular plan walk then pulls its subjects.
+        careerRepository.save(new Career("ENT", "Programa de ingreso"));
+        careerService.addPlan("ENT", new CreatePlanRequest("ENT-2027", null));
+        fakeClient.stubPlan("ENT-2027", List.of(
+            new SubjectPlanProjection("10.01", "ENT-2027", "Ingreso", 1, 1,
+                List.of(), 0, "Matemática de ingreso", 3)));
+
+        var result = syncService.syncSubjectsAndPlansOnly();
+
+        assertThat(result.subjectPlans().getErrors()).isZero();
+        assertThat(result.subjectPlans().getCreated()).isEqualTo(1);
+        assertThat(planSubjectRepository.findById(new PlanSubjectId("10.01", "ENT-2027")))
+            .isPresent();
     }
 }

@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +20,22 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
 
     Optional<User> findByFileNumber(Integer fileNumber);
+
+    Optional<User> findByFirebaseUid(String firebaseUid);
+
+    List<User> findByFirebaseUidIn(Collection<String> firebaseUids);
+
+    // True when an account with this Firebase uid was deleted
+    // (AccountDeletionRepository.recordDeletedFirebaseAccount).
+    @Query(value = """
+        SELECT EXISTS (SELECT 1 FROM public.deleted_firebase_accounts
+                       WHERE firebase_uid_sha256 = encode(sha256(convert_to(:uid, 'UTF8')), 'hex'))
+        """, nativeQuery = true)
+    boolean isDeletedFirebaseAccount(@Param("uid") String firebaseUid);
+
+    // Case-insensitive email match for imports, where the stored email may
+    // differ in case from the source. Oldest row wins if several match.
+    Optional<User> findFirstByEmailIgnoreCaseOrderByCreatedAtAsc(String email);
 
     // Conditional single-column fills for the SGA prefill: each writes only
     // its own column and only while it is still NULL, so a concurrent profile

@@ -5,11 +5,14 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -17,10 +20,15 @@ public class ArticleService {
 
     private final ArticleRepository articleRepo;
     private final OrganizationRepository orgRepo;
+    private final ApplicationEventPublisher events;
+    private final Clock clock;
 
-    public ArticleService(ArticleRepository articleRepo, OrganizationRepository orgRepo) {
+    public ArticleService(ArticleRepository articleRepo, OrganizationRepository orgRepo,
+                          ApplicationEventPublisher events, Clock clock) {
         this.articleRepo = articleRepo;
         this.orgRepo     = orgRepo;
+        this.events      = events;
+        this.clock       = clock;
     }
 
     // Public callers pass status="published"; staff may pass status=null (all) or "draft".
@@ -44,6 +52,7 @@ public class ArticleService {
         }
         resolveOrganization(article, organizationSlug);
         article.setCreatedBy(createdBy);
+        notifyFollowersOnce(article);
         return articleRepo.save(article);
     }
 
@@ -63,6 +72,7 @@ public class ArticleService {
         if (patch.getStatus()     != null) article.setStatus(patch.getStatus());
         article.setFeatured(patch.isFeatured());
         if (organizationSlug != null) resolveOrganization(article, organizationSlug);
+        notifyFollowersOnce(article);
         return articleRepo.save(article);
     }
 
@@ -72,6 +82,20 @@ public class ArticleService {
             throw new ResourceNotFoundException("Article", id);
         }
         articleRepo.deleteById(id);
+    }
+
+    // Followers of the article's organization get one push per article, the
+    // first time it is published (created as published, or a draft flipped
+    // to published). push_sent_at records it, so edits and an unpublish ->
+    // republish never re-notify. Sent after commit by PushTriggerListener.
+    private void notifyFollowersOnce(Article article) {
+        if (!isPublished(article) || article.getPushSentAt() != null) return;
+        article.markPushSent(OffsetDateTime.now(clock));
+        NewsPushes.articlePublished(article).ifPresent(events::publishEvent);
+    }
+
+    private static boolean isPublished(Article article) {
+        return "published".equals(article.getStatus());
     }
 
     private void resolveOrganization(Article article, String slug) {

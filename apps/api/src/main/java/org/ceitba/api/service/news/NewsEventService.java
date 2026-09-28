@@ -5,6 +5,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.NewsEvent;
 import org.ceitba.api.repository.news.NewsEventRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,13 @@ public class NewsEventService {
 
     private final NewsEventRepository eventRepo;
     private final OrganizationRepository orgRepo;
+    private final ApplicationEventPublisher events;
 
-    public NewsEventService(NewsEventRepository eventRepo, OrganizationRepository orgRepo) {
+    public NewsEventService(NewsEventRepository eventRepo, OrganizationRepository orgRepo,
+                            ApplicationEventPublisher events) {
         this.eventRepo = eventRepo;
         this.orgRepo   = orgRepo;
+        this.events    = events;
     }
 
     public Page<NewsEvent> findAll(String category, String organization,
@@ -50,7 +54,11 @@ public class NewsEventService {
         }
         resolveOrganization(event, organizationSlug);
         event.setCreatedBy(createdBy);
-        return eventRepo.save(event);
+        var saved = eventRepo.save(event);
+        // Events have no draft state: creating one publishes it, so the
+        // organization's followers are notified (after commit). Edits do not.
+        NewsPushes.eventPublished(saved).ifPresent(events::publishEvent);
+        return saved;
     }
 
     @Transactional

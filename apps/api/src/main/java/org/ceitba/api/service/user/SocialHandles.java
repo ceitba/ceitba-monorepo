@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 // an @handle or a profile URL (with or without scheme / www.) and returns the
 // bare handle, lowercased. Anything that does not reduce to a valid handle is
 // a ValidationException. Clients build the profile URL from the handle.
-final class SocialHandles {
+public final class SocialHandles {
 
     // LinkedIn custom URLs: 3-100 letters, digits or hyphens (letters may be
     // non-ASCII in auto-generated slugs).
@@ -35,7 +35,7 @@ final class SocialHandles {
 
     private SocialHandles() {}
 
-    static String linkedin(String raw) {
+    public static String linkedin(String raw) {
         String v = stripAt(raw);
         String path = urlPath(v, "linkedin.com");
         if (path != null) {
@@ -58,7 +58,7 @@ final class SocialHandles {
         return v;
     }
 
-    static String instagram(String raw) {
+    public static String instagram(String raw) {
         String v = stripAt(raw);
         String path = urlPath(v, "instagram.com");
         if (path != null) {
@@ -77,7 +77,7 @@ final class SocialHandles {
         return v;
     }
 
-    static String discord(String raw) {
+    public static String discord(String raw) {
         String v = stripAt(raw);
         if (DISCORD_LEGACY.matcher(v).matches()) {
             return v;

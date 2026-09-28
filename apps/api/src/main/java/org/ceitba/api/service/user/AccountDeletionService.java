@@ -15,14 +15,22 @@ import java.util.UUID;
 // One transaction; the policy per table is:
 //
 //   deleted   refresh_tokens, api_keys (all sessions/credentials revoked),
+//             user_devices (no more push notifications),
 //             ceitba_staff, ceitba_moderators, user_follows, user_organizations,
 //             saved_schedules, share_session_participants, share_sessions
 //             created by the user (with their participants),
+//             study_groups owned by the user (with their participants),
+//             the user's study_group_participants rows,
 //             wiki.subject_difficulty, all wiki votes cast by the user,
 //             wiki.subject_comment (+ votes on those comments),
 //             PENDING wiki.subject_wiki_edit_proposal, both bookmark tables.
+//             proposal votes (counters adjusted), the user's proposals that
+//             are not APPROVED, proposal aliases; proposal comments are
+//             tombstoned (body cleared, author detached, counters adjusted)
+//             so replies keep their parent.
 //   detached  articles.created_by, news_events.created_by -> NULL
-//             (content belongs to the organization).
+//             (content belongs to the organization); APPROVED
+//             proposal.author_id -> NULL (the board keeps them, pseudonymous).
 //   kept      wiki.subject_note, wiki.career_note, wiki.subject_wiki_page
 //             revisions and reviewed edit proposals — shared study material
 //             whose author FK is NOT NULL. If any exist, the user row is
@@ -30,6 +38,9 @@ import java.util.UUID;
 //             replaced by deleted-<id>@deleted.invalid) instead of deleted.
 //   user row  hard-deleted when nothing is kept; otherwise anonymized.
 //             wiki.subject_wiki_edit_proposal.reviewed_by is ON DELETE SET NULL.
+//   recorded  the SHA-256 of the account's legacy Firebase uid, if any, in
+//             deleted_firebase_accounts, so the Firestore import never
+//             re-creates the account (FirestoreImportService).
 //
 // The only active staff member cannot delete their account (409): the first
 // STAFF row can only be bootstrapped with raw SQL (AUTH-AND-ROLES.md), so they
@@ -66,12 +77,15 @@ public class AccountDeletionService {
         if (staff.isActiveStaff(userId, now) && !otherActiveStaffRemains(userId, now)) {
             throw new LastActiveStaffException();
         }
+        deletion.recordDeletedFirebaseAccount(userId);
         deletion.deleteSessionsAndCredentials(userId);
         deletion.deleteStaffMembership(userId);
         deletion.deleteSocialData(userId);
         deletion.deleteSchedulesAndShares(userId);
+        deletion.deleteStudyGroups(userId);
         deletion.deleteWikiPersonalData(userId);
         deletion.detachNewsletterAuthorship(userId);
+        deletion.deleteProposalData(userId);
 
         if (deletion.countRetainedContributions(userId) > 0) {
             deletion.anonymizeUser(userId);

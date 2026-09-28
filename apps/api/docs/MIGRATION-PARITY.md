@@ -24,6 +24,7 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `POST /api/v1/careers` | `POST /api/v1/careers` | STAFF | ✅ |
 | `PUT /api/v1/careers/{id}` | `PUT /api/v1/careers/{id}` | STAFF | ✅ |
 | `DELETE /api/v1/careers/{id}` | `DELETE /api/v1/careers/{id}` | STAFF | ✅ |
+| _(new)_ | `POST /api/v1/careers/{id}/plans` | STAFF | ✅ (new plan codes without a migration, see `ITBA-GATEWAY.md`) |
 | `GET /api/v1/classrooms` | `GET /api/v1/classrooms` | public | ✅ |
 | `GET /api/v1/classrooms/building/{b}` | `GET /api/v1/classrooms/building/{b}` | public | ✅ |
 | `GET /api/v1/classrooms/day/{d}` | `GET /api/v1/classrooms/day/{d}` | public | ✅ |
@@ -41,6 +42,7 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `POST /api/v1/sync/commissions` | `POST /api/v1/sync/commissions` | API key | ✅ |
 | `POST /api/v1/sync/plan/{planId}/subjects` | `POST /api/v1/sync/plan/{planId}/subjects` | API key | ✅ |
 | `POST /api/v1/sync/subject/{subjectCode}/commissions` | `POST /api/v1/sync/subject/{subjectCode}/commissions` | API key | ✅ |
+| _(new)_ | `POST /api/v1/sync/import/firestore` | API key | ✅ (one-time import of the legacy Firestore app, see `scripts/firestore-export`) |
 | `POST /api/v1/users/create` | `POST /api/v1/users/create` | STAFF | ✅ |
 | `GET /api/v1/users` | `GET /api/v1/users` | STAFF | ✅ |
 | `GET /api/v1/wiki/bookmarks/{subjectId}` | `GET /api/v1/wiki/bookmarks/{subjectId}` | public | ✅ |

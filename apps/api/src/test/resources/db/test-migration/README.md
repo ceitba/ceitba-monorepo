@@ -27,3 +27,9 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.12 moderators | V19 |
 | V4.13 home_highlights | V20 |
 | V4.14 benefits_contact_and_categories | V21 |
+| V4.15 saved_schedules_primary | V22 |
+| V4.16 user_devices | V23 |
+| V4.17 study_groups | V24 |
+| V4.18 proposals | V25 |
+| V4.19 user_firebase_uid | V26 |
+| V4.20 article_push_sent_at | V27 |

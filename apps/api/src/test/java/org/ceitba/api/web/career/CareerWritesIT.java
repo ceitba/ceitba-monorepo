@@ -162,4 +162,74 @@ class CareerWritesIT {
         mvc.perform(delete("/v1/careers/X").with(user()))
             .andExpect(status().isForbidden());
     }
+
+    @Test
+    void staffCanAddPlanToCareer() throws Exception {
+        careerRepository.save(new Career("PAI", "Proceso de Admisión"));
+        mvc.perform(post("/v1/careers/PAI/plans").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\" PX27 Proceso I \"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value("PX27 Proceso I"))
+            .andExpect(jsonPath("$.careerId").value("PAI"))
+            .andExpect(jsonPath("$.name").value("PX27 Proceso I"));
+
+        mvc.perform(get("/v1/careers/plans"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.PAI.plans[0]").value("PX27 Proceso I"));
+    }
+
+    @Test
+    void addPlanKeepsExplicitName() throws Exception {
+        careerRepository.save(new Career("S", "Sistemas"));
+        mvc.perform(post("/v1/careers/S/plans").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"S30\",\"name\":\"Plan 2030\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.name").value("Plan 2030"));
+    }
+
+    @Test
+    void addPlanWithIdUsedByAnyCareerReturns409() throws Exception {
+        var s = careerRepository.save(new Career("S", "Sistemas"));
+        careerRepository.save(new Career("I", "Industrial"));
+        planRepository.save(new Plan("S10-Rev23", s, "Plan 2023"));
+
+        mvc.perform(post("/v1/careers/I/plans").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"S10-Rev23\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("ResourceAlreadyExists"));
+    }
+
+    @Test
+    void addPlanToUnknownCareerReturns404() throws Exception {
+        mvc.perform(post("/v1/careers/NOPE/plans").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"X1\"}"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addPlanValidatesId() throws Exception {
+        careerRepository.save(new Career("S", "Sistemas"));
+        mvc.perform(post("/v1/careers/S/plans").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"" + "x".repeat(26) + "\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("ValidationError"));
+    }
+
+    @Test
+    void regularUserCannotAddPlan() throws Exception {
+        careerRepository.save(new Career("S", "Sistemas"));
+        mvc.perform(post("/v1/careers/S/plans").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"S30\"}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(post("/v1/careers/S/plans")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"S30\"}"))
+            .andExpect(status().isUnauthorized());
+    }
 }

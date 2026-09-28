@@ -76,6 +76,10 @@ public class User {
     @Column(name = "discord", length = 37)
     private String discord;
 
+    // Firebase Auth uid for users imported from the legacy Firestore app (V26).
+    @Column(name = "firebase_uid", length = 128, unique = true)
+    private String firebaseUid;
+
     // Last time the SGA prefill got an answer for this user; written only by
     // UserRepository.markSgaSynced (see AcademicProfileSyncService).
     @Column(name = "sga_synced_at")
@@ -118,6 +122,9 @@ public class User {
     public void setLinkedin(String linkedin) { this.linkedin = linkedin; }
     public void setInstagram(String instagram) { this.instagram = instagram; }
     public void setDiscord(String discord) { this.discord = discord; }
+
+    public String getFirebaseUid() { return firebaseUid; }
+    public void setFirebaseUid(String firebaseUid) { this.firebaseUid = firebaseUid; }
 
     public OffsetDateTime getSgaSyncedAt() { return sgaSyncedAt; }
     public void setSgaSyncedAt(OffsetDateTime sgaSyncedAt) { this.sgaSyncedAt = sgaSyncedAt; }

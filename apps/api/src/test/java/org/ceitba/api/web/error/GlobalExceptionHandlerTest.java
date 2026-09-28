@@ -6,11 +6,15 @@ import org.ceitba.api.common.exception.FeatureNotConfiguredException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
+import org.ceitba.api.service.studygroup.StudyGroupConflictException;
+import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,5 +102,34 @@ class GlobalExceptionHandlerTest {
         assertThat(r.getBody().error()).isEqualTo("InternalServerError");
         assertThat(r.getBody().message()).isEqualTo("An unexpected error occurred");
         assertThat(r.getBody().message()).doesNotContain("internal detail");
+    }
+
+    @Test
+    void unreadableBodyMapsTo400WithoutEchoingParserDetails() {
+        ResponseEntity<ErrorResponse> r = handler.handleUnreadableBody(
+            new HttpMessageNotReadableException("Cannot deserialize value of type `org.x.Foo`",
+                new MockHttpInputMessage(new byte[0])), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(r.getBody().error()).isEqualTo("BadRequest");
+        assertThat(r.getBody().message()).doesNotContain("org.x.Foo");
+    }
+
+    @Test
+    void studyGroupConflictMapsTo409WithReasonCode() {
+        ResponseEntity<ErrorResponse> r = handler.handleStudyGroupConflict(
+            new StudyGroupConflictException(StudyGroupConflictException.Reason.FULL, "Study group is full"), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(r.getBody().error()).isEqualTo("StudyGroupFull");
+    }
+
+    @Test
+    void studyGroupForbiddenMapsTo403() {
+        ResponseEntity<ErrorResponse> r = handler.handleStudyGroupForbidden(
+            new StudyGroupForbiddenException("edit"), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(r.getBody().error()).isEqualTo("AccessDenied");
     }
 }

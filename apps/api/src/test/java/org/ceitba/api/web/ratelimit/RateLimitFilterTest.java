@@ -31,7 +31,7 @@ class RateLimitFilterTest {
         var rules = new LinkedHashMap<String, RateLimitProperties.Rule>();
         rules.put("auth", new RateLimitProperties.Rule(
             List.of("/v1/auth/**"), List.of("/v1/auth/me"), capacity, Duration.ofMinutes(1)));
-        return new RateLimitFilter(new RateLimitProperties(enabled, trustXff, null, rules), time);
+        return new RateLimitFilter(new RateLimitProperties(enabled, trustXff, null, rules, null), time);
     }
 
     private static MockHttpServletRequest req(String path, String ip) {
