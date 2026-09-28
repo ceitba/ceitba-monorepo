@@ -74,9 +74,9 @@ import java.util.stream.Collectors;
 //                      The author and every commenter without one gets a
 //                      generated alias, as B5 does on first write.
 //   filesURL        -> proposal_attachment in order (position 0 = cover).
-//                      Entries must be R2 keys proposals/legacy/{uuid}.{ext},
+//                      Entries must be object keys proposals/legacy/{uuid}.{ext},
 //                      which scripts/firestore-export writes after copying
-//                      each Firebase Storage file to R2 (--copy-attachments).
+//                      each Firebase Storage file to the bucket (--copy-attachments).
 //                      Anything else, including a raw Firebase download URL
 //                      (the export was run without the copy step), is
 //                      dropped and warned: legacy URLs stop working once the
@@ -385,7 +385,7 @@ public class ProposalFirestoreImporter implements FirestoreProposalImporter {
             }
             changed |= rows.insertAttachment(proposalId, position++, key, CONTENT_TYPES.get(m.group(1)));
         }
-        if (notCopied > 0) warnings.add(notCopied + " filesURL entries not copied to R2 dropped"
+        if (notCopied > 0) warnings.add(notCopied + " filesURL entries not copied to object storage dropped"
             + " (re-export with --copy-attachments)");
         if (invalid > 0) warnings.add(invalid + " malformed filesURL entries dropped");
         return changed;

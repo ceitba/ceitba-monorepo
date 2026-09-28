@@ -256,9 +256,9 @@ class FirestoreImportIT {
             .andExpect(jsonPath("$.warnings[?(@.id == 'prop-1')].message",
                 hasItem("1 votes by users not imported dropped")))
             // A raw Firebase download URL is never stored: only keys the
-            // export's --copy-attachments step put in R2.
+            // export's --copy-attachments step put in the bucket.
             .andExpect(jsonPath("$.warnings[?(@.id == 'prop-1')].message",
-                hasItem("1 filesURL entries not copied to R2 dropped (re-export with --copy-attachments)")))
+                hasItem("1 filesURL entries not copied to object storage dropped (re-export with --copy-attachments)")))
             .andExpect(jsonPath("$.warnings[?(@.id == 'prop-1')].message",
                 hasItem("1 malformed filesURL entries dropped")))
             .andExpect(jsonPath("$.warnings[?(@.id == 'prop-3')].message",

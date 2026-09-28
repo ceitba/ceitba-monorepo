@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Storage configured with dummy R2 credentials: presigning is local SigV4
+// Storage configured with dummy credentials: presigning is local SigV4
 // computation, so the real S3Presigner runs without a bucket. Also turns on
 // the per-user quota for proposal attachments.
 @SpringBootTest

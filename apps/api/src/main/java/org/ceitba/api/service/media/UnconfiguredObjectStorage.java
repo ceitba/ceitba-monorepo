@@ -9,8 +9,8 @@ public class UnconfiguredObjectStorage implements ObjectStorage {
     @Override
     public PresignedUpload presignPut(String key, String contentType, long contentLength) {
         throw new FeatureNotConfiguredException(
-            "Cloud storage not configured. Set R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, "
-                + "R2_SECRET_ACCESS_KEY and R2_PUBLIC_URL.");
+            "Object storage not configured. Set STORAGE_ENDPOINT, STORAGE_BUCKET, "
+                + "STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY and STORAGE_PUBLIC_URL.");
     }
 
     @Override

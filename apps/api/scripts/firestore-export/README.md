@@ -26,15 +26,27 @@ the project id from the key.
 
 For the real import, add `--copy-attachments` (required for proposal
 attachments to survive, see below). It downloads every Propuestas `filesURL`
-and uploads it to the API's R2 bucket as `proposals/legacy/{uuid}.{ext}`, so
-it also needs the API's R2 settings:
+and uploads it to the API's bucket (self-hosted MinIO, see
+`docs/OBJECT-STORAGE.md`) as `proposals/legacy/{uuid}.{ext}`, so it also
+needs the API's storage settings (`STORAGE_*`; the older `R2_*` names are
+accepted as fallbacks). Use the API's service user (`STORAGE_ACCESS_KEY_ID`
+/`STORAGE_SECRET_ACCESS_KEY` from the VPS `.env`), not the MinIO root user:
 
 ```sh
-R2_ENDPOINT=https://<account>.r2.cloudflarestorage.com R2_BUCKET=<bucket> \
-R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... \
+STORAGE_ENDPOINT=https://ceitba.org.ar STORAGE_BUCKET=ceitba-media \
+STORAGE_ACCESS_KEY_ID=ceitba-api STORAGE_SECRET_ACCESS_KEY=... \
 GOOGLE_APPLICATION_CREDENTIALS=/secure/path/service-account.json \
   node export.mjs --copy-attachments --out /secure/path/firestore-export.json
 ```
+
+Uploads use path-style URLs (`https://ceitba.org.ar/ceitba-media/<key>`),
+which Caddy forwards to MinIO. That route caps request bodies at 12 MB, while
+the script accepts attachments up to 20 MB: a larger file fails with a
+`Propuestas/<id>: attachment not copied` line. Re-run from the VPS inside the
+compose network to bypass Caddy, e.g.
+`docker run --rm --network ceitba-api_ceitba-network -e STORAGE_ENDPOINT=http://minio:9000 ...`
+with this directory mounted (`STORAGE_ENDPOINT` only needs to be reachable
+by the script; the stored keys do not depend on it).
 
 The `{uuid}` is derived from the download URL (whose token is secret), so a
 re-run overwrites the same objects. The script exits with status 1 when any
@@ -64,8 +76,8 @@ duplicates them. Mapping rules are documented in
 `propuestas` go into the proposals board: `authorized` 0/1/2 becomes
 PENDING/APPROVED/REJECTED, `status` the lifecycle, `votes` the up/down
 votes, `comments` (and their `replies`) the comment threads, `userNames`
-the per-proposal aliases, and `filesURL` the attachments. Only the R2 keys
-written by `--copy-attachments` are imported; a raw Firebase Storage URL is
+the per-proposal aliases, and `filesURL` the attachments. Only the object
+keys written by `--copy-attachments` are imported; a raw Firebase Storage URL is
 dropped with a warning (a later re-run with copied keys adds it), so no
 imported attachment depends on the legacy Firebase project. Keep
 `CONTENT_HMAC_SECRET` (or, when it is unset, `AUTH_JWT_SECRET`) the same

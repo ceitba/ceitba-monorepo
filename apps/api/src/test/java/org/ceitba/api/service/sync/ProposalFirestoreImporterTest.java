@@ -322,7 +322,7 @@ class ProposalFirestoreImporterTest {
         assertThat(warnings).containsExactlyInAnyOrder(
             "1 votes by users not imported dropped",
             "1 malformed votes dropped",
-            "1 filesURL entries not copied to R2 dropped (re-export with --copy-attachments)",
+            "1 filesURL entries not copied to object storage dropped (re-export with --copy-attachments)",
             "1 malformed filesURL entries dropped");
     }
 

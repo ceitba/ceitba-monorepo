@@ -10,7 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-// SigV4 presigned PUTs against an S3-compatible endpoint (Cloudflare R2).
+// SigV4 presigned PUTs against an S3-compatible endpoint (MinIO in prod).
 // Presigning is pure local computation: no request reaches the bucket here.
 public class S3ObjectStorage implements ObjectStorage {
 

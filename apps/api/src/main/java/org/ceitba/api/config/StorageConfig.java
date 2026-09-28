@@ -32,8 +32,9 @@ public class StorageConfig {
         return new S3ObjectStorage(presigner(props), props, clock);
     }
 
-    // Path-style addressing (https://endpoint/bucket/key): R2 accepts both,
-    // and path style keeps the bucket out of the TLS hostname.
+    // Path-style addressing (https://endpoint/bucket/key): MinIO serves the
+    // bucket under the main host (no MINIO_DOMAIN, no extra DNS/TLS name), and
+    // path style keeps the bucket out of the TLS hostname.
     public static S3Presigner presigner(StorageProperties props) {
         return S3Presigner.builder()
             .endpointOverride(URI.create(props.endpoint()))

@@ -54,12 +54,13 @@ any of them.
 Run once, when the new mobile app replaces the Firestore-backed one. Details
 in `scripts/firestore-export/README.md`.
 
-1. **Prerequisites:** R2 storage configured on the API (`R2_*`), careers/plans
-   loaded, the `convenios` benefit category (V21).
+1. **Prerequisites:** object storage configured on the API (`STORAGE_*`,
+   MinIO; see `docs/OBJECT-STORAGE.md`), careers/plans loaded, the
+   `convenios` benefit category (V21).
 2. **Export with the attachment copy step** (cut-over prerequisite): run
-   `node export.mjs --copy-attachments` with the API's `R2_*` values. It copies
-   every proposal attachment from Firebase Storage into the R2 bucket
-   (`proposals/legacy/…`) and writes the R2 keys into the export. The importer
+   `node export.mjs --copy-attachments` with the API's `STORAGE_*` values. It
+   copies every proposal attachment from Firebase Storage into the bucket
+   (`proposals/legacy/…`) and writes the object keys into the export. The importer
    refuses raw Firebase Storage URLs (each is dropped with a warning), so no
    imported attachment depends on the legacy Firebase project, and Firebase
    Storage can be retired right after the import. The script exits non-zero

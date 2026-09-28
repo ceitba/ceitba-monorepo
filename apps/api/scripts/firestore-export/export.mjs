@@ -15,14 +15,16 @@
 //     node export.mjs --out firestore-export.json
 //
 // With --copy-attachments, every Propuestas filesURL (a Firebase Storage
-// download URL) is downloaded and uploaded to the R2 bucket at
-// proposals/legacy/{uuid}.{ext}, and the exported filesURL entry becomes that
-// key. The API only imports such keys: a raw Firebase URL is dropped with a
-// warning, so attachments never depend on the legacy Firebase project. Needs
-// R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY (the
-// same values the API uses). {uuid} is derived from the download URL, whose
-// token is secret, so keys are unguessable and a re-run overwrites the same
-// objects instead of duplicating them.
+// download URL) is downloaded and uploaded to the API's S3-compatible bucket
+// (MinIO in prod) at proposals/legacy/{uuid}.{ext}, and the exported filesURL
+// entry becomes that key. The API only imports such keys: a raw Firebase URL
+// is dropped with a warning, so attachments never depend on the legacy
+// Firebase project. Needs STORAGE_ENDPOINT, STORAGE_BUCKET,
+// STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY (the same values the
+// API uses; the older R2_* names are accepted as fallbacks). {uuid} is
+// derived from the download URL, whose token is secret, so keys are
+// unguessable and a re-run overwrites the same objects instead of
+// duplicating them.
 //
 // The output contains personal data (names, emails): keep it out of git and
 // delete it once the import is done.
@@ -98,22 +100,30 @@ const TYPES_BY_EXTENSION = Object.fromEntries(
   [...Object.entries(EXTENSIONS), ['image/jpeg', 'jpeg']].map(([type, ext]) => [ext, type]));
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
-function r2FromEnv() {
-  const env = ['R2_ENDPOINT', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
-  const missing = env.filter((k) => !process.env[k]);
+// STORAGE_<name>, falling back to the pre-MinIO R2_<name>.
+function storageEnv(name) {
+  return process.env[`STORAGE_${name}`] || process.env[`R2_${name}`] || '';
+}
+
+function storageFromEnv() {
+  const names = ['ENDPOINT', 'BUCKET', 'ACCESS_KEY_ID', 'SECRET_ACCESS_KEY'];
+  const missing = names.filter((n) => !storageEnv(n)).map((n) => `STORAGE_${n}`);
   if (missing.length) {
-    console.error(`--copy-attachments needs ${missing.join(', ')}`);
+    console.error(`--copy-attachments needs ${missing.join(', ')} (or the older R2_* names)`);
     process.exit(2);
   }
   const client = new S3Client({
-    region: process.env.R2_REGION || 'auto',
-    endpoint: process.env.R2_ENDPOINT,
+    region: storageEnv('REGION') || 'us-east-1',
+    endpoint: storageEnv('ENDPOINT'),
+    // Path style (endpoint/bucket/key), like the API: MinIO serves the bucket
+    // under the main host (https://ceitba.org.ar/ceitba-media/...).
+    forcePathStyle: true,
     credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      accessKeyId: storageEnv('ACCESS_KEY_ID'),
+      secretAccessKey: storageEnv('SECRET_ACCESS_KEY'),
     },
   });
-  return { client, bucket: process.env.R2_BUCKET };
+  return { client, bucket: storageEnv('BUCKET') };
 }
 
 // UUID-shaped (version 4 bits) SHA-256 of the download URL.
@@ -136,9 +146,9 @@ function extensionFromUrl(url) {
   }
 }
 
-// Returns the R2 key, or null when the file could not be copied (the entry
+// Returns the object key, or null when the file could not be copied (the entry
 // then stays a URL and the API drops it with a warning).
-async function copyAttachment(r2, url) {
+async function copyAttachment(storage, url) {
   if (typeof url !== 'string' || !url.startsWith('https://')) return null;
   const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!res.ok) throw new Error(`download failed with HTTP ${res.status}`);
@@ -152,13 +162,13 @@ async function copyAttachment(r2, url) {
   }
   if (!ext) throw new Error(`unsupported content type ${headerType || '(none)'}`);
   const key = `proposals/legacy/${keyUuid(url)}.${ext}`;
-  await r2.client.send(new PutObjectCommand({
-    Bucket: r2.bucket, Key: key, Body: body, ContentType: TYPES_BY_EXTENSION[ext],
+  await storage.client.send(new PutObjectCommand({
+    Bucket: storage.bucket, Key: key, Body: body, ContentType: TYPES_BY_EXTENSION[ext],
   }));
   return key;
 }
 
-async function copyAttachments(r2, propuestas) {
+async function copyAttachments(storage, propuestas) {
   let copied = 0;
   let failed = 0;
   for (const doc of propuestas) {
@@ -166,7 +176,7 @@ async function copyAttachments(r2, propuestas) {
     const out = [];
     for (const url of doc.filesURL) {
       try {
-        const key = await copyAttachment(r2, url);
+        const key = await copyAttachment(storage, url);
         if (key) copied++;
         else if (url) failed++;
         out.push(key ?? url);
@@ -179,13 +189,13 @@ async function copyAttachments(r2, propuestas) {
     }
     doc.filesURL = out;
   }
-  console.error(`Attachments: ${copied} copied to R2, ${failed} not copied`);
+  console.error(`Attachments: ${copied} copied to object storage, ${failed} not copied`);
   return failed;
 }
 
 async function main() {
   const args = parseArgs(process.argv);
-  const r2 = args.copyAttachments ? r2FromEnv() : null;
+  const storage = args.copyAttachments ? storageFromEnv() : null;
   initializeApp({
     credential: args.credentials ? cert(args.credentials) : applicationDefault(),
     ...(args.project ? { projectId: args.project } : {}),
@@ -199,7 +209,7 @@ async function main() {
     console.error(`${name}: ${result[key].length} documents`);
   }
 
-  const notCopied = r2 ? await copyAttachments(r2, result.propuestas) : 0;
+  const notCopied = storage ? await copyAttachments(storage, result.propuestas) : 0;
 
   writeFileSync(args.out, JSON.stringify(result, null, 2), { mode: 0o600 });
   console.error(`Wrote ${args.out}`);

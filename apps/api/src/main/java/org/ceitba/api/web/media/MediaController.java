@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 // Presigned direct-to-bucket uploads for STAFF CMS images (jpeg/png/webp,
-// 5 MB). 501 when object storage (storage.*, R2_* env) is not configured.
+// 5 MB). 501 when object storage (storage.*, STORAGE_* env) is not configured.
 // Proposal attachments have their own USER-scoped endpoint:
 // POST /v1/proposals/attachments/sign-upload.
 @Tag(name = "Media")

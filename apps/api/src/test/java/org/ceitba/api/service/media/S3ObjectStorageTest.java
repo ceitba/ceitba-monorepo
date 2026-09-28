@@ -34,7 +34,7 @@ class S3ObjectStorageTest {
         assertThat(url.getQuery())
             .contains("X-Amz-Algorithm=AWS4-HMAC-SHA256")
             .contains("X-Amz-Expires=300")
-            .contains("/auto/s3/aws4_request")
+            .contains("/us-east-1/s3/aws4_request")
             .contains("X-Amz-SignedHeaders=content-length;content-type;host")
             .contains("X-Amz-Signature=");
 
@@ -54,7 +54,7 @@ class S3ObjectStorageTest {
     @Test
     void propertiesDefaults() {
         var p = new StorageProperties("e", " ", "b", "k", "s", "u", null);
-        assertThat(p.region()).isEqualTo("auto");
+        assertThat(p.region()).isEqualTo("us-east-1");
         assertThat(p.presignTtl()).isEqualTo(Duration.ofMinutes(10));
         assertThat(p.configured()).isTrue();
         assertThat(new StorageProperties(null, null, null, null, null, null, null).configured()).isFalse();

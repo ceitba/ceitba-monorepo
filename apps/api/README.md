@@ -11,8 +11,8 @@ The repo was migrated from NestJS + Prisma in 2026; the migration plan and per-P
 ```sh
 git clone https://github.com/CEITBA/CEITBA-API.git
 cd CEITBA-API
-cp .env.example .env             # edit values, especially AUTH_SYNC_API_KEY
-docker compose up -d             # postgres + ceitba-api
+cp .env.example .env             # edit values, especially AUTH_JWT_SECRET, AUTH_SYNC_API_KEY, MINIO_ROOT_*, STORAGE_*
+docker compose up -d             # postgres + minio (+ one-shot minio-init) + ceitba-api
 curl http://localhost:8080/api/actuator/health
 ```
 
@@ -39,7 +39,7 @@ Use `./scripts/mvn` — runs Maven inside a JDK-21 container. Caches `~/.m2` on 
 ## Tests
 
 ```sh
-./mvnw verify                       # unit + integration (Testcontainers Postgres)
+./mvnw verify                       # unit + integration (Testcontainers Postgres, MinIO, Caddy)
 ./mvnw test                         # unit only
 ./scripts/mvn -B verify             # same, via container — no host JDK
 ```
@@ -53,14 +53,14 @@ All config flows through env vars; see [`.env.example`](.env.example). Highlight
 | `DATABASE_URL` | `jdbc:postgresql://localhost:5432/ceitba_db` | JDBC URL |
 | `AUTH_ALLOWED_DOMAINS` | `itba.edu.ar` | Comma-separated email domains admitted by the JWT converter |
 | `AUTH_ALLOWED_EMAILS` | _(empty)_ | Comma-separated explicit email allowlist (for accounts not on an allowed domain) |
-| `AUTH_JWT_AUDIENCE` | _(empty)_ | Optional Google OAuth client ID to require in the `aud` claim |
 | `AUTH_SYNC_API_KEY` | _(empty)_ | Required value for the `X-API-Key` header on `/api/v1/sync/**` |
 | `SYNC_ENABLED` | `false` | Toggle the twice-daily `@Scheduled` data-sync job |
 | `ITBA_API_BASE_URL` / `ITBA_API_TOKEN` | _(empty)_ | ITBA backend connection |
 | `ITBA_API_USE_FAKE` | `false` | Swap in `FakeItbaApiClient` (no network) |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` / `FIREBASE_SERVICE_ACCOUNT_PATH` | _(empty)_ | FCM service account for push notifications; empty = pushes disabled. See [`docs/PUSH-NOTIFICATIONS.md`](docs/PUSH-NOTIFICATIONS.md) |
 | `CONTENT_HMAC_SECRET` | _(empty)_ | Root secret for proposal attachment keys and imported comment ids; empty = derived from `AUTH_JWT_SECRET` |
-| `R2_*` | _(empty)_ | Cloudflare R2 bucket for presigned uploads; any empty value disables uploads. See [`docs/OBJECT-STORAGE.md`](docs/OBJECT-STORAGE.md) (key layout, orphaned uploads) |
+| `STORAGE_*` | _(empty)_ | S3-compatible bucket for presigned uploads (self-hosted MinIO in prod, served at `https://ceitba.org.ar/ceitba-media`); any empty connection value disables uploads. `R2_*` still work as fallbacks. See [`docs/OBJECT-STORAGE.md`](docs/OBJECT-STORAGE.md) (setup, VPS migration, backup, key rotation) |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | _(required by compose)_ | MinIO admin credentials, used only by the `minio-init` container; the API uses the `STORAGE_ACCESS_KEY_ID` service user |
 
 ## Auth
 
@@ -109,6 +109,31 @@ To rebuild the local DB from scratch:
 docker compose down -v && docker compose up -d postgres
 ./mvnw spring-boot:run    # Flyway runs V1__baseline.sql + any later Vn__*.sql
 ```
+
+## Deployment (VPS)
+
+Pushes to `main` that pass CI deploy via `.github/workflows/main.yml`: it
+copies `docker-compose.yml` to `~/CEITBA-API/` and
+`infrastructure/caddy/{docker-compose.yml,Caddyfile}` to `~/infra/` (never
+`.env`), checks that `~/CEITBA-API/.env` satisfies the compose file, restarts
+Caddy if its Caddyfile changed, then pulls and restarts the API stack. Caddy
+serves `https://ceitba.org.ar`, proxies `/api/*` to the API and
+`/ceitba-media/*` to MinIO over the `ceitba-proxy` network. The API (8080),
+Postgres (5432) and the MinIO console (9001) are published on `127.0.0.1`
+only.
+
+### VPS migration for MinIO (one time)
+
+1. Add `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `STORAGE_ENDPOINT=https://ceitba.org.ar`,
+   `STORAGE_BUCKET=ceitba-media`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`
+   and `STORAGE_PUBLIC_URL=https://ceitba.org.ar/ceitba-media` to `~/CEITBA-API/.env`;
+   drop `AUTH_JWT_AUDIENCE` and any `R2_*`.
+2. Deploy. The workflow updates `~/infra/Caddyfile` (new `/ceitba-media/*`
+   route) and restarts Caddy; the first `docker compose up` creates the
+   `minio_data` volume, the bucket and the API's service user.
+
+Details, verification, backup and credential rotation:
+[`docs/OBJECT-STORAGE.md`](docs/OBJECT-STORAGE.md).
 
 ## Conventions for contributors
 

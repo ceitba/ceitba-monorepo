@@ -289,20 +289,24 @@ Body:
 Response (when cloud storage is configured):
 ```json
 {
-  "uploadUrl": "https://r2.cloudflarestorage.com/...?presigned...",
-  "publicUrl": "https://media.itbanews.ar/articles/uuid/cover.jpg",
-  "key":       "articles/uuid/cover.jpg"
+  "uploadUrl": "https://ceitba.org.ar/ceitba-media/media/<uuid>.jpg?X-Amz-...",
+  "publicUrl": "https://ceitba.org.ar/ceitba-media/media/<uuid>.jpg",
+  "key":       "media/<uuid>.jpg",
+  "method":    "PUT",
+  "headers":   { "Content-Type": "image/jpeg", "Content-Length": "1048576" },
+  "expiresAt": "..."
 }
 ```
 
-**Status:** Returns `501 Not Implemented` until R2/S3 env vars are configured
-on the server (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_KEY`,
-`R2_BUCKET`, `R2_PUBLIC_URL`). Keep the base64 path as a fallback until 501
+**Status:** Returns `501 Not Implemented` until object storage is configured
+on the server (`STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`,
+`STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL`; see
+`docs/OBJECT-STORAGE.md`). Keep the base64 path as a fallback until 501
 stops being returned.
 
 Upload flow (once live):
 1. Call `POST /v1/media/sign-upload` → get `uploadUrl` + `publicUrl`
-2. `PUT <uploadUrl>` with raw file bytes, `Content-Type: <contentType>`
+2. `PUT <uploadUrl>` with the raw file bytes and exactly the returned `headers` (Content-Type and Content-Length are signed)
 3. Save `publicUrl` as `article.coverImage`
 
 ---

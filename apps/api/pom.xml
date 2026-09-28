@@ -118,7 +118,7 @@
             <artifactId>google-http-client-jackson2</artifactId>
             <version>${google-http-client.version}</version>
         </dependency>
-        <!-- S3-compatible object storage (Cloudflare R2). Only S3Presigner is
+        <!-- S3-compatible object storage (MinIO in prod). Only S3Presigner is
              used: presigning is local signing and never opens a connection,
              so the SDK's bundled HTTP clients are excluded. -->
         <dependency>
