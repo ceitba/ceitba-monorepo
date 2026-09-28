@@ -56,9 +56,22 @@ auth:
     client-id: ${GOOGLE_CLIENT_ID:}
     client-secret: ${GOOGLE_CLIENT_SECRET:}
     redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/callback}
+    # Comma list of OAuth client IDs accepted as `aud` of Google ID tokens on
+    # POST /v1/auth/google/mobile. Empty = mobile login disabled (501).
+    mobile-audiences: ${AUTH_GOOGLE_MOBILE_AUDIENCES:}
   jwt:
     secret: ${AUTH_JWT_SECRET:}
     ttl-days: ${AUTH_JWT_TTL_DAYS:7}
+    issuer: ${AUTH_JWT_ISSUER:https://ceitba.org.ar/api}
+    # Phase-in: false validates iss/aud only on tokens that carry them. Flip to
+    # true once every pre-B1 web cookie has expired (deploy + AUTH_JWT_TTL_DAYS).
+    enforce-issuer-audience: ${AUTH_JWT_ENFORCE_ISS_AUD:false}
+    mobile-access-ttl: ${AUTH_MOBILE_ACCESS_TTL:15m}
+    refresh-ttl: ${AUTH_REFRESH_TTL:60d}
+    # A rotated refresh token presented again within this window, while its
+    # successor is still unused, gets a new successor instead of revoking the
+    # family (the client never received the rotation response). 0 disables.
+    refresh-reuse-grace: ${AUTH_REFRESH_REUSE_GRACE:60s}
   cookie:
     name:      ${AUTH_COOKIE_NAME:ceitba_session}
     domain:    ${AUTH_COOKIE_DOMAIN:}
@@ -66,6 +79,13 @@ auth:
     same-site: ${AUTH_COOKIE_SAMESITE:Lax}
     path:      ${AUTH_COOKIE_PATH:/}
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+# Root secret for keyed content hashes (service/crypto/ContentHmac): proposal
+# attachment keys and imported Firestore comment ids. Empty = derive from
+# AUTH_JWT_SECRET. Set it (32+ bytes, openssl rand -base64 32) so the JWT
+# secret can be rotated without changing those hashes.
+content:
+  hmac-secret: ${CONTENT_HMAC_SECRET:}
 
 itba:
   api:
@@ -76,6 +96,85 @@ itba:
 
 sync:
   enabled: ${SYNC_ENABLED:false}
+
+# Mobile app release control, served publicly by GET /v1/app/config.
+mobile-app:
+  min-version: ${MOBILE_MIN_VERSION:0.0.0}
+  latest-version: ${MOBILE_LATEST_VERSION:0.0.0}
+  maintenance: ${MOBILE_MAINTENANCE:false}
+
+# Server-side push notifications through FCM (service/push). Service-account
+# key JSON (raw or base64) or a path to it; both empty = pushes disabled.
+push:
+  fcm:
+    service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
+    service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+
+# S3-compatible object storage (self-hosted MinIO in prod, see
+# docs/OBJECT-STORAGE.md) for presigned uploads (StorageProperties). Leave any
+# of endpoint/bucket/keys/public URL empty to disable uploads (sign endpoints
+# answer 501). STORAGE_* wins; the older R2_* names still work as fallbacks
+# when the STORAGE_* variable is absent (not merely empty).
+storage:
+  endpoint: ${STORAGE_ENDPOINT:${R2_ENDPOINT:}}
+  region: ${STORAGE_REGION:${R2_REGION:us-east-1}}
+  bucket: ${STORAGE_BUCKET:${R2_BUCKET:}}
+  access-key-id: ${STORAGE_ACCESS_KEY_ID:${R2_ACCESS_KEY_ID:}}
+  secret-access-key: ${STORAGE_SECRET_ACCESS_KEY:${R2_SECRET_ACCESS_KEY:}}
+  public-base-url: ${STORAGE_PUBLIC_URL:${R2_PUBLIC_URL:}}
+  presign-ttl: ${STORAGE_PRESIGN_TTL:${R2_PRESIGN_TTL:10m}}
+
+# Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
+# instance. Paths are relative to the /api context path.
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  # Behind Caddy: use the right-most X-Forwarded-For entry as the client IP.
+  # Only honoured when the direct peer is a private/loopback address (i.e. the
+  # proxy); requests reaching the API from a public address use that address.
+  trust-forwarded-for: ${RATE_LIMIT_TRUST_FORWARDED_FOR:true}
+  rules:
+    auth:
+      paths:
+        - /v1/auth/**
+      # Authenticated reads the SPA hits on every page load; limiting them per
+      # IP would lock out everyone behind the campus NAT.
+      exclude-paths:
+        - /v1/auth/me
+        - /v1/auth/api-keys
+        - /v1/auth/api-keys/**
+        - /v1/auth/refresh
+        - /v1/auth/google/mobile
+      capacity: ${RATE_LIMIT_AUTH_CAPACITY:20}
+      period: ${RATE_LIMIT_AUTH_PERIOD:1m}
+    # First-time mobile logins: a whole class installing the app on campus
+    # Wi-Fi logs in from one NAT address within a few minutes.
+    auth-mobile-login:
+      paths:
+        - /v1/auth/google/mobile
+      capacity: ${RATE_LIMIT_MOBILE_LOGIN_CAPACITY:120}
+      period: ${RATE_LIMIT_MOBILE_LOGIN_PERIOD:1m}
+    # Mobile access tokens live 15 min, so every active app refreshes about
+    # four times an hour; behind the campus NAT that is many devices per IP.
+    # Its own, larger bucket keeps refresh from starving logins and vice versa.
+    auth-refresh:
+      paths:
+        - /v1/auth/refresh
+      capacity: ${RATE_LIMIT_REFRESH_CAPACITY:120}
+      period: ${RATE_LIMIT_REFRESH_PERIOD:1m}
+  # Per authenticated user (service/ratelimit/UserRateLimiter), not per IP.
+  user-rules:
+    # POST /v1/proposals/attachments/sign-upload
+    proposal-attachments:
+      capacity: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:30}
+      period: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD:1h}
+    # POST /v1/proposals
+    proposals:
+      capacity: ${RATE_LIMIT_PROPOSALS_CAPACITY:10}
+      period: ${RATE_LIMIT_PROPOSALS_PERIOD:1h}
+    # POST /v1/proposals/{id}/comments
+    proposal-comments:
+      capacity: ${RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY:30}
+      period: ${RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD:10m}
 
 logging:
   level:

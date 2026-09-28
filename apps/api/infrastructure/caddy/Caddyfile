@@ -7,6 +7,22 @@ ceitba.org.ar {
         reverse_proxy ceitba-api:8080
     }
 
+    # Object storage (MinIO, in the CEITBA-API compose project, reachable here
+    # over the ceitba-proxy network). Path style: the bucket is the first path
+    # segment, so https://ceitba.org.ar/ceitba-media/<key> is both the
+    # presigned PUT target and the public GET URL. No path stripping and no
+    # Host rewrite: reverse_proxy forwards the client's Host (ceitba.org.ar)
+    # unchanged, which is the host the API signed the URL for; changing it
+    # breaks every SigV4 signature. Uploads are at most 10 MB
+    # (MediaUploadService); the body limit leaves headroom.
+    # Tested by MinioPresignedUploadIT, which runs this exact block.
+    handle /ceitba-media/* {
+        request_body {
+            max_size 12MB
+        }
+        reverse_proxy ceitba-minio:9000
+    }
+
     handle /scheduler* {
         root * /var/www/scheduler
         uri strip_prefix /scheduler

@@ -8,23 +8,24 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 
 | You are… | What you send | What you can do |
 |---|---|---|
-| **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, GET wiki bookmarks, POST classrooms/conflicts) |
-| **USER** | `Authorization: Bearer <jwt>` (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys |
+| **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`) |
+| **USER** | `Authorization: Bearer <jwt>` or the web session cookie (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys, `POST /v1/auth/logout-all`, `DELETE /v1/me` (JWT session only, not API keys) |
 | **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER |
-| **STAFF** | Same JWT or API key, plus an active `ceitba_staff` row | Everything USER can do, **plus** assign/revoke STAFF on others |
+| **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (`/v1/staff/proposals/**`, editing/deleting any study group) |
+| **STAFF** | Same JWT or API key, plus an active `ceitba_staff` row | Everything USER and MODERATOR can do, **plus** assign/revoke STAFF and MODERATOR on others, create users and correct a user's file number (`/v1/users/**`) |
 | **SYNC** (machine, not human) | `X-Api-Key: <AUTH_SYNC_API_KEY>` | Trigger `/v1/sync/**` jobs |
 
-JWTs are issued by this API after Google OAuth — see [AUTH-SETUP.md](AUTH-SETUP.md) to configure login.
+JWTs are issued by this API (HS256, `AUTH_JWT_SECRET`) after a Google sign-in, either the web OAuth flow (JWT in an HttpOnly cookie) or the mobile ID-token exchange (JWT + refresh token in the response body). Google tokens are never accepted as bearer tokens. See [AUTH-SETUP.md](AUTH-SETUP.md) to configure login and [§ Sessions and tokens](#sessions-and-tokens) below.
 
-`Anonymous` isn't actually a role; it's the absence of any authentication. The other three (`USER`, `STAFF`, `SYNC`) map to Spring Security `ROLE_*` authorities.
+`Anonymous` isn't actually a role; it's the absence of any authentication. The others (`USER`, `MODERATOR`, `STAFF`, `SYNC`) map to Spring Security `ROLE_*` authorities.
 
 ---
 
 ## How roles are assigned
 
-### USER — automatic on first authenticated request
+### USER — automatic on first sign-in
 
-Anyone whose JWT or API-key email passes the [allowlist](#the-allowlist) gets `ROLE_USER`. There's **no signup endpoint**: a `User` row is created the first time someone hits a controller method that asks for `@CurrentUser User user` (currently the wiki bookmarks write endpoints). That's "JIT provisioning" — see `service/auth/UserProvisioningService.java`.
+Anyone whose JWT or API-key email passes the [allowlist](#how-to-add-a-new-authorized-user-without-making-them-staff) gets `ROLE_USER`. There's **no signup endpoint**: a `User` row is created on the first successful Google sign-in (web callback or mobile exchange, both through `service/auth/GoogleLoginService.java`) or the first time a JWT hits a controller method that asks for `@CurrentUser User user`. That's "JIT provisioning" — see `service/auth/UserProvisioningService.java`. New users auto-follow the `ceitba` organization. Sign-in does **not** fill any academic data: ITBA revoked CEITBA's access to the SGA student lookup in 2026-09, so the SGA prefill (and `POST /v1/me/profile/sync-from-sga`) is gone. Users pick their career and plan during app onboarding and enter their file number (legajo) themselves via `PATCH /v1/me/profile`. The file number can be set only while it is empty and must be unique (409 `FileNumberAlreadySet` / `FileNumberTaken`); after that only STAFF can change or clear it (`PATCH /v1/users/{id}/file-number`).
 
 If you authenticate but never hit a `@CurrentUser` route, no row is created. The role is still granted (`ROLE_USER`), so you can call any USER-level endpoint immediately.
 
@@ -34,11 +35,33 @@ Spring Security adds `ROLE_STAFF` if the request's email maps to a `User` row th
 
 A user can only be in **one** branch at a time (`ceitba_staff.user_id` is the primary key). To change someone's branch or role, revoke their current membership and assign a new one.
 
+### MODERATOR — a narrow grant, separate from STAFF
+
+`ROLE_MODERATOR` is for people who moderate user-generated content without any other staff power. It is granted when either:
+
+- the user is active STAFF (**STAFF implies MODERATOR**; no row needed), or
+- the user has a `ceitba_moderators` row with `revoked_at IS NULL` (V19).
+
+Both checks run in the same places as the STAFF check: `StaffAwareJwtAuthenticationConverter` (JWTs) and `ApiKeyFilter` (user API keys), once per request, no cache. `GET /v1/auth/me` (and the `user` object of the mobile token responses) exposes it as `"moderator": true|false`; `role` stays `"staff"` or `"user"`.
+
+Only STAFF can manage grants (a MODERATOR cannot grant or revoke):
+
+```http
+GET    /api/v1/staff/moderators              -> [{userId, email, name, grantedBy, grantedAt}]
+POST   /api/v1/staff/moderators  {"email": "someone@itba.edu.ar"}   -> 201
+DELETE /api/v1/staff/moderators/{userId}     -> 204
+```
+
+- The list shows explicit grants only; staff-implied moderators are listed by `GET /v1/staff`.
+- `POST`: `404` when the email has never signed in (User rows are JIT-provisioned), `409` when the grant is already active. Granting again after a revoke reactivates the row.
+- `DELETE` keeps the row for audit (`revoked_at`, `revoked_by`); `404` when there is no active grant.
+- Account deletion removes the grant.
+
 ### SYNC — `X-Api-Key` (static key) only
 
 Cron jobs and ops scripts authenticate with a static header against `AUTH_SYNC_API_KEY`. The [`ApiKeyFilter`](../src/main/java/org/ceitba/api/web/auth/ApiKeyFilter.java) translates a matching key into a `ROLE_SYNC` principal. This skips the JWT path entirely. Bug bias: if `AUTH_SYNC_API_KEY` is empty/unset, every `/sync` request returns 401. Fail-closed by design.
 
-User API keys (prefixed `ceitba_`) also go through `X-Api-Key` but they are looked up in the `api_keys` table and grant `ROLE_USER` / `ROLE_STAFF`, not `ROLE_SYNC`. See [AUTH-SETUP.md § User API keys](AUTH-SETUP.md#5-user-api-keys).
+User API keys (prefixed `ceitba_`) also go through `X-Api-Key` but they are looked up in the `api_keys` table and grant `ROLE_USER` / `ROLE_STAFF` / `ROLE_MODERATOR`, not `ROLE_SYNC`. See [AUTH-SETUP.md § User API keys](AUTH-SETUP.md#6-user-api-keys).
 
 ---
 
@@ -195,27 +218,35 @@ ApiKeyFilter (custom, runs before Spring Security)
    if X-Api-Key starts with "ceitba_":
        hash key, look up in api_keys table
        if found and not expired: mark last_used_at
-           DB lookup: active CeitbaStaff? → add ROLE_STAFF
-           set Authentication = ROLE_USER (+ROLE_STAFF) principal = User entity
+           DB lookup: active CeitbaStaff? → add ROLE_STAFF (+ ROLE_MODERATOR)
+           DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
+           set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR) principal = User entity
    else if X-Api-Key matches AUTH_SYNC_API_KEY (static):
        set Authentication = ROLE_SYNC principal "sync-job"
    │
    ▼
 OAuth2 Resource Server filter (Spring Security)
-   if Authorization: Bearer <jwt> AND no auth set yet:
+   token = Authorization: Bearer header, else the session cookie
+           (ignored on POST /v1/auth/{google/mobile,refresh,logout})
+   if token AND no auth set yet:
        1. Verify HS256 signature against AUTH_JWT_SECRET
-       2. Verify exp / nbf
+       2. Verify exp / nbf, and iss / aud (phase-in, see below)
        3. Call StaffAwareJwtAuthenticationConverter:
           a. Add ROLE_USER baseline
           b. DB lookup: if active CeitbaStaff for this user's email, add ROLE_STAFF
+          c. add ROLE_MODERATOR if (b) matched or an active ceitba_moderators grant exists
+          d. add ROLE_ORG_MEMBER if the user belongs to any organization
        4. Set Authentication = JwtAuthenticationToken with the authorities
    │
    ▼
 authorizeHttpRequests() — per-route policy from SecurityConfig
    public matchers           -> permitAll
-   /v1/auth/google, /v1/auth/callback  -> permitAll (OAuth flow)
+   GET  /v1/auth/google, /v1/auth/callback               -> permitAll (web OAuth flow)
+   POST /v1/auth/google/mobile, /refresh, /logout        -> permitAll (token endpoints)
+   GET  /v1/app/config                                   -> permitAll
    /v1/sync/**               -> hasRole("SYNC")
-   /v1/staff/**              -> hasRole("STAFF")
+   /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
+   /v1/staff/**              -> hasRole("STAFF")   (incl. /v1/staff/moderators)
    anyRequest()              -> authenticated() AND email in allowlist (JWT only)
    │
    ▼
@@ -230,7 +261,59 @@ Controller method invoked
       Controller receives the managed User entity
 ```
 
-For how a user obtains a JWT in the first place, see [AUTH-SETUP.md § Frontend integration](AUTH-SETUP.md#4-frontend-integration).
+For how a user obtains a JWT in the first place, see [AUTH-SETUP.md § Frontend integration](AUTH-SETUP.md#4-frontend-integration) (web) and [§ Mobile app integration](AUTH-SETUP.md#5-mobile-app-integration).
+
+---
+
+## Sessions and tokens
+
+| | Web SPAs | Mobile app |
+|---|---|---|
+| Sign-in | `GET /v1/auth/google` → Google → `GET /v1/auth/callback` | Native Google Sign-In → `POST /v1/auth/google/mobile {idToken, nonce?, deviceName?}` |
+| Google token check | Server-side code exchange with Google's token endpoint | ID token verified against Google's JWKS: `iss` ∈ {`accounts.google.com`, `https://accounts.google.com`}, `aud` ∈ `AUTH_GOOGLE_MOBILE_AUDIENCES`, `exp` (60 s skew), `nonce` if sent |
+| Admission | `GoogleLoginService`: `email_verified`, allowlist, `hd` ∈ allowed domains when present, find-or-create | same service |
+| Access token | JWT in HttpOnly cookie, `AUTH_JWT_TTL_DAYS` (7 d) | JWT in body, `AUTH_MOBILE_ACCESS_TTL` (15 min) |
+| Renewal | Sign in again | `POST /v1/auth/refresh {refreshToken}` (rotating, `AUTH_REFRESH_TTL` = 60 d sliding) |
+| Logout | `POST /v1/auth/logout` (clears cookie) | `POST /v1/auth/logout {refreshToken}` revokes that token's family; `POST /v1/auth/logout-all` revokes every family of the caller |
+
+Token endpoint errors use the standard error body with a machine code in `error`: `401 invalid_token` (bad/expired/reused Google or refresh token), `403 unverified_email | unauthorized | unauthorized_workspace`, `501` when `AUTH_GOOGLE_MOBILE_AUDIENCES` is empty. The web callback uses the same codes in `?error=`.
+
+**Refresh tokens** (table `refresh_tokens`, V17) are opaque random strings; only their SHA-256 is stored. Each login starts a *family*. `/refresh` revokes the presented token, links it to its successor (`replaced_by`) and returns the successor. Presenting an already-rotated token is treated as theft and revokes the whole family, so the app must never run two refreshes with the same token concurrently. Exception (lost responses): if the rotation happened less than `AUTH_REFRESH_REUSE_GRACE` (60 s) ago and the successor has not been used, the unused successor is revoked (and pointed at the new token, so presenting it later still counts as reuse) and a new successor is issued in the same family. Every refresh re-checks the allowlist: a user removed from it gets `403 unauthorized` and loses the family.
+
+**JWT claims**: `sub` (user id), `email`, `name`, `iat`, `exp`, `iss` (`AUTH_JWT_ISSUER`, default `https://ceitba.org.ar/api`), `aud` = `ceitba-api`, `jti`. Access tokens are stateless: logout, logout-all and account deletion revoke refresh tokens, but an already-issued access JWT stays valid until `exp`.
+
+**`iss`/`aud` phase-in (follow-up with a date).** JWTs issued before B1 have neither claim and live up to 7 days in web cookies. While `AUTH_JWT_ENFORCE_ISS_AUD=false` (default), `IssuerAudienceValidator` checks each claim only when it is present. **Follow-up:** 7 days after B1 reaches production (B1 deploy date + `AUTH_JWT_TTL_DAYS`), set `AUTH_JWT_ENFORCE_ISS_AUD=true` in prod so both claims become mandatory, then consider removing the flag.
+
+---
+
+## Account deletion (`DELETE /v1/me`)
+
+Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`service/user/AccountDeletionService`):
+
+| Data | Policy |
+|---|---|
+| `refresh_tokens`, `api_keys` | Deleted (all sessions and keys revoked) |
+| `user_devices` | Deleted (no more push notifications) |
+| `ceitba_staff`, `user_follows`, `user_organizations` | Deleted |
+| `saved_schedules`, `share_session_participants`, `share_sessions` created by the user (with everyone's participation in them) | Deleted |
+| `study_groups` owned by the user | Passed to the earliest remaining joiner (as when an owner leaves); deleted only when the user was the sole member |
+| The user's `study_group_participants` rows | Deleted |
+| `wiki.subject_difficulty`, all wiki votes cast by the user, both bookmark tables | Deleted |
+| `wiki.subject_comment` by the user, and all votes on those comments | Deleted (personal free text) |
+| `wiki.subject_wiki_edit_proposal` with status `PENDING` | Deleted |
+| `articles.created_by`, `news_events.created_by` | Set to `NULL` (content belongs to the organization) |
+| `wiki.subject_note`, `wiki.career_note`, `wiki.subject_wiki_page.updated_by`, reviewed edit proposals | Kept: shared study material with a NOT NULL author FK |
+| `user` row | Hard-deleted when nothing above is kept; otherwise **anonymized**: every personal column cleared and the email replaced by `deleted-<id>@deleted.invalid` |
+| Legacy Firebase uid (`user.firebase_uid`, set by the Firestore import) | Its SHA-256 goes into `deleted_firebase_accounts`, so a re-run of the Firestore import skips the account instead of re-creating it |
+
+The response clears the web session cookie. Signing in again with the same Google account creates a new, unrelated user.
+
+**Known gap: re-provisioning by a still-valid access JWT.** Deletion removes refresh tokens and API keys, but access JWTs are stateless. The cookie cleared is only the one of the browser that made the call; a web session cookie on another browser or device stays valid for up to `AUTH_JWT_TTL_DAYS` (7 d), and a mobile access token for up to `AUTH_MOBILE_ACCESS_TTL` (15 min). The first `@CurrentUser` request carrying such a token JIT-provisions the email again as a new, empty account (never linked to the deleted data). Closing this needs access-token revocation (see [Tech debt](#tech-debt--future-hardening)), e.g. a deletion tombstone per email hash that rejects tokens whose `iat` predates it at provisioning time.
+
+Guards:
+
+- **Session only.** The call must be authenticated with our JWT (web cookie or mobile bearer). A per-user `ceitba_` API key gets `403`, so a leaked script key cannot wipe its owner's account.
+- **Last staff member.** If the caller is the only active `ceitba_staff` row, the call fails with `409 LastActiveStaff`: STAFF can only be re-bootstrapped with raw SQL, so they must grant the role to someone else first. The check locks the active `ceitba_staff` rows, so two staff members deleting their accounts at the same time cannot leave zero staff.
 
 ---
 
@@ -259,6 +342,15 @@ For how a user obtains a JWT in the first place, see [AUTH-SETUP.md § Frontend 
 | Anonymous can't create/list users | `UserEndpointsIT.anonymous*Returns401` |
 | STAFF can create/list users | `UserEndpointsIT.staffCan*` |
 | Disallowed email rejected even with claimed STAFF authority | `UserEndpointsIT.disallowedEmailReturns403EvenWithStaffAuthorities` |
+| Mobile ID-token exchange (valid, unverified, not allowlisted, workspace, wrong aud/iss, expired, nonce, idempotent provisioning) | `AuthMobileIT` |
+| Refresh rotation, reuse revokes the family, lost-response grace window, allowlist re-check, logout / logout-all | `RefreshTokenIT` |
+| Account deletion: hard delete vs anonymize, tokens revoked, API keys rejected, last-staff guard | `AccountDeletionIT` |
+| `iss`/`aud` phase-in validation | `IssuerAudienceValidatorTest` |
+| STAFF implies ROLE_MODERATOR | `StaffRoleDetectionIT.userWithActiveStaffRowGetsRoleStaff`, `ModeratorIT.staffImpliesModerator` |
+| MODERATOR grant / revoke / re-grant, audit row kept, 404/409 | `ModeratorIT` |
+| USER and MODERATOR cannot manage moderator grants | `ModeratorIT.userAndModeratorCannotManageGrants` |
+| `moderator` flag on `/v1/auth/me` | `AuthMeIT.meModeratorFlagFollowsActiveGrant`, `ModeratorIT` |
+| Proposal moderation open to MODERATOR, 403 for USER and non-allowlisted, MODERATOR is not STAFF elsewhere | `StaffProposalControllerIT` |
 
 
 ---
@@ -266,6 +358,8 @@ For how a user obtains a JWT in the first place, see [AUTH-SETUP.md § Frontend 
 ## Tech debt / future hardening
 
 - **Per-branch authorization** (e.g. only IT staff can touch `/v1/sync/**`). The data is there (`ceitba_staff.branch`), the policy isn't. When this matters, model authorities as `ROLE_STAFF_IT` etc. and gate paths accordingly.
-- **JWT refresh tokens.** Currently users must re-login every 7 days. A refresh token flow (stored in `api_keys`-style table) would let the frontend silently renew without a browser redirect.
-- **Cache the staff lookup** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). Caffeine with TTL ≤ minimum role-validity window would be enough.
+- **Web refresh tokens.** Mobile clients have rotating refresh tokens; the web cookie still requires a re-login every 7 days.
+- **Enforce `iss`/`aud`** — see the dated follow-up in [§ Sessions and tokens](#sessions-and-tokens).
+- **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `StaffAwareJwtAuthenticationConverter` (which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
+- **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). Caffeine with TTL ≤ minimum role-validity window would be enough.
 - **Allowlist check for API keys.** JWT requests pass the email allowlist gate in `SecurityConfig`; API-key requests bypass it (the email was already validated at key-creation time). If a user is later removed from the allowlist, their existing API keys stay valid until they expire. Revoke them manually if needed.

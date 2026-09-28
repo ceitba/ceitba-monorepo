@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// Test-only fake. Activated by `itba.api.use-fake=true`. Tests inject this
+// Test/offline fake. Activated by `itba.api.use-fake=true`. Tests inject this
 // directly and stage canned responses with stub*().
 @Component
 @ConditionalOnProperty(name = "itba.api.use-fake", havingValue = "true")

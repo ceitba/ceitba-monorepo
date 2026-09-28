@@ -1,5 +1,6 @@
 package org.ceitba.api.external.itba;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -14,8 +15,11 @@ public record CommissionQuery(Integer year, String period, List<String> levels) 
         return new CommissionQuery(null, null, null);
     }
 
-    public CommissionQuery withDefaultsFilled() {
-        var today = LocalDate.now();
+    public CommissionQuery withDefaultsFilled(Clock clock) {
+        return withDefaultsFilled(LocalDate.now(clock));
+    }
+
+    public CommissionQuery withDefaultsFilled(LocalDate today) {
         var defaultPeriod = today.getMonthValue() >= 2 && today.getMonthValue() <= 6
             ? "FirstSemester"
             : "SecondSemester";

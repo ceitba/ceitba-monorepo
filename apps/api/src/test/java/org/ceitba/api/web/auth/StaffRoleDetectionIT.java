@@ -101,7 +101,8 @@ class StaffRoleDetectionIT {
 
         var auth = (JwtAuthenticationToken) converter.convert(jwtFor("alice@itba.edu.ar"));
         assertThat(auth.getAuthorities()).extracting(Object::toString)
-            .containsExactlyInAnyOrder("ROLE_USER", "ROLE_STAFF");
+            // STAFF implies MODERATOR.
+            .containsExactlyInAnyOrder("ROLE_USER", "ROLE_STAFF", "ROLE_MODERATOR");
     }
 
     @Test

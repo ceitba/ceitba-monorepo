@@ -8,4 +8,7 @@ import java.util.UUID;
 
 public interface BenefitCardRepository extends JpaRepository<BenefitCard, UUID> {
     List<BenefitCard> findAllByOrderByDisplayOrderAscTitleEsAsc();
+
+    // Firestore import key: cards have no source id, so the Spanish title is it.
+    List<BenefitCard> findByTitleEsIgnoreCase(String titleEs);
 }

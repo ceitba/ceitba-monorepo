@@ -60,13 +60,22 @@ public class BenefitService {
         b.setContactEmail(req.contactEmail());
         b.setHighlightsEs(req.highlightsEs());
         b.setHighlightsEn(req.highlightsEn());
+        // Names postdate the SPA's editor, which omits them: null keeps the
+        // stored value so an SPA save doesn't wipe them; send "" to clear.
+        if (req.nameEs() != null) b.setNameEs(blankToNull(req.nameEs()));
+        if (req.nameEn() != null) b.setNameEn(blankToNull(req.nameEn()));
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private BenefitResponse toResponse(Benefit b) {
         return new BenefitResponse(
             b.getSlug(), b.getColorVar(), b.getDisplayOrder(),
             b.getLinkUrl(), b.getContactEmail(),
-            b.getHighlightsEs(), b.getHighlightsEn()
+            b.getHighlightsEs(), b.getHighlightsEn(),
+            b.getNameEs(), b.getNameEn()
         );
     }
 }

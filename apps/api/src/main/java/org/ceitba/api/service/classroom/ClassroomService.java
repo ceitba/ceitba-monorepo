@@ -6,9 +6,11 @@ import org.ceitba.api.domain.DayOfWeek;
 import org.ceitba.api.repository.CommissionTimeRepository;
 import org.ceitba.api.web.classroom.dto.ClassroomDto;
 import org.ceitba.api.web.classroom.dto.ClassroomScheduleDto;
+import org.ceitba.api.web.classroom.dto.ClassroomsResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -22,23 +24,25 @@ public class ClassroomService {
     private static final String ONLINE = "Online";
 
     private final CommissionTimeRepository commissionTimeRepository;
+    private final Clock clock;
 
-    public ClassroomService(CommissionTimeRepository commissionTimeRepository) {
+    public ClassroomService(CommissionTimeRepository commissionTimeRepository, Clock clock) {
         this.commissionTimeRepository = commissionTimeRepository;
+        this.clock = clock;
     }
 
     // GET /v1/classrooms
     // status=occupied -> nested {day: {building: [scheduleDto]}}
     // else            -> {building: [classroomDto]}
     @Transactional(readOnly = true)
-    public Object getClassroomsWithFilters(String status, boolean currentSemester) {
+    public ClassroomsResponse getClassroomsWithFilters(String status, boolean currentSemester) {
         if ("occupied".equals(status)) {
             var rows = currentSemester
-                ? commissionTimeRepository.findActiveOrdered(LocalDate.now())
+                ? commissionTimeRepository.findActiveOrdered(LocalDate.now(clock))
                 : commissionTimeRepository.findAllOrdered();
-            return groupByDayAndBuilding(rows);
+            return new ClassroomsResponse.OccupiedByDay(groupByDayAndBuilding(rows));
         }
-        return groupByBuilding(commissionTimeRepository.findAllOrdered());
+        return new ClassroomsResponse.ByBuilding(groupByBuilding(commissionTimeRepository.findAllOrdered()));
     }
 
     // GET /v1/classrooms/building/{building}
@@ -60,7 +64,7 @@ public class ClassroomService {
             throw new ValidationException("day", day,
                 "must be one of MONDAY..SUNDAY (case-insensitive)");
         }
-        return commissionTimeRepository.findActiveOrdered(LocalDate.now()).stream()
+        return commissionTimeRepository.findActiveOrdered(LocalDate.now(clock)).stream()
             .filter(ct -> ct.getDay() == target)
             .map(this::toScheduleDto)
             .toList();
@@ -88,7 +92,7 @@ public class ClassroomService {
             throw new ValidationException("hourFrom", hourFrom, "must be before hourTo");
         }
 
-        return commissionTimeRepository.findActiveOrdered(LocalDate.now()).stream()
+        return commissionTimeRepository.findActiveOrdered(LocalDate.now(clock)).stream()
             .filter(ct -> ct.getDay() == target)
             .filter(ct -> ct.getClassroom().equalsIgnoreCase(classroom)
                        && ct.getBuilding().equalsIgnoreCase(building))

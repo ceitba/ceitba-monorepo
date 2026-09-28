@@ -42,7 +42,10 @@ public class SavedScheduleService {
 
     @Transactional
     public SavedScheduleResponse create(UUID userId, SaveScheduleRequest req) {
-        if (repository.countByUserId(userId) >= MAX_PER_USER) {
+        // Count, cap and first-is-primary must see the user's other writes.
+        repository.lockUserSchedules(userId);
+        long existing = repository.countByUserId(userId);
+        if (existing >= MAX_PER_USER) {
             throw new ResourceAlreadyExistsException(
                 "SavedSchedule",
                 "Saved schedule limit reached (max " + MAX_PER_USER + "). Delete one first.");
@@ -50,7 +53,26 @@ public class SavedScheduleService {
         var s = new SavedSchedule(userId, req.name(), req.payload());
         s.setCareerId(req.careerId());
         s.setPlan(req.plan());
+        // The first schedule a user saves becomes primary. Later creates never
+        // touch the primary flag, even when the user currently has none.
+        s.setPrimary(existing == 0);
         return toResponse(repository.save(s));
+    }
+
+    // Makes `id` the user's primary schedule, clearing the previous one.
+    // Idempotent. Deleting the primary does not promote another: the client
+    // picks the next one explicitly through this method.
+    @Transactional
+    public SavedScheduleResponse makePrimary(UUID userId, UUID id) {
+        repository.lockUserSchedules(userId);
+        repository.findByIdAndUserId(id, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("SavedSchedule", id.toString()));
+        repository.clearPrimaryExcept(userId, id);
+        // Re-read: the bulk update cleared the persistence context.
+        var s = repository.findByIdAndUserId(id, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("SavedSchedule", id.toString()));
+        s.setPrimary(true);
+        return toResponse(repository.saveAndFlush(s));
     }
 
     @Transactional
@@ -74,7 +96,7 @@ public class SavedScheduleService {
     private SavedScheduleResponse toResponse(SavedSchedule s) {
         return new SavedScheduleResponse(
             s.getId(), s.getName(), s.getCareerId(), s.getPlan(),
-            s.getPayload(), s.getCreatedAt(), s.getUpdatedAt()
+            s.getPayload(), s.isPrimary(), s.getCreatedAt(), s.getUpdatedAt()
         );
     }
 }

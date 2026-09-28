@@ -11,6 +11,8 @@ public interface PlanSubjectRepository extends JpaRepository<PlanSubject, PlanSu
 
     List<PlanSubject> findByPlanId(String planId);
 
+    boolean existsByPlanId(String planId);
+
     List<PlanSubject> findBySubjectId(String subjectId);
 
     Optional<PlanSubject> findByPlanIdAndSubjectId(String planId, String subjectId);

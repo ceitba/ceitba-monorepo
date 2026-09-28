@@ -3,16 +3,21 @@ package org.ceitba.api.service.career;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.Career;
+import org.ceitba.api.domain.Plan;
 import org.ceitba.api.repository.CareerRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.web.career.dto.CareerResponse;
 import org.ceitba.api.web.career.dto.CreateCareerRequest;
+import org.ceitba.api.web.career.dto.CreatePlanRequest;
+import org.ceitba.api.web.career.dto.PlanResponse;
 import org.ceitba.api.web.career.dto.UpdateCareerRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,13 +49,17 @@ public class CareerService {
 
     // Mirrors NestJS getCareersWithPlans — keyed by careerId, plans populated.
     // LinkedHashMap preserves the id-sorted order; Map.copyOf would lose it.
+    // Plans are sorted by id (plain string order) so clients get a stable list;
+    // one query for all plans instead of one per career.
     @Transactional(readOnly = true)
     public Map<String, CareerResponse> getCareersWithPlans() {
+        var planIdsByCareer = new HashMap<String, List<String>>();
+        for (var plan : planRepository.findAll(Sort.by("id"))) {
+            planIdsByCareer.computeIfAbsent(plan.getCareer().getId(), k -> new ArrayList<>()).add(plan.getId());
+        }
         var result = new LinkedHashMap<String, CareerResponse>();
         for (var career : careerRepository.findAll(Sort.by("id"))) {
-            var planIds = planRepository.findByCareer_Id(career.getId()).stream()
-                .map(p -> p.getId())
-                .toList();
+            var planIds = List.copyOf(planIdsByCareer.getOrDefault(career.getId(), List.of()));
             result.put(career.getId(), new CareerResponse(career.getId(), career.getName(), planIds));
         }
         return result;
@@ -79,6 +88,29 @@ public class CareerService {
         // hit GET /v1/careers/plans afterwards. Update returns a thin echo,
         // matching the NestJS shape.
         return new CareerResponse(saved.getId(), saved.getName(), List.of());
+    }
+
+    // Adds a plan to a career without a migration. The ITBA gateway has no
+    // endpoint that lists careers or plans (docs/ITBA-GATEWAY.md), and the
+    // entrance-program plan codes change every year, so staff register new
+    // plan codes here; the scheduled sync then pulls their subjects.
+    // Plan ids are global (plan.id is the PK), so an id already used by any
+    // career is a conflict.
+    @Transactional
+    public PlanResponse addPlan(String careerId, CreatePlanRequest req) {
+        var career = careerRepository.findById(careerId)
+            .orElseThrow(() -> new ResourceNotFoundException("Career", careerId));
+        var planId = req.id().trim();
+        if (planRepository.existsById(planId)) {
+            throw new ResourceAlreadyExistsException("Plan", planId);
+        }
+        var name = req.name() == null || req.name().isBlank() ? planId : req.name().trim();
+        try {
+            var saved = planRepository.saveAndFlush(new Plan(planId, career, name));
+            return new PlanResponse(saved.getId(), career.getId(), saved.getName());
+        } catch (DataIntegrityViolationException race) {
+            throw new ResourceAlreadyExistsException("Plan", planId);
+        }
     }
 
     // GlobalExceptionHandler already maps DataIntegrityViolationException to a

@@ -1,0 +1,15 @@
+{
+  "name": "ceitba-firestore-export",
+  "private": true,
+  "version": "1.0.0",
+  "description": "One-off export of the legacy CEITBA Firestore project for POST /v1/sync/import/firestore",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "export": "node export.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.650.0",
+    "firebase-admin": "^12.7.0"
+  }
+}

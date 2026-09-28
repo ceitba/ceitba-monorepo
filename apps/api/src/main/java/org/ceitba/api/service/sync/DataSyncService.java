@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,19 +38,22 @@ public class DataSyncService {
     private final SubjectRepository subjectRepository;
     private final PlanSubjectRepository planSubjectRepository;
     private final CommissionRepository commissionRepository;
+    private final Clock clock;
 
     public DataSyncService(ItbaApiClient itbaApiClient,
                            CareerRepository careerRepository,
                            PlanRepository planRepository,
                            SubjectRepository subjectRepository,
                            PlanSubjectRepository planSubjectRepository,
-                           CommissionRepository commissionRepository) {
+                           CommissionRepository commissionRepository,
+                           Clock clock) {
         this.itbaApiClient = itbaApiClient;
         this.careerRepository = careerRepository;
         this.planRepository = planRepository;
         this.subjectRepository = subjectRepository;
         this.planSubjectRepository = planSubjectRepository;
         this.commissionRepository = commissionRepository;
+        this.clock = clock;
     }
 
     public DataSyncResult syncAll(CommissionQuery commissionQuery) {
@@ -187,7 +191,7 @@ public class DataSyncService {
     }
 
     private void syncCommissions(DataSyncResult result, CommissionQuery query) {
-        var q = query.withDefaultsFilled();
+        var q = query.withDefaultsFilled(clock);
         log.info("Syncing commissions year={} period={} levels={}", q.year(), q.period(), q.levels());
 
         List<CommissionProjection> commissions;

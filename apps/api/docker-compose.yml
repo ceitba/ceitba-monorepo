@@ -7,7 +7,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceitba_password}
     ports:
-      - "5432:5432"
+      # Loopback only: nothing outside the host should reach Postgres (Docker
+      # port publishing bypasses host firewalls such as ufw).
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -19,14 +21,115 @@ services:
       timeout: 10s
       retries: 3
 
+  # S3-compatible object storage for presigned uploads (docs/OBJECT-STORAGE.md).
+  # Official MinIO images are no longer published (Docker Hub/quay), so this is
+  # the community-maintained build of the same code (github.com/pgsty/minio),
+  # pinned by tag and digest. No public port: phones reach the S3 API through
+  # Caddy at https://ceitba.org.ar/ceitba-media/* (path style, same host), and
+  # the admin API/console are only reachable from the host.
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    container_name: ceitba-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      # Root credentials: used only by minio-init and by operators (via the
+      # console or `docker exec ceitba-minio mc`), never by the API.
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env (see .env.example)}
+      # MINIO_DOMAIN stays unset on purpose: buckets are addressed path style
+      # (https://ceitba.org.ar/ceitba-media/key), whatever the Host header.
+    ports:
+      # Web console, loopback only (SSH tunnel: ssh -L 9001:127.0.0.1:9001 vps).
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ceitba-network
+      - ceitba-proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # One-shot, idempotent setup that runs on every `docker compose up`:
+  #   - creates the bucket (STORAGE_BUCKET, default ceitba-media);
+  #   - allows anonymous GET of objects (s3:GetObject only: no list, no write);
+  #   - creates/updates the API's service user (STORAGE_ACCESS_KEY_ID/SECRET)
+  #     with a policy limited to s3:PutObject/s3:GetObject on that bucket,
+  #     so the API never holds the root credentials.
+  # Re-running with a new STORAGE_SECRET_ACCESS_KEY rotates the user's secret.
+  # MinioPresignedUploadIT runs this exact script against a real MinIO.
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z@sha256:cfc83108c3abb371f8fb84d99c1fdc88f8c237e022409b0081fb7c0a3be634dd
+    container_name: ceitba-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MC_CONFIG_DIR: /tmp/.mc
+      MINIO_URL: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env (see .env.example)}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-ceitba-media}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?set STORAGE_ACCESS_KEY_ID in .env (see .env.example)}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?set STORAGE_SECRET_ACCESS_KEY in .env (see .env.example)}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        i=0
+        until mc alias set local "$$MINIO_URL" "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+          i=$$((i + 1)); [ "$$i" -lt 30 ] || { echo "minio-init: MinIO not reachable at $$MINIO_URL" >&2; exit 1; }
+          sleep 2
+        done
+        mc mb --ignore-existing "local/$$STORAGE_BUCKET"
+        # Anonymous GetObject only. mc's canned "download" policy also grants
+        # s3:ListBucket, which would let anyone enumerate every upload.
+        cat > /tmp/anonymous-policy.json <<EOF
+        {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": ["*"]},
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/*"]
+          }]
+        }
+        EOF
+        mc anonymous set-json /tmp/anonymous-policy.json "local/$$STORAGE_BUCKET"
+        cat > /tmp/ceitba-api-policy.json <<EOF
+        {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:PutObject", "s3:GetObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/*"]
+          }]
+        }
+        EOF
+        mc admin policy create local ceitba-api /tmp/ceitba-api-policy.json
+        mc admin user add local "$$STORAGE_ACCESS_KEY_ID" "$$STORAGE_SECRET_ACCESS_KEY"
+        if ! mc admin user info local "$$STORAGE_ACCESS_KEY_ID" --json \
+            | grep -Eq '"policyName":"([^"]*,)?ceitba-api(,[^"]*)?"'; then
+          mc admin policy attach local ceitba-api --user "$$STORAGE_ACCESS_KEY_ID"
+        fi
+        echo "minio-init: bucket $$STORAGE_BUCKET ready, service user $$STORAGE_ACCESS_KEY_ID has policy ceitba-api"
+    networks:
+      - ceitba-network
+    restart: "no"
+
   ceitba-api:
     image: ghcr.io/ceitba/ceitba-api:latest
     build:
       context: .
       dockerfile: infrastructure/docker/Dockerfile
     container_name: ceitba-api
+    # Loopback only: Caddy reaches the API over the ceitba-proxy network. A
+    # public port would let clients skip Caddy and forge X-Forwarded-For.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ceitba_db}
@@ -35,22 +138,65 @@ services:
       ITBA_API_BASE_URL: ${ITBA_API_BASE_URL:-}
       ITBA_API_TOKEN: ${ITBA_API_TOKEN:-}
       ITBA_API_TIMEOUT: ${ITBA_API_TIMEOUT:-30000}
+      ITBA_API_USE_FAKE: ${ITBA_API_USE_FAKE:-false}
       AUTH_ALLOWED_DOMAINS: ${AUTH_ALLOWED_DOMAINS:-itba.edu.ar}
       AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:-}
-      AUTH_JWT_AUDIENCE: ${AUTH_JWT_AUDIENCE:-}
       AUTH_SYNC_API_KEY: ${AUTH_SYNC_API_KEY:-}
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env (openssl rand -base64 32)}
+      AUTH_JWT_TTL_DAYS: ${AUTH_JWT_TTL_DAYS:-7}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-ceitba_session}
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-Lax}
+      AUTH_COOKIE_PATH: ${AUTH_COOKIE_PATH:-/}
+      CONTENT_HMAC_SECRET: ${CONTENT_HMAC_SECRET:-}
+      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-https://ceitba.org.ar/api}
+      AUTH_JWT_ENFORCE_ISS_AUD: ${AUTH_JWT_ENFORCE_ISS_AUD:-false}
+      AUTH_MOBILE_ACCESS_TTL: ${AUTH_MOBILE_ACCESS_TTL:-15m}
+      AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-60d}
+      AUTH_REFRESH_REUSE_GRACE: ${AUTH_REFRESH_REUSE_GRACE:-60s}
+      AUTH_GOOGLE_MOBILE_AUDIENCES: ${AUTH_GOOGLE_MOBILE_AUDIENCES:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       SYNC_ENABLED: ${SYNC_ENABLED:-true}
+      MOBILE_MIN_VERSION: ${MOBILE_MIN_VERSION:-0.0.0}
+      MOBILE_LATEST_VERSION: ${MOBILE_LATEST_VERSION:-0.0.0}
+      MOBILE_MAINTENANCE: ${MOBILE_MAINTENANCE:-false}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+      FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH:-}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_TRUST_FORWARDED_FOR: ${RATE_LIMIT_TRUST_FORWARDED_FOR:-true}
+      RATE_LIMIT_AUTH_CAPACITY: ${RATE_LIMIT_AUTH_CAPACITY:-20}
+      RATE_LIMIT_AUTH_PERIOD: ${RATE_LIMIT_AUTH_PERIOD:-1m}
+      RATE_LIMIT_MOBILE_LOGIN_CAPACITY: ${RATE_LIMIT_MOBILE_LOGIN_CAPACITY:-120}
+      RATE_LIMIT_MOBILE_LOGIN_PERIOD: ${RATE_LIMIT_MOBILE_LOGIN_PERIOD:-1m}
+      RATE_LIMIT_REFRESH_CAPACITY: ${RATE_LIMIT_REFRESH_CAPACITY:-120}
+      RATE_LIMIT_REFRESH_PERIOD: ${RATE_LIMIT_REFRESH_PERIOD:-1m}
+      RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:-30}
+      RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD:-1h}
+      RATE_LIMIT_PROPOSALS_CAPACITY: ${RATE_LIMIT_PROPOSALS_CAPACITY:-10}
+      RATE_LIMIT_PROPOSALS_PERIOD: ${RATE_LIMIT_PROPOSALS_PERIOD:-1h}
+      RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY: ${RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY:-30}
+      RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD: ${RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD:-10m}
+      # Object storage: MinIO above, reached through Caddy (docs/OBJECT-STORAGE.md).
+      # R2_* are fallbacks from before the move to MinIO.
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-${R2_ENDPOINT:-}}
+      STORAGE_REGION: ${STORAGE_REGION:-${R2_REGION:-us-east-1}}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-${R2_BUCKET:-ceitba-media}}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-${R2_ACCESS_KEY_ID:-}}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${R2_SECRET_ACCESS_KEY:-}}
+      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${R2_PUBLIC_URL:-}}
+      STORAGE_PRESIGN_TTL: ${STORAGE_PRESIGN_TTL:-${R2_PRESIGN_TTL:-10m}}
     networks:
       - ceitba-network
       - ceitba-proxy
     depends_on:
       postgres:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     deploy:
       resources:
@@ -67,6 +213,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

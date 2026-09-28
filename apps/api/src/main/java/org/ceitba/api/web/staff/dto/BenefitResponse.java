@@ -9,5 +9,7 @@ public record BenefitResponse(
     String linkUrl,
     String contactEmail,
     List<String> highlightsEs,
-    List<String> highlightsEn
+    List<String> highlightsEn,
+    String nameEs,
+    String nameEn
 ) {}

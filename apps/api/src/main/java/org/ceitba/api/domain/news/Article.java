@@ -70,6 +70,10 @@ public class Article {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    // Set once, when the "new article" push is triggered (ArticleService).
+    @Column(name = "push_sent_at")
+    private OffsetDateTime pushSentAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
@@ -102,6 +106,7 @@ public class Article {
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public User getCreatedBy()         { return createdBy; }
+    public OffsetDateTime getPushSentAt() { return pushSentAt; }
 
     public void setTitle(String title)           { this.title = title; }
     public void setExcerpt(String excerpt)       { this.excerpt = excerpt; }
@@ -116,4 +121,5 @@ public class Article {
     public void setCoverImage(String ci)         { this.coverImage = ci; }
     public void setStatus(String status)         { this.status = status; }
     public void setCreatedBy(User createdBy)     { this.createdBy = createdBy; }
+    public void markPushSent(OffsetDateTime at)  { this.pushSentAt = at; }
 }

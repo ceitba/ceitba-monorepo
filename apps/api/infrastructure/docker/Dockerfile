@@ -18,6 +18,10 @@ RUN ./mvnw -B -ntp -DskipTests package && \
 FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /app
 
+# ITBA runs on Argentina time. Business logic uses the injected ART Clock
+# (config/ClockConfig), but keep the JVM default + logs aligned too.
+ENV TZ=America/Argentina/Buenos_Aires
+
 RUN groupadd -r ceitba && useradd -r -g ceitba ceitba
 
 COPY --from=build --chown=ceitba:ceitba /app/app.jar /app/app.jar

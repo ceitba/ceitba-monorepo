@@ -17,6 +17,7 @@ import org.ceitba.api.web.subject.dto.OrganizedSubjectsResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -35,17 +36,20 @@ public class SubjectPlanService {
     private final PlanSubjectRepository planSubjectRepository;
     private final PlanRepository planRepository;
     private final SubjectRepository subjectRepository;
+    private final Clock clock;
 
     public SubjectPlanService(ItbaApiClient itbaApiClient,
                               CommissionRepository commissionRepository,
                               PlanSubjectRepository planSubjectRepository,
                               PlanRepository planRepository,
-                              SubjectRepository subjectRepository) {
+                              SubjectRepository subjectRepository,
+                              Clock clock) {
         this.itbaApiClient = itbaApiClient;
         this.commissionRepository = commissionRepository;
         this.planSubjectRepository = planSubjectRepository;
         this.planRepository = planRepository;
         this.subjectRepository = subjectRepository;
+        this.clock = clock;
     }
 
     // GET /api/v1/subjects?plan=... — the "organized" response. Subjects come
@@ -90,10 +94,10 @@ public class SubjectPlanService {
                 .toList();
 
             String courseStart = subjectCommissions.isEmpty()
-                ? LocalDate.now().format(ISO_DATE)
+                ? LocalDate.now(clock).format(ISO_DATE)
                 : subjectCommissions.get(0).getCourseStart().format(ISO_DATE);
             String courseEnd = subjectCommissions.isEmpty()
-                ? LocalDate.now().format(ISO_DATE)
+                ? LocalDate.now(clock).format(ISO_DATE)
                 : subjectCommissions.get(0).getCourseEnd().format(ISO_DATE);
 
             var detail = new OrganizedSubjectsResponse.SubjectDetail(

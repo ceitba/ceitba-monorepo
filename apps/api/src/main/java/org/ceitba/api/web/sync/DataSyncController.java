@@ -5,9 +5,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.ceitba.api.external.itba.CommissionQuery;
 import org.ceitba.api.service.sync.DataSyncResult;
 import org.ceitba.api.service.sync.DataSyncService;
+import org.ceitba.api.service.sync.FirestoreImportService;
+import org.ceitba.api.web.sync.dto.FirestoreExport;
+import org.ceitba.api.web.sync.dto.FirestoreImportResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,9 +25,12 @@ import java.util.List;
 public class DataSyncController {
 
     private final DataSyncService dataSyncService;
+    private final FirestoreImportService firestoreImportService;
 
-    public DataSyncController(DataSyncService dataSyncService) {
+    public DataSyncController(DataSyncService dataSyncService,
+                              FirestoreImportService firestoreImportService) {
         this.dataSyncService = dataSyncService;
+        this.firestoreImportService = firestoreImportService;
     }
 
     @PostMapping("/all")
@@ -72,6 +79,19 @@ public class DataSyncController {
         @RequestParam(required = false) String levels
     ) {
         return dataSyncService.syncCommissionsBySubject(subjectCode, buildQuery(year, period, levels));
+    }
+
+    // One-time migration of the legacy Firestore project. The body is the
+    // JSON written by scripts/firestore-export. Idempotent; dryRun=true runs
+    // every document and rolls it back, returning what a real run would do.
+    @PostMapping("/import/firestore")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Import a legacy Firestore export (Usuarios, Benefits, Propuestas)")
+    public FirestoreImportResponse importFirestore(
+        @RequestBody FirestoreExport export,
+        @RequestParam(defaultValue = "false") boolean dryRun
+    ) {
+        return FirestoreImportResponse.from(firestoreImportService.importExport(export, dryRun));
     }
 
     private CommissionQuery buildQuery(Integer year, String period, String levels) {

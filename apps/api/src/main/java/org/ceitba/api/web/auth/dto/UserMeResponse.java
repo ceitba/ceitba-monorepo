@@ -8,12 +8,17 @@ public record UserMeResponse(
     String name,
     String email,
     String role,
+    // True for active STAFF (implied) and for an active MODERATOR grant.
+    boolean moderator,
     String avatarUrl,
     String theme,
     String language,
     String careerId,
     String plan,
     Integer fileNumber,
+    String linkedin,
+    String instagram,
+    String discord,
     List<MembershipDto> organizations,
     List<String> follows
 ) {

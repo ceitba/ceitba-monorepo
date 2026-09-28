@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.ceitba.api.service.career.CareerService;
 import org.ceitba.api.web.career.dto.CareerResponse;
 import org.ceitba.api.web.career.dto.CreateCareerRequest;
+import org.ceitba.api.web.career.dto.CreatePlanRequest;
+import org.ceitba.api.web.career.dto.PlanResponse;
 import org.ceitba.api.web.career.dto.UpdateCareerRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -69,6 +71,15 @@ public class CareerController {
     @Operation(summary = "Update a career's name (STAFF only)")
     public CareerResponse updateCareer(@PathVariable String id, @Valid @RequestBody UpdateCareerRequest req) {
         return careerService.update(id, req);
+    }
+
+    @PostMapping("/{id}/plans")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('STAFF')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Add a plan to a career (STAFF only). 409 if the plan id is already used.")
+    public PlanResponse addPlan(@PathVariable String id, @Valid @RequestBody CreatePlanRequest req) {
+        return careerService.addPlan(id, req);
     }
 
     @DeleteMapping("/{id}")

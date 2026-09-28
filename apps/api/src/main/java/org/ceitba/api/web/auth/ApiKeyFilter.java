@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.ceitba.api.config.AuthProperties;
+import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,7 +21,9 @@ import java.util.ArrayList;
 // Processes the X-Api-Key header before the JWT resource-server filter runs.
 //
 //   ceitba_* keys  →  user API key: looked up by SHA-256 hash in the DB;
-//                     grants ROLE_USER (+ ROLE_STAFF if active staff row exists).
+//                     grants ROLE_USER (+ ROLE_STAFF and ROLE_MODERATOR if an
+//                     active staff row exists, + ROLE_MODERATOR for an active
+//                     moderator grant), same as StaffAwareJwtAuthenticationConverter.
 //   anything else  →  sync job static key: compared to auth.sync-api-key;
 //                     grants ROLE_SYNC.
 public class ApiKeyFilter extends OncePerRequestFilter {
@@ -30,12 +33,15 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     private final AuthProperties auth;
     private final ApiKeyService apiKeyService;
     private final CeitbaStaffRepository staffRepository;
+    private final CeitbaModeratorRepository moderatorRepository;
 
     public ApiKeyFilter(AuthProperties auth, ApiKeyService apiKeyService,
-                        CeitbaStaffRepository staffRepository) {
-        this.auth            = auth;
-        this.apiKeyService   = apiKeyService;
-        this.staffRepository = staffRepository;
+                        CeitbaStaffRepository staffRepository,
+                        CeitbaModeratorRepository moderatorRepository) {
+        this.auth                = auth;
+        this.apiKeyService       = apiKeyService;
+        this.staffRepository     = staffRepository;
+        this.moderatorRepository = moderatorRepository;
     }
 
     @Override
@@ -47,8 +53,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                 apiKeyService.validate(key).ifPresent(user -> {
                     var authorities = new ArrayList<org.springframework.security.core.GrantedAuthority>();
                     authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-                    if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now())) {
+                    boolean isStaff = staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now());
+                    if (isStaff) {
                         authorities.add(new SimpleGrantedAuthority("ROLE_STAFF"));
+                    }
+                    if (isStaff || moderatorRepository.isActiveModerator(user.getId())) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_MODERATOR"));
                     }
                     SecurityContextHolder.getContext().setAuthentication(
                         new UsernamePasswordAuthenticationToken(user, null, authorities));

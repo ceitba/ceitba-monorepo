@@ -50,23 +50,29 @@ public class MeSchedulesController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Save a new schedule. 409 if the per-user limit is reached.")
+    @Operation(summary = "Save a new schedule (the user's first one becomes primary). 409 if the per-user limit is reached.")
     public SavedScheduleResponse create(@CurrentUser User user,
                                          @Valid @RequestBody SaveScheduleRequest req) {
         return service.create(user.getId(), req);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Replace name/payload of an existing saved schedule")
+    @Operation(summary = "Replace name/payload of an existing saved schedule (isPrimary is unchanged)")
     public SavedScheduleResponse update(@CurrentUser User user,
                                          @PathVariable UUID id,
                                          @Valid @RequestBody SaveScheduleRequest req) {
         return service.update(user.getId(), id, req);
     }
 
+    @PutMapping("/{id}/primary")
+    @Operation(summary = "Make this the user's primary schedule (clears the previous primary). Idempotent.")
+    public SavedScheduleResponse makePrimary(@CurrentUser User user, @PathVariable UUID id) {
+        return service.makePrimary(user.getId(), id);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete a saved schedule")
+    @Operation(summary = "Delete a saved schedule. Deleting the primary leaves the user with no primary.")
     public void delete(@CurrentUser User user, @PathVariable UUID id) {
         service.delete(user.getId(), id);
     }

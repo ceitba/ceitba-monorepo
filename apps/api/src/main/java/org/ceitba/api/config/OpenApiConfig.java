@@ -22,11 +22,15 @@ public class OpenApiConfig {
                     .type(SecurityScheme.Type.HTTP)
                     .scheme("bearer")
                     .bearerFormat("JWT")
-                    .description("Google ID token. Frontend uses Google Sign-In and forwards the token here."))
+                    .description("CEITBA-issued HS256 JWT (never a Google token). Web SPAs receive it as the "
+                        + "HttpOnly session cookie after GET /v1/auth/google; the mobile app gets it from "
+                        + "POST /v1/auth/google/mobile (Google ID token exchange) and renews it with "
+                        + "POST /v1/auth/refresh. Send it as Authorization: Bearer <jwt>."))
                 .addSecuritySchemes("apiKey", new SecurityScheme()
                     .type(SecurityScheme.Type.APIKEY)
                     .in(SecurityScheme.In.HEADER)
                     .name("X-API-Key")
-                    .description("Static key for /sync endpoints (cron / ops, not human users).")));
+                    .description("Either the static AUTH_SYNC_API_KEY for /v1/sync/** (cron / ops), "
+                        + "or a per-user ceitba_* key created via POST /v1/auth/api-keys.")));
     }
 }

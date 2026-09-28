@@ -8,7 +8,6 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -36,10 +35,13 @@ public class PlanSubject {
     @Column(name = "credits_required")
     private Integer creditsRequired;
 
-    // Postgres text[] — Hibernate 6 maps List<String> with @JdbcTypeCode(ARRAY).
+    // Stored as String[] (not List<String>) on purpose: Hibernate 6.5 caches the
+    // BasicType it resolves for List<String>, so if Article (List<String> as
+    // JSON) is bound first, this column gets typed as JSON and schema
+    // validation fails at startup. String[] can't collide. See ListStringMappingOrderIT.
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(columnDefinition = "varchar(255)[]")
-    private List<String> dependencies = new ArrayList<>();
+    private String[] dependencies = new String[0];
 
     protected PlanSubject() {}
 
@@ -52,7 +54,7 @@ public class PlanSubject {
         this.year = year;
         this.semester = semester;
         this.creditsRequired = creditsRequired;
-        this.dependencies = dependencies != null ? new ArrayList<>(dependencies) : new ArrayList<>();
+        this.dependencies = StringArrays.fromList(dependencies);
     }
 
     public String getSubjectId() { return subjectId; }
@@ -61,5 +63,5 @@ public class PlanSubject {
     public int getYear() { return year; }
     public int getSemester() { return semester; }
     public Integer getCreditsRequired() { return creditsRequired; }
-    public List<String> getDependencies() { return dependencies; }
+    public List<String> getDependencies() { return StringArrays.toList(dependencies); }
 }

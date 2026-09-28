@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -36,11 +37,14 @@ public class RestClientItbaApiClient implements ItbaApiClient {
 
     private final RestClient client;
     private final String token;
+    private final Clock clock;
 
     public RestClientItbaApiClient(RestClient itbaRestClient,
-                                   @Value("${itba.api.token:}") String token) {
+                                   @Value("${itba.api.token:}") String token,
+                                   Clock clock) {
         this.client = itbaRestClient;
         this.token = token;
+        this.clock = clock;
     }
 
     @Override
@@ -72,7 +76,7 @@ public class RestClientItbaApiClient implements ItbaApiClient {
 
     @Override
     public List<CommissionProjection> getCommissions(CommissionQuery query) {
-        var q = query.withDefaultsFilled();
+        var q = query.withDefaultsFilled(clock);
         var out = new ArrayList<CommissionProjection>();
 
         for (var level : q.levels()) {

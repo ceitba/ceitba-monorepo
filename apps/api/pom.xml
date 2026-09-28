@@ -21,7 +21,24 @@
         <java.version>21</java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.21.3</testcontainers.version>
+        <bucket4j.version>8.20.0</bucket4j.version>
+        <firebase-admin.version>9.11.0</firebase-admin.version>
+        <!-- Must match the google-http-client that firebase-admin brings. -->
+        <google-http-client.version>2.2.0</google-http-client.version>
+        <awssdk.version>2.55.6</awssdk.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -66,6 +83,58 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
+        <!-- In-memory per-IP rate limiting (web/ratelimit). Caffeine bounds the
+             bucket map so an IP-rotating client cannot grow it without limit. -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-core</artifactId>
+            <version>${bucket4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <!-- FCM push sends (service/push). Only FirebaseMessaging is used, so
+             the Firestore and Cloud Storage clients (gRPC stacks) are left out;
+             they were also what brought google-http-client-jackson2, which
+             FirebaseOptions needs, so it is declared below. -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>${firebase-admin.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-firestore</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-storage</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-jackson2</artifactId>
+            <version>${google-http-client.version}</version>
+        </dependency>
+        <!-- S3-compatible object storage (MinIO in prod). Only S3Presigner is
+             used: presigning is local signing and never opens a connection,
+             so the SDK's bundled HTTP clients are excluded. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -89,6 +158,12 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Waits for @Async push deliveries in ITs (version from the Boot BOM). -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -104,10 +179,10 @@
                     <!-- Docker 25+ requires API >= 1.40. docker-java's default
                          is 1.32, which the daemon rejects. Force a modern version. -->
                     <systemPropertyVariables>
-                        <api.version>1.43</api.version>
+                        <api.version>1.44</api.version>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DOCKER_API_VERSION>1.43</DOCKER_API_VERSION>
+                        <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>
                     </environmentVariables>
                 </configuration>
             </plugin>
@@ -124,10 +199,10 @@
                 </executions>
                 <configuration>
                     <systemPropertyVariables>
-                        <api.version>1.43</api.version>
+                        <api.version>1.44</api.version>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DOCKER_API_VERSION>1.43</DOCKER_API_VERSION>
+                        <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>
                     </environmentVariables>
                 </configuration>
             </plugin>

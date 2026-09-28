@@ -24,6 +24,7 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `POST /api/v1/careers` | `POST /api/v1/careers` | STAFF | ✅ |
 | `PUT /api/v1/careers/{id}` | `PUT /api/v1/careers/{id}` | STAFF | ✅ |
 | `DELETE /api/v1/careers/{id}` | `DELETE /api/v1/careers/{id}` | STAFF | ✅ |
+| _(new)_ | `POST /api/v1/careers/{id}/plans` | STAFF | ✅ (new plan codes without a migration, see `ITBA-GATEWAY.md`) |
 | `GET /api/v1/classrooms` | `GET /api/v1/classrooms` | public | ✅ |
 | `GET /api/v1/classrooms/building/{b}` | `GET /api/v1/classrooms/building/{b}` | public | ✅ |
 | `GET /api/v1/classrooms/day/{d}` | `GET /api/v1/classrooms/day/{d}` | public | ✅ |
@@ -41,6 +42,7 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `POST /api/v1/sync/commissions` | `POST /api/v1/sync/commissions` | API key | ✅ |
 | `POST /api/v1/sync/plan/{planId}/subjects` | `POST /api/v1/sync/plan/{planId}/subjects` | API key | ✅ |
 | `POST /api/v1/sync/subject/{subjectCode}/commissions` | `POST /api/v1/sync/subject/{subjectCode}/commissions` | API key | ✅ |
+| _(new)_ | `POST /api/v1/sync/import/firestore` | API key | ✅ (one-time import of the legacy Firestore app, see `scripts/firestore-export`) |
 | `POST /api/v1/users/create` | `POST /api/v1/users/create` | STAFF | ✅ |
 | `GET /api/v1/users` | `GET /api/v1/users` | STAFF | ✅ |
 | `GET /api/v1/wiki/bookmarks/{subjectId}` | `GET /api/v1/wiki/bookmarks/{subjectId}` | public | ✅ |
@@ -58,6 +60,10 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `DELETE /api/v1/staff/{userId}` | STAFF | Revoke STAFF (end-dates the row) |
 | `GET /api/actuator/health` | public | Spring Boot Actuator standard probe |
 | `GET /api/docs`, `GET /api/docs.json` | public | springdoc-openapi UI + spec |
+| `GET /api/v1/classrooms/availability` | public | Free-classroom windows per building (mobile app "Aulas libres") |
+| `GET /api/v1/commissions?plan=` | public | Flat DB-only commission catalog for the mobile schedule builder |
+| `GET /api/v1/highlights` | public | Mobile home carousel (replaces Firestore `Highlights`) |
+| `GET /api/v1/highlights/all`, `POST/PUT/DELETE /api/v1/highlights[/{id}]` | STAFF | Manage carousel highlights |
 
 ---
 
