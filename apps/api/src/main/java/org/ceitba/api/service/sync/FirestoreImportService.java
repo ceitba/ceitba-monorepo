@@ -57,19 +57,20 @@ import java.util.regex.Pattern;
 //   * Matched by firebase_uid, else by email (case-insensitive); created with
 //     the lowercased email when neither matches.
 //   * Only fills columns that are still NULL: whatever the user or staff set
-//     in the new system (or SGA prefilled) wins over the old app's data.
+//     in the new system wins over the old app's data.
 //   * degree -> career only on an exact career id, or a career name equal
 //     ignoring case. plan -> only a plan of that career. When the document
 //     names a plan that is not one of the matched career's plans, the career
 //     is dropped too: that is stale data (typically a past year's entrance
-//     program, whose codes change yearly), and leaving both NULL lets the SGA
-//     prefill fill them with the student's current career and plan. No
+//     program, whose codes change yearly), and leaving both NULL lets the
+//     user pick their current career and plan in app onboarding. No
 //     entrance-program code or name is hardcoded here.
 //   * socialMedia goes through SocialHandles; an invalid handle is dropped
 //     with a warning.
 //   * moderator: true -> an active ceitba_moderators row (granted_by NULL).
 //     A grant that staff revoked is not re-granted.
-//   * fileNo is not imported: the file number comes from SGA.
+//   * fileNo is not imported: the user enters their file number once via
+//     PATCH /v1/me/profile (staff can correct it).
 // Benefits -> public.benefit_cards, matched by Spanish title (ignoring case).
 // Propuestas -> FirestoreProposalImporter (ProposalFirestoreImporter documents
 //   the mapping). Imported after Usuarios so authors resolve by firebase_uid.
@@ -423,7 +424,7 @@ public class FirestoreImportService {
             if (planIdsByCareer.getOrDefault(careerId, Set.of()).contains(p)) {
                 return new AcademicMatch(careerId, p);
             }
-            // A plan outside the career's catalogue: stale, let SGA decide both.
+            // A plan outside the career's catalogue: stale, let the user pick both.
             return AcademicMatch.NONE;
         }
     }

@@ -10,9 +10,11 @@ import org.ceitba.api.web.user.dto.MePreferencesResponse;
 import org.ceitba.api.web.user.dto.MeProfileResponse;
 import org.ceitba.api.web.user.dto.UpdatePreferencesRequest;
 import org.ceitba.api.web.user.dto.UpdateProfileRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -26,7 +28,9 @@ import java.util.function.Function;
 //     career's plans (ValidationException otherwise);
 //   * changing the career without sending a plan clears the old plan, so the
 //     pair can never go stale.
-// file_number is not writable here (staff-managed, or filled by the SGA sync).
+//   * file_number (the legajo) is entered once: accepted only while the
+//     stored one is NULL, never cleared here, unique across users. See
+//     claimFileNumber. Staff change it via UserService.updateFileNumber.
 @Service
 public class UserProfileService {
 
@@ -49,6 +53,11 @@ public class UserProfileService {
 
     @Transactional
     public MeProfileResponse updateProfile(UUID userId, UpdateProfileRequest req) {
+        // Before loading the entity: the conditional UPDATE clears the
+        // persistence context, which would detach an already-loaded User.
+        if (req.fileNumber() != null) {
+            claimFileNumber(userId, Integer.valueOf(req.fileNumber().trim()));
+        }
         var user = load(userId);
 
         boolean careerChanged = false;
@@ -91,6 +100,36 @@ public class UserProfileService {
         applySocial(req.discord(), SocialHandles::discord, user::setDiscord);
 
         return toProfile(userRepository.save(user));
+    }
+
+    // Sets the user's legajo if they have none yet. Re-sending the number
+    // they already have is a no-op (a retried request must not fail).
+    //   * already set to another number  -> FileNumberAlreadySetException
+    //   * held by another user            -> FileNumberTakenException
+    // The write is a conditional UPDATE ... WHERE file_number IS NULL, so two
+    // concurrent requests for the same user cannot both win, and the unique
+    // index settles two users racing for the same number.
+    private void claimFileNumber(UUID userId, Integer fileNumber) {
+        var current = load(userId).getFileNumber();
+        if (current != null) {
+            if (current.equals(fileNumber)) return;
+            throw new FileNumberAlreadySetException();
+        }
+        var holder = userRepository.findByFileNumber(fileNumber);
+        if (holder.isPresent() && !holder.get().getId().equals(userId)) {
+            throw new FileNumberTakenException();
+        }
+        int updated;
+        try {
+            updated = userRepository.setFileNumberIfNull(userId, fileNumber, OffsetDateTime.now());
+        } catch (DataIntegrityViolationException e) {
+            throw new FileNumberTakenException();
+        }
+        if (updated == 0) {
+            // Another request set it between our read and the UPDATE.
+            var now = load(userId).getFileNumber();
+            if (!fileNumber.equals(now)) throw new FileNumberAlreadySetException();
+        }
     }
 
     @Transactional(readOnly = true)

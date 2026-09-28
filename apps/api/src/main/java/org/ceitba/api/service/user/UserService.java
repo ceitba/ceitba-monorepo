@@ -62,6 +62,27 @@ public class UserService {
         }
     }
 
+    // Staff correction of a user's legajo (users enter it only once, via
+    // PATCH /v1/me/profile). null clears it. FileNumberTakenException when
+    // another user holds the number; the unique index backs the pre-check.
+    @Transactional
+    public UserResponse updateFileNumber(UUID id, Integer fileNumber) {
+        var user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", id.toString()));
+        if (fileNumber != null) {
+            var holder = userRepository.findByFileNumber(fileNumber);
+            if (holder.isPresent() && !holder.get().getId().equals(id)) {
+                throw new FileNumberTakenException();
+            }
+        }
+        user.setFileNumber(fileNumber);
+        try {
+            return toResponse(userRepository.saveAndFlush(user));
+        } catch (DataIntegrityViolationException e) {
+            throw new FileNumberTakenException();
+        }
+    }
+
     // Paginated/filtered variant for the admin Manage Users view. `q` is
     // matched against name OR email (case-insensitive substring); `organization`
     // narrows to that org's members; `sort` is the only public knob — the rest

@@ -19,11 +19,11 @@ spring:
     # Stop at V4.x: V5+ seed production-only data (ceitba@itba.edu.ar superadmin,
     # careers, organizations) that breaks count assertions and FK-restricted
     # deleteAll() in @BeforeEach. Pure-DDL changes that landed after V5 in prod
-    # (V8/V9/V10/V12/V13/V14/V15/V16/V17/V18/V19/V20/V21/V22/V23/V24/V25/V26/V27) are mirrored in classpath:db/test-migration as
+    # (V8/V9/V10/V12/V13/V14/V15/V16/V17/V18/V19/V20/V21/V22/V23/V24/V25/V26/V27/V28) are mirrored in classpath:db/test-migration as
     # V4.2+, so the entity layer can validate against the full schema without
     # the seeds. Every new DDL migration in db/migration MUST get a mirror here
     # and this target bumped — see src/test/resources/db/test-migration/README.md.
-    target: '4.20'
+    target: '4.21'
     locations: classpath:db/migration,classpath:db/test-migration
 
 # Rate limiting is off by default in tests so ITs can hammer /v1/auth/**;

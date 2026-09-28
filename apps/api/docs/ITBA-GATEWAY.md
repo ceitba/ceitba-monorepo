@@ -10,12 +10,27 @@ All calls go through `external/itba/ItbaApiClient` (real impl
 |---|---|---|
 | `GET /careerPlans/{token}?plan=<planId>` | one plan code | subjects of that plan (`getSubjectsByPlan`); the response's `careerplan` also carries `name`, `career`, `degreeLevel`, `since` |
 | `GET /courseCommissions/{token}?level=&year=&period=` | level/year/period | commissions and their schedules |
-| `GET /people/{token}?email=` | email | DNI (kept in memory only) |
-| `GET /students/{token}/{dni}` | DNI | legajo, `careerCode`, career name, active plan names |
 
-These are the only endpoints the old Flutter app used (`CEITBApp/README.md`,
+These (from the endpoints the old Flutter app used: `CEITBApp/README.md`,
 `lib/features/schedules/models/available_courses.dart`,
-`lib/api/itba/sga_login_api.dart`) and the only ones this API calls.
+`lib/api/itba/sga_login_api.dart`) are the only ones this API calls.
+
+## Revoked: SGA student lookup (2026-09)
+
+The API used to prefill a user's file number (legajo), career and plan from
+SGA after login: `GET /people/{token}?email=` gave the DNI, then
+`GET /students/{token}/{dni}` gave legajo, `careerCode`, career name and the
+active plan names. ITBA revoked CEITBA's access to it: a probe on prod on
+2026-09-27 got `401 Unauthorized` from `/people` for every student, while
+`courseCommissions` still answered `200`. The lookup was removed end to end
+(`AcademicProfileSyncService`, `POST /v1/me/profile/sync-from-sga`, the
+`itba.profile-sync.*` settings, `user.sga_synced_at`, dropped in V28).
+
+Instead, users choose career and plan in app onboarding and enter their
+legajo once via `PATCH /v1/me/profile` (settable only while empty, unique
+across users); STAFF corrects it with `PATCH /v1/users/{id}/file-number`.
+If ITBA ever restores access, bring the lookup back from git history
+(before the `feat/remove-sga-student-lookup` branch) rather than rewriting it.
 
 ## Gap: no career or plan listing
 
@@ -37,20 +52,11 @@ Consequences:
 
   ```
   POST /api/v1/careers/{careerId}/plans      (STAFF)
-  { "id": "<plan code exactly as SGA/careerPlans spells it>", "name": "optional" }
+  { "id": "<plan code exactly as careerPlans spells it>", "name": "optional" }
   ```
 
   The next scheduled sync (or `POST /api/v1/sync/plan/{planId}/subjects`
   with the SYNC key) pulls its subjects. A brand-new career goes through
   `POST /api/v1/careers` first.
-* Until a plan is registered, the SGA profile prefill
-  (`AcademicProfileSyncService`) leaves the user's plan empty, because it only
-  accepts plans in the catalogue.
-
-## Possible follow-up
-
-`GET /students/{token}/{dni}` returns `careerCode`, the career name and the
-active plan names for every student who logs in, so unknown plan codes are
-observable there. A future change could record unknown `(careerCode, plan)`
-pairs seen by the prefill for STAFF to review (or auto-register), which would
-cover new entrance programs without a gateway listing endpoint.
+* Until a plan is registered, users cannot pick it in onboarding:
+  `PATCH /v1/me/profile` only accepts plans in the catalogue.

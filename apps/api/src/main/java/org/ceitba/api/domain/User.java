@@ -20,8 +20,8 @@ import java.util.UUID;
 //
 // @DynamicUpdate: an UPDATE writes only the columns that actually changed, so
 // a profile/preferences save never rewrites columns it did not touch (e.g.
-// file_number / career / plan filled meanwhile by the SGA sync's conditional
-// UPDATEs, see service/user/AcademicProfileSyncService).
+// a file_number set meanwhile by another request's conditional UPDATE, see
+// UserRepository.setFileNumberIfNull, or by staff).
 @Entity
 @DynamicUpdate
 @Table(schema = "public", name = "\"user\"")
@@ -80,11 +80,6 @@ public class User {
     @Column(name = "firebase_uid", length = 128, unique = true)
     private String firebaseUid;
 
-    // Last time the SGA prefill got an answer for this user; written only by
-    // UserRepository.markSgaSynced (see AcademicProfileSyncService).
-    @Column(name = "sga_synced_at")
-    private OffsetDateTime sgaSyncedAt;
-
     protected User() {}
 
     public User(UUID id, String email, String name) {
@@ -126,6 +121,4 @@ public class User {
     public String getFirebaseUid() { return firebaseUid; }
     public void setFirebaseUid(String firebaseUid) { this.firebaseUid = firebaseUid; }
 
-    public OffsetDateTime getSgaSyncedAt() { return sgaSyncedAt; }
-    public void setSgaSyncedAt(OffsetDateTime sgaSyncedAt) { this.sgaSyncedAt = sgaSyncedAt; }
 }

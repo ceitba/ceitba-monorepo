@@ -86,7 +86,7 @@ Quick version:
 | `/api/v1/highlights/all` | GET | Google JWT + `ROLE_STAFF` |
 | `/api/v1/highlights`, `/api/v1/highlights/{id}` | POST, PUT, DELETE | Google JWT + `ROLE_STAFF` |
 | `/api/v1/benefits`, `/api/v1/benefit-cards` | GET | public (writes: `ROLE_STAFF`) |
-| `/api/v1/users/**` | GET, POST `/create` | Google JWT + `ROLE_STAFF` |
+| `/api/v1/users/**` | GET, POST `/create`, PATCH `/{id}/file-number` | Google JWT + `ROLE_STAFF` |
 | `/api/v1/wiki/bookmarks/{id}` | GET | public |
 | `/api/v1/wiki/bookmarks/{id}` | POST/PUT/DELETE | Google JWT |
 | `/api/v1/staff/**` | GET, POST, DELETE | Google JWT + `ROLE_STAFF` |

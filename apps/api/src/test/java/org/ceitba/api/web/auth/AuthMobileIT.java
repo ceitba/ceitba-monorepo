@@ -2,8 +2,6 @@ package org.ceitba.api.web.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.ceitba.api.domain.User;
-import org.ceitba.api.external.itba.FakeItbaApiClient;
 import org.ceitba.api.repository.RefreshTokenRepository;
 import org.ceitba.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,7 +62,6 @@ class AuthMobileIT {
     @Autowired UserRepository users;
     @Autowired RefreshTokenRepository refreshTokens;
     @Autowired JdbcTemplate jdbc;
-    @Autowired FakeItbaApiClient itba;
 
     @BeforeEach
     void clean() {
@@ -114,70 +111,14 @@ class AuthMobileIT {
     }
 
     @Test
-    void loginPrefillsAcademicProfileFromSgaInBackground() throws Exception {
-        seedCareerS();
-
-        // FakeItbaApiClient knows DEMO_EMAIL out of the box.
-        login(TestGoogleIdTokens.token(FakeItbaApiClient.DEMO_EMAIL)).andExpect(status().isOk());
-
-        User user = awaitPlan(FakeItbaApiClient.DEMO_EMAIL);
-        assertThat(user.getFileNumber()).isEqualTo(FakeItbaApiClient.DEMO_STUDENT.fileNumber());
-        assertThat(user.getPlan()).isEqualTo("S10-Rev23");
-    }
-
-    @Test
-    void loginSucceedsWhenSgaIsDown() throws Exception {
-        seedCareerS();
-        int failuresBefore = itba.failedStudentLookups();
-        itba.failStudentLookups(true);
-        try {
-            login(TestGoogleIdTokens.token(FakeItbaApiClient.DEMO_EMAIL)).andExpect(status().isOk());
-            // Keep SGA down until the background sync has actually hit it.
-            for (int i = 0; i < 100 && itba.failedStudentLookups() == failuresBefore; i++) {
-                Thread.sleep(50);
-            }
-            assertThat(itba.failedStudentLookups()).isGreaterThan(failuresBefore);
-        } finally {
-            itba.failStudentLookups(false);
-        }
-        var user = users.findByEmail(FakeItbaApiClient.DEMO_EMAIL).orElseThrow();
+    void loginLeavesAcademicProfileForTheUserToFill() throws Exception {
+        // The SGA student lookup is gone (ITBA revoked it): login never fills
+        // file number, career or plan; the user sets them in onboarding.
+        login(TestGoogleIdTokens.token("alice@itba.edu.ar")).andExpect(status().isOk());
+        var user = users.findByEmail("alice@itba.edu.ar").orElseThrow();
         assertThat(user.getFileNumber()).isNull();
+        assertThat(user.getCareer()).isNull();
         assertThat(user.getPlan()).isNull();
-
-        // The sync pool survived the failure: the next login prefills.
-        login(TestGoogleIdTokens.token(FakeItbaApiClient.DEMO_EMAIL)).andExpect(status().isOk());
-        assertThat(awaitPlan(FakeItbaApiClient.DEMO_EMAIL).getPlan()).isEqualTo("S10-Rev23");
-    }
-
-    @Test
-    void loginDoesNotRefillFieldsClearedAfterTheFirstSync() throws Exception {
-        seedCareerS();
-        login(TestGoogleIdTokens.token(FakeItbaApiClient.DEMO_EMAIL)).andExpect(status().isOk());
-        User user = awaitPlan(FakeItbaApiClient.DEMO_EMAIL);
-        assertThat(user.getSgaSyncedAt()).isNotNull();
-
-        // The user clears the plan; the next login must not put it back.
-        jdbc.update("UPDATE public.\"user\" SET plan = NULL WHERE id = ?", user.getId());
-        login(TestGoogleIdTokens.token(FakeItbaApiClient.DEMO_EMAIL)).andExpect(status().isOk());
-        Thread.sleep(500);
-        assertThat(users.findByEmail(FakeItbaApiClient.DEMO_EMAIL).orElseThrow().getPlan()).isNull();
-    }
-
-    private void seedCareerS() {
-        jdbc.update("INSERT INTO public.careers (id, name, updated_at) VALUES ('S', 'Informática', now()) "
-            + "ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO public.plan (id, career_id, name, updated_at) VALUES ('S10-Rev23', 'S', 'S10-Rev23', now()) "
-            + "ON CONFLICT DO NOTHING");
-    }
-
-    private User awaitPlan(String email) throws InterruptedException {
-        User user = null;
-        for (int i = 0; i < 100; i++) {
-            user = users.findByEmail(email).orElseThrow();
-            if (user.getPlan() != null) break;
-            Thread.sleep(100);
-        }
-        return user;
     }
 
     @Test

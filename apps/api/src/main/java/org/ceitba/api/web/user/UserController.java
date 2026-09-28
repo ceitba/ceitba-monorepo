@@ -7,10 +7,12 @@ import jakarta.validation.Valid;
 import org.ceitba.api.service.user.UserService;
 import org.ceitba.api.web.news.dto.PageResponse;
 import org.ceitba.api.web.user.dto.CreateUserRequest;
+import org.ceitba.api.web.user.dto.UpdateFileNumberRequest;
 import org.ceitba.api.web.user.dto.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +28,9 @@ import java.util.UUID;
 // authenticated request that asks for @CurrentUser. POST /create exists for
 // staff to pre-create users with academic metadata (file_number, career_id,
 // plan) before the user has logged in. The list endpoint exposes email +
-// file_number across the user base, so it stays staff-only too.
+// file_number across the user base, so it stays staff-only too. Users enter
+// their own file number once (PATCH /v1/me/profile); PATCH /{id}/file-number
+// is how staff correct it afterwards.
 @Tag(name = "Users")
 @RestController
 @RequestMapping("/v1/users")
@@ -61,6 +65,17 @@ public class UserController {
             result.getContent(),
             new PageResponse.Meta(result.getTotalElements(), page, limit)
         );
+    }
+
+    @PatchMapping("/{id}/file-number")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Set, change or clear a user's file number (STAFF only)",
+        description = "Users can only enter their legajo once themselves; this is the staff correction "
+            + "path. `file_number: null` clears it so the user can enter it again. 409 `FileNumberTaken` "
+            + "when another user already has that number.")
+    public UserResponse updateFileNumber(@PathVariable UUID id,
+                                         @Valid @RequestBody UpdateFileNumberRequest request) {
+        return userService.updateFileNumber(id, request.fileNumber());
     }
 
     @GetMapping("/{id}")

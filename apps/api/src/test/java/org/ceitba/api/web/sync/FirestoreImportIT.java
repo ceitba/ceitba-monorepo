@@ -182,7 +182,7 @@ class FirestoreImportIT {
         assertThat(alumno.getDiscord()).isNull();
         assertThat(alumno.getFileNumber()).isNull();
 
-        // Legacy entrance-program values: left for the SGA prefill.
+        // Legacy entrance-program values: left for the user to pick.
         for (var uid : new String[] {"uid-ingreso-1", "uid-ingreso-2"}) {
             var u = user(uid);
             assertThat(u.getCareer()).isNull();

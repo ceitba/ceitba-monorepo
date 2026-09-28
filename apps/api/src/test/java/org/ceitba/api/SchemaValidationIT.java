@@ -20,6 +20,7 @@ import org.ceitba.api.repository.wiki.SubjectWikiPageRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -63,6 +64,7 @@ class SchemaValidationIT {
     @Autowired SubjectWikiPageRepository subjectWikiPageRepository;
     @Autowired SubjectWikiEditProposalRepository subjectWikiEditProposalRepository;
     @Autowired SubjectBookmarkRepository subjectBookmarkRepository;
+    @Autowired JdbcTemplate jdbc;
 
     @Test
     void everyRepositoryReachesAnEmptyTable() {
@@ -84,5 +86,19 @@ class SchemaValidationIT {
         assertThat(subjectWikiPageRepository.count()).isZero();
         assertThat(subjectWikiEditProposalRepository.count()).isZero();
         assertThat(subjectBookmarkRepository.count()).isZero();
+    }
+
+    @Test
+    void userTableHasUniqueFileNumberAndNoSgaColumn() {
+        // V28 / mirror V4.21 dropped the SGA prefill marker.
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'sga_synced_at'
+                """, Integer.class)).isZero();
+        // PATCH /v1/me/profile relies on this index to reject a taken file number.
+        assertThat(jdbc.queryForObject("""
+                SELECT indexdef FROM pg_indexes
+                WHERE schemaname = 'public' AND indexname = 'user_file_number_key'
+                """, String.class)).startsWith("CREATE UNIQUE INDEX");
     }
 }

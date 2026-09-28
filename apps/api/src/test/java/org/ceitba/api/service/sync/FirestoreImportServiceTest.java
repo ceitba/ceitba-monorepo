@@ -236,7 +236,7 @@ class FirestoreImportServiceTest {
     @Test
     void planOutsideTheCareerCatalogueDropsTheCareerToo() {
         // A past year's entrance plan: the career still exists, the plan does
-        // not. Leave both NULL so the SGA prefill sets the current ones.
+        // not. Leave both NULL so the user picks the current ones.
         service.importExport(users(userDoc("uid-1", "a@example.test", "Proceso de Admisión", "PX-Old")), false);
 
         var u = onlyUser();

@@ -174,7 +174,7 @@ public class AccountDeletionRepository {
                 SET email = :email, name = NULL, google_sub = NULL, firebase_uid = NULL, avatar_url = NULL,
                     file_number = NULL, career_id = NULL, plan = NULL,
                     linkedin = NULL, instagram = NULL, discord = NULL,
-                    theme = NULL, preferred_language = NULL, sga_synced_at = NULL,
+                    theme = NULL, preferred_language = NULL,
                     updated_at = now()
                 WHERE id = :u
                 """)
