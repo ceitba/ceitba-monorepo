@@ -18,17 +18,20 @@ public class TokenSessionService {
     private final RefreshTokenService refreshTokens;
     private final JwtIssuerService jwtIssuer;
     private final UserMeService userMe;
+    private final ReviewLoginService reviewLogin;
 
     public TokenSessionService(GoogleIdTokenVerifier googleVerifier,
                                GoogleLoginService googleLogin,
                                RefreshTokenService refreshTokens,
                                JwtIssuerService jwtIssuer,
-                               UserMeService userMe) {
+                               UserMeService userMe,
+                               ReviewLoginService reviewLogin) {
         this.googleVerifier = googleVerifier;
         this.googleLogin    = googleLogin;
         this.refreshTokens  = refreshTokens;
         this.jwtIssuer      = jwtIssuer;
         this.userMe         = userMe;
+        this.reviewLogin    = reviewLogin;
     }
 
     // Verifies the Google ID token, applies the same gate as the web callback
@@ -36,6 +39,14 @@ public class TokenSessionService {
     public TokenResponse loginWithGoogle(String idToken, String nonce, String deviceName) {
         var claims  = googleVerifier.verify(idToken, nonce);
         var user    = googleLogin.admit(claims);
+        var refresh = refreshTokens.issueNewFamily(user.getId(), deviceName);
+        return respond(user, refresh);
+    }
+
+    // App Store / Play review account: email + password instead of Google,
+    // then exactly the same token pair and refresh-token family as above.
+    public TokenResponse loginWithReviewCredentials(String email, String password, String deviceName) {
+        var user    = reviewLogin.authenticate(email, password);
         var refresh = refreshTokens.issueNewFamily(user.getId(), deviceName);
         return respond(user, refresh);
     }

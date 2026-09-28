@@ -29,7 +29,7 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
     }
 
     static final Set<String> TOKEN_ENDPOINTS = Set.of(
-        "/v1/auth/google/mobile", "/v1/auth/refresh", "/v1/auth/logout");
+        "/v1/auth/google/mobile", "/v1/auth/refresh", "/v1/auth/logout", "/v1/auth/review-login");
 
     @Override
     public String resolve(HttpServletRequest request) {

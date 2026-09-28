@@ -37,7 +37,8 @@ import java.util.UUID;
 //     later counts as reuse) and a new successor is issued instead of
 //     revoking the family. Outside the window, or once the successor has been
 //     used, reuse revokes the family as above.
-//   * The allowlist is re-checked on every refresh; a user removed from it
+//   * The allowlist (SessionAllowlist) is re-checked on every refresh; a user
+//     removed from it (or the review account once review login is disabled)
 //     loses the family on their next refresh.
 //   * Rotation, reuse revocation, logout and logout-all all take a per-family
 //     advisory lock (RefreshTokenRepository.lockFamily) first, so a family
@@ -55,14 +56,16 @@ public class RefreshTokenService {
     private final RefreshTokenRepository tokens;
     private final UserRepository users;
     private final AuthProperties auth;
+    private final SessionAllowlist allowlist;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
     public RefreshTokenService(RefreshTokenRepository tokens, UserRepository users,
-                               AuthProperties auth, Clock clock) {
-        this.tokens = tokens;
-        this.users  = users;
-        this.auth   = auth;
+                               AuthProperties auth, SessionAllowlist allowlist, Clock clock) {
+        this.tokens    = tokens;
+        this.users     = users;
+        this.auth      = auth;
+        this.allowlist = allowlist;
         this.clock  = clock;
     }
 
@@ -102,7 +105,7 @@ public class RefreshTokenService {
 
         var user = users.findById(current.getUserId())
             .orElseThrow(() -> new InvalidTokenException(INVALID));
-        if (!auth.admits(user.getEmail())) {
+        if (!allowlist.admits(user.getEmail())) {
             tokens.revokeFamily(current.getFamilyId(), now);
             throw new LoginRejectedException(LoginRejectedException.Reason.NOT_ALLOWLISTED);
         }

@@ -79,6 +79,12 @@ auth:
     same-site: ${AUTH_COOKIE_SAMESITE:Lax}
     path:      ${AUTH_COOKIE_PATH:/}
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  # App Store / Play review account (POST /v1/auth/review-login). Both empty =
+  # disabled (404). The hash is bcrypt; never put the plain password here.
+  # Enable only while a store review is pending. See docs/AUTH-AND-ROLES.md.
+  review-login:
+    email: ${REVIEW_LOGIN_EMAIL:}
+    password-hash: ${REVIEW_LOGIN_PASSWORD_HASH:}
 
 # Root secret for keyed content hashes (service/crypto/ContentHmac): proposal
 # attachment keys and imported Firestore comment ids. Empty = derive from
@@ -144,6 +150,7 @@ rate-limit:
         - /v1/auth/api-keys/**
         - /v1/auth/refresh
         - /v1/auth/google/mobile
+        - /v1/auth/review-login
       capacity: ${RATE_LIMIT_AUTH_CAPACITY:20}
       period: ${RATE_LIMIT_AUTH_PERIOD:1m}
     # First-time mobile logins: a whole class installing the app on campus
@@ -153,6 +160,13 @@ rate-limit:
         - /v1/auth/google/mobile
       capacity: ${RATE_LIMIT_MOBILE_LOGIN_CAPACITY:120}
       period: ${RATE_LIMIT_MOBILE_LOGIN_PERIOD:1m}
+    # Password login of the store review account: one account, tight bucket
+    # to make online password guessing pointless.
+    auth-review-login:
+      paths:
+        - /v1/auth/review-login
+      capacity: ${RATE_LIMIT_REVIEW_LOGIN_CAPACITY:10}
+      period: ${RATE_LIMIT_REVIEW_LOGIN_PERIOD:1m}
     # Mobile access tokens live 15 min, so every active app refreshes about
     # four times an hour; behind the campus NAT that is many devices per IP.
     # Its own, larger bucket keeps refresh from starving logins and vice versa.
