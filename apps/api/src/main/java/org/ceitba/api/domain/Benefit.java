@@ -10,7 +10,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -39,13 +38,17 @@ public class Benefit {
     @Column(name = "name_en")
     private String nameEn;
 
+    // Stored as String[] (not List<String>) on purpose: Hibernate 6.5 caches the
+    // BasicType it resolves for List<String>, so if Article (List<String> as
+    // JSON) is bound first, this column gets typed as JSON and schema
+    // validation fails at startup. String[] can't collide. See ListStringMappingOrderIT.
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "highlights_es", columnDefinition = "text[]", nullable = false)
-    private List<String> highlightsEs = new ArrayList<>();
+    private String[] highlightsEs = new String[0];
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "highlights_en", columnDefinition = "text[]", nullable = false)
-    private List<String> highlightsEn = new ArrayList<>();
+    private String[] highlightsEn = new String[0];
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -70,8 +73,8 @@ public class Benefit {
     public String getContactEmail() { return contactEmail; }
     public String getNameEs() { return nameEs; }
     public String getNameEn() { return nameEn; }
-    public List<String> getHighlightsEs() { return highlightsEs; }
-    public List<String> getHighlightsEn() { return highlightsEn; }
+    public List<String> getHighlightsEs() { return StringArrays.toList(highlightsEs); }
+    public List<String> getHighlightsEn() { return StringArrays.toList(highlightsEn); }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
@@ -82,9 +85,9 @@ public class Benefit {
     public void setNameEs(String nameEs) { this.nameEs = nameEs; }
     public void setNameEn(String nameEn) { this.nameEn = nameEn; }
     public void setHighlightsEs(List<String> highlightsEs) {
-        this.highlightsEs = highlightsEs != null ? highlightsEs : new ArrayList<>();
+        this.highlightsEs = StringArrays.fromList(highlightsEs);
     }
     public void setHighlightsEn(List<String> highlightsEn) {
-        this.highlightsEn = highlightsEn != null ? highlightsEn : new ArrayList<>();
+        this.highlightsEn = StringArrays.fromList(highlightsEn);
     }
 }

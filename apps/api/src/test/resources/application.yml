@@ -13,6 +13,18 @@ auth:
     redirect-uri: http://localhost:8080/api/v1/auth/callback
 
 spring:
+  # Mirror the main jpa block (this file shadows it): without ddl-auto the
+  # default for a non-embedded DB is "none", so ITs never validated mappings.
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
   flyway:
     # Never skip V1 in tests — fresh Testcontainers DBs need the full schema.
     baseline-on-migrate: false

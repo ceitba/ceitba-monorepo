@@ -14,7 +14,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,9 +46,13 @@ public class StudyGroup {
     @Column(nullable = false, length = 16)
     private StudyGroupType type;
 
+    // Stored as String[] (not List<String>) on purpose: Hibernate 6.5 caches the
+    // BasicType it resolves for List<String>, so if Article (List<String> as
+    // JSON) is bound first, this column gets typed as JSON and schema
+    // validation fails at startup. String[] can't collide. See ListStringMappingOrderIT.
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(columnDefinition = "text[]", nullable = false)
-    private List<String> locations = new ArrayList<>();
+    private String[] locations = new String[0];
 
     @Column(name = "due_at", nullable = false)
     private OffsetDateTime dueAt;
@@ -89,7 +92,7 @@ public class StudyGroup {
     public String getSubjectId() { return subjectId; }
     public StudyGroupType getType() { return type; }
     public List<StudyGroupLocation> getLocations() {
-        return locations.stream().map(StudyGroupLocation::valueOf).toList();
+        return StringArrays.toList(locations).stream().map(StudyGroupLocation::valueOf).toList();
     }
     public OffsetDateTime getDueAt() { return dueAt; }
     public String getDescription() { return description; }
@@ -107,8 +110,8 @@ public class StudyGroup {
     public void setSubjectId(String subjectId) { this.subjectId = subjectId; }
     public void setType(StudyGroupType type) { this.type = type; }
     public void setLocations(List<StudyGroupLocation> locations) {
-        this.locations = new ArrayList<>(
-            locations == null ? List.of() : locations.stream().distinct().map(Enum::name).toList());
+        this.locations = locations == null ? new String[0]
+            : locations.stream().distinct().map(Enum::name).toArray(String[]::new);
     }
     public void setDueAt(OffsetDateTime dueAt) { this.dueAt = dueAt; }
     public void setDescription(String description) { this.description = description; }

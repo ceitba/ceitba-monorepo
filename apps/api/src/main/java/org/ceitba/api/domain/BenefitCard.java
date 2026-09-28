@@ -12,7 +12,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -74,13 +73,17 @@ public class BenefitCard {
     @Column(name = "email")
     private String email;
 
+    // Stored as String[] (not List<String>) on purpose: Hibernate 6.5 caches the
+    // BasicType it resolves for List<String>, so if Article (List<String> as
+    // JSON) is bound first, this column gets typed as JSON and schema
+    // validation fails at startup. String[] can't collide. See ListStringMappingOrderIT.
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "bullets_es", columnDefinition = "text[]", nullable = false)
-    private List<String> bulletsEs = new ArrayList<>();
+    private String[] bulletsEs = new String[0];
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "bullets_en", columnDefinition = "text[]", nullable = false)
-    private List<String> bulletsEn = new ArrayList<>();
+    private String[] bulletsEn = new String[0];
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -115,8 +118,8 @@ public class BenefitCard {
     public String getPhone() { return phone; }
     public String getWebsite() { return website; }
     public String getEmail() { return email; }
-    public List<String> getBulletsEs() { return bulletsEs; }
-    public List<String> getBulletsEn() { return bulletsEn; }
+    public List<String> getBulletsEs() { return StringArrays.toList(bulletsEs); }
+    public List<String> getBulletsEn() { return StringArrays.toList(bulletsEn); }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
@@ -137,9 +140,9 @@ public class BenefitCard {
     public void setWebsite(String website) { this.website = website; }
     public void setEmail(String email) { this.email = email; }
     public void setBulletsEs(List<String> bulletsEs) {
-        this.bulletsEs = bulletsEs != null ? bulletsEs : new ArrayList<>();
+        this.bulletsEs = StringArrays.fromList(bulletsEs);
     }
     public void setBulletsEn(List<String> bulletsEn) {
-        this.bulletsEn = bulletsEn != null ? bulletsEn : new ArrayList<>();
+        this.bulletsEn = StringArrays.fromList(bulletsEn);
     }
 }
