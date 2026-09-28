@@ -64,8 +64,8 @@ All config flows through env vars; see [`.env.example`](.env.example). Highlight
 Roles are `Anonymous`, `USER`, `STAFF`, and `SYNC` (machine). Full guide — including how to bootstrap the first STAFF member, assign/revoke roles, and add new authorized users — is in [`docs/AUTH-AND-ROLES.md`](docs/AUTH-AND-ROLES.md).
 
 Quick version:
-* Frontend uses **Google Sign-In**, sends the resulting ID token as `Authorization: Bearer <id_token>`.
-* Spring Security validates the JWT against Google's JWKS; a custom converter applies the two-rule allowlist (`AUTH_ALLOWED_DOMAINS` ∪ `AUTH_ALLOWED_EMAILS`) and adds `ROLE_STAFF` if the user has an active `ceitba_staff` row.
+* The API issues its **own** HS256 JWTs after a Google sign-in: web SPAs get one in an HttpOnly cookie via the server-side OAuth flow (`GET /v1/auth/google`); the mobile app exchanges a Google ID token at `POST /v1/auth/google/mobile` for an access + rotating refresh token pair. Google tokens are never accepted as bearer tokens.
+* Spring Security validates our JWT; the email allowlist (`AUTH_ALLOWED_DOMAINS` ∪ `AUTH_ALLOWED_EMAILS`) is enforced by an `AuthorizationManager`, and a custom converter adds `ROLE_STAFF` if the user has an active `ceitba_staff` row.
 * `User` rows are JIT-provisioned (no signup endpoint). The first `STAFF` member is bootstrapped via SQL — see the guide.
 * `/api/v1/sync/**` is gated by a static `X-API-Key` header (env `AUTH_SYNC_API_KEY`).
 

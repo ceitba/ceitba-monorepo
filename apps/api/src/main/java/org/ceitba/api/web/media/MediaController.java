@@ -1,15 +1,15 @@
 package org.ceitba.api.web.media;
 
 import jakarta.validation.Valid;
+import org.ceitba.api.common.exception.FeatureNotConfiguredException;
+import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.web.media.dto.SignUploadRequest;
 import org.ceitba.api.web.media.dto.SignUploadResponse;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Set;
 import java.util.UUID;
@@ -30,15 +30,15 @@ public class MediaController {
     @PreAuthorize("hasRole('STAFF')")
     public SignUploadResponse signUpload(@RequestBody @Valid SignUploadRequest req) {
         if (!ALLOWED_TYPES.contains(req.contentType())) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                "Unsupported content type. Allowed: image/jpeg, image/png, image/webp");
+            throw new ValidationException("contentType", req.contentType(),
+                "unsupported content type. Allowed: image/jpeg, image/png, image/webp");
         }
         if (req.sizeBytes() > MAX_SIZE) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                "File too large. Maximum size is 5 MB");
+            throw new ValidationException("sizeBytes", req.sizeBytes(),
+                "file too large. Maximum size is 5 MB");
         }
         // Presigned URL generation not yet implemented — awaiting cloud storage config.
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,
+        throw new FeatureNotConfiguredException(
             "Cloud storage not configured. Set R2_* or AWS_* environment variables.");
     }
 }

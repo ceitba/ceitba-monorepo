@@ -3,9 +3,13 @@ package org.ceitba.api.web.error;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.ceitba.api.common.exception.ExternalApiException;
+import org.ceitba.api.common.exception.FeatureNotConfiguredException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
+import org.ceitba.api.service.auth.InvalidTokenException;
+import org.ceitba.api.service.auth.LoginRejectedException;
+import org.ceitba.api.service.user.LastActiveStaffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -37,6 +41,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ResourceAlreadyExistsException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "ResourceAlreadyExists", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(LastActiveStaffException.class)
+    public ResponseEntity<ErrorResponse> handleLastActiveStaff(LastActiveStaffException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "LastActiveStaff", ex.getMessage(), req);
     }
 
     @ExceptionHandler(ValidationException.class)
@@ -73,6 +82,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleExternalApi(ExternalApiException ex, HttpServletRequest req) {
         log.error("External API error at {}", req.getRequestURI(), ex);
         return build(HttpStatus.BAD_GATEWAY, "ExternalApiError", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(FeatureNotConfiguredException.class)
+    public ResponseEntity<ErrorResponse> handleNotConfigured(FeatureNotConfiguredException ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_IMPLEMENTED, "NotImplemented", ex.getMessage(), req);
+    }
+
+    // Token endpoints (/v1/auth/google/mobile, /v1/auth/refresh). `error` is a
+    // stable lowercase code the mobile app switches on — the same codes the
+    // web callback puts in ?error=.
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidToken(InvalidTokenException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, "invalid_token", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(LoginRejectedException.class)
+    public ResponseEntity<ErrorResponse> handleLoginRejected(LoginRejectedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.reason().code(), ex.getMessage(), req);
     }
 
     // @PreAuthorize denial throws AuthorizationDeniedException (Spring 6.1+)

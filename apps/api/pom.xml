@@ -21,6 +21,7 @@
         <java.version>21</java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.21.3</testcontainers.version>
+        <bucket4j.version>8.20.0</bucket4j.version>
     </properties>
 
     <dependencies>
@@ -66,6 +67,17 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
+        <!-- In-memory per-IP rate limiting (web/ratelimit). Caffeine bounds the
+             bucket map so an IP-rotating client cannot grow it without limit. -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-core</artifactId>
+            <version>${bucket4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -104,10 +116,10 @@
                     <!-- Docker 25+ requires API >= 1.40. docker-java's default
                          is 1.32, which the daemon rejects. Force a modern version. -->
                     <systemPropertyVariables>
-                        <api.version>1.43</api.version>
+                        <api.version>1.44</api.version>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DOCKER_API_VERSION>1.43</DOCKER_API_VERSION>
+                        <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>
                     </environmentVariables>
                 </configuration>
             </plugin>
@@ -124,10 +136,10 @@
                 </executions>
                 <configuration>
                     <systemPropertyVariables>
-                        <api.version>1.43</api.version>
+                        <api.version>1.44</api.version>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DOCKER_API_VERSION>1.43</DOCKER_API_VERSION>
+                        <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>
                     </environmentVariables>
                 </configuration>
             </plugin>

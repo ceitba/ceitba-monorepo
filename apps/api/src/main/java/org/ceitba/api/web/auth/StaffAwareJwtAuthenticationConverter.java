@@ -15,8 +15,8 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// Maps a verified Google ID token to a JwtAuthenticationToken with the right
-// authorities:
+// Maps a verified CEITBA-issued JWT (see JwtIssuerService) to a
+// JwtAuthenticationToken with the right authorities:
 //
 //   * ROLE_USER baseline.
 //   * ROLE_STAFF when the User has an active CeitbaStaff row (start <= now <= end).

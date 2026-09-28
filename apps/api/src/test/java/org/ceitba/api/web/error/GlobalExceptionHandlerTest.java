@@ -2,6 +2,7 @@ package org.ceitba.api.web.error;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.ceitba.api.common.exception.ExternalApiException;
+import org.ceitba.api.common.exception.FeatureNotConfiguredException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
@@ -46,6 +47,16 @@ class GlobalExceptionHandlerTest {
 
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(r.getBody().error()).isEqualTo("ResourceAlreadyExists");
+    }
+
+    @Test
+    void featureNotConfiguredMapsTo501() {
+        ResponseEntity<ErrorResponse> r = handler.handleNotConfigured(
+            new FeatureNotConfiguredException("Cloud storage not configured."), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.NOT_IMPLEMENTED);
+        assertThat(r.getBody().error()).isEqualTo("NotImplemented");
+        assertThat(r.getBody().message()).isEqualTo("Cloud storage not configured.");
     }
 
     @Test

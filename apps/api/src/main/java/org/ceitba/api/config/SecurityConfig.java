@@ -4,7 +4,9 @@ import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.web.auth.ApiKeyFilter;
 import org.ceitba.api.web.auth.CookieOrHeaderBearerTokenResolver;
+import org.ceitba.api.web.auth.IssuerAudienceValidator;
 import org.ceitba.api.web.auth.StaffAwareJwtAuthenticationConverter;
+import org.ceitba.api.web.ratelimit.RateLimitFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +18,10 @@ import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,6 +30,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
@@ -34,7 +39,9 @@ import java.util.List;
 // Endpoint policy:
 //   public:        GET on health/careers/subjects/plans/classrooms;
 //                  GET on wiki bookmarks; POST /v1/classrooms/conflicts.
-//                  GET /v1/auth/google, GET /v1/auth/callback  (OAuth flow)
+//                  GET /v1/auth/google, GET /v1/auth/callback  (web OAuth flow)
+//                  POST /v1/auth/google/mobile, /v1/auth/refresh, /v1/auth/logout
+//                  GET /v1/app/config
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
 //   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
@@ -54,7 +61,7 @@ import java.util.List;
 // authenticated user has an active CeitbaStaff row. @EnableMethodSecurity
 // activates @PreAuthorize on controller methods for fine-grained checks.
 @Configuration
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, RateLimitProperties.class})
 @EnableMethodSecurity
 public class SecurityConfig {
 
@@ -68,7 +75,13 @@ public class SecurityConfig {
                 "Generate with: openssl rand -base64 32");
         }
         byte[] secret = Base64.getDecoder().decode(auth.jwt().secret());
-        return NimbusJwtDecoder.withSecretKey(new SecretKeySpec(secret, "HmacSHA256")).build();
+        var decoder = NimbusJwtDecoder.withSecretKey(new SecretKeySpec(secret, "HmacSHA256")).build();
+        // Default validators (exp/nbf) + iss/aud, phased in: see IssuerAudienceValidator.
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefault(),
+            new IssuerAudienceValidator(auth.jwt().issuer(), AuthProperties.Jwt.AUDIENCE,
+                                        auth.jwt().enforceIssuerAudience())));
+        return decoder;
     }
 
     @Bean
@@ -78,7 +91,8 @@ public class SecurityConfig {
                                                    JwtDecoder jwtDecoder,
                                                    CookieOrHeaderBearerTokenResolver bearerResolver,
                                                    ApiKeyService apiKeyService,
-                                                   CeitbaStaffRepository staffRepository) throws Exception {
+                                                   CeitbaStaffRepository staffRepository,
+                                                   RateLimitProperties rateLimit) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
         // 403 only for allowlist denials.
@@ -104,6 +118,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsSource()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Per-IP rate limiting runs right after CORS (so 429s are readable
+            // by browsers) and before any authentication work.
+            .addFilterAfter(new RateLimitFilter(rateLimit), CorsFilter.class)
             .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository),
                              UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(reg -> reg
@@ -116,7 +133,7 @@ public class SecurityConfig {
                     "/v1/plans/**",
                     "/v1/classrooms/**",
                     "/v1/wiki/bookmarks/*",
-                    "/v1/auth/google", "/v1/auth/callback", "/v1/auth/logout",
+                    "/v1/auth/google", "/v1/auth/callback",
                     // Newsletter public reads
                     "/v1/organizations/**",
                     "/v1/articles/**",
@@ -128,7 +145,9 @@ public class SecurityConfig {
                     "/v1/benefits",
                     "/v1/benefit-cards",
                     // Public read of share-session by token; writes are JWT-gated.
-                    "/v1/share/sessions/*"
+                    "/v1/share/sessions/*",
+                    // Mobile app release control (min version / maintenance).
+                    "/v1/app/config"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()
@@ -137,7 +156,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/v1/articles/*/votes").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/analytics/events").permitAll()
                 // Logout must be reachable even with an expired/invalid cookie.
-                .requestMatchers(HttpMethod.POST, "/v1/auth/logout").permitAll()
+                // The mobile token endpoints authenticate via their body
+                // (Google ID token / refresh token), not a bearer JWT.
+                .requestMatchers(HttpMethod.POST,
+                    "/v1/auth/logout", "/v1/auth/google/mobile", "/v1/auth/refresh").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
                 .requestMatchers("/v1/staff/**").hasRole("STAFF")
                 .anyRequest().access(authenticatedAndAllowlisted)

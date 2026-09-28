@@ -1,37 +1,47 @@
 package org.ceitba.api.web.auth;
 
 import jakarta.validation.Valid;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.config.AuthProperties;
 import org.ceitba.api.domain.User;
-import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
+import org.ceitba.api.service.auth.GoogleLoginService;
 import org.ceitba.api.service.auth.GoogleOAuthService;
 import org.ceitba.api.service.auth.JwtIssuerService;
-import org.ceitba.api.service.auth.UserProvisioningService;
-import org.ceitba.api.service.news.FollowService;
-import org.ceitba.api.service.news.OrganizationMembershipService;
+import org.ceitba.api.service.auth.LoginRejectedException;
+import org.ceitba.api.service.auth.OAuthStateService;
+import org.ceitba.api.service.auth.TokenSessionService;
+import org.ceitba.api.service.auth.UserMeService;
 import org.ceitba.api.web.auth.dto.ApiKeyCreatedResponse;
 import org.ceitba.api.web.auth.dto.ApiKeyResponse;
 import org.ceitba.api.web.auth.dto.CreateApiKeyRequest;
+import org.ceitba.api.web.auth.dto.LogoutRequest;
 import org.ceitba.api.web.auth.dto.UserMeResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -46,31 +56,38 @@ public class AuthController {
         "http://localhost:5175"
     );
 
+    // Short-lived HttpOnly cookie binding the OAuth `state` to the browser
+    // that started the login (see OAuthStateService).
+    static final String STATE_COOKIE = "ceitba_oauth_state";
+
     private final GoogleOAuthService googleOAuth;
     private final JwtIssuerService jwtIssuer;
-    private final UserProvisioningService provisioning;
+    private final OAuthStateService oauthState;
+    private final GoogleLoginService googleLogin;
+    private final UserMeService userMe;
     private final ApiKeyService apiKeyService;
-    private final CeitbaStaffRepository staffRepository;
-    private final OrganizationMembershipService memberships;
-    private final FollowService follows;
+    private final TokenSessionService tokenSessions;
     private final AuthProperties auth;
+    private final ObjectMapper objectMapper;
 
     public AuthController(GoogleOAuthService googleOAuth,
                           JwtIssuerService jwtIssuer,
-                          UserProvisioningService provisioning,
+                          OAuthStateService oauthState,
+                          GoogleLoginService googleLogin,
+                          UserMeService userMe,
                           ApiKeyService apiKeyService,
-                          CeitbaStaffRepository staffRepository,
-                          OrganizationMembershipService memberships,
-                          FollowService follows,
-                          AuthProperties auth) {
+                          TokenSessionService tokenSessions,
+                          AuthProperties auth,
+                          ObjectMapper objectMapper) {
         this.googleOAuth      = googleOAuth;
         this.jwtIssuer        = jwtIssuer;
-        this.provisioning     = provisioning;
+        this.oauthState       = oauthState;
+        this.googleLogin      = googleLogin;
+        this.userMe           = userMe;
         this.apiKeyService    = apiKeyService;
-        this.staffRepository  = staffRepository;
-        this.memberships      = memberships;
-        this.follows          = follows;
+        this.tokenSessions    = tokenSessions;
         this.auth             = auth;
+        this.objectMapper     = objectMapper;
     }
 
     // Frontend button links here. redirect_uri is where we send the browser
@@ -82,81 +99,98 @@ public class AuthController {
     public ResponseEntity<Void> initiateGoogleLogin(
             @RequestParam(required = false, name = "redirect_uri") String redirectUri) {
         String target = isSafeRedirect(redirectUri) ? redirectUri : auth.frontendUrl();
-        String state  = Base64.getUrlEncoder().withoutPadding()
-                              .encodeToString(target.getBytes());
+        var issued = oauthState.issue(target);
         return ResponseEntity.status(HttpStatus.FOUND)
-            .location(googleOAuth.buildAuthorizationUri(state))
+            .location(googleOAuth.buildAuthorizationUri(issued.state()))
+            .header(HttpHeaders.SET_COOKIE, stateCookie(issued.nonce(), OAuthStateService.TTL).toString())
             .build();
     }
 
     // Google redirects here after the user authenticates.
     // On success: set HttpOnly session cookie and redirect to the SPA URL.
     // On failure: redirect to <frontend>?error=<reason>
+    // The state must be authentic, unexpired and match the nonce cookie set by
+    // /google; otherwise we never exchange the code (login-CSRF protection).
     @GetMapping("/callback")
     public ResponseEntity<Void> handleGoogleCallback(
             @RequestParam String code,
-            @RequestParam(required = false) String state) {
-        String redirectTo = decodeState(state);
+            @RequestParam(required = false) String state,
+            @CookieValue(name = STATE_COOKIE, required = false) String stateNonce) {
+        // Re-check the target even though it is signed: FRONTEND_URL (the
+        // fallback) or an allowed origin are the only valid destinations.
+        var verified = oauthState.verify(state, stateNonce)
+            .filter(t -> t.equals(auth.frontendUrl()) || isSafeRedirect(t));
+        if (verified.isEmpty()) {
+            return redirect(withError(auth.frontendUrl(), "invalid_state"));
+        }
+        String redirectTo = verified.get();
         try {
             var claims = googleOAuth.exchangeCode(code);
-            // Defense in depth: email allowlist + verified flag + hosted-domain
-            // claim must all line up. `hd` is null for personal Gmail accounts
-            // and a workspace domain otherwise; we accept it only when it
-            // matches one of the allowlisted domains.
-            if (!claims.emailVerified()) {
-                return redirect(redirectTo + "?error=unverified_email");
-            }
-            if (!auth.admits(claims.email())) {
-                return redirect(redirectTo + "?error=unauthorized");
-            }
-            if (claims.hd() != null && !auth.admits("anyone@" + claims.hd())) {
-                return redirect(redirectTo + "?error=unauthorized_workspace");
-            }
-            var user  = provisioning.findOrCreate(claims.email(), claims.name(), claims.sub(), claims.picture());
+            // email_verified / allowlist / hd checks + find-or-create live in
+            // GoogleLoginService, shared with the mobile ID-token exchange.
+            var user  = googleLogin.admit(claims);
             var token = jwtIssuer.issue(user);
             return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(redirectTo))
                 .header(HttpHeaders.SET_COOKIE, sessionCookie(token).toString())
+                .header(HttpHeaders.SET_COOKIE, stateCookie("", Duration.ZERO).toString())
                 .build();
+        } catch (LoginRejectedException e) {
+            return redirect(withError(redirectTo, e.reason().code()));
         } catch (Exception e) {
-            return redirect(redirectTo + "?error=auth_failed");
+            return redirect(withError(redirectTo, "auth_failed"));
         }
     }
 
-    // Clears the session cookie. Always 204 — does not require an active session,
-    // so a stale-cookie client can call this safely.
+    // Clears the session cookie and, when a JSON body carries a refreshToken,
+    // revokes that token's whole family (mobile logout). 204 whatever the
+    // Content-Type — does not require an active session, so a stale-cookie
+    // client can call this safely. The body is read as a raw string and only
+    // parsed when it is JSON, so a web client posting text/plain
+    // (navigator.sendBeacon), a form, or no body at all gets 204 instead of
+    // 415. (Two consumes-split mappings are ambiguous for body-less POSTs.)
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = HttpHeaders.CONTENT_TYPE, required = false) String contentType,
+            @RequestBody(required = false) String rawBody) {
+        LogoutRequest body = parseLogoutBody(contentType, rawBody);
+        if (body != null && body.refreshToken() != null) tokenSessions.logout(body.refreshToken());
         return ResponseEntity.noContent()
             .header(HttpHeaders.SET_COOKIE, clearCookie().toString())
             .build();
     }
 
-    // Returns the authenticated user's profile. Role is "staff" when the user
-    // has an active CeitbaStaff row, otherwise "user".
+    private LogoutRequest parseLogoutBody(String contentType, String rawBody) {
+        if (rawBody == null || rawBody.isBlank() || contentType == null) return null;
+        MediaType type;
+        try {
+            type = MediaType.parseMediaType(contentType);
+        } catch (InvalidMediaTypeException e) {
+            return null;
+        }
+        if (!MediaType.APPLICATION_JSON.isCompatibleWith(type)) return null;
+        try {
+            return objectMapper.readValue(rawBody, LogoutRequest.class);
+        } catch (JsonProcessingException e) {
+            throw new ValidationException("body", "<malformed>", "logout body must be valid JSON");
+        }
+    }
+
+    // Revokes every refresh-token family of the caller (all devices) and clears
+    // the web cookie. Already-issued access tokens stay valid until they
+    // expire (mobile: auth.jwt.mobile-access-ttl).
+    @PostMapping("/logout-all")
+    public ResponseEntity<Void> logoutAll(@CurrentUser User user) {
+        tokenSessions.logoutAll(user.getId());
+        return ResponseEntity.noContent()
+            .header(HttpHeaders.SET_COOKIE, clearCookie().toString())
+            .build();
+    }
+
+    // Returns the authenticated user's profile (see UserMeService).
     @GetMapping("/me")
     public UserMeResponse me(@CurrentUser User user) {
-        boolean isStaff = staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now());
-        var orgs = memberships.listForUser(user.getId()).stream()
-            .map(m -> new UserMeResponse.MembershipDto(m.getOrganization(), m.getRole()))
-            .toList();
-        var followSlugs = follows.listForUser(user.getId()).stream()
-            .map(f -> f.getOrganization())
-            .toList();
-        return new UserMeResponse(
-            user.getId(),
-            user.getName(),
-            user.getEmail(),
-            isStaff ? "staff" : "user",
-            user.getAvatarUrl(),
-            user.getTheme(),
-            user.getPreferredLanguage(),
-            user.getCareer() != null ? user.getCareer().getId() : null,
-            user.getPlan(),
-            user.getFileNumber(),
-            orgs,
-            followSlugs
-        );
+        return userMe.describe(user);
     }
 
     // -----------------------------------------------------------------------
@@ -188,22 +222,53 @@ public class AuthController {
 
     // -----------------------------------------------------------------------
 
-    private boolean isSafeRedirect(String uri) {
+    // Exact origin match (scheme + host + port) against SAFE_REDIRECT_ORIGINS.
+    // A plain prefix check would accept e.g. https://ceitba.org.ar.evil.com or
+    // https://ceitba.org.ar@evil.com.
+    static boolean isSafeRedirect(String uri) {
         if (uri == null || uri.isBlank()) return false;
-        return SAFE_REDIRECT_ORIGINS.stream().anyMatch(uri::startsWith);
+        URI u;
+        try {
+            u = new URI(uri);
+        } catch (URISyntaxException e) {
+            return false;
+        }
+        if (!u.isAbsolute() || u.isOpaque() || u.getRawUserInfo() != null
+                || u.getScheme() == null || u.getHost() == null) {
+            return false;
+        }
+        return SAFE_REDIRECT_ORIGINS.contains(origin(u));
     }
 
-    private String decodeState(String state) {
-        if (state == null) return auth.frontendUrl();
-        try {
-            return new String(Base64.getUrlDecoder().decode(state));
-        } catch (Exception e) {
-            return auth.frontendUrl();
-        }
+    private static String origin(URI u) {
+        String scheme = u.getScheme().toLowerCase(Locale.ROOT);
+        int port = u.getPort();
+        if ((port == 443 && scheme.equals("https")) || (port == 80 && scheme.equals("http"))) port = -1;
+        return scheme + "://" + u.getHost().toLowerCase(Locale.ROOT) + (port == -1 ? "" : ":" + port);
+    }
+
+    private static String withError(String target, String reason) {
+        return UriComponentsBuilder.fromUriString(target)
+            .replaceQueryParam("error", reason)
+            .build()
+            .toUriString();
     }
 
     private static ResponseEntity<Void> redirect(String uri) {
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(uri)).build();
+    }
+
+    // SameSite=Lax is required: Google's redirect back to /callback is a
+    // cross-site top-level GET, which Lax (but not Strict) cookies survive.
+    private ResponseCookie stateCookie(String value, Duration maxAge) {
+        var cfg = auth.cookie();
+        return ResponseCookie.from(STATE_COOKIE, value)
+            .httpOnly(true)
+            .secure(cfg.secure())
+            .path(cfg.path())
+            .sameSite("Lax")
+            .maxAge(maxAge)
+            .build();
     }
 
     private ResponseCookie sessionCookie(String token) {

@@ -4,6 +4,13 @@ auth:
   jwt:
     secret: dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch
     ttl-days: 1
+  # This file shadows src/main/resources/application.yml entirely, so anything
+  # the app dereferences unconditionally must be set here. Dummy OAuth client
+  # so GET /v1/auth/google can build Google's authorization URL in ITs.
+  google:
+    client-id: test-client-id
+    client-secret: test-client-secret
+    redirect-uri: http://localhost:8080/api/v1/auth/callback
 
 spring:
   flyway:
@@ -12,11 +19,17 @@ spring:
     # Stop at V4.x: V5+ seed production-only data (ceitba@itba.edu.ar superadmin,
     # careers, organizations) that breaks count assertions and FK-restricted
     # deleteAll() in @BeforeEach. Pure-DDL changes that landed after V5 in prod
-    # (V8/V9/V10/V12/V13/V14/V15) are mirrored in classpath:db/test-migration as
+    # (V8/V9/V10/V12/V13/V14/V15/V16/V17) are mirrored in classpath:db/test-migration as
     # V4.2+, so the entity layer can validate against the full schema without
-    # the seeds.
-    target: '4.8'
+    # the seeds. Every new DDL migration in db/migration MUST get a mirror here
+    # and this target bumped — see src/test/resources/db/test-migration/README.md.
+    target: '4.10'
     locations: classpath:db/migration,classpath:db/test-migration
+
+# Rate limiting is off by default in tests so ITs can hammer /v1/auth/**;
+# RateLimitIT turns it back on explicitly.
+rate-limit:
+  enabled: false
 
 # Use the default Springdoc path in tests to avoid suffix-matching ambiguity
 # with the custom /docs.json path under server.servlet.context-path=/api.

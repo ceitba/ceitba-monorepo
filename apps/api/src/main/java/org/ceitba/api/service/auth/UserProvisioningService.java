@@ -13,8 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-// Just-in-time user provisioning. The first time a Google ID token arrives
-// for a never-seen email, we create a User row from the (email, name)
+// Just-in-time user provisioning. The first time a never-seen email signs in
+// (web OAuth callback, mobile ID-token exchange, or a @CurrentUser request
+// carrying one of our JWTs), we create a User row from the (email, name)
 // claims. Subsequent calls return the existing row.
 @Service
 public class UserProvisioningService {
