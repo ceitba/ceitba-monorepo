@@ -9,8 +9,11 @@ import org.ceitba.api.common.exception.RateLimitExceededException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
+import org.ceitba.api.service.auth.InvalidCredentialsException;
 import org.ceitba.api.service.auth.InvalidTokenException;
 import org.ceitba.api.service.auth.LoginRejectedException;
+import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
+import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.FileNumberAlreadySetException;
@@ -143,6 +146,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<ErrorResponse> handleInvalidToken(InvalidTokenException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "invalid_token", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, "invalid_credentials", ex.getMessage(), req);
+    }
+
+    // Review login not configured: indistinguishable from any other 404.
+    @ExceptionHandler(ReviewLoginDisabledException.class)
+    public ResponseEntity<ErrorResponse> handleReviewLoginDisabled(ReviewLoginDisabledException ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, "NotFound", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ReviewAccountRestrictedException.class)
+    public ResponseEntity<ErrorResponse> handleReviewAccountRestricted(ReviewAccountRestrictedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "AccessDenied", ex.getMessage(), req);
     }
 
     @ExceptionHandler(LoginRejectedException.class)

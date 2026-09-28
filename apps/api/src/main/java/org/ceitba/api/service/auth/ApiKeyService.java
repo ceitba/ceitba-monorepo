@@ -1,5 +1,6 @@
 package org.ceitba.api.service.auth;
 
+import org.ceitba.api.config.ReviewLoginProperties;
 import org.ceitba.api.domain.ApiKey;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.ApiKeyRepository;
@@ -26,15 +27,22 @@ public class ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
     private final UserRepository userRepository;
+    private final ReviewLoginProperties reviewLogin;
     private final SecureRandom random = new SecureRandom();
 
-    public ApiKeyService(ApiKeyRepository apiKeyRepository, UserRepository userRepository) {
+    public ApiKeyService(ApiKeyRepository apiKeyRepository, UserRepository userRepository,
+                         ReviewLoginProperties reviewLogin) {
         this.apiKeyRepository = apiKeyRepository;
         this.userRepository   = userRepository;
+        this.reviewLogin      = reviewLogin;
     }
 
     @Transactional
     public ApiKeyCreatedResponse create(User user, String name, Integer ttlDays) {
+        // API keys skip the allowlist, so a key would outlive disabling review login.
+        if (reviewLogin.isReviewEmail(user.getEmail())) {
+            throw new ReviewAccountRestrictedException("The review account cannot create API keys");
+        }
         int days = (ttlDays != null && ttlDays > 0) ? ttlDays : DEFAULT_TTL_DAYS;
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);

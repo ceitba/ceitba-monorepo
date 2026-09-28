@@ -26,6 +26,9 @@ Read [AUTH-AND-ROLES.md](AUTH-AND-ROLES.md) for the access-control model.
 | `AUTH_ALLOWED_DOMAINS` | No | `itba.edu.ar` | Comma-separated domains admitted by the allowlist |
 | `AUTH_ALLOWED_EMAILS` | No | *(empty)* | Comma-separated individual emails admitted outside the domain rule |
 | `AUTH_SYNC_API_KEY` | No | *(empty)* | Static key for `/v1/sync/**` cron endpoints |
+| `REVIEW_LOGIN_EMAIL` | For store review | *(empty = disabled, 404)* | The one account allowed on `POST /v1/auth/review-login` (see [§ 5f](#5f-store-review-account)) |
+| `REVIEW_LOGIN_PASSWORD_HASH` | For store review | *(empty = disabled, 404)* | bcrypt hash of that account's password (never the password itself) |
+| `RATE_LIMIT_REVIEW_LOGIN_CAPACITY` / `RATE_LIMIT_REVIEW_LOGIN_PERIOD` | No | `10` / `1m` | Per-IP bucket of `POST /v1/auth/review-login` |
 
 ---
 
@@ -229,6 +232,38 @@ DELETE /api/v1/me               (Bearer)                                       �
 See [AUTH-AND-ROLES.md § Account deletion](AUTH-AND-ROLES.md#account-deletion-delete-v1me) for what is deleted or anonymized.
 
 On logout, first unregister the push token with `DELETE /api/v1/me/devices/{token}` (while the access token is still valid). See [PUSH-NOTIFICATIONS.md](PUSH-NOTIFICATIONS.md) for registering it after login.
+
+### 5f. Store review account
+
+Apple / Google reviewers get an email + password login instead of Google Sign-In. It is **off by default** and should be on only while a review is pending. Full details (errors, security properties, what the reviewer can do): [AUTH-AND-ROLES.md § App Store / Play review login](AUTH-AND-ROLES.md#app-store--play-review-login).
+
+1. Pick an email (any domain) and a strong password, and hash it:
+
+   ```bash
+   htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n' | sed 's/^\$2y/$2a/'
+   # or: docker run --rm httpd:2.4-alpine htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n' | sed 's/^\$2y/$2a/'
+   ```
+
+2. Set on the server's `.env` (single quotes around the hash: it contains `$`), then `docker compose up -d ceitba-api`:
+
+   ```bash
+   REVIEW_LOGIN_EMAIL=appreview@example.com
+   REVIEW_LOGIN_PASSWORD_HASH='$2a$12$...'
+   ```
+
+3. Put the email and plain password in the App Store Connect / Play Console review notes.
+4. After the review, blank both variables and recreate the container: the endpoint 404s and the account's sessions die on their next refresh.
+
+The app calls:
+
+```http
+POST /api/v1/auth/review-login
+Content-Type: application/json
+
+{ "email": "appreview@example.com", "password": "<password>", "deviceName": "iPhone" }
+```
+
+and gets the same response as [§ 5b](#5b-sign-in); from then on everything in § 5c–5d applies. Errors: `401 {"error":"invalid_credentials"}`, `404` when disabled, `429` after 10 attempts/min per IP.
 
 ### 5e. Release control
 

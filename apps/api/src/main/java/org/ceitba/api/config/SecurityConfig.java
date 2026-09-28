@@ -3,6 +3,7 @@ package org.ceitba.api.config;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
+import org.ceitba.api.service.auth.SessionAllowlist;
 import org.ceitba.api.web.auth.ApiKeyFilter;
 import org.ceitba.api.web.auth.CookieOrHeaderBearerTokenResolver;
 import org.ceitba.api.web.auth.IssuerAudienceValidator;
@@ -43,6 +44,7 @@ import java.util.List;
 //                  GET on wiki bookmarks; POST /v1/classrooms/conflicts.
 //                  GET /v1/auth/google, GET /v1/auth/callback  (web OAuth flow)
 //                  POST /v1/auth/google/mobile, /v1/auth/refresh, /v1/auth/logout
+//                  POST /v1/auth/review-login  (store review account; 404 unless configured)
 //                  GET /v1/app/config
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
@@ -56,7 +58,8 @@ import java.util.List;
 // JWTs are now issued by us (HS256, AUTH_JWT_SECRET), not forwarded Google tokens.
 // The JwtDecoder bean below validates against our signing key.
 //
-// Allowlist (auth.allowed-domains + auth.allowed-emails) is enforced as an
+// Allowlist (auth.allowed-domains + auth.allowed-emails, plus the review
+// account while review login is enabled: see SessionAllowlist) is enforced as an
 // AuthorizationManager: post-decode, pre-controller. Living here (vs in the
 // JwtAuthenticationConverter) keeps the converter focused on extracting
 // authorities AND lets MockMvc tests with .with(jwt()) actually exercise it.
@@ -65,7 +68,7 @@ import java.util.List;
 // active staff or an active ceitba_moderators grant. @EnableMethodSecurity
 // activates @PreAuthorize on controller methods for fine-grained checks.
 @Configuration
-@EnableConfigurationProperties({AuthProperties.class, RateLimitProperties.class})
+@EnableConfigurationProperties({AuthProperties.class, RateLimitProperties.class, ReviewLoginProperties.class})
 @EnableMethodSecurity
 public class SecurityConfig {
 
@@ -91,6 +94,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    AuthProperties auth,
+                                                   SessionAllowlist sessionAllowlist,
                                                    StaffAwareJwtAuthenticationConverter jwtConverter,
                                                    JwtDecoder jwtDecoder,
                                                    CookieOrHeaderBearerTokenResolver bearerResolver,
@@ -107,7 +111,7 @@ public class SecurityConfig {
                 if (a instanceof JwtAuthenticationToken jwtAuth) {
                     Jwt jwt = jwtAuth.getToken();
                     String email = jwt.getClaimAsString("email");
-                    return new AuthorizationDecision(email != null && auth.admits(email));
+                    return new AuthorizationDecision(sessionAllowlist.admits(email));
                 }
                 // Non-JWT authentications (e.g. ROLE_SYNC API-key principal) pass through
                 return new AuthorizationDecision(true);
@@ -165,9 +169,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/analytics/events").permitAll()
                 // Logout must be reachable even with an expired/invalid cookie.
                 // The mobile token endpoints authenticate via their body
-                // (Google ID token / refresh token), not a bearer JWT.
+                // (Google ID token / refresh token / review credentials), not a bearer JWT.
                 .requestMatchers(HttpMethod.POST,
-                    "/v1/auth/logout", "/v1/auth/google/mobile", "/v1/auth/refresh").permitAll()
+                    "/v1/auth/logout", "/v1/auth/google/mobile", "/v1/auth/refresh",
+                    "/v1/auth/review-login").permitAll()
                 .requestMatchers("/v1/sync/**").hasRole("SYNC")
                 // Proposal moderation is the narrow MODERATOR grant, not STAFF.
                 .requestMatchers("/v1/staff/proposals", "/v1/staff/proposals/**")

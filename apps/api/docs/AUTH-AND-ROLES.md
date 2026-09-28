@@ -8,14 +8,14 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 
 | You are… | What you send | What you can do |
 |---|---|---|
-| **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`) |
+| **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`, and `/v1/auth/review-login` [while enabled](#app-store--play-review-login)) |
 | **USER** | `Authorization: Bearer <jwt>` or the web session cookie (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys, `POST /v1/auth/logout-all`, `DELETE /v1/me` (JWT session only, not API keys) |
 | **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER |
 | **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (`/v1/staff/proposals/**`, editing/deleting any study group) |
 | **STAFF** | Same JWT or API key, plus an active `ceitba_staff` row | Everything USER and MODERATOR can do, **plus** assign/revoke STAFF and MODERATOR on others, create users and correct a user's file number (`/v1/users/**`) |
 | **SYNC** (machine, not human) | `X-Api-Key: <AUTH_SYNC_API_KEY>` | Trigger `/v1/sync/**` jobs |
 
-JWTs are issued by this API (HS256, `AUTH_JWT_SECRET`) after a Google sign-in, either the web OAuth flow (JWT in an HttpOnly cookie) or the mobile ID-token exchange (JWT + refresh token in the response body). Google tokens are never accepted as bearer tokens. See [AUTH-SETUP.md](AUTH-SETUP.md) to configure login and [§ Sessions and tokens](#sessions-and-tokens) below.
+JWTs are issued by this API (HS256, `AUTH_JWT_SECRET`) after a Google sign-in, either the web OAuth flow (JWT in an HttpOnly cookie) or the mobile ID-token exchange (JWT + refresh token in the response body). The one exception is the [store review account](#app-store--play-review-login), which signs in with an email and password. Google tokens are never accepted as bearer tokens. See [AUTH-SETUP.md](AUTH-SETUP.md) to configure login and [§ Sessions and tokens](#sessions-and-tokens) below.
 
 `Anonymous` isn't actually a role; it's the absence of any authentication. The others (`USER`, `MODERATOR`, `STAFF`, `SYNC`) map to Spring Security `ROLE_*` authorities.
 
@@ -227,7 +227,7 @@ ApiKeyFilter (custom, runs before Spring Security)
    ▼
 OAuth2 Resource Server filter (Spring Security)
    token = Authorization: Bearer header, else the session cookie
-           (ignored on POST /v1/auth/{google/mobile,refresh,logout})
+           (ignored on POST /v1/auth/{google/mobile,refresh,logout,review-login})
    if token AND no auth set yet:
        1. Verify HS256 signature against AUTH_JWT_SECRET
        2. Verify exp / nbf, and iss / aud (phase-in, see below)
@@ -243,11 +243,13 @@ authorizeHttpRequests() — per-route policy from SecurityConfig
    public matchers           -> permitAll
    GET  /v1/auth/google, /v1/auth/callback               -> permitAll (web OAuth flow)
    POST /v1/auth/google/mobile, /refresh, /logout        -> permitAll (token endpoints)
+   POST /v1/auth/review-login                            -> permitAll (404 unless configured)
    GET  /v1/app/config                                   -> permitAll
    /v1/sync/**               -> hasRole("SYNC")
    /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
    /v1/staff/**              -> hasRole("STAFF")   (incl. /v1/staff/moderators)
-   anyRequest()              -> authenticated() AND email in allowlist (JWT only)
+   anyRequest()              -> authenticated() AND email in allowlist (JWT only;
+                                allowlist + review email while review login is on)
    │
    ▼
 @PreAuthorize evaluation (if used on the controller method)
@@ -283,6 +285,54 @@ Token endpoint errors use the standard error body with a machine code in `error`
 **JWT claims**: `sub` (user id), `email`, `name`, `iat`, `exp`, `iss` (`AUTH_JWT_ISSUER`, default `https://ceitba.org.ar/api`), `aud` = `ceitba-api`, `jti`. Access tokens are stateless: logout, logout-all and account deletion revoke refresh tokens, but an already-issued access JWT stays valid until `exp`.
 
 **`iss`/`aud` phase-in (follow-up with a date).** JWTs issued before B1 have neither claim and live up to 7 days in web cookies. While `AUTH_JWT_ENFORCE_ISS_AUD=false` (default), `IssuerAudienceValidator` checks each claim only when it is present. **Follow-up:** 7 days after B1 reaches production (B1 deploy date + `AUTH_JWT_TTL_DAYS`), set `AUTH_JWT_ENFORCE_ISS_AUD=true` in prod so both claims become mandatory, then consider removing the flag.
+
+---
+
+## App Store / Play review login
+
+**Why.** Apple App Review (and Google Play review) need working demo credentials. Everyone else signs in with Google, but a reviewer on a fresh device signing into a Gmail test account routinely hits Google's new-device challenges, and the old Firebase email/password "tester login" is gone with Firebase Auth. So the API offers a password login for **exactly one** account, and only while it is switched on.
+
+**Endpoint.** `POST /v1/auth/review-login` (public, `Cache-Control: no-store`):
+
+```http
+POST /api/v1/auth/review-login
+Content-Type: application/json
+
+{ "email": "appreview@example.com", "password": "<password>", "deviceName": "iPhone (optional)" }
+```
+
+Success is `200` with **exactly the same body as `POST /v1/auth/google/mobile`** (`accessToken`, `accessTokenExpiresAt`, `refreshToken`, `refreshTokenExpiresAt`, `user` = the `GET /v1/auth/me` shape). It goes through the same `TokenSessionService` / refresh-token-family code, so `/v1/auth/refresh`, `/logout`, `/logout-all`, `GET /v1/auth/me` and `DELETE /v1/me` work unchanged. Errors:
+
+| Status | `error` | When |
+|---|---|---|
+| `401` | `invalid_credentials` | Wrong password, any email other than the configured one, or a missing/blank field (the message never says which) |
+| `404` | `NotFound` | Review login is disabled (not configured). Field validation only happens after the enabled check, so a disabled endpoint does not reveal itself with a `400` for missing fields |
+| `429` | `TooManyRequests` | More than `RATE_LIMIT_REVIEW_LOGIN_CAPACITY` (10) attempts per `RATE_LIMIT_REVIEW_LOGIN_PERIOD` (1 min) from one IP. Its own bucket; the generic `/v1/auth/**` bucket does not apply |
+
+The endpoint is hidden from the Swagger/OpenAPI docs.
+
+**Enable / disable.** Set both env vars (passed through by `docker-compose.yml`), then recreate the `ceitba-api` container:
+
+```bash
+REVIEW_LOGIN_EMAIL=appreview@example.com
+# bcrypt hash only; SINGLE quotes in .env, otherwise compose expands the `$`s:
+REVIEW_LOGIN_PASSWORD_HASH='$2a$12$...'
+```
+
+Generate the hash with `htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n' | sed 's/^\$2y/$2a/'` (no `htpasswd`? prefix `docker run --rm httpd:2.4-alpine`). The app refuses to start if the hash is not a bcrypt hash, and logs a `WARN` at startup while review login is on. Leave either variable empty to disable it (the default). **Disable it whenever no store review is pending**: with it off, the endpoint 404s, the review account's refresh tokens stop working (`403 unauthorized` on the next refresh, which revokes the family) and its still-unexpired access JWTs are rejected by the allowlist gate (`403`) right away. Rotate the password (new hash) for each review round and put the plain password only in App Store Connect / Play Console review notes.
+
+**What the account is.** A normal **USER**, nothing more:
+
+- Only the configured email can use this endpoint; there is no other password account and no signup.
+- The email bypasses `AUTH_ALLOWED_DOMAINS`/`AUTH_ALLOWED_EMAILS` **for this endpoint only**. After sign-in, `SessionAllowlist` (used by the post-auth `AuthorizationManager` in `SecurityConfig` and by the refresh-token allowlist re-check) admits that one email while review login is enabled. Google sign-in with the same address is still rejected unless it is allowlisted normally.
+- The password is only ever stored as a bcrypt hash. Every attempt runs exactly one bcrypt check (against a dummy hash of the same cost when the email does not match), so timing does not reveal the email; the email itself is compared in constant time. Passwords longer than 72 bytes are rejected.
+- It is JIT-provisioned on the first login as `App Review` (the name is reset to that on every login) and goes through normal onboarding: no career, plan or file number until the reviewer picks them.
+- Nothing grants it STAFF or MODERATOR: those come only from `ceitba_staff` / `ceitba_moderators` rows. Never add one for this account.
+- It **cannot create API keys** (`POST /v1/auth/api-keys` → `403`), because API keys skip the allowlist and would outlive disabling review login.
+
+**What the reviewer can do.** Everything any student can: onboarding (career/plan/legajo), schedules, classrooms, benefits, news, study groups, proposals, push-notification registration, logout, and account deletion (`DELETE /v1/me`, which App Store rule 5.1.1(v) requires them to be able to test; the next review login simply provisions a fresh account).
+
+Code: `service/auth/ReviewLoginService`, `service/auth/SessionAllowlist`, `config/ReviewLoginProperties`, `TokenAuthController.reviewLogin`.
 
 ---
 
@@ -351,6 +401,10 @@ Guards:
 | USER and MODERATOR cannot manage moderator grants | `ModeratorIT.userAndModeratorCannotManageGrants` |
 | `moderator` flag on `/v1/auth/me` | `AuthMeIT.meModeratorFlagFollowsActiveGrant`, `ModeratorIT` |
 | Proposal moderation open to MODERATOR, 403 for USER and non-allowlisted, MODERATOR is not STAFF elsewhere | `StaffProposalControllerIT` |
+| Review login: wrong password / other email / blank → 401, success = mobile token shape, USER only (not staff/moderator), allowlist admits only that email, Google login for it still rejected, refresh, no API keys, own rate-limit bucket | `ReviewLoginIT` |
+| Review login disabled → 404 (even with an empty body) | `ReviewLoginDisabledIT` |
+| Review login always runs one bcrypt check (unknown email, wrong/overlong/missing password) | `ReviewLoginServiceTest` |
+| Review email admitted by the session allowlist only while review login is enabled | `SessionAllowlistTest` |
 
 
 ---
