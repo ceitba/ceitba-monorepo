@@ -47,6 +47,11 @@ public class BenefitCardService {
         c.setPrice(blankToNull(req.price()));
         c.setBulletsEs(cleanList(req.bulletsEs()));
         c.setBulletsEn(cleanList(req.bulletsEn()));
+        c.setLocation(blankToNull(req.location()));
+        c.setLocationUrl(blankToNull(req.locationUrl()));
+        c.setPhone(blankToNull(req.phone()));
+        c.setWebsite(blankToNull(req.website()));
+        c.setEmail(blankToNull(req.email()));
         return toResponse(repository.save(c));
     }
 
@@ -68,6 +73,14 @@ public class BenefitCardService {
         c.setPrice(blankToNull(req.price()));
         c.setBulletsEs(cleanList(req.bulletsEs()));
         c.setBulletsEn(cleanList(req.bulletsEn()));
+        // Contact fields postdate the SPA's editor, which omits them: null
+        // keeps the stored value so an SPA save doesn't wipe them; send ""
+        // to clear one.
+        if (req.location() != null) c.setLocation(blankToNull(req.location()));
+        if (req.locationUrl() != null) c.setLocationUrl(blankToNull(req.locationUrl()));
+        if (req.phone() != null) c.setPhone(blankToNull(req.phone()));
+        if (req.website() != null) c.setWebsite(blankToNull(req.website()));
+        if (req.email() != null) c.setEmail(blankToNull(req.email()));
         return toResponse(repository.save(c));
     }
 
@@ -109,7 +122,12 @@ public class BenefitCardService {
             c.getCtaLabelEn(),
             c.getPrice(),
             c.getBulletsEs(),
-            c.getBulletsEn()
+            c.getBulletsEn(),
+            c.getLocation(),
+            c.getLocationUrl(),
+            c.getPhone(),
+            c.getWebsite(),
+            c.getEmail()
         );
     }
 }

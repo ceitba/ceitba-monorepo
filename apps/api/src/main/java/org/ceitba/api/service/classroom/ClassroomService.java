@@ -6,6 +6,7 @@ import org.ceitba.api.domain.DayOfWeek;
 import org.ceitba.api.repository.CommissionTimeRepository;
 import org.ceitba.api.web.classroom.dto.ClassroomDto;
 import org.ceitba.api.web.classroom.dto.ClassroomScheduleDto;
+import org.ceitba.api.web.classroom.dto.ClassroomsResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,14 +35,14 @@ public class ClassroomService {
     // status=occupied -> nested {day: {building: [scheduleDto]}}
     // else            -> {building: [classroomDto]}
     @Transactional(readOnly = true)
-    public Object getClassroomsWithFilters(String status, boolean currentSemester) {
+    public ClassroomsResponse getClassroomsWithFilters(String status, boolean currentSemester) {
         if ("occupied".equals(status)) {
             var rows = currentSemester
                 ? commissionTimeRepository.findActiveOrdered(LocalDate.now(clock))
                 : commissionTimeRepository.findAllOrdered();
-            return groupByDayAndBuilding(rows);
+            return new ClassroomsResponse.OccupiedByDay(groupByDayAndBuilding(rows));
         }
-        return groupByBuilding(commissionTimeRepository.findAllOrdered());
+        return new ClassroomsResponse.ByBuilding(groupByBuilding(commissionTimeRepository.findAllOrdered()));
     }
 
     // GET /v1/classrooms/building/{building}

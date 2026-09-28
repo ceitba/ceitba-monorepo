@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,13 +46,17 @@ public class CareerService {
 
     // Mirrors NestJS getCareersWithPlans — keyed by careerId, plans populated.
     // LinkedHashMap preserves the id-sorted order; Map.copyOf would lose it.
+    // Plans are sorted by id (plain string order) so clients get a stable list;
+    // one query for all plans instead of one per career.
     @Transactional(readOnly = true)
     public Map<String, CareerResponse> getCareersWithPlans() {
+        var planIdsByCareer = new HashMap<String, List<String>>();
+        for (var plan : planRepository.findAll(Sort.by("id"))) {
+            planIdsByCareer.computeIfAbsent(plan.getCareer().getId(), k -> new ArrayList<>()).add(plan.getId());
+        }
         var result = new LinkedHashMap<String, CareerResponse>();
         for (var career : careerRepository.findAll(Sort.by("id"))) {
-            var planIds = planRepository.findByCareer_Id(career.getId()).stream()
-                .map(p -> p.getId())
-                .toList();
+            var planIds = List.copyOf(planIdsByCareer.getOrDefault(career.getId(), List.of()));
             result.put(career.getId(), new CareerResponse(career.getId(), career.getName(), planIds));
         }
         return result;

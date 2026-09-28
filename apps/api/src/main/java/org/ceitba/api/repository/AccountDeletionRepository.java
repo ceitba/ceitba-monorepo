@@ -25,6 +25,7 @@ public class AccountDeletionRepository {
 
     public void deleteStaffMembership(UUID userId) {
         exec("DELETE FROM public.ceitba_staff WHERE user_id = :u", userId);
+        exec("DELETE FROM public.ceitba_moderators WHERE user_id = :u", userId);
     }
 
     public void deleteSocialData(UUID userId) {
@@ -102,7 +103,9 @@ public class AccountDeletionRepository {
                 UPDATE public."user"
                 SET email = :email, name = NULL, google_sub = NULL, avatar_url = NULL,
                     file_number = NULL, career_id = NULL, plan = NULL,
-                    theme = NULL, preferred_language = NULL, updated_at = now()
+                    linkedin = NULL, instagram = NULL, discord = NULL,
+                    theme = NULL, preferred_language = NULL, sga_synced_at = NULL,
+                    updated_at = now()
                 WHERE id = :u
                 """)
             .setParameter("email", "deleted-" + userId + "@deleted.invalid")

@@ -59,6 +59,21 @@ public class BenefitCard {
     @Column(name = "price")
     private String price;
 
+    @Column(name = "location", columnDefinition = "text")
+    private String location;
+
+    @Column(name = "location_url", columnDefinition = "text")
+    private String locationUrl;
+
+    @Column(name = "phone", length = 64)
+    private String phone;
+
+    @Column(name = "website", columnDefinition = "text")
+    private String website;
+
+    @Column(name = "email")
+    private String email;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "bullets_es", columnDefinition = "text[]", nullable = false)
     private List<String> bulletsEs = new ArrayList<>();
@@ -95,6 +110,11 @@ public class BenefitCard {
     public String getCtaLabelEs() { return ctaLabelEs; }
     public String getCtaLabelEn() { return ctaLabelEn; }
     public String getPrice() { return price; }
+    public String getLocation() { return location; }
+    public String getLocationUrl() { return locationUrl; }
+    public String getPhone() { return phone; }
+    public String getWebsite() { return website; }
+    public String getEmail() { return email; }
     public List<String> getBulletsEs() { return bulletsEs; }
     public List<String> getBulletsEn() { return bulletsEn; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
@@ -111,6 +131,11 @@ public class BenefitCard {
     public void setCtaLabelEs(String ctaLabelEs) { this.ctaLabelEs = ctaLabelEs; }
     public void setCtaLabelEn(String ctaLabelEn) { this.ctaLabelEn = ctaLabelEn; }
     public void setPrice(String price) { this.price = price; }
+    public void setLocation(String location) { this.location = location; }
+    public void setLocationUrl(String locationUrl) { this.locationUrl = locationUrl; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public void setWebsite(String website) { this.website = website; }
+    public void setEmail(String email) { this.email = email; }
     public void setBulletsEs(List<String> bulletsEs) {
         this.bulletsEs = bulletsEs != null ? bulletsEs : new ArrayList<>();
     }

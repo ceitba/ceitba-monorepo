@@ -4,7 +4,9 @@ import org.ceitba.api.domain.Commission;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface CommissionRepository extends JpaRepository<Commission, String> {
@@ -18,4 +20,16 @@ public interface CommissionRepository extends JpaRepository<Commission, String> 
     @EntityGraph(attributePaths = {"times"})
     @Query("SELECT c FROM Commission c")
     List<Commission> findAllWithTimes();
+
+    // GET /v1/commissions?plan=: commissions of the plan's subjects that have
+    // not ended yet, with times hydrated in the same query.
+    @EntityGraph(attributePaths = {"times"})
+    @Query("""
+        SELECT DISTINCT c FROM Commission c
+        WHERE c.courseEnd >= :today
+          AND c.subjectCode IN (SELECT ps.subjectId FROM PlanSubject ps WHERE ps.planId = :planId)
+        ORDER BY c.subjectCode, c.commissionName, c.id
+        """)
+    List<Commission> findCurrentByPlanWithTimes(@Param("planId") String planId,
+                                                @Param("today") LocalDate today);
 }

@@ -3,18 +3,17 @@ package org.ceitba.api.web.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.User;
-import org.ceitba.api.repository.CareerRepository;
-import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.user.AcademicProfileSyncService;
+import org.ceitba.api.service.user.UserProfileService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.user.dto.MePreferencesResponse;
 import org.ceitba.api.web.user.dto.MeProfileResponse;
 import org.ceitba.api.web.user.dto.UpdatePreferencesRequest;
 import org.ceitba.api.web.user.dto.UpdateProfileRequest;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,76 +25,59 @@ import org.springframework.web.bind.annotation.RestController;
 //   /preferences  — theme + language. Synced across all CEITBA SPAs on the
 //                   ceitba.org.ar origin so signing in once propagates the
 //                   look and language everywhere.
-//   /profile      — career + plan. Editable here; file_number is exposed
-//                   read-only (assigned by staff via /v1/users/create).
+//   /profile      — career + plan + social handles. Editable here;
+//                   file_number is exposed read-only (assigned by staff via
+//                   /v1/users/create or filled from SGA).
 @Tag(name = "Me")
 @RestController
 @RequestMapping("/v1/me")
 public class MeProfileController {
 
-    private final UserRepository userRepository;
-    private final CareerRepository careerRepository;
+    private final UserProfileService profiles;
+    private final AcademicProfileSyncService academicSync;
 
-    public MeProfileController(UserRepository userRepository,
-                               CareerRepository careerRepository) {
-        this.userRepository = userRepository;
-        this.careerRepository = careerRepository;
+    public MeProfileController(UserProfileService profiles, AcademicProfileSyncService academicSync) {
+        this.profiles = profiles;
+        this.academicSync = academicSync;
     }
 
     @GetMapping("/preferences")
     @Operation(summary = "Get current user's theme and language")
     public MePreferencesResponse getPreferences(@CurrentUser User user) {
-        return new MePreferencesResponse(user.getTheme(), user.getPreferredLanguage());
+        return profiles.getPreferences(user.getId());
     }
 
     @PatchMapping("/preferences")
-    @Transactional
     @Operation(summary = "Update theme and/or language. Null fields are left alone; empty string clears.")
     public MePreferencesResponse patchPreferences(@CurrentUser User user,
                                                    @Valid @RequestBody UpdatePreferencesRequest req) {
-        var managed = userRepository.findById(user.getId()).orElseThrow();
-        if (req.theme() != null)    managed.setTheme(blankToNull(req.theme()));
-        if (req.language() != null) managed.setPreferredLanguage(blankToNull(req.language()));
-        var saved = userRepository.save(managed);
-        return new MePreferencesResponse(saved.getTheme(), saved.getPreferredLanguage());
+        return profiles.updatePreferences(user.getId(), req);
     }
 
     @GetMapping("/profile")
-    @Operation(summary = "Get current user's career, plan and file number")
+    @Operation(summary = "Get current user's career, plan, file number and social handles")
     public MeProfileResponse getProfile(@CurrentUser User user) {
-        return new MeProfileResponse(
-            user.getCareer() != null ? user.getCareer().getId() : null,
-            user.getPlan(),
-            user.getFileNumber()
-        );
+        return profiles.getProfile(user.getId());
     }
 
     @PatchMapping("/profile")
-    @Transactional
-    @Operation(summary = "Update career and/or plan. file_number is staff-managed and not accepted here.")
+    @Operation(summary = "Update career, plan and/or social handles",
+        description = "Null fields are left alone; empty string clears. `plan` must be a plan id of the "
+            + "resulting career (400 otherwise); changing `careerId` without `plan` clears the plan. "
+            + "Social fields accept a handle, @handle or profile URL and are stored as the bare handle. "
+            + "file_number is staff-managed and not accepted here.")
     public MeProfileResponse patchProfile(@CurrentUser User user,
                                            @Valid @RequestBody UpdateProfileRequest req) {
-        var managed = userRepository.findById(user.getId()).orElseThrow();
-        if (req.careerId() != null) {
-            String id = blankToNull(req.careerId());
-            if (id == null) {
-                managed.setCareer(null);
-            } else {
-                var career = careerRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException("Career", id));
-                managed.setCareer(career);
-            }
-        }
-        if (req.plan() != null) managed.setPlan(blankToNull(req.plan()));
-        var saved = userRepository.save(managed);
-        return new MeProfileResponse(
-            saved.getCareer() != null ? saved.getCareer().getId() : null,
-            saved.getPlan(),
-            saved.getFileNumber()
-        );
+        return profiles.updateProfile(user.getId(), req);
     }
 
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s.trim();
+    @PostMapping("/profile/sync-from-sga")
+    @Operation(summary = "Prefill file number, career and plan from the ITBA SGA",
+        description = "Looks the user up in SGA by their institutional email and fills only the fields "
+            + "that are still empty; values already set are never overwritten. Returns the resulting "
+            + "profile (unchanged when SGA does not know the user). 502 when the SGA gateway fails.")
+    public MeProfileResponse syncFromSga(@CurrentUser User user) {
+        academicSync.syncNow(user.getId());
+        return profiles.getProfile(user.getId());
     }
 }

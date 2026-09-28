@@ -33,6 +33,12 @@ public class Benefit {
     @Column(name = "contact_email")
     private String contactEmail;
 
+    @Column(name = "name_es")
+    private String nameEs;
+
+    @Column(name = "name_en")
+    private String nameEn;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "highlights_es", columnDefinition = "text[]", nullable = false)
     private List<String> highlightsEs = new ArrayList<>();
@@ -62,6 +68,8 @@ public class Benefit {
     public int getDisplayOrder() { return displayOrder; }
     public String getLinkUrl() { return linkUrl; }
     public String getContactEmail() { return contactEmail; }
+    public String getNameEs() { return nameEs; }
+    public String getNameEn() { return nameEn; }
     public List<String> getHighlightsEs() { return highlightsEs; }
     public List<String> getHighlightsEn() { return highlightsEn; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
@@ -71,6 +79,8 @@ public class Benefit {
     public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
     public void setLinkUrl(String linkUrl) { this.linkUrl = linkUrl; }
     public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
+    public void setNameEs(String nameEs) { this.nameEs = nameEs; }
+    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
     public void setHighlightsEs(List<String> highlightsEs) {
         this.highlightsEs = highlightsEs != null ? highlightsEs : new ArrayList<>();
     }

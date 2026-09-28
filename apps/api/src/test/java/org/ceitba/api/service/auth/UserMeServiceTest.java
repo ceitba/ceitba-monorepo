@@ -3,6 +3,7 @@ package org.ceitba.api.service.auth;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.UserFollow;
 import org.ceitba.api.domain.news.UserOrganization;
+import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.news.OrganizationMembershipService;
@@ -19,7 +20,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Plain hand-written stubs: no mocking framework needed for three calls.
+// Plain hand-written stubs: no mocking framework needed for four calls.
 class UserMeServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-03-01T12:00:00Z");
@@ -41,7 +42,13 @@ class UserMeServiceTest {
         var follows = new FollowService(null, null, null) {
             @Override public List<UserFollow> listForUser(UUID userId) { return List.of(); }
         };
-        var service = new UserMeService(staff, memberships, follows, Clock.fixed(NOW, ZoneOffset.UTC));
+        var moderators = (CeitbaModeratorRepository) Proxy.newProxyInstance(
+            CeitbaModeratorRepository.class.getClassLoader(), new Class<?>[] {CeitbaModeratorRepository.class},
+            (proxy, method, args) -> {
+                if (!method.getName().equals("isActiveModerator")) throw new UnsupportedOperationException(method.getName());
+                return false;
+            });
+        var service = new UserMeService(staff, memberships, follows, moderators, Clock.fixed(NOW, ZoneOffset.UTC));
 
         var me = service.describe(new User(UUID.randomUUID(), "a@itba.edu.ar", "A"));
 

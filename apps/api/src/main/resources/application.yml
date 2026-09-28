@@ -86,6 +86,12 @@ itba:
     token: ${ITBA_API_TOKEN:}
     timeout-millis: ${ITBA_API_TIMEOUT:30000}
     use-fake: ${ITBA_API_USE_FAKE:false}
+  # Prefill file number / career / plan from SGA after login and on
+  # POST /v1/me/profile/sync-from-sga (AcademicProfileSyncService). Only
+  # emails on this domain are looked up.
+  profile-sync:
+    enabled: ${ITBA_PROFILE_SYNC_ENABLED:true}
+    email-domain: ${ITBA_PROFILE_SYNC_EMAIL_DOMAIN:itba.edu.ar}
 
 sync:
   enabled: ${SYNC_ENABLED:false}
@@ -133,6 +139,12 @@ rate-limit:
         - /v1/auth/refresh
       capacity: ${RATE_LIMIT_REFRESH_CAPACITY:120}
       period: ${RATE_LIMIT_REFRESH_PERIOD:1m}
+    # Each call hits the ITBA gateway twice.
+    sga-sync:
+      paths:
+        - /v1/me/profile/sync-from-sga
+      capacity: ${RATE_LIMIT_SGA_SYNC_CAPACITY:60}
+      period: ${RATE_LIMIT_SGA_SYNC_PERIOD:1m}
 
 logging:
   level:

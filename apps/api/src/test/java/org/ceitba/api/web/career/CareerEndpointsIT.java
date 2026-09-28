@@ -87,6 +87,9 @@ class CareerEndpointsIT {
             .andExpect(jsonPath("$.S.id").value("S"))
             .andExpect(jsonPath("$.S.name").value("Sistemas"))
             .andExpect(jsonPath("$.S.plans.length()").value(2))
+            // Seeded Rev23 first; the response is sorted by plan id.
+            .andExpect(jsonPath("$.S.plans[0]").value("S10-Rev18"))
+            .andExpect(jsonPath("$.S.plans[1]").value("S10-Rev23"))
             .andExpect(jsonPath("$.I.plans.length()").value(1))
             .andExpect(jsonPath("$.I.plans[0]").value("I07-Rev22"));
     }

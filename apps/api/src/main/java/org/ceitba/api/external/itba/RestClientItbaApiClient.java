@@ -7,14 +7,18 @@ import org.ceitba.api.external.itba.wire.CareerPlansResponse;
 import org.ceitba.api.external.itba.wire.CourseCommission;
 import org.ceitba.api.external.itba.wire.CourseCommissionTime;
 import org.ceitba.api.external.itba.wire.CourseCommissionsResponse;
+import org.ceitba.api.external.itba.wire.PersonResponse;
 import org.ceitba.api.external.itba.wire.Section;
+import org.ceitba.api.external.itba.wire.StudentResponse;
 import org.ceitba.api.external.itba.wire.SubjectEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -24,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 // Real impl. Disabled when itba.api.use-fake=true (used by tests). The
 // FakeItbaApiClient bean takes over in that case.
@@ -119,6 +124,69 @@ public class RestClientItbaApiClient implements ItbaApiClient {
         return getCommissions(query).stream()
             .filter(c -> subjectCode.equals(c.subjectCode()))
             .toList();
+    }
+
+    @Override
+    public Optional<String> findDniByEmail(String email) {
+        try {
+            var response = client.get()
+                // Template variables are strictly encoded, so '+' and '@' survive.
+                .uri(uri -> uri.path("/people/{token}").queryParam("email", "{email}").build(token, email))
+                .retrieve()
+                .body(PersonResponse.class);
+            return Optional.ofNullable(response)
+                .map(PersonResponse::dni)
+                .map(String::trim)
+                .filter(dni -> !dni.isEmpty());
+        } catch (HttpClientErrorException.NotFound notFound) {
+            return Optional.empty();
+        } catch (Exception e) {
+            throw new ExternalApiException("ITBA", "findDniByEmail", sanitized(e));
+        }
+    }
+
+    @Override
+    public Optional<StudentProjection> findStudentByDni(String dni) {
+        try {
+            var response = client.get()
+                .uri(uri -> uri.path("/students/{token}/{dni}").build(token, dni))
+                .retrieve()
+                .body(StudentResponse.class);
+            return Optional.ofNullable(response).map(RestClientItbaApiClient::toStudent);
+        } catch (HttpClientErrorException.NotFound notFound) {
+            return Optional.empty();
+        } catch (Exception e) {
+            throw new ExternalApiException("ITBA", "findStudentByDni", sanitized(e));
+        }
+    }
+
+    // RestClient exception messages carry the full request URL (token, DNI,
+    // email) and sometimes the response body, and GlobalExceptionHandler logs
+    // the whole cause chain. For the people/student lookups keep only the
+    // exception type and HTTP status, never the original exception.
+    static IllegalStateException sanitized(Exception e) {
+        String detail = e.getClass().getSimpleName();
+        if (e instanceof RestClientResponseException r) {
+            detail += " " + r.getStatusCode().value();
+        }
+        return new IllegalStateException(detail);
+    }
+
+    static StudentProjection toStudent(StudentResponse src) {
+        String plan = null;
+        if (src.activeCareerPlans() != null && src.activeCareerPlans().careerPlans() != null) {
+            plan = src.activeCareerPlans().careerPlans().stream()
+                .filter(p -> p != null && p.name() != null && !p.name().isBlank())
+                .map(p -> p.name().trim())
+                .findFirst()
+                .orElse(null);
+        }
+        return new StudentProjection(
+            parseIntOrNull(src.code() == null ? null : src.code().trim()),
+            src.careerCode() == null ? null : src.careerCode().trim(),
+            src.career(),
+            plan
+        );
     }
 
     private void processSection(Section section, String planId, List<SubjectPlanProjection> out) {

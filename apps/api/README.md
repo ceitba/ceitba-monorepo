@@ -78,6 +78,11 @@ Quick version:
 | `/api/v1/subjects/**`, `/api/v1/plans/**` | GET | public |
 | `/api/v1/classrooms/**` | GET | public |
 | `/api/v1/classrooms/conflicts` | POST | public |
+| `/api/v1/commissions?plan=` | GET | public |
+| `/api/v1/highlights` | GET | public |
+| `/api/v1/highlights/all` | GET | Google JWT + `ROLE_STAFF` |
+| `/api/v1/highlights`, `/api/v1/highlights/{id}` | POST, PUT, DELETE | Google JWT + `ROLE_STAFF` |
+| `/api/v1/benefits`, `/api/v1/benefit-cards` | GET | public (writes: `ROLE_STAFF`) |
 | `/api/v1/users/**` | GET, POST `/create` | Google JWT + `ROLE_STAFF` |
 | `/api/v1/wiki/bookmarks/{id}` | GET | public |
 | `/api/v1/wiki/bookmarks/{id}` | POST/PUT/DELETE | Google JWT |

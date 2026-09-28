@@ -15,7 +15,7 @@ import java.util.UUID;
 // One transaction; the policy per table is:
 //
 //   deleted   refresh_tokens, api_keys (all sessions/credentials revoked),
-//             ceitba_staff, user_follows, user_organizations,
+//             ceitba_staff, ceitba_moderators, user_follows, user_organizations,
 //             saved_schedules, share_session_participants, share_sessions
 //             created by the user (with their participants),
 //             wiki.subject_difficulty, all wiki votes cast by the user,

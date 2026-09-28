@@ -58,6 +58,10 @@ Last refreshed: 2026-05-02 (after closing the last gap — Career writes + Subje
 | `DELETE /api/v1/staff/{userId}` | STAFF | Revoke STAFF (end-dates the row) |
 | `GET /api/actuator/health` | public | Spring Boot Actuator standard probe |
 | `GET /api/docs`, `GET /api/docs.json` | public | springdoc-openapi UI + spec |
+| `GET /api/v1/classrooms/availability` | public | Free-classroom windows per building (mobile app "Aulas libres") |
+| `GET /api/v1/commissions?plan=` | public | Flat DB-only commission catalog for the mobile schedule builder |
+| `GET /api/v1/highlights` | public | Mobile home carousel (replaces Firestore `Highlights`) |
+| `GET /api/v1/highlights/all`, `POST/PUT/DELETE /api/v1/highlights[/{id}]` | STAFF | Manage carousel highlights |
 
 ---
 

@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
@@ -16,7 +17,13 @@ import java.util.UUID;
 // User is a hub of 12 wiki relations in the schema. Per MIGRATION.md §3,
 // the inverse @OneToMany sides are NOT mapped here — fetch via the child
 // repository instead. Only User ↔ CeitbaStaff (1:1) is bidirectional.
+//
+// @DynamicUpdate: an UPDATE writes only the columns that actually changed, so
+// a profile/preferences save never rewrites columns it did not touch (e.g.
+// file_number / career / plan filled meanwhile by the SGA sync's conditional
+// UPDATEs, see service/user/AcademicProfileSyncService).
 @Entity
+@DynamicUpdate
 @Table(schema = "public", name = "\"user\"")
 public class User {
 
@@ -59,6 +66,21 @@ public class User {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    // Normalized social handles (see service/user/SocialHandles).
+    @Column(name = "linkedin", length = 100)
+    private String linkedin;
+
+    @Column(name = "instagram", length = 30)
+    private String instagram;
+
+    @Column(name = "discord", length = 37)
+    private String discord;
+
+    // Last time the SGA prefill got an answer for this user; written only by
+    // UserRepository.markSgaSynced (see AcademicProfileSyncService).
+    @Column(name = "sga_synced_at")
+    private OffsetDateTime sgaSyncedAt;
+
     protected User() {}
 
     public User(UUID id, String email, String name) {
@@ -89,4 +111,14 @@ public class User {
 
     public String getGoogleSub() { return googleSub; }
     public String getAvatarUrl() { return avatarUrl; }
+
+    public String getLinkedin() { return linkedin; }
+    public String getInstagram() { return instagram; }
+    public String getDiscord() { return discord; }
+    public void setLinkedin(String linkedin) { this.linkedin = linkedin; }
+    public void setInstagram(String instagram) { this.instagram = instagram; }
+    public void setDiscord(String discord) { this.discord = discord; }
+
+    public OffsetDateTime getSgaSyncedAt() { return sgaSyncedAt; }
+    public void setSgaSyncedAt(OffsetDateTime sgaSyncedAt) { this.sgaSyncedAt = sgaSyncedAt; }
 }

@@ -1,6 +1,10 @@
 package org.ceitba.api.web.auth;
 
+import org.ceitba.api.domain.Career;
+import org.ceitba.api.domain.CeitbaModerator;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.repository.CareerRepository;
+import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +20,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -41,15 +46,63 @@ class AuthMeIT {
 
     @Autowired MockMvc mvc;
     @Autowired UserRepository userRepo;
+    @Autowired CareerRepository careerRepo;
+    @Autowired CeitbaModeratorRepository moderatorRepo;
+
+    private User alice;
 
     @BeforeEach
     void seed() {
         // Delete wiki data that may reference users before clearing users
         userRepo.deleteAll();
+        careerRepo.deleteAll();
 
+        var s = careerRepo.save(new Career("S", "Ingeniería en Informática"));
         var u = new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice");
         u.setAvatarUrl("https://example.com/avatar.jpg");
-        userRepo.save(u);
+        u.setCareer(s);
+        u.setPlan("S10-Rev23");
+        u.setFileNumber(61234);
+        u.setLinkedin("alice-doe");
+        u.setInstagram("alice.doe");
+        u.setDiscord("alice_doe");
+        alice = userRepo.save(u);
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor aliceJwt() {
+        return jwt().jwt(t -> t
+                .claim("email", "alice@itba.edu.ar")
+                .claim("name", "Alice"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    @Test
+    void meIncludesAcademicAndSocialProfile() throws Exception {
+        mvc.perform(get("/v1/auth/me").with(aliceJwt()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.careerId").value("S"))
+            .andExpect(jsonPath("$.plan").value("S10-Rev23"))
+            .andExpect(jsonPath("$.fileNumber").value(61234))
+            .andExpect(jsonPath("$.linkedin").value("alice-doe"))
+            .andExpect(jsonPath("$.instagram").value("alice.doe"))
+            .andExpect(jsonPath("$.discord").value("alice_doe"));
+    }
+
+    @Test
+    void meModeratorFlagFollowsActiveGrant() throws Exception {
+        mvc.perform(get("/v1/auth/me").with(aliceJwt()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.moderator").value(false));
+
+        var grant = moderatorRepo.save(new CeitbaModerator(alice.getId(), null, OffsetDateTime.now()));
+        mvc.perform(get("/v1/auth/me").with(aliceJwt()))
+            .andExpect(jsonPath("$.moderator").value(true))
+            .andExpect(jsonPath("$.role").value("user"));
+
+        grant.revoke(null, OffsetDateTime.now());
+        moderatorRepo.save(grant);
+        mvc.perform(get("/v1/auth/me").with(aliceJwt()))
+            .andExpect(jsonPath("$.moderator").value(false));
     }
 
     @Test
@@ -84,7 +137,10 @@ class AuthMeIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.email").value("bob@itba.edu.ar"))
             .andExpect(jsonPath("$.name").value("Bob"))
-            .andExpect(jsonPath("$.role").value("user"));
+            .andExpect(jsonPath("$.role").value("user"))
+            .andExpect(jsonPath("$.moderator").value(false))
+            .andExpect(jsonPath("$.careerId").doesNotExist())
+            .andExpect(jsonPath("$.linkedin").doesNotExist());
     }
 
     @Test

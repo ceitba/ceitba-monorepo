@@ -1,5 +1,6 @@
 package org.ceitba.api.web.auth;
 
+import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.UserOrganizationRepository;
@@ -20,6 +21,9 @@ import java.util.List;
 //
 //   * ROLE_USER baseline.
 //   * ROLE_STAFF when the User has an active CeitbaStaff row (start <= now <= end).
+//   * ROLE_MODERATOR when the User is active STAFF (STAFF implies MODERATOR) or
+//     has an active ceitba_moderators grant (revoked_at IS NULL).
+//   * ROLE_ORG_MEMBER when the User belongs to any organization.
 //
 // The email allowlist (auth.allowed-domains + auth.allowed-emails) is enforced
 // separately in SecurityConfig via an AuthorizationManager — keeping this
@@ -34,13 +38,16 @@ public class StaffAwareJwtAuthenticationConverter
     private final UserRepository userRepository;
     private final CeitbaStaffRepository staffRepository;
     private final UserOrganizationRepository membershipRepository;
+    private final CeitbaModeratorRepository moderatorRepository;
 
     public StaffAwareJwtAuthenticationConverter(UserRepository userRepository,
                                                 CeitbaStaffRepository staffRepository,
-                                                UserOrganizationRepository membershipRepository) {
+                                                UserOrganizationRepository membershipRepository,
+                                                CeitbaModeratorRepository moderatorRepository) {
         this.userRepository = userRepository;
         this.staffRepository = staffRepository;
         this.membershipRepository = membershipRepository;
+        this.moderatorRepository = moderatorRepository;
     }
 
     @Override
@@ -55,8 +62,12 @@ public class StaffAwareJwtAuthenticationConverter
         // for @CurrentUser. From the next request onward, STAFF is detectable.
         if (email != null) {
             userRepository.findByEmail(email).ifPresent(user -> {
-                if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now())) {
+                boolean isStaff = staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now());
+                if (isStaff) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_STAFF"));
+                }
+                if (isStaff || moderatorRepository.isActiveModerator(user.getId())) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_MODERATOR"));
                 }
                 if (!membershipRepository.findByUserId(user.getId()).isEmpty()) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_ORG_MEMBER"));

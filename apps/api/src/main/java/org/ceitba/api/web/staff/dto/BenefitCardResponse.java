@@ -17,5 +17,10 @@ public record BenefitCardResponse(
     String ctaLabelEn,
     String price,
     List<String> bulletsEs,
-    List<String> bulletsEn
+    List<String> bulletsEn,
+    String location,
+    String locationUrl,
+    String phone,
+    String website,
+    String email
 ) {}

@@ -1,5 +1,6 @@
 package org.ceitba.api.config;
 
+import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.web.auth.ApiKeyFilter;
@@ -45,7 +46,7 @@ import java.util.List;
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
 //   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
-//                  /v1/staff/**                      -> ROLE_STAFF (path matcher)
+//                  /v1/staff/**                      -> ROLE_STAFF (path matcher; incl. /v1/staff/moderators)
 //                  /v1/users/**                      -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/careers/{POST,PUT,DELETE}     -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/plans/.../subject writes      -> ROLE_STAFF (@PreAuthorize)
@@ -57,8 +58,9 @@ import java.util.List;
 // AuthorizationManager: post-decode, pre-controller. Living here (vs in the
 // JwtAuthenticationConverter) keeps the converter focused on extracting
 // authorities AND lets MockMvc tests with .with(jwt()) actually exercise it.
-// StaffAwareJwtAuthenticationConverter adds ROLE_USER + ROLE_STAFF when the
-// authenticated user has an active CeitbaStaff row. @EnableMethodSecurity
+// StaffAwareJwtAuthenticationConverter adds ROLE_USER, ROLE_STAFF when the
+// authenticated user has an active CeitbaStaff row, and ROLE_MODERATOR for
+// active staff or an active ceitba_moderators grant. @EnableMethodSecurity
 // activates @PreAuthorize on controller methods for fine-grained checks.
 @Configuration
 @EnableConfigurationProperties({AuthProperties.class, RateLimitProperties.class})
@@ -92,6 +94,7 @@ public class SecurityConfig {
                                                    CookieOrHeaderBearerTokenResolver bearerResolver,
                                                    ApiKeyService apiKeyService,
                                                    CeitbaStaffRepository staffRepository,
+                                                   CeitbaModeratorRepository moderatorRepository,
                                                    RateLimitProperties rateLimit) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
@@ -121,7 +124,7 @@ public class SecurityConfig {
             // Per-IP rate limiting runs right after CORS (so 429s are readable
             // by browsers) and before any authentication work.
             .addFilterAfter(new RateLimitFilter(rateLimit), CorsFilter.class)
-            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository),
+            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository, moderatorRepository),
                              UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(reg -> reg
                 .requestMatchers(HttpMethod.GET,
@@ -132,6 +135,7 @@ public class SecurityConfig {
                     "/v1/subjects/**",
                     "/v1/plans/**",
                     "/v1/classrooms/**",
+                    "/v1/commissions",
                     "/v1/wiki/bookmarks/*",
                     "/v1/auth/google", "/v1/auth/callback",
                     // Newsletter public reads
@@ -144,6 +148,8 @@ public class SecurityConfig {
                     "/v1/staff-members/years",
                     "/v1/benefits",
                     "/v1/benefit-cards",
+                    // Mobile home carousel (GET /v1/highlights/all is STAFF-only).
+                    "/v1/highlights",
                     // Public read of share-session by token; writes are JWT-gated.
                     "/v1/share/sessions/*",
                     // Mobile app release control (min version / maintenance).

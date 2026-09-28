@@ -23,3 +23,7 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.8 benefit_cards | V15 |
 | V4.9 share_sessions | V16 |
 | V4.10 refresh_tokens | V17 |
+| V4.11 user_social_handles | V18 |
+| V4.12 moderators | V19 |
+| V4.13 home_highlights | V20 |
+| V4.14 benefits_contact_and_categories | V21 |
