@@ -20,6 +20,23 @@ public interface ScheduleCorrectionRepository extends JpaRepository<ScheduleCorr
     @Query("select c.commissionId from ScheduleCorrection c where c.id = :id")
     Optional<String> findCommissionIdById(@Param("id") UUID id);
 
+    // Account deletion: the commissions whose corrections the user voted on,
+    // in a fixed order so the caller locks them without deadlocking.
+    @Query("""
+        select distinct c.commissionId from ScheduleCorrection c
+        where c.id in (select v.correctionId from ScheduleCorrectionVote v where v.userId = :userId)
+        order by c.commissionId
+        """)
+    List<String> findCommissionIdsVotedOnBy(@Param("userId") UUID userId);
+
+    @Query("""
+        select c from ScheduleCorrection c
+        where c.commissionId = :commissionId
+          and c.id in (select v.correctionId from ScheduleCorrectionVote v where v.userId = :userId)
+        """)
+    List<ScheduleCorrection> findByCommissionIdVotedOnBy(@Param("commissionId") String commissionId,
+                                                        @Param("userId") UUID userId);
+
     List<ScheduleCorrection> findByCommissionIdInAndStatusIn(Collection<String> commissionIds,
                                                              Collection<ScheduleCorrectionStatus> statuses);
 

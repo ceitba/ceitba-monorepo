@@ -129,21 +129,11 @@ public class AccountDeletionRepository {
         exec("DELETE FROM public.proposal_alias WHERE user_id = :u", userId);
     }
 
-    // Schedule corrections are crowd data and stay: the user's votes go (the
-    // counters are fixed first) and their suggestions/reviews are detached.
-    // Statuses are not re-evaluated.
-    public void deleteScheduleCorrectionData(UUID userId) {
-        exec("""
-            UPDATE public.schedule_correction c
-            SET confirm_count = c.confirm_count - v.confirms, reject_count = c.reject_count - v.rejects,
-                updated_at = now()
-            FROM (SELECT correction_id,
-                         count(*) FILTER (WHERE type = 'CONFIRM') AS confirms,
-                         count(*) FILTER (WHERE type = 'REJECT')  AS rejects
-                  FROM public.schedule_correction_vote WHERE user_id = :u GROUP BY correction_id) v
-            WHERE c.id = v.correction_id
-            """, userId);
-        exec("DELETE FROM public.schedule_correction_vote WHERE user_id = :u", userId);
+    // Schedule corrections are crowd data and stay: the user's suggestions and
+    // staff reviews are detached here. Their votes are removed (and the
+    // counters/statuses re-evaluated under the commission lock) by
+    // ScheduleCorrectionService.withdrawVotesOf, which runs first.
+    public void detachScheduleCorrections(UUID userId) {
         exec("UPDATE public.schedule_correction SET suggester_id = NULL WHERE suggester_id = :u", userId);
         exec("UPDATE public.schedule_correction SET reviewed_by = NULL WHERE reviewed_by = :u", userId);
     }

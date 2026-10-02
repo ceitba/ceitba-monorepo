@@ -249,6 +249,34 @@ public class ScheduleCorrectionService {
         }
     }
 
+    // ---- Account deletion ------------------------------------------------
+
+    // DELETE /v1/me, inside AccountDeletionService's transaction: removes the
+    // user's votes and recounts and re-evaluates every correction they voted
+    // on, exactly like DELETE .../vote would (an APPLIED one can fall back to
+    // PENDING, a PENDING one can apply once a REJECT goes). Each commission is
+    // locked first, like every other write, in commission-id order so two
+    // deletions can't deadlock; a vote racing with the deletion therefore
+    // can't recount from a snapshot that still includes the deleted votes.
+    // The suggestions themselves stay (detached by AccountDeletionRepository).
+    @Transactional
+    public void withdrawVotesOf(UUID userId) {
+        for (String commissionId : corrections.findCommissionIdsVotedOnBy(userId)) {
+            var commission = commissions.findForUpdate(commissionId).orElse(null);
+            if (commission == null) continue;
+            for (var c : corrections.findByCommissionIdVotedOnBy(commissionId, userId)) {
+                votes.deleteById(new ScheduleCorrectionVoteId(c.getId(), userId));
+                votes.flush();
+                if (c.getStatus().isOpen()) {
+                    recountAndEvaluate(c, commission);
+                } else {
+                    recount(c);
+                }
+            }
+        }
+        corrections.flush();
+    }
+
     // ---- Read overlays ---------------------------------------------------
 
     // GET /v1/subjects: the commission objects with effective schedule,
@@ -320,10 +348,16 @@ public class ScheduleCorrectionService {
 
     // ---- Transitions -----------------------------------------------------
 
-    private void recountAndEvaluate(ScheduleCorrection c, Commission commission) {
+    private void recount(ScheduleCorrection c) {
         int confirms = (int) votes.countByCorrectionIdAndType(c.getId(), ScheduleCorrectionVoteType.CONFIRM);
         int rejects = (int) votes.countByCorrectionIdAndType(c.getId(), ScheduleCorrectionVoteType.REJECT);
         c.setCounts(confirms, rejects);
+    }
+
+    private void recountAndEvaluate(ScheduleCorrection c, Commission commission) {
+        recount(c);
+        int confirms = c.getConfirmCount();
+        int rejects = c.getRejectCount();
         boolean meetsRule = confirms >= APPLY_THRESHOLD && confirms > rejects;
         if (c.getStatus() == PENDING && meetsRule) {
             apply(c, commission);

@@ -785,4 +785,34 @@ class ScheduleCorrectionIT {
         assertThat(c.getConfirmCount()).isZero();
         assertThat(c.getRejectCount()).isEqualTo(1);
     }
+
+    // Deleting an account withdraws its votes like DELETE .../vote would:
+    // the status is re-evaluated, not just the counters.
+    @Test
+    void deletingAnAccountReEvaluatesTheCorrectionsItVotedOn() throws Exception {
+        String unapplies = suggestOk(as(SUGGESTER), P1);
+        vote(student(2), unapplies, "CONFIRM");
+        vote(student(3), unapplies, "CONFIRM");
+        assertThat(statusOf(unapplies)).isEqualTo(ScheduleCorrectionStatus.APPLIED);
+
+        String applies = body(suggestAs(student(4), OTHER_COMMISSION, P2).andExpect(status().isCreated()));
+        String other = json.readTree(applies).at("/correction/id").asText();
+        vote(student(5), other, "CONFIRM");
+        vote(student(6), other, "CONFIRM");
+        vote(student(3), other, "REJECT");
+        vote(student(7), other, "REJECT");
+        vote(student(8), other, "REJECT");
+        assertThat(statusOf(other)).isEqualTo(ScheduleCorrectionStatus.PENDING);
+
+        // student 3 confirmed the first and rejected the second.
+        mvc.perform(delete("/v1/me").with(student(3))).andExpect(status().is2xxSuccessful());
+
+        var first = corrections.findById(UUID.fromString(unapplies)).orElseThrow();
+        assertThat(first.getConfirmCount()).isEqualTo(2);
+        assertThat(first.getStatus()).isEqualTo(ScheduleCorrectionStatus.PENDING);
+        var second = corrections.findById(UUID.fromString(other)).orElseThrow();
+        assertThat(second.getConfirmCount()).isEqualTo(3);
+        assertThat(second.getRejectCount()).isEqualTo(2);
+        assertThat(second.getStatus()).isEqualTo(ScheduleCorrectionStatus.APPLIED);
+    }
 }
