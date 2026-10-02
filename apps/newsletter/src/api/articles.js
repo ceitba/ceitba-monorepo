@@ -34,9 +34,11 @@ export async function deleteArticle(id) {
   await apiSend('DELETE', `/articles/${encodeURIComponent(id)}`)
 }
 
-// Statuses the API stores for articles (ArticleController / ArticleInput):
-// the admin form only ever writes these two.
-export const ARTICLE_STATUSES = ['published', 'draft']
+// `?status=all` lists every status. The API honours it (and `draft`) for
+// STAFF, and for members of the organization named in `?organization=`;
+// anyone else gets published articles whatever they pass. Omitting status
+// always means published.
+export const ALL_STATUSES = 'all'
 
 // Walks every page of a filtered list — for admin tables, which must not
 // silently stop at the first page.
