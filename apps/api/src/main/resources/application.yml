@@ -189,6 +189,20 @@ rate-limit:
       methods: [POST, DELETE]
       capacity: ${RATE_LIMIT_VOTES_CAPACITY:60}
       period: ${RATE_LIMIT_VOTES_PERIOD:1m}
+    # Student schedule corrections (POST /v1/commissions/{id}/schedule-corrections).
+    schedule-corrections:
+      paths:
+        - /v1/commissions/*/schedule-corrections
+      methods: [POST]
+      capacity: ${RATE_LIMIT_SCHEDULE_CORRECTIONS_CAPACITY:10}
+      period: ${RATE_LIMIT_SCHEDULE_CORRECTIONS_PERIOD:1h}
+    # Confirm/reject votes on corrections: same budget as the newsletter votes.
+    schedule-correction-votes:
+      paths:
+        - /v1/schedule-corrections/*/vote
+      methods: [PUT, DELETE]
+      capacity: ${RATE_LIMIT_VOTES_CAPACITY:60}
+      period: ${RATE_LIMIT_VOTES_PERIOD:1m}
     # ItbaNews flushes one batch (<= 50 events) per tab every 10 s.
     analytics:
       paths:
