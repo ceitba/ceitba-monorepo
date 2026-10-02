@@ -73,13 +73,8 @@
   .apunte-prose h4 { @apply text-body-lg; }
   .apunte-prose > :first-child { @apply mt-0; }
   .apunte-prose p { @apply my-3; }
-  .apunte-prose ul { @apply list-disc pl-6 my-3; }
-  .apunte-prose ol { @apply list-decimal pl-6 my-3; }
-  .apunte-prose li { @apply my-1; }
-  .apunte-prose li > p { @apply my-0; }
   .apunte-prose a { @apply underline underline-offset-2; color: #1A3C6E !important; }
   .apunte-prose img { @apply max-w-full h-auto my-4 rounded-sm; }
-  .apunte-prose blockquote { @apply border-l-4 border-accent pl-4 italic my-4; }
   .apunte-prose hr { @apply my-8 border-border dark:border-night-border; }
   .apunte-prose code,
   .apunte-prose pre {
@@ -88,13 +83,87 @@
   }
   .apunte-prose code { @apply px-1 py-0.5; }
   .apunte-prose pre { @apply p-4 my-4 overflow-x-auto; }
-  .apunte-prose table { @apply block w-full overflow-x-auto my-4 border-collapse text-body-sm; }
-  .apunte-prose th,
-  .apunte-prose td { @apply border border-border dark:border-night-border px-3 py-2 align-top; }
-  .apunte-prose th { @apply font-semibold; }
 }
 
 html.dark .apunte-prose a { color: #7FA1D4 !important; }
+
+/* Lists, inline marks, alignment, tables and quotes in the file reader's
+   Doc HTML (.apunte-prose) and the wiki (.kb-prose). Tailwind's preflight
+   sets `list-style: none` and zero padding on ul/ol, so everything is
+   restated here, outside @layer, for both containers. */
+.apunte-prose ul, .apunte-prose ol,
+.kb-prose ul, .kb-prose ol {
+  padding-left: 1.5em;
+  margin: 0.75rem 0;
+}
+.apunte-prose ul, .kb-prose ul { list-style-type: disc; }
+.apunte-prose ul ul, .kb-prose ul ul,
+.apunte-prose ol ul, .kb-prose ol ul { list-style-type: circle; }
+.apunte-prose ul ul ul, .kb-prose ul ul ul,
+.apunte-prose ol ul ul, .kb-prose ol ul ul,
+.apunte-prose ul ol ul, .kb-prose ul ol ul { list-style-type: square; }
+.apunte-prose ul ul ul ul, .kb-prose ul ul ul ul { list-style-type: disc; }
+.apunte-prose ol, .kb-prose ol { list-style-type: decimal; }
+/* Docs export the numbering style as type="1|a|A|i|I" (case-sensitive) and
+   the first number as start= (honoured natively). */
+.apunte-prose ol[type="1"], .kb-prose ol[type="1"] { list-style-type: decimal; }
+.apunte-prose ol[type="a" s], .kb-prose ol[type="a" s] { list-style-type: lower-alpha; }
+.apunte-prose ol[type="A" s], .kb-prose ol[type="A" s] { list-style-type: upper-alpha; }
+.apunte-prose ol[type="i" s], .kb-prose ol[type="i" s] { list-style-type: lower-roman; }
+.apunte-prose ol[type="I" s], .kb-prose ol[type="I" s] { list-style-type: upper-roman; }
+.apunte-prose li, .kb-prose li { margin: 0.25rem 0; display: list-item; }
+.apunte-prose li::marker, .kb-prose li::marker { color: #6B7280; }
+html.dark .apunte-prose li::marker, html.dark .kb-prose li::marker { color: #a1a1aa; }
+/* Items aren't paragraphs: collapse the <p> margins inside them, and keep
+   nested lists tight. */
+.apunte-prose li > p, .kb-prose li > p { margin: 0; }
+.apunte-prose li > ul, .apunte-prose li > ol,
+.kb-prose li > ul, .kb-prose li > ol { margin: 0.25rem 0; }
+
+.apunte-prose strong, .apunte-prose b { font-weight: 700; }
+.apunte-prose em, .apunte-prose i { font-style: italic; }
+.apunte-prose u, .kb-prose u { text-decoration: underline; text-underline-offset: 2px; }
+.apunte-prose s, .apunte-prose del, .kb-prose s, .kb-prose del { text-decoration: line-through; }
+.apunte-prose sup, .apunte-prose sub { font-size: 0.75em; line-height: 0; position: relative; }
+.apunte-prose sup { vertical-align: baseline; top: -0.5em; }
+.apunte-prose sub { vertical-align: baseline; bottom: -0.25em; }
+
+.apunte-prose [data-align="center"] { text-align: center; }
+.apunte-prose [data-align="right"] { text-align: right; }
+.apunte-prose [data-align="justify"] { text-align: justify; }
+/* An aligned list keeps its markers next to the text. */
+.apunte-prose ul[data-align], .apunte-prose ol[data-align] { list-style-position: inside; }
+
+.apunte-prose blockquote {
+  margin: 1.25rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 3px solid #F5A623;
+  color: #4B5563 !important;
+}
+html.dark .apunte-prose blockquote { color: #d4d4d8 !important; }
+.apunte-prose blockquote > :first-child { margin-top: 0; }
+.apunte-prose blockquote > :last-child { margin-bottom: 0; }
+
+/* Tables: bordered, scrollable sideways inside the reading column. */
+.apunte-prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.apunte-prose th, .apunte-prose td {
+  border: 1px solid #E5E7EB;
+  padding: 0.4rem 0.75rem;
+  vertical-align: top;
+  min-width: 4rem;
+}
+.apunte-prose th { font-weight: 600; background-color: #FAFAF8 !important; }
+.apunte-prose td > p, .apunte-prose th > p { margin: 0; }
+html.dark .apunte-prose th, html.dark .apunte-prose td { border-color: #3f3f46; }
+html.dark .apunte-prose th { background-color: #18181b !important; }
 
 /* docx-preview output (.docx originals). Pages keep their paper look (white,
    the document's own colours) in both themes; the grey host is the "desk". */
@@ -198,10 +267,6 @@ html.dark .kb-prose { color: #f4f4f5; }
 .kb-prose .heading-anchor:focus-visible { opacity: 1; }
 @media (hover: none) { .kb-prose .heading-anchor { opacity: 0.5; } }
 .kb-prose p { margin: 0.9rem 0; }
-.kb-prose ul { list-style: disc; padding-left: 1.5rem; margin: 0.9rem 0; }
-.kb-prose ol { list-style: decimal; padding-left: 1.5rem; margin: 0.9rem 0; }
-.kb-prose li { margin: 0.3rem 0; }
-.kb-prose li > p { margin: 0; }
 .kb-prose strong { font-weight: 600; }
 .kb-prose blockquote { border-left: 3px solid #F5A623; padding-left: 1rem; color: #6B7280; font-style: italic; margin: 1.25rem 0; }
 html.dark .kb-prose blockquote { color: #a1a1aa; }
