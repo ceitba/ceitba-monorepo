@@ -156,7 +156,7 @@ public class AuthController {
         LogoutRequest body = parseLogoutBody(contentType, rawBody);
         if (body != null && body.refreshToken() != null) tokenSessions.logout(body.refreshToken());
         return ResponseEntity.noContent()
-            .header(HttpHeaders.SET_COOKIE, clearCookie().toString())
+            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, clearSessionCookies()))
             .build();
     }
 
@@ -183,7 +183,7 @@ public class AuthController {
     public ResponseEntity<Void> logoutAll(@CurrentUser User user) {
         tokenSessions.logoutAll(user.getId());
         return ResponseEntity.noContent()
-            .header(HttpHeaders.SET_COOKIE, clearCookie().toString())
+            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, clearSessionCookies()))
             .build();
     }
 
@@ -284,7 +284,18 @@ public class AuthController {
         return b.build();
     }
 
-    private ResponseCookie clearCookie() {
+    // Set-Cookie values that expire the session cookie. A browser can hold two
+    // cookies with the session name: the Domain-scoped one we issue when
+    // auth.cookie.domain is set, and a host-only one issued while it was unset.
+    // A Set-Cookie only deletes the cookie whose Domain matches exactly, and
+    // the resolver accepts either, so expire both or the user stays signed in.
+    private List<String> clearSessionCookies() {
+        var domain = auth.cookie().domain();
+        if (domain == null || domain.isBlank()) return List.of(clearCookie(null).toString());
+        return List.of(clearCookie(domain).toString(), clearCookie(null).toString());
+    }
+
+    private ResponseCookie clearCookie(String domain) {
         var cfg = auth.cookie();
         var b = ResponseCookie.from(cfg.name(), "")
             .httpOnly(true)
@@ -292,7 +303,7 @@ public class AuthController {
             .path(cfg.path())
             .sameSite(cfg.sameSite())
             .maxAge(Duration.ZERO);
-        if (cfg.domain() != null && !cfg.domain().isBlank()) b.domain(cfg.domain());
+        if (domain != null) b.domain(domain);
         return b.build();
     }
 }
