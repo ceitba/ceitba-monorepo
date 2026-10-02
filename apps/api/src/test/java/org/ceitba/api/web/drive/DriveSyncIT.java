@@ -395,6 +395,28 @@ class DriveSyncIT {
         assertThat(unblocked.getPdfKey()).isNotNull();
     }
 
+    @Test
+    void reprocessReExportsDocsAndKeepsUnchangedCopies() throws Exception {
+        var sourceId = publishedSource();
+        syncNow(sourceId);
+        var before = files.findById(fileId(DOC)).orElseThrow();
+        int fetches = drive.fetchCount(DOC);
+        int puts = storage.putCount();
+
+        call(post("/v1/staff/drive/reprocess?kind=DOC"), staff(), null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.files").value(1))
+            .andExpect(jsonPath("$.sources").value(1));
+        call(post("/v1/staff/drive/reprocess?kind=PDF"), staff(), null).andExpect(status().isBadRequest());
+        call(post("/v1/staff/drive/reprocess"), student(), null).andExpect(status().isForbidden());
+        await().atMost(Duration.ofSeconds(20)).until(() -> drive.fetchCount(DOC) > fetches);
+        await().atMost(Duration.ofSeconds(20)).until(() ->
+            files.findById(fileId(DOC)).orElseThrow().getContentModifiedAt() != null);
+        var after = files.findById(fileId(DOC)).orElseThrow();
+        assertThat(after.getContentFingerprint()).isEqualTo(before.getContentFingerprint());
+        assertThat(storage.putCount()).isEqualTo(puts);
+    }
+
     // ---- plan-aware suggestions -------------------------------------------
 
     @Test

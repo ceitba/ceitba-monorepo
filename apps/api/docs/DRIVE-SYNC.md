@@ -130,7 +130,9 @@ suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, 
 pdfMimeType, originalMimeType, exportBlocked, driveUrl }`
 (`path` = folder path inside the source, e.g. `"Comunicación/Trabajo Plasticos"`).
 
-`html` is sanitized (no style/class/script/iframe); its `<img src>` are root-relative
+`html` is sanitized (no style/class/script/iframe) after turning the export's CSS classes into markup: real nested
+`<ul>`/`<ol>` (`<ol type="1|a|A|i|I" start>`), `<strong>`, `<em>`, `<u>`, `<s>`, `<sup>`, `<sub>`, indented paragraphs
+as `<blockquote>`, and `data-align="center|right"` on paragraphs/headings/cells; its `<img src>` are root-relative
 `/api/v1/wiki/files/{fileId}/assets/{name}` (an SPA on another origin must prefix the API origin, or proxy `/api`).
 `download` without `variant` serves the PDF when there is one, else the original; a missing variant is 404.
 `disposition=inline` (default) presigns `response-content-disposition: inline; filename*=UTF-8''<name>` with the
@@ -161,6 +163,7 @@ Readers only see `PUBLISHED` files. The file's owner student and STAFF can open 
 | `POST /v1/staff/drive/sources/{id}/approve` · `/block` (body `{ comment? }`) | `StaffSource` |
 | `GET /v1/staff/drive/files?publication=NEEDS_REVIEW\|HIDDEN_REPORTED&page=0&limit=20` | `{ items: StaffFile[], total }` (default `NEEDS_REVIEW`; files of `PENDING_REVIEW` sources are left out: approve/block the source) |
 | `POST /v1/staff/drive/files/{id}/publish` · `/remove` · `/restore` | `StaffFile` |
+| `POST /v1/staff/drive/reprocess?kind=DOC\|SLIDES\|SHEET\|DRAWING` | `{ files, sources }` — re-export those files on a sync queued now (default `DOC`); results identical to the stored copy keep it |
 | `GET /v1/staff/drive/unclaimed` | `[{ name, ownerEmail, firstSeenAt, lastSeenAt }]` |
 
 `StaffSource` = `Source` + `{ ownerName, ownerEmail }`

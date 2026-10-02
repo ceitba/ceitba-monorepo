@@ -30,6 +30,8 @@ public interface DriveFileRepository extends JpaRepository<DriveFile, UUID> {
 
     List<DriveFile> findByPurgeAfterBefore(OffsetDateTime now);
 
+    List<DriveFile> findByKindAndRemovedAtIsNull(DriveFileKind kind);
+
     // Rows of the same Drive item in the student's OTHER sources (cross-source moves).
     @Query("""
         select f from DriveFile f, DriveSource s
