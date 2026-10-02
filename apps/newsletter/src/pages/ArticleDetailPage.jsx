@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import CategoryBadge from '../components/CategoryBadge'
+import CategoryBadge, { useCategoryLabel } from '../components/CategoryBadge'
 import ArticleCard from '../components/ArticleCard'
 import VoteButtons from '../components/VoteButtons'
 import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
+import { formatDate as formatLocalDate } from '../utils/dates'
 
 const GEO_BG = {
   blue:   'bg-primary-500',
@@ -15,14 +16,13 @@ const GEO_BG = {
 }
 
 function formatDate(iso, lang) {
-  return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-AR', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  })
+  return formatLocalDate(iso, lang, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 export default function ArticleDetailPage() {
   const { id } = useParams()
   const { t, i18n } = useTranslation()
+  const categoryLabel = useCategoryLabel()
   const [article, setArticle] = useState(null)
   const [related, setRelated] = useState([])
   const [status, setStatus]   = useState('loading')
@@ -134,7 +134,7 @@ export default function ArticleDetailPage() {
         {related.length > 0 && (
           <section className="mt-16 pt-10 border-t border-border" aria-labelledby="related-heading">
             <h2 id="related-heading" className="font-display text-h3 font-bold text-ink-primary mb-6">
-              {t('articles.moreFrom', { category: article.category })}
+              {t('articles.moreFrom', { category: categoryLabel(article.category) })}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {related.map((a) => <ArticleCard key={a.id} article={a} />)}

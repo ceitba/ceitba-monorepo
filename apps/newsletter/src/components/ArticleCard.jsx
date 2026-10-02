@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import CategoryBadge from './CategoryBadge'
+import { formatDate } from '../utils/dates'
 
 const GEO_FILLS = {
   blue:   'bg-primary-500',
@@ -35,12 +36,6 @@ function CoverMedia({ coverImage, colorScheme, className, featured }) {
       <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/25" />
     </div>
   )
-}
-
-function formatDate(iso, lang) {
-  return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-AR', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  })
 }
 
 export default function ArticleCard({ article, featured = false }) {

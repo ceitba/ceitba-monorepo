@@ -8,6 +8,7 @@ import { fetchArticles } from '../api/articles'
 import { fetchEvents } from '../api/events'
 import { followOrganization, unfollowOrganization } from '../api/follows'
 import { getSession, isFollowing, refreshFollows } from '../store/authStore'
+import { todayISO } from '../utils/dates'
 
 const GEO_BG = {
   blue:   'bg-primary-500',
@@ -36,13 +37,13 @@ export default function OrgPortalPage() {
     Promise.all([
       fetchOrganizationBySlug(slug),
       fetchArticles({ organization: slug }),
-      fetchEvents({ organization: slug }),
+      fetchEvents({ organization: slug, from: todayISO(), limit: 4 }),
     ])
       .then(([orgData, articlesRes, eventsRes]) => {
         if (cancelled) return
         setOrg(orgData)
         setArticles(articlesRes.data)
-        const today = new Date().toISOString().slice(0, 10)
+        const today = todayISO()
         setEvents(eventsRes.data.filter((e) => e.date >= today).slice(0, 4))
         setStatus('success')
       })

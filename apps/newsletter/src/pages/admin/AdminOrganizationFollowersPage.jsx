@@ -23,7 +23,11 @@ export default function AdminOrganizationFollowersPage() {
         setData(followers)
         if (org) setOrgName(org.name ?? '')
       })
-      .catch((e) => setError(e.message ?? 'Error al cargar seguidores'))
+      .catch((e) => setError(
+        e.status === 403
+          ? 'No tenés permiso para ver los seguidores.'
+          : e.message ?? 'Error al cargar seguidores',
+      ))
   }, [slug, allowed])
 
   if (!allowed) {

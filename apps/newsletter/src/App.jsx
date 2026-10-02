@@ -1,11 +1,10 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { getSession } from './store/authStore'
 import PublicLayout from './layouts/PublicLayout'
 import AdminLayout from './layouts/AdminLayout'
-import ContributorLayout from './layouts/ContributorLayout'
 import AdminAuthGuard from './admin/AdminAuthGuard'
-import ContributorAuthGuard from './admin/ContributorAuthGuard'
+import { CONTRIBUTIONS_ENABLED } from './config/features'
 
 import ArticlesPage        from './pages/ArticlesPage'
 import ArticleDetailPage   from './pages/ArticleDetailPage'
@@ -20,16 +19,21 @@ import AdminArticleFormPage       from './pages/admin/AdminArticleFormPage'
 import AdminEventsPage            from './pages/admin/AdminEventsPage'
 import AdminEventFormPage         from './pages/admin/AdminEventFormPage'
 import AdminAnalyticsPage         from './pages/admin/AdminAnalyticsPage'
-import AdminSuggestionsPage       from './pages/admin/AdminSuggestionsPage'
-import AdminSuggestionReviewPage  from './pages/admin/AdminSuggestionReviewPage'
 import AdminOrganizationProfilePage   from './pages/admin/AdminOrganizationProfilePage'
 import AdminOrganizationFollowersPage from './pages/admin/AdminOrganizationFollowersPage'
 import AdminOrganizationsListPage     from './pages/admin/AdminOrganizationsListPage'
 
-import ContributorSuggestionsPage    from './pages/contributor/ContributorSuggestionsPage'
-import ContributorSuggestArticlePage from './pages/contributor/ContributorSuggestArticlePage'
-import ContributorSuggestEventPage   from './pages/contributor/ContributorSuggestEventPage'
-import ContributorReviewChangesPage  from './pages/contributor/ContributorReviewChangesPage'
+// Contributor workflow — still backed by localStorage mocks, so it is hidden
+// behind CONTRIBUTIONS_ENABLED (see config/features.js). Lazy so the mock
+// stores are never loaded while the flag is off.
+const ContributorLayout             = lazy(() => import('./layouts/ContributorLayout'))
+const ContributorAuthGuard          = lazy(() => import('./admin/ContributorAuthGuard'))
+const AdminSuggestionsPage          = lazy(() => import('./pages/admin/AdminSuggestionsPage'))
+const AdminSuggestionReviewPage     = lazy(() => import('./pages/admin/AdminSuggestionReviewPage'))
+const ContributorSuggestionsPage    = lazy(() => import('./pages/contributor/ContributorSuggestionsPage'))
+const ContributorSuggestArticlePage = lazy(() => import('./pages/contributor/ContributorSuggestArticlePage'))
+const ContributorSuggestEventPage   = lazy(() => import('./pages/contributor/ContributorSuggestEventPage'))
+const ContributorReviewChangesPage  = lazy(() => import('./pages/contributor/ContributorReviewChangesPage'))
 
 export default function App() {
   // Hydrate the session once at boot so synchronous reads (Navbar avatar,
@@ -58,29 +62,41 @@ export default function App() {
         <Route path="events/new"                     element={<AdminEventFormPage />} />
         <Route path="events/:id/edit"                element={<AdminEventFormPage />} />
         <Route path="analytics"                      element={<AdminAnalyticsPage />} />
-        <Route path="suggestions"                    element={<AdminSuggestionsPage />} />
-        <Route path="suggestions/:type/:id"          element={<AdminSuggestionReviewPage />} />
+        {CONTRIBUTIONS_ENABLED ? (
+          <>
+            <Route path="suggestions"                element={<Suspense fallback={null}><AdminSuggestionsPage /></Suspense>} />
+            <Route path="suggestions/:type/:id"      element={<Suspense fallback={null}><AdminSuggestionReviewPage /></Suspense>} />
+          </>
+        ) : (
+          <Route path="suggestions/*"                element={<Navigate to="/admin/articles" replace />} />
+        )}
         <Route path="org/:slug"                      element={<AdminOrganizationProfilePage />} />
         <Route path="org/:slug/followers"            element={<AdminOrganizationFollowersPage />} />
         <Route path="organizations"                  element={<AdminOrganizationsListPage />} />
       </Route>
 
       {/* ── Contributor portal ────────────────────────── */}
-      <Route
-        path="/contribute"
-        element={
-          <ContributorAuthGuard>
-            <ContributorLayout />
-          </ContributorAuthGuard>
-        }
-      >
-        <Route index                                    element={<ContributorSuggestionsPage />} />
-        <Route path="suggest/article"                   element={<ContributorSuggestArticlePage />} />
-        <Route path="suggest/article/:id/edit"          element={<ContributorSuggestArticlePage />} />
-        <Route path="suggest/event"                     element={<ContributorSuggestEventPage />} />
-        <Route path="suggest/event/:id/edit"            element={<ContributorSuggestEventPage />} />
-        <Route path="review/:type/:id"                  element={<ContributorReviewChangesPage />} />
-      </Route>
+      {CONTRIBUTIONS_ENABLED ? (
+        <Route
+          path="/contribute"
+          element={
+            <Suspense fallback={null}>
+              <ContributorAuthGuard>
+                <ContributorLayout />
+              </ContributorAuthGuard>
+            </Suspense>
+          }
+        >
+          <Route index                                  element={<ContributorSuggestionsPage />} />
+          <Route path="suggest/article"                 element={<ContributorSuggestArticlePage />} />
+          <Route path="suggest/article/:id/edit"        element={<ContributorSuggestArticlePage />} />
+          <Route path="suggest/event"                   element={<ContributorSuggestEventPage />} />
+          <Route path="suggest/event/:id/edit"          element={<ContributorSuggestEventPage />} />
+          <Route path="review/:type/:id"                element={<ContributorReviewChangesPage />} />
+        </Route>
+      ) : (
+        <Route path="/contribute/*" element={<Navigate to="/" replace />} />
+      )}
 
       {/* ── Public ────────────────────────────────────── */}
       <Route element={<PublicLayout />}>

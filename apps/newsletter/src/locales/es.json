@@ -48,13 +48,14 @@
     "pageTitle": "Eventos",
     "pageSubtitle": "Lo que pasa en el ITBA este semestre.",
     "upcoming": "Próximos Eventos",
-    "allEvents": "Todos los Eventos",
+    "allEvents": "Este mes y próximos",
     "eventsOn": "Eventos el {{date}}",
     "clearSelection": "Limpiar selección — ver todos los próximos",
     "noUpcoming": "No hay próximos eventos.",
     "noEventsOnDay": "Nada agendado para este día.",
     "noEvents": "No hay eventos programados.",
-    "timeRange": "{{start}}–{{end}}"
+    "timeRange": "{{start}}–{{end}}",
+    "error": "No pudimos cargar los eventos. Revisá tu conexión e intentá de nuevo."
   },
   "orgs": {
     "pageTitle": "Organizaciones",
@@ -75,17 +76,274 @@
     }
   },
   "categories": {
-    "Todos": "Todos",
     "Académico": "Académico",
     "Campus": "Campus",
     "Cultura": "Cultura",
     "Tecnología": "Tecnología",
     "Deportes": "Deportes",
-    "General": "General"
+    "General": "General",
+    "all": "Todos",
+    "Organizaciones": "Organizaciones"
   },
   "common": {
     "loading": "Cargando…",
     "backHome": "Volver al inicio",
     "notFound": "Página no encontrada"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "myProfile": "Mi perfil",
+    "adminPanel": "Panel admin",
+    "contribute": "Contribuir",
+    "accountMenu": "Menú de cuenta",
+    "verifying": "Verificando sesión…",
+    "errorTitle": "No pudimos iniciar sesión",
+    "tryAgain": "Intentar de nuevo",
+    "back": "Volver",
+    "adminSubtitle": "Panel de Administración",
+    "googleButton": "Ingresar con Google (ITBA)",
+    "requiresAccount": "Requiere cuenta <1>@itba.edu.ar</1>",
+    "errors": {
+      "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
+      "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
+      "unverified_email": "Tu correo de Google aún no está verificado.",
+      "invalid_state": "La sesión de inicio expiró o no es válida. Probá de nuevo.",
+      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo."
+    }
+  },
+  "calendar": {
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "dayWithEvents": "{{date}}, con eventos"
+  },
+  "admin": {
+    "common": {
+      "retry": "Reintentar",
+      "actions": "Acciones",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar"
+    },
+    "status": {
+      "published": "Publicado",
+      "draft": "Borrador",
+      "pending_review": "Pendiente revisión",
+      "changes_requested": "Cambios solicitados",
+      "rejected": "Rechazado"
+    },
+    "articles": {
+      "title": "Artículos",
+      "count_one": "{{count}} artículo en total",
+      "count_other": "{{count}} artículos en total",
+      "new": "Nuevo artículo",
+      "loading": "Cargando artículos…",
+      "loadError": "No se pudieron cargar los artículos",
+      "featured": "Destacado",
+      "emptyTitle": "Sin artículos",
+      "emptyMessage": "Creá el primer artículo para el newsletter.",
+      "deleteError": "No se pudo eliminar el artículo. Intentá de nuevo.",
+      "publishedOnlyNote": "Se muestran los artículos publicados de tus organizaciones. Los borradores solo los ve el staff.",
+      "columns": {
+        "title": "Título",
+        "status": "Estado",
+        "category": "Categoría",
+        "organization": "Organización",
+        "date": "Fecha",
+        "votes": "Votos"
+      }
+    },
+    "events": {
+      "title": "Eventos",
+      "count_one": "{{count}} evento en total",
+      "count_other": "{{count}} eventos en total",
+      "new": "Nuevo evento",
+      "loading": "Cargando eventos…",
+      "loadError": "No se pudieron cargar los eventos",
+      "emptyTitle": "Sin eventos",
+      "emptyMessage": "Creá el primer evento para el calendario.",
+      "deleteError": "No se pudo eliminar el evento. Intentá de nuevo.",
+      "columns": {
+        "title": "Título",
+        "dateTime": "Fecha y hora",
+        "category": "Categoría",
+        "location": "Lugar",
+        "organization": "Organización"
+      }
+    },
+    "form": {
+      "optional": "Opcional",
+      "saving": "Guardando…",
+      "saveChanges": "Guardar cambios",
+      "category": "Categoría",
+      "organization": "Organización",
+      "date": "Fecha",
+      "notFoundTitle": "No encontrado",
+      "notFoundMessage": "No existe o no tenés acceso para editarlo.",
+      "loadErrorTitle": "No se pudo cargar",
+      "loadErrorMessage": "Revisá tu conexión e intentá de nuevo. No se guardó ningún cambio."
+    },
+    "articleForm": {
+      "loading": "Cargando artículo…",
+      "back": "← Artículos",
+      "newTitle": "Nuevo artículo",
+      "editTitle": "Editar artículo",
+      "updated": "Artículo actualizado",
+      "created": "Artículo publicado",
+      "saveError": "No se pudo guardar el artículo. Intentá de nuevo.",
+      "title": "Título",
+      "titlePlaceholder": "Título del artículo",
+      "excerpt": "Copete",
+      "excerptHint": "2–3 oraciones. Aparece en la tarjeta y en el índice.",
+      "excerptPlaceholder": "Resumen breve del artículo…",
+      "body": "Cuerpo",
+      "paragraphPlaceholder": "Párrafo {{n}}…",
+      "removeParagraph": "Eliminar párrafo {{n}}",
+      "addParagraph": "Agregar párrafo",
+      "coverImage": "Imagen de portada",
+      "publish": "Publicar",
+      "saveDraft": "Guardar como borrador",
+      "status": "Estado",
+      "metadata": "Metadatos",
+      "authors": "Autores",
+      "authorPlaceholder": "Autor {{n}}",
+      "removeAuthor": "Quitar autor {{n}}",
+      "addAuthor": "Agregar autor",
+      "readingTime": "Tiempo de lectura",
+      "readingTimePlaceholder": "p. ej. 4 min",
+      "featured": "Destacado",
+      "featuredOn": "Sí, mostrar como destacado",
+      "featuredOff": "No destacado",
+      "featuredHint": "Desplazará al artículo destacado actual.",
+      "coverColor": "Color de portada",
+      "livePreview": "Vista previa en tiempo real",
+      "colors": {
+        "blue": "Azul",
+        "amber": "Ámbar",
+        "green": "Verde",
+        "violet": "Violeta"
+      },
+      "viewModes": {
+        "label": "Modo de vista",
+        "edit": "Editor",
+        "split": "Dividido",
+        "preview": "Vista previa"
+      },
+      "errors": {
+        "title": "El título es obligatorio.",
+        "excerpt": "El copete es obligatorio.",
+        "authors": "Agregá al menos un autor.",
+        "date": "La fecha es obligatoria.",
+        "readingTime": "El tiempo de lectura es obligatorio.",
+        "body": "Escribí al menos un párrafo."
+      }
+    },
+    "eventForm": {
+      "loading": "Cargando evento…",
+      "back": "← Eventos",
+      "newTitle": "Nuevo evento",
+      "editTitle": "Editar evento",
+      "updated": "Evento actualizado",
+      "created": "Evento creado",
+      "saveError": "No se pudo guardar el evento. Intentá de nuevo.",
+      "create": "Crear evento",
+      "title": "Título",
+      "titlePlaceholder": "Nombre del evento",
+      "start": "Inicio",
+      "end": "Fin",
+      "location": "Lugar",
+      "locationPlaceholder": "p. ej. Aula Magna, Laboratorio 4…",
+      "description": "Descripción",
+      "descriptionHint": "Opcional. 1–2 oraciones para el calendario.",
+      "descriptionPlaceholder": "Breve descripción del evento…",
+      "errors": {
+        "title": "El título es obligatorio.",
+        "date": "La fecha es obligatoria.",
+        "time": "La hora de inicio es obligatoria.",
+        "endTime": "La hora de fin es obligatoria.",
+        "location": "El lugar es obligatorio.",
+        "endBeforeStart": "La hora de fin debe ser posterior al inicio."
+      }
+    },
+    "analytics": {
+      "title": "Analíticas",
+      "subtitle": "Rendimiento del contenido para el equipo de medios.",
+      "loadError": "No se pudieron cargar las analíticas. Intentá de nuevo más tarde.",
+      "noDataTitle": "Sin datos aún.",
+      "noDataMessage": "Los datos se registran cuando los lectores visitan artículos y votan.",
+      "articleViews": "Vistas de artículos",
+      "uniqueVisitors": "Visitantes únicos",
+      "totalVotes": "Votos totales",
+      "dailyViews": "Vistas diarias — últimos 14 días",
+      "topArticles": "Artículos más vistos",
+      "noViews": "Sin visitas registradas aún.",
+      "categoryViews": "Vistas por categoría",
+      "noCategoryData": "Sin datos de categoría aún.",
+      "votesByArticle": "Votos por artículo",
+      "votesPrivate": "Los conteos son privados y no se muestran al público.",
+      "columns": {
+        "article": "Artículo",
+        "helpful": "Útil",
+        "notHelpful": "No útil",
+        "ratio": "Ratio",
+        "views": "Vistas"
+      },
+      "ranges": {
+        "days7": "7 días",
+        "days30": "30 días",
+        "allTime": "Todo"
+      }
+    },
+    "roles": {
+      "staff": "Staff",
+      "user": "Miembro"
+    },
+    "nav": {
+      "label": "Navegación del panel",
+      "content": "Contenido",
+      "articles": "Artículos",
+      "events": "Eventos",
+      "suggestions": "Sugerencias",
+      "organization": "Organización",
+      "orgProfile": "Perfil · {{org}}",
+      "media": "Medios",
+      "analytics": "Analíticas",
+      "superadmin": "Superadmin",
+      "allOrganizations": "Todas las organizaciones",
+      "backToSite": "Volver al sitio público",
+      "panel": "Panel Admin",
+      "viewSite": "Ver sitio",
+      "new": "Nuevo",
+      "edit": "Editar",
+      "review": "Revisar"
+    }
+  },
+  "imageUploader": {
+    "uploadTab": "Subir archivo",
+    "urlTab": "URL",
+    "dropzone": "Área de carga de imagen",
+    "uploading": "Subiendo imagen…",
+    "dropHint": "Arrastrá una imagen o <1>buscá en tu equipo</1>",
+    "limits": "JPG, PNG o WEBP · máx. 5 MB",
+    "apply": "Aplicar",
+    "noImage": "Sin imagen: se usará el color de portada seleccionado.",
+    "previewAlt": "Portada del artículo",
+    "remove": "Eliminar imagen",
+    "errors": {
+      "type": "Formato no soportado. Usá una imagen JPG, PNG o WEBP.",
+      "size": "La imagen pesa más de 5 MB. Comprimila o elegí otra.",
+      "upload": "No se pudo subir la imagen. Intentá de nuevo o pegá una URL.",
+      "notConfigured": "La subida de imágenes no está disponible en el servidor. Pegá una URL de imagen.",
+      "forbidden": "No tenés permiso para subir imágenes. Pegá una URL de imagen.",
+      "url": "Ingresá una URL válida que empiece con https://",
+      "load": "La imagen no se pudo cargar."
+    }
+  },
+  "votes": {
+    "groupLabel": "¿Te resultó útil este artículo?",
+    "prompt": "¿Te resultó útil?",
+    "up": "Sí, me resultó útil",
+    "down": "No me resultó útil"
   }
 }

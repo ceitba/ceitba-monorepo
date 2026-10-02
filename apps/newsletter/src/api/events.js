@@ -1,4 +1,4 @@
-import { apiRequest, ApiError } from './client'
+import { apiGet, apiSend } from './client'
 
 // The API uses eventDate/startTime; internally we use date/time
 function normalize(e) {
@@ -17,37 +17,39 @@ export async function fetchEvents({ category, organization, from, to, page = 1, 
   if (from) params.set('from', from)
   if (to) params.set('to', to)
 
-  const res = await apiRequest('GET', `/news/events?${params}`)
-  if (!res || !res.ok) throw new ApiError('Failed to fetch events', res?.status)
-  const json = await res.json()
+  const json = await apiGet(`/news/events?${params}`)
   return { ...json, data: json.data.map(normalize) }
 }
 
 export async function fetchEventById(id) {
-  const res = await apiRequest('GET', `/news/events/${id}`)
-  if (!res) throw new ApiError('Request failed', 0)
-  if (res.status === 404) throw new ApiError(`Event "${id}" not found`, 404, 'NOT_FOUND')
-  if (!res.ok) throw new ApiError('Failed to fetch event', res.status)
-  return normalize(await res.json())
+  return normalize(await apiGet(`/news/events/${encodeURIComponent(id)}`))
 }
 
 export async function createEvent(data) {
   const { date, time, ...rest } = data
-  const res = await apiRequest('POST', '/news/events', { ...rest, eventDate: date, startTime: time })
-  if (!res || !res.ok) throw new ApiError('Failed to create event', res?.status)
-  return normalize(await res.json())
+  return normalize(await apiSend('POST', '/news/events', { ...rest, eventDate: date, startTime: time }))
 }
 
 export async function updateEvent(id, data) {
   const payload = { ...data }
   if (payload.date) { payload.eventDate = payload.date; delete payload.date }
   if (payload.time) { payload.startTime = payload.time; delete payload.time }
-  const res = await apiRequest('PATCH', `/news/events/${id}`, payload)
-  if (!res || !res.ok) throw new ApiError('Failed to update event', res?.status)
-  return normalize(await res.json())
+  return normalize(await apiSend('PATCH', `/news/events/${encodeURIComponent(id)}`, payload))
 }
 
 export async function deleteEvent(id) {
-  const res = await apiRequest('DELETE', `/news/events/${id}`)
-  if (res && !res.ok && res.status !== 204) throw new ApiError('Failed to delete event', res.status)
+  await apiSend('DELETE', `/news/events/${encodeURIComponent(id)}`)
+}
+
+// Walks every page of a filtered list (the API caps each page at `limit`
+// and sorts by eventDate ascending), so callers never silently drop the
+// later events.
+export async function fetchAllEvents(filters = {}, { pageSize = 100, maxPages = 50 } = {}) {
+  const all = []
+  for (let page = 1; page <= maxPages; page++) {
+    const { data, meta } = await fetchEvents({ ...filters, page, limit: pageSize })
+    all.push(...data)
+    if (data.length < pageSize || all.length >= (meta?.total ?? 0)) break
+  }
+  return all
 }

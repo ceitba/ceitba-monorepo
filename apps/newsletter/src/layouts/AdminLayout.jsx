@@ -1,48 +1,49 @@
 import { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { signOut, getSession } from '../store/authStore'
-import { getPendingArticleSuggestionsCount } from '../store/articleStore'
-import { getPendingEventSuggestionsCount } from '../store/eventStore'
+import { useTranslation } from 'react-i18next'
+import { signOut, getOrganizations, isStaff as isStaffProfile } from '../store/authStore'
+import { useAuthSession } from '../hooks/useAuthSession'
+import { CONTRIBUTIONS_ENABLED } from '../config/features'
 
-function buildNav(profile) {
-  const orgs = profile?.organizations ?? []
-  const adminRole = ['staff', 'admin', 'editor'].includes(profile?.role)
-  const isStaff = profile?.role === 'staff'
+function buildNav(profile, t) {
+  const orgs = getOrganizations(profile)
+  // Suggestions review and analytics are STAFF-only on the API.
+  const isStaff = isStaffProfile(profile)
 
   const groups = []
   groups.push({
-    label: 'Contenido',
+    label: t('admin.nav.content'),
     items: [
-      { to: '/admin/articles', label: 'Artículos', icon: <IconDoc /> },
-      { to: '/admin/events',   label: 'Eventos',   icon: <IconCal /> },
-      ...(adminRole
-        ? [{ to: '/admin/suggestions', label: 'Sugerencias', icon: <IconInbox /> }]
+      { to: '/admin/articles', label: t('admin.nav.articles'), icon: <IconDoc /> },
+      { to: '/admin/events',   label: t('admin.nav.events'),   icon: <IconCal /> },
+      ...(isStaff && CONTRIBUTIONS_ENABLED
+        ? [{ to: '/admin/suggestions', label: t('admin.nav.suggestions'), icon: <IconInbox /> }]
         : []),
     ],
   })
   if (orgs.length > 0) {
     groups.push({
-      label: 'Organización',
+      label: t('admin.nav.organization'),
       items: orgs.map(({ slug }) => ({
         to: `/admin/org/${slug}`,
-        label: `Perfil · ${slug.toUpperCase()}`,
+        label: t('admin.nav.orgProfile', { org: slug.toUpperCase() }),
         icon: <IconOrg />,
       })),
     })
   }
-  if (adminRole) {
+  if (isStaff) {
     groups.push({
-      label: 'Medios',
+      label: t('admin.nav.media'),
       items: [
-        { to: '/admin/analytics', label: 'Analíticas', icon: <IconChart /> },
+        { to: '/admin/analytics', label: t('admin.nav.analytics'), icon: <IconChart /> },
       ],
     })
   }
   if (isStaff) {
     groups.push({
-      label: 'Superadmin',
+      label: t('admin.nav.superadmin'),
       items: [
-        { to: '/admin/organizations', label: 'Todas las organizaciones', icon: <IconOrg /> },
+        { to: '/admin/organizations', label: t('admin.nav.allOrganizations'), icon: <IconOrg /> },
       ],
     })
   }
@@ -51,12 +52,11 @@ function buildNav(profile) {
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [session, setSession] = useState(null)
+  const { profile: session } = useAuthSession()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const drawerRef = useRef(null)
-
-  useEffect(() => { getSession().then(setSession) }, [])
 
   // Close drawer on navigation
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -72,12 +72,22 @@ export default function AdminLayout() {
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
 
-  function handleSignOut() {
-    signOut()
-    navigate('/admin/login')
+  async function handleSignOut() {
+    await signOut()
+    navigate('/admin/login', { replace: true })
   }
 
-  const pendingSuggestions = getPendingArticleSuggestionsCount() + getPendingEventSuggestionsCount()
+  // Mock-backed count (see config/features.js); only loaded when enabled.
+  const [pendingSuggestions, setPendingSuggestions] = useState(0)
+  useEffect(() => {
+    if (!CONTRIBUTIONS_ENABLED) return
+    let active = true
+    Promise.all([import('../store/articleStore'), import('../store/eventStore')])
+      .then(([a, e]) => {
+        if (active) setPendingSuggestions(a.getPendingArticleSuggestionsCount() + e.getPendingEventSuggestionsCount())
+      })
+    return () => { active = false }
+  }, [])
 
   const counts = {
     '/admin/articles':    null,
@@ -86,7 +96,7 @@ export default function AdminLayout() {
     '/admin/analytics':   null,
   }
 
-  const navGroups = buildNav(session)
+  const navGroups = buildNav(session, t)
 
   const linkClass = ({ isActive }) =>
     [
@@ -97,17 +107,17 @@ export default function AdminLayout() {
     ].join(' ')
 
   const sidebar = (
-    <nav className="flex flex-col h-full" aria-label="Admin navigation">
+    <nav className="flex flex-col h-full" aria-label={t('admin.nav.label')}>
       {/* Brand */}
       <div className="px-5 py-5 border-b border-primary-700">
         <Link
           to="/"
           className="flex flex-col leading-none focus-visible:rounded"
-          aria-label="Volver al sitio público"
+          aria-label={t('admin.nav.backToSite')}
         >
           <span className="font-display text-h5 font-bold text-white">ITBA News</span>
           <span className="font-mono text-label text-primary-400 uppercase tracking-widest mt-0.5">
-            Panel Admin
+            {t('admin.nav.panel')}
           </span>
         </Link>
         <Link
@@ -115,7 +125,7 @@ export default function AdminLayout() {
           className="mt-3 inline-flex items-center gap-1.5 font-mono text-label text-primary-400 hover:text-accent transition-colors duration-150"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
-          Ver sitio
+          {t('admin.nav.viewSite')}
         </Link>
       </div>
 
@@ -149,14 +159,14 @@ export default function AdminLayout() {
       <div className="px-5 py-4 border-t border-primary-700">
         <p className="font-body text-body-sm text-primary-200 truncate">{session?.name}</p>
         <p className="font-mono text-label text-primary-500 uppercase tracking-widest mt-0.5">
-          {session?.role?.replace('_', ' ')}
+          {session?.role ? t(`admin.roles.${session.role}`, { defaultValue: session.role }) : ''}
         </p>
         <button
           type="button"
           onClick={handleSignOut}
           className="mt-3 font-mono text-label text-primary-400 hover:text-red-400 transition-colors duration-150 underline underline-offset-2"
         >
-          Cerrar sesión
+          {t('auth.signOut')}
         </button>
       </div>
     </nav>
@@ -186,7 +196,7 @@ export default function AdminLayout() {
           'transition-transform duration-250',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
-        aria-label="Admin navigation"
+        aria-label={t('admin.nav.label')}
       >
         {sidebar}
       </aside>
@@ -198,7 +208,7 @@ export default function AdminLayout() {
           <button
             type="button"
             className="lg:hidden w-9 h-9 flex items-center justify-center text-ink-secondary hover:text-ink-primary focus-visible:rounded"
-            aria-label="Abrir menú"
+            aria-label={t('nav.openMenu')}
             onClick={() => setSidebarOpen(true)}
           >
             <IconMenu />
@@ -210,7 +220,7 @@ export default function AdminLayout() {
               className="hidden sm:inline-flex items-center gap-2 min-h-[36px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nuevo artículo
+              {t('admin.articles.new')}
             </Link>
           </div>
         </header>
@@ -226,17 +236,19 @@ export default function AdminLayout() {
 
 function Breadcrumb() {
   const { pathname } = useLocation()
+  const { t } = useTranslation()
   const segments = {
-    '/admin/articles':       'Artículos',
-    '/admin/articles/new':   'Artículos / Nuevo',
-    '/admin/events':         'Eventos',
-    '/admin/events/new':     'Eventos / Nuevo',
-    '/admin/suggestions':    'Sugerencias',
-    '/admin/analytics':      'Analíticas',
+    '/admin/articles':       t('admin.nav.articles'),
+    '/admin/articles/new':   `${t('admin.nav.articles')} / ${t('admin.nav.new')}`,
+    '/admin/events':         t('admin.nav.events'),
+    '/admin/events/new':     `${t('admin.nav.events')} / ${t('admin.nav.new')}`,
+    '/admin/suggestions':    t('admin.nav.suggestions'),
+    '/admin/analytics':      t('admin.nav.analytics'),
   }
   const label = segments[pathname]
-    ?? (pathname.includes('/admin/suggestions/') ? 'Sugerencias / Revisar'
-      : pathname.includes('/edit') ? (pathname.includes('articles') ? 'Artículos / Editar' : 'Eventos / Editar')
+    ?? (pathname.includes('/admin/suggestions/') ? `${t('admin.nav.suggestions')} / ${t('admin.nav.review')}`
+      : pathname.includes('/edit')
+        ? `${pathname.includes('articles') ? t('admin.nav.articles') : t('admin.nav.events')} / ${t('admin.nav.edit')}`
       : '')
 
   return (

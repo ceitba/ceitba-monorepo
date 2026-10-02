@@ -5,12 +5,13 @@ import ArticleCard from '../components/ArticleCard'
 import SkeletonCard from '../components/SkeletonCard'
 import ContributeModal from '../components/ContributeModal'
 import { fetchArticles } from '../api/articles'
-import { CATEGORIES } from '../data/articles'
+import { CATEGORIES } from '../constants/categories'
+import { useCategoryLabel } from '../components/CategoryBadge'
 import { useAuthSession } from '../hooks/useAuthSession'
+import { canAccessAdmin } from '../store/authStore'
+import { CONTRIBUTIONS_ENABLED } from '../config/features'
 
-const ADMIN_ROLES = ['staff', 'admin', 'editor']
-
-function useFetchArticles(category) {
+function useFetchArticles(category, reloadKey) {
   const [state, setState] = useState({ status: 'loading', data: [] })
 
   useEffect(() => {
@@ -26,15 +27,17 @@ function useFetchArticles(category) {
       })
 
     return () => { cancelled = true }
-  }, [category])
+  }, [category, reloadKey])
 
   return state
 }
 
 export default function ArticlesPage() {
   const { t } = useTranslation()
-  const [activeCategory, setActiveCategory] = useState('Todos')
-  const { status, data: articles } = useFetchArticles(activeCategory)
+  // null = all categories (no filter param)
+  const [activeCategory, setActiveCategory] = useState(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const { status, data: articles } = useFetchArticles(activeCategory, reloadKey)
 
   const featured  = articles.find((a) => a.featured)
   const secondary = articles.filter((a) => !a.featured)
@@ -60,7 +63,7 @@ export default function ArticlesPage() {
         <div className="mt-8">
           {status === 'loading' && <LoadingState />}
           {status === 'error'   && (
-            <ErrorState onRetry={() => setActiveCategory(activeCategory)} />
+            <ErrorState onRetry={() => setReloadKey((k) => k + 1)} />
           )}
           {status === 'success' && articles.length === 0 && (
             <EmptyState category={activeCategory} />
@@ -70,7 +73,7 @@ export default function ArticlesPage() {
           )}
         </div>
 
-        <ContributeBanner />
+        {CONTRIBUTIONS_ENABLED && <ContributeBanner />}
       </div>
     </div>
   )
@@ -78,11 +81,12 @@ export default function ArticlesPage() {
 
 function FilterBar({ categories, active, onChange }) {
   const { t } = useTranslation()
+  const label = useCategoryLabel()
   return (
     <nav aria-label={t('articles.filter.label')}>
       <ul className="flex flex-wrap gap-2 list-none m-0 p-0" role="list">
-        {categories.map((cat) => (
-          <li key={cat}>
+        {[null, ...categories].map((cat) => (
+          <li key={cat ?? 'all'}>
             <button
               type="button"
               onClick={() => onChange(cat)}
@@ -94,7 +98,7 @@ function FilterBar({ categories, active, onChange }) {
                   : 'bg-white border border-border text-ink-secondary hover:border-primary hover:text-primary',
               ].join(' ')}
             >
-              {t(`categories.${cat}`, { defaultValue: cat })}
+              {cat ? label(cat) : t('categories.all')}
             </button>
           </li>
         ))}
@@ -161,7 +165,7 @@ function ContributeBanner() {
   // the banner is a non-critical accent, render nothing until we know.
   if (loading) return null
 
-  const isAdmin = profile && ADMIN_ROLES.includes(profile.role)
+  const isAdmin = canAccessAdmin(profile)
   const ctaTo = isAdmin ? '/admin/articles' : '/contribute'
   const ctaLabel = isAdmin ? 'Panel admin' : 'Contribuir'
   const copyBody = profile
@@ -214,6 +218,7 @@ function ContributeBanner() {
 
 function EmptyState({ category }) {
   const { t } = useTranslation()
+  const label = useCategoryLabel()
   return (
     <div className="flex flex-col items-center justify-center py-24 gap-6 text-center animate-fade-in">
       <div className="relative w-24 h-24">
@@ -223,7 +228,7 @@ function EmptyState({ category }) {
       </div>
       <div>
         <p className="font-display text-h4 font-bold text-ink-primary">
-          {t('articles.empty.title', { category })}
+          {t('articles.empty.title', { category: category ? label(category) : t('categories.all') })}
         </p>
         <p className="font-body text-body text-ink-secondary mt-1">
           {t('articles.empty.message')}

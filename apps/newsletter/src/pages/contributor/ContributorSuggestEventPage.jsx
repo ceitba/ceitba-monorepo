@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getContributorSession } from '../../store/contributorAuthStore'
+import { getCachedSession } from '../../store/authStore'
 import { getEventById, submitEventSuggestion, resubmitEventSuggestion } from '../../store/eventStore'
 import { fetchOrganizations } from '../../api/organizations'
+import { todayISO } from '../../utils/dates'
 
-const EVENT_CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
+import { CATEGORIES as EVENT_CATEGORIES, DEFAULT_CATEGORY } from '../../constants/categories'
 
 const EMPTY_FORM = {
   title:        '',
-  date:         new Date().toISOString().slice(0, 10),
+  date:         todayISO(),
   time:         '09:00',
   endTime:      '10:00',
   location:     '',
-  category:     'Académico',
+  category:     DEFAULT_CATEGORY,
   organization: 'ceitba',
   description:  '',
 }
@@ -20,7 +21,7 @@ const EMPTY_FORM = {
 export default function ContributorSuggestEventPage() {
   const { id }   = useParams()
   const navigate = useNavigate()
-  const session  = getContributorSession()
+  const session  = getCachedSession()
   const isEdit   = Boolean(id)
 
   const [form, setForm]       = useState(EMPTY_FORM)

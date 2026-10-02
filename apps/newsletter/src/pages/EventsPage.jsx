@@ -2,21 +2,50 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Calendar from '../components/Calendar'
 import EventCard from '../components/EventCard'
-import { fetchEvents } from '../api/events'
+import { fetchAllEvents } from '../api/events'
+import { formatDate, monthStartISO, todayISO } from '../utils/dates'
 
 export default function EventsPage() {
   const { t, i18n } = useTranslation()
   const [selectedDate, setSelectedDate] = useState(null)
   const [allEvents, setAllEvents]       = useState([])
   const [status, setStatus]             = useState('loading')
+  // Month shown by the calendar; months before the current one are fetched
+  // on demand (the main list only covers this month onwards).
+  const [viewMonth, setViewMonth]       = useState(null)
+  const [pastMonthEvents, setPastMonthEvents] = useState([])
+
+  const now = new Date()
+  const currentMonthStart = monthStartISO(now.getFullYear(), now.getMonth())
+
+  // The API sorts by date ascending, so without `from` the page filled up
+  // with the oldest events and upcoming ones never loaded. Load everything
+  // from the start of the current month on (every page).
+  useEffect(() => {
+    let cancelled = false
+    fetchAllEvents({ from: currentMonthStart })
+      .then((data) => { if (!cancelled) { setAllEvents(data); setStatus('success') } })
+      .catch(() => { if (!cancelled) setStatus('error') })
+    return () => { cancelled = true }
+  }, [currentMonthStart])
+
+  const viewedMonthStart = viewMonth ? monthStartISO(viewMonth.year, viewMonth.month) : currentMonthStart
+  const viewingPastMonth = viewedMonthStart < currentMonthStart
 
   useEffect(() => {
-    fetchEvents()
-      .then(({ data }) => { setAllEvents(data); setStatus('success') })
-      .catch(() => setStatus('error'))
-  }, [])
+    if (!viewingPastMonth) return
+    let cancelled = false
+    const next = new Date(viewMonth.year, viewMonth.month + 1, 1)
+    const to = monthStartISO(next.getFullYear(), next.getMonth())
+    fetchAllEvents({ from: viewedMonthStart, to })
+      .then((data) => { if (!cancelled) setPastMonthEvents(data) })
+      .catch(() => { if (!cancelled) setPastMonthEvents([]) })
+    return () => { cancelled = true }
+  }, [viewingPastMonth, viewedMonthStart, viewMonth])
 
-  const today = new Date().toISOString().slice(0, 10)
+  const calendarEvents = viewingPastMonth ? pastMonthEvents : allEvents
+
+  const today = todayISO()
 
   const upcomingEvents = useMemo(
     () => allEvents.filter((e) => e.date >= today),
@@ -24,14 +53,11 @@ export default function EventsPage() {
   )
 
   const sidebarEvents = selectedDate
-    ? allEvents.filter((e) => e.date === selectedDate)
+    ? calendarEvents.filter((e) => e.date === selectedDate)
     : upcomingEvents
 
   const selectedLabel = selectedDate
-    ? new Date(selectedDate).toLocaleDateString(
-        i18n.language === 'en' ? 'en-US' : 'es-AR',
-        { weekday: 'long', month: 'long', day: 'numeric' }
-      )
+    ? formatDate(selectedDate, i18n.language, { weekday: 'long', month: 'long', day: 'numeric' })
     : null
 
   return (
@@ -50,7 +76,7 @@ export default function EventsPage() {
 
         {status === 'error' && (
           <p role="alert" className="font-body text-body text-ink-secondary">
-            {t('articles.error.message')}
+            {t('events.error')}
           </p>
         )}
 
@@ -60,9 +86,10 @@ export default function EventsPage() {
               {/* Calendar */}
               <div className="lg:flex-1 lg:max-w-[580px]">
                 <Calendar
-                  events={allEvents}
+                  events={calendarEvents}
                   selectedDate={selectedDate}
                   onSelectDate={setSelectedDate}
+                  onMonthChange={(year, month) => setViewMonth({ year, month })}
                 />
                 {selectedDate && (
                   <button

@@ -1,4 +1,6 @@
 import CategoryBadge from '../CategoryBadge'
+import i18n from 'i18next'
+import { formatDate as formatLocalDate } from '../../utils/dates'
 
 // Mirrors the GeoFill in ArticleCard — kept local so preview has no router dependency
 const GEO_BG = {
@@ -30,9 +32,7 @@ function CoverMedia({ coverImage, colorScheme, className }) {
 }
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('es-AR', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  })
+  return formatLocalDate(iso, i18n.language)
 }
 
 // ── Card preview ────────────────────────────────────────────────────────────

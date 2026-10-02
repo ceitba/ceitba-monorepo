@@ -19,21 +19,33 @@ export function trackEvent(type, extra = {}) {
   _queue.push({ type, sessionId: getSessionId(), timestamp: Date.now(), ...extra })
 }
 
-async function flush() {
-  if (_queue.length === 0) return
-  const batch = _queue.splice(0, MAX_BATCH)
-  try {
-    await apiRequest('POST', '/analytics/events', { events: batch })
-  } catch {
-    // analytics are best-effort — silently drop on failure
+// `keepalive` lets the request outlive the page when flushing on
+// pagehide/visibilitychange (a plain fetch is cancelled on unload). We use
+// it instead of navigator.sendBeacon so the body stays application/json
+// (what the API's @RequestBody expects) and the request goes through the
+// same credentials: 'include' client. keepalive bodies are capped at 64 KB,
+// far above a 50-event batch.
+// All batches are dispatched synchronously so none is lost when the page
+// goes away mid-flush.
+function flush({ keepalive = false } = {}) {
+  const sends = []
+  while (_queue.length > 0) {
+    const batch = _queue.splice(0, MAX_BATCH)
+    sends.push(
+      apiRequest('POST', '/analytics/events', { events: batch }, keepalive ? { keepalive: true } : {})
+        .catch(() => { /* analytics are best-effort — silently drop on failure */ }),
+    )
   }
+  return Promise.all(sends)
 }
 
-setInterval(flush, FLUSH_MS)
+const flushOnExit = () => flush({ keepalive: true })
+
+setInterval(() => flush(), FLUSH_MS)
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush()
+    if (document.visibilityState === 'hidden') flushOnExit()
   })
-  window.addEventListener('pagehide', flush)
+  window.addEventListener('pagehide', flushOnExit)
 }

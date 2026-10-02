@@ -1,22 +1,28 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { normalizeCategory } from '../constants/categories'
 
 const CATEGORY_STYLES = {
-  Académico:   'bg-primary-100 text-primary-700',
-  Academic:    'bg-primary-100 text-primary-700',
-  Campus:      'bg-accent-50 text-accent-600',
-  Cultura:     'bg-emerald-50 text-emerald-700',
-  Culture:     'bg-emerald-50 text-emerald-700',
-  Tecnología:  'bg-violet-50 text-violet-700',
-  Tech:        'bg-violet-50 text-violet-700',
-  Deportes:    'bg-orange-50 text-orange-700',
-  Sports:      'bg-orange-50 text-orange-700',
-  General:     'bg-ink-secondary/10 text-ink-secondary',
+  Académico:      'bg-primary-100 text-primary-700',
+  Campus:         'bg-accent-50 text-accent-600',
+  Cultura:        'bg-emerald-50 text-emerald-700',
+  Tecnología:     'bg-violet-50 text-violet-700',
+  Deportes:       'bg-orange-50 text-orange-700',
+  Organizaciones: 'bg-sky-50 text-sky-700',
+  General:        'bg-ink-secondary/10 text-ink-secondary',
+}
+
+export function useCategoryLabel() {
+  const { t } = useTranslation()
+  return useCallback((category) => {
+    const canonical = normalizeCategory(category)
+    return t(`categories.${canonical}`, { defaultValue: canonical ?? '' })
+  }, [t])
 }
 
 export default function CategoryBadge({ category, className = '' }) {
-  const { t } = useTranslation()
-  const style = CATEGORY_STYLES[category] ?? 'bg-border text-ink-secondary'
-  const label = t(`categories.${category}`, { defaultValue: category })
+  const label = useCategoryLabel()
+  const style = CATEGORY_STYLES[normalizeCategory(category)] ?? 'bg-border text-ink-secondary'
 
   return (
     <span
@@ -26,7 +32,7 @@ export default function CategoryBadge({ category, className = '' }) {
         className,
       ].join(' ')}
     >
-      {label}
+      {label(category)}
     </span>
   )
 }

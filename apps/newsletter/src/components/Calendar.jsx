@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import CategoryBadge from './CategoryBadge'
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+import { useTranslation } from 'react-i18next'
+import { formatDate, localeFor, parseLocalDate, todayISO, weekdayNames } from '../utils/dates'
 
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate()
@@ -15,14 +14,15 @@ function isoDate(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-function formatMonth(year, month) {
-  return new Date(year, month, 1).toLocaleDateString('en-US', {
+function formatMonth(year, month, lang) {
+  return new Date(year, month, 1).toLocaleDateString(localeFor(lang), {
     month: 'long',
     year: 'numeric',
   })
 }
 
-export default function Calendar({ events, selectedDate, onSelectDate }) {
+export default function Calendar({ events, selectedDate, onSelectDate, onMonthChange }) {
+  const { t, i18n } = useTranslation()
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -33,24 +33,29 @@ export default function Calendar({ events, selectedDate, onSelectDate }) {
   // Build set of days that have events for fast lookup
   const eventDays = new Set(
     events
-      .filter((e) => {
-        const d = new Date(e.date)
-        return d.getFullYear() === viewYear && d.getMonth() === viewMonth
-      })
-      .map((e) => new Date(e.date).getDate())
+      .map((e) => parseLocalDate(e.date))
+      .filter((d) => d && d.getFullYear() === viewYear && d.getMonth() === viewMonth)
+      .map((d) => d.getDate())
   )
+  const weekdays = weekdayNames(i18n.language)
+
+  function goTo(year, month) {
+    setViewYear(year)
+    setViewMonth(month)
+    onMonthChange?.(year, month)
+  }
 
   function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1) }
-    else setViewMonth((m) => m - 1)
+    if (viewMonth === 0) goTo(viewYear - 1, 11)
+    else goTo(viewYear, viewMonth - 1)
   }
 
   function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1) }
-    else setViewMonth((m) => m + 1)
+    if (viewMonth === 11) goTo(viewYear + 1, 0)
+    else goTo(viewYear, viewMonth + 1)
   }
 
-  const todayStr = isoDate(today.getFullYear(), today.getMonth(), today.getDate())
+  const todayStr = todayISO()
 
   return (
     <div className="bg-white rounded-card border border-border shadow-card select-none">
@@ -59,20 +64,20 @@ export default function Calendar({ events, selectedDate, onSelectDate }) {
         <button
           type="button"
           onClick={prevMonth}
-          aria-label="Previous month"
+          aria-label={t('calendar.prevMonth')}
           className="w-9 h-9 flex items-center justify-center rounded text-ink-secondary hover:text-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded"
         >
           <ChevronLeft />
         </button>
 
         <h2 className="font-display text-h5 font-bold text-ink-primary tabular-nums">
-          {formatMonth(viewYear, viewMonth)}
+          {formatMonth(viewYear, viewMonth, i18n.language)}
         </h2>
 
         <button
           type="button"
           onClick={nextMonth}
-          aria-label="Next month"
+          aria-label={t('calendar.nextMonth')}
           className="w-9 h-9 flex items-center justify-center rounded text-ink-secondary hover:text-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded"
         >
           <ChevronRight />
@@ -81,9 +86,9 @@ export default function Calendar({ events, selectedDate, onSelectDate }) {
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 border-b border-border">
-        {WEEKDAYS.map((d) => (
+        {weekdays.map((d, i) => (
           <div
-            key={d}
+            key={i}
             className="py-2 text-center font-mono text-label text-ink-secondary uppercase tracking-widest"
           >
             {d}
@@ -111,7 +116,9 @@ export default function Calendar({ events, selectedDate, onSelectDate }) {
               key={day}
               type="button"
               onClick={() => onSelectDate(isSelected ? null : dateStr)}
-              aria-label={`${dateStr}${hasEvents ? ', has events' : ''}`}
+              aria-label={hasEvents
+                ? t('calendar.dayWithEvents', { date: formatDate(dateStr, i18n.language, { weekday: 'long', month: 'long', day: 'numeric' }) })
+                : formatDate(dateStr, i18n.language, { weekday: 'long', month: 'long', day: 'numeric' })}
               aria-pressed={isSelected}
               className={[
                 'h-12 flex flex-col items-center justify-center gap-0.5',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getContributorSession } from '../../store/contributorAuthStore'
+import { getCachedSession } from '../../store/authStore'
 import {
   getArticleById,
   submitArticleSuggestion,
@@ -8,8 +8,9 @@ import {
 } from '../../store/articleStore'
 import { fetchOrganizations } from '../../api/organizations'
 import ImageUploader from '../../components/ImageUploader'
+import { todayISO } from '../../utils/dates'
 
-const CATEGORIES = ['ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']
+import { CATEGORIES, DEFAULT_CATEGORY } from '../../constants/categories'
 
 const COLOR_OPTIONS = [
   { value: 'blue',   label: 'Azul',    cls: 'bg-primary-500' },
@@ -22,9 +23,9 @@ const EMPTY_FORM = {
   title:        '',
   excerpt:      '',
   body:         [''],
-  category:     'Académico',
+  category:     DEFAULT_CATEGORY,
   organization: 'ceitba',
-  date:         new Date().toISOString().slice(0, 10),
+  date:         todayISO(),
   readingTime:  '',
   colorScheme:  'blue',
   coverImage:   '',
@@ -33,7 +34,7 @@ const EMPTY_FORM = {
 export default function ContributorSuggestArticlePage() {
   const { id }   = useParams()
   const navigate = useNavigate()
-  const session  = getContributorSession()
+  const session  = getCachedSession()
   const isEdit   = Boolean(id)
 
   const [form, setForm]       = useState(EMPTY_FORM)

@@ -117,5 +117,3 @@ export const ARTICLES = [
     colorScheme: 'amber',
   },
 ]
-
-export const CATEGORIES = ['TODOS', 'ACADÉMICO', 'DEPORTES', 'CULTURA', 'ORGANIZACIONES']

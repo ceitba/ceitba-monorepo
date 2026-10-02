@@ -48,13 +48,14 @@
     "pageTitle": "Events",
     "pageSubtitle": "What's happening at ITBA this semester.",
     "upcoming": "Upcoming Events",
-    "allEvents": "All Events",
+    "allEvents": "This month and upcoming",
     "eventsOn": "Events on {{date}}",
     "clearSelection": "Clear selection — show all upcoming",
     "noUpcoming": "No upcoming events.",
     "noEventsOnDay": "Nothing scheduled for this day.",
     "noEvents": "No events scheduled.",
-    "timeRange": "{{start}}–{{end}}"
+    "timeRange": "{{start}}–{{end}}",
+    "error": "We couldn't load the events. Check your connection and try again."
   },
   "orgs": {
     "pageTitle": "Organizations",
@@ -75,17 +76,274 @@
     }
   },
   "categories": {
-    "Todos": "All",
     "Académico": "Academic",
     "Campus": "Campus",
     "Cultura": "Culture",
     "Tecnología": "Tech",
     "Deportes": "Sports",
-    "General": "General"
+    "General": "General",
+    "all": "All",
+    "Organizaciones": "Organizations"
   },
   "common": {
     "loading": "Loading…",
     "backHome": "Back to home",
     "notFound": "Page not found"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "myProfile": "My profile",
+    "adminPanel": "Admin panel",
+    "contribute": "Contribute",
+    "accountMenu": "Account menu",
+    "verifying": "Verifying session…",
+    "errorTitle": "We couldn't sign you in",
+    "tryAgain": "Try again",
+    "back": "Go back",
+    "adminSubtitle": "Admin Panel",
+    "googleButton": "Sign in with Google (ITBA)",
+    "requiresAccount": "Requires an <1>@itba.edu.ar</1> account",
+    "errors": {
+      "unauthorized": "Only @itba.edu.ar accounts can sign in.",
+      "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
+      "unverified_email": "Your Google email is not verified yet.",
+      "invalid_state": "The sign-in session expired or is invalid. Please try again.",
+      "auth_failed": "We couldn't complete the sign-in. Please try again."
+    }
+  },
+  "calendar": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "dayWithEvents": "{{date}}, has events"
+  },
+  "admin": {
+    "common": {
+      "retry": "Retry",
+      "actions": "Actions",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft",
+      "pending_review": "Pending review",
+      "changes_requested": "Changes requested",
+      "rejected": "Rejected"
+    },
+    "articles": {
+      "title": "Articles",
+      "count_one": "{{count}} article in total",
+      "count_other": "{{count}} articles in total",
+      "new": "New article",
+      "loading": "Loading articles…",
+      "loadError": "Couldn't load the articles",
+      "featured": "Featured",
+      "emptyTitle": "No articles",
+      "emptyMessage": "Create the first article for the newsletter.",
+      "deleteError": "Couldn't delete the article. Please try again.",
+      "publishedOnlyNote": "Showing your organizations' published articles. Drafts are only visible to staff.",
+      "columns": {
+        "title": "Title",
+        "status": "Status",
+        "category": "Category",
+        "organization": "Organization",
+        "date": "Date",
+        "votes": "Votes"
+      }
+    },
+    "events": {
+      "title": "Events",
+      "count_one": "{{count}} event in total",
+      "count_other": "{{count}} events in total",
+      "new": "New event",
+      "loading": "Loading events…",
+      "loadError": "Couldn't load the events",
+      "emptyTitle": "No events",
+      "emptyMessage": "Create the first event for the calendar.",
+      "deleteError": "Couldn't delete the event. Please try again.",
+      "columns": {
+        "title": "Title",
+        "dateTime": "Date & time",
+        "category": "Category",
+        "location": "Location",
+        "organization": "Organization"
+      }
+    },
+    "form": {
+      "optional": "Optional",
+      "saving": "Saving…",
+      "saveChanges": "Save changes",
+      "category": "Category",
+      "organization": "Organization",
+      "date": "Date",
+      "notFoundTitle": "Not found",
+      "notFoundMessage": "It doesn't exist or you don't have access to edit it.",
+      "loadErrorTitle": "Couldn't load",
+      "loadErrorMessage": "Check your connection and try again. No changes were saved."
+    },
+    "articleForm": {
+      "loading": "Loading article…",
+      "back": "← Articles",
+      "newTitle": "New article",
+      "editTitle": "Edit article",
+      "updated": "Article updated",
+      "created": "Article published",
+      "saveError": "Couldn't save the article. Please try again.",
+      "title": "Title",
+      "titlePlaceholder": "Article title",
+      "excerpt": "Standfirst",
+      "excerptHint": "2–3 sentences. Shown on the card and in the index.",
+      "excerptPlaceholder": "Short summary of the article…",
+      "body": "Body",
+      "paragraphPlaceholder": "Paragraph {{n}}…",
+      "removeParagraph": "Remove paragraph {{n}}",
+      "addParagraph": "Add paragraph",
+      "coverImage": "Cover image",
+      "publish": "Publish",
+      "saveDraft": "Save as draft",
+      "status": "Status",
+      "metadata": "Metadata",
+      "authors": "Authors",
+      "authorPlaceholder": "Author {{n}}",
+      "removeAuthor": "Remove author {{n}}",
+      "addAuthor": "Add author",
+      "readingTime": "Reading time",
+      "readingTimePlaceholder": "e.g. 4 min",
+      "featured": "Featured",
+      "featuredOn": "Yes, show as featured",
+      "featuredOff": "Not featured",
+      "featuredHint": "It will replace the current featured article.",
+      "coverColor": "Cover color",
+      "livePreview": "Live preview",
+      "colors": {
+        "blue": "Blue",
+        "amber": "Amber",
+        "green": "Green",
+        "violet": "Violet"
+      },
+      "viewModes": {
+        "label": "View mode",
+        "edit": "Editor",
+        "split": "Split",
+        "preview": "Preview"
+      },
+      "errors": {
+        "title": "Title is required.",
+        "excerpt": "Standfirst is required.",
+        "authors": "Add at least one author.",
+        "date": "Date is required.",
+        "readingTime": "Reading time is required.",
+        "body": "Write at least one paragraph."
+      }
+    },
+    "eventForm": {
+      "loading": "Loading event…",
+      "back": "← Events",
+      "newTitle": "New event",
+      "editTitle": "Edit event",
+      "updated": "Event updated",
+      "created": "Event created",
+      "saveError": "Couldn't save the event. Please try again.",
+      "create": "Create event",
+      "title": "Title",
+      "titlePlaceholder": "Event name",
+      "start": "Start",
+      "end": "End",
+      "location": "Location",
+      "locationPlaceholder": "e.g. Aula Magna, Lab 4…",
+      "description": "Description",
+      "descriptionHint": "Optional. 1–2 sentences for the calendar.",
+      "descriptionPlaceholder": "Short description of the event…",
+      "errors": {
+        "title": "Title is required.",
+        "date": "Date is required.",
+        "time": "Start time is required.",
+        "endTime": "End time is required.",
+        "location": "Location is required.",
+        "endBeforeStart": "End time must be after the start time."
+      }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "subtitle": "Content performance for the media team.",
+      "loadError": "Couldn't load analytics. Please try again later.",
+      "noDataTitle": "No data yet.",
+      "noDataMessage": "Data is recorded when readers visit articles and vote.",
+      "articleViews": "Article views",
+      "uniqueVisitors": "Unique visitors",
+      "totalVotes": "Total votes",
+      "dailyViews": "Daily views — last 14 days",
+      "topArticles": "Most viewed articles",
+      "noViews": "No visits recorded yet.",
+      "categoryViews": "Views by category",
+      "noCategoryData": "No category data yet.",
+      "votesByArticle": "Votes by article",
+      "votesPrivate": "Counts are private and never shown to the public.",
+      "columns": {
+        "article": "Article",
+        "helpful": "Helpful",
+        "notHelpful": "Not helpful",
+        "ratio": "Ratio",
+        "views": "Views"
+      },
+      "ranges": {
+        "days7": "7 days",
+        "days30": "30 days",
+        "allTime": "All time"
+      }
+    },
+    "roles": {
+      "staff": "Staff",
+      "user": "Member"
+    },
+    "nav": {
+      "label": "Admin navigation",
+      "content": "Content",
+      "articles": "Articles",
+      "events": "Events",
+      "suggestions": "Suggestions",
+      "organization": "Organization",
+      "orgProfile": "Profile · {{org}}",
+      "media": "Media",
+      "analytics": "Analytics",
+      "superadmin": "Superadmin",
+      "allOrganizations": "All organizations",
+      "backToSite": "Back to the public site",
+      "panel": "Admin Panel",
+      "viewSite": "View site",
+      "new": "New",
+      "edit": "Edit",
+      "review": "Review"
+    }
+  },
+  "imageUploader": {
+    "uploadTab": "Upload file",
+    "urlTab": "URL",
+    "dropzone": "Image upload area",
+    "uploading": "Uploading image…",
+    "dropHint": "Drag an image here or <1>browse your files</1>",
+    "limits": "JPG, PNG or WEBP · max. 5 MB",
+    "apply": "Apply",
+    "noImage": "No image: the selected cover color will be used.",
+    "previewAlt": "Article cover",
+    "remove": "Remove image",
+    "errors": {
+      "type": "Unsupported format. Use a JPG, PNG or WEBP image.",
+      "size": "The image is larger than 5 MB. Compress it or pick another one.",
+      "upload": "Couldn't upload the image. Try again or paste a URL.",
+      "notConfigured": "Image uploads aren't available on the server. Paste an image URL instead.",
+      "forbidden": "You don't have permission to upload images. Paste an image URL instead.",
+      "url": "Enter a valid URL starting with https://",
+      "load": "The image couldn't be loaded."
+    }
+  },
+  "votes": {
+    "groupLabel": "Was this article helpful?",
+    "prompt": "Was this helpful?",
+    "up": "Yes, it was helpful",
+    "down": "No, it wasn't helpful"
   }
 }

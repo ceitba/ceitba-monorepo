@@ -39,9 +39,9 @@ export default function ContributorLayout() {
     }
   }, [])
 
-  function handleSignOut() {
-    signOut()
-    navigate('/')
+  async function handleSignOut() {
+    await signOut()
+    navigate('/', { replace: true })
   }
 
   function openNotifs() {

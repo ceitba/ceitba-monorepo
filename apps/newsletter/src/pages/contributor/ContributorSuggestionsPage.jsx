@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getContributorSession } from '../../store/contributorAuthStore'
+import { getCachedSession } from '../../store/authStore'
 import { getArticles } from '../../store/articleStore'
 import { getEvents } from '../../store/eventStore'
 
@@ -12,7 +12,7 @@ const STATUS_LABEL = {
 }
 
 export default function ContributorSuggestionsPage() {
-  const session = getContributorSession()
+  const session = getCachedSession()
   const [items]  = useState(() => {
     if (!session) return []
     const articles = getArticles()

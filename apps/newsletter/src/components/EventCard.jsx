@@ -1,15 +1,13 @@
+import { useTranslation } from 'react-i18next'
 import CategoryBadge from './CategoryBadge'
-
-function formatEventDate(iso) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
-}
+import { formatDate, parseLocalDate } from '../utils/dates'
 
 export default function EventCard({ event, compact = false }) {
+  const { t, i18n } = useTranslation()
   const { title, date, time, endTime, location, category, description } = event
+  const day = parseLocalDate(date)
+  const monthShort = formatDate(date, i18n.language, { month: 'short' })
+  const timeRange = t('events.timeRange', { start: time, end: endTime })
 
   if (compact) {
     return (
@@ -17,10 +15,10 @@ export default function EventCard({ event, compact = false }) {
         {/* Date block */}
         <div className="flex-shrink-0 w-12 flex flex-col items-center justify-start pt-0.5">
           <span className="font-mono text-label text-ink-secondary uppercase">
-            {new Date(date).toLocaleDateString('en-US', { month: 'short' })}
+            {monthShort}
           </span>
           <span className="font-display text-h3 font-bold text-primary leading-none tabular-nums">
-            {new Date(date).getDate()}
+            {day?.getDate()}
           </span>
         </div>
 
@@ -35,7 +33,7 @@ export default function EventCard({ event, compact = false }) {
 
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <time className="font-mono text-label text-ink-secondary" dateTime={`${date}T${time}`}>
-              {time}–{endTime}
+              {timeRange}
             </time>
             <span className="text-border" aria-hidden="true">·</span>
             <span className="font-body text-body-sm text-ink-secondary truncate">
@@ -53,10 +51,10 @@ export default function EventCard({ event, compact = false }) {
         {/* Date stamp */}
         <div className="flex-shrink-0 w-14 h-14 rounded-sm bg-primary-50 flex flex-col items-center justify-center border border-primary-100">
           <span className="font-mono text-label text-primary-500 uppercase">
-            {new Date(date).toLocaleDateString('en-US', { month: 'short' })}
+            {monthShort}
           </span>
           <span className="font-display text-h4 font-bold text-primary leading-none tabular-nums">
-            {new Date(date).getDate()}
+            {day?.getDate()}
           </span>
         </div>
 
@@ -70,7 +68,7 @@ export default function EventCard({ event, compact = false }) {
 
       <div className="flex items-center gap-2 flex-wrap">
         <time className="font-mono text-label text-ink-secondary" dateTime={`${date}T${time}`}>
-          {formatEventDate(date)} · {time}–{endTime}
+          {formatDate(date, i18n.language, { weekday: 'short', month: 'short', day: 'numeric' })} · {timeRange}
         </time>
       </div>
 

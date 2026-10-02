@@ -1,10 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchAnalyticsSummary } from '../../api/analytics'
+import { useCategoryLabel } from '../../components/CategoryBadge'
+import { addDaysISO, localeFor, todayISO } from '../../utils/dates'
+
+// GET /analytics/summary?days=N looks back N days and defaults to 30 when
+// the param is missing, so "all time" must be an explicit, large window
+// (the API has no upper bound; ~100 years covers all stored events).
+const ALL_TIME_DAYS = 36500
 
 const RANGES = [
-  { label: '7 días',  days: 7  },
-  { label: '30 días', days: 30 },
-  { label: 'Todo',    days: null },
+  { key: 'days7',   days: 7  },
+  { key: 'days30',  days: 30 },
+  { key: 'allTime', days: ALL_TIME_DAYS },
 ]
 
 const EMPTY_SUMMARY = {
@@ -20,6 +28,8 @@ export default function AdminAnalyticsPage() {
   const [days, setDays]       = useState(30)
   const [summary, setSummary] = useState(EMPTY_SUMMARY)
   const [status, setStatus]   = useState('loading')
+  const { t, i18n } = useTranslation()
+  const categoryLabel = useCategoryLabel()
 
   useEffect(() => {
     let cancelled = false
@@ -48,17 +58,15 @@ export default function AdminAnalyticsPage() {
   }, [summary])
 
   const catData = useMemo(
-    () => summary.categoryViews.map(({ category, views }) => ({ label: category, value: views })),
-    [summary.categoryViews],
+    () => summary.categoryViews.map(({ category, views }) => ({ label: categoryLabel(category), value: views })),
+    [summary.categoryViews, categoryLabel],
   )
 
   const sparkData = useMemo(() => {
     const viewsMap = Object.fromEntries(summary.dailyViews.map(({ date, views }) => [date, views]))
-    const today = new Date()
+    const today = todayISO()
     return Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(today)
-      d.setDate(d.getDate() - (13 - i))
-      const key = d.toISOString().slice(0, 10)
+      const key = addDaysISO(today, -(13 - i))
       return { date: key, value: viewsMap[key] ?? 0 }
     })
   }, [summary.dailyViews])
@@ -71,9 +79,9 @@ export default function AdminAnalyticsPage() {
       {/* Header + range picker */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="font-display text-h3 font-bold text-ink-primary">Analíticas</h1>
+          <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.analytics.title')}</h1>
           <p className="font-body text-body-sm text-ink-secondary mt-0.5">
-            Rendimiento del contenido para el equipo de medios.
+            {t('admin.analytics.subtitle')}
           </p>
         </div>
         <RangePicker active={days} onChange={setDays} />
@@ -82,7 +90,7 @@ export default function AdminAnalyticsPage() {
       {status === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-card px-5 py-4">
           <p className="font-body text-body-sm text-red-800">
-            No se pudieron cargar las analíticas. Intentá de nuevo más tarde.
+            {t('admin.analytics.loadError')}
           </p>
         </div>
       )}
@@ -90,22 +98,22 @@ export default function AdminAnalyticsPage() {
       {status !== 'error' && noData && (
         <div className="bg-amber-50 border border-amber-200 rounded-card px-5 py-4">
           <p className="font-body text-body-sm text-amber-800">
-            <strong>Sin datos aún.</strong> Los datos se registran cuando los lectores visitan artículos y votan.
+            <strong>{t('admin.analytics.noDataTitle')}</strong> {t('admin.analytics.noDataMessage')}
           </p>
         </div>
       )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label="Vistas de artículos" value={summary.totalArticleViews} icon={<IconEye />}  loading={status === 'loading'} />
-        <StatCard label="Visitantes únicos"   value={summary.uniqueVisitors}    icon={<IconUser />} loading={status === 'loading'} />
-        <StatCard label="Votos totales"       value={totalVotes}                icon={<IconThumb />} loading={status === 'loading'} />
+        <StatCard label={t('admin.analytics.articleViews')}   value={summary.totalArticleViews} icon={<IconEye />}  loading={status === 'loading'} lang={i18n.language} />
+        <StatCard label={t('admin.analytics.uniqueVisitors')} value={summary.uniqueVisitors}    icon={<IconUser />} loading={status === 'loading'} lang={i18n.language} />
+        <StatCard label={t('admin.analytics.totalVotes')}     value={totalVotes}                icon={<IconThumb />} loading={status === 'loading'} lang={i18n.language} />
       </div>
 
       {/* Sparkline — daily views */}
       <div className="bg-white rounded-card border border-border shadow-card p-5">
         <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-4">
-          Vistas diarias — últimos 14 días
+          {t('admin.analytics.dailyViews')}
         </p>
         <div className="flex items-end gap-1 h-20">
           {sparkData.map(({ date, value }) => (
@@ -127,10 +135,10 @@ export default function AdminAnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-card border border-border shadow-card p-5">
           <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-4">
-            Artículos más vistos
+            {t('admin.analytics.topArticles')}
           </p>
           {articleRows.filter((a) => a.views > 0).length === 0 ? (
-            <EmptyMetric label="Sin visitas registradas aún." />
+            <EmptyMetric label={t('admin.analytics.noViews')} />
           ) : (
             <BarChart
               data={articleRows.filter((a) => a.views > 0).map((a) => ({ label: a.title, value: a.views }))}
@@ -141,10 +149,10 @@ export default function AdminAnalyticsPage() {
 
         <div className="bg-white rounded-card border border-border shadow-card p-5">
           <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-4">
-            Vistas por categoría
+            {t('admin.analytics.categoryViews')}
           </p>
           {catData.length === 0 ? (
-            <EmptyMetric label="Sin datos de categoría aún." />
+            <EmptyMetric label={t('admin.analytics.noCategoryData')} />
           ) : (
             <BarChart data={catData} colorClass="bg-accent-400" />
           )}
@@ -155,21 +163,21 @@ export default function AdminAnalyticsPage() {
       <div className="bg-white rounded-card border border-border shadow-card overflow-hidden">
         <div className="px-5 py-4 border-b border-border">
           <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">
-            Votos por artículo
+            {t('admin.analytics.votesByArticle')}
           </p>
           <p className="font-body text-body-sm text-ink-secondary mt-0.5">
-            Los conteos son privados y no se muestran al público.
+            {t('admin.analytics.votesPrivate')}
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[540px]">
             <thead>
               <tr className="border-b border-border bg-surface">
-                <VTh>Artículo</VTh>
-                <VTh>▲ Útil</VTh>
-                <VTh>▼ No útil</VTh>
-                <VTh>Ratio</VTh>
-                <VTh>Vistas</VTh>
+                <VTh>{t('admin.analytics.columns.article')}</VTh>
+                <VTh>▲ {t('admin.analytics.columns.helpful')}</VTh>
+                <VTh>▼ {t('admin.analytics.columns.notHelpful')}</VTh>
+                <VTh>{t('admin.analytics.columns.ratio')}</VTh>
+                <VTh>{t('admin.analytics.columns.views')}</VTh>
               </tr>
             </thead>
             <tbody>
@@ -207,11 +215,12 @@ export default function AdminAnalyticsPage() {
 // ── Sub-components ────────────────────────────────────────────────────────
 
 function RangePicker({ active, onChange }) {
+  const { t } = useTranslation()
   return (
     <div className="flex rounded-sm border border-border overflow-hidden">
-      {RANGES.map(({ label, days }) => (
+      {RANGES.map(({ key, days }) => (
         <button
-          key={label}
+          key={key}
           type="button"
           onClick={() => onChange(days)}
           className={[
@@ -219,21 +228,21 @@ function RangePicker({ active, onChange }) {
             active === days ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface',
           ].join(' ')}
         >
-          {label}
+          {t(`admin.analytics.ranges.${key}`)}
         </button>
       ))}
     </div>
   )
 }
 
-function StatCard({ label, value, icon, loading }) {
+function StatCard({ label, value, icon, loading, lang }) {
   return (
     <div className="bg-white rounded-card border border-border shadow-card p-5 flex flex-col gap-2">
       <div className="w-8 h-8 text-primary">{icon}</div>
       {loading ? (
         <div className="skeleton h-8 w-20 rounded" />
       ) : (
-        <p className="font-display text-h3 font-bold text-ink-primary tabular-nums">{value.toLocaleString()}</p>
+        <p className="font-display text-h3 font-bold text-ink-primary tabular-nums">{value.toLocaleString(localeFor(lang))}</p>
       )}
       <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{label}</p>
     </div>

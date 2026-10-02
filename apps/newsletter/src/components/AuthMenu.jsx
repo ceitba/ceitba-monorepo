@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { signOut, startGoogleSignIn } from '../store/authStore'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { canAccessAdmin, signOut, startGoogleSignIn } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
-
-const ADMIN_ROLES = ['staff', 'admin', 'editor']
+import { CONTRIBUTIONS_ENABLED } from '../config/features'
 
 // Same shape as CeitbaPage's AuthMenu — sign-in button when anonymous,
 // avatar dropdown when signed in. The previous "Contribuir" CTA moves into
@@ -14,6 +14,8 @@ export default function AuthMenu({ mobile = false }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (!open) return
@@ -35,13 +37,17 @@ export default function AuthMenu({ mobile = false }) {
 
   if (!profile) {
     return (
-      <button type="button" onClick={startGoogleSignIn} className={signInBtnClass}>
-        Iniciar sesión
+      <button
+        type="button"
+        onClick={() => startGoogleSignIn({ returnTo: location.pathname + location.search })}
+        className={signInBtnClass}
+      >
+        {t('auth.signIn')}
       </button>
     )
   }
 
-  const isAdmin = ADMIN_ROLES.includes(profile.role)
+  const isAdmin = canAccessAdmin(profile)
   const initials = (profile.name ?? profile.email)
     .split(/\s+/)
     .map((p) => p[0])
@@ -57,6 +63,7 @@ export default function AuthMenu({ mobile = false }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={t('auth.accountMenu')}
         className="w-9 h-9 rounded-full overflow-hidden border border-border dark:border-[#3f3f46] bg-primary-100 dark:bg-primary-900 flex items-center justify-center hover:border-primary transition-colors duration-150"
       >
         {profile.avatarUrl ? (
@@ -79,9 +86,10 @@ export default function AuthMenu({ mobile = false }) {
           {/* CeitbaPage owns the canonical /profile route — deep link from here. */}
           <a
             href="https://ceitba.org.ar/profile"
+            role="menuitem"
             className="block px-3 py-2 font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] hover:bg-primary-50 dark:hover:bg-primary-900"
           >
-            Mi perfil
+            {t('auth.myProfile')}
           </a>
           {isAdmin ? (
             <Link
@@ -90,16 +98,16 @@ export default function AuthMenu({ mobile = false }) {
               onClick={() => setOpen(false)}
               className="block px-3 py-2 font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] hover:bg-primary-50 dark:hover:bg-primary-900"
             >
-              Panel admin
+              {t('auth.adminPanel')}
             </Link>
-          ) : (
+          ) : CONTRIBUTIONS_ENABLED && (
             <button
               type="button"
               role="menuitem"
               onClick={() => { setOpen(false); navigate('/contribute') }}
               className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] hover:bg-primary-50 dark:hover:bg-primary-900"
             >
-              Contribuir
+              {t('auth.contribute')}
             </button>
           )}
           <button
@@ -108,7 +116,7 @@ export default function AuthMenu({ mobile = false }) {
             onClick={async () => { await signOut(); setOpen(false) }}
             className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] hover:bg-primary-50 dark:hover:bg-primary-900"
           >
-            Cerrar sesión
+            {t('auth.signOut')}
           </button>
         </div>
       )}

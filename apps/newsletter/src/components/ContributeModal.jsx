@@ -41,7 +41,7 @@ export default function ContributeModal({ open, onClose }) {
 
           <button
             type="button"
-            onClick={startGoogleSignIn}
+            onClick={() => startGoogleSignIn({ returnTo: '/contribute' })}
             className="w-full inline-flex items-center justify-center gap-3 min-h-[48px] px-6 bg-white border border-border rounded-sm shadow-sm hover:shadow-md font-body text-body-sm font-semibold text-ink-primary transition-shadow duration-150"
           >
             <GoogleIcon />

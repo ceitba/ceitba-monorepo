@@ -1,17 +1,20 @@
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
+import { Trans, useTranslation } from 'react-i18next'
 import { startGoogleSignIn } from '../../store/authStore'
 
-const ERROR_MESSAGES = {
-  unauthorized:           'Solo cuentas @itba.edu.ar pueden iniciar sesión.',
-  unauthorized_workspace: 'Solo cuentas del workspace ITBA pueden iniciar sesión.',
-  unverified_email:       'Tu correo de Google aún no está verificado.',
-  auth_failed:            'No pudimos completar el inicio de sesión. Probá de nuevo.',
-}
+const KNOWN_ERRORS = ['unauthorized', 'unauthorized_workspace', 'unverified_email', 'invalid_state', 'auth_failed']
 
 export default function AdminLoginPage() {
+  const { t } = useTranslation()
+  const location = useLocation()
   const [params] = useSearchParams()
   const errorCode = params.get('error')
-  const errorMsg = errorCode ? (ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES.auth_failed) : null
+  const errorMsg = errorCode
+    ? t(`auth.errors.${KNOWN_ERRORS.includes(errorCode) ? errorCode : 'auth_failed'}`)
+    : null
+  // AdminAuthGuard passes the guarded page it bounced from; without it the
+  // callback sends the user to the default admin landing page.
+  const returnTo = location.state?.from ?? null
 
   return (
     <div className="min-h-screen bg-primary-900 flex flex-col items-center justify-center px-4">
@@ -19,7 +22,7 @@ export default function AdminLoginPage() {
         <div className="mb-8 text-center">
           <p className="font-display text-h3 font-bold text-primary">ITBA News</p>
           <p className="font-mono text-label text-ink-secondary uppercase tracking-widest mt-1">
-            Panel de Administración
+            {t('auth.adminSubtitle')}
           </p>
         </div>
 
@@ -31,15 +34,15 @@ export default function AdminLoginPage() {
 
         <button
           type="button"
-          onClick={startGoogleSignIn}
+          onClick={() => startGoogleSignIn({ returnTo })}
           className="w-full min-h-[44px] flex items-center justify-center gap-3 bg-white border border-border rounded-sm font-body text-body font-semibold text-ink-primary hover:border-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded"
         >
           <GoogleIcon />
-          Ingresar con Google (ITBA)
+          {t('auth.googleButton')}
         </button>
 
         <p className="mt-6 font-mono text-label text-ink-secondary text-center leading-relaxed">
-          Requiere cuenta <span className="text-primary font-medium">@itba.edu.ar</span>
+          <Trans i18nKey="auth.requiresAccount" components={{ 1: <span className="text-primary font-medium" /> }} />
         </p>
       </div>
     </div>
