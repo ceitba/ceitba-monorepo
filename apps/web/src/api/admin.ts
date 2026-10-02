@@ -60,6 +60,40 @@ export function fetchOrganizations(): Promise<OrganizationSummary[]> {
   return apiGet<{ data: OrganizationSummary[] }>('/organizations').then((r) => r.data)
 }
 
+// Full org as returned by GET/POST /v1/organizations (web/news OrganizationResponse).
+// `color` is a named scheme (blue | amber | green | violet) that ITBA News maps
+// to its hero background; logo/background are set later by the org's admins.
+export interface Organization {
+  slug: string
+  name: string
+  fullName: string
+  description: string | null
+  category: string | null
+  color: string | null
+  followerCount: number
+  logoUrl: string | null
+  backgroundUrl: string | null
+}
+
+export interface CreateOrganizationPayload {
+  slug: string
+  name: string
+  fullName: string
+  description?: string
+  category?: string
+  color?: string
+}
+
+export function listOrganizations(): Promise<Organization[]> {
+  return apiGet<{ data: Organization[] }>('/organizations').then((r) => r.data)
+}
+
+// STAFF-only. 409 ResourceAlreadyExists if the slug is taken, 400
+// ValidationError ("field: message; …") if a field is rejected.
+export function createOrganization(payload: CreateOrganizationPayload): Promise<Organization> {
+  return apiSend('POST', '/organizations', payload)
+}
+
 export function assignStaff(payload: {
   email: string
   branch: string

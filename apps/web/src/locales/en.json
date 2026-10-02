@@ -28,6 +28,7 @@
       "staff": "Staff",
       "benefits": "Benefits",
       "users": "Users",
+      "organizations": "Organizations",
       "corrections": "Schedule corrections"
     },
     "staff": {
@@ -124,7 +125,62 @@
       "makeOrgMember": "Remove admin of {{org}}",
       "demoteOrgTitle": "Remove admin?",
       "demoteOrgBody": "{{name}} will stay a member of {{org}}, but without admin access (e.g. the followers list).",
-      "demoteOrgConfirm": "Remove admin"
+      "demoteOrgConfirm": "Remove admin",
+      "noOrgMembers": "{{org}} has no members yet.",
+      "addingBanner": "Adding members to {{org}} — search for the person and tap “Add to {{org}}”.",
+      "addingDone": "Done",
+      "addToOrg": "Add to {{org}}",
+      "addToOrgAria": "Add {{name}} to {{org}}",
+      "addingToOrg": "Adding…",
+      "addMembers": "Add members"
+    },
+    "organizations": {
+      "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
+      "add": "New organization",
+      "createTitle": "New organization",
+      "create": "Create organization",
+      "creating": "Creating…",
+      "createdNotice": "You created {{name}}. Now add members so they can post on ITBA News.",
+      "newBadge": "New",
+      "addMembers": "Add members",
+      "addMembersAria": "Add members to {{name}}",
+      "empty": "No organizations yet.",
+      "col": {
+        "organization": "Organization",
+        "slug": "Address",
+        "category": "Category",
+        "actions": "Actions"
+      },
+      "fields": {
+        "name": "Name",
+        "nameHint": "Short, the name it goes by. E.g. IEEE",
+        "fullName": "Full name",
+        "fullNameHint": "E.g. IEEE ITBA Student Branch",
+        "slug": "ITBA News address",
+        "slugPlaceholder": "name",
+        "slugHint": "Generated from the name. It can't be changed after creation.",
+        "slugHintManual": "Lowercase letters, digits and hyphens. It can't be changed after creation.",
+        "slugEditAria": "Edit the ITBA News address",
+        "description": "Description",
+        "optional": "(optional)",
+        "category": "Category",
+        "noCategory": "No category",
+        "color": "Color",
+        "colorHint": "The organization's cover color on ITBA News."
+      },
+      "colors": {
+        "blue": "Blue",
+        "amber": "Amber",
+        "green": "Green",
+        "violet": "Violet"
+      },
+      "errors": {
+        "nameRequired": "Enter the name.",
+        "fullNameRequired": "Enter the full name.",
+        "slugRequired": "Enter an address.",
+        "slugFormat": "Use 2 to {{max}} characters: lowercase letters, digits and single hyphens, not at the start or end.",
+        "duplicate": "An organization with that address already exists."
+      }
     },
     "tabsAria": "Manage sections",
     "corrections": {

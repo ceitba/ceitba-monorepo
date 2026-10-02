@@ -34,7 +34,12 @@ function defaultStaffRange() {
 
 type SortKey = 'newest' | 'oldest'
 
-export default function ManageUsersSection() {
+// `initialAddingTo` opens the tab in "adding members to <org>" mode (from
+// "Agregar miembros" right after creating an org): every user is listed, as
+// usual, and each row that isn't in that org gets a one-click
+// "Agregar a <org>" button. A new org has no members, so filtering by it
+// would only show an empty table.
+export default function ManageUsersSection({ initialAddingTo }: { initialAddingTo?: OrganizationSummary } = {}) {
   const { t } = useTranslation()
   const [page, setPage]       = useState<UsersPage | null>(null)
   const [orgs, setOrgs]       = useState<OrganizationSummary[]>([])
@@ -52,6 +57,13 @@ export default function ManageUsersSection() {
   const [sort, setSort]       = useState<SortKey>('newest')
   const [orgSlug, setOrgSlug] = useState('')
   const [pageNum, setPageNum] = useState(1)
+  const [addingTo, setAddingTo] = useState<OrganizationSummary | null>(initialAddingTo ?? null)
+
+  // Entering the mode: go straight to the search box.
+  const searchRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (addingTo) searchRef.current?.focus()
+  }, [addingTo])
 
   // Track the active request so an out-of-order response (e.g. fast keystrokes)
   // can't overwrite the latest one.
@@ -147,7 +159,16 @@ export default function ManageUsersSection() {
     if (!slug) return
     setError(null); setBusyId(u.id)
     try {
-      await addUserOrganization(u.id, slug, 'member')
+      const m = await addUserOrganization(u.id, slug, 'member')
+      // Show the chip (and drop the "Agregar a" button) right away instead of
+      // re-enabling the button until the reload lands, which would invite a
+      // second click and a 409.
+      setPage((p) => p && {
+        ...p,
+        data: p.data.map((x) => (x.id === u.id && !x.organizations.some((o) => o.slug === m.slug)
+          ? { ...x, organizations: [...x.organizations, m] }
+          : x)),
+      })
       reload()
     } catch (e) {
       setError((e as Error).message)
@@ -201,8 +222,25 @@ export default function ManageUsersSection() {
     <div className="flex flex-col gap-4">
       {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
 
+      {addingTo && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-sm border font-body text-body-sm bg-primary-50 text-primary-800 border-primary-200 dark:bg-night-surface dark:text-night-text dark:border-primary-300"
+        >
+          <p className="flex-1 min-w-[200px]">{t('manage.users.addingBanner', { org: addingTo.name })}</p>
+          <button
+            type="button"
+            onClick={() => setAddingTo(null)}
+            className="px-3 py-1 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600 transition-colors"
+          >
+            {t('manage.users.addingDone')}
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <input
+          ref={searchRef}
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -272,6 +310,17 @@ export default function ManageUsersSection() {
                     )}
                   </td>
                   <td className="px-3 py-3">
+                    {addingTo && !u.organizations.some((m) => m.slug === addingTo.slug) && (
+                      <button
+                        type="button"
+                        disabled={busyId === u.id}
+                        onClick={() => addOrg(u, addingTo.slug)}
+                        aria-label={t('manage.users.addToOrgAria', { org: addingTo.name, name: u.name ?? u.email })}
+                        className="mb-2 px-3 py-1 rounded-sm border border-primary text-primary dark:border-primary-300 dark:text-primary-300 font-mono text-label uppercase tracking-widest hover:bg-primary-50 dark:hover:bg-night-raised transition-colors disabled:opacity-50"
+                      >
+                        {busyId === u.id ? t('manage.users.addingToOrg') : t('manage.users.addToOrg', { org: addingTo.name })}
+                      </button>
+                    )}
                     <div className="flex flex-wrap gap-2 mb-2">
                       {u.organizations.map((m) => {
                         const isAdmin = m.role === 'admin'
@@ -320,9 +369,30 @@ export default function ManageUsersSection() {
                 </tr>
               )
             })}
-            {!loading && users.length === 0 && (
+            {!loading && users.length === 0 && (orgSlug && !q ? (
+              // Filtering by an org with no members: offer the same
+              // "adding members" mode the Organizations tab opens.
+              <tr>
+                <td colSpan={3} className="px-3 py-8 text-center">
+                  <p className="font-semibold text-ink-primary dark:text-night-text">
+                    {t('manage.users.noOrgMembers', { org: orgs.find((o) => o.slug === orgSlug)?.name ?? orgSlug })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingTo(orgs.find((o) => o.slug === orgSlug) ?? { slug: orgSlug, name: orgSlug })
+                      setOrgSlug('')
+                      setPageNum(1)
+                    }}
+                    className="mt-3 px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors"
+                  >
+                    {t('manage.users.addMembers')}
+                  </button>
+                </td>
+              </tr>
+            ) : (
               <tr><td colSpan={3} className="px-3 py-6 text-center text-ink-secondary">{t('manage.empty')}</td></tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>

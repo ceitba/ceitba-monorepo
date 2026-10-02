@@ -28,6 +28,7 @@
       "staff": "Staff",
       "benefits": "Beneficios",
       "users": "Usuarios",
+      "organizations": "Organizaciones",
       "corrections": "Correcciones de horario"
     },
     "staff": {
@@ -124,7 +125,62 @@
       "makeOrgMember": "Quitar admin de {{org}}",
       "demoteOrgTitle": "¿Quitar admin?",
       "demoteOrgBody": "{{name}} va a seguir siendo miembro de {{org}}, pero sin acceso de admin (por ejemplo, la lista de seguidores).",
-      "demoteOrgConfirm": "Quitar admin"
+      "demoteOrgConfirm": "Quitar admin",
+      "noOrgMembers": "{{org}} todavía no tiene miembros.",
+      "addingBanner": "Agregando miembros a {{org}} — buscá a la persona y tocá «Agregar a {{org}}».",
+      "addingDone": "Listo",
+      "addToOrg": "Agregar a {{org}}",
+      "addToOrgAria": "Agregar a {{name}} a {{org}}",
+      "addingToOrg": "Agregando…",
+      "addMembers": "Agregar miembros"
+    },
+    "organizations": {
+      "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
+      "add": "Nueva organización",
+      "createTitle": "Nueva organización",
+      "create": "Crear organización",
+      "creating": "Creando…",
+      "createdNotice": "Creaste {{name}}. Ahora agregale miembros para que puedan publicar en ITBA News.",
+      "newBadge": "Nueva",
+      "addMembers": "Agregar miembros",
+      "addMembersAria": "Agregar miembros a {{name}}",
+      "empty": "Todavía no hay organizaciones.",
+      "col": {
+        "organization": "Organización",
+        "slug": "Dirección",
+        "category": "Categoría",
+        "actions": "Acciones"
+      },
+      "fields": {
+        "name": "Nombre",
+        "nameHint": "Corto, como se la conoce. Ej.: IEEE",
+        "fullName": "Nombre completo",
+        "fullNameHint": "Ej.: IEEE ITBA Student Branch",
+        "slug": "Dirección en ITBA News",
+        "slugPlaceholder": "nombre",
+        "slugHint": "Se genera a partir del nombre. No se puede cambiar después de crearla.",
+        "slugHintManual": "Minúsculas, números y guiones. No se puede cambiar después de crearla.",
+        "slugEditAria": "Editar la dirección en ITBA News",
+        "description": "Descripción",
+        "optional": "(opcional)",
+        "category": "Categoría",
+        "noCategory": "Sin categoría",
+        "color": "Color",
+        "colorHint": "Es el color de la portada de la organización en ITBA News."
+      },
+      "colors": {
+        "blue": "Azul",
+        "amber": "Ámbar",
+        "green": "Verde",
+        "violet": "Violeta"
+      },
+      "errors": {
+        "nameRequired": "Ingresá el nombre.",
+        "fullNameRequired": "Ingresá el nombre completo.",
+        "slugRequired": "Ingresá una dirección.",
+        "slugFormat": "Usá entre 2 y {{max}} caracteres: minúsculas, números y guiones simples, sin guion al principio ni al final.",
+        "duplicate": "Ya existe una organización con esa dirección."
+      }
     },
     "tabsAria": "Secciones de administración",
     "corrections": {
