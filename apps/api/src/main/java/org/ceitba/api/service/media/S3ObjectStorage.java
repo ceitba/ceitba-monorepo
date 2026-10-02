@@ -1,25 +1,43 @@
 package org.ceitba.api.service.media;
 
 import org.ceitba.api.config.StorageProperties;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-// SigV4 presigned PUTs against an S3-compatible endpoint (MinIO in prod).
-// Presigning is pure local computation: no request reaches the bucket here.
+// SigV4 presigned PUTs/GETs against an S3-compatible endpoint (MinIO in
+// prod). Presigning is pure local computation: no request reaches the bucket
+// there. put/delete (Drive sync) go through `client`, which talks to
+// storage.internal-endpoint when set.
 public class S3ObjectStorage implements ObjectStorage {
 
     private final S3Presigner presigner;
+    private final S3Client client;
     private final StorageProperties props;
     private final Clock clock;
 
     public S3ObjectStorage(S3Presigner presigner, StorageProperties props, Clock clock) {
+        this(presigner, null, props, clock);
+    }
+
+    public S3ObjectStorage(S3Presigner presigner, S3Client client, StorageProperties props, Clock clock) {
         this.presigner = presigner;
+        this.client = client;
         this.props = props;
         this.clock = clock;
     }
@@ -65,5 +83,56 @@ public class S3ObjectStorage implements ObjectStorage {
     @Override
     public String publicUrl(String key) {
         return props.publicBaseUrl() + "/" + key;
+    }
+
+    @Override
+    public void put(String key, String contentType, InputStream body, long length) {
+        requireClient().putObject(PutObjectRequest.builder()
+                .bucket(props.bucket())
+                .key(key)
+                .contentType(contentType)
+                .contentLength(length)
+                .build(),
+            RequestBody.fromInputStream(body, length));
+    }
+
+    @Override
+    public void putFile(String key, String contentType, Path file) {
+        requireClient().putObject(PutObjectRequest.builder()
+                .bucket(props.bucket())
+                .key(key)
+                .contentType(contentType)
+                .build(),
+            RequestBody.fromFile(file));
+    }
+
+    @Override
+    public void delete(String key) {
+        requireClient().deleteObject(DeleteObjectRequest.builder().bucket(props.bucket()).key(key).build());
+    }
+
+    @Override
+    public String presignGet(String key, Duration ttl, String downloadFilename) {
+        var get = GetObjectRequest.builder().bucket(props.bucket()).key(key);
+        if (downloadFilename != null && !downloadFilename.isBlank()) {
+            get.responseContentDisposition(attachment(downloadFilename));
+        }
+        return presigner.presignGetObject(GetObjectPresignRequest.builder()
+                .signatureDuration(ttl)
+                .getObjectRequest(get.build())
+                .build())
+            .url().toString();
+    }
+
+    // RFC 6266/5987: an ASCII fallback plus the UTF-8 name.
+    static String attachment(String filename) {
+        var ascii = filename.replaceAll("[^A-Za-z0-9._ -]", "_");
+        var encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+        return "attachment; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded;
+    }
+
+    private S3Client requireClient() {
+        if (client == null) throw new IllegalStateException("S3ObjectStorage built without an S3Client");
+        return client;
     }
 }

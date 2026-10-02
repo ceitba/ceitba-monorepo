@@ -56,10 +56,12 @@ services:
 
   # One-shot, idempotent setup that runs on every `docker compose up`:
   #   - creates the bucket (STORAGE_BUCKET, default ceitba-media);
-  #   - allows anonymous GET of objects (s3:GetObject only: no list, no write);
+  #   - allows anonymous GET of objects (s3:GetObject only: no list, no write)
+  #     except under drive/ (Apuntes, signed URLs only);
   #   - creates/updates the API's service user (STORAGE_ACCESS_KEY_ID/SECRET)
-  #     with a policy limited to s3:PutObject/s3:GetObject on that bucket,
-  #     so the API never holds the root credentials.
+  #     with a policy limited to s3:PutObject/s3:GetObject on that bucket
+  #     (plus s3:DeleteObject under drive/), so the API never holds the root
+  #     credentials.
   # Re-running with a new STORAGE_SECRET_ACCESS_KEY rotates the user's secret.
   # MinioPresignedUploadIT runs this exact script against a real MinIO.
   minio-init:
@@ -87,6 +89,8 @@ services:
         mc mb --ignore-existing "local/$$STORAGE_BUCKET"
         # Anonymous GetObject only. mc's canned "download" policy also grants
         # s3:ListBucket, which would let anyone enumerate every upload.
+        # drive/ (Apuntes copies of students' Drive files) is explicitly
+        # denied: it is only served through 5-minute signed URLs.
         cat > /tmp/anonymous-policy.json <<EOF
         {
           "Version": "2012-10-17",
@@ -95,10 +99,16 @@ services:
             "Principal": {"AWS": ["*"]},
             "Action": ["s3:GetObject"],
             "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/*"]
+          }, {
+            "Effect": "Deny",
+            "Principal": {"AWS": ["*"]},
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
           }]
         }
         EOF
         mc anonymous set-json /tmp/anonymous-policy.json "local/$$STORAGE_BUCKET"
+        # Deletes only under drive/ (Drive sync replaces/purges its copies).
         cat > /tmp/ceitba-api-policy.json <<EOF
         {
           "Version": "2012-10-17",
@@ -106,6 +116,10 @@ services:
             "Effect": "Allow",
             "Action": ["s3:PutObject", "s3:GetObject"],
             "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/*"]
+          }, {
+            "Effect": "Allow",
+            "Action": ["s3:DeleteObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
           }]
         }
         EOF
@@ -194,6 +208,15 @@ services:
       STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${R2_SECRET_ACCESS_KEY:-}}
       STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${R2_PUBLIC_URL:-}}
       STORAGE_PRESIGN_TTL: ${STORAGE_PRESIGN_TTL:-${R2_PRESIGN_TTL:-10m}}
+      # The API's own reads/writes (Drive sync) go straight to MinIO, not
+      # through Caddy's upload-sized body limit.
+      STORAGE_INTERNAL_ENDPOINT: ${STORAGE_INTERNAL_ENDPOINT:-http://minio:9000}
+      # Drive sync / Apuntes (docs/DRIVE-SYNC.md). No key = feature off (503).
+      DRIVE_SYNC_ENABLED: ${DRIVE_SYNC_ENABLED:-false}
+      DRIVE_SYNC_INTERVAL: ${DRIVE_SYNC_INTERVAL:-PT30M}
+      DRIVE_SYNC_RUN_BUDGET: ${DRIVE_SYNC_RUN_BUDGET:-PT10M}
+      DRIVE_SYNC_SERVICE_ACCOUNT_JSON: ${DRIVE_SYNC_SERVICE_ACCOUNT_JSON:-}
+      DRIVE_SYNC_MAX_FILE_BYTES: ${DRIVE_SYNC_MAX_FILE_BYTES:-52428800}
     networks:
       - ceitba-network
       - ceitba-proxy
