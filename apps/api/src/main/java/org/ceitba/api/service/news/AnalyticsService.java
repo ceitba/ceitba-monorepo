@@ -4,6 +4,7 @@ import org.ceitba.api.domain.news.AnalyticsEvent;
 import org.ceitba.api.repository.news.AnalyticsEventRepository;
 import org.ceitba.api.repository.news.ArticleVoteRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
+import org.ceitba.api.service.crypto.ContentHmac;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,17 +21,25 @@ public class AnalyticsService {
     private final AnalyticsEventRepository analyticsRepo;
     private final ArticleVoteRepository voteRepo;
     private final ArticleRepository articleRepo;
+    private final ContentHmac hmac;
 
     public AnalyticsService(AnalyticsEventRepository analyticsRepo,
                             ArticleVoteRepository voteRepo,
-                            ArticleRepository articleRepo) {
+                            ArticleRepository articleRepo,
+                            ContentHmac hmac) {
         this.analyticsRepo = analyticsRepo;
         this.voteRepo      = voteRepo;
         this.articleRepo   = articleRepo;
+        this.hmac          = hmac;
     }
 
+    // Stores HMAC-SHA256(clientIp) under a server-side key (see ContentHmac),
+    // never the IP itself. Rows written before this used an unkeyed SHA-256;
+    // they're left as-is: nothing reads ip_hash back (unique visitors count
+    // session_id), so there is no lookup that needs both forms.
     @Transactional
-    public void ingestBatch(List<EventPayload> events, String ipHash) {
+    public void ingestBatch(List<EventPayload> events, String clientIp) {
+        String ipHash = ipHash(clientIp);
         var entities = events.stream()
             .map(e -> new AnalyticsEvent(
                 e.type(), e.sessionId(),
@@ -70,6 +79,10 @@ public class AnalyticsService {
             .toList();
 
         return new Summary(totalViews, uniqueVisitors, topArticles, categoryViews, dailyViews, voteBreakdown);
+    }
+
+    String ipHash(String clientIp) {
+        return hmac.signHex(ContentHmac.ANALYTICS_IP_HASHES, clientIp == null ? "" : clientIp);
     }
 
     public record EventPayload(

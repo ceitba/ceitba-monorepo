@@ -129,6 +129,15 @@ public class AccountDeletionRepository {
         exec("DELETE FROM public.proposal_alias WHERE user_id = :u", userId);
     }
 
+    // Schedule corrections are crowd data and stay: the user's suggestions and
+    // staff reviews are detached here. Their votes are removed (and the
+    // counters/statuses re-evaluated under the commission lock) by
+    // ScheduleCorrectionService.withdrawVotesOf, which runs first.
+    public void detachScheduleCorrections(UUID userId) {
+        exec("UPDATE public.schedule_correction SET suggester_id = NULL WHERE suggester_id = :u", userId);
+        exec("UPDATE public.schedule_correction SET reviewed_by = NULL WHERE reviewed_by = :u", userId);
+    }
+
     // Wiki contributions other students rely on whose author FK is NOT NULL:
     // notes, career notes, wiki page revisions, reviewed edit proposals.
     public long countRetainedContributions(UUID userId) {

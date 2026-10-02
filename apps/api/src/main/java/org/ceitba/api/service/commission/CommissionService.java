@@ -7,6 +7,8 @@ import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.service.correction.EffectiveSlot;
+import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.ceitba.api.web.commission.dto.CommissionResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,22 +31,27 @@ public class CommissionService {
     private final PlanRepository planRepository;
     private final PlanSubjectRepository planSubjectRepository;
     private final SubjectRepository subjectRepository;
+    private final ScheduleCorrectionService scheduleCorrections;
     private final Clock clock;
 
     public CommissionService(CommissionRepository commissionRepository,
                              PlanRepository planRepository,
                              PlanSubjectRepository planSubjectRepository,
                              SubjectRepository subjectRepository,
+                             ScheduleCorrectionService scheduleCorrections,
                              Clock clock) {
         this.commissionRepository = commissionRepository;
         this.planRepository = planRepository;
         this.planSubjectRepository = planSubjectRepository;
         this.subjectRepository = subjectRepository;
+        this.scheduleCorrections = scheduleCorrections;
         this.clock = clock;
     }
 
     // GET /v1/commissions?plan= — commissions of the plan's subjects whose
-    // course has not ended (course_end >= today in ART).
+    // course has not ended (course_end >= today in ART). `times` are the
+    // effective slots: an applied student schedule correction replaces the
+    // SGA ones (one extra query for the whole plan).
     @Transactional(readOnly = true)
     public List<CommissionResponse> currentByPlan(String planId) {
         if (!planRepository.existsById(planId) && !planSubjectRepository.existsByPlanId(planId)) {
@@ -54,10 +61,12 @@ public class CommissionService {
         var codes = commissions.stream().map(Commission::getSubjectCode).distinct().toList();
         Map<String, String> names = subjectRepository.findAllById(codes).stream()
             .collect(Collectors.toMap(Subject::getId, Subject::getName));
-        return commissions.stream().map(c -> toResponse(c, names)).toList();
+        Map<String, List<EffectiveSlot>> times = scheduleCorrections.effectiveSlots(commissions);
+        return commissions.stream().map(c -> toResponse(c, names, times.get(c.getId()))).toList();
     }
 
-    private static CommissionResponse toResponse(Commission c, Map<String, String> names) {
+    private static CommissionResponse toResponse(Commission c, Map<String, String> names,
+                                                 List<EffectiveSlot> times) {
         return new CommissionResponse(
             c.getId(),
             c.getSubjectCode(),
@@ -68,13 +77,13 @@ public class CommissionService {
             c.getEnrolledStudents(),
             c.getCourseStart(),
             c.getCourseEnd(),
-            c.getTimes().stream()
+            times.stream()
                 .map(t -> new CommissionResponse.Time(
-                    t.getDay().name(),
-                    t.getHourFrom().format(HH_MM),
-                    t.getHourTo().format(HH_MM),
-                    t.getBuilding(),
-                    t.getClassroom()))
+                    t.day().name(),
+                    t.from().format(HH_MM),
+                    t.to().format(HH_MM),
+                    t.building(),
+                    t.classroom()))
                 .toList()
         );
     }

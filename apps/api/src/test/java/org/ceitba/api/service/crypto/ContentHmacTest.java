@@ -71,4 +71,16 @@ class ContentHmacTest {
         // A dedicated secret alone is enough.
         assertThat(new ContentHmac(auth(null), DEDICATED).sign("x", "m")).hasSize(32);
     }
+
+    @Test
+    void signHexIsLowercaseHexOfSignAndClientIpLabelsUseSeparateKeys() {
+        var hmac = ContentHmac.fromJwtSecret(JWT_SECRET);
+        String hex = hmac.signHex(ContentHmac.VOTE_FINGERPRINTS, "1.2.3.4|UA");
+
+        assertThat(hex).hasSize(64).matches("[0-9a-f]+");
+        assertThat(java.util.HexFormat.of().parseHex(hex))
+            .isEqualTo(hmac.sign(ContentHmac.VOTE_FINGERPRINTS, "1.2.3.4|UA"));
+        assertThat(hmac.signHex(ContentHmac.ANALYTICS_IP_HASHES, "1.2.3.4"))
+            .isNotEqualTo(hmac.signHex(ContentHmac.VOTE_FINGERPRINTS, "1.2.3.4"));
+    }
 }

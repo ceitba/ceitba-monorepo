@@ -71,7 +71,7 @@ public class NewsEventController {
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForEvent(#id, #req.organization(), authentication)")
     public NewsEventResponse patch(@PathVariable String id,
-                                    @RequestBody NewsEventPatchInput req) {
+                                    @RequestBody @Valid NewsEventPatchInput req) {
         var patch = new NewsEvent(id, null, null, null, null, null, null);
         if (req.title()       != null) patch.setTitle(req.title());
         if (req.eventDate()   != null) patch.setEventDate(req.eventDate());

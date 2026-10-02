@@ -2,14 +2,17 @@ package org.ceitba.api.service.plan;
 
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
+import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.PlanSubject;
 import org.ceitba.api.domain.PlanSubjectId;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.external.itba.ItbaApiClient;
+import org.ceitba.api.external.itba.SubjectPlanProjection;
 import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.ceitba.api.web.plan.dto.CreateSubjectPlanRequest;
 import org.ceitba.api.web.plan.dto.SubjectPlanResponse;
 import org.ceitba.api.web.plan.dto.UpdateSubjectPlanRequest;
@@ -21,21 +24,25 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SubjectPlanService {
 
     private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
-    private static final DateTimeFormatter HHMMSS = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final ItbaApiClient itbaApiClient;
     private final CommissionRepository commissionRepository;
     private final PlanSubjectRepository planSubjectRepository;
     private final PlanRepository planRepository;
     private final SubjectRepository subjectRepository;
+    private final ScheduleCorrectionService scheduleCorrections;
     private final Clock clock;
 
     public SubjectPlanService(ItbaApiClient itbaApiClient,
@@ -43,30 +50,54 @@ public class SubjectPlanService {
                               PlanSubjectRepository planSubjectRepository,
                               PlanRepository planRepository,
                               SubjectRepository subjectRepository,
+                              ScheduleCorrectionService scheduleCorrections,
                               Clock clock) {
         this.itbaApiClient = itbaApiClient;
         this.commissionRepository = commissionRepository;
         this.planSubjectRepository = planSubjectRepository;
         this.planRepository = planRepository;
         this.subjectRepository = subjectRepository;
+        this.scheduleCorrections = scheduleCorrections;
         this.clock = clock;
     }
 
     // GET /api/v1/subjects?plan=... — the "organized" response. Subjects come
     // from the live ITBA API; commissions come from the DB cached by the sync
     // job. Mirrors NestJS SubjectPlanService.getSubjectsByPlanOrganized.
-    @Transactional(readOnly = true)
+    //
+    // Deliberately NOT @Transactional: the ITBA call can take up to the
+    // client's 30 s read timeout, and a surrounding transaction would pin a
+    // pooled DB connection for all of it. The only DB read is a single
+    // repository query (with its own read-only transaction) issued after the
+    // external call returns; it hydrates `times`, so nothing lazy is touched
+    // once the entities are detached.
+    //
+    // Student schedule corrections are overlaid on each commission (effective
+    // schedule, sga_schedule, open corrections): two more queries for the
+    // whole plan, see ScheduleCorrectionService.organizedCommissions. viewerId
+    // (null when anonymous) only fills each correction's my_vote.
     public Map<String, Map<String, Map<String, List<OrganizedSubjectsResponse.SubjectDetail>>>>
-            getSubjectsByPlanOrganized(String planId) {
+            getSubjectsByPlanOrganized(String planId, UUID viewerId) {
         var subjectPlans = itbaApiClient.getSubjectsByPlan(planId);
         if (subjectPlans.isEmpty()) {
             throw new ResourceNotFoundException("Plan", planId);
         }
 
-        // findAllWithTimes hydrates the times collection in the same query;
-        // c.getTimes() in the loop below would otherwise trigger N+1 selects
-        // on commission_time (1 per commission, ~1k+ on a full plan reload).
-        var commissions = commissionRepository.findAllWithTimes();
+        var subjectCodes = subjectPlans.stream()
+            .map(SubjectPlanProjection::subjectId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+        // One query for the plan's subjects with times fetched in the same
+        // statement (no N+1 on commission_time), grouped per subject.
+        Map<String, List<Commission>> commissionsBySubject = subjectCodes.isEmpty()
+            ? Map.of()
+            : commissionRepository.findBySubjectCodeInWithTimes(subjectCodes).stream()
+                .collect(Collectors.groupingBy(Commission::getSubjectCode));
+        LocalDate today = LocalDate.now(clock);
+        Map<String, List<Commission>> currentBySubject = new LinkedHashMap<>();
+        commissionsBySubject.forEach((code, list) -> currentBySubject.put(code, currentTerm(list, today)));
+        var overlay = scheduleCorrections.organizedCommissions(
+            currentBySubject.values().stream().flatMap(List::stream).toList(), viewerId);
 
         var organized = new LinkedHashMap<String, Map<String, Map<String, List<OrganizedSubjectsResponse.SubjectDetail>>>>();
         for (var sp : subjectPlans) {
@@ -74,23 +105,10 @@ public class SubjectPlanService {
             String year = sp.year() != null ? sp.year().toString() : "0";
             String semester = sp.semester() != null ? sp.semester().toString() : "0";
 
-            var subjectCommissions = commissions.stream()
-                .filter(c -> sp.subjectId().equals(c.getSubjectCode()))
-                .toList();
+            var subjectCommissions = currentBySubject.getOrDefault(sp.subjectId(), List.of());
 
             var commissionDtos = subjectCommissions.stream()
-                .map(c -> new OrganizedSubjectsResponse.Commission(
-                    c.getCommissionName(),
-                    c.getTimes().stream()
-                        .map(t -> new OrganizedSubjectsResponse.Schedule(
-                            t.getDay().toString(),
-                            t.getClassroom(),
-                            t.getBuilding(),
-                            t.getHourFrom().format(HHMMSS),
-                            t.getHourTo().format(HHMMSS)
-                        ))
-                        .toList()
-                ))
+                .map(c -> overlay.get(c.getId()))
                 .toList();
 
             String courseStart = subjectCommissions.isEmpty()
@@ -119,6 +137,35 @@ public class SubjectPlanService {
                 .add(detail);
         }
         return organized;
+    }
+
+    // The commission table accumulates every term the sync job has ever seen
+    // (rows are upserted by ITBA id and never pruned), so a subject offered in
+    // both semesters has e.g. two "G" commissions: one from March–July and one
+    // from July–December. Showing both duplicated every commission in the
+    // response. Keep the commissions that have not ended yet (same rule as
+    // GET /v1/commissions); if the subject has none — e.g. between terms,
+    // before the next term is synced — fall back to its most recent term
+    // (latest course_end) so the subject doesn't suddenly appear empty.
+    // Genuinely concurrent offerings (two current terms of the same subject)
+    // are distinct and are kept.
+    static List<Commission> currentTerm(List<Commission> commissions, LocalDate today) {
+        if (commissions.isEmpty()) {
+            return commissions;
+        }
+        var notEnded = commissions.stream()
+            .filter(c -> !c.getCourseEnd().isBefore(today))
+            .toList();
+        if (!notEnded.isEmpty()) {
+            return notEnded;
+        }
+        LocalDate latestEnd = commissions.stream()
+            .map(Commission::getCourseEnd)
+            .max(Comparator.naturalOrder())
+            .orElseThrow();
+        return commissions.stream()
+            .filter(c -> c.getCourseEnd().equals(latestEnd))
+            .toList();
     }
 
     // GET /api/v1/plans/{planId}/subjects with optional filters — DB-only,

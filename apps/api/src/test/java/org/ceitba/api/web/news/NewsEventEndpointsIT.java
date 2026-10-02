@@ -22,6 +22,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.jayway.jsonpath.JsonPath;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -87,6 +93,28 @@ class NewsEventEndpointsIT {
             .andExpect(jsonPath("$.meta.total").value(2));
     }
 
+    // Events sharing a date (and start time) must not repeat or vanish across
+    // offset pages: the ORDER BY breaks ties on start time, then id.
+    @Test
+    void paginationIsStrictWhenDatesTie() throws Exception {
+        for (String id : List.of("x3", "x1", "x2")) {
+            eventRepo.save(new NewsEvent(id, "Tied " + id,
+                LocalDate.of(2026, 8, 1), LocalTime.of(10, 0), LocalTime.of(12, 0), "SUM", "tech"));
+        }
+        eventRepo.save(new NewsEvent("x0", "Earlier same day",
+            LocalDate.of(2026, 8, 1), LocalTime.of(8, 0), LocalTime.of(9, 0), "SUM", "tech"));
+
+        var seen = new ArrayList<String>();
+        for (int page = 1; page <= 3; page++) {
+            String body = mvc.perform(get("/v1/news/events?limit=2&page=" + page))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+            List<String> ids = JsonPath.read(body, "$.data[*].id");
+            seen.addAll(ids);
+        }
+        assertThat(seen).containsExactly("e1", "e2", "x0", "x1", "x2", "x3");
+    }
+
     @Test
     void listClampsLimit() throws Exception {
         mvc.perform(get("/v1/news/events?limit=0"))
@@ -139,7 +167,7 @@ class NewsEventEndpointsIT {
     void anonymousCannotCreate() throws Exception {
         mvc.perform(post("/v1/news/events")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"C\"}"))
+                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"General\"}"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -147,7 +175,7 @@ class NewsEventEndpointsIT {
     void regularUserCannotCreate() throws Exception {
         mvc.perform(post("/v1/news/events").with(user())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"C\"}"))
+                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"General\"}"))
             .andExpect(status().isForbidden());
     }
 
@@ -160,7 +188,7 @@ class NewsEventEndpointsIT {
                 .content("""
                     {"title":"New Event","eventDate":"2026-09-01",
                      "startTime":"09:00","endTime":"11:00",
-                     "location":"Room 101","category":"workshop",
+                     "location":"Room 101","category":"Académico",
                      "description":"Details here"}
                     """))
             .andExpect(status().isCreated())
@@ -192,7 +220,7 @@ class NewsEventEndpointsIT {
     void createValidationFailsOnMissingTitle() throws Exception {
         mvc.perform(post("/v1/news/events").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"C\"}"))
+                .content("{\"title\":\"\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"General\"}"))
             .andExpect(status().isBadRequest());
     }
 }

@@ -50,7 +50,11 @@ import java.util.List;
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
 //   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
 //                  /v1/staff/proposals/**            -> ROLE_MODERATOR (+ allowlist), carved out of:
-//                  /v1/staff/**                      -> ROLE_STAFF (path matcher; incl. /v1/staff/moderators)
+//                  /v1/staff/**                      -> ROLE_STAFF (path matcher; incl. /v1/staff/moderators
+//                                                       and /v1/staff/schedule-corrections)
+//                  schedule corrections: POST /v1/commissions/*/schedule-corrections,
+//                  /v1/schedule-corrections/*/vote, /v1/me/schedule-corrections/** -> any allowlisted
+//                  user (anyRequest); GET /v1/subjects stays public (my_vote when logged in)
 //                  /v1/users/**                      -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/careers/{POST,PUT,DELETE}     -> ROLE_STAFF (@PreAuthorize)
 //                  /v1/plans/.../subject writes      -> ROLE_STAFF (@PreAuthorize)

@@ -28,5 +28,10 @@ class SessionAllowlistTest {
         var disabled = new SessionAllowlist(AUTH, new ReviewLoginProperties("appreview@example.com", null));
         assertThat(disabled.admits("appreview@example.com")).isFalse();
         assertThat(disabled.admits("alice@itba.edu.ar")).isTrue();
+
+        // A mangled hash (e.g. unquoted in .env) = misconfigured = treated as disabled.
+        var misconfigured = new SessionAllowlist(AUTH, new ReviewLoginProperties("appreview@example.com", HASH + "%"));
+        assertThat(misconfigured.admits("appreview@example.com")).isFalse();
+        assertThat(misconfigured.admits("alice@itba.edu.ar")).isTrue();
     }
 }

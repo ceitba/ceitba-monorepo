@@ -115,7 +115,7 @@ class PushTriggerIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"id":"%s","title":"Convocatoria abierta","excerpt":"e","body":["p"],
-                     "category":"news","organization":%s,"authors":["IT"],"status":"%s"}
+                     "category":"General","organization":%s,"authors":["IT"],"status":"%s"}
                     """.formatted(id, orgJson, status)))
             .andExpect(status().isCreated());
     }
@@ -225,7 +225,7 @@ class PushTriggerIT {
                 .content("""
                     {"id":"ev-1","title":"Charla de bienvenida","eventDate":"2026-10-01",
                      "startTime":"18:00","endTime":"19:00","location":"Aula 101",
-                     "category":"talk","organization":"other"}
+                     "category":"Cultura","organization":"other"}
                     """))
             .andExpect(status().isCreated());
 
@@ -240,7 +240,7 @@ class PushTriggerIT {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"title":"t","excerpt":"e","body":["p"],"category":"news",
+                    {"title":"t","excerpt":"e","body":["p"],"category":"General",
                      "organization":"missing-org","authors":["IT"],"status":"published"}
                     """))
             .andExpect(status().isNotFound());

@@ -2,6 +2,7 @@ package org.ceitba.api.service.user;
 
 import org.ceitba.api.repository.AccountDeletionRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
+import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,8 +29,11 @@ import java.util.UUID;
 //             are not APPROVED, proposal aliases; proposal comments are
 //             tombstoned (body cleared, author detached, counters adjusted)
 //             so replies keep their parent.
+//             schedule_correction_vote rows (the corrections they touched
+//             are recounted and re-evaluated under the commission lock).
 //   detached  articles.created_by, news_events.created_by -> NULL
-//             (content belongs to the organization); APPROVED
+//             (content belongs to the organization);
+//             schedule_correction.suggester_id / reviewed_by -> NULL; APPROVED
 //             proposal.author_id -> NULL (the board keeps them, pseudonymous).
 //   kept      wiki.subject_note, wiki.career_note, wiki.subject_wiki_page
 //             revisions and reviewed edit proposals — shared study material
@@ -63,12 +67,15 @@ public class AccountDeletionService {
 
     private final AccountDeletionRepository deletion;
     private final CeitbaStaffRepository staff;
+    private final ScheduleCorrectionService scheduleCorrections;
     private final Clock clock;
 
-    public AccountDeletionService(AccountDeletionRepository deletion, CeitbaStaffRepository staff, Clock clock) {
-        this.deletion = deletion;
-        this.staff    = staff;
-        this.clock    = clock;
+    public AccountDeletionService(AccountDeletionRepository deletion, CeitbaStaffRepository staff,
+                                  ScheduleCorrectionService scheduleCorrections, Clock clock) {
+        this.deletion            = deletion;
+        this.staff               = staff;
+        this.scheduleCorrections = scheduleCorrections;
+        this.clock               = clock;
     }
 
     @Transactional
@@ -86,6 +93,8 @@ public class AccountDeletionService {
         deletion.deleteWikiPersonalData(userId);
         deletion.detachNewsletterAuthorship(userId);
         deletion.deleteProposalData(userId);
+        scheduleCorrections.withdrawVotesOf(userId);
+        deletion.detachScheduleCorrections(userId);
 
         if (deletion.countRetainedContributions(userId) > 0) {
             deletion.anonymizeUser(userId);

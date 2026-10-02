@@ -20,7 +20,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.ArrayList;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -49,6 +55,7 @@ class ArticleEndpointsIT {
     @Autowired MockMvc mvc;
     @Autowired ArticleRepository articleRepo;
     @Autowired OrganizationRepository orgRepo;
+    @Autowired JdbcTemplate jdbc;
 
     @BeforeEach
     void seed() {
@@ -86,6 +93,29 @@ class ArticleEndpointsIT {
             .andExpect(jsonPath("$.data.length()").value(1))
             .andExpect(jsonPath("$.data[0].id").value("a1"))
             .andExpect(jsonPath("$.meta.total").value(1));
+    }
+
+    // Offset pagination over rows that tie on created_at used to be able to
+    // repeat or skip rows across pages (ORDER BY created_at only). With `id`
+    // as tie-break the pages partition the list in a fixed order.
+    @Test
+    void paginationIsStrictWhenCreatedAtTies() throws Exception {
+        for (int i = 0; i < 9; i++) {
+            var a = new Article("t" + i, "Tied " + i, "excerpt", List.of("p"), "tech", List.of("Author"));
+            a.setStatus("published");
+            articleRepo.save(a);
+        }
+        jdbc.update("UPDATE public.articles SET created_at = TIMESTAMPTZ '2026-01-01 12:00:00+00'");
+
+        var seen = new ArrayList<String>();
+        for (int page = 1; page <= 4; page++) {
+            String body = mvc.perform(get("/v1/articles?limit=3&page=" + page))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+            List<String> ids = JsonPath.read(body, "$.data[*].id");
+            seen.addAll(ids);
+        }
+        assertThat(seen).containsExactly("t8", "t7", "t6", "t5", "t4", "t3", "t2", "t1", "t0", "a1");
     }
 
     @Test
@@ -185,7 +215,7 @@ class ArticleEndpointsIT {
     void anonymousCannotCreate() throws Exception {
         mvc.perform(post("/v1/articles")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
+                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -193,7 +223,7 @@ class ArticleEndpointsIT {
     void regularUserCannotCreate() throws Exception {
         mvc.perform(post("/v1/articles").with(user())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
+                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
             .andExpect(status().isForbidden());
     }
 
@@ -205,7 +235,7 @@ class ArticleEndpointsIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"title":"New Article","excerpt":"Ex","body":["p1","p2"],
-                     "category":"tech","authors":["Staff","Co-author"],
+                     "category":"Tecnología","authors":["Staff","Co-author"],
                      "status":"published","colorScheme":"blue"}
                     """))
             .andExpect(status().isCreated())
@@ -219,7 +249,7 @@ class ArticleEndpointsIT {
     void staffCanCreateDraft() throws Exception {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Draft\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"],\"status\":\"draft\"}"))
+                .content("{\"title\":\"Draft\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"],\"status\":\"draft\"}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("draft"));
     }
@@ -292,7 +322,7 @@ class ArticleEndpointsIT {
     void createValidationFailsOnMissingTitle() throws Exception {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
+                .content("{\"title\":\"\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
             .andExpect(status().isBadRequest());
     }
 }

@@ -3,12 +3,14 @@ package org.ceitba.api.web.analytics;
 import org.ceitba.api.domain.news.Article;
 import org.ceitba.api.repository.news.AnalyticsEventRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
+import org.ceitba.api.service.crypto.ContentHmac;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -19,7 +21,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,6 +53,8 @@ class AnalyticsIT {
     @Autowired MockMvc mvc;
     @Autowired AnalyticsEventRepository analyticsRepo;
     @Autowired ArticleRepository articleRepo;
+    @Autowired ContentHmac hmac;
+    @Autowired JdbcTemplate jdbc;
 
     @BeforeEach
     void seed() {
@@ -86,6 +95,26 @@ class AnalyticsIT {
         mvc.perform(get("/v1/analytics/summary?days=1").with(staff()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.uniqueVisitors").value(1));
+    }
+
+    // ip_hash used to be an unkeyed SHA-256 of the IP, reversible by
+    // enumerating IPv4. It must be the server-keyed HMAC instead.
+    @Test
+    void ingestStoresAKeyedHashOfTheClientIp() throws Exception {
+        mvc.perform(post("/v1/analytics/events")
+                .with(r -> { r.setRemoteAddr("203.0.113.9"); return r; })
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"events\":[{\"type\":\"page_view\",\"sessionId\":\"s-hmac\"}]}"))
+            .andExpect(status().isAccepted());
+
+        String stored = jdbc.queryForObject(
+            "SELECT ip_hash FROM public.analytics_events WHERE session_id = 's-hmac'", String.class);
+        String unkeyed = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+            .digest("203.0.113.9".getBytes(StandardCharsets.UTF_8)));
+        assertThat(stored)
+            .isEqualTo(hmac.signHex(ContentHmac.ANALYTICS_IP_HASHES, "203.0.113.9"))
+            .isNotEqualTo(unkeyed)
+            .doesNotContain("203.0.113.9");
     }
 
     @Test
