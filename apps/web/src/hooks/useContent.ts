@@ -23,7 +23,9 @@ export interface FetchResult<T> extends AsyncState<T> {
   reload: () => Promise<void>
 }
 
-function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[] = []): FetchResult<T> {
+// `key` identifies the fetcher's inputs: when it changes, the data is
+// refetched (the latest `fetcher` is always the one called).
+function useFetch<T>(fetcher: () => Promise<T>, key: string | number | null = null): FetchResult<T> {
   const [state, setState] = useState<AsyncState<T>>({ data: null, loading: true, error: null })
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
@@ -39,11 +41,13 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[] = []): FetchResu
       .catch((err: Error) => { if (reqIdRef.current === id) setState({ data: null, loading: false, error: err.message }) })
   }, [])
 
+  // Bumping the id drops any in-flight response (key changed or unmounted).
+  const invalidate = useCallback(() => { reqIdRef.current++ }, [])
+
   useEffect(() => {
     void run()
-    return () => { reqIdRef.current++ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+    return invalidate
+  }, [run, invalidate, key])
 
   return { ...state, reload: run }
 }
@@ -65,5 +69,5 @@ export function useStaffYears(): FetchResult<number[]> {
 }
 
 export function useStaffMembers(year: number | null): FetchResult<StaffMember[]> {
-  return useFetch(() => (year == null ? Promise.resolve([]) : fetchStaffMembers(year)), [year])
+  return useFetch(() => (year == null ? Promise.resolve([]) : fetchStaffMembers(year)), year)
 }

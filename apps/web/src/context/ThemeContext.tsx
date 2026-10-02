@@ -1,14 +1,8 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../hooks/useTheme'
-import { bindAuthHydration, syncPrefToServer, writeLocalLang, type Lang, type Theme } from '../store/prefsStore'
-
-interface ThemeContextValue {
-  theme: Theme
-  toggle: () => void
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null)
+import { bindAuthHydration, syncPrefToServer, writeLocalLang, type Lang } from '../store/prefsStore'
+import { ThemeContext } from './useThemeContext'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { theme, toggle, applyExternal } = useTheme()
@@ -18,9 +12,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // doesn't PATCH back the value it just received.
   const serverLangRef = useRef<Lang | null>(null)
 
-  // Bind auth hydration once at provider mount: when the user logs in, the
-  // server-side theme/language overwrite local state. When they log out we
-  // intentionally do nothing — the cache stays.
+  // Bind auth hydration once at provider mount (applyExternal and i18n are
+  // both stable): when the user logs in, the server-side theme/language
+  // overwrite local state. When they log out we intentionally do nothing —
+  // the cache stays.
   useEffect(() => {
     return bindAuthHydration(
       (next) => applyExternal(next),
@@ -30,8 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         writeLocalLang(lang)
       },
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [applyExternal, i18n])
 
   // Mirror user-initiated language changes to the server (localStorage is
   // handled by the languageChanged listener in src/i18n.ts).
@@ -47,10 +41,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [i18n])
 
   return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>
-}
-
-export function useThemeContext() {
-  const ctx = useContext(ThemeContext)
-  if (!ctx) throw new Error('useThemeContext must be used inside ThemeProvider')
-  return ctx
 }

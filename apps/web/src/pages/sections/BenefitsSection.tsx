@@ -44,7 +44,7 @@ export default function BenefitsSection() {
   const { data: categories, loading: loadingCategories, error: categoriesError, reload: reloadCategories } = useBenefits()
   const { data: cards, loading: loadingCards, error: cardsError, reload: reloadCards } = useBenefitCards()
   const categoryList: BenefitEntry[] = categories ?? []
-  const cardList: BenefitCard[] = cards ?? []
+  const cardList = useMemo<BenefitCard[]>(() => cards ?? [], [cards])
 
   const [active, setActive] = useState<string>(ALL)
 

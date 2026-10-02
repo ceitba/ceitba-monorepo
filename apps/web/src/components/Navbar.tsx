@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { useThemeContext } from '../context/ThemeContext'
+import { useThemeContext } from '../context/useThemeContext'
 import AuthMenu from './AuthMenu'
 
 export default function Navbar() {

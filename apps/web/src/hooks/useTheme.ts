@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { readLocalTheme, syncPrefToServer, writeLocalTheme, type Theme } from '../store/prefsStore'
 
 export function useTheme() {
@@ -26,8 +26,9 @@ export function useTheme() {
     void syncPrefToServer({ theme: next })
   }
 
-  // External writes (auth-hydration callback) bypass the toggle path.
-  const applyExternal = (next: Theme) => setTheme(next)
+  // External writes (auth-hydration callback) bypass the toggle path. Stable
+  // identity so ThemeProvider binds the auth hydration exactly once.
+  const applyExternal = useCallback((next: Theme) => setTheme(next), [])
 
   return { theme, toggle, applyExternal }
 }
