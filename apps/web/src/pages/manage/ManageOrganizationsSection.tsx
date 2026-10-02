@@ -270,10 +270,12 @@ function CreateOrganizationModal({
   else if (!isValidSlug(slug)) clientErrors.slug = t('manage.organizations.errors.slugFormat', { max: SLUG_MAX })
 
   // Required-field errors wait for a submit attempt; a malformed slug the
-  // user is typing by hand is flagged right away.
+  // user is typing by hand is flagged right away. An auto-generated one is
+  // not (typing the first letter of the name would otherwise flash a
+  // "2 to 40 characters" error under a field the user hasn't touched).
   const shown = (k: FieldKey): string | undefined => {
     if (serverErrors[k]) return serverErrors[k]
-    if (k === 'slug' && slug && clientErrors.slug) return clientErrors.slug
+    if (k === 'slug' && slugManual && slug && clientErrors.slug) return clientErrors.slug
     return attempted ? clientErrors[k] : undefined
   }
 
@@ -301,13 +303,13 @@ function CreateOrganizationModal({
       onCreated(org)
     } catch (err) {
       setBusy(false)
-      if (err instanceof ApiError && err.status === 409) {
+      if (err instanceof ApiError && (err.code === 'ResourceAlreadyExists' || err.status === 409)) {
         setServerErrors({ slug: t('manage.organizations.errors.duplicate') })
         setEditingSlug(true)
         return
       }
-      if (err instanceof ApiError && err.status === 400) {
-        const fields = parseFieldErrors(err.message)
+      if (err instanceof ApiError && err.code === 'ValidationError') {
+        const fields = localizeFieldErrors(parseFieldErrors(err.message))
         if (Object.keys(fields).length > 0) {
           setServerErrors(fields)
           if (fields.slug) setEditingSlug(true)
@@ -316,6 +318,17 @@ function CreateOrganizationModal({
       }
       setFormError((err as Error).message)
     }
+  }
+
+  // The API's bean-validation messages are English ("slug: must be 2-40
+  // characters"); show our own copy for the fields we know how to explain and
+  // keep the raw text only for anything unexpected.
+  function localizeFieldErrors(fields: Partial<Record<FieldKey, string>>): Partial<Record<FieldKey, string>> {
+    const out = { ...fields }
+    if (out.slug) out.slug = t('manage.organizations.errors.slugFormat', { max: SLUG_MAX })
+    if (out.name) out.name = t('manage.organizations.errors.nameRequired')
+    if (out.fullName) out.fullName = t('manage.organizations.errors.fullNameRequired')
+    return out
   }
 
   const slugError = shown('slug')
@@ -396,8 +409,12 @@ function CreateOrganizationModal({
                 autoCorrect="off"
                 spellCheck={false}
                 onChange={(e) => {
-                  setSlug(e.target.value)
-                  setSlugManual(true)
+                  // Forgive the obvious slips (capitals, spaces, underscores)
+                  // instead of flagging them; anything else is validated.
+                  const next = e.target.value.toLowerCase().replace(/[\s_]+/g, '-')
+                  setSlug(next)
+                  // Clearing the field hands the slug back to the name.
+                  setSlugManual(next !== '')
                   setServerErrors((er) => ({ ...er, slug: undefined }))
                 }}
                 className="flex-1 min-w-0 px-3 sm:pl-0 py-1.5 bg-transparent font-mono text-body-sm focus:outline-none"
@@ -461,7 +478,7 @@ function CreateOrganizationModal({
           {shown('category') && <p className="font-body text-body-sm text-red-600 dark:text-red-400">{shown('category')}</p>}
         </label>
 
-        <fieldset className="flex flex-col gap-2" disabled={busy}>
+        <fieldset className="flex flex-col gap-2" disabled={busy} aria-describedby="org-color-hint">
           <legend className="mb-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('manage.organizations.fields.color')}
           </legend>
@@ -489,7 +506,7 @@ function CreateOrganizationModal({
               </label>
             ))}
           </div>
-          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          <p id="org-color-hint" className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {t('manage.organizations.fields.colorHint')}
           </p>
           {shown('color') && <p className="font-body text-body-sm text-red-600 dark:text-red-400">{shown('color')}</p>}
