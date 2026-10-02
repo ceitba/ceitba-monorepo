@@ -17,8 +17,13 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
       hibernate:
-        jdbc:
-          time_zone: UTC
+        # No hibernate.jdbc.time_zone on purpose. With it set (we had UTC),
+        # Hibernate binds/reads LocalTime via java.sql.Time + a Calendar in
+        # that zone, converting from the JVM zone (prod: ART, UTC-3): TIME
+        # columns (commission_time.hour_from/hour_to, news_events times)
+        # were read 3h early and written 3h late. Every timestamp column is
+        # TIMESTAMPTZ mapped to OffsetDateTime, which Hibernate binds as an
+        # absolute instant and never used this setting. See LocalTemporalZoneIT.
         format_sql: false
     open-in-view: false
   flyway:
