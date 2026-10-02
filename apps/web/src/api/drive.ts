@@ -150,6 +150,10 @@ export interface ApunteSubject {
   // Only set with mine=true (plan year / semester), else null.
   year: number | null
   semester: number | null
+  // mine=true only: plan section, e.g. "Electivas Informática" or "SAT".
+  // Electives and other non-curricular subjects have year/semester null
+  // (older API builds sent year 0).
+  section?: string | null
 }
 
 export interface FileSummary {

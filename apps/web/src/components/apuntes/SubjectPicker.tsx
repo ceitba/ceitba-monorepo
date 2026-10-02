@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
 import { useDebounced } from '../../hooks/useDebounced'
+import { groupPlanSubjects, semesterLabel } from '../../utils/planGroups'
 import { INPUT } from './buttons'
 
 export interface SubjectRef {
@@ -38,6 +39,8 @@ interface Entry {
   subject: ApunteSubject
   // Group heading rendered before this entry.
   heading?: string
+  // Small trailing label (e.g. the semester).
+  tag?: string | null
 }
 
 // Searchable subject combobox. Open with no query it lists the student's
@@ -102,13 +105,15 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
   const planIds = new Set(planMatches.map((s) => s.subjectId))
   const others = options.filter((s) => !planIds.has(s.subjectId))
   const entries: Entry[] = []
-  let lastYear: number | null | undefined
-  planMatches.forEach((s, i) => {
-    const parts: string[] = []
-    if (i === 0) parts.push(t('apuntes.picker.fromPlan'))
-    if (!q && s.year != null && s.year !== lastYear) parts.push(t('apuntes.picker.planYear', { year: s.year }))
-    lastYear = s.year
-    entries.push({ subject: s, heading: parts.length ? parts.join(' · ') : undefined })
+  // Curricular years first, then one group per elective section; group
+  // headings only while browsing (no query).
+  groupPlanSubjects(planMatches, t).forEach((g, gi) => {
+    g.subjects.forEach((subject, i) => {
+      const parts: string[] = []
+      if (gi === 0 && i === 0) parts.push(t('apuntes.picker.fromPlan'))
+      if (!q && i === 0) parts.push(g.label)
+      entries.push({ subject, heading: parts.length ? parts.join(' · ') : undefined, tag: semesterLabel(subject, t) })
+    })
   })
   // With no query and a plan, the plan is the list; without a plan fall back
   // to the API's default (subjects with recent notes).
@@ -203,7 +208,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
                 {inherited ? t('apuntes.picker.clearInherit', { name: inherited.name }) : t('apuntes.picker.clear')}
               </li>
             )}
-            {entries.map(({ subject: o, heading }, i) => {
+            {entries.map(({ subject: o, heading, tag }, i) => {
               const idx = i + (clearable ? 1 : 0)
               return [
                 heading && (
@@ -226,6 +231,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
                 >
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-1">{o.subjectId}</span>
                   {o.subjectName}
+                  {tag && <span className="ml-2 font-mono text-label text-ink-secondary dark:text-night-muted">{tag}</span>}
                 </li>,
               ]
             })}

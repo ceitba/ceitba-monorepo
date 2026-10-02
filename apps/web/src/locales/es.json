@@ -550,7 +550,6 @@
       "noMatches": "No encontramos materias con ese nombre o código.",
       "typeToSearch": "Escribí para buscar una materia.",
       "fromPlan": "De tu plan",
-      "planYear": "Año {{year}}",
       "allSubjects": "Todas las materias"
     },
     "tree": {
@@ -715,6 +714,21 @@
         "noContent": "Todavía no tenemos una copia de este archivo. Puede ser muy grande o estar sincronizándose.",
         "blocked": "El autor deshabilitó la descarga de este archivo. Podés verlo en Google Drive."
       }
+    },
+    "plan": {
+      "years": {
+        "1": "1er año",
+        "2": "2do año",
+        "3": "3er año",
+        "4": "4to año",
+        "5": "5to año",
+        "6": "6to año"
+      },
+      "yearN": "Año {{year}}",
+      "semester": "{{semester}}º cuatr.",
+      "otherSubjects": "Otras materias",
+      "subjectCount_one": "{{count}} materia",
+      "subjectCount_other": "{{count}} materias"
     }
   }
 }

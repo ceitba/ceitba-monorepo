@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
 import { useDebounced } from '../../hooks/useDebounced'
+import { groupPlanSubjects, semesterLabel } from '../../utils/planGroups'
 import { apuntesErrorMessage, formatDate } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
 import { BTN_PRIMARY, INPUT } from '../../components/apuntes/buttons'
@@ -110,11 +111,27 @@ export default function ApuntesHomePage() {
             ) : (
               <>
                 <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">{t('apuntes.home.mineHint')}</p>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {mine.map((s) => (
-                    <li key={s.subjectId}><SubjectCard subject={s} lang={i18n.language} /></li>
+                <div className="flex flex-col gap-6">
+                  {groupPlanSubjects(mine, t).map((g) => (
+                    // Curricular years open; elective sections (long) start collapsed.
+                    <details key={g.key} open={g.curricular} className="group/plan">
+                      <summary className="cursor-pointer list-none flex items-baseline gap-2 mb-3 select-none">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" className="text-ink-secondary dark:text-night-muted transition-transform duration-150 group-open/plan:rotate-90 self-center">
+                          <polyline points="9 6 15 12 9 18" />
+                        </svg>
+                        <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{g.label}</span>
+                        <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
+                          {t('apuntes.plan.subjectCount', { count: g.subjects.length })}
+                        </span>
+                      </summary>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {g.subjects.map((s) => (
+                          <li key={s.subjectId}><SubjectCard subject={s} lang={i18n.language} /></li>
+                        ))}
+                      </ul>
+                    </details>
                   ))}
-                </ul>
+                </div>
               </>
             )}
           </section>
@@ -174,7 +191,7 @@ function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: strin
     >
       <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
         {s.subjectId}
-        {s.year != null && ` · ${t('apuntes.picker.planYear', { year: s.year })}`}
+        {semesterLabel(s, t) && ` · ${semesterLabel(s, t)}`}
       </span>
       <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 line-clamp-2">
         {s.subjectName}

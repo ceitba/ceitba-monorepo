@@ -550,7 +550,6 @@
       "noMatches": "No subjects match that name or code.",
       "typeToSearch": "Type to search for a subject.",
       "fromPlan": "From your plan",
-      "planYear": "Year {{year}}",
       "allSubjects": "All subjects"
     },
     "tree": {
@@ -715,6 +714,21 @@
         "noContent": "We don't have a copy of this file yet. It may be too large or still syncing.",
         "blocked": "The author disabled downloads for this file. You can view it in Google Drive."
       }
+    },
+    "plan": {
+      "years": {
+        "1": "1st year",
+        "2": "2nd year",
+        "3": "3rd year",
+        "4": "4th year",
+        "5": "5th year",
+        "6": "6th year"
+      },
+      "yearN": "Year {{year}}",
+      "semester": "Term {{semester}}",
+      "otherSubjects": "Other subjects",
+      "subjectCount_one": "{{count}} subject",
+      "subjectCount_other": "{{count}} subjects"
     }
   }
 }
