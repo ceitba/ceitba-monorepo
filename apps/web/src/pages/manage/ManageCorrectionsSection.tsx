@@ -281,7 +281,7 @@ export default function ManageCorrectionsSection() {
               )
             })}
             {loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-ink-secondary">{t('manage.loading')}</td></tr>
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-ink-secondary dark:text-night-muted">{t('manage.loading')}</td></tr>
             )}
             {!loading && !loadError && rows.length === 0 && (
               <tr>
