@@ -34,7 +34,9 @@ function defaultStaffRange() {
 
 type SortKey = 'newest' | 'oldest'
 
-export default function ManageUsersSection() {
+// `initialOrgSlug` presets the organization filter (e.g. right after creating
+// an org from the Organizations tab).
+export default function ManageUsersSection({ initialOrgSlug }: { initialOrgSlug?: string } = {}) {
   const { t } = useTranslation()
   const [page, setPage]       = useState<UsersPage | null>(null)
   const [orgs, setOrgs]       = useState<OrganizationSummary[]>([])
@@ -50,7 +52,7 @@ export default function ManageUsersSection() {
   const [query, setQuery]     = useState('')
   const [q, setQ]             = useState('')
   const [sort, setSort]       = useState<SortKey>('newest')
-  const [orgSlug, setOrgSlug] = useState('')
+  const [orgSlug, setOrgSlug] = useState(initialOrgSlug ?? '')
   const [pageNum, setPageNum] = useState(1)
 
   // Track the active request so an out-of-order response (e.g. fast keystrokes)
@@ -320,9 +322,29 @@ export default function ManageUsersSection() {
                 </tr>
               )
             })}
-            {!loading && users.length === 0 && (
+            {!loading && users.length === 0 && (orgSlug && !q ? (
+              // An org with no members yet (typically one just created):
+              // members are added from a user's row, so point the way there.
+              <tr>
+                <td colSpan={3} className="px-3 py-8 text-center">
+                  <p className="font-semibold text-ink-primary dark:text-night-text">
+                    {t('manage.users.noOrgMembers', { org: orgs.find((o) => o.slug === orgSlug)?.name ?? orgSlug })}
+                  </p>
+                  <p className="mt-1 max-w-prose mx-auto text-ink-secondary dark:text-night-muted">
+                    {t('manage.users.noOrgMembersHint', { org: orgSlug })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setOrgSlug(''); setPageNum(1) }}
+                    className="mt-3 px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors"
+                  >
+                    {t('manage.users.showAllUsers')}
+                  </button>
+                </td>
+              </tr>
+            ) : (
               <tr><td colSpan={3} className="px-3 py-6 text-center text-ink-secondary">{t('manage.empty')}</td></tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
