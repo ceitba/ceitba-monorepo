@@ -6,6 +6,7 @@ import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.news.OrganizationService;
 import org.ceitba.api.web.news.dto.FollowerResponse;
+import org.ceitba.api.web.news.dto.OrganizationPatchRequest;
 import org.ceitba.api.web.news.dto.OrganizationRequest;
 import org.ceitba.api.web.news.dto.OrganizationResponse;
 import org.springframework.http.HttpStatus;
@@ -66,7 +67,7 @@ public class OrganizationController {
     @PatchMapping("/{slug}")
     @PreAuthorize("hasRole('STAFF') or @orgAccess.canEditOrg(#slug, authentication)")
     public OrganizationResponse update(@PathVariable String slug,
-                                        @RequestBody OrganizationRequest req) {
+                                        @RequestBody @Valid OrganizationPatchRequest req) {
         // null = leave unchanged (OrganizationService.update skips nulls)
         var patch = new Organization(slug, req.name(), req.fullName());
         patch.setDescription(req.description());

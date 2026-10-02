@@ -173,7 +173,7 @@ class UserOrganizationEndpointsIT {
                       "title": "Hello",
                       "excerpt": "x",
                       "body": ["p1"],
-                      "category": "news",
+                      "category": "General",
                       "authors": ["Alice"],
                       "organization": "sabf"
                     }
@@ -192,7 +192,7 @@ class UserOrganizationEndpointsIT {
                       "title": "Hello",
                       "excerpt": "x",
                       "body": ["p1"],
-                      "category": "news",
+                      "category": "General",
                       "authors": ["Alice"],
                       "organization": "trama"
                     }
@@ -212,7 +212,7 @@ class UserOrganizationEndpointsIT {
                       "startTime": "18:00:00",
                       "endTime": "20:00:00",
                       "location": "Aula 101",
-                      "category": "workshop",
+                      "category": "Académico",
                       "organization": "sabf"
                     }
                     """))
@@ -232,7 +232,7 @@ class UserOrganizationEndpointsIT {
                       "startTime": "18:00:00",
                       "endTime": "20:00:00",
                       "location": "Aula 101",
-                      "category": "workshop",
+                      "category": "Académico",
                       "organization": "trama"
                     }
                     """))
@@ -247,7 +247,7 @@ class UserOrganizationEndpointsIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"id":"trama-art","title":"Hijacked","excerpt":"x","body":["p"],
-                     "category":"news","authors":["Alice"],"organization":"sabf"}
+                     "category":"General","authors":["Alice"],"organization":"sabf"}
                     """))
             .andExpect(status().isConflict());
 
@@ -263,7 +263,7 @@ class UserOrganizationEndpointsIT {
                 .content("""
                     {"id":"trama-evt","title":"Hijacked","eventDate":"2026-06-01",
                      "startTime":"18:00:00","endTime":"20:00:00","location":"x",
-                     "category":"workshop","organization":"sabf"}
+                     "category":"Académico","organization":"sabf"}
                     """))
             .andExpect(status().isConflict());
 

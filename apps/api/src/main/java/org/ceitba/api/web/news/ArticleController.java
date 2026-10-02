@@ -30,10 +30,15 @@ import java.util.List;
 @RequestMapping("/v1/articles")
 public class ArticleController {
 
-    private final ArticleService service;
+    // Status filter value that lists every status (draft and published).
+    static final String ALL_STATUSES = "all";
 
-    public ArticleController(ArticleService service) {
+    private final ArticleService service;
+    private final OrgAccess orgAccess;
+
+    public ArticleController(ArticleService service, OrgAccess orgAccess) {
         this.service = service;
+        this.orgAccess = orgAccess;
     }
 
     @GetMapping
@@ -45,9 +50,12 @@ public class ArticleController {
             @RequestParam(defaultValue = "20") int limit,
             Authentication auth) {
 
-        // Non-staff callers may only see published articles; staff with no param also default to published
-        boolean isStaff = hasRole(auth, "ROLE_STAFF");
-        String effectiveStatus = (isStaff && status != null) ? status : "published";
+        // Staff, and members of the requested organization, may pick a status
+        // (`all` = no filter); a missing status still means published. Anyone
+        // else only ever sees published articles, whatever they pass.
+        boolean seesDrafts = hasRole(auth, "ROLE_STAFF")
+            || (organization != null && orgAccess.canReadDraftsOf(organization, auth));
+        String effectiveStatus = seesDrafts ? statusFilter(status) : "published";
 
         var result = service.findAll(category, organization, effectiveStatus,
                                      NewsPaging.of(page, limit));
@@ -59,7 +67,9 @@ public class ArticleController {
 
     @GetMapping("/{id}")
     public ArticleResponse get(@PathVariable String id, Authentication auth) {
-        return ArticleResponse.from(service.findById(id, hasRole(auth, "ROLE_STAFF")));
+        boolean includesDrafts = hasRole(auth, "ROLE_STAFF")
+            || orgAccess.canReadArticleDraft(id, auth);
+        return ArticleResponse.from(service.findById(id, includesDrafts));
     }
 
     @PostMapping
@@ -74,7 +84,7 @@ public class ArticleController {
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForArticle(#id, #req.organization(), authentication)")
     public ArticleResponse patch(@PathVariable String id,
-                                  @RequestBody ArticlePatchInput req) {
+                                  @RequestBody @Valid ArticlePatchInput req) {
         var patch = new Article(
             id,
             req.title(),
@@ -106,6 +116,12 @@ public class ArticleController {
         if (req.coverImage()  != null) a.setCoverImage(req.coverImage());
         a.setStatus(req.status() != null ? req.status() : "published");
         return a;
+    }
+
+    // null = no status filter.
+    private static String statusFilter(String status) {
+        if (status == null || status.isBlank()) return "published";
+        return ALL_STATUSES.equals(status) ? null : status;
     }
 
     private boolean hasRole(Authentication auth, String role) {

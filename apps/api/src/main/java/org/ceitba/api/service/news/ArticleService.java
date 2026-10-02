@@ -32,7 +32,8 @@ public class ArticleService {
         this.clock       = clock;
     }
 
-    // Public callers pass status="published"; staff may pass status=null (all) or "draft".
+    // status=null lists every status; the controller decides who may pass
+    // anything other than "published" (staff, and members of `organization`).
     @Transactional(readOnly = true)
     public Page<Article> findAll(String category, String organization, String status, Pageable pageable) {
         return articleRepo.findFiltered(category, organization, status, pageable);

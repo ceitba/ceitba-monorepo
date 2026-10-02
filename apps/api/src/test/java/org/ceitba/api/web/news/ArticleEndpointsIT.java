@@ -185,7 +185,7 @@ class ArticleEndpointsIT {
     void anonymousCannotCreate() throws Exception {
         mvc.perform(post("/v1/articles")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
+                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -193,7 +193,7 @@ class ArticleEndpointsIT {
     void regularUserCannotCreate() throws Exception {
         mvc.perform(post("/v1/articles").with(user())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
+                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
             .andExpect(status().isForbidden());
     }
 
@@ -205,7 +205,7 @@ class ArticleEndpointsIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"title":"New Article","excerpt":"Ex","body":["p1","p2"],
-                     "category":"tech","authors":["Staff","Co-author"],
+                     "category":"Tecnología","authors":["Staff","Co-author"],
                      "status":"published","colorScheme":"blue"}
                     """))
             .andExpect(status().isCreated())
@@ -219,7 +219,7 @@ class ArticleEndpointsIT {
     void staffCanCreateDraft() throws Exception {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Draft\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"],\"status\":\"draft\"}"))
+                .content("{\"title\":\"Draft\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"],\"status\":\"draft\"}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("draft"));
     }
@@ -292,7 +292,7 @@ class ArticleEndpointsIT {
     void createValidationFailsOnMissingTitle() throws Exception {
         mvc.perform(post("/v1/articles").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"\",\"excerpt\":\"E\",\"body\":[],\"category\":\"tech\",\"authors\":[\"A\"]}"))
+                .content("{\"title\":\"\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
             .andExpect(status().isBadRequest());
     }
 }

@@ -1,5 +1,8 @@
 package org.ceitba.api.web.news.dto;
 
+import jakarta.validation.constraints.Pattern;
+import org.ceitba.api.domain.news.NewsCategories;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -8,6 +11,7 @@ public record ArticlePatchInput(
     String       title,
     String       excerpt,
     List<String> body,
+    @Pattern(regexp = NewsCategories.PATTERN, message = NewsCategories.MESSAGE)
     String       category,
     String       organization,
     List<String> authors,
