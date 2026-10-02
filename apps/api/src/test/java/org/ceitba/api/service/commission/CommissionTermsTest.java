@@ -68,12 +68,86 @@ class CommissionTermsTest {
             .containsExactly("next");
     }
 
+    // 72.45 in prod: a year-long commission (started 147 days before the
+    // second-semester ones) is still running and must stay beside them.
+    @Test
+    void yearLongCommissionRunningAlongsideTheSecondSemesterIsKept() {
+        var list = List.of(
+            c("s1", "72.45", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 7, 25)),
+            c("year", "72.45", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 12, 31)),
+            c("s2-a", "72.45", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)),
+            c("s2-b", "72.45", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)));
+        assertThat(ids(CommissionTerms.currentTerm(list, TODAY))).containsExactly("year", "s2-a", "s2-b");
+    }
+
+    // Same, in the fallback (everything ended): the year-long commission is
+    // part of the most recent term, the first semester is not.
+    @Test
+    void yearLongCommissionIsKeptInTheFallbackToo() {
+        var list = List.of(
+            c("s1", "72.45", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 7, 25)),
+            c("year", "72.45", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 12, 31)),
+            c("s2", "72.45", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)));
+        assertThat(ids(CommissionTerms.currentTerm(list, LocalDate.of(2027, 1, 15))))
+            .containsExactly("year", "s2");
+    }
+
+    // A commission running 26/07/2026–27/06/2027 (prod): today it is part of
+    // the second-semester term; once the March 2027 term is synced it is
+    // still running then, so it stays next to the new term while the
+    // December-ending second-semester commissions drop.
+    @Test
+    void crossYearCommissionStaysWhenTheNextTermIsSynced() {
+        var list = List.of(
+            c("s2", "x", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)),
+            c("long", "x", LocalDate.of(2026, 7, 26), LocalDate.of(2027, 6, 27)));
+        assertThat(ids(CommissionTerms.currentTerm(list, TODAY))).containsExactly("s2", "long");
+
+        var withNext = List.of(
+            list.get(0), list.get(1),
+            c("next", "x", LocalDate.of(2027, 3, 1), LocalDate.of(2027, 7, 10)));
+        assertThat(ids(CommissionTerms.currentTerm(withNext, LocalDate.of(2026, 12, 10))))
+            .containsExactly("long", "next");
+    }
+
+    // Current term ends 31/12, next one (synced early) starts 01/03: they
+    // do not overlap, so only the next term is shown.
+    @Test
+    void decemberTermDoesNotOverlapTheNextMarchTerm() {
+        var list = List.of(
+            c("now", "x", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)),
+            c("next", "x", LocalDate.of(2027, 3, 1), LocalDate.of(2027, 7, 25)));
+        assertThat(ids(CommissionTerms.currentTerm(list, LocalDate.of(2026, 12, 1)))).containsExactly("next");
+    }
+
+    // First semester ends 25/07 and the second starts 26/07 (147 days after
+    // the first): during the last days of the first semester only the second
+    // is shown.
+    @Test
+    void firstSemesterEndingTheDayBeforeTheSecondStartsIsDropped() {
+        var list = List.of(
+            c("s1", "x", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 7, 25)),
+            c("s2", "x", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)));
+        assertThat(ids(CommissionTerms.currentTerm(list, LocalDate.of(2026, 7, 20)))).containsExactly("s2");
+    }
+
+    // Rule (b) is inclusive: ending on the newest start day counts as running.
+    @Test
+    void endingOnTheNewestStartIsKept() {
+        var list = List.of(
+            c("old", "x", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 7, 26)),
+            c("new", "x", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 31)));
+        assertThat(ids(CommissionTerms.currentTerm(list, LocalDate.of(2026, 7, 20))))
+            .containsExactly("old", "new");
+    }
+
     @Test
     void windowBoundaryIsInclusive() {
         var newest = LocalDate.of(2027, 3, 8);
         var list = List.of(
-            c("edge", "x", newest.minusDays(CommissionTerms.TERM_WINDOW_DAYS), LocalDate.of(2027, 7, 1)),
-            c("out", "x", newest.minusDays(CommissionTerms.TERM_WINDOW_DAYS + 1), LocalDate.of(2027, 7, 1)),
+            // Both end before the newest start, so only the window decides.
+            c("edge", "x", newest.minusDays(CommissionTerms.TERM_WINDOW_DAYS), newest.minusDays(1)),
+            c("out", "x", newest.minusDays(CommissionTerms.TERM_WINDOW_DAYS + 1), newest.minusDays(1)),
             c("newest", "x", newest, LocalDate.of(2027, 7, 1)));
         assertThat(ids(CommissionTerms.currentTerm(list, TODAY))).containsExactly("edge", "newest");
     }

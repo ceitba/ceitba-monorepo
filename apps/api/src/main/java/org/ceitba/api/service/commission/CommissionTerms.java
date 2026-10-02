@@ -24,18 +24,29 @@ import java.util.Map;
 //      today). If there are none — between terms, before the next term is
 //      synced — every commission is a candidate (fallback), so the subject
 //      shows its most recent term instead of going empty.
-//   2. Of the candidates, keep the NEWEST term: the commissions whose
-//      course_start is within TERM_WINDOW_DAYS of the latest course_start.
-//      When the next term is synced before the current one ends, both are
-//      "not ended" and only the upcoming one is shown (students plan it).
+//   2. Of the candidates, keep the NEWEST term. Let N be the latest
+//      course_start among them; a candidate belongs to the newest term when
+//        (a) its course_start is within TERM_WINDOW_DAYS of N (inclusive), or
+//        (b) its course_end >= N, i.e. it is still running when the newest
+//            term begins.
+//      Everything else ended before the newest term started and is an older
+//      term. When the next term is synced before the current one ends, both
+//      are "not ended" and only the upcoming one is shown (students plan it).
 //
-// The window keeps offerings that genuinely run in the same term with
-// different dates, e.g. 81.74's two bimester modules (A 14/09–23/10 and
-// A 26/10–30/11, starts 42 days apart). Consecutive terms start much further
-// apart: first semester (March) → second (late July/August) is ~5 months,
-// a late second-semester module (late October) → next March ~4 months,
-// summer course (January) → March ~2 months. 60 days sits between the
-// widest observed same-term spread and the narrowest gap between terms.
+// (a) keeps offerings of the same term with different dates, e.g. 81.74's two
+// bimester modules (A 14/09–23/10 and A 26/10–30/11, starts 42 days apart).
+// (b) keeps long offerings that overlap the newest term although they started
+// much earlier, e.g. 72.45's year-long commission (01/03–31/12) next to its
+// second-semester ones (26/07–31/12, 147 days later), or a commission
+// running 26/07/2026–27/06/2027 once the March 2027 term is synced.
+// Consecutive terms do not overlap — first semester ends ~25/07 and the
+// second starts ~26/07; the second ends in December and the next March term
+// starts months later — so (b) never pulls an older term in, and their starts
+// are much further apart than the window: first semester (March) → second
+// (late July/August) is ~5 months, a late second-semester module (late
+// October) → next March ~4 months, summer course (January) → March ~2
+// months. 60 days sits between the widest observed same-term spread and the
+// narrowest gap between terms.
 public final class CommissionTerms {
 
     static final int TERM_WINDOW_DAYS = 60;
@@ -73,7 +84,8 @@ public final class CommissionTerms {
             .orElseThrow();
         LocalDate termFrom = newestStart.minusDays(TERM_WINDOW_DAYS);
         return candidates.stream()
-            .filter(c -> !c.getCourseStart().isBefore(termFrom))
+            .filter(c -> !c.getCourseStart().isBefore(termFrom)        // (a) starts within the window
+                || !c.getCourseEnd().isBefore(newestStart))            // (b) still running at newestStart
             .toList();
     }
 }

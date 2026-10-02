@@ -60,3 +60,25 @@ Consequences:
   `POST /api/v1/careers` first.
 * Until a plan is registered, users cannot pick it in onboarding:
   `PATCH /v1/me/profile` only accepts plans in the catalogue.
+
+## Gap: commissions carry no term
+
+`courseCommissions` returns no year/period per commission, and the sync does
+not store the `(year, period)` it queried with. The `commission` table keeps
+every term ever synced (upsert by ITBA id, never pruned), so a subject can
+have past, running and next-term rows at once. `GET /v1/subjects?plan=` and
+`GET /v1/commissions?plan=` both pick, per subject, the term to show with
+`service/commission/CommissionTerms`:
+
+1. Candidates: the commissions with `course_end >= today` (ART). If none
+   (between terms), all of them, so the subject shows its most recent term.
+2. Let `N` = the latest `course_start` among the candidates. Keep a
+   candidate if its `course_start >= N - 60 days` **or** its
+   `course_end >= N` (still running when the newest term begins).
+
+So when the next term is synced before the current one ends (current ends
+Dec 31, next starts ~Mar 1; or 1st semester ends Jul 25, 2nd starts Jul 26)
+only the next term is shown, while same-term offerings with different dates
+stay: bimester modules (starts 42 days apart, rule a) and year-long or
+cross-year commissions next to semester ones (e.g. 72.45's 01/03–31/12
+commission beside its 26/07–31/12 ones, rule b).
