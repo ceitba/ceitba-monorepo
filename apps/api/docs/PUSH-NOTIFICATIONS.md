@@ -64,6 +64,7 @@ DELETE /api/v1/me/devices/{token}  -> 204
 | An article is created as `published`, or a draft is patched to `published` (edits never re-notify) | Followers of the article's organization | title = org name, body = article title | `{type: "article", id, org}` |
 | A news event is created (events have no draft state) | Followers of the event's organization | title = org name, body = event title | `{type: "event", id, org}` |
 | A moderator approves or rejects a proposal, or changes its lifecycle (`ProposalStatusChangedEvent` -> `ProposalStatusPushNotifier`); setting the lifecycle it already has does not push | The proposal's author (none if they deleted their account) | title = "Tu propuesta fue aprobada" / "rechazada" / "aceptada" / "cerrada" / "volvió a estar abierta", body = proposal title | `{type: "proposal", id}` |
+| A student schedule correction becomes APPLIED for the first time (by votes or STAFF; see `docs/SCHEDULE-CORRECTIONS.md`) | The correction's suggester (none if they deleted their account) | title = "Tu corrección fue aplicada", body = "{subject} · Comisión {name}: el horario corregido ya se usa en el Combinador." | `{type: "schedule_correction_applied", correctionId, subjectId, commissionId}` (no `id` key) |
 | `POST /v1/staff/push/broadcast` (STAFF) | Every registered device | as given | as given |
 
 Articles or events with no organization do not push.
