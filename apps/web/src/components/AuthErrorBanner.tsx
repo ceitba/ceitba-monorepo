@@ -4,8 +4,9 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import ErrorBanner from './ErrorBanner'
 
 // Error codes the API puts on the OAuth redirect (AuthController /
-// LoginRejectedException). Anything else falls back to auth_failed.
-const KNOWN = new Set(['unauthorized', 'unauthorized_workspace', 'unverified_email', 'auth_failed', 'invalid_state'])
+// LoginRejectedException; access_denied = the user cancelled Google consent).
+// Anything else falls back to auth_failed.
+const KNOWN = new Set(['unauthorized', 'unauthorized_workspace', 'unverified_email', 'auth_failed', 'invalid_state', 'access_denied'])
 
 // AuthCallback forwards `?error=` as `/?authError=…`; a failed state check
 // redirects straight to the frontend root with `?error=`. Read either, show a

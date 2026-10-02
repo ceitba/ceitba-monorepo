@@ -7,8 +7,10 @@ import {
   fetchUsers,
   removeUserOrganization,
   revokeStaff,
+  updateUserOrganizationRole,
   type AdminUser,
   type FetchUsersParams,
+  type MembershipRole,
   type OrganizationSummary,
   type UsersPage,
 } from '../../api/admin'
@@ -41,6 +43,7 @@ export default function ManageUsersSection() {
   const [loading, setLoading] = useState(false)
   const [unassigning, setUnassigning] = useState<AdminUser | null>(null)
   const [removingOrg, setRemovingOrg] = useState<{ user: AdminUser; slug: string } | null>(null)
+  const [demotingOrg, setDemotingOrg] = useState<{ user: AdminUser; slug: string } | null>(null)
 
   // Filters / paging state. `query` is the input value; `q` is the debounced
   // value that actually drives requests, so we don't fire one fetch per keystroke.
@@ -150,6 +153,27 @@ export default function ManageUsersSection() {
     }
   }
 
+  // Org admins can see the org's followers (names + emails); promoting is
+  // instant, demoting goes through a confirm dialog.
+  async function setOrgRole(u: AdminUser, slug: string, role: MembershipRole) {
+    setError(null); setBusyId(u.id)
+    try {
+      await updateUserOrganizationRole(u.id, slug, role)
+      reload()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function confirmDemoteOrg() {
+    if (!demotingOrg) return
+    const { user: u, slug } = demotingOrg
+    await setOrgRole(u, slug, 'member')
+    setDemotingOrg(null)
+  }
+
   async function confirmRemoveOrg() {
     if (!removingOrg) return
     const { user: u, slug } = removingOrg
@@ -246,20 +270,37 @@ export default function ManageUsersSection() {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2 mb-2">
-                      {u.organizations.map((m) => (
-                        <span key={m.slug} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border dark:border-night-border">
-                          {m.slug}
-                          <button
-                            type="button"
-                            disabled={busyId === u.id}
-                            onClick={() => setRemovingOrg({ user: u, slug: m.slug })}
-                            aria-label={t('manage.users.removeOrgAria', { org: m.slug, name: u.name ?? u.email })}
-                            className="text-red-600 dark:text-red-400 disabled:opacity-50"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
+                      {u.organizations.map((m) => {
+                        const isAdmin = m.role === 'admin'
+                        return (
+                          <span key={m.slug} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border dark:border-night-border">
+                            {m.slug}
+                            <button
+                              type="button"
+                              disabled={busyId === u.id}
+                              onClick={() => (isAdmin
+                                ? setDemotingOrg({ user: u, slug: m.slug })
+                                : setOrgRole(u, m.slug, 'admin'))}
+                              aria-label={t(isAdmin ? 'manage.users.makeOrgMember' : 'manage.users.makeOrgAdmin', { org: m.slug })}
+                              title={t(isAdmin ? 'manage.users.makeOrgMember' : 'manage.users.makeOrgAdmin', { org: m.slug })}
+                              className={isAdmin
+                                ? 'px-1.5 rounded-sm bg-primary text-white border border-primary font-mono text-label uppercase tracking-widest disabled:opacity-50'
+                                : 'px-1.5 rounded-sm border border-border dark:border-night-border text-ink-secondary dark:text-night-muted font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary transition-colors disabled:opacity-50'}
+                            >
+                              {t(isAdmin ? 'manage.users.orgAdmin' : 'manage.users.orgMember')}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busyId === u.id}
+                              onClick={() => setRemovingOrg({ user: u, slug: m.slug })}
+                              aria-label={t('manage.users.removeOrgAria', { org: m.slug, name: u.name ?? u.email })}
+                              className="text-red-600 dark:text-red-400 disabled:opacity-50"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })}
                       {u.organizations.length === 0 && <span className="text-ink-secondary dark:text-night-muted">{t('manage.users.noOrgs')}</span>}
                     </div>
                     {orgOptions.length > 0 && (
@@ -315,6 +356,17 @@ export default function ManageUsersSection() {
           busy={busyId === unassigning.id}
           onConfirm={confirmUnassign}
           onCancel={() => setUnassigning(null)}
+        />
+      )}
+
+      {demotingOrg && (
+        <ConfirmDialog
+          title={t('manage.users.demoteOrgTitle')}
+          body={t('manage.users.demoteOrgBody', { name: demotingOrg.user.name ?? demotingOrg.user.email, org: demotingOrg.slug })}
+          confirmLabel={t('manage.users.demoteOrgConfirm')}
+          busy={busyId === demotingOrg.user.id}
+          onConfirm={confirmDemoteOrg}
+          onCancel={() => setDemotingOrg(null)}
         />
       )}
 

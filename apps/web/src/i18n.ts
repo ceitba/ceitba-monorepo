@@ -21,8 +21,12 @@ i18n
 // choice across reloads. Server sync for signed-in users lives in
 // ThemeContext (it needs the auth store, which this module must not import
 // at init time). Inlined key instead of prefsStore.writeLocalLang for the
-// same reason.
+// same reason. Also keep <html lang> in sync so screen readers, hyphenation
+// and the browser's translate prompt follow the UI language (index.html
+// hardcodes "es").
+document.documentElement.lang = i18n.language || savedLang
 i18n.on('languageChanged', (lang) => {
+  document.documentElement.lang = lang
   if (lang === 'es' || lang === 'en') {
     try { localStorage.setItem('prefs.lang', lang) } catch { /* storage blocked */ }
   }

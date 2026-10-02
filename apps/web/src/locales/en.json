@@ -116,7 +116,14 @@
       "removeOrgAria": "Remove {{name}} from {{org}}",
       "removeOrgTitle": "Remove from organization?",
       "removeOrgBody": "{{name}} will no longer be a member of {{org}}. You can add them back later.",
-      "removeOrgConfirm": "Remove"
+      "removeOrgConfirm": "Remove",
+      "orgAdmin": "admin",
+      "orgMember": "member",
+      "makeOrgAdmin": "Make admin of {{org}}",
+      "makeOrgMember": "Remove admin of {{org}}",
+      "demoteOrgTitle": "Remove admin?",
+      "demoteOrgBody": "{{name}} will stay a member of {{org}}, but without admin access (e.g. the followers list).",
+      "demoteOrgConfirm": "Remove admin"
     },
     "tabsAria": "Manage sections"
   },
@@ -145,7 +152,8 @@
       "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
       "unverified_email": "Your Google email isn't verified yet.",
       "auth_failed": "We couldn't complete sign-in. Please try again.",
-      "invalid_state": "Your sign-in session expired or was invalid. Please try signing in again."
+      "invalid_state": "Your sign-in session expired or was invalid. Please try signing in again.",
+      "access_denied": "You cancelled the Google sign-in."
     }
   },
   "hero": {

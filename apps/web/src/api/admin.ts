@@ -78,6 +78,13 @@ export function addUserOrganization(userId: string, slug: string, role: string):
   return apiSend('POST', `/users/${userId}/organizations`, { slug, role })
 }
 
+export type MembershipRole = 'member' | 'admin'
+
+// 404 if the user isn't in that org (use addUserOrganization first).
+export function updateUserOrganizationRole(userId: string, slug: string, role: MembershipRole): Promise<{ slug: string; role: string }> {
+  return apiSend('PATCH', `/users/${userId}/organizations/${slug}`, { role })
+}
+
 export function removeUserOrganization(userId: string, slug: string): Promise<void> {
   return apiSend('DELETE', `/users/${userId}/organizations/${slug}`)
 }
