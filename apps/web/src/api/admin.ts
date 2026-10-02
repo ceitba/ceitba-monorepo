@@ -19,8 +19,10 @@ export interface OrganizationSummary {
   name: string
 }
 
+// Mirrors CEITBA-API web/staff/dto/StaffResponse: `userId` is serialized as
+// `user_id` (@JsonProperty); start/end are ISO-8601 offset date-times.
 export interface StaffGrant {
-  userId: string
+  user_id: string
   email: string
   name: string | null
   branch: string
@@ -56,10 +58,6 @@ export function fetchUsers(params: FetchUsersParams = {}): Promise<UsersPage> {
 export function fetchOrganizations(): Promise<OrganizationSummary[]> {
   // /v1/organizations returns { data: [...] }; flatten it for the picker.
   return apiGet<{ data: OrganizationSummary[] }>('/organizations').then((r) => r.data)
-}
-
-export function fetchActiveStaffGrants(): Promise<StaffGrant[]> {
-  return apiGet('/staff')
 }
 
 export function assignStaff(payload: {

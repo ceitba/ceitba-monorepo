@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBenefitCards, useBenefits } from '../../hooks/useContent'
 import type { BenefitCard, BenefitEntry } from '../../api/content'
+import LoadError from '../../components/LoadError'
+import { benefitCategoryName } from '../../utils/benefits'
+import { safeHttpUrl, safeLinkUrl } from '../../utils/url'
 
 const ALL = '__all__'
 
@@ -38,8 +41,8 @@ const ICONS: Record<string, React.ReactNode> = {
 export default function BenefitsSection() {
   const { t, i18n } = useTranslation()
   const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
-  const { data: categories, loading: loadingCategories } = useBenefits()
-  const { data: cards, loading: loadingCards } = useBenefitCards()
+  const { data: categories, loading: loadingCategories, error: categoriesError, reload: reloadCategories } = useBenefits()
+  const { data: cards, loading: loadingCards, error: cardsError, reload: reloadCards } = useBenefitCards()
   const categoryList: BenefitEntry[] = categories ?? []
   const cardList: BenefitCard[] = cards ?? []
 
@@ -51,15 +54,20 @@ export default function BenefitsSection() {
   }, [cardList, active])
 
   const loading = loadingCategories || loadingCards
+  const failed = categoriesError != null || cardsError != null
+  const retry = () => {
+    if (categoriesError != null) void reloadCategories()
+    if (cardsError != null) void reloadCards()
+  }
 
   return (
     <section className="py-section-mobile lg:py-section" aria-labelledby="benefits-heading">
       <div className="container-content">
         <div className="mb-8">
-          <h2 id="benefits-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-[#f4f4f5] mb-2">
+          <h2 id="benefits-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mb-2">
             {t('benefits.sectionTitle')}
           </h2>
-          <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('benefits.sectionSubtitle')}
           </p>
         </div>
@@ -74,7 +82,7 @@ export default function BenefitsSection() {
             {categoryList.map((c) => (
               <Chip
                 key={c.slug}
-                label={t(`benefits.${c.slug}.name`, { defaultValue: c.slug })}
+                label={benefitCategoryName(c.slug, c, lang, t)}
                 colorVar={c.colorVar}
                 icon={ICONS[c.slug]}
                 active={active === c.slug}
@@ -84,10 +92,12 @@ export default function BenefitsSection() {
           </div>
         )}
 
-        {loading ? (
+        {failed && !loading ? (
+          <LoadError onRetry={retry} />
+        ) : loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-72 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] skeleton" />
+              <div key={i} className="h-72 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface skeleton" />
             ))}
           </div>
         ) : visibleCards.length === 0 ? (
@@ -130,8 +140,8 @@ function Chip({
       aria-pressed={active}
       className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-mono text-label uppercase tracking-widest transition-colors duration-150 ${
         active
-          ? 'bg-primary dark:bg-[#7FA1D4] text-white dark:text-[#0f1f38] border border-primary'
-          : 'border border-border dark:border-[#3f3f46] text-ink-secondary dark:text-[#a1a1aa] hover:border-primary hover:text-primary'
+          ? 'bg-primary dark:bg-primary-300 text-white dark:text-night-navy border border-primary'
+          : 'border border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary hover:text-primary'
       }`}
     >
       {icon && (
@@ -164,17 +174,19 @@ function BenefitCardView({
   const summary = lang === 'es' ? card.summaryEs : card.summaryEn
   const bullets = lang === 'es' ? card.bulletsEs : card.bulletsEn
   const ctaLabel = lang === 'es' ? card.ctaLabelEs : card.ctaLabelEn
-  const categoryLabel = t(`benefits.${card.categorySlug}.name`, { defaultValue: card.categorySlug })
+  const categoryLabel = benefitCategoryName(card.categorySlug, category, lang, t)
+  const imageUrl = safeHttpUrl(card.imageUrl)
+  const ctaUrl = safeLinkUrl(card.ctaUrl)
 
   return (
     <article
-      className="flex flex-col rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden animate-slide-up"
+      className="flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden animate-slide-up"
       style={{ animationDelay: `${animationDelay}ms` }}
     >
-      {card.imageUrl && (
-        <div className="w-full aspect-[16/9] bg-page-bg dark:bg-[#18181b] overflow-hidden">
+      {imageUrl && (
+        <div className="w-full aspect-[16/9] bg-page-bg dark:bg-night-bg overflow-hidden">
           <img
-            src={card.imageUrl}
+            src={imageUrl}
             alt={title}
             loading="lazy"
             className="w-full h-full object-cover"
@@ -192,18 +204,18 @@ function BenefitCardView({
             {categoryLabel}
           </span>
           {card.price && (
-            <span className="ml-auto font-mono text-label uppercase tracking-widest text-ink-primary dark:text-[#f4f4f5]">
+            <span className="ml-auto font-mono text-label uppercase tracking-widest text-ink-primary dark:text-night-text">
               {card.price}
             </span>
           )}
         </div>
 
-        <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5]">
+        <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">
           {title}
         </h3>
 
         {summary && (
-          <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {summary}
           </p>
         )}
@@ -211,17 +223,17 @@ function BenefitCardView({
         {bullets.length > 0 && (
           <ul className="flex flex-col gap-1.5">
             {bullets.map((b) => (
-              <li key={b} className="flex items-start gap-2 font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-300 dark:bg-[#7FA1D4] flex-shrink-0" aria-hidden="true" />
+              <li key={b} className="flex items-start gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-300 dark:bg-primary-300 flex-shrink-0" aria-hidden="true" />
                 {b}
               </li>
             ))}
           </ul>
         )}
 
-        {card.ctaUrl && (
+        {ctaUrl && (
           <a
-            href={card.ctaUrl}
+            href={ctaUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-auto inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold self-start"
@@ -240,7 +252,7 @@ function BenefitCardView({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center gap-3 py-12 px-6 rounded-card border border-dashed border-border dark:border-[#3f3f46] text-center">
+    <div className="flex flex-col items-center gap-3 py-12 px-6 rounded-card border border-dashed border-border dark:border-night-border text-center">
       <div className="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
           <circle cx="12" cy="12" r="10" />
@@ -248,7 +260,7 @@ function EmptyState({ message }: { message: string }) {
           <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2.5" />
         </svg>
       </div>
-      <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
         {message}
       </p>
     </div>

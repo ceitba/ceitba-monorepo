@@ -5,7 +5,7 @@ export default function HeroSection() {
 
   return (
     <section
-      className="relative overflow-hidden bg-primary-50 dark:bg-[#0f1f38] py-section-mobile lg:py-section"
+      className="relative overflow-hidden bg-primary-50 dark:bg-night-navy py-section-mobile lg:py-section"
       aria-labelledby="hero-heading"
     >
       {/* Decorative oversized wordmark */}
@@ -19,7 +19,7 @@ export default function HeroSection() {
 
       <div className="container-content relative">
         <div className="max-w-2xl animate-fade-in">
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('hero.eyebrow')}
           </span>
           <h1
@@ -28,10 +28,10 @@ export default function HeroSection() {
           >
             {t('hero.title')}
           </h1>
-          <p className="font-body text-body-lg text-ink-primary dark:text-[#f4f4f5] font-semibold mb-4 leading-snug">
+          <p className="font-body text-body-lg text-ink-primary dark:text-night-text font-semibold mb-4 leading-snug">
             {t('hero.subtitle')}
           </p>
-          <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('hero.description')}
           </p>
         </div>

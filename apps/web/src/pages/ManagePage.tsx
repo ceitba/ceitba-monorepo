@@ -19,15 +19,15 @@ export default function ManagePage() {
   return (
     <main className="container-content py-section-mobile lg:py-section">
       <header className="mb-6">
-        <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-[#f4f4f5]">
+        <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">
           {t('manage.title')}
         </h1>
-        <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa] mt-1">
+        <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">
           {t('manage.subtitle')}
         </p>
       </header>
 
-      <nav className="flex gap-2 border-b border-border dark:border-[#3f3f46] mb-6" aria-label="Manage sections">
+      <nav className="flex gap-2 border-b border-border dark:border-night-border mb-6" aria-label={t('manage.tabsAria')}>
         {tabs.map((it) => (
           <button
             key={it.id}
@@ -37,7 +37,7 @@ export default function ManagePage() {
             className={`px-4 py-2 font-mono text-label uppercase tracking-widest transition-colors duration-150 -mb-px border-b-2 ${
               tab === it.id
                 ? 'border-primary text-primary'
-                : 'border-transparent text-ink-secondary dark:text-[#a1a1aa] hover:text-primary'
+                : 'border-transparent text-ink-secondary dark:text-night-muted hover:text-primary'
             }`}
           >
             {it.label}

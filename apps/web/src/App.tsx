@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage'
 import ManagePage from './pages/ManagePage'
 import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
+import AuthErrorBanner from './components/AuthErrorBanner'
 import { getSession } from './store/authStore'
 
 // Lands here after the API redirects post-OAuth. The session cookie is
@@ -35,6 +36,7 @@ function Layout() {
   return (
     <div className="flex flex-col min-h-screen bg-page-bg">
       <Navbar />
+      <AuthErrorBanner />
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />

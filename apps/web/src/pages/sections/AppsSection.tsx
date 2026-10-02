@@ -13,7 +13,7 @@ function AppCard({ href, label, description, cta, icon, colorVar }: AppCardProps
   return (
     <a
       href={href}
-      className="group flex flex-col rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden"
+      className="group flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden"
     >
       <div
         className="flex items-center justify-center h-24 sm:h-32"
@@ -25,10 +25,10 @@ function AppCard({ href, label, description, cta, icon, colorVar }: AppCardProps
         </div>
       </div>
       <div className="flex flex-col flex-1 p-5 gap-3">
-        <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5] group-hover:text-primary transition-colors duration-150">
+        <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150">
           {label}
         </h3>
-        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] flex-1">
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted flex-1">
           {description}
         </p>
         <div className="flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold">
@@ -68,13 +68,13 @@ export default function AppsSection() {
   const { t } = useTranslation()
 
   return (
-    <section className="py-section-mobile lg:py-section bg-white dark:bg-[#1c1c1f]" aria-labelledby="apps-heading">
+    <section className="py-section-mobile lg:py-section bg-white dark:bg-night-raised" aria-labelledby="apps-heading">
       <div className="container-content">
         <div className="mb-8">
-          <h2 id="apps-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-[#f4f4f5] mb-2">
+          <h2 id="apps-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mb-2">
             {t('apps.sectionTitle')}
           </h2>
-          <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('apps.sectionSubtitle')}
           </p>
         </div>

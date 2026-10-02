@@ -42,11 +42,11 @@ export default function Footer() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-border dark:border-[#3f3f46] bg-surface dark:bg-[#18181b] py-8 mt-auto">
+    <footer className="border-t border-border dark:border-night-border bg-surface dark:bg-night-bg py-8 mt-auto">
       <div className="container-content flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center sm:items-start gap-1">
           <span className="font-display font-bold text-primary text-h5 tracking-tight">CEITBA</span>
-          <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] uppercase tracking-widest">
+          <span className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">
             © {year} {t('footer.itTeam')}. {t('footer.rights')}
           </span>
         </div>
@@ -61,7 +61,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150"
+                className="text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
               >
                 {icon}
               </a>
@@ -69,18 +69,18 @@ export default function Footer() {
           </div>
 
           {/* Text links */}
-          <nav className="flex items-center gap-6" aria-label="Footer">
+          <nav className="flex items-center gap-6" aria-label={t('footer.navAria')}>
             <a
               href="https://github.com/ceitba"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150"
+              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
             >
               {t('footer.github')}
             </a>
             <a
               href="mailto:ceitba@itba.edu.ar"
-              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150"
+              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
             >
               {t('footer.contact')}
             </a>

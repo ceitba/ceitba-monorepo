@@ -12,7 +12,8 @@
     "home": "Inicio",
     "departments": "Departamentos",
     "benefits": "Beneficios",
-    "staff": "Staff"
+    "staff": "Staff",
+    "aria": "Secciones de la página"
   },
   "manage": {
     "title": "Administrar",
@@ -40,7 +41,13 @@
         "role": "Rol",
         "order": "Orden",
         "department": "Departamento"
-      }
+      },
+      "deleteBody": "{{name}} se va a eliminar del staff {{year}}. Esta acción no se puede deshacer.",
+      "roleEs": "Rol (ES)",
+      "roleEn": "Rol (EN)",
+      "email": "Email",
+      "photoUrl": "URL de foto",
+      "linkedinUrl": "URL de LinkedIn"
     },
     "benefits": {
       "tabs": {
@@ -48,9 +55,11 @@
         "categories": "Categorías"
       },
       "categories": {
-        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su color y orden acá.",
+        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su nombre, color y orden acá.",
         "colorVar": "Variable de color",
-        "order": "Orden"
+        "order": "Orden",
+        "nameEs": "Nombre (ES)",
+        "nameEn": "Nombre (EN)"
       },
       "cards": {
         "filter": "Categoría",
@@ -76,8 +85,10 @@
           "category": "Categoría",
           "price": "Precio",
           "order": "Orden"
-        }
-      }
+        },
+        "deleteBody": "La tarjeta «{{title}}» se va a eliminar. Esta acción no se puede deshacer."
+      },
+      "tabsAria": "Administrar beneficios"
     },
     "users": {
       "col": {
@@ -101,8 +112,13 @@
       "filterAllOrgs": "Todas las organizaciones",
       "pageStatus": "Página {{page}} de {{pages}} · {{total}} usuarios",
       "prev": "‹ Anterior",
-      "next": "Siguiente ›"
-    }
+      "next": "Siguiente ›",
+      "removeOrgAria": "Quitar a {{name}} de {{org}}",
+      "removeOrgTitle": "¿Quitar de la organización?",
+      "removeOrgBody": "{{name}} va a dejar de ser miembro de {{org}}. Podés volver a agregarlo más adelante.",
+      "removeOrgConfirm": "Quitar"
+    },
+    "tabsAria": "Secciones de administración"
   },
   "profile": {
     "title": "Mi perfil",
@@ -128,7 +144,8 @@
       "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
       "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
       "unverified_email": "Tu correo de Google aún no está verificado.",
-      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo."
+      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo.",
+      "invalid_state": "La sesión de inicio expiró o no es válida. Probá iniciar sesión de nuevo."
     }
   },
   "hero": {
@@ -234,16 +251,19 @@
     "sectionSubtitle": "Las personas detrás del CEITBA.",
     "comingSoon": "Próximamente",
     "comingSoonMessage": "Estamos trabajando para presentarte al equipo completo. ¡Volvé pronto!",
-    "yearLabel": "Filtrar por año"
+    "yearLabel": "Filtrar por año",
+    "linkedinAria": "LinkedIn de {{name}}"
   },
   "footer": {
     "itTeam": "IT Team CEITBA",
     "github": "GitHub",
     "contact": "Contacto",
-    "rights": "Todos los derechos reservados."
+    "rights": "Todos los derechos reservados.",
+    "navAria": "Enlaces del pie de página"
   },
   "errors": {
     "somethingWrong": "Algo salió mal",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "dismiss": "Cerrar"
   }
 }

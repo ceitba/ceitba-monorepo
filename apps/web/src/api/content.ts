@@ -14,6 +14,9 @@ export interface BenefitEntry {
   contactEmail: string | null
   highlightsEs: string[]
   highlightsEn: string[]
+  // Optional display names; the UI falls back to the static i18n entry.
+  nameEs: string | null
+  nameEn: string | null
 }
 
 export interface BenefitCard {

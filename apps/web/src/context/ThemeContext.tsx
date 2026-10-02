@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../hooks/useTheme'
 import { bindAuthHydration, syncPrefToServer, writeLocalLang, type Lang, type Theme } from '../store/prefsStore'
@@ -13,6 +13,10 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { theme, toggle, applyExternal } = useTheme()
   const { i18n } = useTranslation()
+  // Language the server is known to hold for the signed-in user. Hydration
+  // sets it before switching i18n, so the languageChanged handler below
+  // doesn't PATCH back the value it just received.
+  const serverLangRef = useRef<Lang | null>(null)
 
   // Bind auth hydration once at provider mount: when the user logs in, the
   // server-side theme/language overwrite local state. When they log out we
@@ -21,6 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return bindAuthHydration(
       (next) => applyExternal(next),
       (lang) => {
+        serverLangRef.current = lang
         if (i18n.language !== lang) i18n.changeLanguage(lang)
         writeLocalLang(lang)
       },
@@ -28,10 +33,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Mirror local-only language changes through the server.
+  // Mirror user-initiated language changes to the server (localStorage is
+  // handled by the languageChanged listener in src/i18n.ts).
   useEffect(() => {
     const handler = (lang: string) => {
-      void syncPrefToServer({ language: lang as Lang })
+      if (lang !== 'es' && lang !== 'en') return
+      if (lang === serverLangRef.current) return
+      serverLangRef.current = lang
+      void syncPrefToServer({ language: lang })
     }
     i18n.on('languageChanged', handler)
     return () => { i18n.off('languageChanged', handler) }

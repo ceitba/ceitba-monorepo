@@ -40,6 +40,17 @@ export default {
           secondary: '#6B7280',
         },
         border: '#E5E7EB',
+        // Dark-mode palette (used via dark: variants). Values match the
+        // html.dark base styles in src/index.css.
+        night: {
+          bg:      '#18181b', // page background
+          raised:  '#1c1c1f', // alternate section background
+          surface: '#27272a', // cards, inputs, menus, modals
+          border:  '#3f3f46',
+          muted:   '#a1a1aa', // secondary text
+          text:    '#f4f4f5', // primary text
+          navy:    '#0f1f38', // deep brand navy (hero bg, text on primary-300)
+        },
         'card-bg': 'var(--card-bg)',
         'page-bg': 'var(--page-bg)',
       },

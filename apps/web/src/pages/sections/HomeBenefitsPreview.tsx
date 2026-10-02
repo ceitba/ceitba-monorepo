@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useBenefits } from '../../hooks/useContent'
+import LoadError from '../../components/LoadError'
+import { benefitCategoryName } from '../../utils/benefits'
 
 const ICONS: Record<string, React.ReactNode> = {
   deportes: (
@@ -32,28 +34,29 @@ const ICONS: Record<string, React.ReactNode> = {
 }
 
 export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void }) {
-  const { t } = useTranslation()
-  const { data, loading } = useBenefits()
+  const { t, i18n } = useTranslation()
+  const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
+  const { data, loading, error, reload } = useBenefits()
   const categories = data ?? []
 
   return (
     <section
-      className="py-section-mobile lg:py-section bg-white dark:bg-[#1c1c1f]"
+      className="py-section-mobile lg:py-section bg-white dark:bg-night-raised"
       aria-labelledby="home-benefits-heading"
     >
       <div className="container-content">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-8">
           <div>
-            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('home.benefits.eyebrow')}
             </span>
             <h2
               id="home-benefits-heading"
-              className="font-display font-bold text-h3 text-ink-primary dark:text-[#f4f4f5] mt-1 mb-2"
+              className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mt-1 mb-2"
             >
               {t('home.benefits.title')}
             </h2>
-            <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa] max-w-2xl">
+            <p className="font-body text-body text-ink-secondary dark:text-night-muted max-w-2xl">
               {t('home.benefits.subtitle')}
             </p>
           </div>
@@ -70,12 +73,15 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
           </button>
         </div>
 
+        {error && !loading ? (
+          <LoadError onRetry={() => void reload()} />
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading
             ? Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-40 rounded-card border border-border dark:border-[#3f3f46] bg-page-bg dark:bg-[#27272a] skeleton"
+                  className="h-40 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface skeleton"
                 />
               ))
             : categories.map((cat, i) => (
@@ -83,7 +89,7 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
                   key={cat.slug}
                   type="button"
                   onClick={onSeeAll}
-                  className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-[#3f3f46] bg-page-bg dark:bg-[#27272a] hover:border-primary hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
+                  className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface hover:border-primary hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
                   <div className="flex items-center gap-3">
@@ -93,17 +99,18 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
                     >
                       {ICONS[cat.slug]}
                     </span>
-                    <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5] group-hover:text-primary transition-colors duration-150">
-                      {t(`benefits.${cat.slug}.name`, { defaultValue: cat.slug })}
+                    <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150">
+                      {benefitCategoryName(cat.slug, cat, lang, t)}
                     </h3>
                   </div>
-                  <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] line-clamp-3">
+                  <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted line-clamp-3">
                     {t(`benefits.${cat.slug}.description`, { defaultValue: '' })}
                   </p>
                 </button>
               ))
           }
         </div>
+        )}
       </div>
     </section>
   )

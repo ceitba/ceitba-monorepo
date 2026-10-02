@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useDepartments } from '../../hooks/useContent'
+import LoadError from '../../components/LoadError'
 
 const ICONS: Record<string, React.ReactNode> = {
   it: (
@@ -45,29 +46,32 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default function DepartmentsSection() {
   const { t } = useTranslation()
-  const { data, loading } = useDepartments()
+  const { data, loading, error, reload } = useDepartments()
   const departments = data ?? []
 
   return (
     <section className="py-section-mobile lg:py-section" aria-labelledby="departments-heading">
       <div className="container-content">
         <div className="mb-8">
-          <h2 id="departments-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-[#f4f4f5] mb-2">
+          <h2 id="departments-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mb-2">
             {t('departments.sectionTitle')}
           </h2>
-          <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('departments.sectionSubtitle')}
           </p>
         </div>
+        {error && !loading ? (
+          <LoadError onRetry={() => void reload()} />
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-36 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] skeleton" />
+                <div key={i} className="h-36 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface skeleton" />
               ))
             : departments.map((dept, i) => (
                 <article
                   key={dept.slug}
-                  className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
+                  className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div
@@ -77,10 +81,10 @@ export default function DepartmentsSection() {
                     {ICONS[dept.slug]}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5]">
+                    <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">
                       {t(`departments.${dept.slug}.name`)}
                     </h3>
-                    <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+                    <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
                       {t(`departments.${dept.slug}.description`)}
                     </p>
                   </div>
@@ -88,6 +92,7 @@ export default function DepartmentsSection() {
               ))
           }
         </div>
+        )}
       </div>
     </section>
   )

@@ -12,6 +12,9 @@ import {
   type OrganizationSummary,
   type UsersPage,
 } from '../../api/admin'
+import { getCachedSession, getSession } from '../../store/authStore'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import ErrorBanner from '../../components/ErrorBanner'
 
 const STAFF_BRANCH = 'DIRECTIVES'
 const STAFF_ROLE = 'MEMBER'
@@ -37,6 +40,7 @@ export default function ManageUsersSection() {
   const [busyId, setBusyId]   = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [unassigning, setUnassigning] = useState<AdminUser | null>(null)
+  const [removingOrg, setRemovingOrg] = useState<{ user: AdminUser; slug: string } | null>(null)
 
   // Filters / paging state. `query` is the input value; `q` is the debounced
   // value that actually drives requests, so we don't fire one fetch per keystroke.
@@ -54,17 +58,15 @@ export default function ManageUsersSection() {
     fetchOrganizations().then(setOrgs).catch(() => setOrgs([]))
   }, [])
 
-  // Debounce the search input.
+  // Debounce the search input. Filter changes reset to page 1 in the same
+  // update (not in a follow-up effect), so we don't first fire a wasted
+  // request for the new filter on the old page.
   useEffect(() => {
-    const id = setTimeout(() => setQ(query.trim()), SEARCH_DEBOUNCE_MS)
+    const next = query.trim()
+    if (next === q) return
+    const id = setTimeout(() => { setQ(next); setPageNum(1) }, SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(id)
-  }, [query])
-
-  // Reset to page 1 whenever filters or sort change so the user doesn't end
-  // up looking at "page 5" of a 1-page result set.
-  useEffect(() => {
-    setPageNum(1)
-  }, [q, sort, orgSlug])
+  }, [query, q])
 
   const params = useMemo<FetchUsersParams>(() => ({
     page: pageNum,
@@ -82,6 +84,10 @@ export default function ManageUsersSection() {
         if (reqIdRef.current !== id) return
         setPage(res)
         setError(null)
+        // The result set can shrink under us (e.g. the last user on the last
+        // page was removed from the filtered org): clamp to the last page.
+        const lastPage = Math.max(1, Math.ceil(res.meta.total / PAGE_SIZE))
+        if ((params.page ?? 1) > lastPage) setPageNum(lastPage)
       })
       .catch((e: Error) => {
         if (reqIdRef.current !== id) return
@@ -116,6 +122,12 @@ export default function ManageUsersSection() {
     try {
       await revokeStaff(u.id)
       setUnassigning(null)
+      // Unassigning yourself: refresh the session so StaffGuard sees the
+      // lost role and leaves /manage instead of showing a dead admin UI.
+      if (u.id === getCachedSession()?.id) {
+        await getSession({ force: true })
+        return
+      }
       reload()
     } catch (e) {
       setUnassigning(null)
@@ -138,12 +150,16 @@ export default function ManageUsersSection() {
     }
   }
 
-  async function removeOrg(u: AdminUser, slug: string) {
+  async function confirmRemoveOrg() {
+    if (!removingOrg) return
+    const { user: u, slug } = removingOrg
     setError(null); setBusyId(u.id)
     try {
       await removeUserOrganization(u.id, slug)
+      setRemovingOrg(null)
       reload()
     } catch (e) {
+      setRemovingOrg(null)
       setError((e as Error).message)
     } finally {
       setBusyId(null)
@@ -156,7 +172,7 @@ export default function ManageUsersSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      {error && <p className="px-3 py-2 rounded-sm bg-red-50 text-red-700 font-body text-body-sm border border-red-200">{error}</p>}
+      {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -164,29 +180,29 @@ export default function ManageUsersSection() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('manage.users.searchPlaceholder')}
-          className="flex-1 min-w-[200px] px-3 py-2 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-body text-body-sm focus:outline-none focus:border-primary"
+          className="flex-1 min-w-[200px] px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm focus:outline-none focus:border-primary"
         />
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          className="px-3 py-2 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-body text-body-sm"
+          onChange={(e) => { setSort(e.target.value as SortKey); setPageNum(1) }}
+          className="px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
         >
           <option value="newest">{t('manage.users.sort.newest')}</option>
           <option value="oldest">{t('manage.users.sort.oldest')}</option>
         </select>
         <select
           value={orgSlug}
-          onChange={(e) => setOrgSlug(e.target.value)}
-          className="px-3 py-2 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-body text-body-sm"
+          onChange={(e) => { setOrgSlug(e.target.value); setPageNum(1) }}
+          className="px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
         >
           <option value="">{t('manage.users.filterAllOrgs')}</option>
           {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name ?? o.slug}</option>)}
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-card border border-border dark:border-[#3f3f46]">
+      <div className="overflow-x-auto rounded-card border border-border dark:border-night-border">
         <table className="w-full font-body text-body-sm">
-          <thead className="bg-page-bg dark:bg-[#18181b]">
+          <thead className="bg-page-bg dark:bg-night-bg">
             <tr className="text-left">
               <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.user')}</th>
               <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.staff')}</th>
@@ -197,10 +213,10 @@ export default function ManageUsersSection() {
             {users.map((u) => {
               const orgOptions = orgs.filter((o) => !u.organizations.find((m) => m.slug === o.slug))
               return (
-                <tr key={u.id} className="border-t border-border dark:border-[#3f3f46] align-top">
+                <tr key={u.id} className="border-t border-border dark:border-night-border align-top">
                   <td className="px-3 py-3">
-                    <p className="font-semibold text-ink-primary dark:text-[#f4f4f5]">{u.name ?? u.email}</p>
-                    <p className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">{u.email}</p>
+                    <p className="font-semibold text-ink-primary dark:text-night-text">{u.name ?? u.email}</p>
+                    <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{u.email}</p>
                   </td>
                   <td className="px-3 py-3">
                     {u.isStaff ? (
@@ -212,7 +228,7 @@ export default function ManageUsersSection() {
                           type="button"
                           disabled={busyId === u.id}
                           onClick={() => setUnassigning(u)}
-                          className="text-red-600 font-mono text-label uppercase tracking-widest hover:underline disabled:opacity-50"
+                          className="text-red-600 dark:text-red-400 font-mono text-label uppercase tracking-widest hover:underline disabled:opacity-50"
                         >
                           {t('manage.users.unassign')}
                         </button>
@@ -222,7 +238,7 @@ export default function ManageUsersSection() {
                         type="button"
                         disabled={busyId === u.id}
                         onClick={() => makeStaff(u)}
-                        className="px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-[#3f3f46] hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                        className="px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
                       >
                         {t('manage.users.staffOff')}
                       </button>
@@ -231,18 +247,26 @@ export default function ManageUsersSection() {
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2 mb-2">
                       {u.organizations.map((m) => (
-                        <span key={m.slug} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border dark:border-[#3f3f46]">
+                        <span key={m.slug} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border dark:border-night-border">
                           {m.slug}
-                          <button onClick={() => removeOrg(u, m.slug)} className="text-red-600">×</button>
+                          <button
+                            type="button"
+                            disabled={busyId === u.id}
+                            onClick={() => setRemovingOrg({ user: u, slug: m.slug })}
+                            aria-label={t('manage.users.removeOrgAria', { org: m.slug, name: u.name ?? u.email })}
+                            className="text-red-600 dark:text-red-400 disabled:opacity-50"
+                          >
+                            ×
+                          </button>
                         </span>
                       ))}
-                      {u.organizations.length === 0 && <span className="text-ink-secondary dark:text-[#a1a1aa]">{t('manage.users.noOrgs')}</span>}
+                      {u.organizations.length === 0 && <span className="text-ink-secondary dark:text-night-muted">{t('manage.users.noOrgs')}</span>}
                     </div>
                     {orgOptions.length > 0 && (
                       <select
                         value=""
                         onChange={(e) => addOrg(u, e.target.value)}
-                        className="px-2 py-1 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-body text-body-sm"
+                        className="px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
                       >
                         <option value="">{t('manage.users.addOrg')}</option>
                         {orgOptions.map((o) => <option key={o.slug} value={o.slug}>{o.slug}</option>)}
@@ -260,7 +284,7 @@ export default function ManageUsersSection() {
       </div>
 
       <div className="flex items-center justify-between gap-2 font-body text-body-sm">
-        <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+        <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
           {t('manage.users.pageStatus', { page: pageNum, pages: totalPages, total })}
         </span>
         <div className="flex gap-2">
@@ -268,7 +292,7 @@ export default function ManageUsersSection() {
             type="button"
             disabled={pageNum <= 1 || loading}
             onClick={() => setPageNum((n) => Math.max(1, n - 1))}
-            className="px-3 py-1 rounded-sm border border-border dark:border-[#3f3f46] font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
+            className="px-3 py-1 rounded-sm border border-border dark:border-night-border font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
           >
             {t('manage.users.prev')}
           </button>
@@ -276,7 +300,7 @@ export default function ManageUsersSection() {
             type="button"
             disabled={pageNum >= totalPages || loading}
             onClick={() => setPageNum((n) => Math.min(totalPages, n + 1))}
-            className="px-3 py-1 rounded-sm border border-border dark:border-[#3f3f46] font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
+            className="px-3 py-1 rounded-sm border border-border dark:border-night-border font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
           >
             {t('manage.users.next')}
           </button>
@@ -284,69 +308,26 @@ export default function ManageUsersSection() {
       </div>
 
       {unassigning && (
-        <ConfirmUnassignModal
-          user={unassigning}
+        <ConfirmDialog
+          title={t('manage.users.unassignTitle')}
+          body={t('manage.users.unassignBody', { name: unassigning.name ?? unassigning.email })}
+          confirmLabel={t('manage.users.unassignConfirm')}
           busy={busyId === unassigning.id}
           onConfirm={confirmUnassign}
           onCancel={() => setUnassigning(null)}
         />
       )}
-    </div>
-  )
-}
 
-interface ConfirmUnassignModalProps {
-  user: AdminUser
-  busy: boolean
-  onConfirm: () => void
-  onCancel: () => void
-}
-
-function ConfirmUnassignModal({ user, busy, onConfirm, onCancel }: ConfirmUnassignModalProps) {
-  const { t } = useTranslation()
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !busy) onCancel() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [busy, onCancel])
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-      onClick={() => { if (!busy) onCancel() }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="unassign-staff-title"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] p-6 flex flex-col gap-4"
-      >
-        <h3 id="unassign-staff-title" className="font-display font-bold text-h4">{t('manage.users.unassignTitle')}</h3>
-        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-          {t('manage.users.unassignBody', { name: user.name ?? user.email })}
-        </p>
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            autoFocus
-            disabled={busy}
-            onClick={onCancel}
-            className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary"
-          >
-            {t('manage.cancel')}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onConfirm}
-            className="px-3 py-1.5 rounded-sm bg-red-600 text-white font-mono text-label uppercase tracking-widest disabled:opacity-50"
-          >
-            {busy ? '…' : t('manage.users.unassignConfirm')}
-          </button>
-        </div>
-      </div>
+      {removingOrg && (
+        <ConfirmDialog
+          title={t('manage.users.removeOrgTitle')}
+          body={t('manage.users.removeOrgBody', { name: removingOrg.user.name ?? removingOrg.user.email, org: removingOrg.slug })}
+          confirmLabel={t('manage.users.removeOrgConfirm')}
+          busy={busyId === removingOrg.user.id}
+          onConfirm={confirmRemoveOrg}
+          onCancel={() => setRemovingOrg(null)}
+        />
+      )}
     </div>
   )
 }

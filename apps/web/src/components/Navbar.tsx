@@ -9,12 +9,13 @@ export default function Navbar() {
 
   const toggleLanguage = () => {
     const next = i18n.language === 'es' ? 'en' : 'es'
-    // i18n.on('languageChanged') in src/i18n.ts handles localStorage + server sync.
+    // languageChanged listeners persist it: src/i18n.ts writes localStorage,
+    // ThemeContext PATCHes the server for signed-in users.
     i18n.changeLanguage(next)
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-surface/95 dark:bg-[#18181b]/95 backdrop-blur-sm border-b border-border dark:border-[#3f3f46]">
+    <header className="sticky top-0 z-40 bg-surface/95 dark:bg-night-bg/95 backdrop-blur-sm border-b border-border dark:border-night-border">
       <div className="h-[3px] bg-primary" aria-hidden="true" />
       <a
         href="#main-content"
@@ -29,7 +30,7 @@ export default function Navbar() {
           className="flex flex-col justify-center hover:opacity-80 transition-opacity duration-150"
         >
           <span className="font-display text-h5 font-bold text-primary tracking-tight leading-tight">CEITBA</span>
-          <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] uppercase tracking-widest leading-tight">
+          <span className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest leading-tight">
             {t('nav.tagline')}
           </span>
         </Link>
@@ -37,7 +38,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <button
             onClick={toggleLanguage}
-            className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150"
+            className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
             aria-label={t('nav.langToggleAria')}
           >
             {t('nav.langToggleLabel')}
@@ -45,7 +46,7 @@ export default function Navbar() {
 
           <button
             onClick={toggle}
-            className="min-h-[36px] w-9 flex items-center justify-center text-ink-secondary dark:text-[#a1a1aa] hover:text-primary transition-colors duration-150 rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900"
+            className="min-h-[36px] w-9 flex items-center justify-center text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150 rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900"
             aria-label={theme === 'dark' ? t('nav.themeToggleLight') : t('nav.themeToggleDark')}
           >
             {theme === 'dark' ? (

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useDepartments } from '../../hooks/useContent'
+import LoadError from '../../components/LoadError'
 
 const ICONS: Record<string, React.ReactNode> = {
   it: (
@@ -45,39 +46,42 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => void }) {
   const { t } = useTranslation()
-  const { data, loading } = useDepartments()
+  const { data, loading, error, reload } = useDepartments()
   const departments = (data ?? []).slice(0, 6)
 
   return (
     <section
-      className="py-section-mobile lg:py-section bg-page-bg dark:bg-[#18181b]"
+      className="py-section-mobile lg:py-section bg-page-bg dark:bg-night-bg"
       aria-labelledby="home-departments-heading"
     >
       <div className="container-content">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-8">
           <div>
-            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('home.departments.eyebrow')}
             </span>
             <h2
               id="home-departments-heading"
-              className="font-display font-bold text-h3 text-ink-primary dark:text-[#f4f4f5] mt-1 mb-2"
+              className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mt-1 mb-2"
             >
               {t('home.departments.title')}
             </h2>
-            <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa] max-w-2xl">
+            <p className="font-body text-body text-ink-secondary dark:text-night-muted max-w-2xl">
               {t('home.departments.subtitle')}
             </p>
           </div>
           <SeeAllButton onClick={onSeeAll} label={t('home.departments.seeAll')} />
         </div>
 
+        {error && !loading ? (
+          <LoadError onRetry={() => void reload()} />
+        ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-28 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] skeleton"
+                  className="h-28 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface skeleton"
                 />
               ))
             : departments.map((dept, i) => (
@@ -85,7 +89,7 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
                   key={dept.slug}
                   type="button"
                   onClick={onSeeAll}
-                  className="group flex flex-col items-start gap-2.5 p-4 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
+                  className="group flex flex-col items-start gap-2.5 p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
                   style={{ animationDelay: `${i * 50}ms` }}
                   aria-label={t('home.departments.tileAria', { name: t(`departments.${dept.slug}.name`) })}
                 >
@@ -95,13 +99,14 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
                   >
                     {ICONS[dept.slug]}
                   </span>
-                  <span className="font-display font-bold text-body-sm text-ink-primary dark:text-[#f4f4f5] group-hover:text-primary transition-colors duration-150 leading-tight">
+                  <span className="font-display font-bold text-body-sm text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 leading-tight">
                     {t(`departments.${dept.slug}.name`)}
                   </span>
                 </button>
               ))
           }
         </div>
+        )}
       </div>
     </section>
   )

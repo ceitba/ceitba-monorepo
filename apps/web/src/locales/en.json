@@ -12,7 +12,8 @@
     "home": "Home",
     "departments": "Departments",
     "benefits": "Benefits",
-    "staff": "Staff"
+    "staff": "Staff",
+    "aria": "Page sections"
   },
   "manage": {
     "title": "Manage",
@@ -40,7 +41,13 @@
         "role": "Role",
         "order": "Order",
         "department": "Department"
-      }
+      },
+      "deleteBody": "{{name}} will be removed from the {{year}} staff. This can't be undone.",
+      "roleEs": "Role (ES)",
+      "roleEn": "Role (EN)",
+      "email": "Email",
+      "photoUrl": "Photo URL",
+      "linkedinUrl": "LinkedIn URL"
     },
     "benefits": {
       "tabs": {
@@ -48,9 +55,11 @@
         "categories": "Categories"
       },
       "categories": {
-        "help": "Categories are the chips users filter benefits by. Edit their color and order here.",
+        "help": "Categories are the chips users filter benefits by. Edit their name, color and order here.",
         "colorVar": "Color variable",
-        "order": "Order"
+        "order": "Order",
+        "nameEs": "Name (ES)",
+        "nameEn": "Name (EN)"
       },
       "cards": {
         "filter": "Category",
@@ -76,8 +85,10 @@
           "category": "Category",
           "price": "Price",
           "order": "Order"
-        }
-      }
+        },
+        "deleteBody": "The card \"{{title}}\" will be deleted. This can't be undone."
+      },
+      "tabsAria": "Manage benefits"
     },
     "users": {
       "col": {
@@ -101,8 +112,13 @@
       "filterAllOrgs": "All organizations",
       "pageStatus": "Page {{page}} of {{pages}} · {{total}} users",
       "prev": "‹ Prev",
-      "next": "Next ›"
-    }
+      "next": "Next ›",
+      "removeOrgAria": "Remove {{name}} from {{org}}",
+      "removeOrgTitle": "Remove from organization?",
+      "removeOrgBody": "{{name}} will no longer be a member of {{org}}. You can add them back later.",
+      "removeOrgConfirm": "Remove"
+    },
+    "tabsAria": "Manage sections"
   },
   "profile": {
     "title": "My profile",
@@ -128,7 +144,8 @@
       "unauthorized": "Only @itba.edu.ar accounts can sign in.",
       "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
       "unverified_email": "Your Google email isn't verified yet.",
-      "auth_failed": "We couldn't complete sign-in. Please try again."
+      "auth_failed": "We couldn't complete sign-in. Please try again.",
+      "invalid_state": "Your sign-in session expired or was invalid. Please try signing in again."
     }
   },
   "hero": {
@@ -234,16 +251,19 @@
     "sectionSubtitle": "The people behind CEITBA.",
     "comingSoon": "Coming soon",
     "comingSoonMessage": "We're working on introducing you to the full team. Check back soon!",
-    "yearLabel": "Filter by year"
+    "yearLabel": "Filter by year",
+    "linkedinAria": "{{name}} on LinkedIn"
   },
   "footer": {
     "itTeam": "CEITBA IT Team",
     "github": "GitHub",
     "contact": "Contact",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "navAria": "Footer links"
   },
   "errors": {
     "somethingWrong": "Something went wrong",
-    "retry": "Retry"
+    "retry": "Retry",
+    "dismiss": "Dismiss"
   }
 }

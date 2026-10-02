@@ -18,12 +18,12 @@ export function useTheme() {
     writeLocalTheme(theme)
   }, [theme])
 
+  // Side effects stay out of the state updater: StrictMode double-invokes
+  // updaters, which used to fire two PATCH /me/preferences per click.
   const toggle = () => {
-    setTheme((prev) => {
-      const next: Theme = prev === 'light' ? 'dark' : 'light'
-      void syncPrefToServer({ theme: next })
-      return next
-    })
+    const next: Theme = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    void syncPrefToServer({ theme: next })
   }
 
   // External writes (auth-hydration callback) bypass the toggle path.
