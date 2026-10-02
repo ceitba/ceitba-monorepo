@@ -15,6 +15,7 @@ import org.ceitba.api.service.auth.LoginRejectedException;
 import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
+import org.ceitba.api.service.drive.DriveException;
 import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.FileNumberAlreadySetException;
@@ -82,6 +83,17 @@ public class GlobalExceptionHandler {
             ? HttpStatus.BAD_REQUEST
             : HttpStatus.CONFLICT;
         return build(status, ex.reason().code(), ex.getMessage(), req);
+    }
+
+    // Drive sync (docs/DRIVE-SYNC.md): each reason carries its status and the
+    // DRIVE_* code the SPA switches on; rate limits add Retry-After.
+    @ExceptionHandler(DriveException.class)
+    public ResponseEntity<ErrorResponse> handleDrive(DriveException ex, HttpServletRequest req) {
+        var builder = ResponseEntity.status(ex.reason().status());
+        if (ex.reason() == DriveException.Reason.SYNC_RATE_LIMITED && ex.retryAfterSeconds() > 0) {
+            builder.header("Retry-After", Long.toString(ex.retryAfterSeconds()));
+        }
+        return builder.body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(StudyGroupForbiddenException.class)
