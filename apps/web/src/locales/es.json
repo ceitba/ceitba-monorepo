@@ -27,7 +27,8 @@
     "tabs": {
       "staff": "Staff",
       "benefits": "Beneficios",
-      "users": "Usuarios"
+      "users": "Usuarios",
+      "corrections": "Correcciones de horario"
     },
     "staff": {
       "year": "Año",
@@ -125,7 +126,74 @@
       "demoteOrgBody": "{{name}} va a seguir siendo miembro de {{org}}, pero sin acceso de admin (por ejemplo, la lista de seguidores).",
       "demoteOrgConfirm": "Quitar admin"
     },
-    "tabsAria": "Secciones de administración"
+    "tabsAria": "Secciones de administración",
+    "corrections": {
+      "intro": "Las correcciones de horario las sugieren los estudiantes y se aplican solas cuando suman 3 confirmaciones y más confirmaciones que rechazos. Este panel es una red de seguridad: podés aplicar una pendiente ya mismo o rechazar una (si estaba aplicada, se revierte al horario del SGA). Las correcciones son anónimas.",
+      "filterLabel": "Estado",
+      "filter": {
+        "PENDING": "Pendientes",
+        "APPLIED": "Aplicadas",
+        "REJECTED": "Rechazadas",
+        "RESOLVED": "Resueltas",
+        "SUPERSEDED": "Reemplazadas"
+      },
+      "status": {
+        "PENDING": "Pendiente",
+        "APPLIED": "Aplicada",
+        "appliedByVotes": "Aplicada por votos",
+        "appliedByStaff": "Aplicada por staff",
+        "REJECTED": "Rechazada",
+        "rejectedByStaff": "Rechazada por staff",
+        "RESOLVED": "Resuelta (el SGA ya lo corrigió)",
+        "SUPERSEDED": "Reemplazada (el SGA cambió u otra corrección se aplicó)"
+      },
+      "col": {
+        "commission": "Materia y comisión",
+        "sga": "Horario SGA",
+        "proposed": "Horario propuesto",
+        "votes": "Votos",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "commission": "Comisión {{name}}",
+      "created": "Sugerida el {{date}}",
+      "reviewed": "Revisada el {{date}}",
+      "votes": "{{confirms}} confirman · {{rejects}} rechazan",
+      "noSlots": "Sin horarios",
+      "days": {
+        "MONDAY": "Lun",
+        "TUESDAY": "Mar",
+        "WEDNESDAY": "Mié",
+        "THURSDAY": "Jue",
+        "FRIDAY": "Vie",
+        "SATURDAY": "Sáb",
+        "SUNDAY": "Dom"
+      },
+      "apply": "Aplicar",
+      "reject": "Rechazar",
+      "revert": "Revertir",
+      "applyAria": "Aplicar la corrección de {{label}}",
+      "rejectAria": "Rechazar la corrección de {{label}}",
+      "revertAria": "Revertir la corrección de {{label}}",
+      "rejectTitle": "¿Rechazar la corrección?",
+      "rejectBody": "La corrección de {{subject}} · Comisión {{commission}} se va a rechazar y no se va a aplicar aunque siga sumando votos.",
+      "rejectConfirm": "Rechazar",
+      "revertTitle": "¿Revertir la corrección?",
+      "revertBody": "{{subject}} · Comisión {{commission}} va a volver a mostrar el horario del SGA en el Combinador. La corrección queda rechazada y no se vuelve a aplicar por votos.",
+      "revertConfirm": "Revertir",
+      "appliedNotice": "Listo: la corrección de {{subject}} · Comisión {{commission}} ya se usa en el Combinador.",
+      "rejectedNotice": "Listo: rechazaste la corrección de {{subject}} · Comisión {{commission}}.",
+      "revertedNotice": "Listo: {{subject}} · Comisión {{commission}} vuelve a usar el horario del SGA.",
+      "empty": {
+        "PENDING": "No hay correcciones pendientes.",
+        "APPLIED": "No hay correcciones aplicadas.",
+        "REJECTED": "No hay correcciones rechazadas.",
+        "RESOLVED": "No hay correcciones resueltas.",
+        "SUPERSEDED": "No hay correcciones reemplazadas."
+      },
+      "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+    }
   },
   "profile": {
     "title": "Mi perfil",
