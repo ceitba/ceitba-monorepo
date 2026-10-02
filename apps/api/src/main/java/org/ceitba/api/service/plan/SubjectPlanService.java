@@ -12,6 +12,7 @@ import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.ceitba.api.web.plan.dto.CreateSubjectPlanRequest;
 import org.ceitba.api.web.plan.dto.SubjectPlanResponse;
 import org.ceitba.api.web.plan.dto.UpdateSubjectPlanRequest;
@@ -28,19 +29,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class SubjectPlanService {
 
     private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
-    private static final DateTimeFormatter HHMMSS = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final ItbaApiClient itbaApiClient;
     private final CommissionRepository commissionRepository;
     private final PlanSubjectRepository planSubjectRepository;
     private final PlanRepository planRepository;
     private final SubjectRepository subjectRepository;
+    private final ScheduleCorrectionService scheduleCorrections;
     private final Clock clock;
 
     public SubjectPlanService(ItbaApiClient itbaApiClient,
@@ -48,12 +50,14 @@ public class SubjectPlanService {
                               PlanSubjectRepository planSubjectRepository,
                               PlanRepository planRepository,
                               SubjectRepository subjectRepository,
+                              ScheduleCorrectionService scheduleCorrections,
                               Clock clock) {
         this.itbaApiClient = itbaApiClient;
         this.commissionRepository = commissionRepository;
         this.planSubjectRepository = planSubjectRepository;
         this.planRepository = planRepository;
         this.subjectRepository = subjectRepository;
+        this.scheduleCorrections = scheduleCorrections;
         this.clock = clock;
     }
 
@@ -67,8 +71,13 @@ public class SubjectPlanService {
     // repository query (with its own read-only transaction) issued after the
     // external call returns; it hydrates `times`, so nothing lazy is touched
     // once the entities are detached.
+    //
+    // Student schedule corrections are overlaid on each commission (effective
+    // schedule, sga_schedule, open corrections): two more queries for the
+    // whole plan, see ScheduleCorrectionService.organizedCommissions. viewerId
+    // (null when anonymous) only fills each correction's my_vote.
     public Map<String, Map<String, Map<String, List<OrganizedSubjectsResponse.SubjectDetail>>>>
-            getSubjectsByPlanOrganized(String planId) {
+            getSubjectsByPlanOrganized(String planId, UUID viewerId) {
         var subjectPlans = itbaApiClient.getSubjectsByPlan(planId);
         if (subjectPlans.isEmpty()) {
             throw new ResourceNotFoundException("Plan", planId);
@@ -85,6 +94,10 @@ public class SubjectPlanService {
             : commissionRepository.findBySubjectCodeInWithTimes(subjectCodes).stream()
                 .collect(Collectors.groupingBy(Commission::getSubjectCode));
         LocalDate today = LocalDate.now(clock);
+        Map<String, List<Commission>> currentBySubject = new LinkedHashMap<>();
+        commissionsBySubject.forEach((code, list) -> currentBySubject.put(code, currentTerm(list, today)));
+        var overlay = scheduleCorrections.organizedCommissions(
+            currentBySubject.values().stream().flatMap(List::stream).toList(), viewerId);
 
         var organized = new LinkedHashMap<String, Map<String, Map<String, List<OrganizedSubjectsResponse.SubjectDetail>>>>();
         for (var sp : subjectPlans) {
@@ -92,22 +105,10 @@ public class SubjectPlanService {
             String year = sp.year() != null ? sp.year().toString() : "0";
             String semester = sp.semester() != null ? sp.semester().toString() : "0";
 
-            var subjectCommissions = currentTerm(
-                commissionsBySubject.getOrDefault(sp.subjectId(), List.of()), today);
+            var subjectCommissions = currentBySubject.getOrDefault(sp.subjectId(), List.of());
 
             var commissionDtos = subjectCommissions.stream()
-                .map(c -> new OrganizedSubjectsResponse.Commission(
-                    c.getCommissionName(),
-                    c.getTimes().stream()
-                        .map(t -> new OrganizedSubjectsResponse.Schedule(
-                            t.getDay().toString(),
-                            t.getClassroom(),
-                            t.getBuilding(),
-                            t.getHourFrom().format(HHMMSS),
-                            t.getHourTo().format(HHMMSS)
-                        ))
-                        .toList()
-                ))
+                .map(c -> overlay.get(c.getId()))
                 .toList();
 
             String courseStart = subjectCommissions.isEmpty()

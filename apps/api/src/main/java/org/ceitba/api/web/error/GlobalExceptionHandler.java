@@ -14,6 +14,7 @@ import org.ceitba.api.service.auth.InvalidTokenException;
 import org.ceitba.api.service.auth.LoginRejectedException;
 import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
+import org.ceitba.api.service.correction.ScheduleCorrectionException;
 import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.FileNumberAlreadySetException;
@@ -71,6 +72,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(StudyGroupConflictException.class)
     public ResponseEntity<ErrorResponse> handleStudyGroupConflict(StudyGroupConflictException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, ex.reason().code(), ex.getMessage(), req);
+    }
+
+    // SameAsSga is a request problem (400); CommissionEnded and
+    // AlreadySuggested conflict with the current state (409).
+    @ExceptionHandler(ScheduleCorrectionException.class)
+    public ResponseEntity<ErrorResponse> handleScheduleCorrection(ScheduleCorrectionException ex, HttpServletRequest req) {
+        var status = ex.reason() == ScheduleCorrectionException.Reason.SAME_AS_SGA
+            ? HttpStatus.BAD_REQUEST
+            : HttpStatus.CONFLICT;
+        return build(status, ex.reason().code(), ex.getMessage(), req);
     }
 
     @ExceptionHandler(StudyGroupForbiddenException.class)
