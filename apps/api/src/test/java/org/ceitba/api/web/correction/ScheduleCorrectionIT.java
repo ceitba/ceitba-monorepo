@@ -72,6 +72,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -500,6 +501,64 @@ class ScheduleCorrectionIT {
             .andExpect(status().isBadRequest());
     }
 
+    // Corrections of a commission whose course has ended stay PENDING/APPLIED
+    // forever; the staff list hides them by default and under PENDING and
+    // APPLIED, but keeps them under the final statuses.
+    @Test
+    void staffListHidesOpenCorrectionsOfEndedCommissions() throws Exception {
+        String running = suggestOk(as(SUGGESTER), P1);
+        String superseded = otherSuggestion(student(2), P1);
+        String rejected = otherSuggestion(student(3), P2);
+        String applied = otherSuggestion(student(4), slots("FRIDAY 18:00-21:00"));
+        String pending = otherSuggestion(student(5), slots("SATURDAY 09:00-12:00"));
+        service.staffApply(UUID.fromString(superseded), null);
+        service.staffReject(UUID.fromString(rejected), null);
+        service.staffApply(UUID.fromString(applied), null);
+        assertThat(statusOf(superseded)).isEqualTo(ScheduleCorrectionStatus.SUPERSEDED);
+        assertThat(statusOf(pending)).isEqualTo(ScheduleCorrectionStatus.PENDING);
+
+        // Before the course ends every correction is listed.
+        mvc.perform(get("/v1/staff/schedule-corrections").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.meta.total").value(5));
+
+        // Ended yesterday (today is 2026-10-02 ART).
+        jdbc.update("UPDATE public.commission SET course_end = '2026-10-01' WHERE id = ?", OTHER_COMMISSION);
+
+        mvc.perform(get("/v1/staff/schedule-corrections").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[*].id", contains(running)))
+            .andExpect(jsonPath("$.meta.total").value(1));
+        mvc.perform(get("/v1/staff/schedule-corrections?status=PENDING").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[*].id", contains(running)))
+            .andExpect(jsonPath("$.meta.total").value(1));
+        mvc.perform(get("/v1/staff/schedule-corrections?status=APPLIED").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data", hasSize(0)))
+            .andExpect(jsonPath("$.meta.total").value(0));
+        mvc.perform(get("/v1/staff/schedule-corrections?status=REJECTED").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[*].id", contains(rejected)));
+        mvc.perform(get("/v1/staff/schedule-corrections?status=SUPERSEDED").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[*].id", contains(superseded)));
+
+        // Ending today still counts as running.
+        jdbc.update("UPDATE public.commission SET course_end = '2026-10-02' WHERE id = ?", OTHER_COMMISSION);
+        mvc.perform(get("/v1/staff/schedule-corrections?status=APPLIED").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[*].id", contains(applied)));
+        mvc.perform(get("/v1/staff/schedule-corrections?status=PENDING").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.meta.total").value(2));
+    }
+
+    private String otherSuggestion(RequestPostProcessor who, String body) throws Exception {
+        String res = body(suggestAs(who, OTHER_COMMISSION, body).andExpect(status().isCreated()));
+        return json.readTree(res).at("/correction/id").asText();
+    }
+
     @Test
     void staffEndpointsRequireStaff() throws Exception {
         String id = suggestOk(as(SUGGESTER), P1);
@@ -612,6 +671,38 @@ class ScheduleCorrectionIT {
                 assertThat(times.get(0).get("day").asText()).isEqualTo("MONDAY");
             }
         }
+    }
+
+    // The next term synced before this one ends replaces it in both
+    // endpoints, and corrections attach to the commissions actually shown.
+    @Test
+    void overlaysFollowTheNewestTermInBothEndpoints() throws Exception {
+        String current = suggestOk(as(SUGGESTER), P1);
+        vote(student(2), current, "CONFIRM");
+        vote(student(3), current, "CONFIRM");
+        var next = new Commission("48120", SUBJECT, "G", LocalDate.of(2027, 3, 8), LocalDate.of(2027, 7, 10),
+            0, 30, SubjectType.SEMESTRAL);
+        next.getTimes().add(new CommissionTime("48120", DayOfWeek.MONDAY, LocalTime.of(8, 0), "102T", "SDT",
+            LocalTime.of(11, 0)));
+        commissions.save(next);
+        String nextCorrection = body(suggestAs(student(4), "48120", slots("THURSDAY 14:00-17:00"))
+            .andExpect(status().isCreated()));
+        String nextId = json.readTree(nextCorrection).at("/correction/id").asText();
+
+        JsonNode root = json.readTree(body(mvc.perform(get("/v1/subjects?plan=" + PLAN))
+            .andExpect(status().isOk())));
+        var shown = root.at("/Ciclo/1/1/0/commissions");
+        assertThat(shown).hasSize(1);
+        assertThat(shown.get(0).get("commission_id").asText()).isEqualTo("48120");
+        assertThat(shown.get(0).get("schedule").get(0).get("day").asText()).isEqualTo("MONDAY");
+        assertThat(shown.get(0).get("corrections")).hasSize(1);
+        assertThat(shown.get(0).get("corrections").get(0).get("id").asText()).isEqualTo(nextId);
+
+        JsonNode list = json.readTree(body(mvc.perform(get("/v1/commissions?plan=" + PLAN))
+            .andExpect(status().isOk())));
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).get("id").asText()).isEqualTo("48120");
+        assertThat(list.get(0).get("times").get(0).get("day").asText()).isEqualTo("MONDAY");
     }
 
     // ---- sync expiry -----------------------------------------------------
