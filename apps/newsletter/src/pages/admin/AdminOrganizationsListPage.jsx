@@ -4,16 +4,20 @@ import { fetchOrganizations } from '../../api/organizations'
 import { isStaff } from '../../store/authStore'
 
 export default function AdminOrganizationsListPage() {
-  if (!isStaff()) return <Navigate to="/admin/articles" replace />
-
+  // Hooks run unconditionally (rules of hooks); the staff redirect comes
+  // after them and the fetch is skipped for non-staff.
+  const staff = isStaff()
   const [orgs, setOrgs] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!staff) return
     fetchOrganizations()
       .then(({ data }) => setOrgs(data ?? []))
       .catch(() => setError('No se pudieron cargar las organizaciones.'))
-  }, [])
+  }, [staff])
+
+  if (!staff) return <Navigate to="/admin/articles" replace />
 
   if (error) return <p className="font-body text-body text-red-600">{error}</p>
   if (!orgs) return <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">Cargando…</p>

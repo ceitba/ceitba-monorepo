@@ -10,7 +10,7 @@ const GEO_FILLS = {
   violet: 'bg-violet-600',
 }
 
-function CoverMedia({ coverImage, colorScheme, className, featured }) {
+function CoverMedia({ coverImage, colorScheme, className }) {
   if (coverImage) {
     return (
       <div className={['overflow-hidden flex-shrink-0', className].join(' ')}>
@@ -53,7 +53,6 @@ export default function ArticleCard({ article, featured = false }) {
           coverImage={coverImage}
           colorScheme={colorScheme}
           className="h-56 lg:h-auto lg:w-1/2"
-          featured
         />
         <div className="p-6 lg:p-10 flex flex-col justify-between gap-4">
           <div className="flex flex-col gap-3">

@@ -24,7 +24,7 @@ function seedWithDefaults() {
 }
 
 function persist(articles) {
-  try { localStorage.setItem(KEY, JSON.stringify(articles)) } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(articles)) } catch { /* storage unavailable (private mode, quota): keep the in-memory state */ }
 }
 
 let _articles = load()

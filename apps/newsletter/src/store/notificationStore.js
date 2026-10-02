@@ -5,7 +5,7 @@ function load() {
 }
 
 function persist(ns) {
-  try { localStorage.setItem(KEY, JSON.stringify(ns)) } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(ns)) } catch { /* storage unavailable (private mode, quota): keep the in-memory state */ }
 }
 
 let _notifications = load()

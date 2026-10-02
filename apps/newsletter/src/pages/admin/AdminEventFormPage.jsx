@@ -6,7 +6,7 @@ import { fetchEventById, createEvent, updateEvent } from '../../api/events'
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
-import { useCategoryLabel } from '../../components/CategoryBadge'
+import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import { todayISO } from '../../utils/dates'
 
 
