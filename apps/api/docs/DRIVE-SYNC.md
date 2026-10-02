@@ -167,3 +167,14 @@ Readers only see `PUBLISHED` files. The file's owner student and STAFF can open 
 
 `StaffFile` = `{ id, name, kind, sourceId, sourceRootName, ownerEmail, sharerName, sharerEmail,
 effectiveSubjectId, effectiveSubjectName, publication, reportCount, reports: [{ reason, comment, createdAt }], driveModifiedAt }`
+
+## Pinned subjects
+
+Pins on top of `/apuntes` reuse the subject bookmarks (`wiki.subject_bookmarks`, `/v1/wiki/bookmarks`):
+
+| Method + path | Response |
+|---|---|
+| `GET /v1/wiki/bookmarks` (logged in) | `[{ subjectId, subjectName, fileCount, hasWiki, pinnedAt }]`, most recently pinned first. `fileCount` = published Apuntes files; `hasWiki` = the subject wiki has a published page |
+| `GET /v1/wiki/bookmarks/{subjectId}` (public) | `{ count, bookmarked }` (unchanged) |
+| `PUT` / `POST /v1/wiki/bookmarks/{subjectId}` | pin (idempotent) → `{ count, bookmarked }`; 409 `BOOKMARK_LIMIT` when the user already has 30 pins |
+| `DELETE /v1/wiki/bookmarks/{subjectId}` | unpin → 204 |

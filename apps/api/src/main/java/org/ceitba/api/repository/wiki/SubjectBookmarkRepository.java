@@ -11,4 +11,8 @@ public interface SubjectBookmarkRepository extends JpaRepository<SubjectBookmark
     boolean existsBySubjectIdAndUserId(String subjectId, java.util.UUID userId);
 
     void deleteBySubjectIdAndUserId(String subjectId, java.util.UUID userId);
+
+    long countByUserId(java.util.UUID userId);
+
+    java.util.List<SubjectBookmark> findByUserIdOrderByUpdatedAtDescSubjectIdAsc(java.util.UUID userId);
 }
