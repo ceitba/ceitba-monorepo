@@ -11,6 +11,9 @@ import java.time.LocalDate;
 
 public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
 
+    // Offset-paginated: several events share a date (and even a start time),
+    // so start time and then `id` make the ORDER BY a strict total order;
+    // otherwise ties could repeat or vanish across pages.
     @Query("""
         SELECT e FROM NewsEvent e
         LEFT JOIN e.organization o
@@ -18,7 +21,7 @@ public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
           AND (:organization IS NULL OR o.slug = :organization)
           AND e.eventDate >= :from
           AND e.eventDate <= :to
-        ORDER BY e.eventDate ASC
+        ORDER BY e.eventDate ASC, e.startTime ASC, e.id ASC
         """)
     Page<NewsEvent> findFiltered(
         @Param("category")     String category,

@@ -22,6 +22,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.jayway.jsonpath.JsonPath;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -85,6 +91,28 @@ class NewsEventEndpointsIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.length()").value(2))
             .andExpect(jsonPath("$.meta.total").value(2));
+    }
+
+    // Events sharing a date (and start time) must not repeat or vanish across
+    // offset pages: the ORDER BY breaks ties on start time, then id.
+    @Test
+    void paginationIsStrictWhenDatesTie() throws Exception {
+        for (String id : List.of("x3", "x1", "x2")) {
+            eventRepo.save(new NewsEvent(id, "Tied " + id,
+                LocalDate.of(2026, 8, 1), LocalTime.of(10, 0), LocalTime.of(12, 0), "SUM", "tech"));
+        }
+        eventRepo.save(new NewsEvent("x0", "Earlier same day",
+            LocalDate.of(2026, 8, 1), LocalTime.of(8, 0), LocalTime.of(9, 0), "SUM", "tech"));
+
+        var seen = new ArrayList<String>();
+        for (int page = 1; page <= 3; page++) {
+            String body = mvc.perform(get("/v1/news/events?limit=2&page=" + page))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+            List<String> ids = JsonPath.read(body, "$.data[*].id");
+            seen.addAll(ids);
+        }
+        assertThat(seen).containsExactly("e1", "e2", "x0", "x1", "x2", "x3");
     }
 
     @Test
