@@ -10,11 +10,15 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 // Keyed hashes over content identifiers (attachment keys, imported comment
-// ids) that must be stable, unguessable and never reveal a user id.
+// ids) that must be stable, unguessable and never reveal a user id, and over
+// client IPs (vote dedup fingerprints, analytics visitor hashes): an unkeyed
+// SHA-256 of an IPv4 address is reversible by enumerating all 2^32 inputs,
+// a keyed one is not without the secret.
 //
 // Each purpose has its own key, derived from a root secret as
 //   key(label) = HMAC-SHA256(root, "ceitba-content-hmac:v1:" + label)
@@ -25,14 +29,18 @@ import java.util.concurrent.ConcurrentHashMap;
 // least 32 bytes, e.g. `openssl rand -base64 32`) when set; otherwise the
 // base64-decoded AUTH_JWT_SECRET. Either way the derived keys change when the
 // root changes: rotating AUTH_JWT_SECRET without a CONTENT_HMAC_SECRET
-// invalidates every unattached proposal upload key and makes a Firestore
-// import re-run duplicate legacy comments. Set CONTENT_HMAC_SECRET to rotate
-// the JWT secret independently; changing it later has the same effects.
+// invalidates every unattached proposal upload key, makes a Firestore
+// import re-run duplicate legacy comments, lets every past article voter vote
+// once more and splits analytics unique-visitor counts across the change.
+// Set CONTENT_HMAC_SECRET to rotate the JWT secret independently; changing it
+// later has the same effects.
 @Component
 public class ContentHmac {
 
     public static final String PROPOSAL_ATTACHMENT_KEYS = "proposal-attachment-keys";
     public static final String FIRESTORE_COMMENT_IDS = "firestore-comment-ids";
+    public static final String VOTE_FINGERPRINTS = "vote-fingerprints";
+    public static final String ANALYTICS_IP_HASHES = "analytics-ip-hashes";
 
     static final int MIN_DEDICATED_SECRET_BYTES = 32;
     private static final String ALGORITHM = "HmacSHA256";
@@ -57,6 +65,12 @@ public class ContentHmac {
     // HMAC-SHA256 of `message` under the key derived for `label`.
     public byte[] sign(String label, String message) {
         return hmac(derived.computeIfAbsent(label, l -> hmac(root, LABEL_PREFIX + l)), message);
+    }
+
+    // Lower-case hex of sign(label, message) — 64 chars, same shape as the
+    // SHA-256 hex digests it replaces in TEXT columns.
+    public String signHex(String label, String message) {
+        return HexFormat.of().formatHex(sign(label, message));
     }
 
     private static byte[] rootSecret(String base64JwtSecret, String dedicatedSecret) {

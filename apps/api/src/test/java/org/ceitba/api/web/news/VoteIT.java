@@ -2,8 +2,11 @@ package org.ceitba.api.web.news;
 
 import org.ceitba.api.domain.news.Article;
 import org.ceitba.api.domain.news.ArticleVote;
+import org.ceitba.api.domain.news.VoteRecord;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.ArticleVoteRepository;
+import org.ceitba.api.repository.news.VoteRecordRepository;
+import org.ceitba.api.service.crypto.ContentHmac;
 import org.ceitba.api.service.news.VoteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +22,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -54,6 +62,8 @@ class VoteIT {
     @Autowired ArticleRepository articleRepo;
     @Autowired ArticleVoteRepository voteRepo;
     @Autowired VoteService voteService;
+    @Autowired VoteRecordRepository recordRepo;
+    @Autowired ContentHmac hmac;
 
     @BeforeEach
     void seed() {
@@ -204,5 +214,82 @@ class VoteIT {
         }
 
         assertThat(voteRepo.findById("v-art").orElseThrow().getUpCount()).isEqualTo(clients);
+    }
+
+    // -- Keyed fingerprints & legacy migration ----------------------------------
+
+    private static final String IP = "198.51.100.42";
+    private static final String UA = "Mozilla/5.0 (test)";
+
+    private String hmacFingerprint() {
+        return hmac.signHex(ContentHmac.VOTE_FINGERPRINTS, IP + "|" + UA);
+    }
+
+    // What vote_records held before the HMAC switch: unkeyed SHA-256.
+    private static String legacyFingerprint() throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+            .digest((IP + "|" + UA).getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private List<String> storedFingerprints() {
+        return recordRepo.findAll().stream().map(r -> r.getId().getFingerprint()).toList();
+    }
+
+    private void seedLegacyUpVote(OffsetDateTime createdAt) throws Exception {
+        recordRepo.save(new VoteRecord("v-art", legacyFingerprint(), "up", createdAt));
+        var agg = new ArticleVote("v-art");
+        agg.incrementUp();
+        voteRepo.save(agg);
+    }
+
+    @Test
+    void newVotesAreStoredUnderTheHmacFingerprint() throws Exception {
+        mvc.perform(post("/v1/articles/v-art/votes")
+                .header("X-Forwarded-For", IP)
+                .header("User-Agent", UA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"up\"}"))
+            .andExpect(status().isOk());
+
+        assertThat(storedFingerprints())
+            .containsExactly(hmacFingerprint())
+            .doesNotContain(legacyFingerprint());
+    }
+
+    @Test
+    void legacyVoteIsRecognizedAndRekeyedOnRecast() throws Exception {
+        var castAt = OffsetDateTime.now().minusDays(10).truncatedTo(ChronoUnit.MICROS);
+        seedLegacyUpVote(castAt);
+
+        // Same voter, same vote: still one vote, row migrated to the HMAC key.
+        var counts = voteService.cast("v-art", IP, UA, "up");
+
+        assertThat(counts.getUpCount()).isEqualTo(1);
+        assertThat(storedFingerprints()).containsExactly(hmacFingerprint());
+        assertThat(recordRepo.findAll().get(0).getCreatedAt().toInstant()).isEqualTo(castAt.toInstant());
+
+        // And from now on it's found directly under the HMAC key.
+        assertThat(voteService.cast("v-art", IP, UA, "up").getUpCount()).isEqualTo(1);
+    }
+
+    @Test
+    void legacyVoteIsRetractedWhenTheVoterSwitchesType() throws Exception {
+        seedLegacyUpVote(null);
+
+        var counts = voteService.cast("v-art", IP, UA, "down");
+
+        assertThat(counts.getUpCount()).isZero();
+        assertThat(counts.getDownCount()).isEqualTo(1);
+        assertThat(storedFingerprints()).containsExactly(hmacFingerprint());
+    }
+
+    @Test
+    void legacyVoteCanBeRetracted() throws Exception {
+        seedLegacyUpVote(null);
+
+        var counts = voteService.retract("v-art", IP, UA);
+
+        assertThat(counts.getUpCount()).isZero();
+        assertThat(recordRepo.findAll()).isEmpty();
     }
 }

@@ -27,6 +27,14 @@ public class VoteRecord {
         this.voteType = voteType;
     }
 
+    // Re-keys a vote under a new fingerprint, keeping when it was cast.
+    public VoteRecord(String articleId, String fingerprint, String voteType, OffsetDateTime createdAt) {
+        this(articleId, fingerprint, voteType);
+        if (createdAt != null) {
+            this.createdAt = createdAt;
+        }
+    }
+
     public VoteRecordId getId()    { return id; }
     public String getVoteType()    { return voteType; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

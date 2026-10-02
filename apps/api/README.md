@@ -58,7 +58,7 @@ All config flows through env vars; see [`.env.example`](.env.example). Highlight
 | `ITBA_API_BASE_URL` / `ITBA_API_TOKEN` | _(empty)_ | ITBA backend connection |
 | `ITBA_API_USE_FAKE` | `false` | Swap in `FakeItbaApiClient` (no network) |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` / `FIREBASE_SERVICE_ACCOUNT_PATH` | _(empty)_ | FCM service account for push notifications; empty = pushes disabled. See [`docs/PUSH-NOTIFICATIONS.md`](docs/PUSH-NOTIFICATIONS.md) |
-| `CONTENT_HMAC_SECRET` | _(empty)_ | Root secret for proposal attachment keys and imported comment ids; empty = derived from `AUTH_JWT_SECRET` |
+| `CONTENT_HMAC_SECRET` | _(empty)_ | Root secret for keyed hashes: proposal attachment keys, imported comment ids, article-vote fingerprints and analytics IP hashes; empty = derived from `AUTH_JWT_SECRET` |
 | `STORAGE_*` | _(empty)_ | S3-compatible bucket for presigned uploads (self-hosted MinIO in prod, served at `https://ceitba.org.ar/ceitba-media`); any empty connection value disables uploads. `R2_*` still work as fallbacks. See [`docs/OBJECT-STORAGE.md`](docs/OBJECT-STORAGE.md) (setup, VPS migration, backup, key rotation) |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | _(required by compose)_ | MinIO admin credentials, used only by the `minio-init` container; the API uses the `STORAGE_ACCESS_KEY_ID` service user |
 
