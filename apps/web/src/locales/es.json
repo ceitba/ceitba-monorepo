@@ -6,7 +6,8 @@
     "langToggleLabel": "EN",
     "langToggleAria": "Cambiar a inglés",
     "themeToggleLight": "Cambiar a modo claro",
-    "themeToggleDark": "Cambiar a modo oscuro"
+    "themeToggleDark": "Cambiar a modo oscuro",
+    "apuntes": "Apuntes"
   },
   "tabs": {
     "home": "Inicio",
@@ -29,7 +30,8 @@
       "benefits": "Beneficios",
       "users": "Usuarios",
       "organizations": "Organizaciones",
-      "corrections": "Correcciones de horario"
+      "corrections": "Correcciones de horario",
+      "drive": "Apuntes"
     },
     "staff": {
       "year": "Año",
@@ -250,6 +252,84 @@
       },
       "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
       "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+    },
+    "drive": {
+      "intro": "Moderá los apuntes que los estudiantes comparten desde Google Drive: aprobá carpetas nuevas, revisá archivos que necesitan una decisión y mirá qué se compartió con la cuenta de CEITBA sin conectar.",
+      "viewsAria": "Vistas de moderación de apuntes",
+      "views": {
+        "sources": "Carpetas",
+        "files": "Archivos a revisar",
+        "unclaimed": "Sin reclamar"
+      },
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} {{what}}",
+      "conflict": "El estado cambió mientras lo mirabas (otra persona de staff o una sincronización). Recargamos la lista.",
+      "filterLabel": "Mostrar",
+      "allStatuses": "Todas",
+      "col": {
+        "actions": "Acciones"
+      },
+      "sources": {
+        "col": {
+          "folder": "Carpeta",
+          "owner": "Estudiante",
+          "files": "Archivos",
+          "status": "Estado"
+        },
+        "connected": "Conectada el {{date}}",
+        "counts": "{{files}} archivos · {{published}} publicados · {{review}} en revisión",
+        "approve": "Aprobar",
+        "approveAria": "Aprobar la carpeta {{name}}",
+        "block": "Bloquear",
+        "blockAria": "Bloquear la carpeta {{name}}",
+        "approvedNotice": "Aprobaste «{{name}}». Sus archivos con materia se publican en la próxima sincronización.",
+        "blockedNotice": "Bloqueaste «{{name}}». Sus archivos dejaron de estar visibles.",
+        "empty": "No hay carpetas con este estado.",
+        "unit": "carpetas",
+        "blockTitle": "Bloquear carpeta",
+        "blockConfirm": "Bloquear",
+        "blockBody": "«{{name}}» ({{owner}}) se deja de sincronizar y sus archivos dejan de estar visibles. Podés aprobarla de nuevo más adelante.",
+        "comment": "Motivo (opcional, lo ve el estudiante)"
+      },
+      "files": {
+        "queue": {
+          "NEEDS_REVIEW": "Necesitan revisión",
+          "HIDDEN_REPORTED": "Ocultos por denuncias"
+        },
+        "col": {
+          "file": "Archivo",
+          "subject": "Materia",
+          "people": "Quién",
+          "reports": "Denuncias"
+        },
+        "sharer": "Compartió: {{who}}",
+        "owner": "Dueño en Drive: {{who}}",
+        "ownerDiffers": "El dueño del archivo no es quien lo compartió.",
+        "reportCount_one": "{{count}} denuncia",
+        "reportCount_other": "{{count}} denuncias",
+        "publish": "Publicar",
+        "restore": "Restaurar",
+        "remove": "Quitar",
+        "publishNotice": "Publicaste «{{name}}».",
+        "removeNotice": "Quitaste «{{name}}». No vuelve a publicarse aunque se sincronice.",
+        "restoreNotice": "Restauraste «{{name}}».",
+        "empty": {
+          "NEEDS_REVIEW": "No hay archivos esperando revisión.",
+          "HIDDEN_REPORTED": "No hay archivos ocultos por denuncias."
+        },
+        "unit": "archivos",
+        "removeTitle": "Quitar archivo",
+        "removeBody": "«{{name}}» deja de estar visible para todos y queda así aunque se vuelva a sincronizar. Podés restaurarlo después."
+      },
+      "unclaimed": {
+        "intro": "Carpetas que alguien compartió con la cuenta de CEITBA pero que nadie conectó desde «Mis apuntes». Si persisten, conviene avisarle a quien las compartió.",
+        "col": {
+          "name": "Nombre",
+          "owner": "Dueño",
+          "firstSeen": "Vista por primera vez",
+          "lastSeen": "Última vez"
+        },
+        "empty": "No hay carpetas compartidas sin reclamar."
+      }
     }
   },
   "profile": {
@@ -279,7 +359,9 @@
       "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo.",
       "invalid_state": "La sesión de inicio expiró o no es válida. Probá iniciar sesión de nuevo.",
       "access_denied": "Cancelaste el inicio de sesión con Google."
-    }
+    },
+    "apuntes": "Apuntes",
+    "myApuntes": "Mis apuntes"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
@@ -320,6 +402,11 @@
     "newsletter": {
       "label": "Newsletter ITBA",
       "description": "Enterate de todo lo que pasa en ITBA: eventos, novedades académicas, oportunidades laborales y actividades del CEITBA.",
+      "cta": "Abrir"
+    },
+    "apuntes": {
+      "label": "Apuntes",
+      "description": "Apuntes, resúmenes y finales que comparten otros estudiantes desde su Google Drive, ordenados por materia.",
       "cta": "Abrir"
     }
   },
@@ -398,5 +485,206 @@
     "somethingWrong": "Algo salió mal",
     "retry": "Reintentar",
     "dismiss": "Cerrar"
+  },
+  "authGuard": {
+    "title": "Iniciá sesión para seguir",
+    "body": "Los apuntes son para la comunidad ITBA. Entrá con tu cuenta @itba.edu.ar para verlos y compartir los tuyos.",
+    "signIn": "Iniciar sesión con Google"
+  },
+  "devLogin": {
+    "link": "Dev login",
+    "eyebrow": "Solo desarrollo local",
+    "title": "Dev login",
+    "body": "Inicia sesión contra POST /v1/auth/dev-login (API con perfil dev y AUTH_DEV_LOGIN_ENABLED=true). No existe en producción.",
+    "name": "Nombre",
+    "staff": "Staff (ROLE_STAFF)",
+    "submit": "Entrar"
+  },
+  "apuntes": {
+    "title": "Apuntes",
+    "breadcrumbAria": "Ruta de navegación",
+    "backToSearch": "Volver a apuntes",
+    "anonymousAuthor": "Un/a estudiante",
+    "errors": {
+      "DRIVE_INVALID_FOLDER_URL": "Ese link no parece ser de una carpeta de Google Drive. Copiá el link desde «Compartir» → «Copiar vínculo» con la carpeta abierta.",
+      "DRIVE_FOLDER_NOT_SHARED": "Todavía no vemos la carpeta. Revisá que la hayas compartido con la cuenta de CEITBA como Lector y probá de nuevo en un minuto.",
+      "DRIVE_FOLDER_NOT_OWNED": "Esa carpeta no es tuya. Solo podés conectar carpetas de las que seas dueño/a en Drive.",
+      "DRIVE_SOURCE_EXISTS": "Esa carpeta ya está conectada.",
+      "DRIVE_SYNC_RATE_LIMITED": "Ya pediste una sincronización hace poco. Podés volver a pedirla en unos minutos (máximo una cada 5 minutos).",
+      "DRIVE_SYNC_UNCONFIGURED": "Apuntes todavía no está disponible: falta configurar la conexión con Google Drive."
+    },
+    "sourceStatus": {
+      "PENDING_REVIEW": "En revisión",
+      "ACTIVE": "Activa",
+      "BLOCKED": "Bloqueada",
+      "REVOKED": "Sin acceso",
+      "DISCONNECTED": "Desconectada",
+      "ERROR": "Con errores"
+    },
+    "publication": {
+      "PRIVATE": "Privado",
+      "NEEDS_REVIEW": "En revisión",
+      "PUBLISHED": "Publicado",
+      "HIDDEN_REPORTED": "Oculto por denuncias",
+      "REMOVED_BY_STAFF": "Quitado por CEITBA",
+      "REMOVED": "Borrado en Drive"
+    },
+    "kind": {
+      "FOLDER": "Carpeta",
+      "DOC": "Documento",
+      "SLIDES": "Presentación",
+      "SHEET": "Hoja de cálculo",
+      "DRAWING": "Dibujo",
+      "PDF": "PDF",
+      "IMAGE": "Imagen",
+      "OFFICE": "Archivo de Office",
+      "OTHER": "Archivo"
+    },
+    "picker": {
+      "inherited": "Hereda: {{name}}",
+      "none": "Sin materia",
+      "search": "Buscá por código o nombre…",
+      "clear": "Sin materia",
+      "clearInherit": "Heredar de la carpeta ({{name}})",
+      "failed": "No pudimos buscar materias.",
+      "noMatches": "No encontramos materias con ese nombre o código.",
+      "typeToSearch": "Escribí para buscar una materia."
+    },
+    "tree": {
+      "intro": "Elegí la materia de cada carpeta o archivo: lo que pongas en una carpeta lo heredan sus archivos. Solo se publican los archivos con materia que no ocultes.",
+      "acceptAll": "Aceptar sugerencias ({{count}})",
+      "acceptedNotice_one": "Aplicamos {{count}} sugerencia.",
+      "acceptedNotice_other": "Aplicamos {{count}} sugerencias.",
+      "empty": "Todavía no hay archivos. Si recién conectaste la carpeta, la primera sincronización puede tardar unos minutos.",
+      "aria": "Archivos de la carpeta",
+      "expand": "Mostrar el contenido de {{name}}",
+      "collapse": "Ocultar el contenido de {{name}}",
+      "notMine": "No es tuyo",
+      "notMineHint": "Lo creó otra persona: CEITBA lo revisa antes de publicarlo.",
+      "hiddenLabel": "Oculto",
+      "syncError": "No pudimos sincronizarlo: {{error}}",
+      "subjectFor": "Materia de {{name}}",
+      "useSuggestion": "Usar la materia sugerida",
+      "suggestion": "Sugerida: {{name}}",
+      "hide": "Ocultar"
+    },
+    "wizard": {
+      "title": "Conectar una carpeta de Drive",
+      "stepsAria": "Pasos",
+      "step1Label": "1 · Compartir",
+      "step2Label": "2 · Conectar",
+      "step1Intro": "Para que CEITBA pueda leer tus apuntes, compartí la carpeta con nuestra cuenta. Solo lee: nunca modifica ni borra nada de tu Drive.",
+      "step1Open": "En Google Drive, hacé clic derecho en la carpeta → «Compartir».",
+      "step1Add": "Agregá este email:",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "step1Viewer": "Dejale el permiso de «Lector» y tocá «Enviar».",
+      "warningTitle": "Drive te va a mostrar una advertencia, y es esperable",
+      "warningBody": "Como la cuenta de CEITBA no es @itba.edu.ar, Drive avisa que estás compartiendo «fuera de tu organización». Es normal: confirmá con «Compartir de todos modos».",
+      "step1Scope": "Tip: compartí solo la carpeta de apuntes, no todo tu Drive. Podés desconectarla cuando quieras.",
+      "shared": "Ya la compartí",
+      "folderUrl": "Link de la carpeta",
+      "folderUrlHint": "En Drive: «Compartir» → «Copiar vínculo», con la carpeta abierta.",
+      "folderUrlWarn": "Eso no parece un link de carpeta de Drive (debería contener «/folders/»). Igual podés intentarlo.",
+      "anonymous": "Publicar como anónimo/a",
+      "anonymousHint": "Tus apuntes aparecen como de «Un/a estudiante». CEITBA igual sabe quién los compartió. Podés cambiarlo después.",
+      "consentTitle": "Condiciones",
+      "consentAccept": "Leí y acepto las condiciones para compartir mis apuntes.",
+      "back": "Atrás",
+      "connect": "Conectar carpeta",
+      "connecting": "Conectando…"
+    },
+    "report": {
+      "title": "Denunciar archivo",
+      "intro": "Contanos qué pasa con «{{name}}». Con varias denuncias el archivo se oculta hasta que CEITBA lo revise.",
+      "reason": "Motivo",
+      "reasons": {
+        "COPYRIGHT": "Infringe derechos de autor",
+        "PERSONAL_DATA": "Tiene datos personales",
+        "WRONG_SUBJECT": "Está en la materia equivocada",
+        "SPAM": "Spam o contenido sin relación",
+        "OTHER": "Otro motivo"
+      },
+      "comment": "Comentario (opcional)",
+      "commentPlaceholder": "Cualquier detalle que nos ayude a revisarlo.",
+      "submit": "Enviar denuncia",
+      "thanks": "Gracias, recibimos tu denuncia. CEITBA la va a revisar."
+    },
+    "home": {
+      "eyebrow": "Apoyo académico",
+      "title": "Apuntes",
+      "subtitle": "Resúmenes, guías y finales que comparten estudiantes del ITBA desde su Google Drive, ordenados por materia.",
+      "ctaTitle": "Compartí tus apuntes",
+      "ctaBody": "Conectá una carpeta de tu Drive y ayudá a quienes cursan después. Se actualiza sola cuando editás.",
+      "cta": "Compartí tus apuntes",
+      "searchLabel": "Buscar materia",
+      "searchPlaceholder": "Buscá una materia por nombre o código (ej. 72.08)",
+      "results": "Materias que coinciden con «{{q}}»",
+      "recent": "Actualizados recientemente",
+      "noMatches": "No encontramos esa materia",
+      "noMatchesHint": "Probá con otro nombre o con el código de la materia.",
+      "emptyTitle": "Todavía no hay apuntes",
+      "emptyBody": "Sé la primera persona en compartir los tuyos.",
+      "fileCount_one": "{{count}} archivo",
+      "fileCount_other": "{{count}} archivos",
+      "noFilesYet": "Sin apuntes todavía",
+      "updated": "act. {{date}}"
+    },
+    "subject": {
+      "summary_one": "{{count}} archivo de {{authors}} estudiante(s)",
+      "summary_other": "{{count}} archivos de {{authors}} estudiante(s)",
+      "byAuthor": "Apuntes de {{author}}",
+      "emptyTitle": "Todavía no hay apuntes de esta materia",
+      "emptyBody": "Si tenés apuntes de esta materia en tu Drive, conectá la carpeta y asignale la materia.",
+      "notFoundTitle": "No encontramos la materia",
+      "notFoundBody": "Puede que el código esté mal o que la materia ya no exista."
+    },
+    "file": {
+      "by": "Por {{author}}",
+      "updated": "actualizado el {{date}}",
+      "downloadPdf": "Descargar PDF",
+      "downloadOriginal": "Descargar original",
+      "report": "Denunciar",
+      "alreadyReported": "Ya lo denunciaste",
+      "viewerTitle": "Vista previa de {{name}}",
+      "noPreviewTitle": "No hay vista previa",
+      "noPreviewBody": "Este tipo de archivo no se puede mostrar acá, pero lo podés descargar.",
+      "noContentBody": "Todavía no tenemos una copia de este archivo. Puede ser muy grande o estar sincronizándose.",
+      "notFoundTitle": "No encontramos este archivo",
+      "notFoundBody": "Puede que lo hayan quitado, ocultado o que ya no esté publicado."
+    },
+    "mine": {
+      "title": "Mis apuntes",
+      "subtitle": "Las carpetas de Drive que compartiste con CEITBA. Asigná materias, ocultá lo que no quieras publicar y sincronizá cuando quieras.",
+      "connect": "Conectar carpeta",
+      "connected": "Conectamos «{{name}}». La primera sincronización puede tardar unos minutos.",
+      "syncQueued": "Pedimos sincronizar «{{name}}». Los cambios aparecen en unos minutos.",
+      "disconnected": "Desconectaste «{{name}}». Sus archivos ya no se muestran.",
+      "emptyTitle": "Todavía no conectaste ninguna carpeta",
+      "emptyBody": "Compartí una carpeta de tu Drive con CEITBA y tus apuntes van a aparecer acá para que les asignes materia.",
+      "anonymousOn": "Anónimo",
+      "lastSync": "Última sincronización: {{date}}",
+      "neverSynced": "Todavía no se sincronizó",
+      "lastError": "Último error: {{error}}",
+      "statusHint": {
+        "PENDING_REVIEW": "CEITBA está revisando tu carpeta. Mientras tanto podés ir asignando materias: se publican cuando la aprueben.",
+        "BLOCKED": "CEITBA bloqueó esta carpeta y sus archivos no se muestran. Escribinos a ceitba@itba.edu.ar si creés que es un error.",
+        "REVOKED": "Ya no tenemos acceso a la carpeta. Volvé a compartirla con la cuenta de CEITBA para seguir sincronizando.",
+        "DISCONNECTED": "Desconectaste esta carpeta.",
+        "ERROR": "La última sincronización falló. Probá «Sincronizar ahora» en unos minutos."
+      },
+      "files": "Archivos",
+      "published": "Publicados",
+      "inReview": "En revisión",
+      "showFiles": "Ver archivos",
+      "hideFiles": "Cerrar archivos",
+      "syncNow": "Sincronizar ahora",
+      "anonymousToggle": "Anónimo",
+      "disconnect": "Desconectar",
+      "sourceMissing": "No encontramos esa carpeta entre las tuyas.",
+      "disconnectTitle": "Desconectar carpeta",
+      "disconnectBody": "«{{name}}» deja de sincronizarse y sus apuntes dejan de mostrarse en el sitio. Tu Drive no se toca. Para que CEITBA deje de verla del todo, dejá de compartirla en Drive.",
+      "disconnectConfirm": "Desconectar"
+    }
   }
 }

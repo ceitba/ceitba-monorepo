@@ -47,7 +47,54 @@
     background-size: 800px 100%;
     animation: shimmer 1.4s infinite linear;
   }
+
+  /* Editorial reading container for Google Docs rendered as (server-
+     sanitized) HTML on /apuntes/archivo/:id. Inline colours/fonts from the
+     export are neutralised so the doc follows the site's type and theme. */
+  .apunte-prose {
+    @apply font-body text-body text-ink-primary dark:text-night-text leading-[1.75] break-words;
+  }
+  .apunte-prose * {
+    color: inherit !important;
+    background-color: transparent !important;
+    font-family: inherit;
+  }
+  .apunte-prose h1,
+  .apunte-prose h2,
+  .apunte-prose h3,
+  .apunte-prose h4,
+  .apunte-prose .title {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  .apunte-prose h1, .apunte-prose .title { @apply text-h3; }
+  .apunte-prose h2 { @apply text-h4; }
+  .apunte-prose h3 { @apply text-h5; }
+  .apunte-prose h4 { @apply text-body-lg; }
+  .apunte-prose > :first-child { @apply mt-0; }
+  .apunte-prose p { @apply my-3; }
+  .apunte-prose ul { @apply list-disc pl-6 my-3; }
+  .apunte-prose ol { @apply list-decimal pl-6 my-3; }
+  .apunte-prose li { @apply my-1; }
+  .apunte-prose li > p { @apply my-0; }
+  .apunte-prose a { @apply underline underline-offset-2; color: #1A3C6E !important; }
+  .apunte-prose img { @apply max-w-full h-auto my-4 rounded-sm; }
+  .apunte-prose blockquote { @apply border-l-4 border-accent pl-4 italic my-4; }
+  .apunte-prose hr { @apply my-8 border-border dark:border-night-border; }
+  .apunte-prose code,
+  .apunte-prose pre {
+    @apply font-mono text-body-sm rounded-sm bg-page-bg dark:bg-night-bg;
+    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  }
+  .apunte-prose code { @apply px-1 py-0.5; }
+  .apunte-prose pre { @apply p-4 my-4 overflow-x-auto; }
+  .apunte-prose table { @apply block w-full overflow-x-auto my-4 border-collapse text-body-sm; }
+  .apunte-prose th,
+  .apunte-prose td { @apply border border-border dark:border-night-border px-3 py-2 align-top; }
+  .apunte-prose th { @apply font-semibold; }
 }
+
+html.dark .apunte-prose a { color: #7FA1D4 !important; }
 
 .dark .text-ink-secondary { color: #a1a1aa; }
 .dark .text-ink-primary   { color: #f4f4f5; }

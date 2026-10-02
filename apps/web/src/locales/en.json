@@ -6,7 +6,8 @@
     "langToggleLabel": "ES",
     "langToggleAria": "Switch to Spanish",
     "themeToggleLight": "Switch to light mode",
-    "themeToggleDark": "Switch to dark mode"
+    "themeToggleDark": "Switch to dark mode",
+    "apuntes": "Notes"
   },
   "tabs": {
     "home": "Home",
@@ -29,7 +30,8 @@
       "benefits": "Benefits",
       "users": "Users",
       "organizations": "Organizations",
-      "corrections": "Schedule corrections"
+      "corrections": "Schedule corrections",
+      "drive": "Notes"
     },
     "staff": {
       "year": "Year",
@@ -250,6 +252,84 @@
       },
       "emptyHint": "This is where schedules that students propose to fix from the Schedule Builder will show up. Normally you don't need to do anything: each correction applies on its own once enough other students confirm it.",
       "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections"
+    },
+    "drive": {
+      "intro": "Moderate the notes students share from Google Drive: approve new folders, review files that need a decision and see what was shared with the CEITBA account without being connected.",
+      "viewsAria": "Notes moderation views",
+      "views": {
+        "sources": "Folders",
+        "files": "Files to review",
+        "unclaimed": "Unclaimed"
+      },
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} {{what}}",
+      "conflict": "The status changed while you were looking (another staff member or a sync). We reloaded the list.",
+      "filterLabel": "Show",
+      "allStatuses": "All",
+      "col": {
+        "actions": "Actions"
+      },
+      "sources": {
+        "col": {
+          "folder": "Folder",
+          "owner": "Student",
+          "files": "Files",
+          "status": "Status"
+        },
+        "connected": "Connected on {{date}}",
+        "counts": "{{files}} files · {{published}} published · {{review}} in review",
+        "approve": "Approve",
+        "approveAria": "Approve the folder {{name}}",
+        "block": "Block",
+        "blockAria": "Block the folder {{name}}",
+        "approvedNotice": "You approved “{{name}}”. Its files with a subject are published on the next sync.",
+        "blockedNotice": "You blocked “{{name}}”. Its files are no longer visible.",
+        "empty": "No folders with this status.",
+        "unit": "folders",
+        "blockTitle": "Block folder",
+        "blockConfirm": "Block",
+        "blockBody": "“{{name}}” ({{owner}}) stops syncing and its files are hidden. You can approve it again later.",
+        "comment": "Reason (optional, shown to the student)"
+      },
+      "files": {
+        "queue": {
+          "NEEDS_REVIEW": "Need review",
+          "HIDDEN_REPORTED": "Hidden by reports"
+        },
+        "col": {
+          "file": "File",
+          "subject": "Subject",
+          "people": "Who",
+          "reports": "Reports"
+        },
+        "sharer": "Shared by: {{who}}",
+        "owner": "Drive owner: {{who}}",
+        "ownerDiffers": "The file's owner isn't the person who shared it.",
+        "reportCount_one": "{{count}} report",
+        "reportCount_other": "{{count}} reports",
+        "publish": "Publish",
+        "restore": "Restore",
+        "remove": "Remove",
+        "publishNotice": "You published “{{name}}”.",
+        "removeNotice": "You removed “{{name}}”. It won't be republished by later syncs.",
+        "restoreNotice": "You restored “{{name}}”.",
+        "empty": {
+          "NEEDS_REVIEW": "No files waiting for review.",
+          "HIDDEN_REPORTED": "No files hidden by reports."
+        },
+        "unit": "files",
+        "removeTitle": "Remove file",
+        "removeBody": "“{{name}}” is hidden from everyone and stays hidden across syncs. You can restore it later."
+      },
+      "unclaimed": {
+        "intro": "Folders someone shared with the CEITBA account but nobody connected from “My notes”. If they linger, consider reaching out to whoever shared them.",
+        "col": {
+          "name": "Name",
+          "owner": "Owner",
+          "firstSeen": "First seen",
+          "lastSeen": "Last seen"
+        },
+        "empty": "No unclaimed shared folders."
+      }
     }
   },
   "profile": {
@@ -279,7 +359,9 @@
       "auth_failed": "We couldn't complete sign-in. Please try again.",
       "invalid_state": "Your sign-in session expired or was invalid. Please try signing in again.",
       "access_denied": "You cancelled the Google sign-in."
-    }
+    },
+    "apuntes": "Notes",
+    "myApuntes": "My notes"
   },
   "hero": {
     "eyebrow": "Student Center",
@@ -320,6 +402,11 @@
     "newsletter": {
       "label": "ITBA Newsletter",
       "description": "Stay up to date with everything happening at ITBA: events, academic news, job opportunities and CEITBA activities.",
+      "cta": "Open"
+    },
+    "apuntes": {
+      "label": "Notes",
+      "description": "Notes, summaries and past exams other students share from their Google Drive, organized by subject.",
       "cta": "Open"
     }
   },
@@ -398,5 +485,206 @@
     "somethingWrong": "Something went wrong",
     "retry": "Retry",
     "dismiss": "Dismiss"
+  },
+  "authGuard": {
+    "title": "Sign in to continue",
+    "body": "Notes are for the ITBA community. Sign in with your @itba.edu.ar account to read them and share yours.",
+    "signIn": "Sign in with Google"
+  },
+  "devLogin": {
+    "link": "Dev login",
+    "eyebrow": "Local development only",
+    "title": "Dev login",
+    "body": "Signs in through POST /v1/auth/dev-login (API with the dev profile and AUTH_DEV_LOGIN_ENABLED=true). It doesn't exist in production.",
+    "name": "Name",
+    "staff": "Staff (ROLE_STAFF)",
+    "submit": "Sign in"
+  },
+  "apuntes": {
+    "title": "Notes",
+    "breadcrumbAria": "Breadcrumb",
+    "backToSearch": "Back to notes",
+    "anonymousAuthor": "A student",
+    "errors": {
+      "DRIVE_INVALID_FOLDER_URL": "That link doesn't look like a Google Drive folder. Copy it from “Share” → “Copy link” with the folder open.",
+      "DRIVE_FOLDER_NOT_SHARED": "We can't see the folder yet. Check that you shared it with the CEITBA account as Viewer and try again in a minute.",
+      "DRIVE_FOLDER_NOT_OWNED": "That folder isn't yours. You can only connect folders you own in Drive.",
+      "DRIVE_SOURCE_EXISTS": "That folder is already connected.",
+      "DRIVE_SYNC_RATE_LIMITED": "You requested a sync recently. You can request another one in a few minutes (at most one every 5 minutes).",
+      "DRIVE_SYNC_UNCONFIGURED": "Notes isn't available yet: the Google Drive connection hasn't been configured."
+    },
+    "sourceStatus": {
+      "PENDING_REVIEW": "In review",
+      "ACTIVE": "Active",
+      "BLOCKED": "Blocked",
+      "REVOKED": "No access",
+      "DISCONNECTED": "Disconnected",
+      "ERROR": "Errors"
+    },
+    "publication": {
+      "PRIVATE": "Private",
+      "NEEDS_REVIEW": "In review",
+      "PUBLISHED": "Published",
+      "HIDDEN_REPORTED": "Hidden by reports",
+      "REMOVED_BY_STAFF": "Removed by CEITBA",
+      "REMOVED": "Deleted in Drive"
+    },
+    "kind": {
+      "FOLDER": "Folder",
+      "DOC": "Document",
+      "SLIDES": "Presentation",
+      "SHEET": "Spreadsheet",
+      "DRAWING": "Drawing",
+      "PDF": "PDF",
+      "IMAGE": "Image",
+      "OFFICE": "Office file",
+      "OTHER": "File"
+    },
+    "picker": {
+      "inherited": "Inherits: {{name}}",
+      "none": "No subject",
+      "search": "Search by code or name…",
+      "clear": "No subject",
+      "clearInherit": "Inherit from folder ({{name}})",
+      "failed": "We couldn't search subjects.",
+      "noMatches": "No subjects match that name or code.",
+      "typeToSearch": "Type to search for a subject."
+    },
+    "tree": {
+      "intro": "Pick the subject of each folder or file: whatever you set on a folder is inherited by its files. Only files with a subject that you don't hide get published.",
+      "acceptAll": "Accept suggestions ({{count}})",
+      "acceptedNotice_one": "Applied {{count}} suggestion.",
+      "acceptedNotice_other": "Applied {{count}} suggestions.",
+      "empty": "No files yet. If you just connected the folder, the first sync can take a few minutes.",
+      "aria": "Folder files",
+      "expand": "Show the contents of {{name}}",
+      "collapse": "Hide the contents of {{name}}",
+      "notMine": "Not yours",
+      "notMineHint": "Someone else created it: CEITBA reviews it before publishing.",
+      "hiddenLabel": "Hidden",
+      "syncError": "We couldn't sync it: {{error}}",
+      "subjectFor": "Subject for {{name}}",
+      "useSuggestion": "Use the suggested subject",
+      "suggestion": "Suggested: {{name}}",
+      "hide": "Hide"
+    },
+    "wizard": {
+      "title": "Connect a Drive folder",
+      "stepsAria": "Steps",
+      "step1Label": "1 · Share",
+      "step2Label": "2 · Connect",
+      "step1Intro": "For CEITBA to read your notes, share the folder with our account. It only reads: it never edits or deletes anything in your Drive.",
+      "step1Open": "In Google Drive, right-click the folder → “Share”.",
+      "step1Add": "Add this email:",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "step1Viewer": "Leave the “Viewer” permission and click “Send”.",
+      "warningTitle": "Drive will show you a warning, and that's expected",
+      "warningBody": "Since the CEITBA account isn't an @itba.edu.ar one, Drive warns that you're sharing “outside your organization”. That's normal: confirm with “Share anyway”.",
+      "step1Scope": "Tip: share just your notes folder, not your whole Drive. You can disconnect it anytime.",
+      "shared": "I've shared it",
+      "folderUrl": "Folder link",
+      "folderUrlHint": "In Drive: “Share” → “Copy link”, with the folder open.",
+      "folderUrlWarn": "That doesn't look like a Drive folder link (it should contain “/folders/”). You can still try.",
+      "anonymous": "Publish anonymously",
+      "anonymousHint": "Your notes show up as from “A student”. CEITBA still knows who shared them. You can change it later.",
+      "consentTitle": "Terms",
+      "consentAccept": "I've read and accept the terms for sharing my notes.",
+      "back": "Back",
+      "connect": "Connect folder",
+      "connecting": "Connecting…"
+    },
+    "report": {
+      "title": "Report file",
+      "intro": "Tell us what's wrong with “{{name}}”. After several reports the file is hidden until CEITBA reviews it.",
+      "reason": "Reason",
+      "reasons": {
+        "COPYRIGHT": "Copyright infringement",
+        "PERSONAL_DATA": "Contains personal data",
+        "WRONG_SUBJECT": "Wrong subject",
+        "SPAM": "Spam or unrelated content",
+        "OTHER": "Something else"
+      },
+      "comment": "Comment (optional)",
+      "commentPlaceholder": "Any detail that helps us review it.",
+      "submit": "Send report",
+      "thanks": "Thanks, we got your report. CEITBA will review it."
+    },
+    "home": {
+      "eyebrow": "Academic support",
+      "title": "Notes",
+      "subtitle": "Summaries, guides and past exams ITBA students share from their Google Drive, organized by subject.",
+      "ctaTitle": "Share your notes",
+      "ctaBody": "Connect a folder from your Drive and help the students who come after you. It updates itself when you edit.",
+      "cta": "Share your notes",
+      "searchLabel": "Search subject",
+      "searchPlaceholder": "Search a subject by name or code (e.g. 72.08)",
+      "results": "Subjects matching “{{q}}”",
+      "recent": "Recently updated",
+      "noMatches": "We couldn't find that subject",
+      "noMatchesHint": "Try another name or the subject code.",
+      "emptyTitle": "No notes yet",
+      "emptyBody": "Be the first to share yours.",
+      "fileCount_one": "{{count}} file",
+      "fileCount_other": "{{count}} files",
+      "noFilesYet": "No notes yet",
+      "updated": "upd. {{date}}"
+    },
+    "subject": {
+      "summary_one": "{{count}} file from {{authors}} student(s)",
+      "summary_other": "{{count}} files from {{authors}} student(s)",
+      "byAuthor": "Notes by {{author}}",
+      "emptyTitle": "No notes for this subject yet",
+      "emptyBody": "If you have notes for this subject in your Drive, connect the folder and assign it the subject.",
+      "notFoundTitle": "We couldn't find the subject",
+      "notFoundBody": "The code may be wrong or the subject may no longer exist."
+    },
+    "file": {
+      "by": "By {{author}}",
+      "updated": "updated on {{date}}",
+      "downloadPdf": "Download PDF",
+      "downloadOriginal": "Download original",
+      "report": "Report",
+      "alreadyReported": "You reported it",
+      "viewerTitle": "Preview of {{name}}",
+      "noPreviewTitle": "No preview available",
+      "noPreviewBody": "This kind of file can't be shown here, but you can download it.",
+      "noContentBody": "We don't have a copy of this file yet. It may be too large or still syncing.",
+      "notFoundTitle": "We couldn't find this file",
+      "notFoundBody": "It may have been removed, hidden or unpublished."
+    },
+    "mine": {
+      "title": "My notes",
+      "subtitle": "The Drive folders you shared with CEITBA. Assign subjects, hide what you don't want published and sync whenever you want.",
+      "connect": "Connect folder",
+      "connected": "We connected “{{name}}”. The first sync can take a few minutes.",
+      "syncQueued": "We requested a sync of “{{name}}”. Changes show up in a few minutes.",
+      "disconnected": "You disconnected “{{name}}”. Its files are no longer shown.",
+      "emptyTitle": "You haven't connected any folder yet",
+      "emptyBody": "Share a folder from your Drive with CEITBA and your notes will show up here so you can assign them subjects.",
+      "anonymousOn": "Anonymous",
+      "lastSync": "Last sync: {{date}}",
+      "neverSynced": "Not synced yet",
+      "lastError": "Last error: {{error}}",
+      "statusHint": {
+        "PENDING_REVIEW": "CEITBA is reviewing your folder. Meanwhile you can assign subjects: they're published once it's approved.",
+        "BLOCKED": "CEITBA blocked this folder and its files aren't shown. Write to ceitba@itba.edu.ar if you think it's a mistake.",
+        "REVOKED": "We no longer have access to the folder. Share it again with the CEITBA account to keep syncing.",
+        "DISCONNECTED": "You disconnected this folder.",
+        "ERROR": "The last sync failed. Try “Sync now” in a few minutes."
+      },
+      "files": "Files",
+      "published": "Published",
+      "inReview": "In review",
+      "showFiles": "View files",
+      "hideFiles": "Close files",
+      "syncNow": "Sync now",
+      "anonymousToggle": "Anonymous",
+      "disconnect": "Disconnect",
+      "sourceMissing": "We couldn't find that folder among yours.",
+      "disconnectTitle": "Disconnect folder",
+      "disconnectBody": "“{{name}}” stops syncing and its notes are no longer shown on the site. Your Drive isn't touched. To fully stop CEITBA from seeing it, stop sharing it in Drive.",
+      "disconnectConfirm": "Disconnect"
+    }
   }
 }

@@ -33,12 +33,29 @@ export function subscribe(fn: (p: UserProfile | null) => void): () => void {
   return () => { _listeners.delete(fn) }
 }
 
-export function startGoogleSignIn(): void {
+const RETURN_TO_KEY = 'auth.returnTo'
+
+// `returnTo` is an in-app path (e.g. "/apuntes") to land on after the OAuth
+// round-trip; AuthCallback reads it back with takeReturnTo().
+export function startGoogleSignIn(returnTo?: string): void {
+  if (returnTo) {
+    try { sessionStorage.setItem(RETURN_TO_KEY, returnTo) } catch { /* storage blocked */ }
+  }
   const redirectUri =
     (import.meta.env.VITE_GOOGLE_REDIRECT_URI as string | undefined) ??
     `${window.location.origin}${window.location.pathname}`
   window.location.href =
     `${BASE_URL}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
+}
+
+export function takeReturnTo(): string | null {
+  try {
+    const value = sessionStorage.getItem(RETURN_TO_KEY)
+    sessionStorage.removeItem(RETURN_TO_KEY)
+    return value
+  } catch {
+    return null
+  }
 }
 
 export async function getSession(opts: { force?: boolean } = {}): Promise<UserProfile | null> {

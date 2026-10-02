@@ -36,7 +36,7 @@ export default function AuthMenu() {
     return (
       <button
         type="button"
-        onClick={startGoogleSignIn}
+        onClick={() => startGoogleSignIn()}
         className="min-h-[36px] px-3 font-mono text-label uppercase tracking-widest text-primary border border-primary rounded-sm hover:bg-primary hover:text-white transition-colors duration-150"
       >
         {t('auth.signIn')}
