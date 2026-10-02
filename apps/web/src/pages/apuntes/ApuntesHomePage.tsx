@@ -8,6 +8,15 @@ import { groupPlanSubjects, semesterLabel } from '../../utils/planGroups'
 import { apuntesErrorMessage, formatDate } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
 import { BTN_PRIMARY, INPUT } from '../../components/apuntes/buttons'
+import PinButton, { PinIcon } from '../../components/apuntes/PinButton'
+import PinNotice from '../../components/apuntes/PinNotice'
+import { usePins } from '../../hooks/usePins'
+
+const PIN_HINT_KEY = 'apuntes.pinHintDismissed'
+
+function readHintDismissed(): boolean {
+  try { return localStorage.getItem(PIN_HINT_KEY) === '1' } catch { return false }
+}
 
 // /apuntes — find a subject's notes. With no query it lists the subjects
 // with the most recently updated notes; typing searches every subject by
@@ -51,6 +60,21 @@ export default function ApuntesHomePage() {
   }, [debounced, tick, t])
 
   const searching = debounced !== ''
+  const { pins } = usePins()
+  const [hintDismissed, setHintDismissed] = useState(readHintDismissed)
+
+  // Once something is pinned the hint has done its job.
+  useEffect(() => {
+    if (pins && pins.length > 0 && !hintDismissed) {
+      try { localStorage.setItem(PIN_HINT_KEY, '1') } catch { /* storage blocked */ }
+      setHintDismissed(true)
+    }
+  }, [pins, hintDismissed])
+
+  function dismissHint() {
+    try { localStorage.setItem(PIN_HINT_KEY, '1') } catch { /* storage blocked */ }
+    setHintDismissed(true)
+  }
 
   return (
     <main id="main-content" tabIndex={-1} className="outline-none">
@@ -78,6 +102,47 @@ export default function ApuntesHomePage() {
       </section>
 
       <section className="container-content py-10 lg:py-14" aria-labelledby="apuntes-list-heading">
+        {pins && pins.length > 0 && (
+          <section aria-labelledby="apuntes-pins-heading" className="mb-8">
+            <h2 id="apuntes-pins-heading" className="flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mb-3">
+              <span className="text-accent-600 dark:text-accent-300"><PinIcon filled size={14} /></span>
+              {t('apuntes.pins.title')}
+            </h2>
+            <ul className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {pins.map((p) => (
+                <li key={p.subjectId} className="relative">
+                  <Link
+                    to={`/apuntes/${encodeURIComponent(p.subjectId)}`}
+                    className="group h-full flex flex-col gap-1 pl-4 pr-11 py-3 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface hover:border-primary transition-colors duration-150"
+                  >
+                    <span className="flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+                      {p.subjectId}
+                      {p.hasWiki && (
+                        <span className="px-1.5 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 normal-case tracking-normal">
+                          {t('apuntes.pins.wiki')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-body font-semibold text-body-sm text-ink-primary dark:text-night-text group-hover:text-primary line-clamp-2">
+                      {p.subjectName}
+                    </span>
+                    <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
+                      {p.fileCount > 0 ? t('apuntes.home.fileCount', { count: p.fileCount }) : t('apuntes.home.noFilesYet')}
+                    </span>
+                  </Link>
+                  <PinButton subject={p} className="absolute top-2 right-2" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {pins && pins.length === 0 && !hintDismissed && (
+          <p className="mb-6 flex items-center gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
+            <span className="text-accent-600 dark:text-accent-300"><PinIcon size={14} /></span>
+            <span className="flex-1">{t('apuntes.pins.hint')}</span>
+            <button type="button" onClick={dismissHint} aria-label={t('errors.dismiss')} className="leading-none text-h5 opacity-60 hover:opacity-100">×</button>
+          </p>
+        )}
         <label htmlFor="apuntes-search" className="sr-only">{t('apuntes.home.searchLabel')}</label>
         <div className="relative max-w-2xl">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-secondary dark:text-night-muted">
@@ -177,6 +242,7 @@ export default function ApuntesHomePage() {
           </ul>
         )}
       </section>
+      <PinNotice />
     </main>
   )
 }
@@ -184,25 +250,31 @@ export default function ApuntesHomePage() {
 function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: string }) {
   const { t } = useTranslation()
   return (
-    <Link
-      to={`/apuntes/${encodeURIComponent(s.subjectId)}`}
-      className={`group h-full flex flex-col gap-2 p-5 rounded-card border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 ${
-        s.fileCount > 0 ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border'
-      }`}
-    >
-      <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-        {s.subjectId}
-        {semesterLabel(s, t) && ` · ${semesterLabel(s, t)}`}
-      </span>
-      <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 line-clamp-2">
-        {s.subjectName}
-      </span>
-      <span className="mt-auto font-mono text-label text-ink-secondary dark:text-night-muted">
-        {s.fileCount > 0
-          ? t('apuntes.home.fileCount', { count: s.fileCount })
-          : t('apuntes.home.noFilesYet')}
-        {s.lastUpdatedAt && ` · ${t('apuntes.home.updated', { date: formatDate(s.lastUpdatedAt, lang) })}`}
-      </span>
-    </Link>
+    <div className="relative h-full">
+      <Link
+        to={`/apuntes/${encodeURIComponent(s.subjectId)}`}
+        className={`group h-full flex flex-col gap-2 p-5 pr-12 rounded-card border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 ${
+          s.fileCount > 0 ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border'
+        }`}
+      >
+        <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+          {s.subjectId}
+          {semesterLabel(s, t) && ` · ${semesterLabel(s, t)}`}
+        </span>
+        <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 line-clamp-2">
+          {s.subjectName}
+        </span>
+        <span className="mt-auto font-mono text-label text-ink-secondary dark:text-night-muted">
+          {s.fileCount > 0
+            ? t('apuntes.home.fileCount', { count: s.fileCount })
+            : t('apuntes.home.noFilesYet')}
+          {s.lastUpdatedAt && ` · ${t('apuntes.home.updated', { date: formatDate(s.lastUpdatedAt, lang) })}`}
+        </span>
+      </Link>
+      <PinButton
+        subject={{ subjectId: s.subjectId, subjectName: s.subjectName, fileCount: s.fileCount }}
+        className="absolute top-3 right-3"
+      />
+    </div>
   )
 }

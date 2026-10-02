@@ -6,6 +6,8 @@ import { fetchSubjectFiles, type SubjectFiles } from '../../api/drive'
 import { fetchSubjectKb, type SubjectKb } from '../../api/kb'
 import WikiArticle, { PagesPanel } from '../../components/apuntes/wiki/WikiArticle'
 import RelatedPanel from '../../components/apuntes/wiki/RelatedPanel'
+import PinButton from '../../components/apuntes/PinButton'
+import PinNotice from '../../components/apuntes/PinNotice'
 import { ApiError } from '../../api/client'
 import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
@@ -89,9 +91,23 @@ export default function SubjectFilesPage() {
             <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {data?.subjectId ?? subjectId}
             </span>
-            <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text mt-1">
-              {data?.subjectName ?? kb?.subjectName ?? (notFound ? t('apuntes.subject.notFoundTitle') : subjectId)}
-            </h1>
+            <div className="flex items-start gap-3 mt-1">
+              <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text min-w-0 flex-1">
+                {data?.subjectName ?? kb?.subjectName ?? (notFound ? t('apuntes.subject.notFoundTitle') : subjectId)}
+              </h1>
+              {!notFound && (data || kb) && (
+                <PinButton
+                  size="md"
+                  className="mt-1"
+                  subject={{
+                    subjectId,
+                    subjectName: data?.subjectName ?? kb?.subjectName ?? subjectId,
+                    fileCount: data ? totalFiles : null,
+                    hasWiki: kb ? !!kb.index : null,
+                  }}
+                />
+              )}
+            </div>
             {data && (
               <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-2">
                 {t('apuntes.subject.summary', { count: totalFiles, authors: groups.length })}
@@ -239,6 +255,7 @@ export default function SubjectFilesPage() {
           })}
         </div>
       )}
+      <PinNotice />
     </main>
   )
 }

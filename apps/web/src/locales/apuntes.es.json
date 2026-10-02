@@ -229,6 +229,15 @@
       "otherSubjects": "Otras materias",
       "subjectCount_one": "{{count}} materia",
       "subjectCount_other": "{{count}} materias"
+    },
+    "pins": {
+      "title": "Fijadas",
+      "pin": "Fijar",
+      "unpin": "Desfijar",
+      "wiki": "Wiki",
+      "hint": "Fijá materias con el botón del pin para tenerlas a mano acá.",
+      "limit": "Llegaste al máximo de {{limit}} materias fijadas. Desfijá alguna para sumar otra.",
+      "failed": "No pudimos actualizar tus materias fijadas. Probá de nuevo."
     }
   },
   "wiki": {

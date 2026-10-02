@@ -229,6 +229,15 @@
       "otherSubjects": "Other subjects",
       "subjectCount_one": "{{count}} subject",
       "subjectCount_other": "{{count}} subjects"
+    },
+    "pins": {
+      "title": "Pinned",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "wiki": "Wiki",
+      "hint": "Pin subjects with the pin button to keep them handy here.",
+      "limit": "You've reached the maximum of {{limit}} pinned subjects. Unpin one to add another.",
+      "failed": "We couldn't update your pinned subjects. Please try again."
     }
   },
   "wiki": {
