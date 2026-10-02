@@ -739,6 +739,11 @@
       "archivos": "Files"
     },
     "graphLink": "View graph",
+    "graph": "Graph",
+    "graphTitle": "Wiki graph",
+    "graphHint": "This subject's pages and the pages of other subjects they link with. Tap a node to open it.",
+    "legend": "Legend",
+    "otherSubjects": "Other subjects",
     "types": {
       "index": "Home",
       "topic": "Topics",

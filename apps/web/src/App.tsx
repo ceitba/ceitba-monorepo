@@ -14,6 +14,7 @@ import SubjectFilesPage from './pages/apuntes/SubjectFilesPage'
 import FilePage from './pages/apuntes/FilePage'
 import MyApuntesPage from './pages/apuntes/MyApuntesPage'
 import WikiPage from './pages/apuntes/WikiPage'
+import WikiGraphPage from './pages/apuntes/WikiGraphPage'
 import AuthErrorBanner from './components/AuthErrorBanner'
 import { getSession, takeReturnTo } from './store/authStore'
 import { isSafeReturnPath } from './utils/apuntes'
@@ -66,6 +67,7 @@ function Layout() {
           <Route path="/apuntes/archivo/:fileId" element={<AuthGuard><FilePage /></AuthGuard>} />
           <Route path="/apuntes/:subjectId" element={<AuthGuard><SubjectFilesPage /></AuthGuard>} />
           <Route path="/apuntes/:subjectId/wiki/:slug" element={<AuthGuard><WikiPage /></AuthGuard>} />
+          <Route path="/apuntes/:subjectId/grafo" element={<AuthGuard><WikiGraphPage /></AuthGuard>} />
           {DevLoginPage && (
             <Route path="/dev-login" element={<Suspense fallback={null}><DevLoginPage /></Suspense>} />
           )}

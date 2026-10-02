@@ -739,6 +739,11 @@
       "archivos": "Archivos"
     },
     "graphLink": "Ver grafo",
+    "graph": "Grafo",
+    "graphTitle": "Grafo de la wiki",
+    "graphHint": "Las páginas de esta materia y las de otras materias con las que se enlazan. Tocá un nodo para abrirlo.",
+    "legend": "Referencias",
+    "otherSubjects": "Otras materias",
     "types": {
       "index": "Inicio",
       "topic": "Temas",
