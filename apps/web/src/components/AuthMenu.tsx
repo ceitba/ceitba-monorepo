@@ -40,7 +40,7 @@ export default function AuthMenu() {
             to="/dev-login"
             className="min-h-[36px] inline-flex items-center px-2 font-mono text-label uppercase tracking-widest text-accent-600 dark:text-accent-300 border border-dashed border-accent-400 rounded-sm hover:bg-accent-50 dark:hover:bg-accent-900/30"
           >
-            {t('devLogin.link')}
+            {t('devLogin.link', { defaultValue: 'Dev login' })}
           </Link>
         )}
         <button

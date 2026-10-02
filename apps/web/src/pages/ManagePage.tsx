@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ManageStaffSection from './manage/ManageStaffSection'
 import ManageBenefitsSection from './manage/ManageBenefitsSection'
 import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
-import ManageDriveSection from './manage/ManageDriveSection'
+// Apuntes moderation pulls in the Drive/wiki APIs and badges: load on demand.
+const ManageDriveSection = lazy(() => import('./manage/ManageDriveSection'))
 import type { OrganizationSummary } from '../api/admin'
 
 type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive'
@@ -71,7 +72,11 @@ export default function ManagePage() {
       {tab === 'users'    && <ManageUsersSection initialAddingTo={addingTo} />}
       {tab === 'organizations' && <ManageOrganizationsSection onAddMembers={addMembers} />}
       {tab === 'corrections' && <ManageCorrectionsSection />}
-      {tab === 'drive' && <ManageDriveSection />}
+      {tab === 'drive' && (
+        <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
+          <ManageDriveSection />
+        </Suspense>
+      )}
     </main>
   )
 }

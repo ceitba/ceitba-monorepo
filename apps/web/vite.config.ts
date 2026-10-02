@@ -11,6 +11,11 @@ const mediaProxy = process.env.DEV_MEDIA_PROXY
 export default defineConfig({
   plugins: [react()],
   base: process.env.VITE_BASE_PATH ?? '/',
+  build: {
+    // The largest chunk is SheetJS (~500 kB), which only loads when someone
+    // opens a spreadsheet in Apuntes; the main bundle stays far below this.
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     proxy: {
       ...(apiProxy ? { '/api': { target: apiProxy } } : {}),

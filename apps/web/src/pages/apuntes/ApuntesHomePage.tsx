@@ -1,3 +1,4 @@
+import '../../i18nApuntes'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
