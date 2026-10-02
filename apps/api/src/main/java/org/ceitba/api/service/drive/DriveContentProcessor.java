@@ -83,14 +83,32 @@ public class DriveContentProcessor {
                           String mimeType, Long version, String knownFingerprint, Long size) {}
 
     // existing = a copy with this fingerprint is already stored: no keys here.
+    // exportBlocked = the owner disabled download/export (metadata only).
     public record Content(Long version, String fingerprint, String html, String pdfKey, String originalKey,
                           String originalContentType, String assetPrefix, List<String> assetNames,
-                          String text, boolean metadataOnly, boolean existing) {
+                          String text, boolean metadataOnly, boolean existing, boolean exportBlocked) {
+
+        Content(Long version, String fingerprint, String html, String pdfKey, String originalKey,
+                String originalContentType, String assetPrefix, List<String> assetNames, String text,
+                boolean metadataOnly, boolean existing) {
+            this(version, fingerprint, html, pdfKey, originalKey, originalContentType, assetPrefix, assetNames,
+                text, metadataOnly, existing, false);
+        }
 
         static Content metadataOnly(Request r) {
-            var fp = r.knownFingerprint() != null ? r.knownFingerprint()
+            return new Content(r.version(), metaFingerprint(r), null, null, null, null, null, List.of(), null,
+                true, false);
+        }
+
+        // Not the md5: nothing is stored, so it must never pass for a copy.
+        static Content blocked(Request r) {
+            return new Content(r.version(), "blocked:" + (r.version() == null ? 0 : r.version()), null, null, null, null, null, List.of(), null,
+                true, false, true);
+        }
+
+        private static String metaFingerprint(Request r) {
+            return r.knownFingerprint() != null ? r.knownFingerprint()
                 : "meta:" + (r.version() == null ? 0 : r.version()) + ":" + r.size();
-            return new Content(r.version(), fp, null, null, null, null, null, List.of(), null, true, false);
         }
 
         static Content existing(Request r, String fingerprint) {
@@ -113,11 +131,17 @@ public class DriveContentProcessor {
                 case DRAWING -> drawing(r, haveCopy, written);
                 case PDF -> binary(r, haveCopy, written, true);
                 case IMAGE, OFFICE -> binary(r, haveCopy, written, false);
-                case OTHER, FOLDER -> Content.metadataOnly(r);
+                case OTHER -> DriveMedia.isTextLike(r.mimeType(), r.name())
+                    ? binary(r, haveCopy, written, false) : Content.metadataOnly(r);
+                case FOLDER -> Content.metadataOnly(r);
             };
         } catch (TooLarge e) {
             cleanup(written);
             return Content.metadataOnly(r);
+        } catch (DriveApiException e) {
+            cleanup(written);
+            if (e.isDownloadBlocked()) return Content.blocked(r);
+            throw e;
         } catch (RuntimeException e) {
             cleanup(written);
             throw e;
@@ -282,7 +306,7 @@ public class DriveContentProcessor {
             var type = r.mimeType() == null ? "application/octet-stream" : r.mimeType();
             var key = prefix + "original" + extension(r.name());
             storeFile(key, type, file, written);
-            String text = type.startsWith("text/") ? cap(readText(file)) : null;
+            String text = DriveMedia.isTextLike(type, r.name()) ? cap(readText(file)) : null;
             return new Content(r.version(), fp, null, null, key, type, null, List.of(), text, false, false);
         } finally {
             deleteQuietly(file);

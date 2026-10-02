@@ -2,6 +2,9 @@ package org.ceitba.api.web.drive;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.domain.Career;
+import org.ceitba.api.domain.Plan;
+import org.ceitba.api.domain.PlanSubject;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.domain.drive.DriveSourceStatus;
 import org.ceitba.api.external.drive.FakeDriveClient;
@@ -92,11 +95,15 @@ class DriveSyncIT {
     @Autowired DriveSourceRepository sources;
     @Autowired DriveFileRepository files;
     @Autowired SubjectRepository subjects;
+    @Autowired org.ceitba.api.repository.CareerRepository careers;
+    @Autowired org.ceitba.api.repository.PlanRepository plans;
+    @Autowired org.ceitba.api.repository.PlanSubjectRepository planSubjects;
 
     @BeforeEach
     void seed() {
         jdbc.execute("TRUNCATE wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file, "
-            + "wiki.drive_source, public.\"user\", public.subject CASCADE");
+            + "wiki.drive_source, public.\"user\", public.plan_subject, public.subject, public.plan, "
+            + "public.careers CASCADE");
         drive.reset();
         storage.clear();
         subjects.saveAll(List.of(
@@ -147,7 +154,9 @@ class DriveSyncIT {
             "{\"folderUrl\":\"https://drive.google.com/drive/folders/" + folder + "?usp=sharing\","
                 + "\"consentVersion\":\"2026-10\",\"anonymous\":false}")
             .andExpect(status().isCreated());
-        var id = UUID.fromString(read(res).get("id").asText());
+        var created = read(res);
+        assertThat(created.get("createdAt").isNull()).isFalse();
+        var id = UUID.fromString(created.get("id").asText());
         // Registration queues an async sync; wait for it to finish.
         await().atMost(Duration.ofSeconds(20)).until(() -> sources.findById(id).orElseThrow().getLastSyncedAt() != null);
         return id;
@@ -208,6 +217,9 @@ class DriveSyncIT {
         assertThat(item(t, "Varios").get("parentId").isNull()).isTrue();
         assertThat(item(t, "TP1.pdf").get("publication").asText()).isEqualTo("PRIVATE");
         assertThat(item(t, "Guia catedra.pdf").get("ownedByMe").asBoolean()).isFalse();
+        // Someone else's file starts hidden; the student's own do not.
+        assertThat(item(t, "Guia catedra.pdf").get("hidden").asBoolean()).isTrue();
+        assertThat(item(t, "TP1.pdf").get("hidden").asBoolean()).isFalse();
 
         call(post("/v1/me/drive/sources/" + sourceId + "/accept-suggestions"), student(), null)
             .andExpect(status().isOk())
@@ -218,7 +230,8 @@ class DriveSyncIT {
         assertThat(doc.get("subjectId").isNull()).isTrue();
         // Held while the source waits for staff.
         assertThat(doc.get("publication").asText()).isEqualTo("NEEDS_REVIEW");
-        assertThat(t.get("source").get("needsReviewCount").asLong()).isEqualTo(3);
+        assertThat(t.get("source").get("needsReviewCount").asLong()).isEqualTo(2);
+        assertThat(item(t, "Guia catedra.pdf").get("publication").asText()).isEqualTo("PRIVATE");
 
         // Not visible to readers yet, but the owner can preview it.
         var docId = doc.get("id").asText();
@@ -245,7 +258,7 @@ class DriveSyncIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ACTIVE"))
             .andExpect(jsonPath("$.publishedCount").value(2))
-            .andExpect(jsonPath("$.needsReviewCount").value(1));
+            .andExpect(jsonPath("$.needsReviewCount").value(0));
 
         var subjectFiles = read(call(get("/v1/wiki/subjects/93.41/files"), reader(1), null).andExpect(status().isOk()));
         assertThat(subjectFiles.get("subjectName").asText()).isEqualTo("Física I");
@@ -256,12 +269,30 @@ class DriveSyncIT {
         assertThat(group.get("files")).hasSize(2);
         assertThat(group.get("files").get(0).get("path").asText()).isEqualTo("Física I");
 
-        // Downloads and Doc images redirect to short-lived signed URLs.
+        // Downloads and Doc images redirect to short-lived signed URLs, shown
+        // inline by default.
         call(get("/v1/wiki/files/" + fileId(PDF) + "/download"), reader(1), null)
             .andExpect(status().isFound())
             .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("https://storage.test/drive/")))
-            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("ttl=300")));
-        call(get("/v1/wiki/files/" + docId + "/assets/image1.png"), reader(1), null).andExpect(status().isFound());
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("ttl=300")))
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(
+                "disposition=inline&filename=TP1.pdf&type=application%2Fpdf")));
+        call(get("/v1/wiki/files/" + fileId(PDF) + "/download?disposition=attachment"), reader(1), null)
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("disposition=attachment")));
+        call(get("/v1/wiki/files/" + fileId(PDF) + "/download?disposition=x"), reader(1), null)
+            .andExpect(status().isBadRequest());
+        call(get("/v1/wiki/files/" + fileId(PDF)), reader(1), null)
+            .andExpect(jsonPath("$.pdfMimeType").value("application/pdf"))
+            .andExpect(jsonPath("$.originalMimeType").value("application/pdf"))
+            .andExpect(jsonPath("$.exportBlocked").value(false))
+            .andExpect(jsonPath("$.driveUrl").value("https://drive.google.com/file/d/" + PDF + "/view"));
+        call(get("/v1/wiki/files/" + docId), reader(1), null)
+            .andExpect(jsonPath("$.originalMimeType").doesNotExist())
+            .andExpect(jsonPath("$.driveUrl").value("https://docs.google.com/document/d/" + DOC + "/edit"));
+        call(get("/v1/wiki/files/" + docId + "/assets/image1.png"), reader(1), null)
+            .andExpect(status().isFound())
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(
+                "disposition=inline&filename=image1.png&type=image%2Fpng")));
         call(get("/v1/wiki/files/" + docId + "/assets/other.png"), reader(1), null).andExpect(status().isNotFound());
         call(get("/v1/wiki/files/" + docId + "/download?variant=original"), reader(1), null)
             .andExpect(status().isNotFound());
@@ -274,7 +305,15 @@ class DriveSyncIT {
         call(get("/v1/staff/drive/sources"), staff(), null)
             .andExpect(jsonPath("$.items[0].ownerName").value("Alumno Uno"));
 
-        // The foreign file waits in the staff queue; publishing it sticks.
+        // Unhidden by the student, the foreign file waits in the staff queue;
+        // syncs keep the student's choice; publishing it sticks.
+        call(get("/v1/staff/drive/files?publication=NEEDS_REVIEW"), staff(), null)
+            .andExpect(jsonPath("$.total").value(0));
+        call(patch("/v1/me/drive/files/" + fileId(FOREIGN)), student(), "{\"hidden\":false}")
+            .andExpect(jsonPath("$.hidden").value(false))
+            .andExpect(jsonPath("$.publication").value("NEEDS_REVIEW"));
+        syncNow(sourceId);
+        assertThat(item(tree(sourceId), "Guia catedra.pdf").get("hidden").asBoolean()).isFalse();
         call(get("/v1/staff/drive/files?publication=NEEDS_REVIEW"), staff(), null)
             .andExpect(jsonPath("$.total").value(1))
             .andExpect(jsonPath("$.items[0].ownerEmail").value("catedra@itba.edu.ar"))
@@ -302,6 +341,116 @@ class DriveSyncIT {
         assertThat(item(tree(sourceId), "TP1.pdf").get("publication").asText()).isEqualTo("PRIVATE");
         call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"subjectId\":\"99.99\"}")
             .andExpect(status().isBadRequest());
+    }
+
+    // ---- media types and blocked downloads ----------------------------------
+
+    @Test
+    void textOriginalsInlineAsPlainTextAndBlockedDownloadsAreMetadataOnly() throws Exception {
+        drive.file("py-script-000001", "tp2.py", "text/x-python", FIS, ALUMNO, "print('hola')".getBytes())
+            .file("ipynb-colab-00001", "Clase 3.ipynb", "application/vnd.google.colaboratory", FIS, ALUMNO,
+                "{\"cells\":[]}".getBytes())
+            .file("html-page-000001", "pagina.html", "text/html", FIS, ALUMNO, "<script>x</script>".getBytes())
+            .doc("doc-blocked-00001", "Resumen bloqueado", FIS, ALUMNO, "<p>secreto</p>")
+            .file("pdf-blocked-00001", "Bloqueado.pdf", "application/pdf", FIS, ALUMNO, FakeDriveClient.pdf("x"));
+        drive.setDownloadBlocked("doc-blocked-00001", true);
+        drive.setDownloadBlocked("pdf-blocked-00001", true);
+        publishedSource();
+
+        var py = fileId("py-script-000001");
+        call(get("/v1/wiki/files/" + py), reader(1), null)
+            .andExpect(jsonPath("$.kind").value("OTHER"))
+            .andExpect(jsonPath("$.hasOriginal").value(true))
+            .andExpect(jsonPath("$.originalMimeType").value("text/plain; charset=utf-8"));
+        call(get("/v1/wiki/files/" + py + "/download?variant=original"), reader(1), null)
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(
+                "disposition=inline&filename=tp2.py&type=text%2Fplain%3B+charset%3Dutf-8")));
+        assertThat(files.findById(py).orElseThrow().getTextContent()).contains("hola");
+        call(get("/v1/wiki/files/" + fileId("ipynb-colab-00001")), reader(1), null)
+            .andExpect(jsonPath("$.originalMimeType").value("text/plain; charset=utf-8"));
+        // HTML is never stored nor served inline.
+        call(get("/v1/wiki/files/" + fileId("html-page-000001")), reader(1), null)
+            .andExpect(jsonPath("$.hasOriginal").value(false));
+
+        for (var blocked : List.of("doc-blocked-00001", "pdf-blocked-00001")) {
+            var row = files.findById(fileId(blocked)).orElseThrow();
+            assertThat(row.isExportBlocked()).isTrue();
+            assertThat(row.getSyncError()).isNull();
+            assertThat(row.storageKeys()).isEmpty();
+        }
+        var blockedPdf = fileId("pdf-blocked-00001");
+        call(get("/v1/wiki/files/" + blockedPdf), reader(1), null)
+            .andExpect(jsonPath("$.exportBlocked").value(true))
+            .andExpect(jsonPath("$.hasPdf").value(false))
+            .andExpect(jsonPath("$.driveUrl").value("https://drive.google.com/file/d/pdf-blocked-00001/view"));
+        call(get("/v1/wiki/files/" + blockedPdf + "/download"), reader(1), null).andExpect(status().isNotFound());
+        var sourceId = files.findById(blockedPdf).orElseThrow().getSourceId();
+        assertThat(item(tree(sourceId), "Bloqueado.pdf").get("exportBlocked").asBoolean()).isTrue();
+
+        // The owner re-enables download: the next sync stores it.
+        drive.setDownloadBlocked("pdf-blocked-00001", false);
+        syncNow(sourceId);
+        var unblocked = files.findById(blockedPdf).orElseThrow();
+        assertThat(unblocked.isExportBlocked()).isFalse();
+        assertThat(unblocked.getPdfKey()).isNotNull();
+    }
+
+    // ---- plan-aware suggestions -------------------------------------------
+
+    @Test
+    void planAwareSuggestionsAndMySubjects() throws Exception {
+        var career = careers.save(new Career("LAES", "Analítica"));
+        plans.save(new Plan("A22", career, "Plan 2022"));
+        subjects.saveAll(List.of(
+            new Subject("82.15", "Matemática Aplicada", 6),
+            new Subject("93.16", "Matemática Discreta", 6),
+            new Subject("93.24", "Probabilidad y Estadística", 6)));
+        planSubjects.saveAll(List.of(
+            new PlanSubject("82.15", "A22", "Ciclo", 1, 2, 0, List.of()),
+            new PlanSubject("93.16", "A22", "Ciclo", 2, 1, 0, List.of()),
+            new PlanSubject("93.24", "A22", "Ciclo", 2, 2, 0, List.of())));
+        drive.folder("folder-mate-00001", "Resumen Mate", ROOT, ALUMNO)
+            .doc("doc-discreta-0001", "Teoría Matemática Discreta full", "folder-mate-00001", ALUMNO, "<p>grafos</p>")
+            .doc("doc-mate-guia-001", "Guía 1", "folder-mate-00001", ALUMNO, "<p>funciones</p>")
+            .doc("doc-estad-000001", "Resumen estadistica", ROOT, ALUMNO, "<p>varianza</p>");
+
+        var sourceId = register(ROOT, student());
+        // Without a plan: no plan flags, weak matches dropped, plan listing empty.
+        var t = tree(sourceId);
+        assertThat(item(t, "Resumen estadistica").get("suggestedSubjectId").isNull()).isTrue();
+        assertThat(item(t, "Física I").get("suggestedInMyPlan").asBoolean()).isFalse();
+        call(get("/v1/wiki/apuntes/subjects?mine=true"), student(), null).andExpect(jsonPath("$").isEmpty());
+
+        jdbc.update("UPDATE public.\"user\" SET plan = 'A22' WHERE email = ?", ALUMNO);
+        t = read(call(post("/v1/me/drive/sources/" + sourceId + "/recompute-suggestions"), student(), null)
+            .andExpect(status().isOk()));
+        var mate = item(t, "Resumen Mate");
+        assertThat(mate.get("suggestedSubjectId").asText()).isEqualTo("82.15");
+        assertThat(mate.get("suggestedInMyPlan").asBoolean()).isTrue();
+        // Children inherit the folder's suggestion unless their own differs.
+        assertThat(item(t, "Guía 1").get("suggestedSubjectId").isNull()).isTrue();
+        assertThat(item(t, "Teoría Matemática Discreta full").get("suggestedSubjectId").asText()).isEqualTo("93.16");
+        assertThat(item(t, "Resumen estadistica").get("suggestedSubjectId").asText()).isEqualTo("93.24");
+        assertThat(item(t, "Física I").get("suggestedSubjectId").asText()).isEqualTo("93.41");
+        assertThat(item(t, "Física I").get("suggestedInMyPlan").asBoolean()).isFalse();
+
+        call(post("/v1/me/drive/sources/" + sourceId + "/accept-suggestions"), student(), null)
+            .andExpect(jsonPath("$.applied").value(4));
+        t = tree(sourceId);
+        assertThat(item(t, "Guía 1").get("effectiveSubjectId").asText()).isEqualTo("82.15");
+        assertThat(item(t, "Guía 1").get("effectiveInMyPlan").asBoolean()).isTrue();
+        assertThat(item(t, "Teoría Matemática Discreta full").get("effectiveSubjectId").asText()).isEqualTo("93.16");
+
+        call(post("/v1/staff/drive/sources/" + sourceId + "/approve"), staff(), null).andExpect(status().isOk());
+        var mine = read(call(get("/v1/wiki/apuntes/subjects?mine=true"), student(), null).andExpect(status().isOk()));
+        assertThat(mine).hasSize(3);
+        assertThat(mine.get(0).get("subjectId").asText()).isEqualTo("82.15");
+        assertThat(mine.get(0).get("year").asInt()).isEqualTo(1);
+        assertThat(mine.get(0).get("semester").asInt()).isEqualTo(2);
+        assertThat(mine.get(0).get("fileCount").asLong()).isEqualTo(1);
+        assertThat(mine.get(1).get("subjectId").asText()).isEqualTo("93.16");
+        assertThat(mine.get(2).get("fileCount").asLong()).isEqualTo(1);
+        call(get("/v1/wiki/apuntes/subjects"), reader(1), null).andExpect(jsonPath("$[0].year").doesNotExist());
     }
 
     // ---- change detection ------------------------------------------------

@@ -112,11 +112,11 @@ public class S3ObjectStorage implements ObjectStorage {
     }
 
     @Override
-    public String presignGet(String key, Duration ttl, String downloadFilename) {
+    public String presignGet(String key, Duration ttl, String filename, boolean inline, String contentType) {
         var get = GetObjectRequest.builder().bucket(props.bucket()).key(key);
-        if (downloadFilename != null && !downloadFilename.isBlank()) {
-            get.responseContentDisposition(attachment(downloadFilename));
-        }
+        boolean named = filename != null && !filename.isBlank();
+        if (inline || named) get.responseContentDisposition(disposition(inline ? "inline" : "attachment", filename));
+        if (contentType != null) get.responseContentType(contentType);
         return presigner.presignGetObject(GetObjectPresignRequest.builder()
                 .signatureDuration(ttl)
                 .getObjectRequest(get.build())
@@ -124,11 +124,16 @@ public class S3ObjectStorage implements ObjectStorage {
             .url().toString();
     }
 
-    // RFC 6266/5987: an ASCII fallback plus the UTF-8 name.
     static String attachment(String filename) {
+        return disposition("attachment", filename);
+    }
+
+    // RFC 6266/5987: an ASCII fallback plus the UTF-8 name.
+    static String disposition(String type, String filename) {
+        if (filename == null || filename.isBlank()) return type;
         var ascii = filename.replaceAll("[^A-Za-z0-9._ -]", "_");
         var encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-        return "attachment; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded;
+        return type + "; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded;
     }
 
     private S3Client requireClient() {

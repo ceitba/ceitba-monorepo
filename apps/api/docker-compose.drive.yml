@@ -140,12 +140,12 @@ services:
       FRONTEND_URL: http://localhost:5173
       GOOGLE_REDIRECT_URI: http://localhost:8081/api/v1/auth/callback
       RATE_LIMIT_ENABLED: "false"
-      STORAGE_ENDPOINT: http://localhost:9002
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://localhost:9002}
       STORAGE_INTERNAL_ENDPOINT: http://minio:9000
       STORAGE_BUCKET: ceitba-media
       STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID}
       STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY}
-      STORAGE_PUBLIC_URL: http://localhost:9002/ceitba-media
+      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-http://localhost:9002/ceitba-media}
       DRIVE_SYNC_ENABLED: ${DRIVE_SYNC_ENABLED:-true}
       DRIVE_SYNC_INTERVAL: ${DRIVE_SYNC_INTERVAL:-PT5M}
       DRIVE_SYNC_RUN_BUDGET: ${DRIVE_SYNC_RUN_BUDGET:-PT5M}

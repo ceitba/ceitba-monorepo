@@ -33,10 +33,30 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
   source's student **and** the source is `ACTIVE`; otherwise `NEEDS_REVIEW` (owner differs) or held while the
   source is `PENDING_REVIEW`. Staff decisions (`REMOVED_BY_STAFF`, explicit publish) stick across syncs.
 - 3 reports from different users move a `PUBLISHED` file to `HIDDEN_REPORTED`.
+- Files **not owned** by the source's student start **hidden** (so `PRIVATE`). The student can unhide them;
+  they then go to `NEEDS_REVIEW` for staff. Once the student sets `hidden` on a file (either way), syncs never
+  change it again; until then the default is re-applied if the Drive owner changes. Folders are never hidden
+  by default (hiding a folder hides the student's own files in it).
 - Details: "held" files (source `PENDING_REVIEW`) are `NEEDS_REVIEW`. Folders are always `PRIVATE`. `hidden` on a
   folder hides everything below it. `BLOCKED`/`REVOKED` sources publish nothing; an approved source in `ERROR`
   keeps publishing. A staff publish ignores reports; staff `restore` clears the staff decision **and deletes the
   file's reports** (count back to 0). Implementation: `service/drive/PublicationRule`.
+
+## Subject suggestions
+
+`service/drive/SubjectMatcher`, recomputed on every sync, PATCH and `POST .../recompute-suggestions`:
+
+- A subject code in the name (`93.41`, `93-41`, `9341`) wins.
+- Otherwise accent/case-insensitive word overlap: light stemming (Matemática ~ Matemático ~ Matemáticas), prefixes of
+  4+ letters (`Mate`, `Proba`, `Metodo`, `Estad`), short abbreviations (`Fís`, `AM`, `EDA`, `POO`, `PI`, `MD`).
+  Filler words never count (resumen, apuntes, teoría, práctica, tp, parcial, final, guía, clase, ingreso, de, la,
+  el, ...). Numerals: I-VI = 1-6; a numeral in the name that contradicts the subject's rules it out
+  ("Física 2" is not Física I); none in the name is fine. Dates (`5/5/20`) are ignored.
+- The source owner's plan (`user.plan` + `plan_subject`) is tried first with threshold 0.5 (share of the subject's
+  words found), then all subjects with 0.75. Ties: first word matched, earlier in the plan, more words, name.
+- Inheritance: an item's `suggestedSubjectId` is set only when it has no effective subject and its own match differs
+  from the suggestion it inherits from its folders. `accept-suggestions` applies every suggestion, so a matched folder
+  covers its unmatched children.
 
 ## Sync and change detection
 
@@ -82,6 +102,7 @@ Drive-specific `error` codes:
 | `DELETE /v1/me/drive/sources/{id}` | — | 204 |
 | `POST /v1/me/drive/sources/{id}/sync` | — | 202 (max once per 5 min per source) |
 | `POST /v1/me/drive/sources/{id}/accept-suggestions` | — | `{ applied }` |
+| `POST /v1/me/drive/sources/{id}/recompute-suggestions` | — | `{ source: Source, items: TreeItem[] }` (fresh tree, with the caller's current plan) |
 | `PATCH /v1/me/drive/files/{fileId}` | `{ subjectId?, hidden? }` (`subjectId: ""` clears) | `TreeItem` |
 
 `consentVersion` must equal `GET /v1/me/drive/info`'s. New sources start `PENDING_REVIEW`, or `ACTIVE` when the
@@ -91,26 +112,42 @@ files). The `429` carries `Retry-After` (seconds).
 `Source` = `{ id, rootName, status, anonymous, lastSyncedAt, lastError, fileCount, publishedCount, needsReviewCount, createdAt }`
 
 `TreeItem` = `{ id, parentId, name, kind, subjectId, subjectName, effectiveSubjectId, effectiveSubjectName,
-suggestedSubjectId, suggestedSubjectName, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError }`
+suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError, exportBlocked, driveUrl }`
 — a flat list; `parentId` is another item's `id`, or `null` for direct children of the shared folder.
 
 ### Reader (logged in)
 
 | Method + path | Response |
 |---|---|
-| `GET /v1/wiki/apuntes/subjects?q=&limit=20` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt }]` — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive) |
+| `GET /v1/wiki/apuntes/subjects?q=&limit=20&mine=` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt, year, semester }]` — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive); `mine=true`: the caller's plan subjects ordered by year/semester (`q`/`limit` ignored, `[]` without a plan). `year`/`semester` are only set with `mine=true` (else `null`) |
 | `GET /v1/wiki/subjects/{subjectId}/files` | `{ subjectId, subjectName, groups: [{ sourceId, author: { name, anonymous }, files: FileSummary[] }] }` |
 | `GET /v1/wiki/files/{fileId}` | `FileSummary` + `{ subjectId, subjectName, author, html, reportedByMe }` (`html` only for Docs) |
-| `GET /v1/wiki/files/{fileId}/download?variant=pdf\|original` | 302 to a 5-minute signed URL |
-| `GET /v1/wiki/files/{fileId}/assets/{name}` | 302 to a signed URL of an image embedded in a Doc's HTML |
+| `GET /v1/wiki/files/{fileId}/download?variant=pdf\|original&disposition=inline\|attachment` | 302 to a 5-minute signed URL (default `disposition=inline`) |
+| `GET /v1/wiki/files/{fileId}/assets/{name}` | 302 to a signed URL of an image embedded in a Doc's HTML (always inline, image content type) |
 | `PUT /v1/wiki/files/{fileId}/report` | body `{ reason, comment }`, reason ∈ `COPYRIGHT, PERSONAL_DATA, WRONG_SUBJECT, SPAM, OTHER` → 204 |
 
-`FileSummary` = `{ id, name, kind, path, sizeBytes, driveModifiedAt, publishedAt, hasHtml, hasPdf, hasOriginal }`
+`FileSummary` = `{ id, name, kind, path, sizeBytes, driveModifiedAt, publishedAt, hasHtml, hasPdf, hasOriginal,
+pdfMimeType, originalMimeType, exportBlocked, driveUrl }`
 (`path` = folder path inside the source, e.g. `"Comunicación/Trabajo Plasticos"`).
 
 `html` is sanitized (no style/class/script/iframe); its `<img src>` are root-relative
 `/api/v1/wiki/files/{fileId}/assets/{name}` (an SPA on another origin must prefix the API origin, or proxy `/api`).
 `download` without `variant` serves the PDF when there is one, else the original; a missing variant is 404.
+`disposition=inline` (default) presigns `response-content-disposition: inline; filename*=UTF-8''<name>` with the
+served `response-content-type`, but only for types that are safe on the site's origin: PDF, PNG/JPEG/GIF/WebP/BMP,
+and text-like files (source code, `.ipynb`, JSON, CSV, Markdown, plain text) served as `text/plain; charset=utf-8`.
+Everything else (Office, SVG, ...) is always an attachment. `disposition=attachment` forces a download. Anything
+else is 400.
+
+- `pdfMimeType`: `"application/pdf"` when `hasPdf`, else `null`.
+- `originalMimeType`: the Content-Type the original is served with (text-like: `"text/plain; charset=utf-8"`), `null`
+  without an original. Text-like files of kind `OTHER` are now stored too (HTML/XML/SVG are not).
+- `exportBlocked`: the owner disabled download for viewers (Drive `cannotExportFile`/`cannotDownloadFile`). The file is
+  kept as metadata only, without `syncError`, `hasPdf`/`hasOriginal` false; show "El autor deshabilitó la descarga"
+  and link to `driveUrl`. Retried whenever Drive reports a change to the file.
+- `driveUrl`: opens the item in Drive: `https://docs.google.com/{document|spreadsheets|presentation|drawings}/d/<id>/edit`
+  for native files, `https://drive.google.com/drive/folders/<id>` for folders, else
+  `https://drive.google.com/file/d/<id>/view` (also on `TreeItem`).
 Only `PUBLISHED`/`HIDDEN_REPORTED` files can be reported (else 404); re-reporting replaces the caller's report.
 
 Readers only see `PUBLISHED` files. The file's owner student and STAFF can open any of their/all files

@@ -108,6 +108,13 @@ public class MyDriveController {
         return service.acceptSuggestions(user, id);
     }
 
+    @PostMapping("/sources/{id}/recompute-suggestions")
+    @Operation(summary = "Recompute subject suggestions with the caller's current plan; returns the tree")
+    @ApiResponse(responseCode = "200", description = "OK")
+    public SourceTreeResponse recomputeSuggestions(@CurrentUser User user, @PathVariable UUID id) {
+        return service.recomputeSuggestions(user, id);
+    }
+
     @PatchMapping("/files/{fileId}")
     @Operation(summary = "Set a file/folder's subject (\"\" clears it) or hide it")
     @ApiResponse(responseCode = "200", description = "OK")

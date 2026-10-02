@@ -74,9 +74,14 @@ public class InMemoryObjectStorage implements ObjectStorage {
     }
 
     @Override
-    public String presignGet(String key, Duration ttl, String downloadFilename) {
+    public String presignGet(String key, Duration ttl, String filename, boolean inline, String contentType) {
         return "https://storage.test/" + key + "?ttl=" + ttl.toSeconds()
-            + (downloadFilename == null ? "" : "&download=" + java.net.URLEncoder.encode(downloadFilename,
-                java.nio.charset.StandardCharsets.UTF_8));
+            + "&disposition=" + (inline ? "inline" : "attachment")
+            + (filename == null ? "" : "&filename=" + enc(filename))
+            + (contentType == null ? "" : "&type=" + enc(contentType));
+    }
+
+    private static String enc(String s) {
+        return java.net.URLEncoder.encode(s, java.nio.charset.StandardCharsets.UTF_8);
     }
 }

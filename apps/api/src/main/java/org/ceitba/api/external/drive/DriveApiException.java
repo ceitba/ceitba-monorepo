@@ -39,7 +39,12 @@ public class DriveApiException extends RuntimeException {
 
     // The bot cannot see the item (missing, unshared, no permission).
     public boolean isNotFoundOrForbidden() {
-        return status == 404 || (status == 403 && !isRateLimited() && !isExportTooLarge());
+        return status == 404 || (status == 403 && !isRateLimited() && !isExportTooLarge() && !isDownloadBlocked());
+    }
+
+    // The owner disabled download/print/copy for viewers.
+    public boolean isDownloadBlocked() {
+        return "cannotExportFile".equals(reason) || "cannotDownloadFile".equals(reason);
     }
 
     public boolean isExportTooLarge() {

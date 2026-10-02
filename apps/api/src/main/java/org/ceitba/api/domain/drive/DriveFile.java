@@ -80,6 +80,10 @@ public class DriveFile {
     @Column(nullable = false)
     private boolean hidden;
 
+    // The student set `hidden` themselves: the sync's default never overrides it.
+    @Column(name = "hidden_by_user", nullable = false)
+    private boolean hiddenByUser;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private DrivePublication publication = DrivePublication.PRIVATE;
@@ -127,6 +131,10 @@ public class DriveFile {
 
     @Column(name = "metadata_only", nullable = false)
     private boolean metadataOnly;
+
+    // The owner disabled download/export for viewers: metadata only.
+    @Column(name = "export_blocked", nullable = false)
+    private boolean exportBlocked;
 
     @Column(name = "sync_error", columnDefinition = "text")
     private String syncError;
@@ -183,6 +191,7 @@ public class DriveFile {
     public String getEffectiveSubjectId() { return effectiveSubjectId; }
     public String getSuggestedSubjectId() { return suggestedSubjectId; }
     public boolean isHidden() { return hidden; }
+    public boolean isHiddenByUser() { return hiddenByUser; }
     public DrivePublication getPublication() { return publication; }
     public DriveStaffDecision getStaffDecision() { return staffDecision; }
     public OffsetDateTime getPublishedAt() { return publishedAt; }
@@ -198,6 +207,8 @@ public class DriveFile {
     public List<String> getAssetNames() { return assetNames == null ? List.of() : List.copyOf(assetNames); }
     public String getTextContent() { return textContent; }
     public boolean isMetadataOnly() { return metadataOnly; }
+    public boolean isExportBlocked() { return exportBlocked; }
+    public void setExportBlocked(boolean exportBlocked) { this.exportBlocked = exportBlocked; }
     public String getSyncError() { return syncError; }
     public OffsetDateTime getRemovedAt() { return removedAt; }
     public OffsetDateTime getPurgeAfter() { return purgeAfter; }
@@ -243,6 +254,19 @@ public class DriveFile {
     public void setEffectiveSubjectId(String id) { this.effectiveSubjectId = id; }
     public void setSuggestedSubjectId(String id) { this.suggestedSubjectId = id; }
     public void setHidden(boolean hidden) { this.hidden = hidden; }
+
+    // The student's choice; sticks across syncs.
+    public void setHiddenByUser(boolean hidden) {
+        this.hidden = hidden;
+        this.hiddenByUser = true;
+    }
+
+    // Files someone else owns start hidden (folders never: hiding one hides
+    // the student's own files in it). Re-applied on every sync (ownership can
+    // change) until the student sets `hidden` themselves.
+    public void applyHiddenDefault() {
+        if (!hiddenByUser) this.hidden = kind != DriveFileKind.FOLDER && !ownedBySharer;
+    }
     public void setPublication(DrivePublication publication) { this.publication = publication; }
     public void setStaffDecision(DriveStaffDecision staffDecision) { this.staffDecision = staffDecision; }
     public void setPublishedAt(OffsetDateTime publishedAt) { this.publishedAt = publishedAt; }

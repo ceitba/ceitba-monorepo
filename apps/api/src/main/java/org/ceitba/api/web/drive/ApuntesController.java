@@ -41,10 +41,14 @@ public class ApuntesController {
     }
 
     @GetMapping("/v1/wiki/apuntes/subjects")
-    @Operation(summary = "Subjects with published apuntes (no q), or subjects matching q by code/name")
+    @Operation(summary = "Subjects with published apuntes (no q), subjects matching q by code/name, "
+        + "or (mine=true) the caller's plan subjects by year/semester ([] without a plan; q/limit ignored)")
     @ApiResponse(responseCode = "200", description = "OK")
-    public List<ApuntesSubjectResponse> subjects(@RequestParam(required = false) String q,
-                                                 @RequestParam(defaultValue = "20") int limit) {
+    public List<ApuntesSubjectResponse> subjects(@CurrentUser User user,
+                                                 @RequestParam(required = false) String q,
+                                                 @RequestParam(defaultValue = "20") int limit,
+                                                 @RequestParam(defaultValue = "false") boolean mine) {
+        if (mine) return service.mySubjects(user);
         return service.subjects(q, limit);
     }
 
@@ -63,11 +67,14 @@ public class ApuntesController {
     }
 
     @GetMapping("/v1/wiki/files/{fileId}/download")
-    @Operation(summary = "302 to a 5-minute signed URL of the PDF or the original")
+    @Operation(summary = "302 to a 5-minute signed URL of the PDF or the original",
+        description = "disposition=inline (default; PDF, images and text are shown by the browser) or "
+            + "attachment. Other types are always attachments.")
     @ApiResponse(responseCode = "302", description = "Redirect to the signed URL")
     public ResponseEntity<Void> download(@CurrentUser User user, @PathVariable UUID fileId,
-                                         @RequestParam(required = false) String variant) {
-        return redirect(service.downloadUrl(user, fileId, variant));
+                                         @RequestParam(required = false) String variant,
+                                         @RequestParam(required = false) String disposition) {
+        return redirect(service.downloadUrl(user, fileId, variant, disposition));
     }
 
     @GetMapping("/v1/wiki/files/{fileId}/assets/{name}")

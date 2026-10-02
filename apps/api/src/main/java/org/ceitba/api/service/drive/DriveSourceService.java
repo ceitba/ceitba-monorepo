@@ -125,7 +125,8 @@ public class DriveSourceService {
                 source.setStatus(DriveSourceStatus.ACTIVE);
                 source.setApprovedAt(now);
             }
-            source = sources.save(source);
+            // Flushed so @CreationTimestamp is filled in for the response.
+            source = sources.saveAndFlush(source);
         }
         unclaimed.deleteByDriveIdIn(List.of(folderId));
         source.setLastSyncRequestedAt(now);
@@ -156,7 +157,20 @@ public class DriveSourceService {
     public SourceTreeResponse tree(User user, UUID sourceId) {
         access.requireDriveAvailable();
         var source = owned(user, sourceId);
-        return new SourceTreeResponse(views.source(source), views.tree(files.findBySourceId(sourceId)));
+        return new SourceTreeResponse(views.source(source), views.tree(files.findBySourceId(sourceId),
+            new java.util.HashSet<>(recalculator.planSubjectIds(user.getId()))));
+    }
+
+    // Re-runs subject suggestions (and publication) with the student's
+    // current plan, without waiting for a sync. Returns the fresh tree.
+    @Transactional
+    public SourceTreeResponse recomputeSuggestions(User user, UUID sourceId) {
+        access.requireDriveAvailable();
+        var source = owned(user, sourceId);
+        var all = files.findBySourceId(sourceId);
+        var plan = recalculator.planSubjectIds(user.getId());
+        recalculator.recompute(source, all, recalculator.matcher(plan));
+        return new SourceTreeResponse(views.source(source), views.tree(all, new java.util.HashSet<>(plan)));
     }
 
     @Transactional
@@ -199,8 +213,8 @@ public class DriveSourceService {
         events.publishEvent(new DriveSyncRequested(source.getId()));
     }
 
-    // Applies each suggestion as the item's own subject, top-down, skipping
-    // items that already inherit one (so a matched folder covers its files).
+    // Applies each suggestion as the item's own subject. A matched folder
+    // covers its children without their own (different) suggestion.
     @Transactional
     public AcceptSuggestionsResponse acceptSuggestions(User user, UUID sourceId) {
         access.requireDriveAvailable();
@@ -212,22 +226,15 @@ public class DriveSourceService {
         ordered.sort(Comparator.comparingInt(f -> DriveRecalculator.depth(f, byDriveId)));
         int applied = 0;
         for (var f : ordered) {
-            if (f.getSuggestedSubjectId() == null || f.isRemovedFromDrive()) continue;
-            if (hasSubject(f, byDriveId)) continue;
+            // Suggestions exist only on items without a subject (own or
+            // inherited at recompute time) and only where they differ from
+            // what the item inherits, so each one is applied as is.
+            if (f.getSuggestedSubjectId() == null || f.isRemovedFromDrive() || f.getSubjectId() != null) continue;
             f.setSubjectId(f.getSuggestedSubjectId());
             applied++;
         }
         recalculator.recompute(source, all);
         return new AcceptSuggestionsResponse(applied);
-    }
-
-    private static boolean hasSubject(DriveFile f, Map<String, DriveFile> byDriveId) {
-        var seen = new HashSet<String>();
-        for (var cur = f; cur != null && seen.add(cur.getDriveId());
-             cur = cur.getParentDriveId() == null ? null : byDriveId.get(cur.getParentDriveId())) {
-            if (cur.getSubjectId() != null) return true;
-        }
-        return false;
     }
 
     @Transactional
@@ -246,14 +253,14 @@ public class DriveSourceService {
                 file.setSubjectId(subjectId);
             }
         }
-        if (req.hidden() != null) file.setHidden(req.hidden());
+        if (req.hidden() != null) file.setHiddenByUser(req.hidden());
         var all = files.findBySourceId(source.getId());
         recalculator.recompute(source, all);
         Map<String, UUID> idByDriveId = new HashMap<>();
         for (var f : all) idByDriveId.put(f.getDriveId(), f.getId());
         var names = views.subjectNames(java.util.Arrays.asList(
             file.getSubjectId(), file.getEffectiveSubjectId(), file.getSuggestedSubjectId()));
-        return views.treeItem(file, idByDriveId, names);
+        return views.treeItem(file, idByDriveId, names, new java.util.HashSet<>(recalculator.planSubjectIds(user.getId())));
     }
 
     private DriveSource owned(User user, UUID sourceId) {

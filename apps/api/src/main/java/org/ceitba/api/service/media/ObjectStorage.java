@@ -46,11 +46,18 @@ public interface ObjectStorage {
         throw new UnsupportedOperationException("delete is not supported by " + getClass().getSimpleName());
     }
 
-    // Signed GET URL of `key`, valid for `ttl`. When `downloadFilename` is not
-    // null the response is served as an attachment with that file name.
-    // Throws FeatureNotConfiguredException when storage is not configured.
-    default String presignGet(String key, Duration ttl, String downloadFilename) {
+    // Signed GET URL of `key`, valid for `ttl`, with response overrides: a
+    // Content-Disposition (`inline` or `attachment`, with `filename` when not
+    // null; no override when both are absent) and a Content-Type (when not
+    // null). Throws FeatureNotConfiguredException when storage is not
+    // configured.
+    default String presignGet(String key, Duration ttl, String filename, boolean inline, String contentType) {
         throw new UnsupportedOperationException("presignGet is not supported by " + getClass().getSimpleName());
+    }
+
+    // Served as an attachment named `downloadFilename` (when not null).
+    default String presignGet(String key, Duration ttl, String downloadFilename) {
+        return presignGet(key, ttl, downloadFilename, false, null);
     }
 
     default String presignGet(String key, Duration ttl) {

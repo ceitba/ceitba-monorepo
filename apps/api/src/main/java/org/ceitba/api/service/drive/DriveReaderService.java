@@ -47,6 +47,7 @@ public class DriveReaderService {
     private final DriveSourceRepository sources;
     private final DriveFileReportRepository reports;
     private final SubjectRepository subjects;
+    private final org.ceitba.api.repository.PlanSubjectRepository planSubjects;
     private final DriveAccess access;
     private final DriveViews views;
     private final DriveRecalculator recalculator;
@@ -54,12 +55,14 @@ public class DriveReaderService {
     private final Clock clock;
 
     public DriveReaderService(DriveFileRepository files, DriveSourceRepository sources,
-                              DriveFileReportRepository reports, SubjectRepository subjects, DriveAccess access,
+                              DriveFileReportRepository reports, SubjectRepository subjects,
+                              org.ceitba.api.repository.PlanSubjectRepository planSubjects, DriveAccess access,
                               DriveViews views, DriveRecalculator recalculator, ObjectStorage storage, Clock clock) {
         this.files = files;
         this.sources = sources;
         this.reports = reports;
         this.subjects = subjects;
+        this.planSubjects = planSubjects;
         this.access = access;
         this.views = views;
         this.recalculator = recalculator;
@@ -78,7 +81,7 @@ public class DriveReaderService {
             var names = views.subjectNames(rows.stream().map(r -> (String) r[0]).toList());
             return rows.stream()
                 .map(r -> new ApuntesSubjectResponse((String) r[0], names.get((String) r[0]),
-                    ((Number) r[1]).longValue(), (OffsetDateTime) r[2]))
+                    ((Number) r[1]).longValue(), (OffsetDateTime) r[2], null, null))
                 .toList();
         }
         var needle = SubjectMatcher.normalize(q);
@@ -95,12 +98,35 @@ public class DriveReaderService {
             .map(s -> {
                 var r = stats.get(s.getId());
                 return new ApuntesSubjectResponse(s.getId(), s.getName(),
-                    r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2]);
+                    r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2], null, null);
             })
             .sorted(Comparator.comparingLong(ApuntesSubjectResponse::fileCount).reversed()
                 .thenComparing(ApuntesSubjectResponse::subjectName, String.CASE_INSENSITIVE_ORDER))
             .limit(n)
             .toList();
+    }
+
+    // ?mine=true: the caller's plan subjects in plan order (year, semester),
+    // each with its published count; [] without a plan.
+    @Transactional(readOnly = true)
+    public List<ApuntesSubjectResponse> mySubjects(User user) {
+        if (user.getPlan() == null || user.getPlan().isBlank()) return List.of();
+        var entries = planSubjects.findByPlanId(user.getPlan()).stream()
+            .sorted(Comparator.comparingInt(org.ceitba.api.domain.PlanSubject::getYear)
+                .thenComparingInt(org.ceitba.api.domain.PlanSubject::getSemester)
+                .thenComparing(org.ceitba.api.domain.PlanSubject::getSubjectId))
+            .toList();
+        if (entries.isEmpty()) return List.of();
+        var ids = entries.stream().map(org.ceitba.api.domain.PlanSubject::getSubjectId).toList();
+        var names = views.subjectNames(ids);
+        Map<String, Object[]> stats = new HashMap<>();
+        for (var r : files.publishedSubjectsIn(ids)) stats.put((String) r[0], r);
+        return entries.stream().map(e -> {
+            var r = stats.get(e.getSubjectId());
+            return new ApuntesSubjectResponse(e.getSubjectId(), names.get(e.getSubjectId()),
+                r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2],
+                e.getYear(), e.getSemester());
+        }).toList();
     }
 
     @Transactional(readOnly = true)
@@ -145,8 +171,20 @@ public class DriveReaderService {
     }
 
     // variant: "pdf", "original", or null (pdf when there is one).
+    // disposition: "inline" (default: shown by the browser) or "attachment".
+    // Inline is only granted to types that are safe on the site's origin
+    // (DriveMedia); the rest are always attachments.
     @Transactional(readOnly = true)
-    public String downloadUrl(User user, UUID fileId, String variant) {
+    public String downloadUrl(User user, UUID fileId, String variant, String disposition) {
+        boolean inline;
+        if (disposition == null || disposition.isBlank() || "inline".equalsIgnoreCase(disposition)) {
+            inline = true;
+        } else if ("attachment".equalsIgnoreCase(disposition)) {
+            inline = false;
+        } else {
+            throw new org.ceitba.api.common.exception.ValidationException("disposition", disposition,
+                "must be inline or attachment");
+        }
         var f = visible(user, fileId).file();
         String key;
         String filename;
@@ -160,7 +198,11 @@ public class DriveReaderService {
             throw new org.ceitba.api.common.exception.ValidationException("variant", variant, "must be pdf or original");
         }
         if (key == null) throw new ResourceNotFoundException("DriveFile download", fileId + "/" + variant);
-        return storage.presignGet(key, DOWNLOAD_TTL, filename);
+        boolean isPdf = key.equals(f.getPdfKey());
+        String storedType = isPdf ? DriveMedia.PDF : f.getOriginalContentType();
+        String inlineType = isPdf ? DriveMedia.PDF : DriveMedia.inlineType(storedType, f.getName());
+        if (inline && inlineType != null) return storage.presignGet(key, DOWNLOAD_TTL, filename, true, inlineType);
+        return storage.presignGet(key, DOWNLOAD_TTL, filename, false, storedType);
     }
 
     @Transactional(readOnly = true)
@@ -169,7 +211,9 @@ public class DriveReaderService {
         if (f.getAssetPrefix() == null || !f.getAssetNames().contains(name)) {
             throw new ResourceNotFoundException("DriveFile asset", fileId + "/" + name);
         }
-        return storage.presignGet(f.getAssetPrefix() + name, DOWNLOAD_TTL);
+        // Always inline, typed as the image it is (SVG stays an opaque download).
+        return storage.presignGet(f.getAssetPrefix() + name, DOWNLOAD_TTL, name, true,
+            DriveContentProcessor.imageType(name));
     }
 
     // One report per reader and file (a new one replaces it); 3 hide a

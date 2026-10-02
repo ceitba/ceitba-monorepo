@@ -95,7 +95,7 @@ public class DriveViews {
         return subjects.findAllById(wanted).stream().collect(Collectors.toMap(Subject::getId, Subject::getName));
     }
 
-    public List<TreeItemResponse> tree(List<DriveFile> items) {
+    public List<TreeItemResponse> tree(List<DriveFile> items, java.util.Set<String> planSubjects) {
         Map<String, UUID> idByDriveId = new HashMap<>();
         for (var f : items) idByDriveId.put(f.getDriveId(), f.getId());
         var names = subjectNames(items.stream()
@@ -106,11 +106,12 @@ public class DriveViews {
                 if (a.isFolder() != b.isFolder()) return a.isFolder() ? -1 : 1;
                 return a.getName().compareToIgnoreCase(b.getName());
             })
-            .map(f -> treeItem(f, idByDriveId, names))
+            .map(f -> treeItem(f, idByDriveId, names, planSubjects))
             .toList();
     }
 
-    public TreeItemResponse treeItem(DriveFile f, Map<String, UUID> idByDriveId, Map<String, String> names) {
+    public TreeItemResponse treeItem(DriveFile f, Map<String, UUID> idByDriveId, Map<String, String> names,
+                                     java.util.Set<String> planSubjects) {
         return new TreeItemResponse(
             f.getId(),
             f.getParentDriveId() == null ? null : idByDriveId.get(f.getParentDriveId()),
@@ -118,8 +119,11 @@ public class DriveViews {
             f.getSubjectId(), names.get(f.getSubjectId()),
             f.getEffectiveSubjectId(), names.get(f.getEffectiveSubjectId()),
             f.getSuggestedSubjectId(), names.get(f.getSuggestedSubjectId()),
+            f.getSuggestedSubjectId() != null && planSubjects.contains(f.getSuggestedSubjectId()),
+            f.getEffectiveSubjectId() != null && planSubjects.contains(f.getEffectiveSubjectId()),
             f.isHidden(), f.getPublication().name(), f.isOwnedBySharer(),
-            f.getSizeBytes(), f.getDriveModifiedAt(), f.getSyncError());
+            f.getSizeBytes(), f.getDriveModifiedAt(), f.getSyncError(), f.isExportBlocked(),
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()));
     }
 
     public static AuthorResponse author(DriveSource source, User owner) {
@@ -153,14 +157,24 @@ public class DriveViews {
     public static FileSummaryResponse summary(DriveFile f, String path) {
         return new FileSummaryResponse(f.getId(), f.getName(), f.getKind().name(), path, f.getSizeBytes(),
             f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, f.getPdfKey() != null,
-            f.getOriginalKey() != null);
+            f.getOriginalKey() != null, pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()));
+    }
+
+    static String pdfMimeType(DriveFile f) {
+        return f.getPdfKey() == null ? null : DriveMedia.PDF;
+    }
+
+    static String originalMimeType(DriveFile f) {
+        return f.getOriginalKey() == null ? null : DriveMedia.servedType(f.getOriginalContentType(), f.getName());
     }
 
     public static FileDetailResponse detail(DriveFile f, String path, String subjectName, AuthorResponse author,
                                             boolean reportedByMe) {
         return new FileDetailResponse(f.getId(), f.getName(), f.getKind().name(), path, f.getSizeBytes(),
             f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, f.getPdfKey() != null,
-            f.getOriginalKey() != null, f.getEffectiveSubjectId(), subjectName, author, f.getHtmlContent(),
-            reportedByMe);
+            f.getOriginalKey() != null, pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getEffectiveSubjectId(), subjectName, author,
+            f.getHtmlContent(), reportedByMe);
     }
 }

@@ -43,9 +43,21 @@ class SubjectMatcherTest {
     }
 
     @Test
+    void aNameWithoutNumeralMatchesTheFirstOfTheSeries() {
+        assertThat(matcher.match("Física")).contains("93.41");
+        assertThat(matcher.match("Analisis Matematico")).contains("93.26");
+    }
+
+    @Test
+    void contradictingNumeralsRuleASubjectOut() {
+        assertThat(matcher.match("Fisica II")).contains("93.42");
+        assertThat(matcher.match("Física 3")).isEmpty();
+        // Dates are not numerals.
+        assertThat(matcher.match("Fisica 2/5/21")).contains("93.41");
+    }
+
+    @Test
     void noMatchBelowThreshold() {
-        assertThat(matcher.match("Física")).isEmpty();
-        assertThat(matcher.match("Analisis Matematico")).isEmpty();
         assertThat(matcher.match("Parcial 1")).isEmpty();
         assertThat(matcher.match("Varios")).isEmpty();
         assertThat(matcher.match("")).isEmpty();

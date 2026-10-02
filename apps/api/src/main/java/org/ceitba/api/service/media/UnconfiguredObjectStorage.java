@@ -30,7 +30,7 @@ public class UnconfiguredObjectStorage implements ObjectStorage {
     }
 
     @Override
-    public String presignGet(String key, Duration ttl, String downloadFilename) {
+    public String presignGet(String key, Duration ttl, String filename, boolean inline, String contentType) {
         throw notConfigured();
     }
 

@@ -196,6 +196,7 @@ public class DriveSyncStore {
         var item = w.item();
         f.setMetadata(w.parentDriveId(), item.name(), item.mimeType(), w.kind(), item.firstOwner(),
             item.ownedBy(ownerEmail), item.version(), item.md5Checksum(), item.size(), at(item));
+        f.applyHiddenDefault();
     }
 
     // A row of this item that another source of the same student marked
@@ -222,6 +223,7 @@ public class DriveSyncStore {
         f.setMetadata(live.getParentDriveId(), live.getName(), live.getMimeType(), live.getKind(),
             live.getOwnerEmail(), live.isOwnedBySharer(), live.getDriveVersion(), live.getMd5Checksum(),
             live.getSizeBytes(), live.getDriveModifiedAt());
+        f.applyHiddenDefault();
         if (f.getSubjectId() == null) f.setSubjectId(live.getSubjectId());
         if (!f.hasContent() && live.hasContent()) copyContent(live, f);
         var dropped = DriveBlobs.Ref.of(live);
@@ -235,6 +237,9 @@ public class DriveSyncStore {
 
     static boolean needsFetch(DriveFile f, DriveItem item) {
         if (!f.hasContent()) return true;
+        // Download disabled by the owner: retried whenever Drive reports any
+        // change (re-enabling it may not touch modifiedTime).
+        if (f.isExportBlocked()) return !Objects.equals(item.version(), f.getContentVersion());
         if (item.binaryFingerprint() != null) return !item.binaryFingerprint().equals(f.getContentFingerprint());
         if (item.modifiedTime() == null) return !Objects.equals(item.version(), f.getContentVersion());
         return !Objects.equals(at(item), f.getContentModifiedAt());
@@ -270,6 +275,7 @@ public class DriveSyncStore {
             from.getOriginalKey(), from.getOriginalContentType(), from.getAssetPrefix(), from.getAssetNames(),
             from.getTextContent(), from.isMetadataOnly());
         to.setContentModifiedAt(from.getContentModifiedAt());
+        to.setExportBlocked(from.isExportBlocked());
     }
 
     // Saves a checked copy; the previous copy's objects go after commit when
@@ -293,6 +299,7 @@ public class DriveSyncStore {
         var old = DriveBlobs.Ref.of(f);
         f.setContent(c.version(), c.fingerprint(), c.html(), c.pdfKey(), c.originalKey(), c.originalContentType(),
             c.assetPrefix(), c.assetNames(), c.text(), c.metadataOnly());
+        f.setExportBlocked(c.exportBlocked());
         f.setContentModifiedAt(modifiedAt);
         if (!Objects.equals(old.fingerprint(), c.fingerprint())) {
             janitor.deleteAfterCommit(blobs.releasable(List.of(old), List.of()));

@@ -45,6 +45,7 @@ public class FakeDriveClient implements DriveClient {
     private final Map<String, Node> nodes = new ConcurrentHashMap<>();
     private final Set<String> sharedWithBot = ConcurrentHashMap.newKeySet();
     private final Set<String> exportTooLarge = ConcurrentHashMap.newKeySet();
+    private final Set<String> downloadBlocked = ConcurrentHashMap.newKeySet();
     private final AtomicLong clock = new AtomicLong(Instant.parse("2026-01-01T00:00:00Z").toEpochMilli());
     private final Map<String, Integer> fetches = new ConcurrentHashMap<>();
 
@@ -69,6 +70,7 @@ public class FakeDriveClient implements DriveClient {
         nodes.clear();
         sharedWithBot.clear();
         exportTooLarge.clear();
+        downloadBlocked.clear();
         fetches.clear();
     }
 
@@ -151,6 +153,13 @@ public class FakeDriveClient implements DriveClient {
 
     public void setExportTooLarge(String id, boolean tooLarge) {
         if (tooLarge) exportTooLarge.add(id); else exportTooLarge.remove(id);
+    }
+
+    // The owner disabled download/print/copy for viewers (Drive answers 403
+    // cannotExportFile / cannotDownloadFile). Unblocking bumps the version.
+    public synchronized void setDownloadBlocked(String id, boolean blocked) {
+        if (blocked) downloadBlocked.add(id); else downloadBlocked.remove(id);
+        require(id).version++;
     }
 
     // Shared with the bot (shows in sharedWithMe) without being registered.
@@ -251,6 +260,9 @@ public class FakeDriveClient implements DriveClient {
             throw new DriveApiException(403, "fileNotExportable", "Only Google files can be exported");
         }
         fetches.merge(fileId, 1, Integer::sum);
+        if (downloadBlocked.contains(fileId)) {
+            throw new DriveApiException(403, "cannotExportFile", "This file cannot be exported by the user.");
+        }
         if (exportTooLarge.contains(fileId)) {
             throw new DriveApiException(403, "exportSizeLimitExceeded", "This file is too large to be exported.");
         }
@@ -272,6 +284,9 @@ public class FakeDriveClient implements DriveClient {
         if (n == null || revoked(n)) throw DriveApiException.notFound(fileId);
         if (n.mimeType.startsWith("application/vnd.google-apps.")) {
             throw new DriveApiException(403, "fileNotDownloadable", "Use export for Google files");
+        }
+        if (downloadBlocked.contains(fileId)) {
+            throw new DriveApiException(403, "cannotDownloadFile", "This file cannot be downloaded by the user.");
         }
         fetches.merge(fileId, 1, Integer::sum);
         return new ByteArrayInputStream(n.content == null ? new byte[0] : n.content);
