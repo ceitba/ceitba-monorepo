@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchApunteSubjects, type ApunteSubject } from '../../api/drive'
+import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
 import { useDebounced } from '../../hooks/useDebounced'
 import { INPUT } from './buttons'
 
@@ -20,13 +20,36 @@ interface Props {
   label: string
 }
 
-// Searchable subject combobox fed by GET /wiki/apuntes/subjects?q=.
-// Closed it reads like a value; open it is an input with a listbox.
+// The student's plan rarely changes within a visit: fetch it once per page
+// load (shared by every picker in the tree). A failure is not cached.
+let planPromise: Promise<ApunteSubject[]> | null = null
+function loadPlan(): Promise<ApunteSubject[]> {
+  if (!planPromise) {
+    planPromise = fetchMyPlanSubjects().catch((e) => { planPromise = null; throw e })
+  }
+  return planPromise
+}
+
+function normalize(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+interface Entry {
+  subject: ApunteSubject
+  // Group heading rendered before this entry.
+  heading?: string
+}
+
+// Searchable subject combobox. Open with no query it lists the student's
+// plan ("De tu plan", by year; GET /wiki/apuntes/subjects?mine=true); typing
+// shows matching plan subjects first, then a search across all subjects
+// (?q=). Closed it reads like a value.
 export default function SubjectPicker({ value, inherited, onChange, disabled, label }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<ApunteSubject[]>([])
+  const [plan, setPlan] = useState<ApunteSubject[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const [active, setActive] = useState(0)
@@ -35,6 +58,13 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
   const reqRef = useRef(0)
+
+  useEffect(() => {
+    if (!open || plan) return
+    let cancelled = false
+    loadPlan().then((p) => { if (!cancelled) setPlan(p) }).catch(() => { if (!cancelled) setPlan([]) })
+    return () => { cancelled = true }
+  }, [open, plan])
 
   useEffect(() => {
     if (!open) return
@@ -64,15 +94,40 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
     window.setTimeout(() => inputRef.current?.focus(), 0)
   }
 
+  const q = normalize(query.trim())
+  const planList = plan ?? []
+  const planMatches = q
+    ? planList.filter((s) => normalize(s.subjectId).includes(q) || normalize(s.subjectName).includes(q))
+    : planList
+  const planIds = new Set(planMatches.map((s) => s.subjectId))
+  const others = options.filter((s) => !planIds.has(s.subjectId))
+  const entries: Entry[] = []
+  let lastYear: number | null | undefined
+  planMatches.forEach((s, i) => {
+    const parts: string[] = []
+    if (i === 0) parts.push(t('apuntes.picker.fromPlan'))
+    if (!q && s.year != null && s.year !== lastYear) parts.push(t('apuntes.picker.planYear', { year: s.year }))
+    lastYear = s.year
+    entries.push({ subject: s, heading: parts.length ? parts.join(' · ') : undefined })
+  })
+  // With no query and a plan, the plan is the list; without a plan fall back
+  // to the API's default (subjects with recent notes).
+  if (q || planList.length === 0) {
+    others.forEach((s, i) => entries.push({
+      subject: s,
+      heading: i === 0 && planMatches.length > 0 ? t('apuntes.picker.allSubjects') : undefined,
+    }))
+  }
+
   // Index 0 is "inherit" when there is an explicit value to clear.
   const clearable = value != null
-  const total = options.length + (clearable ? 1 : 0)
+  const total = entries.length + (clearable ? 1 : 0)
 
   function choose(index: number) {
     if (clearable && index === 0) {
       onChange('', null)
     } else {
-      const o = options[index - (clearable ? 1 : 0)]
+      const o = entries[index - (clearable ? 1 : 0)]?.subject
       if (!o) return
       onChange(o.subjectId, { id: o.subjectId, name: o.subjectName })
     }
@@ -148,9 +203,18 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
                 {inherited ? t('apuntes.picker.clearInherit', { name: inherited.name }) : t('apuntes.picker.clear')}
               </li>
             )}
-            {options.map((o, i) => {
+            {entries.map(({ subject: o, heading }, i) => {
               const idx = i + (clearable ? 1 : 0)
-              return (
+              return [
+                heading && (
+                  <li
+                    key={`h-${o.subjectId}`}
+                    role="presentation"
+                    className="px-3 pt-2 pb-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted"
+                  >
+                    {heading}
+                  </li>
+                ),
                 <li
                   key={o.subjectId}
                   id={`${listId}-${idx}`}
@@ -162,16 +226,16 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
                 >
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-1">{o.subjectId}</span>
                   {o.subjectName}
-                </li>
-              )
+                </li>,
+              ]
             })}
-            {loading && options.length === 0 && (
+            {loading && entries.length === 0 && (
               <li className="px-3 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</li>
             )}
             {!loading && failed && (
               <li className="px-3 py-2 font-body text-body-sm text-red-600 dark:text-red-400">{t('apuntes.picker.failed')}</li>
             )}
-            {!loading && !failed && options.length === 0 && (
+            {!loading && !failed && entries.length === 0 && (
               <li className="px-3 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
                 {query.trim() ? t('apuntes.picker.noMatches') : t('apuntes.picker.typeToSearch')}
               </li>

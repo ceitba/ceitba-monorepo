@@ -5,6 +5,7 @@ import {
   acceptSuggestions,
   fetchSourceTree,
   patchFile,
+  recomputeSuggestions,
   type DriveSource,
   type PatchFileBody,
   type TreeItem,
@@ -69,6 +70,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
   const [notice, setNotice] = useState<string | null>(null)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
   const [accepting, setAccepting] = useState(false)
+  const [recomputing, setRecomputing] = useState(false)
   // Folders the user collapsed; everything starts expanded.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const reqRef = useRef(0)
@@ -102,6 +104,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
 
   const forest = useMemo(() => buildForest(items ?? []), [items])
   const suggestionCount = useMemo(() => (items ?? []).filter(hasSuggestion).length, [items])
+  const hasForeignFiles = useMemo(() => (items ?? []).some((it) => !it.ownedByMe && it.kind !== 'FOLDER'), [items])
 
   async function update(item: TreeItem, body: PatchFileBody) {
     setError(null)
@@ -129,6 +132,23 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
       setError(apuntesErrorMessage(e, t))
     } finally {
       setAccepting(false)
+    }
+  }
+
+  // Re-runs the matcher with the student's current plan (e.g. after setting
+  // career/plan in the profile) and swaps in the fresh tree.
+  async function recompute() {
+    setError(null); setNotice(null); setRecomputing(true)
+    try {
+      const res = await recomputeSuggestions(sourceId)
+      ++reqRef.current // drop any in-flight older tree load
+      setItems(res.items ?? [])
+      if (res.source) onLoadedRef.current?.(res.source)
+      setNotice(t('apuntes.tree.recomputedNotice', { count: (res.items ?? []).filter(hasSuggestion).length }))
+    } catch (e) {
+      setError(apuntesErrorMessage(e, t))
+    } finally {
+      setRecomputing(false)
     }
   }
 
@@ -222,6 +242,11 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                 >
                   <span aria-hidden="true">＋</span>
                   {t('apuntes.tree.suggestion', { name: item.suggestedSubjectName ?? item.suggestedSubjectId })}
+                  {item.suggestedInMyPlan && (
+                    <span className="ml-1 px-1.5 rounded-sm bg-white/70 dark:bg-night-bg/60 font-mono text-[0.65rem] uppercase tracking-widest">
+                      {t('apuntes.tree.inMyPlan')}
+                    </span>
+                  )}
                 </button>
               )}
             </div>
@@ -250,15 +275,32 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted max-w-2xl">
           {t('apuntes.tree.intro')}
         </p>
-        <button
-          type="button"
-          onClick={acceptAll}
-          disabled={accepting || suggestionCount === 0}
-          className={BTN_OUTLINE}
-        >
-          {accepting ? '…' : t('apuntes.tree.acceptAll', { count: suggestionCount })}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={recompute}
+            disabled={recomputing || accepting}
+            title={t('apuntes.tree.recomputeHint')}
+            className={BTN_OUTLINE}
+          >
+            {recomputing ? '…' : t('apuntes.tree.recompute')}
+          </button>
+          <button
+            type="button"
+            onClick={acceptAll}
+            disabled={accepting || recomputing || suggestionCount === 0}
+            className={BTN_OUTLINE}
+          >
+            {accepting ? '…' : t('apuntes.tree.acceptAll', { count: suggestionCount })}
+          </button>
+        </div>
       </div>
+
+      {hasForeignFiles && (
+        <p className="px-3 py-2 rounded-sm border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-violet-950/40 font-body text-body-sm text-violet-800 dark:text-violet-200">
+          {t('apuntes.tree.foreignHint')}
+        </p>
+      )}
 
       {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
       {notice && <Notice onDismiss={() => setNotice(null)}>{notice}</Notice>}

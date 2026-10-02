@@ -548,7 +548,10 @@
       "clearInherit": "Heredar de la carpeta ({{name}})",
       "failed": "No pudimos buscar materias.",
       "noMatches": "No encontramos materias con ese nombre o código.",
-      "typeToSearch": "Escribí para buscar una materia."
+      "typeToSearch": "Escribí para buscar una materia.",
+      "fromPlan": "De tu plan",
+      "planYear": "Año {{year}}",
+      "allSubjects": "Todas las materias"
     },
     "tree": {
       "intro": "Elegí la materia de cada carpeta o archivo: lo que pongas en una carpeta lo heredan sus archivos. Solo se publican los archivos con materia que no ocultes.",
@@ -566,7 +569,13 @@
       "subjectFor": "Materia de {{name}}",
       "useSuggestion": "Usar la materia sugerida",
       "suggestion": "Sugerida: {{name}}",
-      "hide": "Ocultar"
+      "hide": "Ocultar",
+      "inMyPlan": "de tu plan",
+      "recompute": "Recalcular sugerencias",
+      "recomputeHint": "Vuelve a sugerir materias usando tu plan actual (por ejemplo, después de cambiar tu carrera o plan en el perfil).",
+      "recomputedNotice_one": "Listo: hay {{count}} sugerencia para revisar.",
+      "recomputedNotice_other": "Listo: hay {{count}} sugerencias para revisar.",
+      "foreignHint": "Archivos de otras personas quedan ocultos hasta que los publiques; pasan por revisión de CEITBA antes de mostrarse."
     },
     "wizard": {
       "title": "Conectar una carpeta de Drive",
@@ -628,7 +637,11 @@
       "fileCount_one": "{{count}} archivo",
       "fileCount_other": "{{count}} archivos",
       "noFilesYet": "Sin apuntes todavía",
-      "updated": "act. {{date}}"
+      "updated": "act. {{date}}",
+      "mine": "Tus materias",
+      "mineHint": "Las materias de tu plan, por año.",
+      "mineNoPlan": "Elegí tu carrera y plan para ver acá las materias que cursás.",
+      "mineNoPlanLink": "Ir a mi perfil"
     },
     "subject": {
       "summary_one": "{{count}} archivo de {{authors}} estudiante(s)",

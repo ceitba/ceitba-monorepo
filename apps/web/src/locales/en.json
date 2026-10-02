@@ -548,7 +548,10 @@
       "clearInherit": "Inherit from folder ({{name}})",
       "failed": "We couldn't search subjects.",
       "noMatches": "No subjects match that name or code.",
-      "typeToSearch": "Type to search for a subject."
+      "typeToSearch": "Type to search for a subject.",
+      "fromPlan": "From your plan",
+      "planYear": "Year {{year}}",
+      "allSubjects": "All subjects"
     },
     "tree": {
       "intro": "Pick the subject of each folder or file: whatever you set on a folder is inherited by its files. Only files with a subject that you don't hide get published.",
@@ -566,7 +569,13 @@
       "subjectFor": "Subject for {{name}}",
       "useSuggestion": "Use the suggested subject",
       "suggestion": "Suggested: {{name}}",
-      "hide": "Hide"
+      "hide": "Hide",
+      "inMyPlan": "your plan",
+      "recompute": "Recompute suggestions",
+      "recomputeHint": "Suggests subjects again using your current plan (e.g. after changing your career or plan in your profile).",
+      "recomputedNotice_one": "Done: {{count}} suggestion to review.",
+      "recomputedNotice_other": "Done: {{count}} suggestions to review.",
+      "foreignHint": "Other people's files stay hidden until you publish them; CEITBA reviews them before they're shown."
     },
     "wizard": {
       "title": "Connect a Drive folder",
@@ -628,7 +637,11 @@
       "fileCount_one": "{{count}} file",
       "fileCount_other": "{{count}} files",
       "noFilesYet": "No notes yet",
-      "updated": "upd. {{date}}"
+      "updated": "upd. {{date}}",
+      "mine": "Your subjects",
+      "mineHint": "Your plan's subjects, by year.",
+      "mineNoPlan": "Pick your career and plan to see your subjects here.",
+      "mineNoPlanLink": "Go to my profile"
     },
     "subject": {
       "summary_one": "{{count}} file from {{authors}} student(s)",

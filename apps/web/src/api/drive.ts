@@ -61,6 +61,11 @@ export interface TreeItem {
   effectiveSubjectName: string | null
   suggestedSubjectId: string | null
   suggestedSubjectName: string | null
+  // The suggestion / effective subject is in the student's own plan.
+  suggestedInMyPlan?: boolean
+  effectiveInMyPlan?: boolean
+  // Files the student doesn't own start hidden (unhiding sends them to
+  // staff review).
   hidden: boolean
   publication: Publication
   ownedByMe: boolean
@@ -121,6 +126,12 @@ export function acceptSuggestions(sourceId: string): Promise<{ applied: number }
   return apiSend<{ applied: number }>('POST', `/me/drive/sources/${enc(sourceId)}/accept-suggestions`)
 }
 
+// Re-runs the subject matcher with the caller's current plan; returns the
+// fresh tree.
+export function recomputeSuggestions(sourceId: string): Promise<SourceTree> {
+  return apiSend<SourceTree>('POST', `/me/drive/sources/${enc(sourceId)}/recompute-suggestions`)
+}
+
 export function patchFile(fileId: string, body: PatchFileBody): Promise<TreeItem> {
   return apiSend<TreeItem>('PATCH', `/me/drive/files/${enc(fileId)}`, body)
 }
@@ -132,6 +143,9 @@ export interface ApunteSubject {
   subjectName: string
   fileCount: number
   lastUpdatedAt: string | null
+  // Only set with mine=true (plan year / semester), else null.
+  year?: number | null
+  semester?: number | null
 }
 
 export interface FileSummary {
@@ -182,6 +196,11 @@ export function fetchApunteSubjects(q?: string, limit = 20): Promise<ApunteSubje
   const qs = new URLSearchParams({ limit: String(limit) })
   if (q?.trim()) qs.set('q', q.trim())
   return apiGet<ApunteSubject[]>(`/wiki/apuntes/subjects?${qs}`)
+}
+
+// The caller's plan subjects ordered by year/semester ([] without a plan).
+export function fetchMyPlanSubjects(): Promise<ApunteSubject[]> {
+  return apiGet<ApunteSubject[]>('/wiki/apuntes/subjects?mine=true')
 }
 
 export function fetchSubjectFiles(subjectId: string): Promise<SubjectFiles> {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchApunteSubjects, type ApunteSubject } from '../../api/drive'
+import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
 import { useDebounced } from '../../hooks/useDebounced'
 import { apuntesErrorMessage, formatDate } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
@@ -20,6 +20,15 @@ export default function ApuntesHomePage() {
   const [error, setError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
   const reqRef = useRef(0)
+  // The student's plan subjects ("Tus materias"); [] without a plan.
+  const [mine, setMine] = useState<ApunteSubject[] | null>(null)
+  const [mineFailed, setMineFailed] = useState(false)
+
+  useEffect(() => {
+    fetchMyPlanSubjects()
+      .then((res) => setMine(res ?? []))
+      .catch(() => setMineFailed(true))
+  }, [])
 
   useEffect(() => {
     const next = new URLSearchParams(params)
@@ -84,6 +93,33 @@ export default function ApuntesHomePage() {
           />
         </div>
 
+        {!searching && !mineFailed && (
+          <section aria-labelledby="apuntes-mine-heading" className="mt-10">
+            <h2 id="apuntes-mine-heading" className="font-display font-bold text-h4 text-ink-primary dark:text-night-text mb-1">
+              {t('apuntes.home.mine')}
+            </h2>
+            {mine == null ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3" aria-busy="true" aria-hidden="true">
+                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 rounded-card skeleton" />)}
+              </div>
+            ) : mine.length === 0 ? (
+              <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+                {t('apuntes.home.mineNoPlan')}{' '}
+                <Link to="/profile" className="text-primary underline">{t('apuntes.home.mineNoPlanLink')}</Link>
+              </p>
+            ) : (
+              <>
+                <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">{t('apuntes.home.mineHint')}</p>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {mine.map((s) => (
+                    <li key={s.subjectId}><SubjectCard subject={s} lang={i18n.language} /></li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        )}
+
         <h2 id="apuntes-list-heading" className="font-display font-bold text-h4 text-ink-primary dark:text-night-text mt-10 mb-4">
           {searching ? t('apuntes.home.results', { q: debounced }) : t('apuntes.home.recent')}
         </h2>
@@ -118,29 +154,37 @@ export default function ApuntesHomePage() {
         {!error && subjects != null && subjects.length > 0 && (
           <ul className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${loading ? 'opacity-60' : ''}`}>
             {subjects.map((s) => (
-              <li key={s.subjectId}>
-                <Link
-                  to={`/apuntes/${encodeURIComponent(s.subjectId)}`}
-                  className="group h-full flex flex-col gap-2 p-5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200"
-                >
-                  <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-                    {s.subjectId}
-                  </span>
-                  <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 line-clamp-2">
-                    {s.subjectName}
-                  </span>
-                  <span className="mt-auto font-mono text-label text-ink-secondary dark:text-night-muted">
-                    {s.fileCount > 0
-                      ? t('apuntes.home.fileCount', { count: s.fileCount })
-                      : t('apuntes.home.noFilesYet')}
-                    {s.lastUpdatedAt && ` · ${t('apuntes.home.updated', { date: formatDate(s.lastUpdatedAt, i18n.language) })}`}
-                  </span>
-                </Link>
-              </li>
+              <li key={s.subjectId}><SubjectCard subject={s} lang={i18n.language} /></li>
             ))}
           </ul>
         )}
       </section>
     </main>
+  )
+}
+
+function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: string }) {
+  const { t } = useTranslation()
+  return (
+    <Link
+      to={`/apuntes/${encodeURIComponent(s.subjectId)}`}
+      className={`group h-full flex flex-col gap-2 p-5 rounded-card border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 ${
+        s.fileCount > 0 ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border'
+      }`}
+    >
+      <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+        {s.subjectId}
+        {s.year != null && ` · ${t('apuntes.picker.planYear', { year: s.year })}`}
+      </span>
+      <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 line-clamp-2">
+        {s.subjectName}
+      </span>
+      <span className="mt-auto font-mono text-label text-ink-secondary dark:text-night-muted">
+        {s.fileCount > 0
+          ? t('apuntes.home.fileCount', { count: s.fileCount })
+          : t('apuntes.home.noFilesYet')}
+        {s.lastUpdatedAt && ` · ${t('apuntes.home.updated', { date: formatDate(s.lastUpdatedAt, lang) })}`}
+      </span>
+    </Link>
   )
 }
