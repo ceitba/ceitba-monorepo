@@ -67,9 +67,8 @@ public class OrganizationController {
     @PreAuthorize("hasRole('STAFF') or @orgAccess.canEditOrg(#slug, authentication)")
     public OrganizationResponse update(@PathVariable String slug,
                                         @RequestBody OrganizationRequest req) {
-        var patch = new Organization(slug,
-            req.name() != null ? req.name() : "",
-            req.fullName() != null ? req.fullName() : "");
+        // null = leave unchanged (OrganizationService.update skips nulls)
+        var patch = new Organization(slug, req.name(), req.fullName());
         patch.setDescription(req.description());
         patch.setCategory(req.category());
         patch.setColor(req.color());

@@ -9,7 +9,6 @@ import org.ceitba.api.web.news.dto.NewsEventInput;
 import org.ceitba.api.web.news.dto.NewsEventPatchInput;
 import org.ceitba.api.web.news.dto.NewsEventResponse;
 import org.ceitba.api.web.news.dto.PageResponse;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,10 +45,10 @@ public class NewsEventController {
             @RequestParam(defaultValue = "50") int limit) {
 
         var result = service.findAll(category, organization, from, to,
-                                     PageRequest.of(Math.max(page - 1, 0), limit));
+                                     NewsPaging.of(page, limit));
         return new PageResponse<>(
             result.getContent().stream().map(NewsEventResponse::from).toList(),
-            new PageResponse.Meta(result.getTotalElements(), page, limit)
+            PageResponse.Meta.of(result)
         );
     }
 

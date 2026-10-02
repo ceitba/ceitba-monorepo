@@ -89,6 +89,20 @@ class ArticleEndpointsIT {
     }
 
     @Test
+    void listClampsLimit() throws Exception {
+        // limit=0 used to reach PageRequest.of and 500
+        mvc.perform(get("/v1/articles?limit=0"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.meta.limit").value(1));
+
+        mvc.perform(get("/v1/articles?limit=1000000"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.meta.limit").value(100))
+            .andExpect(jsonPath("$.meta.page").value(1));
+    }
+
+    @Test
     void staffListCanSeeDrafts() throws Exception {
         mvc.perform(get("/v1/articles?status=draft").with(staff()))
             .andExpect(status().isOk())
@@ -218,6 +232,25 @@ class ArticleEndpointsIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("Updated Title"))
             .andExpect(jsonPath("$.excerpt").value("excerpt")); // unchanged
+    }
+
+    @Test
+    void patchWithoutFeaturedKeepsItFeatured() throws Exception {
+        var a = articleRepo.findById("a1").orElseThrow();
+        a.setFeatured(true);
+        articleRepo.save(a);
+
+        mvc.perform(patch("/v1/articles/a1").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Retitled\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.featured").value(true));
+
+        mvc.perform(patch("/v1/articles/a1").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"featured\":false}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.featured").value(false));
     }
 
     @Test

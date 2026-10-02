@@ -17,6 +17,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -57,15 +59,31 @@ class StaffEndpointsIT {
     @Autowired UserRepository userRepository;
     @Autowired CeitbaStaffRepository staffRepository;
 
+    @Autowired PlatformTransactionManager txManager;
+
     private UUID aliceId;
+    private UUID bobId;
 
     @BeforeEach
     void seed() {
         staffRepository.deleteAll();
         userRepository.deleteAll();
         var alice = userRepository.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));
-        userRepository.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));
+        bobId = userRepository.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob")).getId();
         aliceId = alice.getId();
+    }
+
+    // Bob as a second active staff member, so revoking Alice isn't blocked
+    // by the last-active-staff guard.
+    private void seedBobAsActiveStaff() {
+        seedStaff(bobId, OffsetDateTime.now().minusDays(1), OffsetDateTime.now().plusYears(1));
+    }
+
+    // In a transaction so the User is managed when the @MapsId row is saved.
+    private void seedStaff(UUID userId, OffsetDateTime start, OffsetDateTime end) {
+        new TransactionTemplate(txManager).executeWithoutResult(tx ->
+            staffRepository.save(new CeitbaStaff(userRepository.findById(userId).orElseThrow(),
+                CeitbaBranch.IT, CeitbaStaffRole.MEMBER, start, end)));
     }
 
     private static RequestPostProcessor user() {
@@ -147,6 +165,7 @@ class StaffEndpointsIT {
 
     @Test
     void revokeEndDatesActiveMembershipSoListingDropsIt() throws Exception {
+        seedBobAsActiveStaff();
         var body = """
             {"email":"alice@itba.edu.ar","branch":"IT","role":"MEMBER",
              "start":"2026-01-01T00:00:00Z","end":"2030-01-01T00:00:00Z"}""";
@@ -157,11 +176,13 @@ class StaffEndpointsIT {
             .andExpect(status().isNoContent());
 
         mvc.perform(get("/v1/staff").with(staff()))
-            .andExpect(jsonPath("$.length()").value(0));
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].email").value("bob@itba.edu.ar"));
     }
 
     @Test
     void reassigningAfterRevokeGrantsStaffAgain() throws Exception {
+        seedBobAsActiveStaff();
         var body = """
             {"email":"alice@itba.edu.ar","branch":"IT","role":"MEMBER",
              "start":"2026-01-01T00:00:00Z","end":"2030-01-01T00:00:00Z"}""";
@@ -179,7 +200,44 @@ class StaffEndpointsIT {
 
         assertThat(staffRepository.isActiveStaff(aliceId, OffsetDateTime.now())).isTrue();
         mvc.perform(get("/v1/staff").with(staff()))
-            .andExpect(jsonPath("$.length()").value(1));
+            .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void revokingTheLastActiveStaffMemberReturns409() throws Exception {
+        var body = """
+            {"email":"alice@itba.edu.ar","branch":"IT","role":"MEMBER",
+             "start":"2026-01-01T00:00:00Z","end":"2030-01-01T00:00:00Z"}""";
+        mvc.perform(post("/v1/staff").with(staff()).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated());
+
+        mvc.perform(delete("/v1/staff/" + aliceId).with(staff()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("LastActiveStaff"));
+
+        assertThat(staffRepository.isActiveStaff(aliceId, OffsetDateTime.now())).isTrue();
+    }
+
+    @Test
+    void revokingAnExpiredMembershipReturns404AndKeepsItsEnd() throws Exception {
+        seedBobAsActiveStaff();
+        var end = OffsetDateTime.parse("2025-06-01T00:00:00Z");
+        seedStaff(aliceId, OffsetDateTime.parse("2025-01-01T00:00:00Z"), end);
+
+        mvc.perform(delete("/v1/staff/" + aliceId).with(staff()))
+            .andExpect(status().isNotFound());
+
+        assertThat(staffRepository.findById(aliceId).orElseThrow().getEnd()).isEqualTo(end);
+    }
+
+    @Test
+    void revokingANotYetStartedMembershipDeletesIt() throws Exception {
+        seedStaff(aliceId, OffsetDateTime.now().plusDays(10), OffsetDateTime.now().plusYears(1));
+
+        mvc.perform(delete("/v1/staff/" + aliceId).with(staff()))
+            .andExpect(status().isNoContent());
+
+        assertThat(staffRepository.findById(aliceId)).isEmpty();
     }
 
     @Test

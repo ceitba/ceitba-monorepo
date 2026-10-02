@@ -205,6 +205,13 @@ class UserEndpointsIT {
             .andExpect(jsonPath("$.meta.total").value(3))
             .andExpect(jsonPath("$.meta.page").value(2))
             .andExpect(jsonPath("$.meta.limit").value(2));
+
+        // Meta reports the limit actually applied (capped at 100), not the raw param
+        mvc.perform(get("/v1/users?limit=5000&page=0").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(3))
+            .andExpect(jsonPath("$.meta.page").value(1))
+            .andExpect(jsonPath("$.meta.limit").value(100));
     }
 
     @Test

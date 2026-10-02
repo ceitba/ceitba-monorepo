@@ -73,6 +73,7 @@ public class VoteService {
         return voteRepo.save(aggregate);
     }
 
+    @Transactional(readOnly = true)
     public ArticleVote getCounts(String articleId) {
         return voteRepo.findById(articleId)
             .orElseGet(() -> new ArticleVote(articleId));

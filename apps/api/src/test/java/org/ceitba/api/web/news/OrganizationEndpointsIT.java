@@ -157,7 +157,14 @@ class OrganizationEndpointsIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.description").value("updated"))
             .andExpect(jsonPath("$.logoUrl").value("https://x/l.png"))
-            .andExpect(jsonPath("$.backgroundUrl").value("https://x/bg.png"));
+            .andExpect(jsonPath("$.backgroundUrl").value("https://x/bg.png"))
+            // Omitted fields are left alone, not blanked
+            .andExpect(jsonPath("$.name").value("IT"))
+            .andExpect(jsonPath("$.fullName").value("IT Branch"));
+
+        mvc.perform(get("/v1/organizations/it"))
+            .andExpect(jsonPath("$.name").value("IT"))
+            .andExpect(jsonPath("$.fullName").value("IT Branch"));
     }
 
     @Test

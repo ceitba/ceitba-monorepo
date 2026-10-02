@@ -42,6 +42,7 @@ public class AnalyticsService {
         analyticsRepo.saveAll(entities);
     }
 
+    @Transactional(readOnly = true)
     public Summary summary(int days) {
         var since = OffsetDateTime.now().minusDays(days);
         long totalViews     = analyticsRepo.countArticleViewsSince(since);

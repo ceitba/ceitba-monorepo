@@ -28,6 +28,7 @@ public class NewsEventService {
         this.events    = events;
     }
 
+    @Transactional(readOnly = true)
     public Page<NewsEvent> findAll(String category, String organization,
                                    LocalDate from, LocalDate to, Pageable pageable) {
         return eventRepo.findFiltered(
@@ -38,6 +39,7 @@ public class NewsEventService {
         );
     }
 
+    @Transactional(readOnly = true)
     public NewsEvent findById(String id) {
         return eventRepo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Event", id));

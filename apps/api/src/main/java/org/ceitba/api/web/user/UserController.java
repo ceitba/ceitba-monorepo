@@ -63,7 +63,7 @@ public class UserController {
         var result = userService.findPaged(q, organization, sort, page, limit);
         return new PageResponse<>(
             result.getContent(),
-            new PageResponse.Meta(result.getTotalElements(), page, limit)
+            PageResponse.Meta.of(result)
         );
     }
 
