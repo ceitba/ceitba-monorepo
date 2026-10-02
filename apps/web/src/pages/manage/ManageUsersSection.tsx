@@ -36,6 +36,7 @@ export default function ManageUsersSection() {
   const [error, setError]     = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [unassigning, setUnassigning] = useState<AdminUser | null>(null)
 
   // Filters / paging state. `query` is the input value; `q` is the debounced
   // value that actually drives requests, so we don't fire one fetch per keystroke.
@@ -96,13 +97,28 @@ export default function ManageUsersSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params])
 
-  async function toggleStaff(u: AdminUser) {
+  async function makeStaff(u: AdminUser) {
     setError(null); setBusyId(u.id)
     try {
-      if (u.isStaff) await revokeStaff(u.id)
-      else await assignStaff({ email: u.email, branch: STAFF_BRANCH, role: STAFF_ROLE, ...defaultStaffRange() })
+      await assignStaff({ email: u.email, branch: STAFF_BRANCH, role: STAFF_ROLE, ...defaultStaffRange() })
       reload()
     } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function confirmUnassign() {
+    if (!unassigning) return
+    const u = unassigning
+    setError(null); setBusyId(u.id)
+    try {
+      await revokeStaff(u.id)
+      setUnassigning(null)
+      reload()
+    } catch (e) {
+      setUnassigning(null)
       setError((e as Error).message)
     } finally {
       setBusyId(null)
@@ -187,18 +203,30 @@ export default function ManageUsersSection() {
                     <p className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">{u.email}</p>
                   </td>
                   <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      disabled={busyId === u.id}
-                      onClick={() => toggleStaff(u)}
-                      className={`px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border transition-colors ${
-                        u.isStaff
-                          ? 'bg-primary text-white border-primary hover:bg-transparent hover:text-primary'
-                          : 'border-border dark:border-[#3f3f46] hover:border-primary hover:text-primary'
-                      } disabled:opacity-50`}
-                    >
-                      {u.isStaff ? t('manage.users.staffOn') : t('manage.users.staffOff')}
-                    </button>
+                    {u.isStaff ? (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="px-3 py-1 rounded-sm bg-primary text-white border border-primary font-mono text-label uppercase tracking-widest">
+                          {t('manage.users.staffOn')}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={busyId === u.id}
+                          onClick={() => setUnassigning(u)}
+                          className="text-red-600 font-mono text-label uppercase tracking-widest hover:underline disabled:opacity-50"
+                        >
+                          {t('manage.users.unassign')}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busyId === u.id}
+                        onClick={() => makeStaff(u)}
+                        className="px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-[#3f3f46] hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                      >
+                        {t('manage.users.staffOff')}
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -251,6 +279,71 @@ export default function ManageUsersSection() {
             className="px-3 py-1 rounded-sm border border-border dark:border-[#3f3f46] font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
           >
             {t('manage.users.next')}
+          </button>
+        </div>
+      </div>
+
+      {unassigning && (
+        <ConfirmUnassignModal
+          user={unassigning}
+          busy={busyId === unassigning.id}
+          onConfirm={confirmUnassign}
+          onCancel={() => setUnassigning(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+interface ConfirmUnassignModalProps {
+  user: AdminUser
+  busy: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function ConfirmUnassignModal({ user, busy, onConfirm, onCancel }: ConfirmUnassignModalProps) {
+  const { t } = useTranslation()
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !busy) onCancel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, onCancel])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+      onClick={() => { if (!busy) onCancel() }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="unassign-staff-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] p-6 flex flex-col gap-4"
+      >
+        <h3 id="unassign-staff-title" className="font-display font-bold text-h4">{t('manage.users.unassignTitle')}</h3>
+        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+          {t('manage.users.unassignBody', { name: user.name ?? user.email })}
+        </p>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            autoFocus
+            disabled={busy}
+            onClick={onCancel}
+            className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary"
+          >
+            {t('manage.cancel')}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className="px-3 py-1.5 rounded-sm bg-red-600 text-white font-mono text-label uppercase tracking-widest disabled:opacity-50"
+          >
+            {busy ? '…' : t('manage.users.unassignConfirm')}
           </button>
         </div>
       </div>
