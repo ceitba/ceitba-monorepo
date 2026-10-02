@@ -10,7 +10,7 @@ Read [AUTH-AND-ROLES.md](AUTH-AND-ROLES.md) for the access-control model.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AUTH_JWT_SECRET` | **Yes** | — | Base64-encoded 32+ byte HMAC signing key |
-| `CONTENT_HMAC_SECRET` | No | derived from `AUTH_JWT_SECRET` | Root secret (32+ bytes) for keyed content hashes: proposal attachment keys and imported Firestore comment ids. Each use gets its own derived key; the JWT key is never used for them directly. Without it, rotating `AUTH_JWT_SECRET` also changes those hashes |
+| `CONTENT_HMAC_SECRET` | No | derived from `AUTH_JWT_SECRET` | Root secret (32+ bytes) for keyed hashes: proposal attachment keys, imported Firestore comment ids, article-vote fingerprints (IP + User-Agent) and analytics IP hashes. Each use gets its own derived key; the JWT key is never used for them directly. Without it, rotating `AUTH_JWT_SECRET` also changes those hashes (past voters can vote once more) |
 | `GOOGLE_CLIENT_ID` | For login | — | OAuth 2.0 client ID from Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | For login | — | OAuth 2.0 client secret |
 | `GOOGLE_REDIRECT_URI` | For login | `http://localhost:8080/api/v1/auth/callback` | Must match a URI registered in Google Cloud Console |

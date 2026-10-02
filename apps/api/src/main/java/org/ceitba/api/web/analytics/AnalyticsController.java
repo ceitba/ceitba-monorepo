@@ -5,7 +5,6 @@ import jakarta.validation.Valid;
 import org.ceitba.api.config.RateLimitProperties;
 import org.ceitba.api.service.news.AnalyticsService;
 import org.ceitba.api.service.news.AnalyticsService.EventPayload;
-import org.ceitba.api.service.news.VoteService;
 import org.ceitba.api.web.analytics.dto.AnalyticsEventBatch;
 import org.ceitba.api.web.ratelimit.ClientIp;
 import org.springframework.http.HttpStatus;
@@ -18,9 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 @RestController
@@ -38,12 +34,11 @@ public class AnalyticsController {
     @PostMapping("/events")
     public ResponseEntity<Void> ingest(@RequestBody @Valid AnalyticsEventBatch batch,
                                         HttpServletRequest http) {
-        String ipHash = hashIp(clientIp(http));
         List<EventPayload> payloads = batch.events().stream()
             .map(e -> new EventPayload(e.type(), e.sessionId(), e.timestamp(),
                                        e.articleId(), e.category(), e.path()))
             .toList();
-        service.ingestBatch(payloads, ipHash);
+        service.ingestBatch(payloads, clientIp(http));
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -58,17 +53,5 @@ public class AnalyticsController {
     // counted) as any number of "IPs".
     private String clientIp(HttpServletRequest req) {
         return ClientIp.resolve(req, rateLimit.trustForwardedFor());
-    }
-
-    private String hashIp(String ip) {
-        try {
-            var md = MessageDigest.getInstance("SHA-256");
-            var digest = md.digest(ip.getBytes(StandardCharsets.UTF_8));
-            var sb = new StringBuilder(64);
-            for (byte b : digest) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
     }
 }
