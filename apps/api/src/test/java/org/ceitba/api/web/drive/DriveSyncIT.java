@@ -404,8 +404,14 @@ class DriveSyncIT {
         subjects.saveAll(List.of(
             new Subject("82.15", "Matemática Aplicada", 6),
             new Subject("93.16", "Matemática Discreta", 6),
-            new Subject("93.24", "Probabilidad y Estadística", 6)));
+            new Subject("93.24", "Probabilidad y Estadística", 6),
+            new Subject("71.98", "Sociología", 3),
+            new Subject("71.97", "Visualización de Datos", 3),
+            new Subject("71.96", "Análisis de Redes", 3)));
         planSubjects.saveAll(List.of(
+            new PlanSubject("71.98", "A22", "Electivas Social", 0, 0, 0, List.of()),
+            new PlanSubject("71.97", "A22", "Electivas Analytics", 0, 0, 0, List.of()),
+            new PlanSubject("71.96", "A22", "Electivas Analytics", 0, 0, 0, List.of()),
             new PlanSubject("82.15", "A22", "Ciclo", 1, 2, 0, List.of()),
             new PlanSubject("93.16", "A22", "Ciclo", 2, 1, 0, List.of()),
             new PlanSubject("93.24", "A22", "Ciclo", 2, 2, 0, List.of())));
@@ -443,10 +449,17 @@ class DriveSyncIT {
 
         call(post("/v1/staff/drive/sources/" + sourceId + "/approve"), staff(), null).andExpect(status().isOk());
         var mine = read(call(get("/v1/wiki/apuntes/subjects?mine=true"), student(), null).andExpect(status().isOk()));
-        assertThat(mine).hasSize(3);
-        assertThat(mine.get(0).get("subjectId").asText()).isEqualTo("82.15");
+        // Curricular by year/semester, then electives by section and name.
+        assertThat(mine).hasSize(6);
+        assertThat(mine.findValuesAsText("subjectId"))
+            .containsExactly("82.15", "93.16", "93.24", "71.96", "71.97", "71.98");
         assertThat(mine.get(0).get("year").asInt()).isEqualTo(1);
         assertThat(mine.get(0).get("semester").asInt()).isEqualTo(2);
+        assertThat(mine.get(0).get("section").asText()).isEqualTo("Ciclo");
+        assertThat(mine.get(3).get("year").isNull()).isTrue();
+        assertThat(mine.get(3).get("semester").isNull()).isTrue();
+        assertThat(mine.get(3).get("section").asText()).isEqualTo("Electivas Analytics");
+        assertThat(mine.get(5).get("section").asText()).isEqualTo("Electivas Social");
         assertThat(mine.get(0).get("fileCount").asLong()).isEqualTo(1);
         assertThat(mine.get(1).get("subjectId").asText()).isEqualTo("93.16");
         assertThat(mine.get(2).get("fileCount").asLong()).isEqualTo(1);

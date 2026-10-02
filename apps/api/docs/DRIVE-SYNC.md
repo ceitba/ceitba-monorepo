@@ -119,7 +119,7 @@ suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, 
 
 | Method + path | Response |
 |---|---|
-| `GET /v1/wiki/apuntes/subjects?q=&limit=20&mine=` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt, year, semester }]` — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive); `mine=true`: the caller's plan subjects ordered by year/semester (`q`/`limit` ignored, `[]` without a plan). `year`/`semester` are only set with `mine=true` (else `null`) |
+| `GET /v1/wiki/apuntes/subjects?q=&limit=20&mine=` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt, year, semester, section }]` — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive); `mine=true`: the caller's plan subjects (`q`/`limit` ignored, `[]` without a plan): curricular subjects by year/semester first, then electives and other year-0 entries grouped by `section` (sections alphabetically, subjects by name); a subject that is both keeps its curricular entry. `year`/`semester`/`section` are only set with `mine=true` (else `null`); `year`/`semester` are `null` for year-0 entries, whose group is `section` (e.g. `"Electivas Analytics"`, `"SAT"`) |
 | `GET /v1/wiki/subjects/{subjectId}/files` | `{ subjectId, subjectName, groups: [{ sourceId, author: { name, anonymous }, files: FileSummary[] }] }` |
 | `GET /v1/wiki/files/{fileId}` | `FileSummary` + `{ subjectId, subjectName, author, html, reportedByMe }` (`html` only for Docs) |
 | `GET /v1/wiki/files/{fileId}/download?variant=pdf\|original&disposition=inline\|attachment` | 302 to a 5-minute signed URL (default `disposition=inline`) |

@@ -1,6 +1,7 @@
 package org.ceitba.api.service.drive;
 
 import org.ceitba.api.common.exception.ResourceNotFoundException;
+import org.ceitba.api.domain.PlanSubject;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.drive.DriveFile;
@@ -81,7 +82,7 @@ public class DriveReaderService {
             var names = views.subjectNames(rows.stream().map(r -> (String) r[0]).toList());
             return rows.stream()
                 .map(r -> new ApuntesSubjectResponse((String) r[0], names.get((String) r[0]),
-                    ((Number) r[1]).longValue(), (OffsetDateTime) r[2], null, null))
+                    ((Number) r[1]).longValue(), (OffsetDateTime) r[2], null, null, null))
                 .toList();
         }
         var needle = SubjectMatcher.normalize(q);
@@ -98,7 +99,7 @@ public class DriveReaderService {
             .map(s -> {
                 var r = stats.get(s.getId());
                 return new ApuntesSubjectResponse(s.getId(), s.getName(),
-                    r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2], null, null);
+                    r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2], null, null, null);
             })
             .sorted(Comparator.comparingLong(ApuntesSubjectResponse::fileCount).reversed()
                 .thenComparing(ApuntesSubjectResponse::subjectName, String.CASE_INSENSITIVE_ORDER))
@@ -111,21 +112,33 @@ public class DriveReaderService {
     @Transactional(readOnly = true)
     public List<ApuntesSubjectResponse> mySubjects(User user) {
         if (user.getPlan() == null || user.getPlan().isBlank()) return List.of();
-        var entries = planSubjects.findByPlanId(user.getPlan()).stream()
-            .sorted(Comparator.comparingInt(org.ceitba.api.domain.PlanSubject::getYear)
-                .thenComparingInt(org.ceitba.api.domain.PlanSubject::getSemester)
-                .thenComparing(org.ceitba.api.domain.PlanSubject::getSubjectId))
+        var rows = planSubjects.findByPlanId(user.getPlan());
+        if (rows.isEmpty()) return List.of();
+        var names = views.subjectNames(rows.stream().map(PlanSubject::getSubjectId).toList());
+        // One entry per subject; a curricular one (year > 0) wins over an elective one.
+        Map<String, PlanSubject> bySubject = new LinkedHashMap<>();
+        for (var e : rows) {
+            bySubject.merge(e.getSubjectId(), e, (a, b) -> a.getYear() > 0 ? a : b);
+        }
+        Comparator<PlanSubject> curricularFirst = Comparator.comparing((PlanSubject e) -> e.getYear() <= 0);
+        Comparator<String> byName = Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER);
+        var entries = bySubject.values().stream()
+            .sorted(curricularFirst
+                .thenComparing(e -> e.getYear() > 0 ? e.getYear() : 0)
+                .thenComparing(e -> e.getYear() > 0 ? e.getSemester() : 0)
+                .thenComparing(e -> e.getYear() > 0 ? "" : e.getSection(), byName)
+                .thenComparing(e -> names.get(e.getSubjectId()), byName)
+                .thenComparing(PlanSubject::getSubjectId))
             .toList();
-        if (entries.isEmpty()) return List.of();
-        var ids = entries.stream().map(org.ceitba.api.domain.PlanSubject::getSubjectId).toList();
-        var names = views.subjectNames(ids);
+        var ids = entries.stream().map(PlanSubject::getSubjectId).toList();
         Map<String, Object[]> stats = new HashMap<>();
         for (var r : files.publishedSubjectsIn(ids)) stats.put((String) r[0], r);
         return entries.stream().map(e -> {
             var r = stats.get(e.getSubjectId());
             return new ApuntesSubjectResponse(e.getSubjectId(), names.get(e.getSubjectId()),
                 r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2],
-                e.getYear(), e.getSemester());
+                e.getYear() > 0 ? e.getYear() : null, e.getSemester() > 0 ? e.getSemester() : null,
+                e.getSection());
         }).toList();
     }
 
