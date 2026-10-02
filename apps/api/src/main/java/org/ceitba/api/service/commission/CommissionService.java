@@ -49,7 +49,10 @@ public class CommissionService {
     }
 
     // GET /v1/commissions?plan= — commissions of the plan's subjects whose
-    // course has not ended (course_end >= today in ART). `times` are the
+    // course has not ended (course_end >= today in ART), and of those only
+    // each subject's newest term (CommissionTerms, same selection as
+    // /v1/subjects): when the next term is synced before the current one
+    // ends, only the upcoming term is listed. `times` are the
     // effective slots: an applied student schedule correction replaces the
     // SGA ones (one extra query for the whole plan).
     @Transactional(readOnly = true)
@@ -57,7 +60,10 @@ public class CommissionService {
         if (!planRepository.existsById(planId) && !planSubjectRepository.existsByPlanId(planId)) {
             throw new ResourceNotFoundException("Plan", planId);
         }
-        var commissions = commissionRepository.findCurrentByPlanWithTimes(planId, LocalDate.now(clock));
+        LocalDate today = LocalDate.now(clock);
+        var commissions = CommissionTerms.currentTermBySubject(
+                commissionRepository.findCurrentByPlanWithTimes(planId, today), today)
+            .values().stream().flatMap(List::stream).toList();
         var codes = commissions.stream().map(Commission::getSubjectCode).distinct().toList();
         Map<String, String> names = subjectRepository.findAllById(codes).stream()
             .collect(Collectors.toMap(Subject::getId, Subject::getName));

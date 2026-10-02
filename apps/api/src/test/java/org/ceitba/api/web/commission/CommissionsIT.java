@@ -135,6 +135,19 @@ class CommissionsIT {
         verifyNoInteractions(itbaApiClient);
     }
 
+    // Same selection as /v1/subjects: when the next term of 93.12 is synced
+    // before the running one ends, only the next term is listed.
+    @Test
+    void nextTermSyncedEarlyReplacesTheRunningTerm() throws Exception {
+        var next = new Commission("C-93-NEXT", "93.12", "A",
+            TODAY.plusMonths(5), TODAY.plusMonths(9), 0, 40, SubjectType.SEMESTRAL);
+        commissionRepository.save(next);
+
+        mvc.perform(get("/v1/commissions").param("plan", "S10-Rev23"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].id", contains("C-72-S", "C-93-NEXT")));
+    }
+
     @Test
     void unknownPlanReturns404() throws Exception {
         mvc.perform(get("/v1/commissions").param("plan", "NOPE"))

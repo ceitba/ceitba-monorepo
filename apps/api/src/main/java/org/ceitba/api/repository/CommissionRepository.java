@@ -37,7 +37,7 @@ public interface CommissionRepository extends JpaRepository<Commission, String> 
     // GET /v1/subjects?plan=: every synced commission (all terms) of the given
     // subjects, times hydrated in the same query. The table keeps past terms
     // (the sync upserts by ITBA id and never prunes), so callers must pick the
-    // term they want — see SubjectPlanService.currentTerm. Ordered so the
+    // term they want — see CommissionTerms. Ordered so the
     // earliest-starting commission of a term comes first.
     // Explicitly transactional: declared query methods get no default
     // transaction, and the caller deliberately runs outside one.
