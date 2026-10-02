@@ -4,6 +4,7 @@ import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
 import org.ceitba.api.service.news.OrganizationMembershipService;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -39,6 +40,22 @@ public class OrgAccess {
 
     public boolean canWriteForOrg(String orgSlug, Authentication auth) {
         return orgSlug != null && belongsTo(auth, orgSlug);
+    }
+
+    // Drafts: members of an organization see its unpublished articles (list
+    // with ?organization=<slug>, and GET by id); everyone else only sees
+    // published ones. STAFF is handled by the caller.
+    public boolean canReadDraftsOf(String orgSlug, Authentication auth) {
+        return orgSlug != null && belongsTo(auth, orgSlug);
+    }
+
+    public boolean canReadArticleDraft(String articleId, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        if (userId == null) return false;
+        return articleRepo.findById(articleId)
+            .map(a -> a.getOrganization() != null
+                && membership.userBelongsTo(userId, a.getOrganization().getSlug()))
+            .orElse(false);
     }
 
     // Followers carry names and emails, so only the org's admins (membership
@@ -79,6 +96,11 @@ public class OrgAccess {
     }
 
     private UUID userIdOf(Authentication auth) {
+        // Anonymous callers carry the principal name "anonymousUser"; never
+        // look that up as an email.
+        if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
+            return null;
+        }
         String email = emailOf(auth);
         if (email == null) return null;
         return userRepo.findByEmail(email).map(u -> u.getId()).orElse(null);

@@ -139,7 +139,7 @@ class NewsEventEndpointsIT {
     void anonymousCannotCreate() throws Exception {
         mvc.perform(post("/v1/news/events")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"C\"}"))
+                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"General\"}"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -147,7 +147,7 @@ class NewsEventEndpointsIT {
     void regularUserCannotCreate() throws Exception {
         mvc.perform(post("/v1/news/events").with(user())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"C\"}"))
+                .content("{\"title\":\"T\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"General\"}"))
             .andExpect(status().isForbidden());
     }
 
@@ -160,7 +160,7 @@ class NewsEventEndpointsIT {
                 .content("""
                     {"title":"New Event","eventDate":"2026-09-01",
                      "startTime":"09:00","endTime":"11:00",
-                     "location":"Room 101","category":"workshop",
+                     "location":"Room 101","category":"Académico",
                      "description":"Details here"}
                     """))
             .andExpect(status().isCreated())
@@ -192,7 +192,7 @@ class NewsEventEndpointsIT {
     void createValidationFailsOnMissingTitle() throws Exception {
         mvc.perform(post("/v1/news/events").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"C\"}"))
+                .content("{\"title\":\"\",\"eventDate\":\"2026-08-01\",\"startTime\":\"10:00\",\"endTime\":\"12:00\",\"location\":\"L\",\"category\":\"General\"}"))
             .andExpect(status().isBadRequest());
     }
 }
