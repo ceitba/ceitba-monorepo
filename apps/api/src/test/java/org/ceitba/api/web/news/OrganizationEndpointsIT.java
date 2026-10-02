@@ -137,7 +137,31 @@ class OrganizationEndpointsIT {
         mvc.perform(post("/v1/organizations").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"slug\":\"it\",\"name\":\"IT v2\",\"fullName\":\"IT Branch v2\"}"))
-            .andExpect(status().isConflict());
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("ResourceAlreadyExists"));
+    }
+
+    @Test
+    void createRejectsMalformedSlugs() throws Exception {
+        for (String slug : new String[] {
+                "Upper", "with space", "acentó", "-lead", "trail-", "double--hyphen",
+                "under_score", "a", "x".repeat(41)}) {
+            mvc.perform(post("/v1/organizations").with(staff())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"slug\":\"" + slug + "\",\"name\":\"N\",\"fullName\":\"N B\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("ValidationError"));
+        }
+    }
+
+    @Test
+    void createAcceptsKebabCaseSlugAtBounds() throws Exception {
+        for (String slug : new String[] {"ab", "computer-society-2", "x".repeat(40)}) {
+            mvc.perform(post("/v1/organizations").with(staff())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"slug\":\"" + slug + "\",\"name\":\"N\",\"fullName\":\"N B\"}"))
+                .andExpect(status().isCreated());
+        }
     }
 
     @Test

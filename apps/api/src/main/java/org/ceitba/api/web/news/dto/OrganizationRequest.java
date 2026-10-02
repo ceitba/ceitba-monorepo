@@ -6,8 +6,16 @@ import jakarta.validation.constraints.Size;
 
 // POST body. logoUrl/backgroundUrl are rendered as <img src> by the SPAs,
 // so only http(s) is accepted (blank clears), like the staff/benefit URLs.
+// The slug is the primary key and the newsletter URL segment
+// (/newsletter/organizations/<slug>), and PATCH can't change it, so it is
+// pinned to URL-safe kebab-case up front: lowercase letters/digits in
+// hyphen-separated groups, 2-40 chars.
 public record OrganizationRequest(
-    @NotBlank String slug,
+    @NotBlank
+    @Size(min = 2, max = 40, message = "must be 2-40 characters")
+    @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$",
+             message = "must use only lowercase letters, digits and single hyphens between them")
+    String slug,
     @NotBlank String name,
     @NotBlank String fullName,
     String  description,
