@@ -63,14 +63,14 @@ export default function StaffSection() {
   const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
 
   const { data: years, loading: loadingYears, error: yearsError, reload: reloadYears } = useStaffYears()
-  const yearList = years ?? []
+  const yearList = useMemo(() => years ?? [], [years])
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   useEffect(() => {
     if (selectedYear == null && yearList.length > 0) setSelectedYear(yearList[0])
   }, [yearList, selectedYear])
 
   const { data: members, loading: membersLoading, error: membersError, reload: reloadMembers } = useStaffMembers(selectedYear)
-  const memberList = members ?? []
+  const memberList = useMemo(() => members ?? [], [members])
   // useStaffMembers(null) resolves [] immediately, so until the years list
   // has loaded and a year is selected we're still loading, not "empty".
   const loadingMembers = loadingYears || (selectedYear == null && yearList.length > 0) || membersLoading
