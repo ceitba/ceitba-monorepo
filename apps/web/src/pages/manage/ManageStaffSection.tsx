@@ -42,13 +42,16 @@ export default function ManageStaffSection() {
   // must not let an older year's response land last (Edit/Delete would then
   // act on the wrong year's members).
   const reqIdRef = useRef(0)
+  // Bumped by reloadMembers() after a mutation; the fetch lives in the effect
+  // so it always targets the currently selected year.
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => { fetchStaffYears().then(setYears).catch(() => setYears([])) }, [])
   // Clear the previous year's rows right away so they can't be edited or
   // deleted while the new year loads.
-  useEffect(() => { setMembers([]); reloadMembers() }, [year]) // eslint-disable-line
+  useEffect(() => { setMembers([]) }, [year])
 
-  function reloadMembers() {
+  useEffect(() => {
     const id = ++reqIdRef.current
     setLoadingMembers(true)
     fetchStaffMembers(year)
@@ -65,6 +68,10 @@ export default function ManageStaffSection() {
       .finally(() => {
         if (reqIdRef.current === id) setLoadingMembers(false)
       })
+  }, [year, refreshTick])
+
+  function reloadMembers() {
+    setRefreshTick((n) => n + 1)
   }
 
   const grouped = useMemo(() => {

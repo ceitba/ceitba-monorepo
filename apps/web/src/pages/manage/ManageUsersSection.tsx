@@ -56,6 +56,10 @@ export default function ManageUsersSection() {
   // Track the active request so an out-of-order response (e.g. fast keystrokes)
   // can't overwrite the latest one.
   const reqIdRef = useRef(0)
+  // Bumped by reload() after a mutation. The fetch itself lives in the effect
+  // so it always uses the *current* filters: a reload() captured before an
+  // await must not refetch the filters that were active when it started.
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
     fetchOrganizations().then(setOrgs).catch(() => setOrgs([]))
@@ -79,7 +83,7 @@ export default function ManageUsersSection() {
     organization: orgSlug || undefined,
   }), [pageNum, q, sort, orgSlug])
 
-  function reload() {
+  useEffect(() => {
     const id = ++reqIdRef.current
     setLoading(true)
     fetchUsers(params)
@@ -99,12 +103,11 @@ export default function ManageUsersSection() {
       .finally(() => {
         if (reqIdRef.current === id) setLoading(false)
       })
-  }
+  }, [params, refreshTick])
 
-  useEffect(() => {
-    reload()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params])
+  function reload() {
+    setRefreshTick((n) => n + 1)
+  }
 
   async function makeStaff(u: AdminUser) {
     setError(null); setBusyId(u.id)
