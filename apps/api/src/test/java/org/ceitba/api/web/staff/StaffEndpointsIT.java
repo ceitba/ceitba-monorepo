@@ -114,6 +114,16 @@ class StaffEndpointsIT {
             .andExpect(jsonPath("$").isArray());
     }
 
+    // /v1/staff/** applies the email allowlist like every other authenticated
+    // route: a STAFF JWT whose email is no longer allowlisted gets 403.
+    @Test
+    void staffWithNonAllowlistedEmailIsForbidden() throws Exception {
+        var outsider = jwt().jwt(t -> t.claim("email", "boss@gmail.com")).authorities(
+            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"),
+            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_STAFF"));
+        mvc.perform(get("/v1/staff").with(outsider)).andExpect(status().isForbidden());
+    }
+
     @Test
     void staffCanAssignAndListsActiveOnly() throws Exception {
         var body = """

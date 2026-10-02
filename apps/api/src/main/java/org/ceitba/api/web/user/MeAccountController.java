@@ -6,15 +6,13 @@ import org.ceitba.api.config.AuthProperties;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.service.user.AccountDeletionService;
 import org.ceitba.api.web.auth.CurrentUser;
+import org.ceitba.api.web.auth.SessionCookies;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.Duration;
 
 // DELETE /v1/me — the caller deletes their own account (USER). See
 // AccountDeletionService for what is deleted vs anonymized. Also clears the
@@ -42,16 +40,8 @@ public class MeAccountController {
         + "Requires a JWT session (API keys get 403); 409 if the caller is the only active staff member")
     public ResponseEntity<Void> deleteMe(@CurrentUser User user) {
         accountDeletion.deleteAccount(user.getId());
-        var cfg = auth.cookie();
-        var cookie = ResponseCookie.from(cfg.name(), "")
-            .httpOnly(true)
-            .secure(cfg.secure())
-            .path(cfg.path())
-            .sameSite(cfg.sameSite())
-            .maxAge(Duration.ZERO);
-        if (cfg.domain() != null && !cfg.domain().isBlank()) cookie.domain(cfg.domain());
         return ResponseEntity.noContent()
-            .header(HttpHeaders.SET_COOKIE, cookie.build().toString())
+            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, SessionCookies.clearHeaders(auth)))
             .build();
     }
 }

@@ -180,6 +180,22 @@ rate-limit:
         - /v1/auth/refresh
       capacity: ${RATE_LIMIT_REFRESH_CAPACITY:120}
       period: ${RATE_LIMIT_REFRESH_PERIOD:1m}
+    # Anonymous newsletter writes. Votes are deduplicated per IP+User-Agent,
+    # so a burst only means someone cycling User-Agents; GET counts stay
+    # unlimited. Generous enough for a classroom behind the campus NAT.
+    votes:
+      paths:
+        - /v1/articles/*/votes
+      methods: [POST, DELETE]
+      capacity: ${RATE_LIMIT_VOTES_CAPACITY:60}
+      period: ${RATE_LIMIT_VOTES_PERIOD:1m}
+    # ItbaNews flushes one batch (<= 50 events) per tab every 10 s.
+    analytics:
+      paths:
+        - /v1/analytics/events
+      methods: [POST]
+      capacity: ${RATE_LIMIT_ANALYTICS_CAPACITY:120}
+      period: ${RATE_LIMIT_ANALYTICS_PERIOD:1m}
   # Per authenticated user (service/ratelimit/UserRateLimiter), not per IP.
   user-rules:
     # POST /v1/proposals/attachments/sign-upload

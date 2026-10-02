@@ -1,5 +1,6 @@
 package org.ceitba.api.service.news;
 
+import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
@@ -51,6 +52,10 @@ public class ArticleService {
     public Article create(Article article, String organizationSlug, User createdBy) {
         if (article.getId() == null || article.getId().isBlank()) {
             article = rebuildWithId(article, UUID.randomUUID().toString());
+        } else if (articleRepo.existsById(article.getId())) {
+            // Ids are assigned, so save() would merge over the existing row
+            // (possibly another org's) instead of inserting.
+            throw new ResourceAlreadyExistsException("Article", article.getId());
         }
         resolveOrganization(article, organizationSlug);
         article.setCreatedBy(createdBy);

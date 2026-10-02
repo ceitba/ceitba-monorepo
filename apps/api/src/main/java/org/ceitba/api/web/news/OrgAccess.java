@@ -41,27 +41,36 @@ public class OrgAccess {
         return orgSlug != null && belongsTo(auth, orgSlug);
     }
 
-    // For PATCH: when the patch body omits `organization`, fall back to the
-    // existing article's org so we never green-light a write the caller
-    // wouldn't otherwise be allowed to make.
+    // Followers carry names and emails, so only the org's admins (membership
+    // role 'admin') see them; plain members can still edit the profile and
+    // publish. STAFF is handled by the hasRole('STAFF') escape hatch.
+    public boolean canViewFollowers(String slug, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        return slug != null && userId != null && membership.userIsAdminOf(userId, slug);
+    }
+
+    // For PATCH: the caller must belong to the org that currently owns the
+    // article and, when the patch moves it to another org, to that org too.
+    // Org-less articles are STAFF-only. A missing article yields false (403).
     public boolean canWriteForArticle(String articleId, String patchOrg, Authentication auth) {
         UUID userId = userIdOf(auth);
         if (userId == null) return false;
-        if (patchOrg != null) return membership.userBelongsTo(userId, patchOrg);
         return articleRepo.findById(articleId)
-            .map(a -> a.getOrganization() != null
-                && membership.userBelongsTo(userId, a.getOrganization().getSlug()))
+            .map(a -> canMove(userId, a.getOrganization() != null ? a.getOrganization().getSlug() : null, patchOrg))
             .orElse(false);
     }
 
     public boolean canWriteForEvent(String eventId, String patchOrg, Authentication auth) {
         UUID userId = userIdOf(auth);
         if (userId == null) return false;
-        if (patchOrg != null) return membership.userBelongsTo(userId, patchOrg);
         return eventRepo.findById(eventId)
-            .map(e -> e.getOrganization() != null
-                && membership.userBelongsTo(userId, e.getOrganization().getSlug()))
+            .map(e -> canMove(userId, e.getOrganization() != null ? e.getOrganization().getSlug() : null, patchOrg))
             .orElse(false);
+    }
+
+    private boolean canMove(UUID userId, String currentOrg, String patchOrg) {
+        if (currentOrg == null || !membership.userBelongsTo(userId, currentOrg)) return false;
+        return patchOrg == null || patchOrg.equals(currentOrg) || membership.userBelongsTo(userId, patchOrg);
     }
 
     private boolean belongsTo(Authentication auth, String orgSlug) {

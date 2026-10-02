@@ -174,6 +174,53 @@ class AuthOAuthFlowIT {
         assertThat(res.getResponse().getRedirectedUrl()).isEqualTo("https://ceitba.org.ar");
     }
 
+    // User clicked "Cancel" on Google's consent screen: Google sends
+    // ?error=access_denied&state=... and no code. Land on the SPA, not a 400.
+    @Test
+    void callback_whenUserCancelsConsent_redirectsToTargetWithAccessDenied() throws Exception {
+        var start = startLogin("https://ceitba.org.ar/manage");
+
+        var res = mvc.perform(get("/v1/auth/callback")
+                .param("error", "access_denied")
+                .param("state", stateOf(start))
+                .cookie(start.getResponse().getCookie(AuthController.STATE_COOKIE)))
+            .andExpect(status().isFound())
+            .andReturn();
+
+        assertThat(res.getResponse().getRedirectedUrl()).isEqualTo("https://ceitba.org.ar/manage?error=access_denied");
+        assertThat(res.getResponse().getCookie(auth.cookie().name())).isNull();
+        assertThat(res.getResponse().getCookie(AuthController.STATE_COOKIE).getMaxAge()).isZero();
+        assertThat(EXCHANGES.get()).isZero();
+    }
+
+    // Other Google errors are not echoed back verbatim.
+    @Test
+    void callback_withOtherGoogleErrorOrNoCode_redirectsWithAuthFailed() throws Exception {
+        var start = startLogin("https://ceitba.org.ar/manage");
+        var cookie = start.getResponse().getCookie(AuthController.STATE_COOKIE);
+
+        var withError = mvc.perform(get("/v1/auth/callback")
+                .param("error", "<script>").param("state", stateOf(start)).cookie(cookie))
+            .andExpect(status().isFound()).andReturn();
+        assertThat(withError.getResponse().getRedirectedUrl()).isEqualTo("https://ceitba.org.ar/manage?error=auth_failed");
+
+        var noCode = mvc.perform(get("/v1/auth/callback").param("state", stateOf(start)).cookie(cookie))
+            .andExpect(status().isFound()).andReturn();
+        assertThat(noCode.getResponse().getRedirectedUrl()).isEqualTo("https://ceitba.org.ar/manage?error=auth_failed");
+        assertThat(EXCHANGES.get()).isZero();
+    }
+
+    // The state is still verified: a cancel with a forged/missing state goes
+    // to FRONTEND_URL, never to a target taken from the request.
+    @Test
+    void callback_cancelWithoutValidState_isInvalidState() throws Exception {
+        var res = mvc.perform(get("/v1/auth/callback").param("error", "access_denied"))
+            .andExpect(status().isFound())
+            .andReturn();
+
+        assertThat(res.getResponse().getRedirectedUrl()).isEqualTo("https://ceitba.org.ar?error=invalid_state");
+    }
+
     @Test
     void logout_isPostOnly() throws Exception {
         mvc.perform(post("/v1/auth/logout")).andExpect(status().isNoContent());

@@ -19,6 +19,8 @@ import org.ceitba.api.web.auth.dto.ApiKeyResponse;
 import org.ceitba.api.web.auth.dto.CreateApiKeyRequest;
 import org.ceitba.api.web.auth.dto.LogoutRequest;
 import org.ceitba.api.web.auth.dto.UserMeResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.InvalidMediaTypeException;
@@ -47,6 +49,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/auth")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private static final List<String> SAFE_REDIRECT_ORIGINS = List.of(
         "https://ceitba.org.ar",
@@ -111,10 +115,14 @@ public class AuthController {
     // On failure: redirect to <frontend>?error=<reason>
     // The state must be authentic, unexpired and match the nonce cookie set by
     // /google; otherwise we never exchange the code (login-CSRF protection).
+    // When the user cancels the consent screen Google sends ?error=access_denied
+    // and no code: that also lands on the SPA (error=access_denied), never on a
+    // raw 400 from the API.
     @GetMapping("/callback")
     public ResponseEntity<Void> handleGoogleCallback(
-            @RequestParam String code,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error,
             @CookieValue(name = STATE_COOKIE, required = false) String stateNonce) {
         // Re-check the target even though it is signed: FRONTEND_URL (the
         // fallback) or an allowed origin are the only valid destinations.
@@ -124,6 +132,14 @@ public class AuthController {
             return redirect(withError(auth.frontendUrl(), "invalid_state"));
         }
         String redirectTo = verified.get();
+        if (error != null || code == null || code.isBlank()) {
+            // Only map to codes the SPAs know; never echo Google's value back.
+            String reason = "access_denied".equals(error) ? "access_denied" : "auth_failed";
+            return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(withError(redirectTo, reason)))
+                .header(HttpHeaders.SET_COOKIE, stateCookie("", Duration.ZERO).toString())
+                .build();
+        }
         try {
             var claims = googleOAuth.exchangeCode(code);
             // email_verified / allowlist / hd checks + find-or-create live in
@@ -132,12 +148,14 @@ public class AuthController {
             var token = jwtIssuer.issue(user);
             return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(redirectTo))
-                .header(HttpHeaders.SET_COOKIE, sessionCookie(token).toString())
+                .header(HttpHeaders.SET_COOKIE, SessionCookies.issue(auth, token).toString())
                 .header(HttpHeaders.SET_COOKIE, stateCookie("", Duration.ZERO).toString())
                 .build();
         } catch (LoginRejectedException e) {
             return redirect(withError(redirectTo, e.reason().code()));
         } catch (Exception e) {
+            // Class + message only: never the code, tokens or claims.
+            log.warn("Google OAuth callback failed: {}: {}", e.getClass().getSimpleName(), e.getMessage());
             return redirect(withError(redirectTo, "auth_failed"));
         }
     }
@@ -156,7 +174,7 @@ public class AuthController {
         LogoutRequest body = parseLogoutBody(contentType, rawBody);
         if (body != null && body.refreshToken() != null) tokenSessions.logout(body.refreshToken());
         return ResponseEntity.noContent()
-            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, clearSessionCookies()))
+            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, SessionCookies.clearHeaders(auth)))
             .build();
     }
 
@@ -183,7 +201,7 @@ public class AuthController {
     public ResponseEntity<Void> logoutAll(@CurrentUser User user) {
         tokenSessions.logoutAll(user.getId());
         return ResponseEntity.noContent()
-            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, clearSessionCookies()))
+            .headers(h -> h.addAll(HttpHeaders.SET_COOKIE, SessionCookies.clearHeaders(auth)))
             .build();
     }
 
@@ -269,41 +287,5 @@ public class AuthController {
             .sameSite("Lax")
             .maxAge(maxAge)
             .build();
-    }
-
-    private ResponseCookie sessionCookie(String token) {
-        var cfg = auth.cookie();
-        int ttlDays = (auth.jwt() != null && auth.jwt().ttlDays() > 0) ? auth.jwt().ttlDays() : 7;
-        var b = ResponseCookie.from(cfg.name(), token)
-            .httpOnly(true)
-            .secure(cfg.secure())
-            .path(cfg.path())
-            .sameSite(cfg.sameSite())
-            .maxAge(Duration.ofDays(ttlDays));
-        if (cfg.domain() != null && !cfg.domain().isBlank()) b.domain(cfg.domain());
-        return b.build();
-    }
-
-    // Set-Cookie values that expire the session cookie. A browser can hold two
-    // cookies with the session name: the Domain-scoped one we issue when
-    // auth.cookie.domain is set, and a host-only one issued while it was unset.
-    // A Set-Cookie only deletes the cookie whose Domain matches exactly, and
-    // the resolver accepts either, so expire both or the user stays signed in.
-    private List<String> clearSessionCookies() {
-        var domain = auth.cookie().domain();
-        if (domain == null || domain.isBlank()) return List.of(clearCookie(null).toString());
-        return List.of(clearCookie(domain).toString(), clearCookie(null).toString());
-    }
-
-    private ResponseCookie clearCookie(String domain) {
-        var cfg = auth.cookie();
-        var b = ResponseCookie.from(cfg.name(), "")
-            .httpOnly(true)
-            .secure(cfg.secure())
-            .path(cfg.path())
-            .sameSite(cfg.sameSite())
-            .maxAge(Duration.ZERO);
-        if (domain != null) b.domain(domain);
-        return b.build();
     }
 }

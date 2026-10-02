@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -14,6 +16,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -67,6 +70,35 @@ class AuthIT {
     void syncWithWrongApiKeyReturns401() throws Exception {
         mvc.perform(post("/v1/sync/all").header(ApiKeyFilter.HEADER, "wrong-key"))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void syncWithPrefixOfTheKeyReturns401() throws Exception {
+        mvc.perform(post("/v1/sync/all").header(ApiKeyFilter.HEADER, "test-sync-ke"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    // The sync key authenticates a job, not a user: endpoints that act as the
+    // caller (@CurrentUser) answer 403 instead of a NullPointerException 500.
+    @Test
+    void syncKeyOnAUserEndpointIsForbidden() throws Exception {
+        mvc.perform(get("/v1/auth/me").header(ApiKeyFilter.HEADER, "test-sync-key"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value("AccessDenied"));
+    }
+
+    @Test
+    void apiKeyTtlIsCappedAtOneYear() throws Exception {
+        var alice = jwt().jwt(t -> t.claim("email", "alice@itba.edu.ar").claim("name", "Alice"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+        mvc.perform(post("/v1/auth/api-keys").with(alice)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"script\",\"ttlDays\":366}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/v1/auth/api-keys").with(alice)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"script\",\"ttlDays\":365}"))
+            .andExpect(status().isCreated());
     }
 
     @Test

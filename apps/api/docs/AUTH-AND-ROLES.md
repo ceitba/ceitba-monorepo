@@ -247,7 +247,8 @@ authorizeHttpRequests() — per-route policy from SecurityConfig
    GET  /v1/app/config                                   -> permitAll
    /v1/sync/**               -> hasRole("SYNC")
    /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
-   /v1/staff/**              -> hasRole("STAFF")   (incl. /v1/staff/moderators)
+   /v1/staff/**              -> hasRole("STAFF") AND email in allowlist
+                                (incl. /v1/staff/moderators)
    anyRequest()              -> authenticated() AND email in allowlist (JWT only;
                                 allowlist + review email while review login is on)
    │

@@ -178,7 +178,12 @@ public class SecurityConfig {
                 .requestMatchers("/v1/staff/proposals", "/v1/staff/proposals/**")
                     .access(AuthorizationManagers.allOf(
                         AuthorityAuthorizationManager.hasRole("MODERATOR"), emailAllowlisted))
-                .requestMatchers("/v1/staff/**").hasRole("STAFF")
+                // Same allowlist gate as every other authenticated route: a
+                // still-valid JWT of an email dropped from the allowlist must
+                // not keep STAFF powers.
+                .requestMatchers("/v1/staff/**")
+                    .access(AuthorizationManagers.allOf(
+                        AuthorityAuthorizationManager.hasRole("STAFF"), emailAllowlisted))
                 .anyRequest().access(authenticatedAndAllowlisted)
             )
             .oauth2ResourceServer(oauth -> {

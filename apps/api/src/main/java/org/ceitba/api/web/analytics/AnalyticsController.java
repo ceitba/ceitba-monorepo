@@ -2,10 +2,12 @@ package org.ceitba.api.web.analytics;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.ceitba.api.config.RateLimitProperties;
 import org.ceitba.api.service.news.AnalyticsService;
 import org.ceitba.api.service.news.AnalyticsService.EventPayload;
 import org.ceitba.api.service.news.VoteService;
 import org.ceitba.api.web.analytics.dto.AnalyticsEventBatch;
+import org.ceitba.api.web.ratelimit.ClientIp;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,9 +28,11 @@ import java.util.List;
 public class AnalyticsController {
 
     private final AnalyticsService service;
+    private final RateLimitProperties rateLimit;
 
-    public AnalyticsController(AnalyticsService service) {
-        this.service = service;
+    public AnalyticsController(AnalyticsService service, RateLimitProperties rateLimit) {
+        this.service   = service;
+        this.rateLimit = rateLimit;
     }
 
     @PostMapping("/events")
@@ -49,9 +53,11 @@ public class AnalyticsController {
         return service.summary(days);
     }
 
+    // Same resolution as the rate limiter: the left-most X-Forwarded-For
+    // entry is client-controlled, so trusting it let one client vote (or be
+    // counted) as any number of "IPs".
     private String clientIp(HttpServletRequest req) {
-        String forwarded = req.getHeader("X-Forwarded-For");
-        return forwarded != null ? forwarded.split(",")[0].trim() : req.getRemoteAddr();
+        return ClientIp.resolve(req, rateLimit.trustForwardedFor());
     }
 
     private String hashIp(String ip) {

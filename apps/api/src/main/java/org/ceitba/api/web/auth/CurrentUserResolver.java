@@ -1,8 +1,11 @@
 package org.ceitba.api.web.auth;
 
 import org.ceitba.api.domain.User;
+import org.ceitba.api.service.auth.InvalidTokenException;
 import org.ceitba.api.service.auth.UserProvisioningService;
 import org.springframework.core.MethodParameter;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -38,7 +41,7 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
             Jwt jwt = jwtAuth.getToken();
             String email = jwt.getClaimAsString("email");
             String name  = jwt.getClaimAsString("name");
-            if (email == null) return null;
+            if (email == null) throw new InvalidTokenException("Token carries no email");
             return provisioning.findOrCreate(email, name, null, null);
         }
 
@@ -47,6 +50,16 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
             return user;
         }
 
-        return null;
+        // Anonymous: null, for public endpoints that take an optional user
+        // (e.g. GET /v1/wiki/bookmarks/{id}); protected routes never get here.
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+
+        // Authenticated without a user behind it (the SYNC key): endpoints
+        // that act as a user are off limits. Returning null here used to
+        // surface as a NullPointerException (500) in the controller.
+        // AccessDeniedException is mapped to 403 by GlobalExceptionHandler.
+        throw new AccessDeniedException("This endpoint requires a user session");
     }
 }

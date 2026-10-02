@@ -16,5 +16,7 @@ public interface UserOrganizationRepository
 
     boolean existsByUserIdAndOrganization(UUID userId, String organization);
 
+    boolean existsByUserIdAndOrganizationAndRole(UUID userId, String organization, String role);
+
     void deleteByUserIdAndOrganization(UUID userId, String organization);
 }

@@ -37,8 +37,7 @@ public class VoteService {
         requireArticleExists(articleId);
         String fingerprint = fingerprint(ip, userAgent);
         var recordId = new VoteRecordId(articleId, fingerprint);
-        var aggregate = voteRepo.findById(articleId)
-            .orElseGet(() -> voteRepo.save(new ArticleVote(articleId)));
+        var aggregate = lockAggregate(articleId);
 
         recordRepo.findById(recordId).ifPresentOrElse(
             existing -> {
@@ -64,10 +63,9 @@ public class VoteService {
         requireArticleExists(articleId);
         String fingerprint = fingerprint(ip, userAgent);
         var recordId = new VoteRecordId(articleId, fingerprint);
+        var aggregate = lockAggregate(articleId);
         var record = recordRepo.findById(recordId)
             .orElseThrow(() -> new ResourceNotFoundException("VoteRecord", articleId));
-        var aggregate = voteRepo.findById(articleId)
-            .orElseGet(() -> new ArticleVote(articleId));
         retractFromAggregate(aggregate, record.getVoteType());
         recordRepo.delete(record);
         return voteRepo.save(aggregate);
@@ -83,6 +81,16 @@ public class VoteService {
         if (!articleRepo.existsById(articleId)) {
             throw new ResourceNotFoundException("Article", articleId);
         }
+    }
+
+    // Concurrent votes on the same article used to read the same counters
+    // and overwrite each other (lost updates), and two identical votes could
+    // both pass the "no record yet" check. Locking the aggregate row first
+    // serializes them; the lock is held until the transaction commits.
+    private ArticleVote lockAggregate(String articleId) {
+        voteRepo.insertIfAbsent(articleId);
+        return voteRepo.findByIdForUpdate(articleId)
+            .orElseThrow(() -> new ResourceNotFoundException("Article", articleId));
     }
 
     private void incrementAggregate(ArticleVote agg, String type) {

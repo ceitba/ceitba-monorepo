@@ -30,7 +30,7 @@ class RateLimitFilterTest {
     private RateLimitFilter filter(boolean enabled, boolean trustXff, long capacity) {
         var rules = new LinkedHashMap<String, RateLimitProperties.Rule>();
         rules.put("auth", new RateLimitProperties.Rule(
-            List.of("/v1/auth/**"), List.of("/v1/auth/me"), capacity, Duration.ofMinutes(1)));
+            List.of("/v1/auth/**"), List.of("/v1/auth/me"), capacity, Duration.ofMinutes(1), null));
         return new RateLimitFilter(new RateLimitProperties(enabled, trustXff, null, rules, null), time);
     }
 
@@ -193,6 +193,26 @@ class RateLimitFilterTest {
 
         assertThat(call(f, a).getStatus()).isEqualTo(200);
         assertThat(call(f, b).getStatus()).isEqualTo(429);
+    }
+
+    // A rule with `methods` limits only those methods on its paths; other
+    // methods fall through (here: unlimited GET of the vote counts).
+    @Test
+    void methodScopedRuleLimitsOnlyItsMethods() throws Exception {
+        var rules = new LinkedHashMap<String, RateLimitProperties.Rule>();
+        rules.put("votes", new RateLimitProperties.Rule(
+            List.of("/v1/articles/*/votes"), null, 1, Duration.ofMinutes(1), List.of("post", "DELETE")));
+        var f = new RateLimitFilter(new RateLimitProperties(true, false, null, rules, null), time);
+
+        var post = req("/v1/articles/a1/votes", "1.1.1.1");
+        post.setMethod("POST");
+        assertThat(call(f, post).getStatus()).isEqualTo(200);
+        var delete = req("/v1/articles/a1/votes", "1.1.1.1");
+        delete.setMethod("DELETE");
+        assertThat(call(f, delete).getStatus()).isEqualTo(429);
+        for (int i = 0; i < 3; i++) {
+            assertThat(call(f, req("/v1/articles/a1/votes", "1.1.1.1")).getStatus()).isEqualTo(200);
+        }
     }
 
     @Test

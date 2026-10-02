@@ -14,6 +14,8 @@ import java.util.UUID;
 @Service
 public class OrganizationMembershipService {
 
+    public static final String ADMIN_ROLE = "admin";
+
     private final UserOrganizationRepository repo;
     private final OrganizationRepository orgRepo;
 
@@ -30,6 +32,12 @@ public class OrganizationMembershipService {
     public boolean userBelongsTo(UUID userId, String orgSlug) {
         if (userId == null || orgSlug == null) return false;
         return repo.existsByUserIdAndOrganization(userId, orgSlug);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean userIsAdminOf(UUID userId, String orgSlug) {
+        if (userId == null || orgSlug == null) return false;
+        return repo.existsByUserIdAndOrganizationAndRole(userId, orgSlug, ADMIN_ROLE);
     }
 
     @Transactional
