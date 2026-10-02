@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { KB_REPORT_REASONS, kbPagePath, reportKbPage, type KbPage, type KbPageSummary } from '../../../api/kb'
@@ -6,6 +6,8 @@ import { formatDate } from '../../../utils/apuntes'
 import Notice from '../../Notice'
 import ReportDialog from '../ReportDialog'
 import KindIcon from '../KindIcon'
+import { CitationContext, type CitationContextValue } from './citationContext'
+import { citationOrder } from './wikilinks'
 
 const WikiMarkdown = lazy(() => import('./WikiMarkdown'))
 
@@ -22,11 +24,20 @@ export default function WikiArticle({
   showTitle?: boolean
 }) {
   const { t, i18n } = useTranslation()
-  const [reporting, setReporting] = useState(false)
+  // null: closed; otherwise the comment to prefill ('' for the header button).
+  const [reporting, setReporting] = useState<{ comment: string; partial: boolean } | null>(null)
+  const [highlighted, setHighlighted] = useState<string | null>(null)
+  const order = useMemo(() => citationOrder(page.markdown ?? '', page.sources ?? []), [page.markdown, page.sources])
+  const citations = useMemo<CitationContextValue>(() => ({
+    order,
+    highlighted,
+    reportPart: (comment) => setReporting({ comment, partial: true }),
+  }), [order, highlighted])
   const [reported, setReported] = useState(page.reportedByMe)
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
+    <CitationContext.Provider value={citations}>
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-10">
       <article className="min-w-0">
         <header className="mb-6">
@@ -50,7 +61,7 @@ export default function WikiArticle({
             </span>
             <button
               type="button"
-              onClick={() => setReporting(true)}
+              onClick={() => setReporting({ comment: '', partial: false })}
               disabled={reported}
               className="ml-auto font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 disabled:hover:text-ink-secondary"
             >
@@ -67,7 +78,7 @@ export default function WikiArticle({
       </article>
 
       <aside className="flex flex-col gap-8 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-        <SourcesPanel page={page} />
+        <SourcesPanel page={page} order={order} onHighlight={setHighlighted} />
         <BacklinksPanel page={page} />
         {aside}
       </aside>
@@ -78,16 +89,19 @@ export default function WikiArticle({
           title={t('wiki.reportTitle')}
           intro={t('wiki.reportIntro', { title: page.title })}
           reasons={KB_REPORT_REASONS}
+          initialReason={reporting.partial ? 'CONTENT_ERROR' : undefined}
+          initialComment={reporting.comment}
           onSubmit={(reason, comment) => reportKbPage(page.id, { reason, comment })}
-          onClose={() => setReporting(false)}
+          onClose={() => setReporting(null)}
           onReported={() => {
-            setReporting(false)
+            setReporting(null)
             setReported(true)
             setNotice(t('apuntes.report.thanks'))
           }}
         />
       )}
     </div>
+    </CitationContext.Provider>
   )
 }
 
@@ -102,21 +116,36 @@ export function PanelSection({ title, children }: { title: string; children: Rea
   )
 }
 
-function SourcesPanel({ page }: { page: KbPage }) {
+// Sources numbered like the inline markers ([1] = first cited). Hovering or
+// focusing one highlights its markers in the text.
+function SourcesPanel({ page, order, onHighlight }: {
+  page: KbPage
+  order: string[]
+  onHighlight: (id: string | null) => void
+}) {
   const { t } = useTranslation()
   if (!page.sources?.length) return null
+  const byId = new Map(page.sources.map((s) => [s.id, s]))
+  const numbered = order.map((id, i) => ({ n: i + 1, source: byId.get(id) })).filter((x) => x.source)
   return (
     <PanelSection title={t('wiki.sources')}>
       <ol className="flex flex-col gap-2">
-        {page.sources.map((s, i) => {
-          const author = s.author?.anonymous || !s.author?.name ? t('apuntes.anonymousAuthor') : s.author.name
+        {numbered.map(({ n, source: s }) => {
+          const author = s!.author?.anonymous || !s!.author?.name ? t('apuntes.anonymousAuthor') : s!.author.name
           return (
-            <li key={s.id} className="flex items-start gap-2">
-              <span className="kb-cite-static" aria-hidden="true">{i + 1}</span>
+            <li
+              key={s!.id}
+              className="flex items-start gap-2"
+              onMouseEnter={() => onHighlight(s!.id)}
+              onMouseLeave={() => onHighlight(null)}
+              onFocus={() => onHighlight(s!.id)}
+              onBlur={() => onHighlight(null)}
+            >
+              <span className="font-mono text-label text-ink-secondary dark:text-night-muted mt-0.5 flex-shrink-0">[{n}]</span>
               <div className="min-w-0">
-                <Link to={`/apuntes/archivo/${encodeURIComponent(s.id)}`} className="inline-flex items-start gap-1.5 font-body text-body-sm text-ink-primary dark:text-night-text hover:text-primary break-words">
-                  <KindIcon kind={s.kind} size={14} className="mt-1" />
-                  <span>{s.name}</span>
+                <Link to={`/apuntes/archivo/${encodeURIComponent(s!.id)}`} className="inline-flex items-start gap-1.5 font-body text-body-sm text-ink-primary dark:text-night-text hover:text-primary break-words">
+                  <KindIcon kind={s!.kind} size={14} className="mt-1" />
+                  <span>{s!.name}</span>
                 </Link>
                 <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{author}</p>
               </div>

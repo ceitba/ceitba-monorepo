@@ -7,7 +7,9 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import { kbPagePath, type KbPage } from '../../../api/kb'
-import { CITE_SCHEME, preprocessWikilinks, WIKI_SCHEME } from './wikilinks'
+import { CITE_SCHEME, preprocessWikilinks, sectionByLine, WIKI_SCHEME } from './wikilinks'
+import CitationMarker from './CitationMarker'
+import { useCitations } from './citationContext'
 
 // Markdown body of a wiki page (lazy chunk: react-markdown, remark/rehype,
 // KaTeX). Raw HTML is never rendered (no rehype-raw); wikilinks were turned
@@ -34,8 +36,10 @@ function urlTransform(url: string): string {
 export default function WikiMarkdown({ page }: { page: KbPage }) {
   const { t } = useTranslation()
   const links = new Map(page.links.map((l) => [l.raw, l]))
-  const sources = new Map(page.sources.map((s, i) => [s.id, { ...s, n: i + 1 }]))
-  const markdown = preprocessWikilinks(page.markdown ?? '', page.links ?? [], page.sources ?? [])
+  const sources = new Map(page.sources.map((s) => [s.id, s]))
+  const { order } = useCitations()
+  const markdown = preprocessWikilinks(page.markdown ?? '', page.links ?? [], order)
+  const sections = sectionByLine(markdown)
 
   function heading(level: 2 | 3 | 4) {
     const Tag = `h${level}` as const
@@ -54,7 +58,7 @@ export default function WikiMarkdown({ page }: { page: KbPage }) {
     h2: heading(2),
     h3: heading(3),
     h4: heading(4),
-    a({ href, children }) {
+    a({ href, title, children, node }) {
       const url = href ?? ''
       if (url.startsWith(WIKI_SCHEME)) {
         const raw = decodeURIComponent(url.slice(WIKI_SCHEME.length))
@@ -72,13 +76,15 @@ export default function WikiMarkdown({ page }: { page: KbPage }) {
       }
       if (url.startsWith(CITE_SCHEME)) {
         const id = decodeURIComponent(url.slice(CITE_SCHEME.length))
-        const source = sources.get(id)
-        const author = source?.author?.anonymous || !source?.author?.name ? t('apuntes.anonymousAuthor') : source.author.name
-        const tip = source ? `${source.name} · ${author}` : t('wiki.unknownSource')
+        const line = node?.position?.start.line ?? 0
         return (
-          <Link to={`/apuntes/archivo/${encodeURIComponent(id)}`} className="kb-cite" title={tip} aria-label={t('wiki.citeAria', { name: tip })}>
-            {children}
-          </Link>
+          <CitationMarker
+            fileId={id}
+            n={order.indexOf(id) + 1}
+            label={title ?? null}
+            section={sections[line] ?? null}
+            source={sources.get(id)}
+          />
         )
       }
       if (url.startsWith('#')) return <a href={url}>{children}</a>

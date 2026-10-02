@@ -281,7 +281,14 @@
     "anchorAria": "Enlace a la sección «{{title}}»",
     "unresolved": "Esta página todavía no existe",
     "unknownSource": "Fuente no disponible",
-    "citeAria": "Fuente: {{name}}"
+    "cite": {
+      "aria": "Fuente {{n}}: {{name}}",
+      "popoverAria": "Fuente {{n}}",
+      "open": "Abrir archivo",
+      "report": "Reportar un error en esta parte",
+      "reportSection": "Sección: {{section}}",
+      "reportSource": "Fuente [{{n}}]: {{name}}"
+    }
   },
   "manage": {
     "drive": {

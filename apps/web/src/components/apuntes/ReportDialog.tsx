@@ -20,6 +20,8 @@ export default function ReportDialog<R extends string = string>({
   onSubmit,
   title,
   intro,
+  initialReason,
+  initialComment,
 }: {
   fileId?: string
   fileName: string
@@ -29,11 +31,13 @@ export default function ReportDialog<R extends string = string>({
   onSubmit?: (reason: R, comment: string) => Promise<void>
   title?: string
   intro?: string
+  initialReason?: R
+  initialComment?: string
 }) {
   const { t } = useTranslation()
   const reasonList = (reasons ?? REPORT_REASONS) as readonly R[]
-  const [reason, setReason] = useState<R | null>(null)
-  const [comment, setComment] = useState('')
+  const [reason, setReason] = useState<R | null>(initialReason ?? null)
+  const [comment, setComment] = useState(initialComment ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
