@@ -196,13 +196,24 @@ public class ScheduleCorrectionService {
 
     // ---- Staff -----------------------------------------------------------
 
+    // Newest first. Corrections of a commission whose course has ended
+    // (course_end < today, ART) are frozen PENDING/APPLIED and no longer
+    // actionable, so they are left out of the default (unfiltered) list and
+    // of the PENDING and APPLIED filters; the REJECTED, RESOLVED and
+    // SUPERSEDED filters still list them as history.
     @Transactional(readOnly = true)
     public PageResponse<StaffCorrectionResponse> staffList(ScheduleCorrectionStatus status, int page, int limit) {
         int size = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
         var pageable = PageRequest.of(Math.max(page, 1) - 1, size);
-        Page<ScheduleCorrection> result = status == null
-            ? corrections.findAllByOrderByCreatedAtDescIdDesc(pageable)
-            : corrections.findByStatusOrderByCreatedAtDescIdDesc(status, pageable);
+        Page<ScheduleCorrection> result;
+        if (status == null) {
+            result = corrections.findOnRunningCommissions(
+                EnumSet.allOf(ScheduleCorrectionStatus.class), LocalDate.now(clock), pageable);
+        } else if (OPEN.contains(status)) {
+            result = corrections.findOnRunningCommissions(List.of(status), LocalDate.now(clock), pageable);
+        } else {
+            result = corrections.findByStatusOrderByCreatedAtDescIdDesc(status, pageable);
+        }
         var ctx = context(result.getContent());
         var data = result.getContent().stream().map(c -> toStaffResponse(c, ctx)).toList();
         return new PageResponse<>(data, new PageResponse.Meta(result.getTotalElements(), Math.max(page, 1), size));

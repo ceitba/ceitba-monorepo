@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -56,5 +57,21 @@ public interface ScheduleCorrectionRepository extends JpaRepository<ScheduleCorr
     Page<ScheduleCorrection> findByStatusOrderByCreatedAtDescIdDesc(ScheduleCorrectionStatus status,
                                                                     Pageable pageable);
 
-    Page<ScheduleCorrection> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
+    // Staff list without the corrections of commissions whose course has
+    // ended (course_end < today): those stay PENDING/APPLIED forever and are
+    // no longer actionable. Newest first.
+    @Query(value = """
+        select c from ScheduleCorrection c
+        where c.status in :statuses
+          and exists (select 1 from Commission m where m.id = c.commissionId and m.courseEnd >= :today)
+        order by c.createdAt desc, c.id desc
+        """,
+        countQuery = """
+        select count(c) from ScheduleCorrection c
+        where c.status in :statuses
+          and exists (select 1 from Commission m where m.id = c.commissionId and m.courseEnd >= :today)
+        """)
+    Page<ScheduleCorrection> findOnRunningCommissions(@Param("statuses") Collection<ScheduleCorrectionStatus> statuses,
+                                                      @Param("today") LocalDate today,
+                                                      Pageable pageable);
 }

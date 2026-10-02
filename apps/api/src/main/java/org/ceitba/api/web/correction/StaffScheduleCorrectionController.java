@@ -36,7 +36,9 @@ public class StaffScheduleCorrectionController {
     }
 
     @GetMapping
-    @Operation(summary = "Schedule corrections, newest first, optionally filtered by status")
+    @Operation(summary = "Schedule corrections, newest first, optionally filtered by status",
+        description = "Corrections of commissions whose course has ended are left out of the default list "
+            + "and of the PENDING and APPLIED filters; REJECTED, RESOLVED and SUPERSEDED still list them.")
     public PageResponse<StaffCorrectionResponse> list(@RequestParam(required = false) ScheduleCorrectionStatus status,
                                                       @RequestParam(defaultValue = "1") int page,
                                                       @RequestParam(defaultValue = "20") int limit) {
