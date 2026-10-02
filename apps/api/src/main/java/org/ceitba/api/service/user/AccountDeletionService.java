@@ -35,7 +35,8 @@ import java.util.UUID;
 //             wiki.drive_source (Apuntes folders) with every copied file
 //             and the reports on them, plus the stored copies (after
 //             commit, best effort); the user's drive_file_report rows (the
-//             reported files are recounted and re-evaluated).
+//             reported files are recounted and re-evaluated);
+//             wiki.kb_page_report rows (page counters adjusted).
 //   detached  articles.created_by, news_events.created_by -> NULL
 //             (content belongs to the organization);
 //             schedule_correction.suggester_id / reviewed_by -> NULL; APPROVED
@@ -105,6 +106,7 @@ public class AccountDeletionService {
         deletion.detachScheduleCorrections(userId);
         drive.prepareAccountDeletion(userId);
         deletion.deleteDriveSources(userId);
+        deletion.deleteKbReports(userId);
 
         if (deletion.countRetainedContributions(userId) > 0) {
             deletion.anonymizeUser(userId);

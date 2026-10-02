@@ -12,6 +12,7 @@ import org.ceitba.api.repository.drive.DriveFileReportRepository;
 import org.ceitba.api.repository.drive.DriveFileRepository;
 import org.ceitba.api.repository.drive.DriveSourceRepository;
 import org.ceitba.api.repository.drive.DriveUnclaimedShareRepository;
+import org.ceitba.api.service.kb.KbModerationService;
 import org.ceitba.api.web.drive.dto.PageResponse;
 import org.ceitba.api.web.drive.dto.StaffFileResponse;
 import org.ceitba.api.web.drive.dto.StaffReportResponse;
@@ -47,12 +48,13 @@ public class DriveModerationService {
     private final DriveViews views;
     private final DriveStorageJanitor janitor;
     private final DriveBlobs blobs;
+    private final KbModerationService kb;
     private final Clock clock;
 
     public DriveModerationService(DriveSourceRepository sources, DriveFileRepository files,
                                   DriveFileReportRepository reports, DriveUnclaimedShareRepository unclaimed,
                                   DriveRecalculator recalculator, DriveViews views, DriveStorageJanitor janitor,
-                                  DriveBlobs blobs, Clock clock) {
+                                  DriveBlobs blobs, KbModerationService kb, Clock clock) {
         this.sources = sources;
         this.files = files;
         this.reports = reports;
@@ -61,6 +63,7 @@ public class DriveModerationService {
         this.views = views;
         this.janitor = janitor;
         this.blobs = blobs;
+        this.kb = kb;
         this.clock = clock;
     }
 
@@ -97,7 +100,10 @@ public class DriveModerationService {
         var now = OffsetDateTime.now(clock);
         source.setStatus(DriveSourceStatus.BLOCKED);
         source.setReview(staffId, now, blankToNull(comment));
-        recalculator.recompute(source, files.findBySourceId(sourceId));
+        var all = files.findBySourceId(sourceId);
+        recalculator.recompute(source, all);
+        // Takedown: wiki pages built on this folder's files go hidden.
+        kb.hidePagesCiting(all.stream().map(DriveFile::getId).toList());
         return views.staffSources(List.of(source)).get(0);
     }
 
@@ -138,6 +144,8 @@ public class DriveModerationService {
         }
         var source = source(file.getSourceId());
         recalculator.recompute(source, files.findBySourceId(source.getId()));
+        // Takedown: wiki pages citing a file staff removed go hidden.
+        if (decision == DriveStaffDecision.REMOVE) kb.hidePagesCiting(List.of(fileId));
         return staffFiles(List.of(file)).get(0);
     }
 

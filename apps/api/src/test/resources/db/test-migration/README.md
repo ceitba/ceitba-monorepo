@@ -37,3 +37,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.22 schedule_corrections | V30 |
 | V4.23 drive_sync | V31 |
 | V4.24 drive_file_flags | V32 |
+| V4.25 subject_wiki | V33 |
