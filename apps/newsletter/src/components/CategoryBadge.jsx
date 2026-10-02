@@ -1,6 +1,4 @@
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { normalizeCategory } from '../constants/categories'
+import { useCategoryLabel } from '../hooks/useCategoryLabel'
 
 const CATEGORY_STYLES = {
   Académico:      'bg-primary-100 text-primary-700',
@@ -12,17 +10,9 @@ const CATEGORY_STYLES = {
   General:        'bg-ink-secondary/10 text-ink-secondary',
 }
 
-export function useCategoryLabel() {
-  const { t } = useTranslation()
-  return useCallback((category) => {
-    const canonical = normalizeCategory(category)
-    return t(`categories.${canonical}`, { defaultValue: canonical ?? '' })
-  }, [t])
-}
-
 export default function CategoryBadge({ category, className = '' }) {
   const label = useCategoryLabel()
-  const style = CATEGORY_STYLES[normalizeCategory(category)] ?? 'bg-border text-ink-secondary'
+  const style = CATEGORY_STYLES[category] ?? 'bg-border text-ink-secondary'
 
   return (
     <span

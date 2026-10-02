@@ -80,7 +80,7 @@ export default function OrgPortalPage() {
         const updated = await fetchOrganizationBySlug(slug)
         setOrg(updated)
       } catch { /* keep stale count on error */ }
-    } catch (err) {
+    } catch {
       setFollowing(previously)
       setFollowError(t('orgs.followError'))
     } finally {

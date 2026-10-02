@@ -112,7 +112,7 @@ export default function ContributorReviewChangesPage() {
       <div className="rounded-card border border-blue-200 bg-blue-50 px-4 py-3">
         <p className="font-body text-body-sm text-blue-800">
           El staff propuso cambios en tu {isArticle ? 'artículo' : 'evento'}{' '}
-          <strong>"{resource.title}"</strong>. Revisá las diferencias y decidí si aceptás la versión propuesta o la devolvés al estado de revisión.
+          <strong>“{resource.title}”</strong>. Revisá las diferencias y decidí si aceptás la versión propuesta o la devolvés al estado de revisión.
         </p>
       </div>
 

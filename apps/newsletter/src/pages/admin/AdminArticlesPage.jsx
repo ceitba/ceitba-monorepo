@@ -1,27 +1,26 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ARTICLE_STATUSES, deleteArticle, fetchAllArticles } from '../../api/articles'
+import { ALL_STATUSES, deleteArticle, fetchAllArticles } from '../../api/articles'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import CategoryBadge from '../../components/CategoryBadge'
 import { formatDate } from '../../utils/dates'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 
-// Articles visible to the current admin user.
+// Articles visible to the current admin user, drafts included.
 //
-// The API only returns non-published articles to STAFF, and only for an
-// explicit ?status= (no param means "published" for everyone, and there is
-// no "all" value), so staff get one request per status, merged. Org members
-// only ever get published articles from the API; we scope them to their own
-// organizations.
+// Staff list everything with one ?status=all walk (already newest first).
+// Org members get ?status=all scoped to each of their organizations — the
+// API returns an org's drafts to its members — merged and re-sorted.
 async function loadArticles(profile) {
   if (isStaff(profile)) {
-    const lists = await Promise.all(ARTICLE_STATUSES.map((status) => fetchAllArticles({ status })))
-    return sortNewestFirst(dedupeById(lists.flat()))
+    return fetchAllArticles({ status: ALL_STATUSES })
   }
   const slugs = getOrganizations(profile).map((o) => o.slug)
-  const lists = await Promise.all(slugs.map((organization) => fetchAllArticles({ organization })))
+  const lists = await Promise.all(
+    slugs.map((organization) => fetchAllArticles({ organization, status: ALL_STATUSES })),
+  )
   return sortNewestFirst(dedupeById(lists.flat()))
 }
 
@@ -29,8 +28,15 @@ function dedupeById(list) {
   return [...new Map(list.map((a) => [a.id, a])).values()]
 }
 
+// createdAt is an ISO OffsetDateTime whose fractional seconds vary in
+// length ("…:00Z" vs "…:00.5Z"), so compare instants, not strings.
+function createdAtMs(a) {
+  const ms = Date.parse(a.createdAt ?? '')
+  return Number.isNaN(ms) ? 0 : ms
+}
+
 function sortNewestFirst(list) {
-  return [...list].sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+  return [...list].sort((a, b) => createdAtMs(b) - createdAtMs(a))
 }
 
 export default function AdminArticlesPage() {
@@ -110,11 +116,6 @@ export default function AdminArticlesPage() {
           <p className="font-body text-body-sm text-ink-secondary mt-0.5">
             {t('admin.articles.count', { count: articles.length })}
           </p>
-          {!staff && (
-            <p className="font-body text-body-sm text-ink-secondary mt-1">
-              {t('admin.articles.publishedOnlyNote')}
-            </p>
-          )}
         </div>
         <Link
           to="/admin/articles/new"

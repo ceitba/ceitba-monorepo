@@ -12,7 +12,7 @@ function saveMyVote(articleId, vote) {
   const mv = loadMyVotes()
   if (vote) mv[articleId] = vote
   else delete mv[articleId]
-  try { sessionStorage.setItem(MY_VOTES_KEY, JSON.stringify(mv)) } catch {}
+  try { sessionStorage.setItem(MY_VOTES_KEY, JSON.stringify(mv)) } catch { /* storage unavailable (private mode, quota): keep the in-memory state */ }
 }
 
 const votesPath = (articleId) => `/articles/${encodeURIComponent(articleId)}/votes`

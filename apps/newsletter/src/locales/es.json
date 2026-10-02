@@ -145,7 +145,6 @@
       "emptyTitle": "Sin artículos",
       "emptyMessage": "Creá el primer artículo para el newsletter.",
       "deleteError": "No se pudo eliminar el artículo. Intentá de nuevo.",
-      "publishedOnlyNote": "Se muestran los artículos publicados de tus organizaciones. Los borradores solo los ve el staff.",
       "columns": {
         "title": "Título",
         "status": "Estado",
@@ -183,7 +182,11 @@
       "notFoundTitle": "No encontrado",
       "notFoundMessage": "No existe o no tenés acceso para editarlo.",
       "loadErrorTitle": "No se pudo cargar",
-      "loadErrorMessage": "Revisá tu conexión e intentá de nuevo. No se guardó ningún cambio."
+      "loadErrorMessage": "Revisá tu conexión e intentá de nuevo. No se guardó ningún cambio.",
+      "errors": {
+        "category": "Elegí una categoría de la lista.",
+        "httpUrl": "Tiene que ser una URL que empiece con http:// o https://, sin espacios."
+      }
     },
     "articleForm": {
       "loading": "Cargando artículo…",

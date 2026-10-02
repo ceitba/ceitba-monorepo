@@ -8,8 +8,8 @@ import {
 } from '../../api/articles'
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
-import { DEFAULT_CATEGORY, categoryOptions, normalizeCategory } from '../../constants/categories'
-import { useCategoryLabel } from '../../components/CategoryBadge'
+import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
+import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import ImageUploader from '../../components/ImageUploader'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 import LoadErrorState from '../../components/admin/LoadErrorState'
@@ -82,7 +82,7 @@ export default function AdminArticleFormPage() {
           coverImage:  existing.coverImage ?? '',
           colorScheme: existing.colorScheme ?? 'blue',
           status:      existing.status ?? 'published',
-          category: normalizeCategory(existing.category) || DEFAULT_CATEGORY,
+          category: existing.category || DEFAULT_CATEGORY,
           body: Array.isArray(existing.body) && existing.body.length
             ? existing.body
             : [existing.excerpt ?? ''],
@@ -111,6 +111,7 @@ export default function AdminArticleFormPage() {
     if (!values.date)               e.date        = t('admin.articleForm.errors.date')
     if (!values.readingTime.trim()) e.readingTime = t('admin.articleForm.errors.readingTime')
     if (values.body.every((p) => !p.trim())) e.body = t('admin.articleForm.errors.body')
+    if (!isCanonicalCategory(values.category)) e.category = t('admin.form.errors.category')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -247,6 +248,7 @@ export default function AdminArticleFormPage() {
           <select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass()}>
             {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
           </select>
+          {errors.category && <span role="alert" className="mt-1.5 block font-body text-body-sm text-red-600">{errors.category}</span>}
         </SidebarCard>
 
         <SidebarCard title={t('admin.form.organization')}>

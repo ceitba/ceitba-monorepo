@@ -13,7 +13,7 @@ function load() {
 }
 
 function persist(events) {
-  try { localStorage.setItem(KEY, JSON.stringify(events)) } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(events)) } catch { /* storage unavailable (private mode, quota): keep the in-memory state */ }
 }
 
 let _events = load()
