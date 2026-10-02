@@ -28,8 +28,15 @@ function dedupeById(list) {
   return [...new Map(list.map((a) => [a.id, a])).values()]
 }
 
+// createdAt is an ISO OffsetDateTime whose fractional seconds vary in
+// length ("…:00Z" vs "…:00.5Z"), so compare instants, not strings.
+function createdAtMs(a) {
+  const ms = Date.parse(a.createdAt ?? '')
+  return Number.isNaN(ms) ? 0 : ms
+}
+
 function sortNewestFirst(list) {
-  return [...list].sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+  return [...list].sort((a, b) => createdAtMs(b) - createdAtMs(a))
 }
 
 export default function AdminArticlesPage() {
