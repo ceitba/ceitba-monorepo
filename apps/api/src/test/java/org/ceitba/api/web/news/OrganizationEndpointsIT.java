@@ -150,7 +150,9 @@ class OrganizationEndpointsIT {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"slug\":\"" + slug + "\",\"name\":\"N\",\"fullName\":\"N B\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("ValidationError"));
+                .andExpect(jsonPath("$.error").value("ValidationError"))
+                // The message names the field so the SPA/staff can tell what to fix
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.startsWith("slug: ")));
         }
     }
 
@@ -171,6 +173,23 @@ class OrganizationEndpointsIT {
                 .content("{\"name\":\"IT Updated\",\"fullName\":\"IT Branch Updated\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("IT Updated"));
+    }
+
+    // The slug is the primary key and only comes from the path: a slug in the
+    // PATCH body (even one the create pattern would reject) is ignored, so
+    // existing orgs stay editable and can't be renamed through PATCH.
+    @Test
+    void patchIgnoresSlugInBody() throws Exception {
+        mvc.perform(patch("/v1/organizations/it").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"slug\":\"Not A Slug\",\"name\":\"IT Renamed\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.slug").value("it"))
+            .andExpect(jsonPath("$.name").value("IT Renamed"));
+
+        mvc.perform(get("/v1/organizations/it"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("IT Renamed"));
     }
 
     @Test
