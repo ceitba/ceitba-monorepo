@@ -27,7 +27,8 @@
     "tabs": {
       "staff": "Staff",
       "benefits": "Benefits",
-      "users": "Users"
+      "users": "Users",
+      "corrections": "Schedule corrections"
     },
     "staff": {
       "year": "Year",
@@ -125,7 +126,75 @@
       "demoteOrgBody": "{{name}} will stay a member of {{org}}, but without admin access (e.g. the followers list).",
       "demoteOrgConfirm": "Remove admin"
     },
-    "tabsAria": "Manage sections"
+    "tabsAria": "Manage sections",
+    "corrections": {
+      "intro": "Schedule corrections are suggested by students and apply on their own once they reach 3 confirmations and more confirmations than rejections. This panel is a safety net: you can apply a pending one right away or reject one (if it was applied, it reverts to the SGA schedule). Corrections are anonymous.",
+      "filterLabel": "Status",
+      "filter": {
+        "PENDING": "Pending",
+        "APPLIED": "Applied",
+        "REJECTED": "Rejected",
+        "RESOLVED": "Resolved",
+        "SUPERSEDED": "Superseded"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "APPLIED": "Applied",
+        "appliedByVotes": "Applied by votes",
+        "appliedByStaff": "Applied by staff",
+        "REJECTED": "Rejected",
+        "rejectedByStaff": "Rejected by staff",
+        "RESOLVED": "Resolved (the SGA already fixed it)",
+        "SUPERSEDED": "Superseded (the SGA changed or another correction was applied)"
+      },
+      "col": {
+        "commission": "Subject and commission",
+        "sga": "SGA schedule",
+        "proposed": "Proposed schedule",
+        "votes": "Votes",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "commission": "Commission {{name}}",
+      "created": "Suggested on {{date}}",
+      "reviewed": "Reviewed on {{date}}",
+      "votes": "{{confirms}} confirm · {{rejects}} reject",
+      "noSlots": "No slots",
+      "days": {
+        "MONDAY": "Mon",
+        "TUESDAY": "Tue",
+        "WEDNESDAY": "Wed",
+        "THURSDAY": "Thu",
+        "FRIDAY": "Fri",
+        "SATURDAY": "Sat",
+        "SUNDAY": "Sun"
+      },
+      "apply": "Apply",
+      "reject": "Reject",
+      "revert": "Revert",
+      "applyAria": "Apply the correction for {{label}}",
+      "rejectAria": "Reject the correction for {{label}}",
+      "revertAria": "Revert the correction for {{label}}",
+      "rejectTitle": "Reject this correction?",
+      "rejectBody": "The correction for {{subject}} · Commission {{commission}} will be rejected and won't apply even if it keeps getting votes.",
+      "rejectConfirm": "Reject",
+      "revertTitle": "Revert this correction?",
+      "revertBody": "{{subject}} · Commission {{commission}} will go back to showing the SGA schedule in the Schedule Builder. The correction is rejected and won't re-apply by votes.",
+      "revertConfirm": "Revert",
+      "appliedNotice": "Done: the correction for {{subject}} · Commission {{commission}} is now used in the Schedule Builder.",
+      "rejectedNotice": "Done: you rejected the correction for {{subject}} · Commission {{commission}}.",
+      "revertedNotice": "Done: {{subject}} · Commission {{commission}} is back on the SGA schedule.",
+      "conflict": "This correction changed state in the meantime (votes, the SGA sync or another staff member). The list was reloaded with its current state.",
+      "empty": {
+        "PENDING": "No pending corrections.",
+        "APPLIED": "No applied corrections.",
+        "REJECTED": "No rejected corrections.",
+        "RESOLVED": "No resolved corrections.",
+        "SUPERSEDED": "No superseded corrections."
+      },
+      "emptyHint": "This is where schedules that students propose to fix from the Schedule Builder will show up. Normally you don't need to do anything: each correction applies on its own once enough other students confirm it.",
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections"
+    }
   },
   "profile": {
     "title": "My profile",

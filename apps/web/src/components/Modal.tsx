@@ -88,7 +88,8 @@ export default function Modal({ title, children, footer, onClose, busy = false, 
       document.body.style.overflow = prevOverflow
       previouslyFocused?.focus?.()
     }
-    // Mount-only: focus/trap setup must not re-run on every parent render.
+    // Mount-only by design: initialFocusRef is only read for the initial focus;
+    // re-running would re-steal focus and re-snapshot the restore target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
