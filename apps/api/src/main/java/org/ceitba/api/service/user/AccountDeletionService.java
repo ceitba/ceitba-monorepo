@@ -86,6 +86,7 @@ public class AccountDeletionService {
         deletion.deleteWikiPersonalData(userId);
         deletion.detachNewsletterAuthorship(userId);
         deletion.deleteProposalData(userId);
+        deletion.deleteScheduleCorrectionData(userId);
 
         if (deletion.countRetainedContributions(userId) > 0) {
             deletion.anonymizeUser(userId);

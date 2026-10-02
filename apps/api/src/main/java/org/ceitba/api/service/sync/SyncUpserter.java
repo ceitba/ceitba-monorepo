@@ -5,17 +5,21 @@ import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.PlanSubject;
 import org.ceitba.api.domain.PlanSubjectId;
 import org.ceitba.api.domain.Subject;
+import org.ceitba.api.domain.correction.CorrectionSlot;
 import org.ceitba.api.external.itba.CommissionProjection;
 import org.ceitba.api.external.itba.SubjectPlanProjection;
 import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.service.correction.CorrectionSlots;
+import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,17 +31,21 @@ import java.util.Optional;
 class SyncUpserter {
 
     private static final Logger log = LoggerFactory.getLogger(SyncUpserter.class);
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     private final SubjectRepository subjectRepository;
     private final PlanSubjectRepository planSubjectRepository;
     private final CommissionRepository commissionRepository;
+    private final ScheduleCorrectionService scheduleCorrections;
 
     SyncUpserter(SubjectRepository subjectRepository,
                  PlanSubjectRepository planSubjectRepository,
-                 CommissionRepository commissionRepository) {
+                 CommissionRepository commissionRepository,
+                 ScheduleCorrectionService scheduleCorrections) {
         this.subjectRepository = subjectRepository;
         this.planSubjectRepository = planSubjectRepository;
         this.commissionRepository = commissionRepository;
+        this.scheduleCorrections = scheduleCorrections;
     }
 
     // One transaction per plan — a bad row in plan A shouldn't roll back B.
@@ -106,9 +114,13 @@ class SyncUpserter {
 
     // Returns true when the commission was created, false when updated. The
     // caller counts it only after this transaction has committed.
+    //
+    // An existing commission is locked (SELECT ... FOR UPDATE) like every
+    // schedule-correction write does, so a slot change and its correction
+    // expiry can't interleave with a vote on the same commission.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean upsertCommission(CommissionProjection projection) {
-        Optional<Commission> existing = commissionRepository.findById(projection.id());
+        Optional<Commission> existing = commissionRepository.findForUpdate(projection.id());
         var commission = existing.orElseGet(() -> new Commission(
             projection.id(), projection.subjectCode(), projection.commissionName(),
             projection.courseStart(), projection.courseEnd(),
@@ -117,6 +129,13 @@ class SyncUpserter {
         // Refresh mutable fields
         commission.setEnrolledStudents(projection.enrolledStudents());
         commission.setQuota(projection.quota());
+
+        var newSlots = projection.times().stream()
+            .map(t -> new CorrectionSlot(t.day().name(), t.hourFrom().format(HH_MM), t.hourTo().format(HH_MM)))
+            .sorted(CorrectionSlot.ORDER)
+            .toList();
+        boolean slotsChanged = existing.isPresent()
+            && !CorrectionSlots.sameSet(CorrectionSlots.fromTimes(commission.getTimes()), newSlots);
 
         if (existing.isPresent()) {
             // Delete the old slots before inserting the new ones: Hibernate
@@ -132,6 +151,10 @@ class SyncUpserter {
         }
 
         commissionRepository.save(commission);
+        if (slotsChanged) {
+            // Student corrections were made against the old SGA slots.
+            scheduleCorrections.onSgaSlotsChanged(projection.id(), newSlots);
+        }
         return existing.isEmpty();
     }
 }
