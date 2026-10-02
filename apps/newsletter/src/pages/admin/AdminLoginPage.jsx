@@ -2,7 +2,8 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { startGoogleSignIn } from '../../store/authStore'
 
-const KNOWN_ERRORS = ['unauthorized', 'unauthorized_workspace', 'unverified_email', 'invalid_state', 'auth_failed']
+// access_denied = the user cancelled the Google consent screen.
+const KNOWN_ERRORS = ['unauthorized', 'unauthorized_workspace', 'unverified_email', 'invalid_state', 'auth_failed', 'access_denied']
 
 export default function AdminLoginPage() {
   const { t } = useTranslation()

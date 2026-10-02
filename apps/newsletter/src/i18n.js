@@ -18,4 +18,11 @@ i18n
     },
   })
 
+// Keep <html lang> in sync with the UI language (index.html hardcodes it) so
+// screen readers and the browser's translate prompt follow language switches.
+document.documentElement.lang = i18n.language || getLang()
+i18n.on('languageChanged', (lang) => {
+  document.documentElement.lang = lang
+})
+
 export default i18n

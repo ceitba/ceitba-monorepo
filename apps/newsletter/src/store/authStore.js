@@ -152,6 +152,18 @@ export function isStaff(profile = _profile) {
   return profile?.role === 'staff'
 }
 
+// Membership role 'admin' (set by staff from the CEITBA dashboard), as
+// opposed to a plain 'member'.
+export function isOrgAdmin(slug, profile = _profile) {
+  return getOrganizations(profile).some((m) => m.slug === slug && m.role === 'admin')
+}
+
+// The followers list exposes names and emails: the API only serves it to
+// staff and to that org's admins, so plain members don't get the link.
+export function canViewFollowers(slug, profile = _profile) {
+  return isStaff(profile) || isOrgAdmin(slug, profile)
+}
+
 // Who may enter /admin: staff, or members of at least one organization
 // (they manage their org's articles/events/profile).
 export function canAccessAdmin(profile = _profile) {

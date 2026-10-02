@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { fetchOrganizationFollowers } from '../../api/follows'
 import { fetchOrganizationBySlug } from '../../api/organizations'
-import { getOrganizations, isStaff } from '../../store/authStore'
+import { canViewFollowers } from '../../store/authStore'
 
+// Followers expose names and emails: the API serves them only to staff and
+// to the org's admins (membership role 'admin'), so plain members get the
+// no-access screen instead of a request that would 403.
 export default function AdminOrganizationFollowersPage() {
   const { slug } = useParams()
-  const allowed = isStaff() || getOrganizations().some((m) => m.slug === slug)
+  const { t, i18n } = useTranslation()
+  const allowed = canViewFollowers(slug)
 
   const [data, setData]       = useState(null)
   const [orgName, setOrgName] = useState('')
@@ -15,6 +20,8 @@ export default function AdminOrganizationFollowersPage() {
 
   useEffect(() => {
     if (!allowed) return
+    setData(null)
+    setError('')
     Promise.all([
       fetchOrganizationFollowers(slug),
       fetchOrganizationBySlug(slug).catch(() => null),
@@ -23,22 +30,20 @@ export default function AdminOrganizationFollowersPage() {
         setData(followers)
         if (org) setOrgName(org.name ?? '')
       })
-      .catch((e) => setError(
-        e.status === 403
-          ? 'No tenés permiso para ver los seguidores.'
-          : e.message ?? 'Error al cargar seguidores',
-      ))
+      // Roles can change server-side after /auth/me was cached, so a 403
+      // is still possible; show it as a message, not a crash.
+      .catch((e) => setError(e?.status === 403 ? 'forbidden' : 'loadError'))
   }, [slug, allowed])
 
   if (!allowed) {
     return (
       <div className="max-w-xl">
-        <h1 className="font-display text-h3 font-bold text-ink-primary">Sin acceso</h1>
+        <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.followers.noAccessTitle')}</h1>
         <p className="font-body text-body text-ink-secondary mt-2">
-          No sos miembro de esta organización.
+          {t('admin.followers.noAccess')}
         </p>
         <Link to="/admin/articles" className="mt-4 inline-block font-mono text-label text-primary underline underline-offset-2">
-          Volver al panel
+          {t('admin.followers.backToPanel')}
         </Link>
       </div>
     )
@@ -47,17 +52,19 @@ export default function AdminOrganizationFollowersPage() {
   if (error) {
     return (
       <div className="max-w-xl">
-        <h1 className="font-display text-h3 font-bold text-ink-primary">Error</h1>
-        <p className="font-body text-body text-red-600 mt-2">{error}</p>
+        <h1 className="font-display text-h3 font-bold text-ink-primary">
+          {t(error === 'forbidden' ? 'admin.followers.noAccessTitle' : 'admin.followers.errorTitle')}
+        </h1>
+        <p role="alert" className="font-body text-body text-red-600 mt-2">{t(`admin.followers.${error}`)}</p>
         <Link to={`/admin/org/${slug}`} className="mt-4 inline-block font-mono text-label text-primary underline underline-offset-2">
-          Volver al perfil
+          {t('admin.followers.backToProfileLong')}
         </Link>
       </div>
     )
   }
 
   if (!data) {
-    return <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">Cargando…</p>
+    return <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">{t('admin.followers.loading')}</p>
   }
 
   const followers = data.data ?? []
@@ -78,21 +85,21 @@ export default function AdminOrganizationFollowersPage() {
             {slug}
           </p>
           <h1 className="font-display text-h2 font-bold text-ink-primary">
-            Seguidores {orgName && <span className="text-ink-secondary font-normal">— {orgName}</span>}
+            {t('admin.followers.title')} {orgName && <span className="text-ink-secondary font-normal">— {orgName}</span>}
           </h1>
         </div>
         <Link
           to={`/admin/org/${slug}`}
           className="font-mono text-label uppercase tracking-widest text-primary whitespace-nowrap"
         >
-          ← Perfil
+          {t('admin.followers.backToProfile')}
         </Link>
       </header>
 
       <div className="flex items-baseline gap-3 mb-4">
         <span className="font-display text-h2 font-bold text-ink-primary">{count}</span>
         <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">
-          {count === 1 ? 'persona sigue' : 'personas siguen'} esta organización
+          {t('admin.followers.count', { count })}
         </span>
       </div>
 
@@ -101,18 +108,18 @@ export default function AdminOrganizationFollowersPage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre o email…"
+          placeholder={t('admin.followers.searchPlaceholder')}
           className="w-full mb-4 px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors duration-150"
         />
       )}
 
       {followers.length === 0 ? (
         <p className="font-body text-body text-ink-secondary">
-          Todavía nadie sigue esta organización.
+          {t('admin.followers.empty')}
         </p>
       ) : visible.length === 0 ? (
         <p className="font-body text-body text-ink-secondary">
-          No hay coincidencias.
+          {t('admin.followers.noMatches')}
         </p>
       ) : (
         <ul className="flex flex-col gap-1 list-none m-0 p-0 border border-border rounded-sm bg-white divide-y divide-border">
@@ -133,7 +140,7 @@ export default function AdminOrganizationFollowersPage() {
                 dateTime={f.followedAt}
                 className="font-mono text-label uppercase tracking-widest text-ink-secondary whitespace-nowrap"
               >
-                {formatDate(f.followedAt)}
+                {formatDate(f.followedAt, i18n.language)}
               </time>
             </li>
           ))}
@@ -143,9 +150,9 @@ export default function AdminOrganizationFollowersPage() {
   )
 }
 
-function formatDate(iso) {
+function formatDate(iso, lang) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
 }

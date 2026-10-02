@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { fetchOrganizationBySlug, updateOrganization } from '../../api/organizations'
-import { getOrganizations, isStaff } from '../../store/authStore'
+import { useTranslation } from 'react-i18next'
+import { canViewFollowers, getOrganizations, isStaff } from '../../store/authStore'
 
 const COLOR_SCHEMES = [
   { value: 'blue',   label: 'Azul'    },
@@ -12,7 +13,10 @@ const COLOR_SCHEMES = [
 
 export default function AdminOrganizationProfilePage() {
   const { slug } = useParams()
+  const { t } = useTranslation()
   const allowed = isStaff() || getOrganizations().some((m) => m.slug === slug)
+  // Plain members can edit the profile but not see followers (admins/staff only).
+  const showFollowers = canViewFollowers(slug)
 
   const [form, setForm]         = useState(null)
   const [loadError, setLoadError] = useState('')
@@ -196,17 +200,19 @@ export default function AdminOrganizationProfilePage() {
       </form>
 
       <aside className="lg:sticky lg:top-20 self-start flex flex-col gap-4">
-        <Link
-          to={`/admin/org/${slug}/followers`}
-          className="flex items-center justify-between p-3 border border-border rounded-sm bg-white hover:border-primary transition-colors duration-150"
-        >
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">
-            Seguidores
-          </span>
-          <span className="font-mono text-label uppercase tracking-widest text-primary">
-            Ver →
-          </span>
-        </Link>
+        {showFollowers && (
+          <Link
+            to={`/admin/org/${slug}/followers`}
+            className="flex items-center justify-between p-3 border border-border rounded-sm bg-white hover:border-primary transition-colors duration-150"
+          >
+            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">
+              {t('admin.followers.link')}
+            </span>
+            <span className="font-mono text-label uppercase tracking-widest text-primary">
+              {t('admin.followers.view')}
+            </span>
+          </Link>
+        )}
 
         <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">
           Previsualización

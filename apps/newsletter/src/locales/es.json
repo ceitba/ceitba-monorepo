@@ -109,7 +109,8 @@
       "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
       "unverified_email": "Tu correo de Google aún no está verificado.",
       "invalid_state": "La sesión de inicio expiró o no es válida. Probá de nuevo.",
-      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo."
+      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo.",
+      "access_denied": "Cancelaste el inicio de sesión con Google."
     }
   },
   "calendar": {
@@ -294,6 +295,25 @@
         "days30": "30 días",
         "allTime": "Todo"
       }
+    },
+    "followers": {
+      "link": "Seguidores",
+      "view": "Ver →",
+      "title": "Seguidores",
+      "backToProfile": "← Perfil",
+      "backToProfileLong": "Volver al perfil",
+      "backToPanel": "Volver al panel",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los admins de la organización y el staff de CEITBA pueden ver sus seguidores.",
+      "forbidden": "No tenés permiso para ver los seguidores de esta organización.",
+      "loadError": "No pudimos cargar los seguidores.",
+      "errorTitle": "Error",
+      "loading": "Cargando…",
+      "count_one": "persona sigue esta organización",
+      "count_other": "personas siguen esta organización",
+      "searchPlaceholder": "Buscar por nombre o email…",
+      "empty": "Todavía nadie sigue esta organización.",
+      "noMatches": "No hay coincidencias."
     },
     "roles": {
       "staff": "Staff",

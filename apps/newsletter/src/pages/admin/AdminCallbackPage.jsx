@@ -9,7 +9,8 @@ import {
   takeReturnPath,
 } from '../../store/authStore'
 
-const KNOWN_ERRORS = ['unauthorized', 'unauthorized_workspace', 'unverified_email', 'invalid_state', 'auth_failed']
+// access_denied = the user cancelled the Google consent screen.
+const KNOWN_ERRORS = ['unauthorized', 'unauthorized_workspace', 'unverified_email', 'invalid_state', 'auth_failed', 'access_denied']
 
 // The API sets the HttpOnly session cookie before redirecting back here (no
 // token in the URL), or appends ?error=<code> when the login was rejected.
