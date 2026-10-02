@@ -174,7 +174,12 @@ export default function ManageCorrectionsSection() {
         <select
           id="corrections-status"
           value={status}
-          onChange={(e) => { setStatus(e.target.value as StatusFilter); setPageNum(1); setNotice(null) }}
+          onChange={(e) => {
+            // Drop the previous filter's rows (and their action buttons) while
+            // the new status loads, like ManageStaffSection does per year.
+            setPage(null)
+            setStatus(e.target.value as StatusFilter); setPageNum(1); setNotice(null)
+          }}
           className="px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
         >
           {STATUSES.map((s) => (
