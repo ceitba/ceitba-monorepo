@@ -61,17 +61,21 @@ export interface TreeItem {
   effectiveSubjectName: string | null
   suggestedSubjectId: string | null
   suggestedSubjectName: string | null
+  // Set only when the item has no effective subject and its own match
+  // differs from what it would inherit from its folders' suggestions.
   // The suggestion / effective subject is in the student's own plan.
-  suggestedInMyPlan?: boolean
-  effectiveInMyPlan?: boolean
+  suggestedInMyPlan: boolean
+  effectiveInMyPlan: boolean
   // Files the student doesn't own start hidden (unhiding sends them to
-  // staff review).
+  // staff review). Folders are never hidden by default.
   hidden: boolean
   publication: Publication
   ownedByMe: boolean
   sizeBytes: number | null
   driveModifiedAt: string | null
   syncError: string | null
+  exportBlocked: boolean
+  driveUrl: string | null
 }
 
 export interface SourceTree {
@@ -144,8 +148,8 @@ export interface ApunteSubject {
   fileCount: number
   lastUpdatedAt: string | null
   // Only set with mine=true (plan year / semester), else null.
-  year?: number | null
-  semester?: number | null
+  year: number | null
+  semester: number | null
 }
 
 export interface FileSummary {
@@ -160,14 +164,15 @@ export interface FileSummary {
   hasHtml: boolean
   hasPdf: boolean
   hasOriginal: boolean
-  // Mime types of the stored renditions (null when absent). Older API
-  // builds may omit them: the viewer then falls back to the file extension.
-  pdfMimeType?: string | null
-  originalMimeType?: string | null
-  // The Drive owner disabled download/copy for viewers: we hold no copy.
-  exportBlocked?: boolean
-  // Link to the file in Google Drive.
-  driveUrl?: string | null
+  // "application/pdf" when hasPdf, else null.
+  pdfMimeType: string | null
+  // Content-Type the original is served with (text-like files:
+  // "text/plain; charset=utf-8"); null without an original.
+  originalMimeType: string | null
+  // The Drive owner disabled download for viewers: metadata only, no copy.
+  exportBlocked: boolean
+  // Opens the item in Google Drive.
+  driveUrl: string | null
 }
 
 export interface ApunteAuthor {
@@ -232,12 +237,9 @@ export class FileTooLargeError extends Error {
 // Fetches the stored original for client-side rendering (docx, sheets,
 // text). Follows the redirect to the signed storage URL (same origin in
 // prod; local MinIO allows CORS). Refuses anything over `maxBytes`.
-//
-// Locally (SPA :5173 → API :8081 → MinIO, three origins) the browser sends
-// `Origin: null` on the redirected request, and a credentialed CORS request
-// is rejected unless storage answers `Access-Control-Allow-Origin: null`;
-// that surfaces here as a TypeError and the viewer falls back to the
-// download card.
+// Needs the API and storage on the SPA's origin (Caddy in prod; the Vite
+// dev proxy locally): a credentialed fetch that redirects across three
+// origins is sent with `Origin: null` and rejected.
 export async function fetchOriginal(fileId: string, maxBytes: number): Promise<Blob> {
   const res = await fetch(fileDownloadUrl(fileId, 'original', 'inline'), { credentials: 'include' })
   if (!res.ok) throw new ApiError(`Download failed (${res.status})`, res.status, 'HTTP_' + res.status)

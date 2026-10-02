@@ -13,8 +13,9 @@ import ReportDialog from '../../components/apuntes/ReportDialog'
 import Notice from '../../components/Notice'
 import { BTN_OUTLINE, BTN_PRIMARY } from '../../components/apuntes/buttons'
 
-// BASE_URL is ".../api/v1"; its parent is where "/v1/…" paths live.
-const API_ROOT = BASE_URL.replace(/\/v1\/?$/, '')
+// BASE_URL is ".../api/v1" (absolute, or "/api/v1" behind a proxy); its
+// parent is where "/v1/…" paths live.
+const API_ROOT = new URL(BASE_URL, window.location.origin).href.replace(/\/v1\/?$/, '')
 
 // Doc HTML is sanitized server-side; sanitize again (defence in depth) and
 // point embedded images at the API: they come as root-relative

@@ -575,7 +575,8 @@
       "recomputeHint": "Suggests subjects again using your current plan (e.g. after changing your career or plan in your profile).",
       "recomputedNotice_one": "Done: {{count}} suggestion to review.",
       "recomputedNotice_other": "Done: {{count}} suggestions to review.",
-      "foreignHint": "Other people's files stay hidden until you publish them; CEITBA reviews them before they're shown."
+      "foreignHint": "Other people's files stay hidden until you publish them; CEITBA reviews them before they're shown.",
+      "inheritedSuggestion": "Inherits the folder's suggestion: {{name}}"
     },
     "wizard": {
       "title": "Connect a Drive folder",

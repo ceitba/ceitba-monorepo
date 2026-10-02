@@ -575,7 +575,8 @@
       "recomputeHint": "Vuelve a sugerir materias usando tu plan actual (por ejemplo, después de cambiar tu carrera o plan en el perfil).",
       "recomputedNotice_one": "Listo: hay {{count}} sugerencia para revisar.",
       "recomputedNotice_other": "Listo: hay {{count}} sugerencias para revisar.",
-      "foreignHint": "Archivos de otras personas quedan ocultos hasta que los publiques; pasan por revisión de CEITBA antes de mostrarse."
+      "foreignHint": "Archivos de otras personas quedan ocultos hasta que los publiques; pasan por revisión de CEITBA antes de mostrarse.",
+      "inheritedSuggestion": "Hereda la sugerencia de la carpeta: {{name}}"
     },
     "wizard": {
       "title": "Conectar una carpeta de Drive",

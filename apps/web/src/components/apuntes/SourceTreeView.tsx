@@ -103,6 +103,23 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
   }, [load])
 
   const forest = useMemo(() => buildForest(items ?? []), [items])
+  const byId = useMemo(() => new Map((items ?? []).map((it) => [it.id, it])), [items])
+
+  // The API only sends suggestedSubjectId where it differs from what the item
+  // would inherit; show the nearest ancestor's suggestion for the rest.
+  function inheritedSuggestion(item: TreeItem): { name: string; inMyPlan: boolean } | null {
+    if (item.effectiveSubjectId || item.suggestedSubjectId) return null
+    const seen = new Set<string>()
+    let parent = item.parentId ? byId.get(item.parentId) : undefined
+    while (parent && !seen.has(parent.id)) {
+      seen.add(parent.id)
+      if (parent.suggestedSubjectId) {
+        return { name: parent.suggestedSubjectName ?? parent.suggestedSubjectId, inMyPlan: parent.suggestedInMyPlan }
+      }
+      parent = parent.parentId ? byId.get(parent.parentId) : undefined
+    }
+    return null
+  }
   const suggestionCount = useMemo(() => (items ?? []).filter(hasSuggestion).length, [items])
   const hasForeignFiles = useMemo(() => (items ?? []).some((it) => !it.ownedByMe && it.kind !== 'FOLDER'), [items])
 
@@ -173,6 +190,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
         : null
     const meta = [formatSize(item.sizeBytes), item.driveModifiedAt ? formatDate(item.driveModifiedAt, i18n.language) : '']
       .filter(Boolean).join(' · ')
+    const inheritedSug = inheritedSuggestion(item)
     const canPreview = !isFolder && !item.hidden && item.publication !== 'REMOVED'
 
     return (
@@ -248,6 +266,12 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                     </span>
                   )}
                 </button>
+              )}
+              {inheritedSug && (
+                <span className="font-body text-body-sm italic text-ink-secondary dark:text-night-muted">
+                  {t('apuntes.tree.inheritedSuggestion', { name: inheritedSug.name })}
+                  {inheritedSug.inMyPlan && ` · ${t('apuntes.tree.inMyPlan')}`}
+                </span>
               )}
             </div>
             <label className="inline-flex items-center gap-2 min-h-[36px] cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">

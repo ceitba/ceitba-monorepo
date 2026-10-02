@@ -58,13 +58,41 @@ function PdfFrame({ file }: { file: FileDetail }) {
   )
 }
 
-function ImageView({ file }: { file: FileDetail }) {
+// SVG originals are always served as attachments: fetch them and show a
+// typed blob URL in an <img> (scripts never run in an <img>).
+function useSvgObjectUrl(file: FileDetail, enabled: boolean): { url: string | null; failed: boolean } {
+  const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
-  if (failed) return <DownloadCard file={file} reason="failed" />
+  useEffect(() => {
+    if (!enabled) return
+    let objectUrl: string | null = null
+    let cancelled = false
+    fetchOriginal(file.id, MAX_PREVIEW_BYTES)
+      .then(async (blob) => {
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(new Blob([await blob.arrayBuffer()], { type: 'image/svg+xml' }))
+        setUrl(objectUrl)
+      })
+      .catch(() => { if (!cancelled) setFailed(true) })
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [file.id, enabled])
+  return { url, failed }
+}
+
+function ImageView({ file }: { file: FileDetail }) {
+  const { t } = useTranslation()
+  const isSvg = extensionOf(file.name) === 'svg' || /svg/i.test(file.originalMimeType ?? '')
+  const svg = useSvgObjectUrl(file, isSvg)
+  const [failed, setFailed] = useState(false)
+  if (failed || svg.failed) return <DownloadCard file={file} reason="failed" />
+  if (isSvg && !svg.url) return <ViewerLoading label={t('apuntes.viewer.loading')} />
   return (
     <div className="w-full flex justify-center rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-bg p-2 sm:p-4">
       <img
-        src={fileDownloadUrl(file.id, 'original', 'inline')}
+        src={svg.url ?? fileDownloadUrl(file.id, 'original', 'inline')}
         alt={file.name}
         onError={() => setFailed(true)}
         className="max-w-full max-h-[80vh] object-contain"
@@ -94,7 +122,7 @@ function OriginalRenderer({ file, viewer }: { file: FileDetail; viewer: 'docx' |
   if (failure) return <DownloadCard file={file} reason={failure} />
   if (!blob) return <ViewerLoading label={t('apuntes.viewer.loading')} />
   if (viewer === 'docx') return <DocxViewer blob={blob} onError={fail} />
-  if (viewer === 'sheet') return <SheetViewer blob={blob} isCsv={extensionOf(file.name) === 'csv' || /csv/i.test(file.originalMimeType ?? '')} onError={fail} />
+  if (viewer === 'sheet') return <SheetViewer blob={blob} isCsv={extensionOf(file.name) === 'csv' || /text\/csv/i.test(file.originalMimeType ?? '')} onError={fail} />
   return <TextViewer blob={blob} notebook={viewer === 'notebook'} onError={fail} />
 }
 
