@@ -260,7 +260,7 @@ authorizeHttpRequests() — per-route policy from SecurityConfig
    /v1/sync/**               -> hasRole("SYNC")
    /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
    /v1/staff/**              -> hasRole("STAFF") AND email in allowlist
-                                (incl. /v1/staff/moderators)
+                                (incl. /v1/staff/moderators, /v1/staff/schedule-corrections)
    anyRequest()              -> authenticated() AND email in allowlist (JWT only;
                                 allowlist + review email while review login is on)
    │
@@ -365,6 +365,8 @@ Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`ser
 | `wiki.subject_comment` by the user, and all votes on those comments | Deleted (personal free text) |
 | `wiki.subject_wiki_edit_proposal` with status `PENDING` | Deleted |
 | `articles.created_by`, `news_events.created_by` | Set to `NULL` (content belongs to the organization) |
+| `schedule_correction_vote` rows of the user | Deleted, after decrementing the corrections' counters (statuses are not re-evaluated) |
+| `schedule_correction.suggester_id` / `reviewed_by` | Set to `NULL` (corrections are crowd data and stay) |
 | `wiki.subject_note`, `wiki.career_note`, `wiki.subject_wiki_page.updated_by`, reviewed edit proposals | Kept: shared study material with a NOT NULL author FK |
 | `user` row | Hard-deleted when nothing above is kept; otherwise **anonymized**: every personal column cleared and the email replaced by `deleted-<id>@deleted.invalid` |
 | Legacy Firebase uid (`user.firebase_uid`, set by the Firestore import) | Its SHA-256 goes into `deleted_firebase_accounts`, so a re-run of the Firestore import skips the account instead of re-creating it |
@@ -416,6 +418,7 @@ Guards:
 | Proposal moderation open to MODERATOR, 403 for USER and non-allowlisted, MODERATOR is not STAFF elsewhere | `StaffProposalControllerIT` |
 | Review login: wrong password / other email / blank → 401, success = mobile token shape, USER only (not staff/moderator), allowlist admits only that email, Google login for it still rejected, refresh, no API keys, own rate-limit bucket | `ReviewLoginIT` |
 | Review login disabled → 404 (even with an empty body) | `ReviewLoginDisabledIT` |
+| Schedule corrections: suggest/vote/me need an allowlisted session (401/403), staff endpoints 403 for USER, no response exposes the suggester | `ScheduleCorrectionIT` |
 | Review login always runs one bcrypt check (unknown email, wrong/overlong/missing password) | `ReviewLoginServiceTest` |
 | A mangled review hash (unquoted in `.env`, trailing `%`, truncated) disables review login instead of failing startup | `ReviewLoginServiceTest`, `ReviewLoginMisconfiguredIT` |
 | Review email admitted by the session allowlist only while review login is enabled | `SessionAllowlistTest` |

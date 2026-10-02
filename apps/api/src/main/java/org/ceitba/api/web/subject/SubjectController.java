@@ -3,8 +3,10 @@ package org.ceitba.api.web.subject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.ceitba.api.domain.User;
 import org.ceitba.api.service.plan.SubjectPlanService;
 import org.ceitba.api.service.subject.SubjectService;
+import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.subject.dto.OrganizedSubjectsResponse;
 import org.ceitba.api.web.subject.dto.SubjectResponse;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,12 +31,18 @@ public class SubjectController {
         this.subjectPlanService = subjectPlanService;
     }
 
+    // Public. With a valid session/Bearer, each schedule correction's
+    // my_vote carries the caller's vote; anonymous callers get null.
     @GetMapping
-    @Operation(summary = "Get subjects organized by plan (section/year/semester)")
+    @Operation(summary = "Get subjects organized by plan (section/year/semester)",
+        description = "Commission `schedule` is the effective schedule (an applied student correction "
+            + "replaces the SGA slots; `sga_schedule` then holds the originals). `corrections` lists "
+            + "open corrections; `my_vote` is filled when the caller is logged in.")
     public Map<String, Map<String, Map<String, List<OrganizedSubjectsResponse.SubjectDetail>>>>
             getSubjectsByPlan(@Parameter(description = "Plan identifier (e.g. S10-Rev23)")
-                              @RequestParam String plan) {
-        return subjectPlanService.getSubjectsByPlanOrganized(plan);
+                              @RequestParam String plan,
+                              @CurrentUser User viewer) {
+        return subjectPlanService.getSubjectsByPlanOrganized(plan, viewer != null ? viewer.getId() : null);
     }
 
     @GetMapping("/{id}")
