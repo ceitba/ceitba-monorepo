@@ -42,12 +42,19 @@ export const ALL_STATUSES = 'all'
 
 // Walks every page of a filtered list — for admin tables, which must not
 // silently stop at the first page.
+//
+// The API pages with OFFSET over `ORDER BY createdAt DESC`, which is not a
+// total order: rows sharing a createdAt (bulk imports, same-transaction
+// inserts) can shift between page requests and show up twice. Rows are
+// keyed by id (first occurrence wins, keeping the API order) so the table
+// never renders duplicate React keys or an inflated count. pageSize must
+// not exceed the API's MAX_LIMIT (100), or a full page would look short.
 export async function fetchAllArticles(filters = {}, { pageSize = 100, maxPages = 50 } = {}) {
-  const all = []
+  const byId = new Map()
   for (let page = 1; page <= maxPages; page++) {
     const { data, meta } = await fetchArticles({ ...filters, page, limit: pageSize })
-    all.push(...data)
-    if (data.length < pageSize || all.length >= (meta?.total ?? 0)) break
+    for (const a of data) if (!byId.has(a.id)) byId.set(a.id, a)
+    if (data.length < pageSize || page * pageSize >= (meta?.total ?? 0)) break
   }
-  return all
+  return [...byId.values()]
 }
