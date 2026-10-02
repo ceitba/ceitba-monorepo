@@ -5,23 +5,25 @@ import ManageBenefitsSection from './manage/ManageBenefitsSection'
 import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
+import type { OrganizationSummary } from '../api/admin'
 
 type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections'
 
 export default function ManagePage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('staff')
-  // Org filter to open the Users tab with (set by "Agregar miembros" after
-  // creating an org). Picking a tab from the nav clears it.
-  const [usersOrgFilter, setUsersOrgFilter] = useState<string | undefined>(undefined)
+  // Org to open the Users tab in "adding members" mode for (set by
+  // "Agregar miembros" after creating an org). Picking a tab from the nav
+  // clears it.
+  const [addingTo, setAddingTo] = useState<OrganizationSummary | undefined>(undefined)
 
   function selectTab(next: Tab) {
-    setUsersOrgFilter(undefined)
+    setAddingTo(undefined)
     setTab(next)
   }
 
-  function addMembers(slug: string) {
-    setUsersOrgFilter(slug)
+  function addMembers(org: OrganizationSummary) {
+    setAddingTo(org)
     setTab('users')
   }
 
@@ -64,7 +66,7 @@ export default function ManagePage() {
 
       {tab === 'staff'    && <ManageStaffSection />}
       {tab === 'benefits' && <ManageBenefitsSection />}
-      {tab === 'users'    && <ManageUsersSection key={usersOrgFilter ?? ''} initialOrgSlug={usersOrgFilter} />}
+      {tab === 'users'    && <ManageUsersSection initialAddingTo={addingTo} />}
       {tab === 'organizations' && <ManageOrganizationsSection onAddMembers={addMembers} />}
       {tab === 'corrections' && <ManageCorrectionsSection />}
     </main>

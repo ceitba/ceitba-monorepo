@@ -127,8 +127,12 @@
       "demoteOrgBody": "{{name}} va a seguir siendo miembro de {{org}}, pero sin acceso de admin (por ejemplo, la lista de seguidores).",
       "demoteOrgConfirm": "Quitar admin",
       "noOrgMembers": "{{org}} todavía no tiene miembros.",
-      "noOrgMembersHint": "Para agregar a alguien, mostrá todos los usuarios, buscalo y en su fila elegí «{{org}}» en «+ organización».",
-      "showAllUsers": "Mostrar todos los usuarios"
+      "addingBanner": "Agregando miembros a {{org}} — buscá a la persona y tocá «Agregar a {{org}}».",
+      "addingDone": "Listo",
+      "addToOrg": "Agregar a {{org}}",
+      "addToOrgAria": "Agregar a {{name}} a {{org}}",
+      "addingToOrg": "Agregando…",
+      "addMembers": "Agregar miembros"
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",

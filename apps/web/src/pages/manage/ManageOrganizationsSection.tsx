@@ -40,7 +40,7 @@ function byName(a: Organization, b: Organization) {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
 }
 
-export default function ManageOrganizationsSection({ onAddMembers }: { onAddMembers: (slug: string) => void }) {
+export default function ManageOrganizationsSection({ onAddMembers }: { onAddMembers: (org: Organization) => void }) {
   const { t } = useTranslation()
   const [orgs, setOrgs]           = useState<Organization[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -156,7 +156,7 @@ export default function ManageOrganizationsSection({ onAddMembers }: { onAddMemb
                     {isNew && (
                       <button
                         type="button"
-                        onClick={() => onAddMembers(o.slug)}
+                        onClick={() => onAddMembers(o)}
                         aria-label={t('manage.organizations.addMembersAria', { name: o.name })}
                         className="px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors"
                       >
