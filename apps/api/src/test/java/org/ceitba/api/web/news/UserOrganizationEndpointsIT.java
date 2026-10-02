@@ -62,6 +62,9 @@ class UserOrganizationEndpointsIT {
     @Autowired ArticleRepository articleRepo;
     @Autowired NewsEventRepository eventRepo;
 
+    UUID aliceId;
+    UUID carolId;
+
     @BeforeEach
     void seed() {
         articleRepo.deleteAll();
@@ -74,12 +77,14 @@ class UserOrganizationEndpointsIT {
         orgRepo.save(new Organization("trama", "TRAMA", "TRAMA ITBA"));
 
         var alice = userRepo.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));
-        membershipRepo.save(new UserOrganization(alice.getId(), "sabf", "member"));
+        aliceId = alice.getId();
+        membershipRepo.save(new UserOrganization(aliceId, "sabf", "member"));
 
         userRepo.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));
 
         var carol = userRepo.save(new User(UUID.randomUUID(), "carol@itba.edu.ar", "Carol"));
-        membershipRepo.save(new UserOrganization(carol.getId(), "sabf", "admin"));
+        carolId = carol.getId();
+        membershipRepo.save(new UserOrganization(carolId, "sabf", "admin"));
 
         var tramaArticle = new Article("trama-art", "TRAMA news", "x", List.of("p"), "news", List.of("TRAMA"));
         tramaArticle.setOrganization(orgRepo.findById("trama").orElseThrow());
@@ -353,5 +358,95 @@ class UserOrganizationEndpointsIT {
     void staffCanListAnyOrgsFollowers() throws Exception {
         mvc.perform(get("/v1/organizations/trama/followers").with(staff()))
             .andExpect(status().isOk());
+    }
+
+    // Membership role management (STAFF only): this is what lets staff make
+    // someone an org admin, which in turn unlocks the followers list.
+    private org.springframework.test.web.servlet.ResultActions patchRole(
+            UUID userId, String slug, String body, RequestPostProcessor who) throws Exception {
+        return mvc.perform(patch("/v1/users/{userId}/organizations/{slug}", userId, slug).with(who)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body));
+    }
+
+    @Test
+    void staffCanPromoteMemberToAdmin() throws Exception {
+        patchRole(aliceId, "sabf", "{\"role\":\"admin\"}", staff())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.slug").value("sabf"))
+            .andExpect(jsonPath("$.role").value("admin"));
+
+        assertThat(membershipRepo.existsByUserIdAndOrganizationAndRole(aliceId, "sabf", "admin")).isTrue();
+    }
+
+    @Test
+    void staffCanDemoteAdminToMember() throws Exception {
+        patchRole(carolId, "sabf", "{\"role\":\"member\"}", staff())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.role").value("member"));
+
+        assertThat(membershipRepo.existsByUserIdAndOrganizationAndRole(carolId, "sabf", "member")).isTrue();
+    }
+
+    @Test
+    void nonStaffCannotChangeMembershipRole() throws Exception {
+        patchRole(aliceId, "sabf", "{\"role\":\"admin\"}", member())
+            .andExpect(status().isForbidden());
+        patchRole(aliceId, "sabf", "{\"role\":\"admin\"}", orgAdmin())
+            .andExpect(status().isForbidden());
+
+        assertThat(membershipRepo.existsByUserIdAndOrganizationAndRole(aliceId, "sabf", "member")).isTrue();
+    }
+
+    @Test
+    void changingRoleOfUnknownMembershipReturns404() throws Exception {
+        patchRole(aliceId, "trama", "{\"role\":\"admin\"}", staff())
+            .andExpect(status().isNotFound());
+        patchRole(UUID.randomUUID(), "sabf", "{\"role\":\"admin\"}", staff())
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void invalidRoleReturns400() throws Exception {
+        patchRole(aliceId, "sabf", "{\"role\":\"owner\"}", staff())
+            .andExpect(status().isBadRequest());
+        patchRole(aliceId, "sabf", "{\"role\":\"\"}", staff())
+            .andExpect(status().isBadRequest());
+        patchRole(aliceId, "sabf", "{}", staff())
+            .andExpect(status().isBadRequest());
+
+        assertThat(membershipRepo.existsByUserIdAndOrganizationAndRole(aliceId, "sabf", "member")).isTrue();
+    }
+
+    @Test
+    void addingMembershipWithInvalidRoleReturns400() throws Exception {
+        mvc.perform(post("/v1/users/{userId}/organizations", aliceId).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"slug\":\"trama\",\"role\":\"owner\"}"))
+            .andExpect(status().isBadRequest());
+
+        assertThat(membershipRepo.existsByUserIdAndOrganization(aliceId, "trama")).isFalse();
+    }
+
+    @Test
+    void promotedAdminCanListFollowersAndDemotedAdminCannot() throws Exception {
+        mvc.perform(get("/v1/organizations/sabf/followers").with(member()))
+            .andExpect(status().isForbidden());
+
+        patchRole(aliceId, "sabf", "{\"role\":\"admin\"}", staff()).andExpect(status().isOk());
+        patchRole(carolId, "sabf", "{\"role\":\"member\"}", staff()).andExpect(status().isOk());
+
+        mvc.perform(get("/v1/organizations/sabf/followers").with(member()))
+            .andExpect(status().isOk());
+        mvc.perform(get("/v1/organizations/sabf/followers").with(orgAdmin()))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void staffUserListExposesMembershipRoles() throws Exception {
+        mvc.perform(get("/v1/users").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$..organizations[?(@.slug == 'sabf' && @.role == 'admin')]").exists())
+            .andExpect(jsonPath("$..organizations[?(@.slug == 'sabf' && @.role == 'member')]").exists());
     }
 }
