@@ -185,4 +185,67 @@ class DataSyncServiceIT {
         assertThat(planSubjectRepository.findById(new PlanSubjectId("10.01", "ENT-2027")))
             .isPresent();
     }
+
+    @Test
+    void resyncUpdatesExistingCommission() {
+        fakeClient.stubPlan("S10-Rev23", List.of());
+        fakeClient.stubCommissions(List.of(commission(10, 30, List.of(
+            new CommissionProjection.TimeSlot(
+                DayOfWeek.MONDAY, "102T", "SDT", LocalTime.of(14, 0), LocalTime.of(17, 0)),
+            new CommissionProjection.TimeSlot(
+                DayOfWeek.WEDNESDAY, "201F", "SDF", LocalTime.of(9, 0), LocalTime.of(11, 0))))));
+        syncService.syncAll(CommissionQuery.defaults());
+
+        // Same id: enrolled/quota changed, Monday slot moved room and end
+        // hour, Wednesday slot dropped, Friday slot added.
+        fakeClient.stubCommissions(List.of(commission(25, 40, List.of(
+            new CommissionProjection.TimeSlot(
+                DayOfWeek.MONDAY, "103T", "SDT", LocalTime.of(14, 0), LocalTime.of(18, 0)),
+            new CommissionProjection.TimeSlot(
+                DayOfWeek.FRIDAY, "301F", "SDF", LocalTime.of(10, 0), LocalTime.of(12, 0))))));
+        var second = syncService.syncCommissionsOnly(CommissionQuery.defaults());
+
+        assertThat(second.commissions().getErrors()).isZero();
+        assertThat(second.commissions().getUpdated()).isEqualTo(1);
+        var c = commissionRepository.findById("93.12-A").orElseThrow();
+        assertThat(c.getEnrolledStudents()).isEqualTo(25);
+        assertThat(c.getQuota()).isEqualTo(40);
+        assertThat(times("93.12-A")).containsExactly(
+            "MONDAY 14:00-18:00 103T", "FRIDAY 10:00-12:00 301F");
+    }
+
+    @Test
+    void syncCommissionsBySubjectUpdatesExistingCommission() {
+        fakeClient.stubPlan("S10-Rev23", List.of());
+        fakeClient.stubCommissions(List.of(commission(10, 30, List.of(
+            new CommissionProjection.TimeSlot(
+                DayOfWeek.MONDAY, "102T", "SDT", LocalTime.of(14, 0), LocalTime.of(17, 0))))));
+        syncService.syncAll(CommissionQuery.defaults());
+
+        fakeClient.stubCommissions(List.of(commission(12, 35, List.of(
+            new CommissionProjection.TimeSlot(
+                DayOfWeek.TUESDAY, "102T", "SDT", LocalTime.of(8, 0), LocalTime.of(10, 0))))));
+        syncService.syncCommissionsBySubject("93.12", CommissionQuery.defaults());
+
+        var c = commissionRepository.findById("93.12-A").orElseThrow();
+        assertThat(c.getEnrolledStudents()).isEqualTo(12);
+        assertThat(c.getQuota()).isEqualTo(35);
+        assertThat(times("93.12-A")).containsExactly("TUESDAY 08:00-10:00 102T");
+    }
+
+    private static CommissionProjection commission(int enrolled, int quota,
+                                                   List<CommissionProjection.TimeSlot> times) {
+        return new CommissionProjection("93.12-A", "93.12", "Algoritmos", "A",
+            LocalDate.of(2025, 7, 21), LocalDate.of(2025, 12, 31),
+            enrolled, quota, SubjectType.SEMESTRAL, times);
+    }
+
+    // findAllWithTimes hydrates the lazy collection, ordered by day then hour.
+    private List<String> times(String commissionId) {
+        return commissionRepository.findAllWithTimes().stream()
+            .filter(c -> c.getId().equals(commissionId))
+            .flatMap(c -> c.getTimes().stream())
+            .map(t -> t.getDay() + " " + t.getHourFrom() + "-" + t.getHourTo() + " " + t.getClassroom())
+            .toList();
+    }
 }

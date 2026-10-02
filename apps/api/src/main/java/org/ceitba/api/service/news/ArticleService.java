@@ -1,5 +1,6 @@
 package org.ceitba.api.service.news;
 
+import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
@@ -32,10 +33,12 @@ public class ArticleService {
     }
 
     // Public callers pass status="published"; staff may pass status=null (all) or "draft".
+    @Transactional(readOnly = true)
     public Page<Article> findAll(String category, String organization, String status, Pageable pageable) {
         return articleRepo.findFiltered(category, organization, status, pageable);
     }
 
+    @Transactional(readOnly = true)
     public Article findById(String id, boolean includesDrafts) {
         var article = articleRepo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Article", id));
@@ -49,6 +52,10 @@ public class ArticleService {
     public Article create(Article article, String organizationSlug, User createdBy) {
         if (article.getId() == null || article.getId().isBlank()) {
             article = rebuildWithId(article, UUID.randomUUID().toString());
+        } else if (articleRepo.existsById(article.getId())) {
+            // Ids are assigned, so save() would merge over the existing row
+            // (possibly another org's) instead of inserting.
+            throw new ResourceAlreadyExistsException("Article", article.getId());
         }
         resolveOrganization(article, organizationSlug);
         article.setCreatedBy(createdBy);
@@ -56,8 +63,10 @@ public class ArticleService {
         return articleRepo.save(article);
     }
 
+    // `featured` is separate from `patch` because Article.featured is a
+    // primitive: null means the request omitted it and it stays unchanged.
     @Transactional
-    public Article update(String id, Article patch, String organizationSlug) {
+    public Article update(String id, Article patch, Boolean featured, String organizationSlug) {
         var article = articleRepo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Article", id));
         if (patch.getTitle()      != null) article.setTitle(patch.getTitle());
@@ -70,7 +79,7 @@ public class ArticleService {
         if (patch.getColorScheme()!= null) article.setColorScheme(patch.getColorScheme());
         if (patch.getCoverImage() != null) article.setCoverImage(patch.getCoverImage());
         if (patch.getStatus()     != null) article.setStatus(patch.getStatus());
-        article.setFeatured(patch.isFeatured());
+        if (featured              != null) article.setFeatured(featured);
         if (organizationSlug != null) resolveOrganization(article, organizationSlug);
         notifyFollowersOnce(article);
         return articleRepo.save(article);

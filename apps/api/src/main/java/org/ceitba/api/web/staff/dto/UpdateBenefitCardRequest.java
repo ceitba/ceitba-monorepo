@@ -14,7 +14,11 @@ public record UpdateBenefitCardRequest(
     @NotBlank String titleEn,
     String summaryEs,
     String summaryEn,
+    // Rendered by the public site as <img src> / <a href>: absolute http(s)
+    // URL, or blank to clear (blocks javascript: and data: links).
+    @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
     String imageUrl,
+    @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
     String ctaUrl,
     String ctaLabelEs,
     String ctaLabelEn,

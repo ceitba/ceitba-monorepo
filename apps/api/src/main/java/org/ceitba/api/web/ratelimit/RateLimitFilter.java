@@ -35,13 +35,8 @@ import java.util.Map;
 // State is per-instance: with N API replicas the effective limit is N x the
 // configured one. Fine for the current single-VPS deployment.
 //
-// Client IP: when trust-forwarded-for is on we take the RIGHT-most
-// X-Forwarded-For entry, i.e. the address our own reverse proxy (Caddy)
-// observed. Left-most entries are client-controlled and trivially spoofed.
-// XFF is only honoured when the direct peer (remoteAddr) is a loopback,
-// site-local, link-local or IPv6 unique-local address, i.e. our proxy on the
-// Docker network. A request that reaches the API from a public address
-// skipped the proxy and controls the whole header, so its remoteAddr is used.
+// Client IP: see ClientIp (right-most X-Forwarded-For entry, only from our
+// proxy).
 //
 // IPv6 clients are keyed by their /64 prefix: a single subscriber usually
 // gets a whole /64 and can rotate through its addresses at will, so keying
@@ -49,7 +44,7 @@ import java.util.Map;
 // IPv4-mapped IPv6) is keyed by the full address.
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    static final String XFF = "X-Forwarded-For";
+    static final String XFF = ClientIp.XFF;
 
     private final RateLimitProperties props;
     private final List<Map.Entry<String, RateLimitProperties.Rule>> rules;
@@ -88,7 +83,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        var rule = match(pathWithinApplication(request));
+        var rule = match(request.getMethod(), pathWithinApplication(request));
         if (rule == null) {
             chain.doFilter(request, response);
             return;
@@ -115,10 +110,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             request.getRequestURI()));
     }
 
-    private Map.Entry<String, RateLimitProperties.Rule> match(String path) {
+    private Map.Entry<String, RateLimitProperties.Rule> match(String method, String path) {
         for (var e : rules) {
             var rule = e.getValue();
-            if (matchesAny(rule.paths(), path) && !matchesAny(rule.excludePaths(), path)) return e;
+            if (rule.appliesTo(method) && matchesAny(rule.paths(), path)
+                    && !matchesAny(rule.excludePaths(), path)) return e;
         }
         return null;
     }
@@ -144,15 +140,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     String clientIp(HttpServletRequest request) {
-        if (props.trustForwardedFor() && isPrivatePeer(request.getRemoteAddr())) {
-            String xff = request.getHeader(XFF);
-            if (xff != null && !xff.isBlank()) {
-                String[] parts = xff.split(",");
-                String last = parts[parts.length - 1].trim();
-                if (!last.isEmpty()) return last;
-            }
-        }
-        return request.getRemoteAddr();
+        return ClientIp.resolve(request, props.trustForwardedFor());
     }
 
     // Rate-limit key for a client address: the /64 prefix for IPv6, the
@@ -177,16 +165,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     static boolean isPrivatePeer(String addr) {
-        // remoteAddr is always an IP literal; refuse anything else so
-        // InetAddress never performs a DNS lookup.
-        if (addr == null || !(addr.contains(":") || addr.matches("\\d{1,3}(\\.\\d{1,3}){3}"))) return false;
-        try {
-            var ip = InetAddress.getByName(addr);
-            if (ip.isLoopbackAddress() || ip.isSiteLocalAddress() || ip.isLinkLocalAddress()) return true;
-            byte[] b = ip.getAddress();
-            return b.length == 16 && (b[0] & 0xFE) == 0xFC; // fc00::/7
-        } catch (UnknownHostException e) {
-            return false;
-        }
+        return ClientIp.isPrivatePeer(addr);
     }
 }

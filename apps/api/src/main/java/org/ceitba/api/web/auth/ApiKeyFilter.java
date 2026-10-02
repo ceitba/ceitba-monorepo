@@ -15,6 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 
@@ -63,12 +65,23 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(
                         new UsernamePasswordAuthenticationToken(user, null, authorities));
                 });
-            } else if (auth.syncApiKey() != null && key.equals(auth.syncApiKey())) {
+            } else if (matchesSyncKey(key)) {
                 SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(
                         "sync-job", null, AuthorityUtils.createAuthorityList("ROLE_SYNC")));
             }
         }
         chain.doFilter(req, res);
+    }
+
+    // Constant-time comparison: String.equals returns at the first differing
+    // character, leaking how much of a guessed key is right through timing.
+    // An unset key (AUTH_SYNC_API_KEY defaults to empty) never matches, so an
+    // empty X-Api-Key header cannot be mistaken for the sync key.
+    private boolean matchesSyncKey(String key) {
+        if (auth.syncApiKey() == null || auth.syncApiKey().isBlank()) return false;
+        return MessageDigest.isEqual(
+            key.getBytes(StandardCharsets.UTF_8),
+            auth.syncApiKey().getBytes(StandardCharsets.UTF_8));
     }
 }

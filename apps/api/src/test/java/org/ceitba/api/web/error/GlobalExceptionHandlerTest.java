@@ -11,11 +11,18 @@ import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -131,5 +138,36 @@ class GlobalExceptionHandlerTest {
 
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(r.getBody().error()).isEqualTo("AccessDenied");
+    }
+
+    @Test
+    void methodNotSupportedMapsTo405WithAllowHeader() {
+        ResponseEntity<ErrorResponse> r = handler.handleUnexpected(
+            new HttpRequestMethodNotSupportedException("PUT", List.of("GET", "POST")), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(r.getBody().error()).isEqualTo("MethodNotAllowed");
+        assertThat(r.getBody().path()).isEqualTo("/api/some/path");
+        assertThat(r.getHeaders().getFirst(HttpHeaders.ALLOW)).contains("GET");
+    }
+
+    @Test
+    void mediaTypeNotSupportedMapsTo415() {
+        ResponseEntity<ErrorResponse> r = handler.handleUnexpected(
+            new HttpMediaTypeNotSupportedException(MediaType.TEXT_PLAIN, List.of(MediaType.APPLICATION_JSON)), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(r.getBody().error()).isEqualTo("UnsupportedMediaType");
+    }
+
+    @Test
+    void missingRequestHeaderMapsTo400() throws Exception {
+        var param = new org.springframework.core.MethodParameter(
+            Object.class.getMethod("equals", Object.class), 0);
+        ResponseEntity<ErrorResponse> r = handler.handleUnexpected(
+            new MissingRequestHeaderException("X-Thing", param), req);
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(r.getBody().error()).isEqualTo("BadRequest");
     }
 }

@@ -88,6 +88,20 @@ class NewsEventEndpointsIT {
     }
 
     @Test
+    void listClampsLimit() throws Exception {
+        mvc.perform(get("/v1/news/events?limit=0"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.meta.total").value(2))
+            .andExpect(jsonPath("$.meta.limit").value(1));
+
+        mvc.perform(get("/v1/news/events?limit=1000000"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(2))
+            .andExpect(jsonPath("$.meta.limit").value(100));
+    }
+
+    @Test
     void listFiltersByCategory() throws Exception {
         mvc.perform(get("/v1/news/events?category=tech"))
             .andExpect(status().isOk())

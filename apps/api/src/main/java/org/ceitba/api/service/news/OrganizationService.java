@@ -18,10 +18,12 @@ public class OrganizationService {
         this.repo = repo;
     }
 
+    @Transactional(readOnly = true)
     public List<Organization> findAll() {
         return repo.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Organization findBySlug(String slug) {
         return repo.findById(slug)
             .orElseThrow(() -> new ResourceNotFoundException("Organization", slug));

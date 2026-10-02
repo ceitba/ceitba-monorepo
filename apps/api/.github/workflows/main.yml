@@ -6,6 +6,11 @@ on:
     branches: [main]
     types: [completed]
 
+# Deploys run one at a time, in order, and are never cancelled mid-way.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}

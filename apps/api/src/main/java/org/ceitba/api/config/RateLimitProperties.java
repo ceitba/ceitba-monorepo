@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 // Bound from rate-limit.* in application.yml. Per-client-IP token buckets,
@@ -27,15 +28,25 @@ public record RateLimitProperties(
     Map<String, Rule> rules,
     Map<String, UserRule> userRules
 ) {
-    // capacity requests per period, refilled greedily (smoothly).
-    public record Rule(List<String> paths, List<String> excludePaths, long capacity, Duration period) {
+    // capacity requests per period, refilled greedily (smoothly). `methods`
+    // narrows the rule to those HTTP methods (empty = any method), e.g. to
+    // limit POST /v1/articles/*/votes without touching its GET.
+    public record Rule(List<String> paths, List<String> excludePaths, long capacity, Duration period,
+                       List<String> methods) {
         public Rule {
             paths        = paths != null ? paths : List.of();
             excludePaths = excludePaths != null ? excludePaths : List.of();
+            methods      = methods != null
+                ? methods.stream().map(m -> m.trim().toUpperCase(Locale.ROOT)).toList()
+                : List.of();
             if (capacity <= 0) throw new IllegalArgumentException("rate-limit rule capacity must be > 0");
             if (period == null || period.isZero() || period.isNegative()) {
                 throw new IllegalArgumentException("rate-limit rule period must be > 0");
             }
+        }
+
+        public boolean appliesTo(String method) {
+            return methods.isEmpty() || (method != null && methods.contains(method.toUpperCase(Locale.ROOT)));
         }
     }
 

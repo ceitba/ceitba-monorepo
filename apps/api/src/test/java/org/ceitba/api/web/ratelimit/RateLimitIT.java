@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -12,7 +13,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,7 +32,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "rate-limit.rules.auth.paths[0]=/v1/auth/**",
     "rate-limit.rules.auth.exclude-paths[0]=/v1/auth/me",
     "rate-limit.rules.auth.capacity=2",
-    "rate-limit.rules.auth.period=1m"
+    "rate-limit.rules.auth.period=1m",
+    "rate-limit.rules.votes.paths[0]=/v1/articles/*/votes",
+    "rate-limit.rules.votes.methods[0]=POST",
+    "rate-limit.rules.votes.methods[1]=DELETE",
+    "rate-limit.rules.votes.capacity=2",
+    "rate-limit.rules.votes.period=1m"
 })
 class RateLimitIT {
 
@@ -73,6 +81,23 @@ class RateLimitIT {
         for (int i = 0; i < 5; i++) {
             // Unauthenticated -> 401, but never 429.
             mvc.perform(get("/v1/auth/me").header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        }
+    }
+
+    // Anonymous vote writes are limited per IP; the GET of the counts is not.
+    @Test
+    void voteWritesAreLimitedButCountReadsAreNot() throws Exception {
+        String ip = "203.0.113.11";
+        for (int i = 0; i < 2; i++) {
+            // Unknown article -> 404, but the request still spends a token.
+            mvc.perform(post("/v1/articles/nope/votes").header("X-Forwarded-For", ip)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"type\":\"up\"}"))
+                .andExpect(status().isNotFound());
+        }
+        mvc.perform(delete("/v1/articles/nope/votes").header("X-Forwarded-For", ip))
+            .andExpect(status().isTooManyRequests());
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(get("/v1/articles/nope/votes").header("X-Forwarded-For", ip)).andExpect(status().isOk());
         }
     }
 }

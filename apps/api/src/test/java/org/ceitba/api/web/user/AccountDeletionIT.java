@@ -49,7 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
-    "itba.api.use-fake=true"
+    "itba.api.use-fake=true",
+    "auth.cookie.domain=ceitba.org.ar"
 })
 class AccountDeletionIT {
 
@@ -262,6 +263,20 @@ class AccountDeletionIT {
 
         assertThat(users.findById(bob.getId())).isPresent();
         assertPersonalDataIntact(bob.getId());
+    }
+
+    // Like logout, deletion must expire both the Domain-scoped cookie and a
+    // leftover host-only one, or the browser keeps sending a session.
+    @Test
+    void deletionExpiresBothDomainScopedAndHostOnlySessionCookies() throws Exception {
+        var cookies = mvc.perform(as(delete("/v1/me"), alice))
+            .andExpect(status().isNoContent())
+            .andReturn().getResponse().getHeaders("Set-Cookie");
+
+        assertThat(cookies).hasSize(2);
+        assertThat(cookies).allSatisfy(c -> assertThat(c).startsWith("ceitba_session=;").contains("Max-Age=0"));
+        assertThat(cookies).anySatisfy(c -> assertThat(c).contains("Domain=ceitba.org.ar"));
+        assertThat(cookies).anySatisfy(c -> assertThat(c).doesNotContain("Domain="));
     }
 
     @Test

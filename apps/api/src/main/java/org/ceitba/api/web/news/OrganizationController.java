@@ -67,9 +67,8 @@ public class OrganizationController {
     @PreAuthorize("hasRole('STAFF') or @orgAccess.canEditOrg(#slug, authentication)")
     public OrganizationResponse update(@PathVariable String slug,
                                         @RequestBody OrganizationRequest req) {
-        var patch = new Organization(slug,
-            req.name() != null ? req.name() : "",
-            req.fullName() != null ? req.fullName() : "");
+        // null = leave unchanged (OrganizationService.update skips nulls)
+        var patch = new Organization(slug, req.name(), req.fullName());
         patch.setDescription(req.description());
         patch.setCategory(req.category());
         patch.setColor(req.color());
@@ -85,11 +84,11 @@ public class OrganizationController {
         return ResponseEntity.noContent().build();
     }
 
-    // Followers panel: org admins see who follows their own org, staff sees
-    // anyone's. Mirrors the `canEditOrg` rule used by PATCH so the same set
-    // of people who can edit the profile can read the audience.
+    // Followers panel: org admins (membership role 'admin') see who follows
+    // their own org, staff sees anyone's. Stricter than PATCH's `canEditOrg`
+    // on purpose: the list exposes names and emails, plain members don't need it.
     @GetMapping("/{slug}/followers")
-    @PreAuthorize("hasRole('STAFF') or @orgAccess.canEditOrg(#slug, authentication)")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canViewFollowers(#slug, authentication)")
     public Map<String, Object> listFollowers(@PathVariable String slug) {
         List<FollowerResponse> followers = followService.listFollowers(slug);
         return Map.of(

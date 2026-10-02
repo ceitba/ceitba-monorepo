@@ -1,5 +1,6 @@
 package org.ceitba.api.service.news;
 
+import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.NewsEvent;
@@ -28,6 +29,7 @@ public class NewsEventService {
         this.events    = events;
     }
 
+    @Transactional(readOnly = true)
     public Page<NewsEvent> findAll(String category, String organization,
                                    LocalDate from, LocalDate to, Pageable pageable) {
         return eventRepo.findFiltered(
@@ -38,6 +40,7 @@ public class NewsEventService {
         );
     }
 
+    @Transactional(readOnly = true)
     public NewsEvent findById(String id) {
         return eventRepo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Event", id));
@@ -51,6 +54,10 @@ public class NewsEventService {
                                   event.getLocation(), event.getCategory());
             e.setDescription(event.getDescription());
             event = e;
+        } else if (eventRepo.existsById(event.getId())) {
+            // Ids are assigned, so save() would merge over the existing row
+            // (possibly another org's) instead of inserting.
+            throw new ResourceAlreadyExistsException("Event", event.getId());
         }
         resolveOrganization(event, organizationSlug);
         event.setCreatedBy(createdBy);

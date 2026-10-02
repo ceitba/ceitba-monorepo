@@ -57,6 +57,18 @@ DELETE /api/v1/staff/moderators/{userId}     -> 204
 - `DELETE` keeps the row for audit (`revoked_at`, `revoked_by`); `404` when there is no active grant.
 - Account deletion removes the grant.
 
+### Organization roles — `user_organizations.role`
+
+Org membership is not a Spring role: it is a `user_organizations` row whose `role` is `member` or `admin` (the only values the API accepts on write). Members can manage their org's profile, articles and events; only `admin` members (and STAFF) can list the org's followers (`GET /v1/organizations/{slug}/followers`, which exposes names and emails). Only STAFF manages memberships:
+
+```http
+POST   /api/v1/users/{userId}/organizations          {"slug": "sabf", "role": "member"}  -> 201
+PATCH  /api/v1/users/{userId}/organizations/{slug}   {"role": "admin"}                    -> 200 {slug, role}
+DELETE /api/v1/users/{userId}/organizations/{slug}                                        -> 204
+```
+
+`POST` returns `409` if the membership already exists (use `PATCH` to change its role); `PATCH` returns `404` if it doesn't; both return `400` for a role other than `member`/`admin`. `GET /v1/users` lists each user's memberships as `organizations: [{slug, role}]`.
+
 ### SYNC — `X-Api-Key` (static key) only
 
 Cron jobs and ops scripts authenticate with a static header against `AUTH_SYNC_API_KEY`. The [`ApiKeyFilter`](../src/main/java/org/ceitba/api/web/auth/ApiKeyFilter.java) translates a matching key into a `ROLE_SYNC` principal. This skips the JWT path entirely. Bug bias: if `AUTH_SYNC_API_KEY` is empty/unset, every `/sync` request returns 401. Fail-closed by design.
@@ -247,7 +259,8 @@ authorizeHttpRequests() — per-route policy from SecurityConfig
    GET  /v1/app/config                                   -> permitAll
    /v1/sync/**               -> hasRole("SYNC")
    /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
-   /v1/staff/**              -> hasRole("STAFF")   (incl. /v1/staff/moderators)
+   /v1/staff/**              -> hasRole("STAFF") AND email in allowlist
+                                (incl. /v1/staff/moderators)
    anyRequest()              -> authenticated() AND email in allowlist (JWT only;
                                 allowlist + review email while review login is on)
    │

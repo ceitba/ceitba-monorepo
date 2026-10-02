@@ -2,9 +2,11 @@ package org.ceitba.api.web.news;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.ceitba.api.config.RateLimitProperties;
 import org.ceitba.api.service.news.VoteService;
 import org.ceitba.api.web.news.dto.VoteRequest;
 import org.ceitba.api.web.news.dto.VoteResponse;
+import org.ceitba.api.web.ratelimit.ClientIp;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class VoteController {
 
     private final VoteService service;
+    private final RateLimitProperties rateLimit;
 
-    public VoteController(VoteService service) {
-        this.service = service;
+    public VoteController(VoteService service, RateLimitProperties rateLimit) {
+        this.service   = service;
+        this.rateLimit = rateLimit;
     }
 
     @GetMapping
@@ -45,8 +49,10 @@ public class VoteController {
         return ResponseEntity.noContent().build();
     }
 
+    // Same resolution as the rate limiter: the left-most X-Forwarded-For
+    // entry is client-controlled, so trusting it let one client vote (or be
+    // counted) as any number of "IPs".
     private String clientIp(HttpServletRequest req) {
-        String forwarded = req.getHeader("X-Forwarded-For");
-        return forwarded != null ? forwarded.split(",")[0].trim() : req.getRemoteAddr();
+        return ClientIp.resolve(req, rateLimit.trustForwardedFor());
     }
 }

@@ -32,6 +32,7 @@ public class FollowService {
         this.userRepo = userRepo;
     }
 
+    @Transactional(readOnly = true)
     public List<UserFollow> listForUser(UUID userId) {
         return repo.findByUserId(userId);
     }
@@ -39,6 +40,7 @@ public class FollowService {
     // Returns followers of an org (newest first), enriched with user fields
     // for the admin panel. Throws if the org doesn't exist so the caller can
     // surface a 404 instead of an empty list (which would mask typos).
+    @Transactional(readOnly = true)
     public List<FollowerResponse> listFollowers(String orgSlug) {
         if (!orgRepo.existsById(orgSlug)) {
             throw new ResourceNotFoundException("Organization", orgSlug);
@@ -64,10 +66,12 @@ public class FollowService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
     public long countFollowers(String orgSlug) {
         return repo.countByOrganization(orgSlug);
     }
 
+    @Transactional(readOnly = true)
     public boolean isFollowing(UUID userId, String orgSlug) {
         return repo.existsByUserIdAndOrganization(userId, orgSlug);
     }

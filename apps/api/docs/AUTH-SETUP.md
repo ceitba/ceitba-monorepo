@@ -144,7 +144,8 @@ https://ceitba.org.ar/auth/callback                              ← success (co
 https://ceitba.org.ar/auth/callback?error=unverified_email       ← Google email not verified
 https://ceitba.org.ar/auth/callback?error=unauthorized           ← email not in allowlist
 https://ceitba.org.ar/auth/callback?error=unauthorized_workspace ← Google Workspace (hd) domain not allowlisted
-https://ceitba.org.ar/auth/callback?error=auth_failed            ← Google exchange failed
+https://ceitba.org.ar/auth/callback?error=access_denied          ← user cancelled Google's consent screen
+https://ceitba.org.ar/auth/callback?error=auth_failed            ← Google exchange failed (or another Google error / no code)
 https://ceitba.org.ar?error=invalid_state                        ← missing/forged/expired OAuth state (sent to FRONTEND_URL)
 ```
 

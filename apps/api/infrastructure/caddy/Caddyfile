@@ -30,11 +30,19 @@ ceitba.org.ar {
         try_files {path} /index.html
     }
 
-    handle /itbanews* {
+    # ItbaNews is built with base /newsletter/ (and its Google redirect URI
+    # lives there), so that is its canonical path. /itbanews is kept as a
+    # permanent redirect for old links.
+    handle /newsletter* {
         root * /var/www/itbanews
-        uri strip_prefix /itbanews
+        uri strip_prefix /newsletter
         file_server
         try_files {path} /index.html
+    }
+
+    @itbanews path_regexp itbanews ^/itbanews(/.*)?$
+    handle @itbanews {
+        redir * /newsletter{re.itbanews.1}{?query} permanent
     }
 
     handle {

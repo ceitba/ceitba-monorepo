@@ -6,6 +6,7 @@ import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.domain.CeitbaStaff;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.user.LastActiveStaffException;
 import org.ceitba.api.web.staff.dto.AssignStaffRequest;
 import org.ceitba.api.web.staff.dto.StaffResponse;
 import org.springframework.stereotype.Service;
@@ -41,10 +42,17 @@ public class StaffService {
         var user = userRepository.findByEmail(req.email())
             .orElseThrow(() -> new ResourceNotFoundException("User", req.email()));
 
-        // CeitbaStaff PK is user_id — one staff record per user. If they already
-        // have one, conflict. Use revoke + re-assign workflow instead.
-        if (staffRepository.existsById(user.getId())) {
-            throw new ResourceAlreadyExistsException("CeitbaStaff", req.email());
+        // CeitbaStaff PK is user_id — one staff record per user. Only a currently
+        // active membership conflicts; an expired (revoked) or not-yet-started row
+        // is replaced so revoke → re-assign works.
+        var now = OffsetDateTime.now();
+        var existing = staffRepository.findById(user.getId());
+        if (existing.isPresent()) {
+            if (staffRepository.isActiveStaff(user.getId(), now)) {
+                throw new ResourceAlreadyExistsException("CeitbaStaff", req.email());
+            }
+            staffRepository.delete(existing.get());
+            staffRepository.flush();
         }
 
         var saved = staffRepository.save(
@@ -54,7 +62,9 @@ public class StaffService {
 
     // "Revoke" = end-date the membership at `now`. Keeps the row for audit so
     // future "who was staff between dates X and Y" queries still work. Only
-    // hard-delete a record that hasn't started yet (mistakes).
+    // hard-delete a record that hasn't started yet (mistakes). An already
+    // ended membership is 404: there is nothing to revoke, and end-dating it
+    // again would move its recorded end forward.
     @Transactional
     public void revoke(UUID userId) {
         var staff = staffRepository.findById(userId)
@@ -63,6 +73,17 @@ public class StaffService {
         if (staff.getStart().isAfter(now)) {
             staffRepository.delete(staff);
             return;
+        }
+        if (staff.getEnd().isBefore(now)) {
+            throw new ResourceNotFoundException("CeitbaStaff", userId.toString());
+        }
+        // Same locked guard as account deletion: two concurrent revokes of
+        // the last two staff members can't both pass and leave no staff.
+        boolean otherActiveStaffRemains = staffRepository.findAllActiveForUpdate(now).stream()
+            .anyMatch(s -> !s.getUserId().equals(userId));
+        if (!otherActiveStaffRemains) {
+            throw new LastActiveStaffException(
+                "Cannot revoke the only active staff member. Grant the STAFF role to someone else first.");
         }
         // CeitbaStaff fields are mostly immutable in the entity by design.
         // Use a native update to push the end forward without rebuilding the row.

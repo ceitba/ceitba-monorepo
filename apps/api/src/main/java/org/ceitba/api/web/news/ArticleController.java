@@ -9,7 +9,6 @@ import org.ceitba.api.web.news.dto.ArticleInput;
 import org.ceitba.api.web.news.dto.ArticlePatchInput;
 import org.ceitba.api.web.news.dto.ArticleResponse;
 import org.ceitba.api.web.news.dto.PageResponse;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,10 +50,10 @@ public class ArticleController {
         String effectiveStatus = (isStaff && status != null) ? status : "published";
 
         var result = service.findAll(category, organization, effectiveStatus,
-                                     PageRequest.of(Math.max(page - 1, 0), limit));
+                                     NewsPaging.of(page, limit));
         return new PageResponse<>(
             result.getContent().stream().map(ArticleResponse::from).toList(),
-            new PageResponse.Meta(result.getTotalElements(), page, limit)
+            PageResponse.Meta.of(result)
         );
     }
 
@@ -87,8 +86,7 @@ public class ArticleController {
         if (req.colorScheme() != null) patch.setColorScheme(req.colorScheme());
         if (req.coverImage()  != null) patch.setCoverImage(req.coverImage());
         if (req.status()      != null) patch.setStatus(req.status());
-        if (req.featured()    != null) patch.setFeatured(req.featured());
-        return ArticleResponse.from(service.update(id, patch, req.organization()));
+        return ArticleResponse.from(service.update(id, patch, req.featured(), req.organization()));
     }
 
     @DeleteMapping("/{id}")

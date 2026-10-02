@@ -186,9 +186,45 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest req) {
+        if (ex instanceof org.springframework.web.ErrorResponse mvcError) {
+            return handleSpringMvc(ex, mvcError, req);
+        }
         log.error("Unhandled exception at {}", req.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "InternalServerError",
             "An unexpected error occurred", req);
+    }
+
+    // Spring MVC's own exceptions (405 wrong method, 415 wrong Content-Type,
+    // 406, missing header, ...) carry their status. Without this they hit the
+    // catch-all above and became 500s logged at ERROR. @ExceptionHandler only
+    // matches classes, so the ErrorResponse interface is checked by hand. Keeps
+    // the exception's headers (e.g. Allow on a 405).
+    private ResponseEntity<ErrorResponse> handleSpringMvc(Exception ex, org.springframework.web.ErrorResponse mvcError,
+                                                          HttpServletRequest req) {
+        var code = mvcError.getStatusCode();
+        if (code.is5xxServerError()) {
+            log.error("Request failed at {}", req.getRequestURI(), ex);
+        } else {
+            log.debug("Request rejected at {}: {}", req.getRequestURI(), ex.getMessage());
+        }
+        var status = HttpStatus.resolve(code.value());
+        String error = status != null ? pascalCase(status.name()) : "Error";
+        String message = mvcError.getBody().getDetail() != null
+            ? mvcError.getBody().getDetail()
+            : (status != null ? status.getReasonPhrase() : "Request failed");
+        return ResponseEntity.status(code)
+            .headers(mvcError.getHeaders())
+            .body(ErrorResponse.of(error, message, req.getRequestURI()));
+    }
+
+    // METHOD_NOT_ALLOWED -> MethodNotAllowed, matching "NotFound"/"BadRequest".
+    private static String pascalCase(String enumName) {
+        var sb = new StringBuilder();
+        for (var part : enumName.split("_")) {
+            if (part.isEmpty()) continue;
+            sb.append(part.charAt(0)).append(part.substring(1).toLowerCase());
+        }
+        return sb.toString();
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String error, String message, HttpServletRequest req) {
