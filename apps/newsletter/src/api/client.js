@@ -50,13 +50,13 @@ async function send(method, path, body) {
   }
 }
 
-// Builds an ApiError from the API's `{ code, message }` error body.
+// Builds an ApiError from the API's `{ error, message }` error body.
 export async function toError(res) {
   let body = {}
   try { body = await res.json() } catch { /* non-JSON */ }
   return new ApiError(
     body?.message ?? `Request failed (${res.status})`,
     res.status,
-    body?.code ?? 'HTTP_' + res.status,
+    body?.error ?? body?.code ?? 'HTTP_' + res.status,
   )
 }
