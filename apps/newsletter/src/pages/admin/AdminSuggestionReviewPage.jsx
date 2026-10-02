@@ -29,7 +29,8 @@ export default function AdminSuggestionReviewPage() {
   const navigate     = useNavigate()
   const isArticle    = type === 'article'
 
-  const [resource, setResource] = useState(() =>
+  // Loaded once from the local suggestion store; never replaced in place.
+  const [resource] = useState(() =>
     isArticle ? getArticleById(id) : getEventById(id),
   )
   const [form, setForm]       = useState({})
@@ -205,9 +206,9 @@ export default function AdminSuggestionReviewPage() {
       {/* Form fields */}
       <div className="bg-white rounded-card border border-border shadow-card p-6 flex flex-col gap-5">
         {isArticle ? (
-          <ArticleFields form={form} set={set} setBodyPara={setBodyPara} readOnly={isReadOnly} />
+          <ArticleFields form={form} set={set} setBodyPara={setBodyPara} orgs={orgs} readOnly={isReadOnly} />
         ) : (
-          <EventFields form={form} set={set} readOnly={isReadOnly} />
+          <EventFields form={form} set={set} orgs={orgs} readOnly={isReadOnly} />
         )}
       </div>
 
@@ -267,7 +268,7 @@ export default function AdminSuggestionReviewPage() {
 
 // ── Article fields ─────────────────────────────────────────────────────────────
 
-function ArticleFields({ form, set, setBodyPara, readOnly }) {
+function ArticleFields({ form, set, setBodyPara, orgs, readOnly }) {
   return (
     <>
       <Field label="Título">
@@ -349,7 +350,7 @@ function ArticleFields({ form, set, setBodyPara, readOnly }) {
 
 // ── Event fields ───────────────────────────────────────────────────────────────
 
-function EventFields({ form, set, readOnly }) {
+function EventFields({ form, set, orgs, readOnly }) {
   return (
     <>
       <Field label="Título">

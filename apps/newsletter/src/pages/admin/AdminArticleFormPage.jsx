@@ -9,7 +9,7 @@ import {
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
-import { useCategoryLabel } from '../../components/CategoryBadge'
+import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import ImageUploader from '../../components/ImageUploader'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 import LoadErrorState from '../../components/admin/LoadErrorState'

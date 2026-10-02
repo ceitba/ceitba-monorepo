@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchAnalyticsSummary } from '../../api/analytics'
-import { useCategoryLabel } from '../../components/CategoryBadge'
+import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import { addDaysISO, localeFor, todayISO } from '../../utils/dates'
 
 // GET /analytics/summary?days=N looks back N days and defaults to 30 when

@@ -3,7 +3,6 @@ import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-do
 import { getSession, signOut } from '../store/authStore'
 import {
   getNotificationsForUser,
-  getUnreadCountForUser,
   markNotificationRead,
   markAllReadForUser,
 } from '../store/notificationStore'
