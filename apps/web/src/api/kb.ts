@@ -35,6 +35,9 @@ export interface KbLink {
   slug: string | null
   resolved: boolean
   title: string | null
+  // Section anchor for [[slug#anchor]] links (raw keeps the "#…"). Older
+  // API builds don't send it: the renderer then parses it from raw.
+  anchor?: string | null
 }
 
 export interface KbBacklink {

@@ -325,3 +325,17 @@ html.dark .kb-prose th, html.dark .kb-prose td { border-color: #3f3f46; }
 html.dark .kb-prose th { background: #18181b; }
 .kb-prose .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25rem 0; }
 .kb-prose img { max-width: 100%; height: auto; }
+
+/* Section reached through an anchor link: brief accent wash. */
+@keyframes kb-heading-flash {
+  0%, 35% { background-color: rgba(245, 166, 35, 0.28); }
+  100%    { background-color: transparent; }
+}
+.kb-prose .kb-heading-flash {
+  animation: kb-heading-flash 1.8s ease-out;
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 0.35rem transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kb-prose .kb-heading-flash { animation: none; text-decoration: underline; text-decoration-color: #F5A623; }
+}

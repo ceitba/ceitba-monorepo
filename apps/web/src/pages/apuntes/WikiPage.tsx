@@ -46,21 +46,13 @@ export default function WikiPage() {
     return () => { cancelled = true }
   }, [subjectId])
 
-  // Scroll to the heading in the hash once the (lazy) body has rendered.
+  // New page without a hash: start at the top. Hash targets are scrolled
+  // to (and flashed) by WikiMarkdown once the lazy body has rendered.
   useEffect(() => {
-    if (!page) { window.scrollTo(0, 0); return }
-    if (!location.hash) { window.scrollTo(0, 0); return }
-    const id = decodeURIComponent(location.hash.slice(1))
-    let tries = 0
-    const timer = window.setInterval(() => {
-      const el = document.getElementById(id)
-      if (el || ++tries > 20) {
-        window.clearInterval(timer)
-        el?.scrollIntoView()
-      }
-    }, 100)
-    return () => window.clearInterval(timer)
-  }, [page, location.hash])
+    if (page && !location.hash) window.scrollTo(0, 0)
+    // Only when the page itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page?.id])
 
   if (slug === 'index') return <Navigate to={`/apuntes/${encodeURIComponent(subjectId)}`} replace />
 

@@ -1,5 +1,6 @@
-import { Children, isValidElement, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Children, isValidElement, useEffect, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import type { Element as HastElement, ElementContent } from 'hast'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -22,11 +23,35 @@ function textOf(node: ReactNode): string {
     .join('')
 }
 
+// Must match the API's anchor algorithm exactly: NFD without combining
+// marks, lowercase, runs of non-[a-z0-9] → "-", trimmed ("Cómo se
+// calcula" → "como-se-calcula"). Duplicates get -2, -3 (see below).
 export function headingId(text: string): string {
   return text
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'seccion'
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
+
+// Plain text of a heading from its hast node, leaving out citation markers
+// (their text is just the number).
+function hastText(nodes: ElementContent[] | undefined): string {
+  return (nodes ?? []).map((n) => {
+    if (n.type === 'text') return n.value
+    if (n.type !== 'element') return ''
+    const href = typeof n.properties?.href === 'string' ? n.properties.href : ''
+    if (n.tagName === 'a' && href.startsWith(CITE_SCHEME)) return ''
+    return hastText(n.children)
+  }).join('')
+}
+
+// Splits "81.07/slug#anchor" | "slug#anchor" | "#anchor" into its anchor
+// (fallback while page.links[].anchor isn't sent yet).
+function anchorOf(raw: string): string | null {
+  const i = raw.indexOf('#')
+  return i >= 0 ? raw.slice(i + 1).trim() || null : null
+}
+
+const FLASH_CLASS = 'kb-heading-flash'
 
 function urlTransform(url: string): string {
   if (url.startsWith(WIKI_SCHEME) || url.startsWith(CITE_SCHEME)) return url
@@ -40,11 +65,44 @@ export default function WikiMarkdown({ page }: { page: KbPage }) {
   const { order } = useCitations()
   const markdown = preprocessWikilinks(page.markdown ?? '', page.links ?? [], order)
   const sections = sectionByLine(markdown)
+  const location = useLocation()
 
-  function heading(level: 2 | 3 | 4) {
+  // Heading ids for this render, keyed by source offset so a heading keeps
+  // its id; repeated slugs get -2, -3 in document order.
+  const idsByOffset = new Map<number, string>()
+  const seen = new Map<string, number>()
+  function idFor(node: HastElement | undefined, children: ReactNode): string {
+    const offset = node?.position?.start.offset ?? -1
+    const cached = idsByOffset.get(offset)
+    if (cached) return cached
+    const base = headingId(node ? hastText(node.children) : textOf(children)) || 'seccion'
+    const count = (seen.get(base) ?? 0) + 1
+    seen.set(base, count)
+    const id = count === 1 ? base : `${base}-${count}`
+    if (offset >= 0) idsByOffset.set(offset, id)
+    return id
+  }
+
+  // After the body renders (and on every hash change, including same-page
+  // [[#anchor]] links), scroll to the heading and flash it. The headings
+  // carry scroll-margin for the sticky navbar.
+  useEffect(() => {
+    const id = decodeURIComponent(location.hash.replace(/^#/, ''))
+    if (!id) return
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ block: 'start' })
+    el.classList.remove(FLASH_CLASS)
+    void el.offsetWidth // restart the animation
+    el.classList.add(FLASH_CLASS)
+    const timer = window.setTimeout(() => el.classList.remove(FLASH_CLASS), 1800)
+    return () => window.clearTimeout(timer)
+  }, [location.hash, location.key, markdown])
+
+  function heading(level: 1 | 2 | 3 | 4 | 5 | 6) {
     const Tag = `h${level}` as const
-    return function Heading({ children }: { children?: ReactNode }) {
-      const id = headingId(textOf(children))
+    return function Heading({ children, node }: { children?: ReactNode; node?: HastElement }) {
+      const id = idFor(node, children)
       return (
         <Tag id={id} className="group scroll-mt-24">
           {children}
@@ -55,20 +113,34 @@ export default function WikiMarkdown({ page }: { page: KbPage }) {
   }
 
   const components: Components = {
+    h1: heading(1),
     h2: heading(2),
     h3: heading(3),
     h4: heading(4),
+    h5: heading(5),
+    h6: heading(6),
     a({ href, title, children, node }) {
       const url = href ?? ''
       if (url.startsWith(WIKI_SCHEME)) {
         const raw = decodeURIComponent(url.slice(WIKI_SCHEME.length))
-        const link = links.get(raw)
+        // Same-page section: [[#anchor|text]].
+        if (raw.startsWith('#')) {
+          const anchor = links.get(raw)?.anchor ?? anchorOf(raw)
+          if (!anchor) return <>{children}</>
+          return (
+            <Link to={{ pathname: location.pathname, search: location.search, hash: `#${anchor}` }} className="kb-link">
+              {children}
+            </Link>
+          )
+        }
+        const link = links.get(raw) ?? links.get(raw.split('#')[0])
         if (!link?.resolved) {
           return <span className="kb-unresolved" title={t('wiki.unresolved')}>{children}</span>
         }
+        const anchor = link.anchor ?? anchorOf(raw)
         const external = link.subjectId !== page.subjectId
         return (
-          <Link to={kbPagePath(link.subjectId, link.slug)} className="kb-link">
+          <Link to={`${kbPagePath(link.subjectId, link.slug)}${anchor ? `#${encodeURIComponent(anchor)}` : ''}`} className="kb-link">
             {children}
             {external && <span className="kb-link-subject">{link.subjectId}</span>}
           </Link>
