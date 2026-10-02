@@ -259,7 +259,8 @@
       "views": {
         "sources": "Folders",
         "files": "Files to review",
-        "unclaimed": "Unclaimed"
+        "unclaimed": "Unclaimed",
+        "wiki": "Wiki"
       },
       "pageStatus": "Page {{page}} of {{pages}} · {{total}} {{what}}",
       "conflict": "The status changed while you were looking (another staff member or a sync). We reloaded the list.",
@@ -329,6 +330,26 @@
           "lastSeen": "Last seen"
         },
         "empty": "No unclaimed shared folders."
+      },
+      "wiki": {
+        "status": {
+          "HIDDEN": "Hidden",
+          "PUBLISHED": "Published"
+        },
+        "col": {
+          "page": "Page",
+          "type": "Type"
+        },
+        "hide": "Hide",
+        "hideTitle": "Hide page",
+        "hideBody": "“{{title}}” disappears from the wiki until you restore it.",
+        "hideNotice": "You hid “{{title}}”.",
+        "restoreNotice": "You restored “{{title}}”.",
+        "empty": {
+          "HIDDEN": "No hidden pages.",
+          "PUBLISHED": "No published pages."
+        },
+        "unit": "pages"
       }
     }
   },

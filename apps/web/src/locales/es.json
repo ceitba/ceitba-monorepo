@@ -259,7 +259,8 @@
       "views": {
         "sources": "Carpetas",
         "files": "Archivos a revisar",
-        "unclaimed": "Sin reclamar"
+        "unclaimed": "Sin reclamar",
+        "wiki": "Wiki"
       },
       "pageStatus": "Página {{page}} de {{pages}} · {{total}} {{what}}",
       "conflict": "El estado cambió mientras lo mirabas (otra persona de staff o una sincronización). Recargamos la lista.",
@@ -329,6 +330,26 @@
           "lastSeen": "Última vez"
         },
         "empty": "No hay carpetas compartidas sin reclamar."
+      },
+      "wiki": {
+        "status": {
+          "HIDDEN": "Ocultas",
+          "PUBLISHED": "Publicadas"
+        },
+        "col": {
+          "page": "Página",
+          "type": "Tipo"
+        },
+        "hide": "Ocultar",
+        "hideTitle": "Ocultar página",
+        "hideBody": "«{{title}}» deja de verse en la wiki hasta que la restaures.",
+        "hideNotice": "Ocultaste «{{title}}».",
+        "restoreNotice": "Restauraste «{{title}}».",
+        "empty": {
+          "HIDDEN": "No hay páginas ocultas.",
+          "PUBLISHED": "No hay páginas publicadas."
+        },
+        "unit": "páginas"
       }
     }
   },
