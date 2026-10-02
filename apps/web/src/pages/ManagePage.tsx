@@ -4,17 +4,32 @@ import ManageStaffSection from './manage/ManageStaffSection'
 import ManageBenefitsSection from './manage/ManageBenefitsSection'
 import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
+import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
 
-type Tab = 'staff' | 'benefits' | 'users' | 'corrections'
+type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections'
 
 export default function ManagePage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('staff')
+  // Org filter to open the Users tab with (set by "Agregar miembros" after
+  // creating an org). Picking a tab from the nav clears it.
+  const [usersOrgFilter, setUsersOrgFilter] = useState<string | undefined>(undefined)
+
+  function selectTab(next: Tab) {
+    setUsersOrgFilter(undefined)
+    setTab(next)
+  }
+
+  function addMembers(slug: string) {
+    setUsersOrgFilter(slug)
+    setTab('users')
+  }
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'staff',    label: t('manage.tabs.staff') },
     { id: 'benefits', label: t('manage.tabs.benefits') },
     { id: 'users',    label: t('manage.tabs.users') },
+    { id: 'organizations', label: t('manage.tabs.organizations') },
     { id: 'corrections', label: t('manage.tabs.corrections') },
   ]
 
@@ -34,7 +49,7 @@ export default function ManagePage() {
           <button
             key={it.id}
             type="button"
-            onClick={() => setTab(it.id)}
+            onClick={() => selectTab(it.id)}
             aria-current={tab === it.id ? 'page' : undefined}
             className={`flex-shrink-0 whitespace-nowrap px-4 py-2 font-mono text-label uppercase tracking-widest transition-colors duration-150 -mb-px border-b-2 ${
               tab === it.id
@@ -49,7 +64,8 @@ export default function ManagePage() {
 
       {tab === 'staff'    && <ManageStaffSection />}
       {tab === 'benefits' && <ManageBenefitsSection />}
-      {tab === 'users'    && <ManageUsersSection />}
+      {tab === 'users'    && <ManageUsersSection key={usersOrgFilter ?? ''} initialOrgSlug={usersOrgFilter} />}
+      {tab === 'organizations' && <ManageOrganizationsSection onAddMembers={addMembers} />}
       {tab === 'corrections' && <ManageCorrectionsSection />}
     </main>
   )
