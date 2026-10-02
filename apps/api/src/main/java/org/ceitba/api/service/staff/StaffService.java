@@ -41,10 +41,17 @@ public class StaffService {
         var user = userRepository.findByEmail(req.email())
             .orElseThrow(() -> new ResourceNotFoundException("User", req.email()));
 
-        // CeitbaStaff PK is user_id — one staff record per user. If they already
-        // have one, conflict. Use revoke + re-assign workflow instead.
-        if (staffRepository.existsById(user.getId())) {
-            throw new ResourceAlreadyExistsException("CeitbaStaff", req.email());
+        // CeitbaStaff PK is user_id — one staff record per user. Only a currently
+        // active membership conflicts; an expired (revoked) or not-yet-started row
+        // is replaced so revoke → re-assign works.
+        var now = OffsetDateTime.now();
+        var existing = staffRepository.findById(user.getId());
+        if (existing.isPresent()) {
+            if (staffRepository.isActiveStaff(user.getId(), now)) {
+                throw new ResourceAlreadyExistsException("CeitbaStaff", req.email());
+            }
+            staffRepository.delete(existing.get());
+            staffRepository.flush();
         }
 
         var saved = staffRepository.save(

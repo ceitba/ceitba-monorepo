@@ -161,6 +161,28 @@ class StaffEndpointsIT {
     }
 
     @Test
+    void reassigningAfterRevokeGrantsStaffAgain() throws Exception {
+        var body = """
+            {"email":"alice@itba.edu.ar","branch":"IT","role":"MEMBER",
+             "start":"2026-01-01T00:00:00Z","end":"2030-01-01T00:00:00Z"}""";
+        mvc.perform(post("/v1/staff").with(staff()).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated());
+        mvc.perform(delete("/v1/staff/" + aliceId).with(staff()))
+            .andExpect(status().isNoContent());
+
+        var reassign = """
+            {"email":"alice@itba.edu.ar","branch":"DIRECTIVES","role":"MEMBER",
+             "start":"%s","end":"2031-01-01T00:00:00Z"}""".formatted(OffsetDateTime.now().minusMinutes(1));
+        mvc.perform(post("/v1/staff").with(staff()).contentType(MediaType.APPLICATION_JSON).content(reassign))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.branch").value("DIRECTIVES"));
+
+        assertThat(staffRepository.isActiveStaff(aliceId, OffsetDateTime.now())).isTrue();
+        mvc.perform(get("/v1/staff").with(staff()))
+            .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
     void regularUserCannotAssign() throws Exception {
         var body = """
             {"email":"alice@itba.edu.ar","branch":"IT","role":"MEMBER",
