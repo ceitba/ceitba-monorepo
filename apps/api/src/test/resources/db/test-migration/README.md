@@ -35,3 +35,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.20 article_push_sent_at | V27 |
 | V4.21 drop_user_sga_synced_at | V28 |
 | V4.22 schedule_corrections | V30 |
+| V4.23 drive_sync | V31 |
