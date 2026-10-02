@@ -184,7 +184,8 @@
       "loadErrorTitle": "No se pudo cargar",
       "loadErrorMessage": "Revisá tu conexión e intentá de nuevo. No se guardó ningún cambio.",
       "errors": {
-        "category": "Elegí una categoría de la lista."
+        "category": "Elegí una categoría de la lista.",
+        "httpUrl": "Tiene que ser una URL que empiece con http:// o https://, sin espacios."
       }
     },
     "articleForm": {

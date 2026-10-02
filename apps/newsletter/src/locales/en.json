@@ -184,7 +184,8 @@
       "loadErrorTitle": "Couldn't load",
       "loadErrorMessage": "Check your connection and try again. No changes were saved.",
       "errors": {
-        "category": "Pick a category from the list."
+        "category": "Pick a category from the list.",
+        "httpUrl": "Must be a URL starting with http:// or https://, with no spaces."
       }
     },
     "articleForm": {

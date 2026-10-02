@@ -4,6 +4,16 @@ import { fetchOrganizationBySlug, updateOrganization } from '../../api/organizat
 import { useTranslation } from 'react-i18next'
 import { canViewFollowers, getOrganizations, isStaff } from '../../store/authStore'
 
+// Same rule as the API's OrganizationRequest/OrganizationPatchRequest:
+// blank (clears it) or http(s) with no whitespace, at most 2048 chars. The
+// browser's type="url" check alone lets data:, javascript: and ftp: through.
+const HTTP_URL = /^(\s*|https?:\/\/\S+)$/
+const URL_FIELDS = ['logoUrl', 'backgroundUrl']
+
+function isAcceptedUrl(value) {
+  return (value ?? '').length <= 2048 && HTTP_URL.test(value ?? '')
+}
+
 const COLOR_SCHEMES = [
   { value: 'blue',   label: 'Azul'    },
   { value: 'amber',  label: 'Ámbar'   },
@@ -23,6 +33,7 @@ export default function AdminOrganizationProfilePage() {
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
   const [apiError, setApiError] = useState('')
+  const [urlErrors, setUrlErrors] = useState({})
 
   useEffect(() => {
     if (!allowed) return
@@ -69,10 +80,25 @@ export default function AdminOrganizationProfilePage() {
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
     setSaved(false)
+    if (urlErrors[key] && isAcceptedUrl(value)) {
+      setUrlErrors((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
+    // Rows saved before the API validated these URLs may hold anything; the
+    // API now rejects every PATCH that carries one, so flag it here with a
+    // readable message instead of the raw "logoUrl: must be …" 400.
+    const invalid = Object.fromEntries(
+      URL_FIELDS.filter((k) => !isAcceptedUrl(form[k])).map((k) => [k, t('admin.form.errors.httpUrl')]),
+    )
+    setUrlErrors(invalid)
+    if (Object.keys(invalid).length) return
     setSaving(true)
     setApiError('')
     try {
@@ -159,7 +185,7 @@ export default function AdminOrganizationProfilePage() {
           </Field>
         </div>
 
-        <Field label="URL del logo">
+        <Field label="URL del logo" error={urlErrors.logoUrl}>
           <input
             type="url"
             value={form.logoUrl}
@@ -169,7 +195,7 @@ export default function AdminOrganizationProfilePage() {
           />
         </Field>
 
-        <Field label="URL del fondo">
+        <Field label="URL del fondo" error={urlErrors.backgroundUrl}>
           <input
             type="url"
             value={form.backgroundUrl}
@@ -247,11 +273,12 @@ export default function AdminOrganizationProfilePage() {
   )
 }
 
-function Field({ label, children }) {
+function Field({ label, error, children }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">{label}</span>
       {children}
+      {error && <span role="alert" className="font-body text-body-sm text-red-600">{error}</span>}
     </label>
   )
 }
