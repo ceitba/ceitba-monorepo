@@ -1,7 +1,9 @@
 // Canonical article/event categories — the exact strings stored by the API
-// and matched by its `?category=` filter (exact, case-sensitive). Labels
-// live in locales under `categories.<value>`; "all" means omitting the
-// filter, never a magic value.
+// and matched by its `?category=` filter (exact, case-sensitive). The API
+// (NewsCategories) rejects anything else on create/update, and its V29
+// migration rewrote older spellings ("ACADÉMICO", "academico") to these.
+// Labels live in locales under `categories.<value>`; "all" means omitting
+// the filter, never a magic value.
 export const CATEGORIES = [
   'Académico',
   'Campus',
@@ -14,21 +16,14 @@ export const CATEGORIES = [
 
 export const DEFAULT_CATEGORY = 'Académico'
 
-function fold(value) {
-  return String(value).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
-
-const BY_FOLDED = new Map(CATEGORIES.map((c) => [fold(c), c]))
-
-// Maps legacy spellings ("ACADÉMICO", "academico") to the canonical value.
-// Unknown values are returned unchanged so nothing is silently rewritten.
-export function normalizeCategory(value) {
-  if (value == null || value === '') return value
-  return BY_FOLDED.get(fold(value)) ?? value
+export function isCanonicalCategory(value) {
+  return CATEGORIES.includes(value)
 }
 
 // Options for a category <select>: the canonical list plus the current
-// value if it is something else, so editing never drops it silently.
+// value if it is something else (a row the migration could not map), so
+// editing shows it instead of silently replacing it; the form then asks
+// for a canonical value before saving, since the API would reject it.
 export function categoryOptions(current) {
   return current && !CATEGORIES.includes(current) ? [...CATEGORIES, current] : CATEGORIES
 }

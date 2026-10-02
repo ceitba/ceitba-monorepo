@@ -145,7 +145,6 @@
       "emptyTitle": "No articles",
       "emptyMessage": "Create the first article for the newsletter.",
       "deleteError": "Couldn't delete the article. Please try again.",
-      "publishedOnlyNote": "Showing your organizations' published articles. Drafts are only visible to staff.",
       "columns": {
         "title": "Title",
         "status": "Status",
@@ -183,7 +182,10 @@
       "notFoundTitle": "Not found",
       "notFoundMessage": "It doesn't exist or you don't have access to edit it.",
       "loadErrorTitle": "Couldn't load",
-      "loadErrorMessage": "Check your connection and try again. No changes were saved."
+      "loadErrorMessage": "Check your connection and try again. No changes were saved.",
+      "errors": {
+        "category": "Pick a category from the list."
+      }
     },
     "articleForm": {
       "loading": "Loading article…",

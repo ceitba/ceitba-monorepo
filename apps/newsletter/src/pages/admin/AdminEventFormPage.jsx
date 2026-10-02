@@ -5,7 +5,7 @@ import LoadErrorState from '../../components/admin/LoadErrorState'
 import { fetchEventById, createEvent, updateEvent } from '../../api/events'
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
-import { DEFAULT_CATEGORY, categoryOptions, normalizeCategory } from '../../constants/categories'
+import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../components/CategoryBadge'
 import { todayISO } from '../../utils/dates'
 
@@ -64,7 +64,7 @@ export default function AdminEventFormPage() {
           endTime:     (existing.endTime ?? '').slice(0, 5),
           location:    existing.location ?? '',
           description: existing.description ?? '',
-          category: normalizeCategory(existing.category) || DEFAULT_CATEGORY,
+          category: existing.category || DEFAULT_CATEGORY,
         })
         setLoadState('ready')
       })
@@ -88,6 +88,7 @@ export default function AdminEventFormPage() {
     if (!values.endTime)         e.endTime  = t('admin.eventForm.errors.endTime')
     if (!values.location.trim()) e.location = t('admin.eventForm.errors.location')
     if (values.time && values.endTime && values.time >= values.endTime) e.endTime = t('admin.eventForm.errors.endBeforeStart')
+    if (!isCanonicalCategory(values.category)) e.category = t('admin.form.errors.category')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -186,8 +187,8 @@ export default function AdminEventFormPage() {
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={t('admin.form.category')}>
-            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputClass(null)}>
+          <Field label={t('admin.form.category')} error={errors.category}>
+            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputClass(errors.category)}>
               {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
             </select>
           </Field>
