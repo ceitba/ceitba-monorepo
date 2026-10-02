@@ -17,7 +17,7 @@ Read [AUTH-AND-ROLES.md](AUTH-AND-ROLES.md) for the access-control model.
 | `AUTH_GOOGLE_MOBILE_AUDIENCES` | For mobile login | *(empty = disabled, 501)* | Comma-separated OAuth client IDs accepted as the `aud` of mobile Google ID tokens |
 | `AUTH_JWT_TTL_DAYS` | No | `7` | Web session JWT lifetime |
 | `AUTH_JWT_ISSUER` | No | `https://ceitba.org.ar/api` | `iss` claim of issued JWTs |
-| `AUTH_JWT_ENFORCE_ISS_AUD` | No | `false` | Require `iss`/`aud` on every JWT (flip after the phase-in, see AUTH-AND-ROLES) |
+| `AUTH_JWT_ENFORCE_ISS_AUD` | No | `true` | Require `iss`/`aud` on every JWT. `false` restores the B1 phase-in (claims checked only when present); see AUTH-AND-ROLES |
 | `AUTH_MOBILE_ACCESS_TTL` | No | `15m` | Mobile access-token lifetime |
 | `AUTH_REFRESH_TTL` | No | `60d` | Mobile refresh-token lifetime (sliding) |
 | `AUTH_REFRESH_REUSE_GRACE` | No | `60s` | Window in which a just-rotated refresh token may be retried (lost response) without revoking the family; `0` disables |

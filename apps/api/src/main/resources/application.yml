@@ -68,9 +68,9 @@ auth:
     secret: ${AUTH_JWT_SECRET:}
     ttl-days: ${AUTH_JWT_TTL_DAYS:7}
     issuer: ${AUTH_JWT_ISSUER:https://ceitba.org.ar/api}
-    # Phase-in: false validates iss/aud only on tokens that carry them. Flip to
-    # true once every pre-B1 web cookie has expired (deploy + AUTH_JWT_TTL_DAYS).
-    enforce-issuer-audience: ${AUTH_JWT_ENFORCE_ISS_AUD:false}
+    # true: every JWT must carry our iss and aud. false is the B1 phase-in
+    # (validated only when present) — every pre-B1 cookie expired 2026-10-04.
+    enforce-issuer-audience: ${AUTH_JWT_ENFORCE_ISS_AUD:true}
     mobile-access-ttl: ${AUTH_MOBILE_ACCESS_TTL:15m}
     refresh-ttl: ${AUTH_REFRESH_TTL:60d}
     # A rotated refresh token presented again within this window, while its

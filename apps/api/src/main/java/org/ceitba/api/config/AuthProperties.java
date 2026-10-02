@@ -12,7 +12,7 @@ import java.util.List;
 //   GOOGLE_CLIENT_ID=...  GOOGLE_CLIENT_SECRET=...  GOOGLE_REDIRECT_URI=...
 //   AUTH_GOOGLE_MOBILE_AUDIENCES=<web client id>,<ios client id>
 //   AUTH_JWT_SECRET=<base64-encoded 32+ byte secret>  AUTH_JWT_TTL_DAYS=7
-//   AUTH_JWT_ISSUER=https://ceitba.org.ar/api  AUTH_JWT_ENFORCE_ISS_AUD=false
+//   AUTH_JWT_ISSUER=https://ceitba.org.ar/api  AUTH_JWT_ENFORCE_ISS_AUD=true
 //   AUTH_MOBILE_ACCESS_TTL=15m  AUTH_REFRESH_TTL=60d  AUTH_REFRESH_REUSE_GRACE=60s
 //   AUTH_COOKIE_NAME=ceitba_session  AUTH_COOKIE_DOMAIN=ceitba.org.ar
 //   AUTH_COOKIE_SECURE=true  AUTH_COOKIE_SAMESITE=Lax  AUTH_COOKIE_PATH=/
@@ -41,8 +41,9 @@ public record AuthProperties(
 
     // ttlDays:          web session JWT (cookie) lifetime.
     // issuer:           `iss` put in (and, once enforced, required on) our JWTs.
-    // enforceIssuerAudience: false = phase-in; iss/aud are validated only when
-    //                   present so pre-B1 cookies without them keep working.
+    // enforceIssuerAudience: true (default, also when unset) = iss/aud are
+    //                   required on every token. false = the B1 phase-in, where
+    //                   they're validated only when present (pre-B1 cookies).
     // mobileAccessTtl:  access-token lifetime for the mobile token endpoints.
     // refreshTtl:       refresh-token lifetime (sliding: each rotation renews it).
     // refreshReuseGrace: how long after a rotation the previous token may be
@@ -55,7 +56,7 @@ public record AuthProperties(
 
         public Jwt {
             issuer = (issuer == null || issuer.isBlank()) ? "https://ceitba.org.ar/api" : issuer;
-            enforceIssuerAudience = Boolean.TRUE.equals(enforceIssuerAudience);
+            enforceIssuerAudience = !Boolean.FALSE.equals(enforceIssuerAudience);
             mobileAccessTtl = positiveOr(mobileAccessTtl, Duration.ofMinutes(15));
             refreshTtl      = positiveOr(refreshTtl, Duration.ofDays(60));
             refreshReuseGrace = refreshReuseGrace == null ? Duration.ofSeconds(60)

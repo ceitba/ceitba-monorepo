@@ -9,11 +9,11 @@ import org.springframework.security.oauth2.jwt.JwtClaimNames;
 
 // Validates `iss` and `aud` on our own HS256 JWTs.
 //
-// Phase-in: JWTs issued before B1 carry neither claim and live in 7-day web
-// cookies. While `enforce` is false, each claim is checked only when present,
-// so those cookies keep working; a token that does carry iss/aud must match.
-// Once every pre-B1 token has expired (deploy date + auth.jwt.ttl-days), set
-// AUTH_JWT_ENFORCE_ISS_AUD=true to require both claims on every token.
+// With `enforce` (the default since 2026-10-05) both claims are required on
+// every token. `enforce` = false is the B1 phase-in: JWTs issued before B1
+// (shipped 2026-09-27) carried neither claim and lived in 7-day web cookies,
+// so each claim was checked only when present; a token that did carry
+// iss/aud still had to match. Every pre-B1 token expired by 2026-10-04.
 public class IssuerAudienceValidator implements OAuth2TokenValidator<Jwt> {
 
     private final String issuer;
