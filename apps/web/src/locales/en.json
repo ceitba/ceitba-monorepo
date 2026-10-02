@@ -184,6 +184,7 @@
       "appliedNotice": "Done: the correction for {{subject}} · Commission {{commission}} is now used in the Schedule Builder.",
       "rejectedNotice": "Done: you rejected the correction for {{subject}} · Commission {{commission}}.",
       "revertedNotice": "Done: {{subject}} · Commission {{commission}} is back on the SGA schedule.",
+      "conflict": "This correction changed state in the meantime (votes, the SGA sync or another staff member). The list was reloaded with its current state.",
       "empty": {
         "PENDING": "No pending corrections.",
         "APPLIED": "No applied corrections.",

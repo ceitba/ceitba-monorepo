@@ -184,6 +184,7 @@
       "appliedNotice": "Listo: la corrección de {{subject}} · Comisión {{commission}} ya se usa en el Combinador.",
       "rejectedNotice": "Listo: rechazaste la corrección de {{subject}} · Comisión {{commission}}.",
       "revertedNotice": "Listo: {{subject}} · Comisión {{commission}} vuelve a usar el horario del SGA.",
+      "conflict": "Esta corrección cambió de estado mientras tanto (por votos, por la sincronización con el SGA u otro miembro del staff). Recargamos la lista con su estado actual.",
       "empty": {
         "PENDING": "No hay correcciones pendientes.",
         "APPLIED": "No hay correcciones aplicadas.",

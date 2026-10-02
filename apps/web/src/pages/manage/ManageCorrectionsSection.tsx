@@ -32,7 +32,10 @@ type StatusFilter = CorrectionStatus
 export default function ManageCorrectionsSection() {
   const { t, i18n } = useTranslation()
   const [page, setPage]       = useState<StaffCorrectionsPage | null>(null)
+  // Kept apart: a successful list fetch clears loadError but must not wipe
+  // the message of the action that triggered it (e.g. the 409 reload).
   const [error, setError]     = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice]   = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -52,13 +55,13 @@ export default function ManageCorrectionsSection() {
       .then((res) => {
         if (reqIdRef.current !== id) return
         setPage(res)
-        setError(null)
+        setLoadError(null)
         const lastPage = Math.max(1, Math.ceil(res.meta.total / PAGE_SIZE))
         if (pageNum > lastPage) setPageNum(lastPage)
       })
       .catch((e: Error) => {
         if (reqIdRef.current !== id) return
-        setError(e.message)
+        setLoadError(e.message)
       })
       .finally(() => {
         if (reqIdRef.current === id) setLoading(false)
@@ -76,9 +79,13 @@ export default function ManageCorrectionsSection() {
   }
 
   function handleActionError(e: unknown) {
-    setError((e as Error).message)
     // 409: the status changed under us (votes, sync or another staff member).
-    if (e instanceof ApiError && e.status === 409) reload()
+    if (e instanceof ApiError && e.status === 409) {
+      setError(t('manage.corrections.conflict'))
+      reload()
+      return
+    }
+    setError((e as Error).message)
   }
 
   async function apply(c: StaffCorrection) {
@@ -142,6 +149,7 @@ export default function ManageCorrectionsSection() {
       </p>
 
       {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+      {loadError && <ErrorBanner onDismiss={() => setLoadError(null)}>{loadError}</ErrorBanner>}
       {notice && (
         <div
           role="status"
@@ -270,7 +278,7 @@ export default function ManageCorrectionsSection() {
             {loading && rows.length === 0 && (
               <tr><td colSpan={6} className="px-3 py-6 text-center text-ink-secondary">{t('manage.loading')}</td></tr>
             )}
-            {!loading && !error && rows.length === 0 && (
+            {!loading && !loadError && rows.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center">
                   <p className="font-semibold text-ink-primary dark:text-night-text">
