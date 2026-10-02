@@ -614,6 +614,38 @@ class ScheduleCorrectionIT {
         }
     }
 
+    // The next term synced before this one ends replaces it in both
+    // endpoints, and corrections attach to the commissions actually shown.
+    @Test
+    void overlaysFollowTheNewestTermInBothEndpoints() throws Exception {
+        String current = suggestOk(as(SUGGESTER), P1);
+        vote(student(2), current, "CONFIRM");
+        vote(student(3), current, "CONFIRM");
+        var next = new Commission("48120", SUBJECT, "G", LocalDate.of(2027, 3, 8), LocalDate.of(2027, 7, 10),
+            0, 30, SubjectType.SEMESTRAL);
+        next.getTimes().add(new CommissionTime("48120", DayOfWeek.MONDAY, LocalTime.of(8, 0), "102T", "SDT",
+            LocalTime.of(11, 0)));
+        commissions.save(next);
+        String nextCorrection = body(suggestAs(student(4), "48120", slots("THURSDAY 14:00-17:00"))
+            .andExpect(status().isCreated()));
+        String nextId = json.readTree(nextCorrection).at("/correction/id").asText();
+
+        JsonNode root = json.readTree(body(mvc.perform(get("/v1/subjects?plan=" + PLAN))
+            .andExpect(status().isOk())));
+        var shown = root.at("/Ciclo/1/1/0/commissions");
+        assertThat(shown).hasSize(1);
+        assertThat(shown.get(0).get("commission_id").asText()).isEqualTo("48120");
+        assertThat(shown.get(0).get("schedule").get(0).get("day").asText()).isEqualTo("MONDAY");
+        assertThat(shown.get(0).get("corrections")).hasSize(1);
+        assertThat(shown.get(0).get("corrections").get(0).get("id").asText()).isEqualTo(nextId);
+
+        JsonNode list = json.readTree(body(mvc.perform(get("/v1/commissions?plan=" + PLAN))
+            .andExpect(status().isOk())));
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).get("id").asText()).isEqualTo("48120");
+        assertThat(list.get(0).get("times").get(0).get("day").asText()).isEqualTo("MONDAY");
+    }
+
     // ---- sync expiry -----------------------------------------------------
 
     private void syncCommissionSlots(CommissionProjection.TimeSlot... slots) {

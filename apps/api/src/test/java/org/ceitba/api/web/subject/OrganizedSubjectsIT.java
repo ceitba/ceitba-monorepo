@@ -183,6 +183,27 @@ class OrganizedSubjectsIT {
             .andExpect(jsonPath("$['Electivas']['0']['0'][1].course_start").value("2026-03-01"));
     }
 
+    // The next term is synced before the running one ends: both are "not
+    // ended", and only the upcoming term (the one students plan) is listed.
+    @Test
+    void nextTermSyncedBeforeTheRunningOneEndsReplacesIt() throws Exception {
+        fakeClient.stubPlan("S10-Rev23", List.of(
+            new SubjectPlanProjection("31.08", "S10-Rev23", "Ciclo Básico", 1, 1,
+                List.of(), null, "Sistemas de Representación", 3)
+        ));
+        saveCommission("45120", "31.08", "G", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 15), "102T");
+        saveCommission("45114", "31.08", "B", LocalDate.of(2026, 7, 26), LocalDate.of(2026, 12, 15), "101T");
+        saveCommission("48120", "31.08", "G", LocalDate.of(2027, 3, 8), LocalDate.of(2027, 7, 10), "202T");
+        saveCommission("48114", "31.08", "B", LocalDate.of(2027, 3, 8), LocalDate.of(2027, 7, 10), "201T");
+
+        mvc.perform(get("/v1/subjects?plan=S10-Rev23"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].commissions[*].commission_id",
+                contains("48114", "48120")))
+            .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].course_start").value("2027-03-08"))
+            .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].course_end").value("2027-07-10"));
+    }
+
     // The ITBA call can take up to 30 s; it must not run inside a DB
     // transaction (which would pin a pooled connection for its duration).
     @Test

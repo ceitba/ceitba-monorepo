@@ -12,6 +12,7 @@ import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
+import org.ceitba.api.service.commission.CommissionTerms;
 import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.ceitba.api.web.plan.dto.CreateSubjectPlanRequest;
 import org.ceitba.api.web.plan.dto.SubjectPlanResponse;
@@ -24,7 +25,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,14 +88,12 @@ public class SubjectPlanService {
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
         // One query for the plan's subjects with times fetched in the same
-        // statement (no N+1 on commission_time), grouped per subject.
-        Map<String, List<Commission>> commissionsBySubject = subjectCodes.isEmpty()
+        // statement (no N+1 on commission_time), then per subject only the
+        // term to show (see CommissionTerms; same rule as /v1/commissions).
+        Map<String, List<Commission>> currentBySubject = subjectCodes.isEmpty()
             ? Map.of()
-            : commissionRepository.findBySubjectCodeInWithTimes(subjectCodes).stream()
-                .collect(Collectors.groupingBy(Commission::getSubjectCode));
-        LocalDate today = LocalDate.now(clock);
-        Map<String, List<Commission>> currentBySubject = new LinkedHashMap<>();
-        commissionsBySubject.forEach((code, list) -> currentBySubject.put(code, currentTerm(list, today)));
+            : CommissionTerms.currentTermBySubject(
+                commissionRepository.findBySubjectCodeInWithTimes(subjectCodes), LocalDate.now(clock));
         var overlay = scheduleCorrections.organizedCommissions(
             currentBySubject.values().stream().flatMap(List::stream).toList(), viewerId);
 
@@ -137,35 +135,6 @@ public class SubjectPlanService {
                 .add(detail);
         }
         return organized;
-    }
-
-    // The commission table accumulates every term the sync job has ever seen
-    // (rows are upserted by ITBA id and never pruned), so a subject offered in
-    // both semesters has e.g. two "G" commissions: one from March–July and one
-    // from July–December. Showing both duplicated every commission in the
-    // response. Keep the commissions that have not ended yet (same rule as
-    // GET /v1/commissions); if the subject has none — e.g. between terms,
-    // before the next term is synced — fall back to its most recent term
-    // (latest course_end) so the subject doesn't suddenly appear empty.
-    // Genuinely concurrent offerings (two current terms of the same subject)
-    // are distinct and are kept.
-    static List<Commission> currentTerm(List<Commission> commissions, LocalDate today) {
-        if (commissions.isEmpty()) {
-            return commissions;
-        }
-        var notEnded = commissions.stream()
-            .filter(c -> !c.getCourseEnd().isBefore(today))
-            .toList();
-        if (!notEnded.isEmpty()) {
-            return notEnded;
-        }
-        LocalDate latestEnd = commissions.stream()
-            .map(Commission::getCourseEnd)
-            .max(Comparator.naturalOrder())
-            .orElseThrow();
-        return commissions.stream()
-            .filter(c -> c.getCourseEnd().equals(latestEnd))
-            .toList();
     }
 
     // GET /api/v1/plans/{planId}/subjects with optional filters — DB-only,
