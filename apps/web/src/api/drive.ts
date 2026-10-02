@@ -1,4 +1,4 @@
-import { apiGet, apiSend, BASE_URL } from './client'
+import { ApiError, apiGet, apiSend, BASE_URL } from './client'
 
 // "Apuntes": student notes synced from Google Drive (CEITBA-API drive sync).
 // Contract: CEITBA-API docs/DRIVE-SYNC.md. Students share a Drive folder with
@@ -146,6 +146,14 @@ export interface FileSummary {
   hasHtml: boolean
   hasPdf: boolean
   hasOriginal: boolean
+  // Mime types of the stored renditions (null when absent). Older API
+  // builds may omit them: the viewer then falls back to the file extension.
+  pdfMimeType?: string | null
+  originalMimeType?: string | null
+  // The Drive owner disabled download/copy for viewers: we hold no copy.
+  exportBlocked?: boolean
+  // Link to the file in Google Drive.
+  driveUrl?: string | null
 }
 
 export interface ApunteAuthor {
@@ -185,9 +193,40 @@ export function fetchFile(fileId: string): Promise<FileDetail> {
 }
 
 // The endpoint 302s to a 5-minute signed URL, so build the link fresh at
-// click/render time instead of caching the redirect target.
-export function fileDownloadUrl(fileId: string, variant: 'pdf' | 'original'): string {
-  return `${BASE_URL}/wiki/files/${enc(fileId)}/download?variant=${variant}`
+// click/render time instead of caching the redirect target. `inline` (the
+// API default) is for viewing, `attachment` forces a download.
+export function fileDownloadUrl(
+  fileId: string,
+  variant: 'pdf' | 'original',
+  disposition: 'inline' | 'attachment' = 'inline',
+): string {
+  return `${BASE_URL}/wiki/files/${enc(fileId)}/download?variant=${variant}&disposition=${disposition}`
+}
+
+export class FileTooLargeError extends Error {
+  constructor() {
+    super('File too large to preview')
+    this.name = 'FileTooLargeError'
+  }
+}
+
+// Fetches the stored original for client-side rendering (docx, sheets,
+// text). Follows the redirect to the signed storage URL (same origin in
+// prod; local MinIO allows CORS). Refuses anything over `maxBytes`.
+//
+// Locally (SPA :5173 → API :8081 → MinIO, three origins) the browser sends
+// `Origin: null` on the redirected request, and a credentialed CORS request
+// is rejected unless storage answers `Access-Control-Allow-Origin: null`;
+// that surfaces here as a TypeError and the viewer falls back to the
+// download card.
+export async function fetchOriginal(fileId: string, maxBytes: number): Promise<Blob> {
+  const res = await fetch(fileDownloadUrl(fileId, 'original', 'inline'), { credentials: 'include' })
+  if (!res.ok) throw new ApiError(`Download failed (${res.status})`, res.status, 'HTTP_' + res.status)
+  const length = Number(res.headers.get('Content-Length'))
+  if (Number.isFinite(length) && length > maxBytes) throw new FileTooLargeError()
+  const blob = await res.blob()
+  if (blob.size > maxBytes) throw new FileTooLargeError()
+  return blob
 }
 
 export function fileAssetsBaseUrl(fileId: string): string {

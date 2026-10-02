@@ -647,9 +647,6 @@
       "report": "Report",
       "alreadyReported": "You reported it",
       "viewerTitle": "Preview of {{name}}",
-      "noPreviewTitle": "No preview available",
-      "noPreviewBody": "This kind of file can't be shown here, but you can download it.",
-      "noContentBody": "We don't have a copy of this file yet. It may be too large or still syncing.",
       "notFoundTitle": "We couldn't find this file",
       "notFoundBody": "It may have been removed, hidden or unpublished."
     },
@@ -685,6 +682,25 @@
       "disconnectTitle": "Disconnect folder",
       "disconnectBody": "“{{name}}” stops syncing and its notes are no longer shown on the site. Your Drive isn't touched. To fully stop CEITBA from seeing it, stop sharing it in Drive.",
       "disconnectConfirm": "Disconnect"
+    },
+    "viewer": {
+      "loading": "Downloading the file…",
+      "rendering": "Preparing the preview…",
+      "sheetsAria": "Sheets",
+      "sheetTruncated": "Showing the first {{rows}} rows and {{cols}} columns. Download the file to see all of it.",
+      "emptySheet": "This sheet is empty.",
+      "textTruncated": "The file is very long: only the beginning is shown. Download it to see all of it.",
+      "pdfMobileHint": "Can't see it?",
+      "openPdf": "Open the PDF",
+      "download": "Download",
+      "openInDrive": "Open in Drive",
+      "card": {
+        "unsupported": "This kind of file can't be viewed in the browser. Download it to open it.",
+        "tooLarge": "It's too large to preview (over 15 MB). Download it to open it.",
+        "failed": "We couldn't show the preview. Download it to open it.",
+        "noContent": "We don't have a copy of this file yet. It may be too large or still syncing.",
+        "blocked": "The author disabled downloads for this file. You can view it in Google Drive."
+      }
     }
   }
 }

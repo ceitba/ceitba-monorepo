@@ -5,6 +5,9 @@ import { fetchFile, fileAssetsBaseUrl, fileDownloadUrl, type FileDetail } from '
 import { ApiError, BASE_URL } from '../../api/client'
 import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
+import FileViewer from '../../components/apuntes/viewers/FileViewer'
+import { sanitizeHtml } from '../../utils/sanitize'
+import { safeHttpUrl } from '../../utils/url'
 import KindIcon from '../../components/apuntes/KindIcon'
 import ReportDialog from '../../components/apuntes/ReportDialog'
 import Notice from '../../components/Notice'
@@ -13,50 +16,27 @@ import { BTN_OUTLINE, BTN_PRIMARY } from '../../components/apuntes/buttons'
 // BASE_URL is ".../api/v1"; its parent is where "/v1/…" paths live.
 const API_ROOT = BASE_URL.replace(/\/v1\/?$/, '')
 
-// The Doc HTML is sanitized server-side; this pass only makes it work inside
-// the SPA: embedded images point at the API (the SPA may run on another
-// origin in dev), links open in a new tab, and anything script-like that
-// slipped through is dropped as a second line of defence.
+// Doc HTML is sanitized server-side; sanitize again (defence in depth) and
+// point embedded images at the API: they come as root-relative
+// "/api/v1/wiki/files/{id}/assets/{name}", and the SPA may run on another
+// origin in dev.
 function prepareDocHtml(html: string, fileId: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  doc.querySelectorAll('script, iframe, object, embed, link, meta, base, form').forEach((el) => el.remove())
-  doc.querySelectorAll('*').forEach((el) => {
-    for (const attr of Array.from(el.attributes)) {
-      if (attr.name.toLowerCase().startsWith('on')) el.removeAttribute(attr.name)
-    }
+  return sanitizeHtml(html, {
+    rewriteImg: (src) => {
+      if (/^https?:\/\//i.test(src) || /^data:image\//i.test(src)) return src
+      if (src.startsWith('/api/')) return new URL(src, API_ROOT).href
+      if (src.startsWith('/v1/')) return API_ROOT + src
+      if (!src.startsWith('/') && !/^[a-z]+:/i.test(src)) {
+        return fileAssetsBaseUrl(fileId) + src.replace(/^\.?\/?(assets\/)?/, '')
+      }
+      return null
+    },
   })
-  doc.querySelectorAll('img').forEach((img) => {
-    const src = (img.getAttribute('src') ?? '').trim()
-    let resolved: string | null = null
-    if (/^https?:\/\//i.test(src) || /^data:image\//i.test(src)) resolved = src
-    else if (src.startsWith('/api/')) resolved = new URL(src, API_ROOT).href
-    else if (src.startsWith('/v1/')) resolved = API_ROOT + src
-    else if (src && !src.startsWith('/') && !/^[a-z]+:/i.test(src)) {
-      resolved = fileAssetsBaseUrl(fileId) + src.replace(/^\.?\/?(assets\/)?/, '')
-    }
-    if (resolved) {
-      img.setAttribute('src', resolved)
-      img.setAttribute('loading', 'lazy')
-    } else {
-      img.remove()
-    }
-  })
-  doc.querySelectorAll('a').forEach((a) => {
-    const href = (a.getAttribute('href') ?? '').trim()
-    if (href.startsWith('#')) return
-    if (!/^(https?:|mailto:)/i.test(href)) {
-      a.removeAttribute('href')
-      return
-    }
-    a.setAttribute('target', '_blank')
-    a.setAttribute('rel', 'noopener noreferrer')
-  })
-  return doc.body.innerHTML
 }
 
-// /apuntes/archivo/:fileId — reader. Docs render as HTML in an editorial
-// prose container; anything with a PDF rendition shows in an iframe; the
-// rest offers a download.
+// /apuntes/archivo/:fileId — reader: header with downloads and report, and
+// FileViewer for the content (Doc HTML, PDF, or the original rendered in
+// the browser).
 export default function FilePage() {
   const { fileId = '' } = useParams()
   const { t, i18n } = useTranslation()
@@ -156,14 +136,19 @@ export default function FilePage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2 flex-shrink-0">
-              {file.hasPdf && (
-                <a href={fileDownloadUrl(file.id, 'pdf')} target="_blank" rel="noopener noreferrer" className={BTN_OUTLINE}>
+              {file.hasPdf && !file.exportBlocked && (
+                <a href={fileDownloadUrl(file.id, 'pdf', 'attachment')} className={BTN_OUTLINE}>
                   {t('apuntes.file.downloadPdf')}
                 </a>
               )}
-              {file.hasOriginal && (
-                <a href={fileDownloadUrl(file.id, 'original')} target="_blank" rel="noopener noreferrer" className={BTN_OUTLINE}>
+              {file.hasOriginal && !file.exportBlocked && (
+                <a href={fileDownloadUrl(file.id, 'original', 'attachment')} className={BTN_OUTLINE}>
                   {t('apuntes.file.downloadOriginal')}
+                </a>
+              )}
+              {safeHttpUrl(file.driveUrl) && (
+                <a href={safeHttpUrl(file.driveUrl)!} target="_blank" rel="noopener noreferrer" className={BTN_OUTLINE}>
+                  {t('apuntes.viewer.openInDrive')}
                 </a>
               )}
               <button
@@ -180,35 +165,7 @@ export default function FilePage() {
 
           {notice && <Notice className="mb-6" onDismiss={() => setNotice(null)}>{notice}</Notice>}
 
-          {html ? (
-            <div className="max-w-3xl mx-auto bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border px-5 py-8 sm:px-10 sm:py-12">
-              <div className="apunte-prose" dangerouslySetInnerHTML={{ __html: html }} />
-            </div>
-          ) : file.hasPdf ? (
-            <iframe
-              src={fileDownloadUrl(file.id, 'pdf')}
-              title={t('apuntes.file.viewerTitle', { name: file.name })}
-              className="w-full h-[75vh] min-h-[420px] rounded-card border border-border dark:border-night-border bg-white"
-            />
-          ) : file.kind === 'IMAGE' && file.hasOriginal ? (
-            <div className="flex justify-center">
-              <img
-                src={fileDownloadUrl(file.id, 'original')}
-                alt={file.name}
-                className="max-w-full max-h-[80vh] rounded-card border border-border dark:border-night-border"
-              />
-            </div>
-          ) : (
-            <EmptyState
-              title={t('apuntes.file.noPreviewTitle')}
-              body={file.hasOriginal ? t('apuntes.file.noPreviewBody') : t('apuntes.file.noContentBody')}
-              action={file.hasOriginal ? (
-                <a href={fileDownloadUrl(file.id, 'original')} target="_blank" rel="noopener noreferrer" className={BTN_PRIMARY}>
-                  {t('apuntes.file.downloadOriginal')}
-                </a>
-              ) : undefined}
-            />
-          )}
+          <FileViewer file={file} html={html} />
         </article>
       )}
 

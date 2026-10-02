@@ -647,9 +647,6 @@
       "report": "Denunciar",
       "alreadyReported": "Ya lo denunciaste",
       "viewerTitle": "Vista previa de {{name}}",
-      "noPreviewTitle": "No hay vista previa",
-      "noPreviewBody": "Este tipo de archivo no se puede mostrar acá, pero lo podés descargar.",
-      "noContentBody": "Todavía no tenemos una copia de este archivo. Puede ser muy grande o estar sincronizándose.",
       "notFoundTitle": "No encontramos este archivo",
       "notFoundBody": "Puede que lo hayan quitado, ocultado o que ya no esté publicado."
     },
@@ -685,6 +682,25 @@
       "disconnectTitle": "Desconectar carpeta",
       "disconnectBody": "«{{name}}» deja de sincronizarse y sus apuntes dejan de mostrarse en el sitio. Tu Drive no se toca. Para que CEITBA deje de verla del todo, dejá de compartirla en Drive.",
       "disconnectConfirm": "Desconectar"
+    },
+    "viewer": {
+      "loading": "Descargando el archivo…",
+      "rendering": "Preparando la vista previa…",
+      "sheetsAria": "Hojas",
+      "sheetTruncated": "Mostramos las primeras {{rows}} filas y {{cols}} columnas. Descargá el archivo para verlo completo.",
+      "emptySheet": "Esta hoja está vacía.",
+      "textTruncated": "El archivo es muy largo: mostramos solo el principio. Descargalo para verlo completo.",
+      "pdfMobileHint": "¿No se ve?",
+      "openPdf": "Abrir el PDF",
+      "download": "Descargar",
+      "openInDrive": "Abrir en Drive",
+      "card": {
+        "unsupported": "Este tipo de archivo no se puede ver en el navegador. Descargalo para abrirlo.",
+        "tooLarge": "Es demasiado grande para la vista previa (más de 15 MB). Descargalo para abrirlo.",
+        "failed": "No pudimos mostrar la vista previa. Descargalo para abrirlo.",
+        "noContent": "Todavía no tenemos una copia de este archivo. Puede ser muy grande o estar sincronizándose.",
+        "blocked": "El autor deshabilitó la descarga de este archivo. Podés verlo en Google Drive."
+      }
     }
   }
 }

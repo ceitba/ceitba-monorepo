@@ -96,6 +96,41 @@
 
 html.dark .apunte-prose a { color: #7FA1D4 !important; }
 
+/* docx-preview output (.docx originals). Pages keep their paper look (white,
+   the document's own colours) in both themes; the grey host is the "desk". */
+.apunte-docx-host .apunte-docx-wrapper {
+  background: transparent !important;
+  padding: 16px !important;
+}
+.apunte-docx-host .apunte-docx-wrapper > section.apunte-docx {
+  box-shadow: 0 1px 3px rgba(26,60,110,0.08), 0 4px 16px rgba(26,60,110,0.06) !important;
+  margin-bottom: 16px !important;
+}
+@media (max-width: 640px) {
+  .apunte-docx-host .apunte-docx-wrapper { padding: 8px !important; }
+}
+
+/* SheetJS tables (spreadsheet originals). */
+.apunte-sheet table {
+  border-collapse: collapse;
+  font-family: 'Source Sans 3', Lato, system-ui, sans-serif;
+  font-size: 0.8125rem;
+}
+.apunte-sheet td,
+.apunte-sheet th {
+  border: 1px solid #E5E7EB;
+  padding: 4px 8px;
+  white-space: nowrap;
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+.apunte-sheet tr:first-child td { background: #FAFAF8; font-weight: 600; }
+html.dark .apunte-sheet td,
+html.dark .apunte-sheet th { border-color: #3f3f46; }
+html.dark .apunte-sheet tr:first-child td { background: #18181b; }
+
 .dark .text-ink-secondary { color: #a1a1aa; }
 .dark .text-ink-primary   { color: #f4f4f5; }
 
