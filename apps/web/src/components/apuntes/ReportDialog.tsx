@@ -2,25 +2,37 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '../Modal'
 import ErrorBanner from '../ErrorBanner'
-import { REPORT_REASONS, reportFile, type ReportReason } from '../../api/drive'
+import { REPORT_REASONS, reportFile } from '../../api/drive'
 import { apuntesErrorMessage } from '../../utils/apuntes'
 import { BTN_PRIMARY, INPUT } from './buttons'
 
 const MAX_COMMENT = 1000
 
-export default function ReportDialog({
+// Report dialog shared by files (default reasons + reportFile) and wiki
+// pages (pass `reasons`, `onSubmit`, `title`, `intro`). Reason labels come
+// from apuntes.report.reasons.<REASON>.
+export default function ReportDialog<R extends string = string>({
   fileId,
   fileName,
   onClose,
   onReported,
+  reasons,
+  onSubmit,
+  title,
+  intro,
 }: {
-  fileId: string
+  fileId?: string
   fileName: string
   onClose: () => void
   onReported: () => void
+  reasons?: readonly R[]
+  onSubmit?: (reason: R, comment: string) => Promise<void>
+  title?: string
+  intro?: string
 }) {
   const { t } = useTranslation()
-  const [reason, setReason] = useState<ReportReason | null>(null)
+  const reasonList = (reasons ?? REPORT_REASONS) as readonly R[]
+  const [reason, setReason] = useState<R | null>(null)
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +42,8 @@ export default function ReportDialog({
     if (!reason) return
     setBusy(true); setError(null)
     try {
-      await reportFile(fileId, { reason, comment: comment.trim() })
+      if (onSubmit) await onSubmit(reason, comment.trim())
+      else if (fileId) await reportFile(fileId, { reason: reason as never, comment: comment.trim() })
       onReported()
     } catch (err) {
       setError(apuntesErrorMessage(err, t))
@@ -40,17 +53,17 @@ export default function ReportDialog({
   }
 
   return (
-    <Modal title={t('apuntes.report.title')} onClose={onClose} busy={busy} size="lg">
+    <Modal title={title ?? t('apuntes.report.title')} onClose={onClose} busy={busy} size="lg">
       <form onSubmit={submit} className="flex flex-col gap-4 font-body text-body-sm text-ink-primary dark:text-night-text">
         <p className="text-ink-secondary dark:text-night-muted">
-          {t('apuntes.report.intro', { name: fileName })}
+          {intro ?? t('apuntes.report.intro', { name: fileName })}
         </p>
         {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('apuntes.report.reason')}
           </legend>
-          {REPORT_REASONS.map((r) => (
+          {reasonList.map((r) => (
             <label key={r} className="flex items-start gap-3 cursor-pointer">
               <input
                 type="radio"

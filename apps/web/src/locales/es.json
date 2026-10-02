@@ -612,7 +612,8 @@
         "PERSONAL_DATA": "Tiene datos personales",
         "WRONG_SUBJECT": "Está en la materia equivocada",
         "SPAM": "Spam o contenido sin relación",
-        "OTHER": "Otro motivo"
+        "OTHER": "Otro motivo",
+        "CONTENT_ERROR": "Error de contenido"
       },
       "comment": "Comentario (opcional)",
       "commentPlaceholder": "Cualquier detalle que nos ayude a revisarlo.",
@@ -730,5 +731,43 @@
       "subjectCount_one": "{{count}} materia",
       "subjectCount_other": "{{count}} materias"
     }
+  },
+  "wiki": {
+    "tabsAria": "Secciones de la materia",
+    "tabs": {
+      "wiki": "Wiki",
+      "archivos": "Archivos"
+    },
+    "graphLink": "Ver grafo",
+    "types": {
+      "index": "Inicio",
+      "topic": "Temas",
+      "concept": "Conceptos"
+    },
+    "aiLabel": "Generado con IA a partir de apuntes de estudiantes · puede contener errores",
+    "generatedBy": "{{generator}} · {{date}}",
+    "report": "Reportar",
+    "reportTitle": "Reportar página",
+    "reportIntro": "Contanos qué está mal en «{{title}}». CEITBA revisa los reportes y corrige u oculta la página.",
+    "sources": "Fuentes",
+    "backlinks": "Mencionado en",
+    "pagesOfSubject": "Páginas de esta materia",
+    "related": "Materias relacionadas",
+    "reasons": {
+      "PREREQUISITE": "correlativa",
+      "DEPENDENT": "la necesita",
+      "LINKED": "enlazada"
+    },
+    "noWikiYet": "sin wiki",
+    "emptyTitle": "Todavía no hay wiki de esta materia",
+    "emptyBody": "La wiki se arma a partir de los apuntes publicados. Mientras tanto, mirá los archivos.",
+    "seeFiles": "Ver archivos",
+    "notFoundTitle": "No encontramos esta página",
+    "notFoundBody": "Puede que la hayan renombrado, ocultado o que todavía no exista.",
+    "backToSubject": "Volver a la materia",
+    "anchorAria": "Enlace a la sección «{{title}}»",
+    "unresolved": "Esta página todavía no existe",
+    "unknownSource": "Fuente no disponible",
+    "citeAria": "Fuente: {{name}}"
   }
 }

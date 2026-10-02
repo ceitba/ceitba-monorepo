@@ -160,3 +160,98 @@ main {
   width: 100%;
   overflow-x: hidden;
 }
+
+/* Subject wiki pages (react-markdown output). Readable ~70ch column in the
+   editorial type: Fraunces headings, Source Sans body. */
+.kb-prose {
+  max-width: 70ch;
+  font-family: 'Source Sans 3', Lato, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: #1C1C1E;
+  overflow-wrap: break-word;
+}
+html.dark .kb-prose { color: #f4f4f5; }
+.kb-prose > :first-child { margin-top: 0; }
+.kb-prose h2, .kb-prose h3, .kb-prose h4 {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 2.25rem 0 0.75rem;
+  position: relative;
+}
+.kb-prose h2 { font-size: 1.625rem; }
+.kb-prose h3 { font-size: 1.3125rem; }
+.kb-prose h4 { font-size: 1.125rem; }
+.kb-prose .heading-anchor {
+  margin-left: 0.4rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.8em;
+  color: #F5A623;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.kb-prose h2:hover .heading-anchor,
+.kb-prose h3:hover .heading-anchor,
+.kb-prose h4:hover .heading-anchor,
+.kb-prose .heading-anchor:focus-visible { opacity: 1; }
+@media (hover: none) { .kb-prose .heading-anchor { opacity: 0.5; } }
+.kb-prose p { margin: 0.9rem 0; }
+.kb-prose ul { list-style: disc; padding-left: 1.5rem; margin: 0.9rem 0; }
+.kb-prose ol { list-style: decimal; padding-left: 1.5rem; margin: 0.9rem 0; }
+.kb-prose li { margin: 0.3rem 0; }
+.kb-prose li > p { margin: 0; }
+.kb-prose strong { font-weight: 600; }
+.kb-prose blockquote { border-left: 3px solid #F5A623; padding-left: 1rem; color: #6B7280; font-style: italic; margin: 1.25rem 0; }
+html.dark .kb-prose blockquote { color: #a1a1aa; }
+.kb-prose hr { border-color: #E5E7EB; margin: 2rem 0; }
+html.dark .kb-prose hr { border-color: #3f3f46; }
+.kb-prose code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.85em; background: #EEF3FA; padding: 0.1em 0.35em; border-radius: 0.2rem; }
+.kb-prose pre { background: #FAFAF8; border: 1px solid #E5E7EB; border-radius: 0.375rem; padding: 1rem; overflow-x: auto; margin: 1.25rem 0; }
+.kb-prose pre code { background: transparent; padding: 0; }
+html.dark .kb-prose code { background: #27272a; }
+html.dark .kb-prose pre { background: #18181b; border-color: #3f3f46; }
+.kb-prose a { color: #1A3C6E; text-decoration: underline; text-underline-offset: 2px; }
+html.dark .kb-prose a { color: #7FA1D4; }
+.kb-prose .kb-link { text-decoration-color: rgba(26,60,110,0.35); }
+.kb-prose .kb-link-subject {
+  margin-left: 0.25rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.7em;
+  color: #6B7280;
+  text-decoration: none;
+  display: inline-block;
+}
+.kb-prose .kb-unresolved { border-bottom: 1px dashed #9CA3AF; cursor: help; }
+.kb-prose a.kb-cite,
+.kb-cite-static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  padding: 0 0.3em;
+  margin: 0 0.1em;
+  border-radius: 999px;
+  background: #FEF8EC;
+  border: 1px solid #FBD98E;
+  color: #8C5504;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.7em;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: 0.25em;
+}
+.kb-cite-static { vertical-align: 0; margin-top: 0.2rem; flex-shrink: 0; }
+.kb-prose a.kb-cite:hover { background: #FDEECE; }
+html.dark .kb-prose a.kb-cite,
+html.dark .kb-cite-static { background: rgba(140,85,4,0.25); border-color: #8C5504; color: #FBD98E; }
+.kb-prose .kb-table { overflow-x: auto; margin: 1.25rem 0; }
+.kb-prose table { border-collapse: collapse; font-size: 0.9375rem; }
+.kb-prose th, .kb-prose td { border: 1px solid #E5E7EB; padding: 0.4rem 0.75rem; text-align: left; vertical-align: top; }
+.kb-prose th { background: #FAFAF8; font-weight: 600; }
+html.dark .kb-prose th, html.dark .kb-prose td { border-color: #3f3f46; }
+html.dark .kb-prose th { background: #18181b; }
+.kb-prose .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25rem 0; }
+.kb-prose img { max-width: 100%; height: auto; }

@@ -612,7 +612,8 @@
         "PERSONAL_DATA": "Contains personal data",
         "WRONG_SUBJECT": "Wrong subject",
         "SPAM": "Spam or unrelated content",
-        "OTHER": "Something else"
+        "OTHER": "Something else",
+        "CONTENT_ERROR": "Content error"
       },
       "comment": "Comment (optional)",
       "commentPlaceholder": "Any detail that helps us review it.",
@@ -730,5 +731,43 @@
       "subjectCount_one": "{{count}} subject",
       "subjectCount_other": "{{count}} subjects"
     }
+  },
+  "wiki": {
+    "tabsAria": "Subject sections",
+    "tabs": {
+      "wiki": "Wiki",
+      "archivos": "Files"
+    },
+    "graphLink": "View graph",
+    "types": {
+      "index": "Home",
+      "topic": "Topics",
+      "concept": "Concepts"
+    },
+    "aiLabel": "AI-generated from student notes · may contain errors",
+    "generatedBy": "{{generator}} · {{date}}",
+    "report": "Report",
+    "reportTitle": "Report page",
+    "reportIntro": "Tell us what's wrong with “{{title}}”. CEITBA reviews reports and fixes or hides the page.",
+    "sources": "Sources",
+    "backlinks": "Mentioned in",
+    "pagesOfSubject": "Pages in this subject",
+    "related": "Related subjects",
+    "reasons": {
+      "PREREQUISITE": "prerequisite",
+      "DEPENDENT": "requires this",
+      "LINKED": "linked"
+    },
+    "noWikiYet": "no wiki",
+    "emptyTitle": "No wiki for this subject yet",
+    "emptyBody": "The wiki is built from published notes. Meanwhile, have a look at the files.",
+    "seeFiles": "View files",
+    "notFoundTitle": "We couldn't find this page",
+    "notFoundBody": "It may have been renamed, hidden or not exist yet.",
+    "backToSubject": "Back to the subject",
+    "anchorAria": "Link to the “{{title}}” section",
+    "unresolved": "This page doesn't exist yet",
+    "unknownSource": "Source not available",
+    "citeAria": "Source: {{name}}"
   }
 }
