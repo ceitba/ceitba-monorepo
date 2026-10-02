@@ -5,8 +5,10 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface CommissionRepository extends JpaRepository<Commission, String> {
@@ -20,6 +22,22 @@ public interface CommissionRepository extends JpaRepository<Commission, String> 
     @EntityGraph(attributePaths = {"times"})
     @Query("SELECT c FROM Commission c")
     List<Commission> findAllWithTimes();
+
+    // GET /v1/subjects?plan=: every synced commission (all terms) of the given
+    // subjects, times hydrated in the same query. The table keeps past terms
+    // (the sync upserts by ITBA id and never prunes), so callers must pick the
+    // term they want — see SubjectPlanService.currentTerm. Ordered so the
+    // earliest-starting commission of a term comes first.
+    // Explicitly transactional: declared query methods get no default
+    // transaction, and the caller deliberately runs outside one.
+    @Transactional(readOnly = true)
+    @EntityGraph(attributePaths = {"times"})
+    @Query("""
+        SELECT c FROM Commission c
+        WHERE c.subjectCode IN :subjectCodes
+        ORDER BY c.subjectCode, c.courseStart, c.commissionName, c.id
+        """)
+    List<Commission> findBySubjectCodeInWithTimes(@Param("subjectCodes") Collection<String> subjectCodes);
 
     // GET /v1/commissions?plan=: commissions of the plan's subjects that have
     // not ended yet, with times hydrated in the same query.
