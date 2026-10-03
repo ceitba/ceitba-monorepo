@@ -718,7 +718,8 @@
         "back": "Volver",
         "remaining_one": "queda {{count}}",
         "remaining_other": "quedan {{count}}",
-        "scoresFor": "Puntajes de {{label}}"
+        "scoresFor": "Puntajes de {{label}}",
+        "afterFinish": "Disponible cuando termine la evaluación"
       },
       "reasoning": {
         "label": "Razonamiento",
@@ -772,7 +773,51 @@
       },
       "crashed": "Esta vista falló al mostrar los datos que devolvió la API.",
       "simulated": "Costos simulados (cliente LLM de prueba), no facturación real.",
-      "simulatedShort": "simulado"
+      "simulatedShort": "simulado",
+      "progress": {
+        "title": "Progreso",
+        "starting": "Iniciando…",
+        "inStage": "En curso: {{stage}}",
+        "eta": "~{{min}} min restantes",
+        "lastActivity": "última actividad hace {{ago}}",
+        "elapsed": "{{time}} transcurridos",
+        "agoSec": "{{n}} s",
+        "agoMin": "{{n}} min",
+        "agoH": "{{n}} h",
+        "stalled": "Sin actividad desde hace {{ago}}. Puede ser normal si DigitalOcean tiene la cola cargada; si sigue así, revisá los lotes.",
+        "batchQueued": "esperando a DigitalOcean (en cola)",
+        "batchProcessing": "esperando a DigitalOcean (procesando {{done}}/{{total}})",
+        "batchStatus": "DigitalOcean: {{status}}",
+        "failedN": "{{n}} fallidos",
+        "pages": "{{planned}} plan. · {{written}} escr. · {{valid}} válidas",
+        "stages": {
+          "DETECT": "Detección",
+          "DIGEST": "Resúmenes",
+          "PLAN": "Plan",
+          "WRITE": "Redacción",
+          "RETRY": "Reintento",
+          "LINK": "Enlaces",
+          "VALIDATE": "Validación",
+          "PUBLISH": "Publicación",
+          "EVAL": "Evaluación"
+        },
+        "status": {
+          "pending": "pendiente",
+          "running": "en curso",
+          "waiting_batch": "esperando lote",
+          "done": "listo",
+          "failed": "falló",
+          "skipped": "omitido"
+        },
+        "subject": {
+          "pending": "pendiente",
+          "planning": "planificando",
+          "writing": "redactando",
+          "validating": "validando",
+          "done": "listo",
+          "failed": "falló"
+        }
+      }
     }
   },
   "devLogin": {

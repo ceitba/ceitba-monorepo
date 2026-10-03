@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  approveRunCost, cancelRun, costPairs, fetchPreview, fetchRun, fetchRuns, startRun, type KbRun, type KbRunSubject,
+  approveRunCost, cancelRun, fetchRunProgress, costPairs, fetchPreview, fetchRun, fetchRuns, startRun, type KbRun, type KbRunSubject,
 } from '../../../api/kbAdmin'
 import { ApiError } from '../../../api/client'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
@@ -9,6 +9,8 @@ import ConfirmDialog from '../../../components/ConfirmDialog'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Modal from '../../../components/Modal'
 import Notice from '../../../components/Notice'
+import ProgressPanel, { ProgressBar, RUN_STAGES } from './ProgressPanel'
+import { useLiveProgress } from './useLiveProgress'
 import { BTN, BTN_DANGER, BTN_PRI, Panel, StatusPill, TD, TH, ViewState, duration, tokens, usd, useLoad } from './shared'
 
 const PIPELINE: string[] = ['DETECT', 'DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE', 'PUBLISH']
@@ -19,6 +21,14 @@ const ACTIVE = /RUNNING|PENDING|SUBMITTED|IN_PROGRESS|QUEUED|VALIDATING|BLOCKED/
 export default function RunsView({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
   const { t, i18n } = useTranslation()
   const runs = useLoad(() => fetchRuns(30))
+  // Keep RUNNING rows moving: refresh the list every 10 s while any run is
+  // active and the browser tab is visible.
+  const anyActive = (runs.data ?? []).some((r) => ACTIVE.test(r.status))
+  useEffect(() => {
+    if (!anyActive) return
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') runs.reload() }, 10000)
+    return () => window.clearInterval(id)
+  }, [anyActive, runs.reload])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -79,6 +89,9 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
                         {r.dryRun && <span className="font-mono text-label uppercase text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.runs.dry')}</span>}
                         {r.simulated && <span className="font-mono text-label uppercase text-amber-700 dark:text-amber-300">{t('manage.wikiAi.simulatedShort')}</span>}
                       </div>
+                      {ACTIVE.test(r.status) && (
+                        <ProgressBar className="mt-1.5 w-40" percent={r.progress?.overall?.percent} indeterminate={!r.progress?.overall} />
+                      )}
                     </td>
                     <td className={`${TD} font-mono text-label`}>{r.trigger}</td>
                     <td className={`${TD} text-right tabular-nums`}>{r.subjects?.length ?? 0}</td>
@@ -158,6 +171,8 @@ function asList(v: unknown): { slug?: string; errors?: string[]; title?: string 
 function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { t, i18n } = useTranslation()
   const run = useLoad(() => fetchRun(id), [id])
+  const live = useLiveProgress({ active: ACTIVE.test(run.data?.status ?? ''), fetchProgress: () => fetchRunProgress(id), refreshDetail: run.reload })
+  const progress = live.progress ?? run.data?.progress ?? null
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -213,28 +228,36 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <Info label={t('manage.wikiAi.runs.prompt')} value={r.promptVersion ?? '—'} />
                 </dl>
                 {r.error && <p className="mb-3 font-body text-body-sm text-red-600 dark:text-red-400">{r.error}</p>}
+                {finished ? (
                 <ol className="flex flex-wrap gap-y-2" aria-label={t('manage.wikiAi.runs.timeline')}>
-                  {PIPELINE.map((st, i) => {
-                    const state = finished && !/FAIL|CANCEL|BLOCK/i.test(r.status) ? 'done'
-                      : i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'todo'
-                    const cost = costOf(st)
-                    const batches = r.batches?.filter((b) => b.stage.toUpperCase() === st) ?? []
-                    return (
-                      <li key={st} className="flex items-center">
-                        <div className={`flex flex-col items-start px-3 py-2 rounded-sm border ${
-                          state === 'current' ? 'border-accent bg-accent-50 dark:bg-accent-900/30'
-                            : state === 'done' ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border opacity-60'
-                        }`}>
-                          <span className="font-mono text-label uppercase tracking-widest">{t(`manage.wikiAi.stages.${st}`, { defaultValue: st })}</span>
-                          <span className="font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">
-                            {cost != null ? usd(cost, 2) : ''}{batches.length ? ` · ${batches.map((b) => b.status).join(', ')}` : ''}
-                          </span>
-                        </div>
-                        {i < PIPELINE.length - 1 && <span className="mx-1 text-ink-secondary dark:text-night-muted" aria-hidden="true">→</span>}
-                      </li>
-                    )
-                  })}
-                </ol>
+                    {PIPELINE.map((st, i) => {
+                      const state = finished && !/FAIL|CANCEL|BLOCK/i.test(r.status) ? 'done'
+                        : i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'todo'
+                      const cost = costOf(st)
+                      const batches = r.batches?.filter((b) => b.stage.toUpperCase() === st) ?? []
+                      return (
+                        <li key={st} className="flex items-center">
+                          <div className={`flex flex-col items-start px-3 py-2 rounded-sm border ${
+                            state === 'current' ? 'border-accent bg-accent-50 dark:bg-accent-900/30'
+                              : state === 'done' ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border opacity-60'
+                          }`}>
+                            <span className="font-mono text-label uppercase tracking-widest">{t(`manage.wikiAi.stages.${st}`, { defaultValue: st })}</span>
+                            <span className="font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">
+                              {cost != null ? usd(cost, 2) : ''}{batches.length ? ` · ${batches.map((b) => b.status).join(', ')}` : ''}
+                            </span>
+                          </div>
+                          {i < PIPELINE.length - 1 && <span className="mx-1 text-ink-secondary dark:text-night-muted" aria-hidden="true">→</span>}
+                        </li>
+                      )
+                    })}
+                  </ol>
+                ) : (
+                  <ProgressPanel
+                    progress={progress}
+                    stages={RUN_STAGES}
+                    fallback={{ stage: r.stage, startedAt: r.startedAt, tokensIn: r.tokensIn, tokensOut: r.tokensOut, costUsd: r.costUsd ?? r.costEstimate }}
+                  />
+                )}
               </Panel>
 
               <Panel title={t('manage.wikiAi.runs.perSubject')}>

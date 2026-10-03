@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  configKey, createEval, modelWithEffort, normalizeImpact, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
+  configKey, createEval, fetchEvalProgress, isActiveStatus, modelWithEffort, normalizeImpact, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
   type EvalConfigResult, type EvalMetrics, type EvalRun, type KbModel, type LeaderboardRow, type ModelConfig,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
@@ -12,6 +12,8 @@ import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
 import BlindReview from './BlindReview'
 import ReasoningSelect from './ReasoningSelect'
+import ProgressPanel, { EVAL_STAGES, ProgressBar } from './ProgressPanel'
+import { useLiveProgress } from './useLiveProgress'
 import { ModelSelect } from './SettingsView'
 import { BTN, BTN_PRI, CostImpactDialog, FIELD, Panel, StatusPill, TD, TH, ViewState, isUnavailable, pct, secs, tokens, usd, useLoad } from './shared'
 
@@ -52,6 +54,12 @@ export default function EvalsView() {
   const [openEval, setOpenEval] = useState<string | null>(null)
   const sets = useLoad(fetchEvalSets)
   const evals = useLoad(fetchEvals)
+  const anyActive = (evals.data ?? []).some((e) => isActiveStatus(e.status))
+  useEffect(() => {
+    if (!anyActive) return
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') evals.reload() }, 10000)
+    return () => window.clearInterval(id)
+  }, [anyActive, evals.reload])
   const models = useLoad(fetchModels)
   const [lbSet, setLbSet] = useState<string>('')
 
@@ -80,11 +88,21 @@ export default function EvalsView() {
             <ul className="flex flex-col divide-y divide-border dark:divide-night-border">
               {list.map((e) => (
                 <li key={e.id}>
-                  <button type="button" onClick={() => setOpenEval(e.id)} className="w-full text-left flex flex-wrap items-center gap-3 py-2 hover:text-primary">
-                    <StatusPill status={e.status} />
-                    <span className="font-body text-body-sm font-semibold">{e.setName ?? sets.data?.find((s) => s.id === e.setId)?.name ?? e.setId}</span>
-                    <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{(e.configs ?? []).map((c) => c.configKey).join(' vs ')}</span>
-                    <span className="ml-auto font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.createdAt).toLocaleDateString()}</span>
+                  <button type="button" onClick={() => setOpenEval(e.id)} className="w-full text-left flex flex-col gap-1.5 py-2 hover:text-primary">
+                    <span className="flex flex-wrap items-center gap-3">
+                      <StatusPill status={e.status} />
+                      <span className="font-body text-body-sm font-semibold">{e.setName ?? sets.data?.find((s) => s.id === e.setId)?.name ?? e.setId}</span>
+                      <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{(e.configs ?? []).map((c) => c.configKey).join(' vs ')}</span>
+                      <span className="ml-auto font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.createdAt).toLocaleDateString()}</span>
+                    </span>
+                    {isActiveStatus(e.status) && (
+                      <span className="flex items-center gap-3">
+                        <ProgressBar className="flex-1" percent={e.progress?.overall?.percent} indeterminate={!e.progress?.overall} />
+                        <span className="font-mono text-[0.7rem] text-ink-secondary dark:text-night-muted whitespace-nowrap">
+                          {e.progress?.overall ? `${Math.round(e.progress.overall.percent)}%` : t(`manage.wikiAi.progress.stages.${(e.stage ?? '').toUpperCase()}`, { defaultValue: e.stage ?? '' })}
+                        </span>
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}
@@ -349,6 +367,9 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
 function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: string) => string | undefined; onBack: () => void }) {
   const { t } = useTranslation()
   const ev = useLoad(() => fetchEval(id), [id])
+  const active = isActiveStatus(ev.data?.status)
+  const live = useLiveProgress({ active, fetchProgress: () => fetchEvalProgress(id), refreshDetail: ev.reload })
+  const progress = live.progress ?? ev.data?.progress ?? null
   const [reviewing, setReviewing] = useState(false)
   const [promoting, setPromoting] = useState<EvalConfigResult | null>(null)
 
@@ -372,9 +393,19 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
           const reasons = [...new Set(cfgs.flatMap((c) => Object.keys(c.metrics?.rejectReasons ?? {})))]
           return (
             <>
+              {(active || (progress && isActiveStatus(e.status))) && (
+                <Panel title={t('manage.wikiAi.progress.title')}>
+                  <ProgressPanel
+                    progress={progress}
+                    stages={EVAL_STAGES}
+                    fallback={{ stage: e.stage, startedAt: e.createdAt, tokensIn: e.tokensIn, tokensOut: e.tokensOut, costUsd: e.costUsd }}
+                  />
+                  <ConfigsProgress configs={cfgs} />
+                </Panel>
+              )}
               <Panel
                 title={<span className="flex flex-wrap items-center gap-2">{e.setName ?? setName(e.setId) ?? e.setId} <StatusPill status={e.status} /></span>}
-                actions={<button type="button" onClick={() => setReviewing(true)} disabled={cfgs.length < 2} className={BTN_PRI}>{t('manage.wikiAi.review.start')}</button>}
+                actions={<button type="button" onClick={() => setReviewing(true)} disabled={cfgs.length < 2 || isActiveStatus(e.status)} title={isActiveStatus(e.status) ? t('manage.wikiAi.review.afterFinish') : undefined} className={BTN_PRI}>{t('manage.wikiAi.review.start')}</button>}
               >
                 {e.note && <p className="mb-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">“{e.note}”</p>}
                 {cfgs.length === 0 ? (
@@ -521,5 +552,53 @@ function Leaderboard({ setId }: { setId: string }) {
         </div>
       )}
     </ViewState>
+  )
+}
+
+const SUBJECT_TONE: Record<string, string> = {
+  done: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900',
+  failed: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900',
+  pending: 'border-dashed border-border dark:border-night-border text-ink-secondary dark:text-night-muted',
+}
+
+// Per-configuration progress bar and per-subject status chips.
+function ConfigsProgress({ configs }: { configs: EvalConfigResult[] }) {
+  const { t } = useTranslation()
+  if (!configs.length) return null
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      {configs.map((c, i) => (
+        <div key={c.configKey} className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-display font-bold text-h5 w-5">{String.fromCharCode(65 + i)}</span>
+            <span className="font-mono text-[0.72rem] text-ink-secondary dark:text-night-muted break-all">
+              {modelWithEffort(c.plan, c.reasoningEffort?.plan)} → {modelWithEffort(c.write, c.reasoningEffort?.write)}
+            </span>
+            <StatusPill status={c.status} />
+            {c.progress?.overall && <span className="ml-auto font-mono text-label tabular-nums">{Math.round(c.progress.overall.percent)}%</span>}
+          </div>
+          <ProgressBar percent={c.progress?.overall?.percent} indeterminate={!c.progress?.overall && isActiveStatus(c.status)} />
+          <ul className="flex flex-wrap gap-1.5">
+            {(c.perSubject ?? []).map((s) => {
+              const status = (s.status ?? (s.metrics ? 'done' : 'pending')).toLowerCase()
+              const pages = [s.pagesPlanned, s.pagesWritten, s.pagesValid].some((n) => n != null)
+                ? t('manage.wikiAi.progress.pages', { planned: s.pagesPlanned ?? 0, written: s.pagesWritten ?? 0, valid: s.pagesValid ?? 0 })
+                : null
+              return (
+                <li
+                  key={s.subjectId}
+                  title={s.subjectName ?? s.subjectId}
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-body text-[0.75rem] ${SUBJECT_TONE[status] ?? 'bg-accent-50 text-accent-800 border-accent-200 dark:bg-accent-900/30 dark:text-accent-200 dark:border-accent-800'}`}
+                >
+                  <span className="font-mono">{s.subjectId}</span>
+                  <span>{t(`manage.wikiAi.progress.subject.${status}`, { defaultValue: status })}</span>
+                  {pages && <span className="opacity-80">· {pages}</span>}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   )
 }

@@ -454,3 +454,11 @@ html.dark .kbviz {
 html.dark .kbviz-grid { stroke: #3f3f46; }
 .kbviz-axis { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; fill: #6B7280; }
 html.dark .kbviz-axis { fill: #a1a1aa; }
+
+/* Indeterminate progress bar (no total known yet). */
+@keyframes kb-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+.kb-indeterminate { animation: kb-indeterminate 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .kb-indeterminate { animation: none; width: 100%; opacity: 0.4; } }

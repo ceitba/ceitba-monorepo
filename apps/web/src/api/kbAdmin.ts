@@ -313,6 +313,36 @@ export function costPairs(v: CostRow[] | Record<string, number> | null | undefin
   return Object.entries(v).map(([k, n]) => [k, Number(n) || 0])
 }
 
+// ── Live progress (runs and evals) ───────────────────────────────────────
+
+export type StageStatus = 'pending' | 'running' | 'waiting_batch' | 'done' | 'failed' | 'skipped'
+
+export interface StageProgress {
+  stage: string
+  status: StageStatus | string
+  total: number | null
+  done: number | null
+  failed?: number | null
+  inFlight?: number | null
+  mode?: 'batch' | 'sync' | string | null
+  batch?: { doStatus?: string | null; requestCounts?: { total?: number; completed?: number; failed?: number } | null } | null
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
+export interface Progress {
+  stages: StageProgress[]
+  overall?: { done: number; total: number; percent: number } | null
+  // Human sentence in Spanish, e.g. "Redactando 12 de 40 páginas".
+  current?: string | null
+  etaSec?: number | null
+  lastActivityAt?: string | null
+  stalled?: boolean
+}
+
+// Per-subject eval status: pending | planning | writing | validating | done | failed.
+export type SubjectEvalStatus = 'pending' | 'planning' | 'writing' | 'validating' | 'done' | 'failed' | string
+
 // ── Runs (pipeline) ──────────────────────────────────────────────────────
 
 export interface KbRunSubject {
@@ -374,6 +404,7 @@ export interface KbRun {
   error: string | null
   subjects: KbRunSubject[]
   batches: KbBatchJob[]
+  progress?: Progress | null
 }
 
 export interface KbPreview {
@@ -398,6 +429,7 @@ export const fetchRun = (id: string) => apiGet<KbRun>(`${RUNS}/${enc(id)}`)
 export const startRun = (dryRun: boolean) => apiSend<KbRun>('POST', `${RUNS}${dryRun ? '?dryRun=true' : ''}`)
 export const cancelRun = (id: string) => apiSend<KbRun>('POST', `${RUNS}/${enc(id)}/cancel`)
 export const approveRunCost = (id: string) => apiSend<KbRun>('POST', `${RUNS}/${enc(id)}/approve-cost`)
+export const fetchRunProgress = (id: string) => apiGet<Progress>(`${RUNS}/${enc(id)}/progress`)
 export const fetchPreview = () => apiGet<KbPreview>(`${BASE}/pipeline/preview`)
 
 // ── Evaluations ──────────────────────────────────────────────────────────
@@ -456,8 +488,17 @@ export interface EvalConfigResult {
   write: string
   reasoningEffort?: ModelConfig['reasoningEffort']
   status?: string
-  metrics: EvalMetrics
-  perSubject?: ({ subjectId: string } & EvalMetrics)[]
+  metrics: EvalMetrics | null
+  progress?: Progress | null
+  perSubject?: {
+    subjectId: string
+    subjectName?: string | null
+    status?: SubjectEvalStatus | null
+    pagesPlanned?: number | null
+    pagesWritten?: number | null
+    pagesValid?: number | null
+    metrics?: EvalMetrics | null
+  }[]
 }
 
 export interface EvalRun {
@@ -468,8 +509,20 @@ export interface EvalRun {
   note?: string | null
   createdAt: string
   finishedAt?: string | null
+  stage?: string | null
+  tokensIn?: number
+  tokensOut?: number
+  costUsd?: number | null
+  durationSec?: number | null
+  simulated?: boolean
+  error?: string | null
   configs: EvalConfigResult[]
+  progress?: Progress | null
 }
+
+// RUNNING / WAITING / PENDING… are "still going"; anything else is final.
+export const isActiveStatus = (s: string | null | undefined) =>
+  /RUNNING|WAITING|PENDING|SUBMITTED|IN_PROGRESS|QUEUED|VALIDATING|BLOCKED/i.test(s ?? '')
 
 export interface ReviewPage {
   label: 'A' | 'B'
@@ -557,6 +610,7 @@ export const fetchEvalSets = () => apiGet<EvalSet[]>(`${EVALS}/sets`)
 export const createEvalSet = (body: { name: string; subjectIds: string[] }) => apiSend<EvalSet>('POST', `${EVALS}/sets`, body)
 export const fetchEvals = () => apiGet<EvalRun[]>(EVALS)
 export const fetchEval = (id: string) => apiGet<EvalRun>(`${EVALS}/${enc(id)}`)
+export const fetchEvalProgress = (id: string) => apiGet<Progress>(`${EVALS}/${enc(id)}/progress`)
 export const createEval = (body: { setId: string; models: ModelConfig[]; note?: string }) => apiSend<EvalRun>('POST', EVALS, body)
 // Not in the contract yet; a 404 means "no estimate available".
 export const estimateEval = (body: { setId: string; models: ModelConfig[] }) =>

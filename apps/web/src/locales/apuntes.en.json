@@ -718,7 +718,8 @@
         "back": "Back",
         "remaining_one": "{{count}} left",
         "remaining_other": "{{count}} left",
-        "scoresFor": "{{label}} scores"
+        "scoresFor": "{{label}} scores",
+        "afterFinish": "Available once the evaluation finishes"
       },
       "reasoning": {
         "label": "Reasoning",
@@ -772,7 +773,51 @@
       },
       "crashed": "This view failed to render the data the API returned.",
       "simulated": "Simulated costs (fake LLM client), not real billing.",
-      "simulatedShort": "simulated"
+      "simulatedShort": "simulated",
+      "progress": {
+        "title": "Progress",
+        "starting": "Starting…",
+        "inStage": "In progress: {{stage}}",
+        "eta": "~{{min}} min left",
+        "lastActivity": "last activity {{ago}} ago",
+        "elapsed": "{{time}} elapsed",
+        "agoSec": "{{n}} s",
+        "agoMin": "{{n}} min",
+        "agoH": "{{n}} h",
+        "stalled": "No activity for {{ago}}. It can be normal when DigitalOcean's queue is busy; if it stays like this, check the batches.",
+        "batchQueued": "waiting for DigitalOcean (queued)",
+        "batchProcessing": "waiting for DigitalOcean (processing {{done}}/{{total}})",
+        "batchStatus": "DigitalOcean: {{status}}",
+        "failedN": "{{n}} failed",
+        "pages": "{{planned}} planned · {{written}} written · {{valid}} valid",
+        "stages": {
+          "DETECT": "Detect",
+          "DIGEST": "Digests",
+          "PLAN": "Plan",
+          "WRITE": "Write",
+          "RETRY": "Retry",
+          "LINK": "Links",
+          "VALIDATE": "Validate",
+          "PUBLISH": "Publish",
+          "EVAL": "Eval"
+        },
+        "status": {
+          "pending": "pending",
+          "running": "running",
+          "waiting_batch": "waiting for batch",
+          "done": "done",
+          "failed": "failed",
+          "skipped": "skipped"
+        },
+        "subject": {
+          "pending": "pending",
+          "planning": "planning",
+          "writing": "writing",
+          "validating": "validating",
+          "done": "done",
+          "failed": "failed"
+        }
+      }
     }
   },
   "devLogin": {
