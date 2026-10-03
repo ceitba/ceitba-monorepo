@@ -13,6 +13,12 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ceitba_db}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
+    hikari:
+      # The wiki pipeline's sync workers and Drive sync share the pool with web
+      # requests (default 10). A transaction left idle for 5 minutes is ended by
+      # Postgres, so a stuck worker can never hold connections indefinitely.
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      connection-init-sql: SET idle_in_transaction_session_timeout = '5min'
   jpa:
     hibernate:
       ddl-auto: validate
