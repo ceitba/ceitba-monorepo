@@ -135,7 +135,7 @@ public class KbBatchSubmitter {
                 tx.executeWithoutResult(s -> {
                     jobs.findById(jobId).orElseThrow().retryAt(at, (kind == DoBatchErrors.Kind.RATE_LIMITED
                         ? "RATE_LIMITED: " : "UNAVAILABLE: ") + e.getMessage());
-                    runs.findById(job.getRunId()).filter(r -> r.isActive()).ifPresent(r -> r.setStatus("WAITING"));
+                    runs.setStatusIf(job.getRunId(), "WAITING", KbRunEngine.MOVING);
                 });
                 log.warn("KB run {} {} batch creation refused ({}); retry at {}", job.getRunId(), job.getStage(),
                     e.getMessage(), at);
@@ -155,7 +155,8 @@ public class KbBatchSubmitter {
     private void markSubmitted(KbBatchJob job, String fileId, String batchId) {
         tx.executeWithoutResult(s -> {
             jobs.findById(job.getId()).orElseThrow().submitted(fileId, batchId, now());
-            runs.findById(job.getRunId()).filter(r -> r.isActive()).ifPresent(r -> r.setStatus("RUNNING"));
+            // Conditional: a cancel that landed during the HTTP call sticks.
+            runs.setStatusIf(job.getRunId(), "RUNNING", KbRunEngine.MOVING);
         });
     }
 

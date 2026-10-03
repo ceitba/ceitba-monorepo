@@ -12,6 +12,13 @@ public final class KbRunOutcome {
         return failed >= total ? "FAILED" : "PARTIAL";
     }
 
+    // partial: ones that finished with only part of their work (e.g. a
+    // subject published with rejected pages): the run is at least PARTIAL.
+    public static String status(long total, long failed, long partial) {
+        var base = status(total, failed);
+        return base.equals("SUCCEEDED") && partial > 0 ? "PARTIAL" : base;
+    }
+
     // SUCCEEDED or PARTIAL: the run finished and produced something.
     public static boolean completed(String status) {
         return "SUCCEEDED".equals(status) || "PARTIAL".equals(status);

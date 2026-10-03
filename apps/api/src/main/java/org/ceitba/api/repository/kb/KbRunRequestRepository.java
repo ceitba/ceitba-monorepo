@@ -17,6 +17,10 @@ public interface KbRunRequestRepository extends JpaRepository<KbRunRequest, Stri
 
     long countByRunId(UUID runId);
 
+    long countByRunIdAndStage(UUID runId, String stage);
+
+    long countByRunIdAndStageAndStatus(UUID runId, String stage, String status);
+
     // [model, stage, outputTokens] of answers since `since` (latest first).
     @org.springframework.data.jpa.repository.Query(value = """
         SELECT model, stage, tokens_out FROM wiki.kb_run_request

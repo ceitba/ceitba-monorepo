@@ -44,3 +44,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.29 kb_run_lease | V37 |
 | V4.30 kb_batch_submission | V38 |
 | V4.31 capabilities | V39 |
+| V4.33 kb_pipeline_review_fixes | V41 |

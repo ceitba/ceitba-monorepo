@@ -63,6 +63,8 @@ public class KbRunEngine {
     private static final Logger log = LoggerFactory.getLogger(KbRunEngine.class);
 
     public static final List<String> ACTIVE = List.of("RUNNING", "WAITING", "BLOCKED_BY_COST_LIMIT");
+    // Statuses a RUNNING <-> WAITING toggle may move from.
+    static final List<String> MOVING = List.of("RUNNING", "WAITING");
     static final List<String> LLM_STAGES = List.of("DIGEST", "PLAN", "WRITE", "RETRY");
     static final int MAX_STEPS = 200;
 
@@ -201,11 +203,11 @@ public class KbRunEngine {
             prev.put("finishedAt", at);
             if (stageChanged && !r.getStage().equals("DONE")) logNode.with(r.getStage()).put("startedAt", at);
             r.setStageLog(logNode);
-            var rows = requests.findByRunIdAndStage(runId, stageBefore);
-            long done = rows.stream().filter(x -> x.getStatus().equals("DONE")).count();
-            long failed = rows.stream().filter(x -> x.getStatus().equals("FAILED")).count();
+            long total = requests.countByRunIdAndStage(runId, stageBefore);
+            long done = requests.countByRunIdAndStageAndStatus(runId, stageBefore, "DONE");
+            long failed = requests.countByRunIdAndStageAndStatus(runId, stageBefore, "FAILED");
             log.info("KB {} {}: {} -> {} ({}; {} requests: {} done, {} failed)", r.isEval() ? "eval" : "run", runId,
-                stageBefore, r.getStage(), r.getStatus(), rows.size(), done, failed);
+                stageBefore, r.getStage(), r.getStatus(), total, done, failed);
         });
     }
 
@@ -215,8 +217,7 @@ public class KbRunEngine {
         var handler = handler(run);
         try {
             if (run.getStage().equals("DETECT")) {
-                inTxVoid(() -> handler.detect(runs.findById(runId).orElseThrow()));
-                return true;
+                return whileActive(runId, handler::detect);
             }
             if (LLM_STAGES.contains(run.getStage())) return llmStage(runId, run.getStage(), run.isDryRun(), handler);
             if (run.getStage().equals("DONE")) return false;
@@ -229,7 +230,7 @@ public class KbRunEngine {
             return false;
         } catch (RuntimeException e) {
             log.error("KB run {} failed at {}", runId, run.getStage(), e);
-            inTxVoid(() -> runs.findById(runId).ifPresent(r -> {
+            inTxVoid(() -> runs.lockById(runId).filter(KbRun::isActive).ifPresent(r -> {
                 r.setError(e.getClass().getSimpleName() + ": " + e.getMessage());
                 for (var s : runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(runId)) {
                     if (s.isActive()) s.fail("run failed at " + r.getStage());
@@ -253,8 +254,11 @@ public class KbRunEngine {
                 log.warn("KB run {}: cancelling batch {} failed: {}", runId, j.getDoBatchId(), e.getMessage());
             }
         }
+        // Row-locked: a stage finishing or a subject publishing right now
+        // completes first, and whatever comes after sees CANCELLED.
         return inTx(() -> {
-            var r = runs.findById(runId).orElseThrow();
+            var r = runs.lockById(runId).orElseThrow();
+            if (!r.isActive()) return r;   // it ended while the batches were being cancelled
             for (var j : jobs.findByRunIdOrderByCreatedAtAsc(runId)) {
                 if (j.getStatus().equals("SUBMITTED") || j.getStatus().equals("QUEUED")) j.setStatus("CANCELLED");
             }
@@ -269,7 +273,7 @@ public class KbRunEngine {
     // Staff accept a run blocked by the weekly cost limit (once).
     public KbRun approveCost(UUID runId) {
         return inTx(() -> {
-            var r = runs.findById(runId).orElseThrow(() -> new ResourceNotFoundException("KbRun", runId.toString()));
+            var r = runs.lockById(runId).orElseThrow(() -> new ResourceNotFoundException("KbRun", runId.toString()));
             if (!r.getStatus().equals("BLOCKED_BY_COST_LIMIT")) {
                 throw new KbPipelineException(KbPipelineException.Reason.RUN_NOT_BLOCKED,
                     "The run is not blocked by the cost limit");
@@ -289,13 +293,11 @@ public class KbRunEngine {
             int pending = inTx(() -> requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING")).size());
             if (pending == 0) {
                 int built = inTx(() -> {
-                    var r = runs.findById(runId).orElseThrow();
-                    return handler.build(r, stage, new Seq((int) requests.countByRunId(runId)));
+                    var r = runs.lockById(runId).orElseThrow();
+                    return r.isActive() ? handler.build(r, stage, new Seq((int) requests.countByRunId(runId))) : -1;
                 });
-                if (built == 0) {
-                    inTxVoid(() -> handler.after(runs.findById(runId).orElseThrow(), stage));
-                    return true;
-                }
+                if (built < 0) return false;
+                if (built == 0) return whileActive(runId, r -> handler.after(r, stage));
             }
             if (!dry && handler.costLimited() && blockedByCost(runId, stage)) return false;
             submit(runId, stage, 1, dry);
@@ -323,15 +325,12 @@ public class KbRunEngine {
                 else allDone = false;
             }
             if (!allDone) {
-                inTxVoid(() -> runs.findById(runId).ifPresent(r -> r.setStatus("WAITING")));
+                inTxVoid(() -> runs.setStatusIf(runId, "WAITING", MOVING));
                 return false;
             }
             return true;
         }
-        if (dry) {
-            inTxVoid(() -> handler.after(runs.findById(runId).orElseThrow(), stage));
-            return true;
-        }
+        if (dry) return whileActive(runId, r -> handler.after(r, stage));
         int maxAttempt = stageJobs.stream().mapToInt(KbBatchJob::getAttempt).max().orElse(1);
         var syncJobs = stageJobs.stream().filter(j -> j.getMode().equals("SYNC")).map(KbBatchJob::getId).toList();
         var leftover = inTx(() -> {
@@ -347,6 +346,7 @@ public class KbRunEngine {
             return ids;
         });
         if (!leftover.isEmpty() && maxAttempt < 2) {
+            if (handler.costLimited() && blockedByCost(runId, stage, leftover)) return false;
             inTxVoid(() -> requests.findAllById(leftover).forEach(r -> {
                 if (emptyOrTruncated(r.getError())) r.doubleMaxTokens(SyncLlmExecutor.MAX_TOKENS_CAP);
                 r.setStatus("PENDING");
@@ -354,32 +354,56 @@ public class KbRunEngine {
             submit(runId, stage, maxAttempt + 1, false);
             return true;
         }
-        inTxVoid(() -> {
-            requests.findAllById(leftover).forEach(r -> r.failed(r.getError() == null
-                ? "no answer after resubmission" : r.getError()));
-            handler.after(runs.findById(runId).orElseThrow(), stage);
+        return whileActive(runId, r -> {
+            requests.findAllById(leftover).forEach(q -> q.failed(q.getError() == null
+                ? "no answer after resubmission" : q.getError()));
+            handler.after(r, stage);
         });
-        return true;
     }
 
-    // Weekly cost limit: the run's recorded cost plus this stage's estimate.
+    // Runs `work` on the row-locked run if it is still active (a cancel
+    // that committed meanwhile wins); false when it is not.
+    private boolean whileActive(UUID runId, java.util.function.Consumer<KbRun> work) {
+        return inTx(() -> {
+            var r = runs.lockById(runId).orElse(null);
+            if (r == null || !r.isActive()) return false;
+            work.accept(r);
+            return true;
+        });
+    }
+
+    // Weekly cost limit, checked before every submission (first attempt and
+    // resubmission of each stage): everything recorded in kb_llm_usage over
+    // the last 7 days (this run's answers included) plus the estimate of the
+    // requests about to go out (`only`: those custom ids, else the stage's
+    // PENDING ones). An approved run is not checked again.
     private boolean blockedByCost(UUID runId, String stage) {
+        return blockedByCost(runId, stage, null);
+    }
+
+    private boolean blockedByCost(UUID runId, String stage, List<String> only) {
         var limit = settings.effective().weeklyCostLimitUsd();
         if (limit == null) return false;
         return inTx(() -> {
-            var run = runs.findById(runId).orElseThrow();
-            if (run.isCostApproved()) return false;
+            var run = runs.lockById(runId).orElseThrow();
+            if (run.isCostApproved() || !run.isActive()) return false;
             var mode = settings.effective().executionMode();
-            var estimate = run.getCostEstimate() == null ? BigDecimal.ZERO : run.getCostEstimate();
-            for (var r : requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING"))) {
+            var spent = costs.spentSince(now().minusDays(7));
+            var estimate = BigDecimal.ZERO;
+            var pending = only == null ? requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING"))
+                : requests.findAllById(only);
+            for (var r : pending) {
                 estimate = estimate.add(costs.estimate(r.getModel(), router.modeFor(r.getModel(), mode),
                     r.getEstTokens(), r.getParams().path("max_tokens").asLong(4096)));
             }
-            if (estimate.compareTo(limit) <= 0) return false;
+            var total = spent.add(estimate);
+            if (total.compareTo(limit) <= 0) return false;
             run.setStatus("BLOCKED_BY_COST_LIMIT");
-            run.setError("Estimated cost US$" + estimate.setScale(2, java.math.RoundingMode.HALF_UP)
-                + " exceeds the weekly limit US$" + limit + " at " + stage + "; approve with approve-cost");
-            log.warn("KB run {} blocked by the cost limit at {} ({} > {})", runId, stage, estimate, limit);
+            run.setError("Spent in the last 7 days US$" + spent.setScale(2, java.math.RoundingMode.HALF_UP)
+                + " + estimated US$" + estimate.setScale(2, java.math.RoundingMode.HALF_UP) + " for " + stage
+                + " exceeds the weekly limit US$" + limit + "; approve with approve-cost");
+            log.warn("KB run {} blocked by the weekly cost limit at {} ({} + {} > {})", runId, stage, spent, estimate,
+                limit);
             return true;
         });
     }
@@ -471,14 +495,13 @@ public class KbRunEngine {
             if (out != null && out.length() > 0) {
                 outKey = job.getPayloadKey().replace(".jsonl", "-out"
                     + (pendingCount.get(job.getId()) < job.getRequestCount() ? "-resumed" : "") + ".jsonl");
-                var bytes = out.toString().getBytes(StandardCharsets.UTF_8);
-                storage.put(outKey, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
+                putAudit(outKey, out.toString().getBytes(StandardCharsets.UTF_8));
             }
             var key = outKey;
             inTxVoid(() -> {
                 var j = jobs.findById(job.getId()).orElseThrow();
                 if (j.getStatus().equals("SUBMITTED")) j.finish("COMPLETED", key, now(), null);
-                runs.findById(job.getRunId()).filter(KbRun::isActive).ifPresent(r -> r.setStatus("RUNNING"));
+                runs.setStatusIf(job.getRunId(), "RUNNING", MOVING);
             });
             log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(),
                 pendingCount.get(job.getId()), job.getModel());
@@ -500,22 +523,14 @@ public class KbRunEngine {
         return o;
     }
 
-    // BATCH: a finished batch, stored and recorded.
+    // BATCH: a finished batch, recorded, then its audit copy stored (best
+    // effort: a storage hiccup must not lose results that were paid for).
     private void collectBatch(UUID jobId, LlmBatchClient.BatchInfo info) {
         var job = inTx(() -> jobs.findById(jobId).orElseThrow());
         var collected = batch.collect(job.getDoBatchId(), info.status().equals("completed"));
-        String outKey = null;
         var output = withoutReasoning(collected.output());
         var errors = withoutReasoning(collected.errors());
-        if (output != null) {
-            outKey = job.getPayloadKey().replace(".jsonl", "-out.jsonl");
-            storage.put(outKey, "application/x-ndjson", new ByteArrayInputStream(output), output.length);
-        }
-        if (errors != null) {
-            storage.put(job.getPayloadKey().replace(".jsonl", "-err.jsonl"), "application/x-ndjson",
-                new ByteArrayInputStream(errors), errors.length);
-        }
-        var key = outKey;
+        var key = output == null ? null : job.getPayloadKey().replace(".jsonl", "-out.jsonl");
         var status = switch (info.status()) {
             case "completed" -> "COMPLETED";
             case "cancelled" -> "CANCELLED";
@@ -528,6 +543,7 @@ public class KbRunEngine {
             && DoBatchErrors.classifyFailure(info.errorMessage()) != DoBatchErrors.Kind.RATE_LIMITED
             && collected.results().isEmpty();
         inTxVoid(() -> {
+            var run = runs.lockById(job.getRunId()).orElseThrow();   // first: same lock order as cancel
             for (var r : requests.findByBatchJobId(jobId)) {
                 var res = collected.results().get(r.getCustomId());
                 if (res != null) record(job.getRunId(), jobId, "BATCH", res, null);
@@ -537,13 +553,23 @@ public class KbRunEngine {
                 }
             }
             jobs.findById(jobId).orElseThrow().finish(status, key, now(), error);
-            runs.findById(job.getRunId()).ifPresent(r -> {
-                r.setStatus("RUNNING");
-                if (permanent) r.setError(error + " (" + job.getStage() + ", " + job.getModel() + ")");
-            });
+            if (run.isActive()) {
+                run.setStatus("RUNNING");
+                if (permanent) run.setError(error + " (" + job.getStage() + ", " + job.getModel() + ")");
+            }
         });
+        if (key != null) putAudit(key, output);
+        if (errors != null) putAudit(job.getPayloadKey().replace(".jsonl", "-err.jsonl"), errors);
         log.info("KB run {} {} batch {} {}{}", job.getRunId(), job.getStage(), info.id(), info.status(),
             error == null ? "" : ": " + error);
+    }
+
+    private void putAudit(String key, byte[] bytes) {
+        try {
+            storage.put(key, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
+        } catch (RuntimeException e) {
+            log.warn("KB: storing the audit copy {} failed (results are recorded): {}", key, e.getMessage());
+        }
     }
 
     // DO's error_message of a batch that did not complete (else its status).
@@ -606,10 +632,11 @@ public class KbRunEngine {
     // reasoning tokens); null for batch (one row, the job's attempt number).
     private void record(UUID runId, UUID jobId, String mode, LlmOutputParser.LlmResult res,
                         SyncLlmExecutor.Outcome outcome) {
+        // The run row first (locked): the same order as cancel, so they never deadlock.
+        var run = runs.lockById(runId).orElseThrow();
         var r = requests.findById(res.customId()).orElse(null);
         if (r == null || r.getStatus().equals("DONE")) return;
         r.answered(now(), outcome == null ? null : outcome.latencyMs());
-        var run = runs.findById(runId).orElseThrow();
         var handler = handler(run);
         if (res.ok()) {
             var path = emptyOrTruncated(r.getError()) && res.path() != null && !res.path().endsWith("+retry")
@@ -619,7 +646,9 @@ public class KbRunEngine {
         } else {
             r.setError(res.error());
         }
-        if (res.tokensIn() == 0 && res.tokensOut() == 0) return;
+        boolean paid = res.tokensIn() > 0 || res.tokensOut() > 0
+            || (outcome != null && outcome.attempts().stream().anyMatch(a -> a.tokensIn() > 0 || a.tokensOut() > 0));
+        if (!paid) return;
         var stage = handler.usageStage(r.getStage());
         var cost = BigDecimal.ZERO;
         UUID usageRun = run.isEval() ? null : runId;
