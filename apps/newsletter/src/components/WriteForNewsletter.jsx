@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { canAccessAdmin, startGoogleSignIn } from '../store/authStore'
 import { GoogleIcon } from './ContributeModal'
+import { useDialogFocus } from '../hooks/useDialogFocus'
 
 // `?write=1` reopens the explanation after the Google round-trip, so someone
 // who signed in from it lands back here (or in the editor, if they turn out
@@ -22,8 +23,12 @@ export default function WriteForNewsletter() {
   const [open, setOpen] = useState(false)
   const canWrite = canAccessAdmin(profile)
 
+  // StrictMode runs effects twice with the same params; act once.
+  const handledRef = useRef(false)
+
   useEffect(() => {
-    if (loading || params.get(WRITE_PARAM) !== '1') return
+    if (loading || params.get(WRITE_PARAM) !== '1' || handledRef.current) return
+    handledRef.current = true
     const next = new URLSearchParams(params)
     next.delete(WRITE_PARAM)
     setParams(next, { replace: true })
@@ -55,13 +60,7 @@ export default function WriteForNewsletter() {
 function WriteDialog({ signedIn, onClose }) {
   const { t } = useTranslation()
   const closeRef = useRef(null)
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    closeRef.current?.focus()
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  useDialogFocus(closeRef, onClose)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>

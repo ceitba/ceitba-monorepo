@@ -357,7 +357,8 @@
       "viewSite": "View site",
       "new": "New",
       "edit": "Edit",
-      "review": "Review"
+      "review": "Review",
+      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?"
     }
   },
   "imageUploader": {

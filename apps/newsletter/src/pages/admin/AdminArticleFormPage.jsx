@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,6 +9,8 @@ import {
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
+import { setUnsavedChanges } from '../../store/unsavedStore'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import ImageUploader from '../../components/ImageUploader'
@@ -167,6 +169,14 @@ export default function AdminArticleFormPage() {
 
   const [leaveTo, setLeaveTo] = useState(null)
   useUnsavedLinkGuard(dirty, setLeaveTo)
+
+  const stayHere = useCallback(() => setLeaveTo(null), [])
+  const closePreview = useCallback(() => setPreviewOpen(false), [])
+
+  useEffect(() => {
+    setUnsavedChanges(dirty)
+    return () => setUnsavedChanges(false)
+  }, [dirty])
 
   useEffect(() => {
     if (!dirty) return
@@ -524,17 +534,19 @@ export default function AdminArticleFormPage() {
         </aside>
       </div>
 
-      {leaveTo && (
-        <LeaveDialog
-          onStay={() => setLeaveTo(null)}
-          onLeave={() => { setDirty(false); setLeaveTo(null); navigate(leaveTo) }}
-        />
-      )}
-
       {previewOpen && (
-        <PreviewDialog onClose={() => setPreviewOpen(false)}>
+        <PreviewDialog onClose={closePreview}>
           <ArticleLivePreview article={previewArticle} orgs={orgs} />
         </PreviewDialog>
+      )}
+
+      {/* After the preview so it stacks above it (a link in the preview
+          can trigger it). */}
+      {leaveTo && (
+        <LeaveDialog
+          onStay={stayHere}
+          onLeave={() => { setDirty(false); setLeaveTo(null); setPreviewOpen(false); navigate(leaveTo) }}
+        />
       )}
     </div>
   )
@@ -552,8 +564,11 @@ function useUnsavedLinkGuard(active, onBlocked) {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
       const a = e.target.closest?.('a[href]')
       if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return
+      // Links inside the editor are edited, not followed.
+      if (a.isContentEditable || a.closest('[contenteditable="true"]')) return
       const url = new URL(a.href, window.location.href)
-      if (url.origin !== window.location.origin || !url.pathname.startsWith(base)) return
+      if (url.origin !== window.location.origin) return
+      if (base && url.pathname !== base && !url.pathname.startsWith(`${base}/`)) return
       const to = (url.pathname.slice(base.length) || '/') + url.search + url.hash
       if (to === window.location.pathname.slice(base.length) + window.location.search) return
       e.preventDefault()
@@ -568,12 +583,7 @@ function useUnsavedLinkGuard(active, onBlocked) {
 function LeaveDialog({ onStay, onLeave }) {
   const { t } = useTranslation()
   const stayRef = useRef(null)
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onStay() }
-    document.addEventListener('keydown', onKey)
-    stayRef.current?.focus()
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onStay])
+  useDialogFocus(stayRef, onStay)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={(e) => { if (e.target === e.currentTarget) onStay() }}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="leave-title" aria-describedby="leave-body" className="w-full max-w-sm bg-white rounded-card shadow-card-hover p-6 flex flex-col gap-3">
@@ -689,17 +699,12 @@ function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }
 function PreviewDialog({ onClose, children }) {
   const { t } = useTranslation()
   const closeRef = useRef(null)
+  useDialogFocus(closeRef, onClose)
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    closeRef.current?.focus()
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
-  }, [onClose])
+    return () => { document.body.style.overflow = prev }
+  }, [])
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-start bg-black/50 p-3 sm:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label={t('admin.articleForm.preview')} className="w-full max-w-4xl max-h-full flex flex-col bg-surface rounded-card shadow-card-hover">
