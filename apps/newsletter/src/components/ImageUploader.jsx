@@ -1,35 +1,8 @@
 import { useState, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { apiSend } from '../api/client'
+import { ALLOWED_IMAGE_TYPES as ALLOWED_TYPES, MAX_IMAGE_BYTES as MAX_BYTES, uploadViaSignedUrl } from '../api/media'
 import { isStaff } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
-
-// What POST /media/sign-upload accepts (MediaUploadService): STAFF only,
-// jpeg/png/webp up to 5 MB.
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const MAX_BYTES     = 5 * 1024 * 1024
-
-// Browsers refuse to set these on fetch; they are computed from the body.
-const FORBIDDEN_HEADERS = new Set(['content-length', 'host'])
-
-async function uploadViaSignedUrl(file) {
-  const signed = await apiSend('POST', '/media/sign-upload', {
-    filename:    file.name,
-    contentType: file.type,
-    sizeBytes:   file.size,
-  })
-  const headers = Object.fromEntries(
-    Object.entries(signed.headers ?? { 'Content-Type': file.type })
-      .filter(([k]) => !FORBIDDEN_HEADERS.has(k.toLowerCase())),
-  )
-  const putRes = await fetch(signed.uploadUrl, {
-    method:  signed.method ?? 'PUT',
-    headers,
-    body:    file,
-  })
-  if (!putRes.ok) throw new Error('PUT to storage failed')
-  return signed.publicUrl
-}
 
 function isHttpUrl(value) {
   try {

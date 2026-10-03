@@ -1,6 +1,8 @@
 import CategoryBadge from '../CategoryBadge'
 import i18n from 'i18next'
 import { formatDate as formatLocalDate } from '../../utils/dates'
+import { bodyToMarkdown } from '../../utils/articleBody'
+import ArticleBody from '../article/ArticleBody'
 
 // Mirrors the GeoFill in ArticleCard — kept local so preview has no router dependency
 const GEO_BG = {
@@ -161,21 +163,11 @@ function ArticleFullPreview({ article, orgs }) {
         </div>
 
         {/* Body */}
-        <div className="mt-5 flex flex-col gap-4">
-          {article.body.filter((p) => p.trim()).length > 0 ? (
-            article.body.filter((p) => p.trim()).map((para, i) => (
-              <p key={i} className="font-body text-body text-ink-primary leading-[1.75]">
-                {para}
-              </p>
-            ))
-          ) : article.excerpt ? (
-            <p className="font-body text-body text-ink-secondary leading-[1.75] italic">
-              {article.excerpt}
-            </p>
-          ) : (
-            <p className="font-body text-body text-border italic">El cuerpo del artículo aparecerá acá.</p>
-          )}
-        </div>
+        {bodyToMarkdown(article.body).trim() ? (
+          <ArticleBody body={article.body} className="mt-6" />
+        ) : (
+          <p className="mt-6 font-body text-body text-border italic">El cuerpo del artículo aparecerá acá.</p>
+        )}
       </div>
     </div>
   )

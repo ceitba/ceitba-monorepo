@@ -197,3 +197,95 @@ main {
   width: 100%;
   overflow-x: hidden;
 }
+
+/* === Article body ===
+   One stylesheet for the published article (ArticleBody), the editor
+   preview and the WYSIWYG editor (ProseMirror), so the editor shows exactly
+   what readers get. */
+.article-prose {
+  @apply font-body text-body text-ink-primary;
+  line-height: 1.75;
+  overflow-wrap: break-word;
+}
+.article-prose > * + * { margin-top: 1.25rem; }
+.article-prose h1,
+.article-prose h2 { @apply font-display text-h4 font-bold text-ink-primary; margin-top: 2.5rem; }
+.article-prose h3 { @apply font-display text-h5 font-bold text-ink-primary; margin-top: 2rem; }
+.article-prose h4 { @apply font-body text-body-lg font-bold text-ink-primary; margin-top: 1.75rem; }
+.article-prose > :first-child { margin-top: 0; }
+.article-prose h1 + *, .article-prose h2 + *, .article-prose h3 + *, .article-prose h4 + * { margin-top: 0.75rem; }
+.article-prose a { @apply text-primary underline underline-offset-2; }
+.article-prose strong { font-weight: 700; }
+.article-prose ul { list-style: disc; padding-left: 1.5rem; }
+.article-prose ol { list-style: decimal; padding-left: 1.5rem; }
+.article-prose li + li { margin-top: 0.375rem; }
+.article-prose li > p { margin: 0; }
+.article-prose li > ul, .article-prose li > ol { margin-top: 0.375rem; }
+.article-prose blockquote {
+  @apply border-l-4 border-accent pl-5 font-display text-body-lg italic text-ink-secondary;
+}
+.article-prose hr { @apply border-0 border-t border-border; margin: 2.5rem 0; }
+.article-prose img { @apply rounded-card border border-border; display: block; max-width: 100%; height: auto; margin-left: auto; margin-right: auto; }
+.article-prose code {
+  @apply font-mono bg-primary-50 text-primary-700 rounded-sm;
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+}
+.article-prose pre {
+  @apply font-mono text-body-sm bg-primary-900 text-primary-50 rounded-card;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+.article-prose pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+.article-prose table { width: 100%; border-collapse: collapse; @apply text-body-sm; }
+.article-prose th, .article-prose td { @apply border border-border; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+.article-prose th { @apply bg-surface font-semibold; }
+.article-prose th > p, .article-prose td > p { margin: 0; }
+.article-prose__table { overflow-x: auto; }
+.article-prose .mermaid-diagram { display: flex; justify-content: center; margin-left: 0; margin-right: 0; overflow-x: auto; }
+.article-prose .mermaid-diagram svg { max-width: 100%; height: auto; }
+.article-prose .mermaid-diagram--loading { min-height: 8rem; @apply rounded-card bg-surface; }
+.article-prose .mermaid-diagram--error { flex-direction: column; }
+.article-prose .mermaid-diagram--error figcaption { @apply font-mono text-label text-amber-700; margin-bottom: 0.5rem; }
+
+html.dark .article-prose { color: #f4f4f5; }
+html.dark .article-prose h1, html.dark .article-prose h2, html.dark .article-prose h3, html.dark .article-prose h4 { color: #f4f4f5; }
+html.dark .article-prose a { color: #7FA1D4; }
+html.dark .article-prose blockquote { color: #a1a1aa; }
+html.dark .article-prose code { background-color: #0e2243; color: #ADC5E7; }
+html.dark .article-prose pre { background-color: #09090b; color: #e4e4e7; }
+html.dark .article-prose th { background-color: #18181b; }
+html.dark .article-prose th, html.dark .article-prose td, html.dark .article-prose img, html.dark .article-prose hr { border-color: #3f3f46; }
+
+/* === Editor (TipTap / ProseMirror) === */
+.article-editor { min-height: 24rem; outline: none; }
+.article-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  @apply text-ink-secondary;
+  opacity: 0.6;
+}
+.article-editor img.ProseMirror-selectednode { outline: 3px solid #F5A623; }
+.article-editor .selectedCell { background-color: rgba(245, 166, 35, 0.15); }
+.article-editor .tableWrapper { overflow-x: auto; }
+.article-editor .code-block-node { margin-top: 1.25rem; }
+.article-editor .code-block-node pre { border-top-left-radius: 0; border-top-right-radius: 0; margin: 0; }
+.code-block-node__bar {
+  @apply flex items-center justify-between gap-2 bg-primary-800 text-primary-200 font-mono text-label uppercase tracking-widest rounded-t-card;
+  padding: 0.375rem 0.75rem;
+}
+.code-block-node__bar select {
+  @apply bg-primary-900 text-primary-100 border border-primary-700 rounded-sm font-mono text-label normal-case tracking-normal;
+  padding: 0.125rem 0.25rem;
+}
+.code-block-node__preview { @apply border border-t-0 border-border rounded-b-card bg-white; padding: 1rem; }
+.code-block-node__preview > p { @apply font-mono text-label text-ink-secondary; margin: 0; }
+.code-block-node:has(.code-block-node__preview) pre { border-radius: 0; }
+html.dark .code-block-node__preview { background-color: #27272a; border-color: #3f3f46; }
+html.dark .code-block-node__preview > p,
+html.dark .article-editor p.is-editor-empty:first-child::before { color: #a1a1aa; }
+html.dark .article-prose .mermaid-diagram--loading { background-color: #18181b; }
+html.dark .article-prose .mermaid-diagram--error figcaption { color: #fbbf24; }
