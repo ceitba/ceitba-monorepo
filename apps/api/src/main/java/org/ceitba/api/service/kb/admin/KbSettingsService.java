@@ -79,17 +79,15 @@ public class KbSettingsService {
     }
 
     // Applies the given fields (null = back to the env default; absent =
-    // unchanged), validates them and records a history entry.
+    // unchanged), validates them and records a history entry. Anything that
+    // is not a settings field (costImpact, source, updatedAt, ...: the
+    // response echoed back) is ignored, and a value that changes nothing
+    // effective (e.g. equal to the env default) is stored as "use env".
     @Transactional
     public KbSettingsResponse update(UUID userId, JsonNode body) {
         var before = effective();
-        var next = (ObjectNode) stored().deepCopy();
-        for (var f : FIELDS) {
-            if (!body.has(f)) continue;
-            if (body.get(f).isNull()) next.remove(f);
-            else next.set(f, body.get(f));
-        }
-        normalizeCron(next);
+        checkTypes(body);
+        var next = applied(stored(), body);
         validate(next, body, before);
         var note = body.path("note").isTextual() ? body.path("note").asText() : null;
         var row = save(next, userId, note);
@@ -101,15 +99,11 @@ public class KbSettingsService {
     @Transactional(readOnly = true)
     public KbSettingsPreview preview(JsonNode body) {
         var before = effective();
-        var next = (ObjectNode) stored().deepCopy();
-        for (var f : FIELDS) {
-            if (!body.has(f)) continue;
-            if (body.get(f).isNull()) next.remove(f);
-            else next.set(f, body.get(f));
-        }
-        normalizeCron(next);
         var errors = new ArrayList<String>();
+        ObjectNode next = stored();
         try {
+            checkTypes(body);
+            next = applied(next, body);
             validate(next, body, before);
         } catch (ValidationException e) {
             errors.add(e.getMessage());
@@ -123,16 +117,53 @@ public class KbSettingsService {
     // the forecast prices for proposed settings.
     @Transactional(readOnly = true)
     public KbEffectiveSettings proposed(JsonNode body) {
-        var next = (ObjectNode) stored().deepCopy();
-        if (body != null) {
-            for (var f : FIELDS) {
-                if (!body.has(f)) continue;
-                if (body.get(f).isNull()) next.remove(f);
-                else next.set(f, body.get(f));
-            }
-            normalizeCron(next);
+        return merge(body == null ? stored() : applied(stored(), body));
+    }
+
+    // `stored` with the settings fields of `body` applied (null removes),
+    // then every override from `body` that changes no effective value
+    // dropped, so resending a default never pins it in the database.
+    ObjectNode applied(ObjectNode stored, JsonNode body) {
+        var next = stored.deepCopy();
+        for (var f : FIELDS) {
+            if (!body.has(f)) continue;
+            if (body.get(f).isNull()) next.remove(f);
+            else next.set(f, body.get(f));
         }
-        return merge(next);
+        normalizeCron(next);
+        for (var f : FIELDS) {
+            if (!body.hasNonNull(f) || !next.has(f)) continue;
+            var without = next.deepCopy();
+            without.remove(f);
+            if (values(merge(next)).equals(values(merge(without)))) next.remove(f);
+        }
+        return next;
+    }
+
+    // Each settings field present (and not null) must have its JSON type: a
+    // string "25" or "yes" is refused instead of being read as 0 / false.
+    static void checkTypes(JsonNode s) {
+        for (var f : FIELDS) {
+            var v = s.get(f);
+            if (v == null || v.isNull()) continue;
+            switch (f) {
+                case "enabled", "retryRejected", "autoRefreshPrices" -> {
+                    if (!v.isBoolean()) throw new ValidationException(f, v, "must be true or false");
+                }
+                case "runTokenBudget" -> {
+                    if (!v.isIntegralNumber()) throw new ValidationException(f, v, "must be a whole number");
+                }
+                case "weeklyCostLimitUsd" -> {
+                    if (!v.isNumber()) throw new ValidationException(f, v, "must be a number (US$) or null");
+                }
+                case "subjectOverrides", "reasoningEffort", "maxTokens" -> {
+                    if (!v.isObject()) throw new ValidationException(f, v, "must be an object");
+                }
+                default -> {
+                    if (!v.isTextual()) throw new ValidationException(f, v, "must be text");
+                }
+            }
+        }
     }
 
     private KbSettingsResponse.CostImpact impact(KbEffectiveSettings before, KbEffectiveSettings after) {
@@ -226,6 +257,7 @@ public class KbSettingsService {
     // Every model field that changes must name an enabled catalog model
     // with a successful probe; batch mode needs batch support everywhere.
     private void validate(ObjectNode next, JsonNode body, KbEffectiveSettings before) {
+        checkTypes(next);
         var merged = merge(next);
         Map<String, String> chosen = new LinkedHashMap<>();
         chosen.put("modelDigest", merged.modelDigest());
@@ -303,7 +335,18 @@ public class KbSettingsService {
     }
 
     private KbSettingsResponse response(ObjectNode stored, KbPipelineSettingsRow row, KbSettingsResponse.CostImpact impact) {
-        var e = merge(stored);
+        var values = values(merge(stored));
+        var source = json.createObjectNode();
+        for (var f : FIELDS) {
+            boolean db = stored.has(f) || (f.equals("modelRetry") && stored.has("modelWrite"));
+            source.put(f, db ? "db" : "env");
+        }
+        return new KbSettingsResponse(values, source, row == null ? null : row.getUpdatedAt(),
+            row == null ? null : row.getUpdatedBy(), row == null ? null : userName(row.getUpdatedBy()), impact);
+    }
+
+    // Every field's effective value.
+    private ObjectNode values(KbEffectiveSettings e) {
         var values = json.createObjectNode();
         values.put("modelDigest", e.modelDigest());
         values.put("modelPlan", e.modelPlan());
@@ -320,13 +363,7 @@ public class KbSettingsService {
         values.set("reasoningEffort", e.reasoningEffort());
         values.set("maxTokens", e.maxTokens());
         values.put("autoRefreshPrices", e.autoRefreshPrices());
-        var source = json.createObjectNode();
-        for (var f : FIELDS) {
-            boolean db = stored.has(f) || (f.equals("modelRetry") && stored.has("modelWrite"));
-            source.put(f, db ? "db" : "env");
-        }
-        return new KbSettingsResponse(values, source, row == null ? null : row.getUpdatedAt(),
-            row == null ? null : row.getUpdatedBy(), row == null ? null : userName(row.getUpdatedBy()), impact);
+        return values;
     }
 
     private String userName(UUID id) {

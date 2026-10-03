@@ -95,7 +95,8 @@ public class KbImportService {
         Map<UUID, KbValidator.SourceInfo> sourceInfo = new HashMap<>();
         for (DriveFile f : files.findAllById(sourceIds)) {
             sourceInfo.put(f.getId(), new KbValidator.SourceInfo(f.getId(),
-                f.getPublication() == DrivePublication.PUBLISHED, f.getEffectiveSubjectId(), f.getTextContent()));
+                f.getPublication() == DrivePublication.PUBLISHED, f.getEffectiveSubjectId(), f.getTextContent(),
+                f.getContentFingerprint() != null ? f.getContentFingerprint() : "file:" + f.getId()));
         }
 
         // Headings of the pages in this payload (they win over stored ones).
@@ -117,13 +118,14 @@ public class KbImportService {
 
         Map<String, KbPageParser.Draft> accepted = new java.util.LinkedHashMap<>();
         var rejected = new ArrayList<KbRejectedPage>();
+        Map<String, java.util.Set<Long>> shingles = new HashMap<>();   // each source's, built once
         for (var e : entries) {
             if (!e.parsed().ok()) {
                 rejected.add(new KbRejectedPage(e.slug(), e.parsed().errors()));
                 continue;
             }
             var draft = e.parsed().draft();
-            var errors = new ArrayList<>(KbValidator.validate(draft, sourceInfo));
+            var errors = new ArrayList<>(KbValidator.validate(draft, sourceInfo, shingles));
             errors.addAll(anchorErrors(subjectId, draft, payloadAnchors));
             for (var m : KbLinker.unlinked(draft.body(), draft.slug(), List.copyOf(targets.values()))) {
                 errors.add("unlinked mention of '" + m.text() + "': link it as [[" + m.slug() + "|" + m.text() + "]]");

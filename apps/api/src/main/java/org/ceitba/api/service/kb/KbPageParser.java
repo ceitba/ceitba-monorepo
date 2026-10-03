@@ -37,6 +37,28 @@ public final class KbPageParser {
 
     private static final Pattern H2 = Pattern.compile("^##(?!#)\\s+(.*)$");
 
+    // Column sizes (kb_page.slug/generator, kb_link.raw/to_slug/to_subject_id):
+    // a longer value rejects the page instead of failing the whole import.
+    static final int MAX_SLUG = 128;
+    static final int MAX_GENERATOR = 128;
+    static final int MAX_LINK_RAW = 256;
+    static final int MAX_LINK_SUBJECT = 25;
+
+    // Markdown only (defence in depth; the SPA renders with skipHtml too):
+    // HTML tags or comments, javascript:/data:/vbscript: links and images
+    // loaded from another site are refused. Code is ignored.
+    private static final Pattern HTML_TAG = Pattern.compile(
+        "<!--|</?(?:a|abbr|b|base|blockquote|body|br|button|canvas|center|code|details|dialog|div|em|embed|font|form"
+            + "|frame|frameset|h[1-6]|head|hr|html|i|iframe|img|input|kbd|link|li|marquee|math|meta|noscript|object"
+            + "|ol|option|p|picture|pre|s|script|select|small|source|span|strong|style|sub|summary|sup|svg|table"
+            + "|tbody|td|template|textarea|th|thead|title|tr|u|ul|video|audio|xmp)(?=[\\s/>])",
+        Pattern.CASE_INSENSITIVE);
+    private static final Pattern UNSAFE_LINK = Pattern.compile(
+        "(?:\\]\\(\\s*<?|^\\s*\\[[^\\]\\n]+]:\\s*<?|<)\\s*(?:javascript|data|vbscript)\\s*:",
+        Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+    private static final Pattern EXTERNAL_IMAGE = Pattern.compile(
+        "!\\[[^\\]\\n]*]\\(\\s*<?\\s*(?:[a-z][a-z0-9+.-]*:|//)", Pattern.CASE_INSENSITIVE);
+
     private KbPageParser() {}
 
     public record Draft(String slug, KbPageType type, String title, String subject, String summary,
@@ -56,6 +78,7 @@ public final class KbPageParser {
             errors.add("invalid slug '" + slug + "': lowercase letters, digits and hyphens, file name *.md");
         }
         if (RESERVED.contains(slug)) errors.add("slug '" + slug + "' is reserved");
+        if (slug != null && slug.length() > MAX_SLUG) errors.add("slug longer than " + MAX_SLUG + " characters");
         if (content == null || content.isBlank()) {
             errors.add("empty file");
             return new Result(null, errors);
@@ -98,6 +121,9 @@ public final class KbPageParser {
         var title = requiredString(fm, "title", errors);
         var summary = requiredString(fm, "summary", errors);
         var generator = requiredString(fm, "generator", errors);
+        if (generator != null && generator.length() > MAX_GENERATOR) {
+            errors.add("frontmatter: generator longer than " + MAX_GENERATOR + " characters");
+        }
 
         String subject = null;
         Object rawSubject = fm.get("subject");
@@ -183,6 +209,13 @@ public final class KbPageParser {
         for (var c : links.citations()) {
             if (c.id() == null) errors.add("invalid citation [[" + c.raw() + "]]");
         }
+        for (var l : links.links()) {
+            if (l.raw().length() > MAX_LINK_RAW || l.slug().length() > MAX_SLUG
+                    || l.subjectId().length() > MAX_LINK_SUBJECT) {
+                errors.add("link too long: [[" + preview(l.raw()) + "...]]");
+            }
+        }
+        errors.addAll(unsafeMarkdownErrors(body));
 
         if (!errors.isEmpty()) return new Result(null, errors);
         return new Result(new Draft(slug, type, title, subject, summary, List.copyOf(aliases), List.copyOf(sources),
@@ -212,6 +245,19 @@ public final class KbPageParser {
             }
             from = at + 7;
         }
+        return out;
+    }
+
+    // Raw HTML, script/data links and remote images (outside code and math,
+    // where "a<b y" is not a tag).
+    static List<String> unsafeMarkdownErrors(String body) {
+        var out = new ArrayList<String>();
+        var text = KbWikilinks.stripCode(body).replaceAll("(?s)\\$\\$.*?\\$\\$", " ")
+            .replaceAll("\\$[^$\\n]+\\$", " ");
+        var m = HTML_TAG.matcher(text);
+        if (m.find()) out.add("raw HTML is not allowed (" + preview(text.substring(m.start())) + ")");
+        if (UNSAFE_LINK.matcher(text).find()) out.add("javascript:, data: and vbscript: links are not allowed");
+        if (EXTERNAL_IMAGE.matcher(text).find()) out.add("images from other sites are not allowed");
         return out;
     }
 

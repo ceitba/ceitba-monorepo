@@ -52,6 +52,10 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
 
 1. **DETECT** (code): dirty subjects + their `added`/`changed`/`removed` lists; skip subjects over budget (see "Budget").
 2. **DIGEST** (batch): one request per *chunk* (~20k tokens) of each added/changed file without a digest.
+   - Each request records the fingerprint of the text it actually sent (`kb_run_request.content_fingerprint`, V41);
+     the digest is stored under it. Every added/changed input then needs a digest for the fingerprint DETECT saw: if
+     its digest failed (also for another file with the same content) or the file changed during the run, the subject
+     fails and stays dirty instead of being planned with `digest: null`.
    - Output: JSON via tool use:
      `{ topics: [{ name, aliases, summary, keyPoints, formulas }], materialKind, unitHint, language }`.
    - Multi-chunk files are merged deterministically in code; no LLM merge.
@@ -81,11 +85,18 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
 5. **LINK** (code): port of the deterministic linker. The first mention of a same-subject page title or alias in every
    section is linked; it runs on the new and updated pages and on unchanged pages of the same subject (no LLM).
 6. **VALIDATE** (code): the existing import validator, plus the coverage rule "no unlinked mention of a same-subject page"
-   and the anchor check.
+   and the anchor check. The parser also rejects raw HTML tags/comments, `javascript:`/`data:`/`vbscript:` links,
+   images loaded from another site, and slugs/generators/links longer than their columns (that page only, with a
+   reason; rejected generated pages go to RETRY).
 7. **RETRY** (optional, `KB_RETRY_REJECTED=true`): one extra batch with only the rejected pages, each with its validator errors.
    Whatever still fails keeps its previous version (or isn't created) and is reported.
 8. **PUBLISH** (code): through the existing import service (one transaction per subject, revisions), then update
    `kb_subject_state` with the inputs that were actually used. A subject whose run failed stays dirty for next week.
+   Only what made it in counts as compiled: the sources of a create/update that was rejected (after RETRY) or got no
+   answer keep their previously compiled version (a new file stays absent), and a removed file still cited by such a
+   page stays recorded, so a failed forced rewrite after a takedown is tried again next run. A subject where every
+   write failed (and nothing was deleted) is `FAILED`; one with some failures is `PUBLISHED` with an `error` and makes
+   the run `PARTIAL`.
 
 ## Orchestration
 
@@ -176,7 +187,8 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
   gpt-oss have no batch on DO, so with the default GLM models every stage is SYNC.
 - **Stored payloads.** The canonical request is Anthropic Messages params; the same JSONL lines are stored under
   `kb/runs/<runId>/<stage>[-attempt].jsonl` in both modes (outputs `-out.jsonl`, errors `-err.jsonl`;
-  `reasoning_content` is stripped). MinIO denies anonymous reads of `kb/*`.
+  `reasoning_content` is stripped). MinIO denies anonymous reads of `kb/*`. Output copies are an audit trail written
+  after the results are recorded, best effort: a storage error never loses answers that were paid for.
 - **custom_id** is `<run8>-<StageLetter>-<seq6>` (Anthropic limits it to `[A-Za-z0-9_-]{1,64}`); the long
   `runId:stage:subject:slug:chunk` key is kept in `kb_run_request.item_key`.
 - **Structured output.** Tools + forced `tool_choice`; with no tool call the content is parsed as JSON, then one
@@ -214,8 +226,19 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
   (eval) failed, `PARTIAL` when some did, `SUCCEEDED` otherwise (also when there was nothing to do). `kb_run.status`
   is `VARCHAR(32)`; V38 adds `PARTIAL` to its check constraint.
 - **Per-subject overrides** live in the settings (`subjectOverrides`) instead of a separate table.
-- **Cost limit.** A run whose next stage would exceed `weeklyCostLimitUsd` goes to `BLOCKED_BY_COST_LIMIT`;
-  `POST /v1/staff/kb/pipeline/runs/{id}/approve-cost` releases it once.
+- **Cost limit.** Before every submission (each stage and its resubmission) the cost recorded in `kb_llm_usage` by
+  pipeline runs over the last 7 days (this run's answers included; evals not) plus the estimate of the requests about to
+  go out is compared with `weeklyCostLimitUsd`; over it, the run goes to `BLOCKED_BY_COST_LIMIT`.
+  `POST /v1/staff/kb/pipeline/runs/{id}/approve-cost` releases it for the rest of the run.
+- **Cancel.** `cancel` cancels open DO batches, then marks the run, its jobs and active subjects `CANCELLED` with the
+  run row locked (`SELECT … FOR UPDATE`). Every transition that may end or advance a run (DETECT, build, after-stage,
+  each subject's PUBLISH, the final status, a failure) locks the row too and does nothing once the run is no longer
+  active; RUNNING ↔ WAITING toggles after HTTP calls are conditional updates, and `kb_run` uses dynamic updates so
+  writing totals never rewrites `status`. The sync executor stops dispatching once the run is inactive (answers already
+  in flight are recorded in usage, they were paid for).
+- **Schedule.** The minute tick fires when the cron had a fire time since the previous check; after a restart the
+  previous check is the last `SCHEDULED` run's start (at most one day back), so a restart around the fire time does not
+  skip the week.
 - **Extra endpoints.** `POST /v1/staff/kb/pipeline/probe {model, mode?}` and `POST /v1/staff/kb/pipeline/compare`
   (an eval over a one-subject set).
 

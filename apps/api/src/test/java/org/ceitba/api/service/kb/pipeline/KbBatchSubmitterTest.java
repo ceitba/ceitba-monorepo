@@ -65,7 +65,7 @@ class KbBatchSubmitterTest {
         requests.on("findByBatchJobId", a -> requests.all().stream()
             .filter(r -> a[0].equals(r.getBatchJobId())).toList());
         models = new InMemoryRepo<>(KbModel::getId);
-        var runs = new InMemoryRepo<KbRun, UUID>(KbRun::getId);
+        var runs = new InMemoryRepo<KbRun, UUID>(KbRun::getId).on("setStatusIf", a -> 0);
         var router = new KbLlmRouter(fake, new FakeSyncChatClient(json),
             new KbLlmProperties(null, null, "auto", 4, true), models.as(KbModelRepository.class));
         submitter = new KbBatchSubmitter(jobs.as(KbBatchJobRepository.class), requests.as(KbRunRequestRepository.class),

@@ -20,7 +20,11 @@ import java.util.UUID;
 // BLOCKED_BY_COST_LIMIT (waits for approve-cost), SUCCEEDED, PARTIAL (some
 // subjects/configs failed; V38), FAILED (all failed),
 // CANCELLED. stage: DETECT, DIGEST, PLAN, WRITE, RETRY, PUBLISH|REPORT, DONE.
+// Dynamic updates: a write of totals/stage never rewrites `status`, so a
+// concurrent cancel is not overwritten (status changes go through
+// KbRunRepository.lockById / setStatusIf).
 @Entity
+@org.hibernate.annotations.DynamicUpdate
 @Table(schema = "wiki", name = "kb_run")
 public class KbRun {
 

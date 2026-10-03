@@ -881,7 +881,8 @@ public class KbEvalService implements KbRunHandler {
     @Override
     public void complete(UUID runId) {
         engine.inTxVoid(() -> {
-            var run = runs.findById(runId).orElseThrow();
+            var run = runs.lockById(runId).orElseThrow();
+            if (!run.isActive()) return;   // cancelled meanwhile
             var eval = evals.findById(runId).orElseThrow();
             var set = sets.findById(eval.getSetId()).orElseThrow();
             var results = (ObjectNode) eval.getResults().deepCopy();

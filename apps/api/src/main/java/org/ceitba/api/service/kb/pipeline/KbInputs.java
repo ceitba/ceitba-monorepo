@@ -81,7 +81,11 @@ public class KbInputs {
 
     // Diffs of every subject (not paused) that has inputs, pages or a state.
     public List<Diff> diffs(java.util.function.Predicate<String> paused) {
-        var current = current();
+        return diffs(paused, current());
+    }
+
+    // Same, from inputs already read with current().
+    public List<Diff> diffs(java.util.function.Predicate<String> paused, Map<String, List<Input>> current) {
         Map<String, KbSubjectState> stateBySubject = new HashMap<>();
         states.findAll().forEach(s -> stateBySubject.put(s.getSubjectId(), s));
         Set<String> subjects = new TreeSet<>(current.keySet());
@@ -117,12 +121,7 @@ public class KbInputs {
     }
 
     public List<String> subjectsWithPages() {
-        return pages.findAll().stream()
-            .filter(p -> p.getStatus() != KbPageStatus.REMOVED)
-            .map(p -> p.getSubjectId())
-            .distinct()
-            .sorted()
-            .toList();
+        return pages.findSubjectIdsWithStatusNot(KbPageStatus.REMOVED).stream().sorted().toList();
     }
 
     public ArrayNode toJson(List<Input> inputs) {
