@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -176,6 +178,7 @@ public class CapabilityAdminService {
     }
 
     private OffsetDateTime now() {
-        return OffsetDateTime.now(clock);
+        // UTC, microseconds: the same shape the row reads back as.
+        return OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 }
