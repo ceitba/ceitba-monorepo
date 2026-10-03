@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  configKey, createEval, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
+  configKey, createEval, modelWithEffort, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
   type EvalConfigResult, type EvalMetrics, type EvalRun, type KbModel, type LeaderboardRow, type ModelConfig,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
@@ -11,6 +11,7 @@ import ConfirmDialog from '../../../components/ConfirmDialog'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
 import BlindReview from './BlindReview'
+import ReasoningSelect from './ReasoningSelect'
 import { ModelSelect } from './SettingsView'
 import { BTN, BTN_PRI, CostImpactDialog, FIELD, Panel, StatusPill, TD, TH, ViewState, isUnavailable, pct, secs, tokens, usd, useLoad } from './shared'
 
@@ -34,6 +35,7 @@ const METRICS: { key: keyof EvalMetrics; fmt: (v: number | null | undefined) => 
   { key: 'anchors', fmt: (v) => (v == null ? '—' : String(v)), dir: 'high' },
   { key: 'inputTokens', fmt: tokens, dir: null },
   { key: 'outputTokens', fmt: tokens, dir: null },
+  { key: 'emptyToolCallRate', fmt: (v) => pct(v, 1), dir: 'low' },
   { key: 'costUsd', fmt: (v) => usd(v, 2), dir: 'low' },
   { key: 'durationSec', fmt: secs, dir: 'low' },
 ]
@@ -290,14 +292,32 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
             <fieldset key={i} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] items-start gap-2 p-2 rounded-sm border border-border dark:border-night-border">
               <legend className="sr-only">{t('manage.wikiAi.evals.config', { n: i + 1 })}</legend>
               <span className="font-display font-bold text-h5 self-center w-6 text-center" aria-hidden="true">{String.fromCharCode(65 + i)}</span>
-              <ModelSelect label={`${t('manage.wikiAi.stages.PLAN')} ${i + 1}`} value={c.plan || null} models={models} allowDefault onChange={(v) => setConfigs(configs.map((x, j) => (j === i ? { ...x, plan: v ?? '' } : x)))} />
-              <ModelSelect label={`${t('manage.wikiAi.stages.WRITE')} ${i + 1}`} value={c.write || null} models={models} allowDefault onChange={(v) => setConfigs(configs.map((x, j) => (j === i ? { ...x, write: v ?? '' } : x)))} />
+              {(['plan', 'write'] as const).map((stage) => (
+                <div key={stage} className="grid grid-cols-[1fr_7.5rem] gap-2 items-start min-w-0">
+                  <ModelSelect
+                    label={`${t(`manage.wikiAi.stages.${stage.toUpperCase()}`)} ${i + 1}`}
+                    value={c[stage] || null}
+                    models={models}
+                    allowDefault
+                    onChange={(v) => setConfigs(configs.map((x, j) => (j === i ? { ...x, [stage]: v ?? '' } : x)))}
+                  />
+                  <ReasoningSelect
+                    label={`${t(`manage.wikiAi.stages.${stage.toUpperCase()}`)} ${i + 1} · ${t('manage.wikiAi.reasoning.label')}`}
+                    model={models.find((m) => m.id === c[stage])}
+                    value={c.reasoningEffort?.[stage] ?? null}
+                    onChange={(v) => setConfigs(configs.map((x, j) => (j === i ? { ...x, reasoningEffort: { ...(x.reasoningEffort ?? {}), [stage]: v } } : x)))}
+                  />
+                </div>
+              ))}
               <button type="button" disabled={configs.length <= 2} onClick={() => setConfigs(configs.filter((_, j) => j !== i))} aria-label={t('manage.delete')} className="self-center px-2 text-ink-secondary hover:text-red-600 disabled:opacity-30">×</button>
             </fieldset>
           ))}
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" disabled={configs.length >= 4} onClick={() => setConfigs([...configs, { plan: '', write: '' }])} className={BTN}>{t('manage.wikiAi.evals.addConfig')}</button>
-            <span className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.configHint')}</span>
+            <span className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">
+              {t('manage.wikiAi.evals.configHint')}
+              {models.some((m) => m.supportsReasoningEffort) && ` ${t('manage.wikiAi.reasoning.hint')}`}
+            </span>
           </div>
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('manage.wikiAi.note')} aria-label={t('manage.wikiAi.note')} className={FIELD} />
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border dark:border-night-border">
@@ -358,7 +378,7 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
                         {cfgs.map((c, i) => (
                           <th key={c.configKey} className={`${TH} text-right normal-case tracking-normal`}>
                             <span className="font-display font-bold text-h5 mr-1">{String.fromCharCode(65 + i)}</span>
-                            <span className="block font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">{c.plan} → {c.write}</span>
+                            <span className="block font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">{modelWithEffort(c.plan, c.reasoningEffort?.plan)} → {modelWithEffort(c.write, c.reasoningEffort?.write)}</span>
                           </th>
                         ))}
                       </tr></thead>
@@ -435,7 +455,7 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
               {promoting && (
                 <CostImpactDialog
                   title={t('manage.wikiAi.evals.promoteTitle')}
-                  body={t('manage.wikiAi.evals.promoteBody', { plan: promoting.plan, write: promoting.write })}
+                  body={t('manage.wikiAi.evals.promoteBody', { plan: modelWithEffort(promoting.plan, promoting.reasoningEffort?.plan), write: modelWithEffort(promoting.write, promoting.reasoningEffort?.write) })}
                   onConfirm={async () => (await promoteEval(id, promoting.configKey))?.costImpact ?? null}
                   onCancel={() => setPromoting(null)}
                 />
@@ -470,7 +490,7 @@ function Leaderboard({ setId }: { setId: string }) {
             <tbody>
               {sorted.map((r: LeaderboardRow) => (
                 <tr key={r.configKey} className="border-t border-border dark:border-night-border">
-                  <td className={`${TD} font-mono text-label`}>{r.plan} → {r.write}</td>
+                  <td className={`${TD} font-mono text-label`}>{modelWithEffort(r.plan, r.reasoningEffort?.plan)} → {modelWithEffort(r.write, r.reasoningEffort?.write)}</td>
                   <td className={`${TD} text-right tabular-nums font-semibold`}>{pct(r.winRate, 0)}</td>
                   <td className={`${TD} text-right tabular-nums`}>{r.avgAccuracy?.toFixed(1) ?? '—'}</td>
                   <td className={`${TD} text-right tabular-nums`}>{r.avgClarity?.toFixed(1) ?? '—'}</td>

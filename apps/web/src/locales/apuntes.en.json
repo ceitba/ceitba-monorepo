@@ -506,7 +506,9 @@
         "outputTokens": "Output tokens",
         "costUsd": "Total cost",
         "durationSec": "Duration",
-        "heuristic": "heuristic"
+        "heuristic": "heuristic",
+        "emptyToolCallRate": "Empty structured outputs",
+        "emptyToolCallHint": "Requests whose structured output (tool call) came back empty or failed"
       },
       "chart": {
         "aria": "Stacked weekly cost",
@@ -714,6 +716,19 @@
         "remaining_one": "{{count}} left",
         "remaining_other": "{{count}} left",
         "scoresFor": "{{label}} scores"
+      },
+      "reasoning": {
+        "label": "Reasoning",
+        "default": "Default",
+        "na": "N/A",
+        "unsupported": "This model doesn't support a reasoning setting.",
+        "supported": "supports reasoning effort",
+        "hint": "On reasoning models, “low” gave ≈3× fewer output tokens with the same quality.",
+        "levels": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
       }
     }
   },

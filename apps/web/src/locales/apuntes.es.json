@@ -506,7 +506,9 @@
         "outputTokens": "Tokens de salida",
         "costUsd": "Costo total",
         "durationSec": "Duración",
-        "heuristic": "heurística"
+        "heuristic": "heurística",
+        "emptyToolCallRate": "Salidas estructuradas vacías",
+        "emptyToolCallHint": "Pedidos cuya salida estructurada (tool call) llegó vacía o falló"
       },
       "chart": {
         "aria": "Costo semanal apilado",
@@ -714,6 +716,19 @@
         "remaining_one": "queda {{count}}",
         "remaining_other": "quedan {{count}}",
         "scoresFor": "Puntajes de {{label}}"
+      },
+      "reasoning": {
+        "label": "Razonamiento",
+        "default": "Predeterminado",
+        "na": "No aplica",
+        "unsupported": "Este modelo no permite ajustar el razonamiento.",
+        "supported": "admite nivel de razonamiento",
+        "hint": "En los modelos de razonamiento, «bajo» dio ≈3× menos tokens de salida con la misma calidad.",
+        "levels": {
+          "low": "Bajo",
+          "medium": "Medio",
+          "high": "Alto"
+        }
       }
     }
   },

@@ -13,6 +13,10 @@ export const COST_STAGES: Stage[] = ['DIGEST', 'PLAN', 'WRITE', 'RETRY', 'EVAL']
 export const MODEL_STAGES = ['digest', 'plan', 'write', 'retry'] as const
 export type ModelStage = typeof MODEL_STAGES[number]
 export type ExecutionMode = 'auto' | 'batch' | 'sync'
+// Reasoning effort for reasoning models (e.g. GLM); null = model default.
+export type ReasoningEffort = 'low' | 'medium' | 'high'
+export const REASONING_EFFORTS: ReasoningEffort[] = ['low', 'medium', 'high']
+export type StageReasoning = Partial<Record<ModelStage, ReasoningEffort | null>>
 
 // ── Settings ─────────────────────────────────────────────────────────────
 
@@ -33,6 +37,8 @@ export interface KbSettings {
   runTokenBudget: number
   weeklyCostLimitUsd: number | null
   retryRejected: boolean
+  // Per stage; only meaningful for models with supportsReasoningEffort.
+  reasoningEffort?: StageReasoning
   subjectOverrides: Record<string, SubjectOverride>
   // Where each field's value comes from.
   source?: Partial<Record<keyof KbSettings, 'env' | 'db'>>
@@ -91,6 +97,10 @@ export interface KbModel {
   displayName: string | null
   provider: string | null
   batchSupported: boolean
+  supportsReasoningEffort?: boolean
+  // Share of requests whose structured (tool) output came back failed or
+  // empty, over recorded usage.
+  emptyToolCallRate?: number | null
   toolCalling: 'unknown' | 'yes' | 'no'
   enabled: boolean
   inputPerM: number | null
@@ -263,9 +273,17 @@ export interface EvalSet {
 export interface ModelConfig {
   plan: string
   write: string
+  reasoningEffort?: { plan?: ReasoningEffort | null; write?: ReasoningEffort | null }
 }
 
-export const configKey = (c: ModelConfig) => `${c.plan}+${c.write}`
+const withEffort = (model: string, effort?: ReasoningEffort | null) => (effort ? `${model}@${effort}` : model)
+export const configKey = (c: ModelConfig) =>
+  `${withEffort(c.plan, c.reasoningEffort?.plan)}+${withEffort(c.write, c.reasoningEffort?.write)}`
+
+// "model" or "model (low)" for display.
+export function modelWithEffort(model: string, effort?: ReasoningEffort | null): string {
+  return effort ? `${model} (${effort})` : model
+}
 
 export interface EvalMetrics {
   firstPassValidRate?: number | null
@@ -284,6 +302,7 @@ export interface EvalMetrics {
   outputTokens?: number | null
   costUsd?: number | null
   costPerValidPage?: number | null
+  emptyToolCallRate?: number | null
   durationSec?: number | null
   rejectReasons?: Record<string, number> | null
 }
@@ -292,6 +311,7 @@ export interface EvalConfigResult {
   configKey: string
   plan: string
   write: string
+  reasoningEffort?: ModelConfig['reasoningEffort']
   status?: string
   metrics: EvalMetrics
   perSubject?: ({ subjectId: string } & EvalMetrics)[]
@@ -334,6 +354,7 @@ export interface LeaderboardRow extends EvalMetrics {
   configKey: string
   plan: string
   write: string
+  reasoningEffort?: ModelConfig['reasoningEffort']
   winRate: number | null
   ratings: number
   avgAccuracy: number | null

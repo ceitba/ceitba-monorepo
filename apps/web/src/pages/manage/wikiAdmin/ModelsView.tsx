@@ -4,7 +4,7 @@ import { fetchModels, probeModel, probeOk, syncModels, updateModel, type KbModel
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
-import { BTN, FIELD, TD, TH, ViewState, useLoad } from './shared'
+import { BTN, FIELD, TD, TH, ViewState, pct, useLoad } from './shared'
 
 // Modelos: the catalog with editable prices, enable toggle, batch flag and
 // probe result; "Probar" per model and "Sincronizar con DigitalOcean".
@@ -108,6 +108,17 @@ export default function ModelsView() {
                     </td>
                     <td className={`${TD} min-w-[12rem]`}>
                       <ProbeResult m={m} />
+                      {m.emptyToolCallRate != null && (
+                        <p
+                          className={`font-body text-[0.78rem] ${m.emptyToolCallRate > 0.05 ? 'text-amber-700 dark:text-amber-300' : 'text-ink-secondary dark:text-night-muted'}`}
+                          title={t('manage.wikiAi.metrics.emptyToolCallHint')}
+                        >
+                          {t('manage.wikiAi.metrics.emptyToolCallRate')}: {pct(m.emptyToolCallRate, 1)}
+                        </p>
+                      )}
+                      {m.supportsReasoningEffort && (
+                        <p className="font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.reasoning.supported')}</p>
+                      )}
                       <button type="button" onClick={() => probe(m)} disabled={busy === `probe:${m.id}`} className={`${BTN} mt-1`}>
                         {busy === `probe:${m.id}` ? t('manage.wikiAi.models.probing') : t('manage.wikiAi.models.probeBtn')}
                       </button>

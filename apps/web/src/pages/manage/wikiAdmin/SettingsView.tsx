@@ -6,6 +6,7 @@ import {
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
+import ReasoningSelect from './ReasoningSelect'
 import ConfirmDialog from '../../../components/ConfirmDialog'
 import { BTN, BTN_DANGER, BTN_PRI, CostImpactDialog, FIELD, Panel, TD, TH, ViewState, isUnavailable, useLoad } from './shared'
 
@@ -151,21 +152,32 @@ export default function SettingsView() {
               {models.unavailable && <p className="mb-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.noCatalog')}</p>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {MODEL_STAGES.map((st) => (
-                  <label key={st} className="flex flex-col gap-1 min-w-0">
+                  <div key={st} className="flex flex-col gap-1 min-w-0">
                     <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                       {t(`manage.wikiAi.stages.${st.toUpperCase()}`)}
                       {draft.source?.[STAGE_FIELD[st]] && <span className="ml-2 normal-case tracking-normal">({t(`manage.wikiAi.settings.source.${draft.source[STAGE_FIELD[st]]}`)})</span>}
                     </span>
-                    <ModelSelect
-                      label={t(`manage.wikiAi.stages.${st.toUpperCase()}`)}
-                      value={draft[STAGE_FIELD[st]]}
-                      models={catalog}
-                      mode={draft.executionMode}
-                      onChange={(id) => id && set(STAGE_FIELD[st], id)}
-                    />
-                  </label>
+                    <div className="grid grid-cols-[1fr_8.5rem] gap-2 items-start">
+                      <ModelSelect
+                        label={t(`manage.wikiAi.stages.${st.toUpperCase()}`)}
+                        value={draft[STAGE_FIELD[st]]}
+                        models={catalog}
+                        mode={draft.executionMode}
+                        onChange={(id) => id && set(STAGE_FIELD[st], id)}
+                      />
+                      <ReasoningSelect
+                        label={`${t(`manage.wikiAi.stages.${st.toUpperCase()}`)} · ${t('manage.wikiAi.reasoning.label')}`}
+                        model={catalog.find((m) => m.id === draft[STAGE_FIELD[st]])}
+                        value={draft.reasoningEffort?.[st] ?? null}
+                        onChange={(v) => set('reasoningEffort', { ...(draft.reasoningEffort ?? {}), [st]: v })}
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
+              {catalog.some((m) => m.supportsReasoningEffort) && (
+                <p className="mt-3 font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.reasoning.hint')}</p>
+              )}
             </Panel>
 
             <Panel title={t('manage.wikiAi.settings.pipeline')}>
