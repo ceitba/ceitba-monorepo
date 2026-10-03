@@ -112,4 +112,16 @@ class KbProgressMathTest {
         assertThat(p.current()).isEqualTo("Terminado");
         assertThat(p.etaSec()).isNull();
     }
+
+    @Test
+    void cancelledRunHasNothingInFlight() {
+        var rows = List.of(done("PLAN", 0, 1000), submitted("PLAN", 1));
+        var p = KbProgressMath.compute(run(true, "PLAN", "CANCELLED", 2), rows, List.of(), 4, T0.plusSeconds(60));
+        assertThat(stage(p, "PLAN").inFlight()).isZero();
+        assertThat(stage(p, "PLAN").status()).isEqualTo("failed");
+        assertThat(stage(p, "WRITE").status()).isEqualTo("skipped");
+        assertThat(p.current()).isEqualTo("Cancelado");
+        assertThat(p.etaSec()).isNull();
+        assertThat(p.stalled()).isFalse();
+    }
 }

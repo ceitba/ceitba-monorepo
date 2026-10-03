@@ -275,6 +275,8 @@ progress: {
 - **etaSec** (sync only, null while waiting for a batch): remaining requests (current and later stages, estimated as
   above) × the average `latency_ms` of the last 10 answers ÷ the in-flight concurrency; without latencies, the average
   gap between the last completions.
+- **Ended runs:** a failed or cancelled run reports the stage it stopped at as `failed` (with `inFlight: 0`) and later
+  stages as `skipped`; `overall` then counts only the stages that ran.
 - **lastActivityAt:** the last answer, batch status change or stage transition. **stalled:** active and no activity for
   10 min (sync) or 26 h (batch).
 - **Evals:** DIGEST is shared by all configurations and appears only at the top level. Each `configs[]` adds

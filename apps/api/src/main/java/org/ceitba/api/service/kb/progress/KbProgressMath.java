@@ -141,6 +141,8 @@ public final class KbProgressMath {
                 inFlight = 0;
             }
 
+            if (ended) inFlight = 0;   // abandoned when the run ended
+
             String status;
             boolean skippable = (run.eval() && s.equals("PUBLISH")) || (run.dryRun() && i > index("PLAN"));
             if (skippable) status = "skipped";
