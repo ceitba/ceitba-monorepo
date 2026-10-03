@@ -115,19 +115,6 @@ export function fetchKbGraph(subjectId: string): Promise<KbGraph> {
   return apiGet<KbGraph>(`/wiki/subjects/${enc(subjectId)}/kb/graph`)
 }
 
-// Global wiki map (all subjects, or only `subjects`). Nodes cluster by
-// subject; crossSubject edges join different subjects.
-export interface GlobalKbGraph {
-  subjects: { subjectId: string; subjectName: string; pageCount: number }[]
-  nodes: { id: string; subjectId: string; slug: string; title: string; type: KbPageType }[]
-  edges: { from: string; to: string; crossSubject: boolean }[]
-}
-
-export function fetchGlobalGraph(subjects?: string[]): Promise<GlobalKbGraph> {
-  const qs = subjects && subjects.length ? `?subjects=${subjects.map(enc).join(',')}` : ''
-  return apiGet<GlobalKbGraph>(`/wiki/kb/graph${qs}`)
-}
-
 export function reportKbPage(pageId: string, body: { reason: KbReportReason; comment: string }): Promise<void> {
   return apiSend<void>('PUT', `/wiki/kb/pages/${enc(pageId)}/report`, body)
 }

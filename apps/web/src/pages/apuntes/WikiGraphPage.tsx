@@ -60,14 +60,9 @@ export default function WikiGraphPage() {
         <span>{t('wiki.graph')}</span>
       </nav>
 
-      <header className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <div>
-          <h1 className="font-display font-bold text-h3 text-ink-primary dark:text-night-text">{t('wiki.graphTitle')}</h1>
-          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{t('wiki.graphHint')}</p>
-        </div>
-        <Link to="/apuntes/mapa" className="font-mono text-label uppercase tracking-widest text-primary hover:underline">
-          {t('wiki.map.open')} →
-        </Link>
+      <header className="mb-4">
+        <h1 className="font-display font-bold text-h3 text-ink-primary dark:text-night-text">{t('wiki.graphTitle')}</h1>
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{t('wiki.graphHint')}</p>
       </header>
 
       {error && <p role="alert" className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>}

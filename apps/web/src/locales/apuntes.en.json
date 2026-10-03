@@ -312,7 +312,6 @@
       "matches_one": "{{count}} match",
       "matches_other": "{{count}} matches",
       "typeFilter": "Filter by type",
-      "subjectFilter": "Filter by subject",
       "canvasAria": "Graph: drag to pan, wheel or pinch to zoom; keys + − 0 and arrows",
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
@@ -325,17 +324,6 @@
       "index": "Home",
       "topic": "Topic",
       "concept": "Concept"
-    },
-    "map": {
-      "title": "Notes map",
-      "subtitle": "Every subject wiki in one map, grouped by subject. Bolder lines connect different subjects.",
-      "onlyMine": "Only my subjects",
-      "open": "See the map of all subjects",
-      "explore": "Explore map",
-      "previewHint": "{{subjects}} subjects · {{pages}} connected pages",
-      "empty": "No wikis to show yet",
-      "emptyMine": "No wikis for your subjects yet",
-      "emptyMineBody": "Pin subjects or set your plan in your profile; you can also view the full map."
     },
     "years": {
       "basedOn": "Based on notes from {{range}}",

@@ -341,8 +341,7 @@ html.dark .kb-prose th { background: #18181b; }
 }
 
 /* Wiki graphs (GraphView). --k is the current zoom: labels divide by it so
-   they keep a constant on-screen size; .zoom-low hides concept labels and
-   shows cluster (subject) labels. */
+   they keep a constant on-screen size; .zoom-low hides concept labels. */
 :root {
   --kbg-index: #F5A623;
   --kbg-topic: #1A3C6E;
@@ -393,20 +392,10 @@ html.dark {
 }
 .kbg-label.lbl-index { font-weight: 700; font-size: calc(14px / var(--k)); }
 .kbg-label.lbl-muted { fill: var(--kbg-text-muted); }
-.kbg-group-label {
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 700;
-  font-size: calc(17px / var(--k));
-  paint-order: stroke;
-  stroke: var(--kbg-halo);
-  stroke-width: calc(4px / var(--k));
-  pointer-events: none;
-}
 .kbg-label.is-culled { visibility: hidden; }
 .kbg-label-host { pointer-events: none; }
 .kbg.zoom-low .lbl-concept,
 .kbg.zoom-low .lbl-muted { display: none; }
-.kbg.zoom-high .kbg-group-label { display: none; }
 .kbg.has-focus .kbg-node:not(.is-active) { opacity: 0.15; }
 .kbg.has-focus .kbg-edge:not(.is-active) { opacity: 0.12; }
 /* An active node's concept label shows even at low zoom. */

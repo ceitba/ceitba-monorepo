@@ -3,8 +3,6 @@
 // iteration, with fewer iterations for bigger graphs (~100 ms for 500
 // nodes).
 //
-// - groups cluster nodes (e.g. by subject): each group gets an anchor on a
-//   circle and its nodes are pulled towards it;
 // - peripheral nodes (pages of other subjects in a subject graph) repel
 //   less, get short links and a stronger pull to the centre, so they sit
 //   around the subject's pages instead of being flung far out;
@@ -14,7 +12,6 @@ export interface LayoutNode { id: string; x: number; y: number }
 
 export interface LayoutOptions {
   iterations?: number
-  groupOf?: (id: string) => string | undefined
   isPeripheral?: (id: string) => boolean
   radiusOf?: (id: string) => number
   // Extra clearance between node circles (world units).
@@ -38,25 +35,14 @@ export function forceLayout(
   const radius = ids.map((id) => opts.radiusOf?.(id) ?? 8)
   const pad = opts.collisionPadding ?? 18
 
-  const groupKeys = opts.groupOf ? [...new Set(ids.map((id) => opts.groupOf!(id) ?? ''))] : []
-  const anchors = new Map<string, { x: number; y: number }>()
-  const ringR = groupKeys.length > 1 ? k * Math.sqrt(n) * 0.9 : 0
-  groupKeys.forEach((g, i) => {
-    const a = (i / groupKeys.length) * Math.PI * 2
-    anchors.set(g, { x: ringR * Math.cos(a), y: ringR * Math.sin(a) })
-  })
-  const anchorOf = (id: string) => anchors.get(opts.groupOf?.(id) ?? '') ?? { x: 0, y: 0 }
-
-  // Golden-angle spiral around each node's anchor: deterministic, spread.
+  // Golden-angle spiral around the centre: deterministic, spread.
   // Peripheral nodes start on an outer ring.
   ids.forEach((id, i) => {
     const r = (peripheral[i] ? 1.6 : 1) * k * 0.5 * Math.sqrt(i + 1)
     const a = i * 2.39996
-    const c = anchorOf(id)
-    nodes.set(id, { id, x: c.x + r * Math.cos(a), y: c.y + r * Math.sin(a) })
+    nodes.set(id, { id, x: r * Math.cos(a), y: r * Math.sin(a) })
   })
   const list = ids.map((id) => nodes.get(id)!)
-  const anchorList = ids.map((id) => anchorOf(id))
   const index = new Map(ids.map((id, i) => [id, i]))
   const links = edges
     .map((e) => [index.get(e.from), index.get(e.to)] as const)
@@ -65,7 +51,7 @@ export function forceLayout(
   const dx = new Float64Array(n)
   const dy = new Float64Array(n)
   let temperature = k * 2
-  const groupGravity = groupKeys.length > 1 ? 0.06 : 0.012
+  const coreGravity = 0.012
   for (let it = 0; it < iterations; it++) {
     dx.fill(0); dy.fill(0)
     // Repulsion (weaker when a peripheral node is involved).
@@ -94,10 +80,9 @@ export function forceLayout(
     }
     for (let i = 0; i < n; i++) {
       const v = list[i]
-      const c = anchorList[i]
-      const g = peripheral[i] ? 0.12 : groupGravity
-      dx[i] -= (v.x - c.x) * g * k * 0.05
-      dy[i] -= (v.y - c.y) * g * k * 0.05
+      const g = peripheral[i] ? 0.12 : coreGravity
+      dx[i] -= v.x * g * k * 0.05
+      dy[i] -= v.y * g * k * 0.05
       const d = Math.max(Math.sqrt(dx[i] * dx[i] + dy[i] * dy[i]), 0.01)
       const step = Math.min(d, temperature)
       v.x += (dx[i] / d) * step

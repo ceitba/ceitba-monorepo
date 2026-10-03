@@ -19,20 +19,12 @@ export interface GraphNode {
   type: KbPageType
   // Drawn grey and small (pages of other subjects in a subject graph).
   muted?: boolean
-  // Cluster key (subject in the global map).
-  group?: string
 }
 
 export interface GraphEdge {
   from: string
   to: string
   emphasized?: boolean
-}
-
-export interface GraphGroup {
-  key: string
-  label: string
-  color: string
 }
 
 type Mode = 'full' | 'preview' | 'thumb'
@@ -42,9 +34,6 @@ interface Props {
   edges: GraphEdge[]
   // Fill for a node (CSS colour or var()).
   colorOf: (node: GraphNode) => string
-  // Clusters with legend colours (global map): enables group labels and
-  // the subject filter.
-  groups?: GraphGroup[]
   mode?: Mode
   className?: string
   onOpen?: (node: GraphNode) => void
@@ -57,6 +46,9 @@ interface Props {
 }
 
 const MIN_K = 0.2
+// Below this zoom only index/topic labels show (a little under 1× so a
+// graph fitted at ~1× still shows its concept labels).
+const LABEL_K = 0.85
 const MAX_K = 4
 const RADIUS: Record<KbPageType, number> = { index: 14, topic: 10, concept: 7 }
 const TYPES: KbPageType[] = ['index', 'topic', 'concept']
@@ -76,7 +68,7 @@ function radiusOf(n: GraphNode): number {
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
 
 export default function GraphView({
-  nodes, edges, colorOf, groups, mode = 'full', className = '', onOpen, loadSummary, subjectLabel, mutedLabel,
+  nodes, edges, colorOf, mode = 'full', className = '', onOpen, loadSummary, subjectLabel, mutedLabel,
 }: Props) {
   const { t } = useTranslation()
   const interactive = mode === 'full'
@@ -95,7 +87,6 @@ export default function GraphView({
   const [selected, setSelected] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [hiddenTypes, setHiddenTypes] = useState<Set<KbPageType>>(new Set())
-  const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(new Set())
   const [hideMuted, setHideMuted] = useState(false)
   const [summaries, setSummaries] = useState<Map<string, string | null>>(new Map())
 
@@ -105,10 +96,8 @@ export default function GraphView({
     let cancelled = false
     const run = () => {
       if (cancelled) return
-      const groupOf = groups ? new Map(nodes.map((n) => [n.id, n.group ?? ''])) : null
       const meta = new Map(nodes.map((n) => [n.id, n]))
       const pos = forceLayout(nodes.map((n) => n.id), edges, {
-        groupOf: groupOf ? (id) => groupOf.get(id) : undefined,
         isPeripheral: (id) => !!meta.get(id)?.muted,
         radiusOf: (id) => { const n = meta.get(id); return n ? radiusOf(n) : 8 },
       })
@@ -120,14 +109,13 @@ export default function GraphView({
       cancelled = true
       if (!w.requestIdleCallback) window.clearTimeout(handle)
     }
-  }, [nodes, edges, groups])
+  }, [nodes, edges])
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
 
   const visible = useMemo(() => nodes.filter((n) =>
     !hiddenTypes.has(n.type) &&
-    !(n.muted && hideMuted) &&
-    !(n.group != null && hiddenGroups.has(n.group))), [nodes, hiddenTypes, hiddenGroups, hideMuted])
+    !(n.muted && hideMuted)), [nodes, hiddenTypes, hideMuted])
   const visibleIds = useMemo(() => new Set(visible.map((n) => n.id)), [visible])
   const visibleEdges = useMemo(() => edges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to)), [edges, visibleIds])
 
@@ -206,8 +194,7 @@ export default function GraphView({
       const svg = svgRef.current
       if (svg) {
         svg.style.setProperty('--k', String(k))
-        svg.classList.toggle('zoom-low', k < 1)
-        svg.classList.toggle('zoom-high', k >= 1)
+        svg.classList.toggle('zoom-low', k < LABEL_K)
       }
       scheduleCull()
     })
@@ -421,20 +408,6 @@ export default function GraphView({
     return () => window.clearTimeout(id)
   }, [matches, fitTo])
 
-  // Cluster label positions (centroids).
-  const groupLabels = useMemo(() => {
-    if (!groups || !layout) return []
-    return groups.map((g) => {
-      let sx = 0, sy = 0, c = 0
-      for (const n of visible) {
-        if (n.group !== g.key) continue
-        const p = layout.get(n.id)
-        if (p) { sx += p.x; sy += p.y; c++ }
-      }
-      return c ? { ...g, x: sx / c, y: sy / c } : null
-    }).filter((g): g is GraphGroup & { x: number; y: number } => !!g)
-  }, [groups, layout, visible])
-
   const hasMuted = useMemo(() => nodes.some((n) => n.muted), [nodes])
 
   function nodeClass(node: GraphNode, isActive: boolean): string {
@@ -526,15 +499,6 @@ export default function GraphView({
                 })}
               </g>
             )}
-            {mode !== 'thumb' && (
-              <g aria-hidden="true">
-                {groupLabels.map((g) => (
-                  <text key={g.key} x={g.x} y={g.y} textAnchor="middle" className="kbg-group-label" style={{ fill: g.color }}>
-                    {g.label}
-                  </text>
-                ))}
-              </g>
-            )}
           </>
         )}
       </g>
@@ -584,7 +548,7 @@ export default function GraphView({
                 onChange={() => setHiddenTypes((s) => { const n = new Set(s); if (n.has(type)) n.delete(type); else n.add(type); return n })}
               />
               <svg width="10" height="10" aria-hidden="true">
-                <circle cx="5" cy="5" r={type === 'index' ? 5 : type === 'topic' ? 4 : 3} className={groups ? 'fill-ink-secondary' : `kbg-swatch-${type}`} />
+                <circle cx="5" cy="5" r={type === 'index' ? 5 : type === 'topic' ? 4 : 3} className={`kbg-swatch-${type}`} />
               </svg>
               {t(`wiki.types.${type}`)}
             </label>
@@ -598,25 +562,6 @@ export default function GraphView({
           )}
         </fieldset>
       </div>
-
-      {groups && groups.length > 1 && (
-        <fieldset className="flex flex-wrap gap-x-4 gap-y-1 max-h-24 overflow-y-auto">
-          <legend className="sr-only">{t('wiki.graphUi.subjectFilter')}</legend>
-          {groups.map((g) => (
-            <label key={g.key} className="inline-flex items-center gap-1.5 cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text">
-              <input
-                type="checkbox"
-                className="h-3.5 w-3.5"
-                style={{ accentColor: g.color }}
-                checked={!hiddenGroups.has(g.key)}
-                onChange={() => setHiddenGroups((s) => { const n = new Set(s); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
-              />
-              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: g.color }} aria-hidden="true" />
-              {g.label}
-            </label>
-          ))}
-        </fieldset>
-      )}
 
       <div
         ref={wrapRef}
@@ -696,10 +641,4 @@ export default function GraphView({
       </div>
     </div>
   )
-}
-
-// Distinct, theme-neutral colours per subject (golden-angle hues).
-export function subjectColor(index: number): string {
-  const hue = Math.round((index * 137.508 + 210) % 360)
-  return `hsl(${hue} 58% 52%)`
 }
