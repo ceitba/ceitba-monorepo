@@ -4,7 +4,10 @@ import { effectivePrices, fetchForecast, fetchModels, probeModel, probeOk, syncM
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
-import { BTN, FIELD, TD, TH, ViewState, pct, useLoad } from './shared'
+import { ViewState } from './shared'
+import { pct } from './format'
+import { BTN, FIELD, TD, TH } from './styles'
+import { useLoad } from './useLoad'
 
 // Modelos: the catalog with editable prices, enable toggle, batch flag and
 // probe result; "Probar" per model and "Sincronizar con DigitalOcean".

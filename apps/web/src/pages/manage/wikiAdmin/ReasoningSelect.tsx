@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { REASONING_EFFORTS, type KbModel, type ReasoningEffort } from '../../../api/kbAdmin'
-import { FIELD } from './shared'
+import { FIELD } from './styles'
 
 // "Razonamiento" select next to a model picker: enabled only when the
 // chosen model supports reasoning effort; null = the model's default.

@@ -5,8 +5,8 @@ import type { KbPage } from '../../../api/kb'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import { CitationContext } from '../../../components/apuntes/wiki/citationContext'
 import { citationOrder } from '../../../components/apuntes/wiki/wikilinks'
-import { BTN, BTN_PRI, FIELD } from './shared'
-import { isUnavailable } from './shared'
+import { BTN, BTN_PRI, FIELD } from './styles'
+import { isUnavailable } from './useLoad'
 import ReviewProgressHeader, { ReviewSummaryLine } from './ReviewProgressView'
 
 const WikiMarkdown = lazy(() => import('../../../components/apuntes/wiki/WikiMarkdown'))

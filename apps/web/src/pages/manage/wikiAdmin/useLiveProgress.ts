@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Progress } from '../../../api/kbAdmin'
-import { isUnavailable } from './shared'
+import { isUnavailable } from './useLoad'
 
 // Live progress for a running eval or pipeline run.
 // - While `active`, polls GET …/progress every 3 s (30 s when the browser

@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Progress, StageProgress } from '../../../api/kbAdmin'
-import { tokens, usd } from './shared'
-
-export const RUN_STAGES = ['DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE', 'PUBLISH']
-export const EVAL_STAGES = ['DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE']
+import { ago, elapsed, tokens, usd } from './format'
 
 function useNow(ms = 1000): number {
   const [now, setNow] = useState(Date.now())
@@ -13,21 +10,6 @@ function useNow(ms = 1000): number {
     return () => window.clearInterval(id)
   }, [ms])
   return now
-}
-
-export function ago(iso: string | null | undefined, now: number, t: (k: string, o?: Record<string, unknown>) => string): string {
-  if (!iso) return '—'
-  const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000))
-  if (s < 60) return t('manage.wikiAi.progress.agoSec', { n: s })
-  if (s < 3600) return t('manage.wikiAi.progress.agoMin', { n: Math.round(s / 60) })
-  return t('manage.wikiAi.progress.agoH', { n: Math.round(s / 3600) })
-}
-
-export function elapsed(iso: string | null | undefined, now: number): string {
-  if (!iso) return '—'
-  const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000))
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60
-  return h ? `${h} h ${m} min` : m ? `${m} min ${sec}s` : `${sec}s`
 }
 
 export function ProgressBar({ percent, className = '', indeterminate = false, tone = 'primary' }: {

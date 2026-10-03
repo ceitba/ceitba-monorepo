@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css'
 import { kbPagePath, type KbPage } from '../../../api/kb'
 import { CITE_SCHEME, preprocessWikilinks, sectionByLine, WIKI_SCHEME } from './wikilinks'
 import CitationMarker from './CitationMarker'
+import { headingId } from './headingId'
 import { useCitations } from './citationContext'
 
 // Markdown body of a wiki page (lazy chunk: react-markdown, remark/rehype,
@@ -21,15 +22,6 @@ function textOf(node: ReactNode): string {
   return Children.toArray(node)
     .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : isValidElement(c) ? textOf((c.props as { children?: ReactNode }).children) : ''))
     .join('')
-}
-
-// Must match the API's anchor algorithm exactly: NFD without combining
-// marks, lowercase, runs of non-[a-z0-9] → "-", trimmed ("Cómo se
-// calcula" → "como-se-calcula"). Duplicates get -2, -3 (see below).
-export function headingId(text: string): string {
-  return text
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
 // Plain text of a heading from its hast node, leaving out citation markers

@@ -1,14 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import type { ReviewProgress } from '../../../api/kbAdmin'
 import { ProgressBar } from './ProgressPanel'
+import { prettyConfig } from './format'
 
-// "configKey" (plan@effort|write@effort) → "plan (effort) → write".
-export function prettyConfig(key: string, plan?: string, write?: string): string {
-  if (plan && write) return `${plan} → ${write}`
-  const [p, w] = key.split('|')
-  const fmt = (s?: string) => (s ? s.replace(/@(\w+)$/, ' ($1)') : '?')
-  return w ? `${fmt(p)} → ${fmt(w)}` : key
-}
 
 // One-line summary: "Revisión: 12/30 páginas · resultado todavía no confiable".
 export function ReviewSummaryLine({ summary, className = '' }: { summary: ReviewProgress | null | undefined; className?: string }) {
