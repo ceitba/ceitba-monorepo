@@ -3,12 +3,17 @@ package org.ceitba.api.service.drive;
 import org.ceitba.api.domain.drive.DriveFile;
 import org.ceitba.api.domain.drive.DriveFileKind;
 import org.ceitba.api.domain.drive.DriveSource;
+import org.ceitba.api.domain.drive.DriveSourceKind;
 import org.ceitba.api.domain.drive.DriveSourceStatus;
+import org.ceitba.api.domain.drive.DriveSourceWalk;
+import org.ceitba.api.domain.drive.DriveStorageMode;
+import org.ceitba.api.config.DriveSyncProperties;
 import org.ceitba.api.domain.drive.DriveUnclaimedShare;
 import org.ceitba.api.external.drive.DriveItem;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.drive.DriveFileRepository;
 import org.ceitba.api.repository.drive.DriveSourceRepository;
+import org.ceitba.api.repository.drive.DriveSourceWalkRepository;
 import org.ceitba.api.repository.drive.DriveUnclaimedShareRepository;
 import org.ceitba.api.service.kb.KbModerationService;
 import org.springframework.stereotype.Service;
@@ -41,7 +46,14 @@ import java.util.UUID;
 //                       modifiedTime but keeps its hash: no new objects)
 //   renamed / moved     metadata only: same row id, path and effective
 //                       subject recomputed
-//   missing             only after a COMPLETE walk: REMOVED, purged in 30 days
+//   missing             only when a walk GENERATION completes cleanly (rows
+//                       not seen in it): REMOVED, purged in 30 days
+// A walk is applied slice by slice (DriveWalker): each slice upserts what it
+// found and saves the frontier (drive_source_walk). Content fetches are
+// computed from the rows (pendingTasks), so a slice also fetches what
+// earlier slices found.
+// Community sources: every file counts as the community's (owned_by_sharer
+// true, owner_email never stored), no cross-source moves.
 // Cross-source move (same student): an item that left source A and showed up
 // in source B keeps its row (id, stored copy, explicit subject). Whichever
 // source syncs first, the older row survives: B adopts A's row when A
@@ -69,12 +81,17 @@ public class DriveSyncStore {
     private final DriveBlobs blobs;
     private final DriveStorageJanitor janitor;
     private final KbModerationService kb;
+    private final DriveSourceWalkRepository walks;
+    private final DriveSyncProperties props;
     private final Clock clock;
 
     public DriveSyncStore(DriveSourceRepository sources, DriveFileRepository files,
                           DriveUnclaimedShareRepository unclaimed, UserRepository users,
                           DriveRecalculator recalculator, DriveBlobs blobs, DriveStorageJanitor janitor,
-                          KbModerationService kb, Clock clock) {
+                          KbModerationService kb, DriveSourceWalkRepository walks, DriveSyncProperties props,
+                          Clock clock) {
+        this.walks = walks;
+        this.props = props;
         this.sources = sources;
         this.files = files;
         this.unclaimed = unclaimed;
@@ -86,7 +103,14 @@ public class DriveSyncStore {
         this.clock = clock;
     }
 
-    public record Snapshot(UUID id, String rootFolderId, String ownerEmail, DriveSourceStatus status) {}
+    // ownerEmail: the student's, or the community archive's owner.
+    // communityRootFolderId: the archive's root folder (community sources).
+    public record Snapshot(UUID id, String rootFolderId, String ownerEmail, DriveSourceStatus status,
+                           boolean community, String communityRootFolderId) {}
+
+    // The current walk generation of a source: the folders still to list and
+    // the ids already reached in it.
+    public record WalkState(long generation, List<String> frontier, List<String> seen, List<String> rootAncestors) {}
 
     // An item found by the walk. parentDriveId is null for direct children of
     // the root; shortcuts are already resolved to their target.
@@ -94,8 +118,10 @@ public class DriveSyncStore {
 
     // knownFingerprint: md5-based, binary files only. modifiedAt: the
     // item's modifiedTime, recorded as content_modified_at once checked.
+    // reference: fetch by reference (text only, no stored binaries).
     public record FetchTask(UUID fileId, String driveId, DriveFileKind kind, String name, String mimeType,
-                            Long version, String knownFingerprint, Long size, OffsetDateTime modifiedAt) {}
+                            Long version, String knownFingerprint, Long size, OffsetDateTime modifiedAt,
+                            boolean reference) {}
 
     @Transactional(readOnly = true)
     public List<UUID> idsToSync() {
@@ -106,9 +132,37 @@ public class DriveSyncStore {
     @Transactional(readOnly = true)
     public Optional<Snapshot> snapshot(UUID sourceId, boolean allowRevoked) {
         return sources.findById(sourceId)
+            .filter(s -> s.getKind() != DriveSourceKind.COMMUNITY_ROOT)
             .filter(s -> SYNCABLE.contains(s.getStatus()) || (allowRevoked && s.getStatus() == DriveSourceStatus.REVOKED))
-            .map(s -> new Snapshot(s.getId(), s.getRootFolderId(),
-                users.findById(s.getUserId()).map(u -> u.getEmail()).orElse(null), s.getStatus()));
+            .map(s -> {
+                if (s.isCommunity()) {
+                    var root = s.getParentSourceId() == null ? null : sources.findById(s.getParentSourceId()).orElse(null);
+                    return new Snapshot(s.getId(), s.getRootFolderId(), s.getOwnerEmail(), s.getStatus(), true,
+                        root == null ? null : root.getRootFolderId());
+                }
+                return new Snapshot(s.getId(), s.getRootFolderId(),
+                    users.findById(s.getUserId()).map(u -> u.getEmail()).orElse(null), s.getStatus(), false, null);
+            });
+    }
+
+    // The generation in progress, or empty when none (never walked, or the
+    // last one completed): then the caller starts one (startWalk).
+    @Transactional(readOnly = true)
+    public Optional<WalkState> resumeWalk(UUID sourceId) {
+        return walks.findById(sourceId)
+            .filter(w -> !w.isCompleted())
+            .map(w -> new WalkState(w.getGeneration(), w.getFrontier(),
+                files.findDriveIdsSeenIn(sourceId, w.getGeneration()), w.getRootAncestors()));
+    }
+
+    // A new generation from the root.
+    @Transactional
+    public WalkState startWalk(UUID sourceId, String rootFolderId, List<String> rootAncestors) {
+        var walk = walks.findById(sourceId).orElseGet(() -> new DriveSourceWalk(sourceId));
+        long generation = walk.getGeneration() + 1;
+        walk.start(generation, now(), List.of(DriveWalker.entry(0, rootFolderId)), rootAncestors);
+        walks.save(walk);
+        return new WalkState(generation, walk.getFrontier(), List.of(), walk.getRootAncestors());
     }
 
     // The bot lost access to the root: nothing stays published.
@@ -145,77 +199,120 @@ public class DriveSyncStore {
         return sources.findById(sourceId).filter(DriveSyncStore::writable).isPresent();
     }
 
-    // Applies a walk (see the class comment) and returns the files whose
-    // stored copy is missing or outdated; null (nothing applied) when the
-    // source is gone or no longer writable.
+    // Applies one walk slice (see the class comment): upserts the items found
+    // (seen in `generation`), saves the frontier, and when the generation is
+    // done marks it completed and, unless it was incomplete, removes the rows
+    // it did not reach. False (nothing applied) when the source is gone or no
+    // longer writable.
     @Transactional
-    public List<FetchTask> applyWalk(UUID sourceId, String rootName, List<WalkedItem> walked, boolean complete,
-                                     String ownerEmail) {
+    public boolean applyWalk(UUID sourceId, String rootName, DriveWalker.Result slice, long generation) {
         var source = sources.findByIdForUpdate(sourceId).filter(DriveSyncStore::writable).orElse(null);
-        if (source == null) return null;
+        if (source == null) return false;
         if (rootName != null && !rootName.equals(source.getRootName())) source.setRootName(rootName);
+        var walk = walks.findById(sourceId).orElseGet(() -> new DriveSourceWalk(sourceId));
+        if (walk.getGeneration() != generation) return false;
         var now = now();
+        boolean community = source.isCommunity();
+        String ownerEmail = community ? source.getOwnerEmail() : users.findById(source.getUserId())
+            .map(u -> u.getEmail()).orElse(null);
 
         Map<String, DriveFile> existing = new HashMap<>();
         for (var f : files.findBySourceId(sourceId)) existing.put(f.getDriveId(), f);
 
         var seen = new HashSet<String>();
-        var all = new ArrayList<DriveFile>();
-        var walkedById = new HashMap<String, WalkedItem>();
-        for (var w : walked) {
+        for (var w : slice.walked()) {
             var item = w.item();
             // The same item reached twice (shortcut + original, cycles): first path wins.
             if (!seen.add(item.id())) continue;
-            walkedById.put(item.id(), w);
             var f = existing.get(item.id());
-            if (f == null) f = adoptFromOtherSource(item.id(), source).orElse(null);
-            if (f == null) f = files.save(newFile(sourceId, w, ownerEmail));
-            else applyMetadata(f, w, ownerEmail);
+            if (f == null && !community) f = adoptFromOtherSource(item.id(), source).orElse(null);
+            if (f == null) {
+                f = files.save(newFile(sourceId, w, ownerEmail, community));
+                existing.put(item.id(), f);
+            } else {
+                applyMetadata(f, w, ownerEmail, community);
+            }
             if (f.isRemovedFromDrive()) f.setRemoved(null, null);
-            all.add(f);
+            f.setSeenGeneration(generation);
         }
 
+        walk.setFrontier(slice.frontier());
+        if (slice.incomplete()) walk.markIncomplete(slice.warning());
         var otherSources = new HashSet<UUID>();
-        for (var f : existing.values()) {
-            if (seen.contains(f.getDriveId())) continue;
-            if (complete && !f.isRemovedFromDrive()) {
-                var target = moveToOtherSource(f, source);
-                if (target != null) {
-                    otherSources.add(target);
-                    continue;
+        if (slice.done()) {
+            walk.setCompletedAt(now);
+            if (!walk.isIncomplete()) {
+                for (var f : existing.values()) {
+                    if (!removable(f, generation)) continue;
+                    var target = community ? null : moveToOtherSource(f, source);
+                    if (target != null) {
+                        otherSources.add(target);
+                        continue;
+                    }
+                    f.setRemoved(now, now.plus(PURGE_DELAY));
                 }
-                f.setRemoved(now, now.plus(PURGE_DELAY));
             }
-            all.add(f);
         }
-        recalculator.recompute(source, all);
+        walks.save(walk);
+        recalculator.recompute(source, files.findBySourceId(sourceId));
         for (var other : sources.findAllById(otherSources)) {
             recalculator.recompute(other, files.findBySourceId(other.getId()));
         }
+        return true;
+    }
 
+    // After a clean, complete generation: a live row it did not reach.
+    static boolean removable(DriveFile f, long generation) {
+        return !f.isRemovedFromDrive() && (f.getSeenGeneration() == null || f.getSeenGeneration() != generation);
+    }
+
+    // Rows whose stored content is missing or outdated (by the metadata the
+    // walk recorded), files that failed last time at the end.
+    @Transactional(readOnly = true)
+    public List<FetchTask> pendingTasks(UUID sourceId) {
+        var source = sources.findById(sourceId).orElse(null);
+        if (source == null) return List.of();
         var tasks = new ArrayList<FetchTask>();
-        for (var f : all) {
-            var w = walkedById.get(f.getDriveId());
-            if (w == null || w.kind() == DriveFileKind.FOLDER) continue;
-            if (needsFetch(f, w.item())) {
-                var item = w.item();
-                tasks.add(new FetchTask(f.getId(), f.getDriveId(), w.kind(), item.name(), item.mimeType(),
-                    item.version(), item.binaryFingerprint(), item.size(), at(item)));
-            }
+        var failed = new ArrayList<FetchTask>();
+        for (Object[] r : files.fetchCandidates(sourceId)) {
+            var row = new Candidate((UUID) r[0], (String) r[1], (DriveFileKind) r[2], (String) r[3], (String) r[4],
+                (Long) r[5], (String) r[6], (Long) r[7], (OffsetDateTime) r[8], (String) r[9], (Long) r[10],
+                (OffsetDateTime) r[11], (Boolean) r[12], (Boolean) r[13]);
+            boolean reference = byReference(source.getStorageMode(), row.size(), props.referenceAboveBytes());
+            if (!needsFetch(row, reference)) continue;
+            var md5 = row.md5() == null ? null : "md5:" + row.md5();
+            var task = new FetchTask(row.id(), row.driveId(), row.kind(), row.name(), row.mimeType(), row.version(),
+                md5, row.size(), row.modifiedAt(), reference);
+            if (Boolean.TRUE.equals(r[14])) failed.add(task); else tasks.add(task);
         }
+        tasks.addAll(failed);
         return tasks;
     }
 
-    private static DriveFile newFile(UUID sourceId, WalkedItem w, String ownerEmail) {
+    // REFERENCE sources, and any file above DRIVE_SYNC_REFERENCE_ABOVE_BYTES,
+    // keep no binary copy.
+    static boolean byReference(DriveStorageMode mode, Long size, long referenceAboveBytes) {
+        return mode == DriveStorageMode.REFERENCE || (size != null && size > referenceAboveBytes);
+    }
+
+    // The fetch-relevant columns of a row (DriveFileRepository.fetchCandidates).
+    record Candidate(UUID id, String driveId, DriveFileKind kind, String name, String mimeType, Long version,
+                     String md5, Long size, OffsetDateTime modifiedAt, String fingerprint, Long contentVersion,
+                     OffsetDateTime contentModifiedAt, boolean exportBlocked, boolean byReference) {}
+
+    private static DriveFile newFile(UUID sourceId, WalkedItem w, String ownerEmail, boolean community) {
         var f = new DriveFile(sourceId, w.item().id());
-        applyMetadata(f, w, ownerEmail);
+        applyMetadata(f, w, ownerEmail, community);
         return f;
     }
 
-    private static void applyMetadata(DriveFile f, WalkedItem w, String ownerEmail) {
+    // Community files all count as the community's; their Drive owner (a
+    // personal Gmail) is never stored.
+    private static void applyMetadata(DriveFile f, WalkedItem w, String ownerEmail, boolean community) {
         var item = w.item();
-        f.setMetadata(w.parentDriveId(), item.name(), item.mimeType(), w.kind(), item.firstOwner(),
-            item.ownedBy(ownerEmail), item.version(), item.md5Checksum(), item.size(), at(item));
+        f.setMetadata(w.parentDriveId(), item.name(), item.mimeType(), w.kind(),
+            community ? null : item.firstOwner(), community || item.ownedBy(ownerEmail), item.version(),
+            item.md5Checksum(), item.size(), at(item));
         f.setDriveCreatedAt(item.createdTime() == null ? null : item.createdTime().atOffset(ZoneOffset.UTC));
         f.applyHiddenDefault();
     }
@@ -258,14 +355,21 @@ public class DriveSyncStore {
         return target;
     }
 
-    static boolean needsFetch(DriveFile f, DriveItem item) {
-        if (!f.hasContent()) return true;
+    // Reference rows' fingerprints carry this prefix, so a reference row and
+    // a stored copy of the same content never pass for each other (blob
+    // release counts holders by fingerprint).
+    static final String REF = "ref:";
+
+    static boolean needsFetch(Candidate f, boolean reference) {
+        if (f.fingerprint() == null) return true;
+        // Storage mode changed (source mode or size threshold): fetch again.
+        if (f.byReference() != reference) return true;
         // Download disabled by the owner: retried whenever Drive reports any
         // change (re-enabling it may not touch modifiedTime).
-        if (f.isExportBlocked()) return !Objects.equals(item.version(), f.getContentVersion());
-        if (item.binaryFingerprint() != null) return !item.binaryFingerprint().equals(f.getContentFingerprint());
-        if (item.modifiedTime() == null) return !Objects.equals(item.version(), f.getContentVersion());
-        return !Objects.equals(at(item), f.getContentModifiedAt());
+        if (f.exportBlocked()) return !Objects.equals(f.version(), f.contentVersion());
+        if (f.md5() != null) return !((reference ? REF : "") + "md5:" + f.md5()).equals(f.fingerprint());
+        if (f.modifiedAt() == null) return !Objects.equals(f.version(), f.contentVersion());
+        return !Objects.equals(f.modifiedAt(), f.contentModifiedAt());
     }
 
     // Whether a stored copy with this fingerprint exists: the row's own
@@ -297,6 +401,7 @@ public class DriveSyncStore {
         to.setContent(from.getContentVersion(), from.getContentFingerprint(), html, from.getPdfKey(),
             from.getOriginalKey(), from.getOriginalContentType(), from.getAssetPrefix(), from.getAssetNames(),
             from.getTextContent(), from.isMetadataOnly());
+        to.setByReference(from.isByReference());
         to.setContentModifiedAt(from.getContentModifiedAt());
         to.setExportBlocked(from.isExportBlocked());
     }
@@ -333,6 +438,7 @@ public class DriveSyncStore {
         var old = DriveBlobs.Ref.of(f);
         f.setContent(c.version(), c.fingerprint(), c.html(), c.pdfKey(), c.originalKey(), c.originalContentType(),
             c.assetPrefix(), c.assetNames(), c.text(), c.metadataOnly());
+        f.setByReference(c.byReference());
         f.setExportBlocked(c.exportBlocked());
         f.setContentModifiedAt(modifiedAt);
         if (!Objects.equals(old.fingerprint(), c.fingerprint())) {
@@ -357,13 +463,16 @@ public class DriveSyncStore {
         files.findById(fileId).ifPresent(f -> f.setSyncError(truncate(error)));
     }
 
-    // A walk finished: clears the failure streak; an ERROR or REVOKED source
-    // that works again goes back to ACTIVE (approved) or PENDING_REVIEW.
+    // A slice finished (also a partial one, so it rotates to the back of the
+    // queue): clears the failure streak; an ERROR or REVOKED source that
+    // works again goes back to ACTIVE (approved) or PENDING_REVIEW. A walk
+    // warning (a cap was hit) is kept as last_error.
     @Transactional
     public void finishSync(UUID sourceId) {
+        var warning = walks.findById(sourceId).map(DriveSourceWalk::getWarning).orElse(null);
         sources.findById(sourceId).ifPresent(s -> {
             s.setLastSyncedAt(now());
-            s.setLastError(null);
+            s.setLastError(truncate(warning));
             s.setConsecutiveFailures(0);
             if (s.getStatus() == DriveSourceStatus.ERROR || s.getStatus() == DriveSourceStatus.REVOKED) {
                 s.setStatus(s.getApprovedAt() != null ? DriveSourceStatus.ACTIVE : DriveSourceStatus.PENDING_REVIEW);
@@ -382,6 +491,89 @@ public class DriveSyncStore {
         var ids = expired.stream().map(DriveFile::getId).toList();
         kb.forgetFiles(ids);
         files.deleteAll(expired);
+        janitor.deleteAfterCommit(blobs.releasable(refs, ids));
+    }
+
+    // ---- Community archives (DriveCommunityService) ------------------------
+
+    public record CommunityRoot(UUID id, String rootFolderId) {}
+
+    // A top-level folder of an archive to keep as a COMMUNITY source.
+    public record CommunityFolder(String folderId, String name, String subjectId) {}
+
+    @Transactional(readOnly = true)
+    public List<CommunityRoot> activeCommunityRoots() {
+        return sources.findByKindAndStatus(DriveSourceKind.COMMUNITY_ROOT, DriveSourceStatus.ACTIVE).stream()
+            .map(s -> new CommunityRoot(s.getId(), s.getRootFolderId()))
+            .toList();
+    }
+
+    // Makes the archive's COMMUNITY sources match `folders`: new folders get
+    // a source (ACTIVE, approved, the root's label and storage mode; the
+    // next run syncs it), existing ones follow renames and subject changes
+    // and come back when they had been disconnected, folders that left the
+    // listing are disconnected (rows and copies deleted). BLOCKED sources are
+    // left alone. Returns [created, disconnected].
+    @Transactional
+    public int[] applyCommunityFolders(UUID rootId, String ownerEmail, List<CommunityFolder> folders) {
+        var root = sources.findByIdForUpdate(rootId)
+            .filter(r -> r.getKind() == DriveSourceKind.COMMUNITY_ROOT && r.getStatus() == DriveSourceStatus.ACTIVE)
+            .orElse(null);
+        if (root == null) return new int[] {0, 0};
+        if (ownerEmail != null && !ownerEmail.equalsIgnoreCase(String.valueOf(root.getOwnerEmail()))) {
+            root.setOwnerEmail(ownerEmail);
+        }
+        var now = now();
+        Map<String, DriveSource> children = new HashMap<>();
+        for (var c : sources.findByParentSourceId(rootId)) children.put(c.getRootFolderId(), c);
+        int created = 0;
+        int disconnected = 0;
+        var listed = new HashSet<String>();
+        for (var folder : folders) {
+            listed.add(folder.folderId());
+            var child = children.get(folder.folderId());
+            if (child == null) {
+                sources.save(DriveSource.community(root, folder.folderId(), folder.name(), folder.subjectId(), now));
+                created++;
+                continue;
+            }
+            if (child.getStatus() == DriveSourceStatus.BLOCKED) continue;
+            child.setRootName(folder.name());
+            child.setOwnerEmail(root.getOwnerEmail());
+            child.setDisplayName(root.getDisplayName());
+            if (child.getStatus() == DriveSourceStatus.DISCONNECTED) {
+                child.setStatus(DriveSourceStatus.ACTIVE);
+                child.setConsecutiveFailures(0);
+                child.setLastError(null);
+                if (child.getApprovedAt() == null) child.setApprovedAt(now);
+            }
+            if (!Objects.equals(child.getSubjectId(), folder.subjectId())) {
+                child.setSubjectId(folder.subjectId());
+                recalculator.recompute(child, files.findBySourceId(child.getId()));
+            }
+        }
+        for (var child : children.values()) {
+            if (listed.contains(child.getRootFolderId())) continue;
+            if (child.getStatus() == DriveSourceStatus.DISCONNECTED || child.getStatus() == DriveSourceStatus.BLOCKED) {
+                continue;
+            }
+            child.setStatus(DriveSourceStatus.DISCONNECTED);
+            dropAllFiles(child.getId());
+            disconnected++;
+        }
+        return new int[] {created, disconnected};
+    }
+
+    // Every row of a source goes now, its unshared objects after commit;
+    // wiki pages citing them are hidden and their LLM data dropped. The walk
+    // starts over if the source comes back.
+    private void dropAllFiles(UUID sourceId) {
+        var all = files.findBySourceId(sourceId);
+        var refs = all.stream().map(DriveBlobs.Ref::of).toList();
+        var ids = all.stream().map(DriveFile::getId).toList();
+        kb.forgetFiles(ids);
+        files.deleteAll(all);
+        walks.findById(sourceId).ifPresent(walks::delete);
         janitor.deleteAfterCommit(blobs.releasable(refs, ids));
     }
 

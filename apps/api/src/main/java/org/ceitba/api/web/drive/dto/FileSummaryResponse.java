@@ -12,6 +12,7 @@ import java.util.UUID;
 // driveUrl: opens the file in Google Drive / the Docs editor.
 // academicYear: the year the material belongs to; academicYearSource: USER |
 // INHERITED | NAME | DRIVE (see docs/DRIVE-SYNC.md).
+// community: the file comes from a community archive (author "Comunidad").
 public record FileSummaryResponse(
     UUID id,
     String name,
@@ -28,5 +29,7 @@ public record FileSummaryResponse(
     boolean exportBlocked,
     String driveUrl,
     Integer academicYear,
-    String academicYearSource
+    String academicYearSource,
+    // From a community archive: show "Comunidad · archivo <academicYear>".
+    boolean community
 ) {}

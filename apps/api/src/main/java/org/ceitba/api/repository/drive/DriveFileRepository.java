@@ -19,6 +19,24 @@ public interface DriveFileRepository extends JpaRepository<DriveFile, UUID> {
 
     List<DriveFile> findBySourceId(UUID sourceId);
 
+    // Drive ids reached in a walk generation (DriveWalker's "seen" set).
+    @Query("select f.driveId from DriveFile f where f.sourceId = :sourceId and f.seenGeneration = :generation")
+    List<String> findDriveIdsSeenIn(@Param("sourceId") UUID sourceId, @Param("generation") long generation);
+
+    // Content fetch candidates of a source, without the heavy text/html
+    // columns: [id, driveId, kind, name, mimeType, driveVersion, md5Checksum,
+    // sizeBytes, driveModifiedAt, contentFingerprint, contentVersion,
+    // contentModifiedAt, exportBlocked, byReference, hasSyncError].
+    @Query("""
+        select f.id, f.driveId, f.kind, f.name, f.mimeType, f.driveVersion, f.md5Checksum, f.sizeBytes,
+               f.driveModifiedAt, f.contentFingerprint, f.contentVersion, f.contentModifiedAt, f.exportBlocked,
+               f.byReference, case when f.syncError is null then false else true end
+        from DriveFile f
+        where f.sourceId = :sourceId and f.removedAt is null
+          and f.kind <> org.ceitba.api.domain.drive.DriveFileKind.FOLDER
+        """)
+    List<Object[]> fetchCandidates(@Param("sourceId") UUID sourceId);
+
     List<DriveFile> findBySourceIdIn(Collection<UUID> sourceIds);
 
     List<DriveFile> findBySourceIdAndKind(UUID sourceId, DriveFileKind kind);
@@ -65,6 +83,14 @@ public interface DriveFileRepository extends JpaRepository<DriveFile, UUID> {
           and length(f.textContent) >= :minChars
         """)
     List<Object[]> pipelineInputs(@Param("minChars") int minChars);
+
+    // Which of these files come from a community archive (wiki pipeline).
+    @Query("""
+        select f.id from DriveFile f, DriveSource s
+        where s.id = f.sourceId and s.kind <> org.ceitba.api.domain.drive.DriveSourceKind.STUDENT
+          and f.id in :ids
+        """)
+    List<UUID> findCommunityFileIds(@Param("ids") Collection<UUID> ids);
 
     // Rows of the same Drive item in the student's OTHER sources (cross-source moves).
     @Query("""

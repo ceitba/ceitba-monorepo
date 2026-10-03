@@ -26,5 +26,7 @@ public record FileDetailResponse(
     String subjectName,
     AuthorResponse author,
     String html,
-    boolean reportedByMe
+    boolean reportedByMe,
+    // From a community archive: show "Comunidad · archivo <academicYear>".
+    boolean community
 ) {}

@@ -9,31 +9,33 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-// Mirrors registered Drive folders (docs/DRIVE-SYNC.md). For each source:
+// Mirrors registered Drive folders (docs/DRIVE-SYNC.md). Each run first
+// expands community archives (DriveCommunityService), then for each source,
+// oldest sync first, within a time slice of min(remaining run budget,
+// DRIVE_SYNC_SOURCE_BUDGET):
 //
 //   1. files.get(root): 404/403 -> REVOKED (everything unpublished).
-//   2. BFS walk ("'<id>' in parents and trashed=false"). Shortcuts resolve to
-//      their target only when the bot can read it AND the source's student
-//      owns it (Drive `owners`); anything else is skipped, so a shortcut
-//      cannot pull another student's file through the bot's access. A
-//      folder seen twice (shortcut cycles) is walked once. Forms/sites/...
-//      are skipped.
-//   3. DriveSyncStore.applyWalk: upsert metadata, mark missing items REMOVED
-//      only when the walk was COMPLETE, recompute subjects/publication.
-//   4. Check new/changed content (DriveContentProcessor; see DriveSyncStore
-//      for the triggers): store it, keep the current copy when the content
-//      hash did not change, or share another row's copy; a per-file error
-//      sets drive_file.sync_error and the source carries on.
+//   2. Resumable BFS walk (DriveWalker) for at most HALF the slice, from the
+//      persisted frontier of the current generation (a new generation starts
+//      at the root once the previous one completed). Shortcuts and loops:
+//      see DriveWalker.
+//   3. DriveSyncStore.applyWalk: upsert what was found (seen_generation),
+//      save the frontier; only when the generation completes cleanly are rows
+//      not seen in it marked REMOVED. Then recompute subjects/publication.
+//   4. Fetch content for the rest of the slice: every row of the source whose
+//      stored content is missing or outdated (DriveSyncStore.pendingTasks),
+//      so files found by earlier slices are fetched even while the walk is
+//      unfinished. Per-file errors set drive_file.sync_error.
 //
+// lastSyncedAt is set at the end of every slice (also PARTIAL), so a source
+// whose walk or fetch is unfinished rotates to the back of the queue.
 // No transaction is held across Drive or storage I/O. A source is synced by
 // one thread at a time (job and manual/async triggers share `inProgress`).
 // A source-level failure counts towards ERROR (5 in a row). Rate limits stop
@@ -50,15 +52,17 @@ public class DriveSyncService {
     private final DriveClient drive;
     private final DriveSyncStore store;
     private final DriveContentProcessor processor;
+    private final DriveCommunityService community;
     private final DriveSyncProperties props;
     private final Clock clock;
     private final Set<UUID> inProgress = ConcurrentHashMap.newKeySet();
 
     public DriveSyncService(DriveClient drive, DriveSyncStore store, DriveContentProcessor processor,
-                            DriveSyncProperties props, Clock clock) {
+                            DriveCommunityService community, DriveSyncProperties props, Clock clock) {
         this.drive = drive;
         this.store = store;
         this.processor = processor;
+        this.community = community;
         this.props = props;
         this.clock = clock;
     }
@@ -77,6 +81,14 @@ public class DriveSyncService {
                 if (e.isRateLimited()) return;
             } catch (RuntimeException e) {
                 log.warn("Drive sync: recording unclaimed shares failed", e);
+            }
+            try {
+                community.expandAll();
+            } catch (DriveApiException e) {
+                log.warn("Drive sync: community expansion failed: {} {}", e.status(), e.getMessage());
+                if (e.isRateLimited()) return;
+            } catch (RuntimeException e) {
+                log.warn("Drive sync: community expansion failed", e);
             }
             for (var id : store.idsToSync()) {
                 if (clock.instant().isAfter(deadline)) {
@@ -144,28 +156,45 @@ public class DriveSyncService {
             return Outcome.REVOKED;
         }
 
-        List<DriveSyncStore.WalkedItem> walked = new ArrayList<>();
-        boolean complete;
+        var now = clock.instant();
+        var sliceEnd = min(deadline, now.plus(props.sourceBudget()));
+        var walkEnd = now.plus(Duration.between(now, sliceEnd).dividedBy(2));
+
+        var walker = new DriveWalker(drive, clock, props.maxItemsPerSource(), props.maxDepth());
+        DriveWalker.Result result;
+        long generation;
         try {
-            complete = walk(root, walked, deadline, source.ownerEmail(), source.id());
+            var state = store.resumeWalk(source.id()).orElse(null);
+            if (state == null) state = store.startWalk(source.id(), root.id(), walker.rootAncestors(root));
+            generation = state.generation();
+            var ctx = new DriveWalker.Context(root.id(), source.ownerEmail(), source.community(),
+                source.communityRootFolderId(), new HashSet<>(state.rootAncestors()));
+            result = walker.walk(ctx, state.frontier(), state.seen(), walkEnd);
         } catch (DriveApiException e) {
             return fail(source, e);
         }
+        if (result.skippedShortcuts() > 0) {
+            log.info("Drive sync: source {}: skipped {} shortcuts (unreadable, not owned, above the root or "
+                + "into another community folder)", source.id(), result.skippedShortcuts());
+        }
 
-        var tasks = store.applyWalk(source.id(), root.name(), walked, complete, source.ownerEmail());
         // Disconnected, blocked or deleted while we walked: nothing applied.
-        if (tasks == null) return Outcome.SKIPPED;
+        if (!store.applyWalk(source.id(), root.name(), result, generation)) return Outcome.SKIPPED;
+
+        var tasks = store.pendingTasks(source.id());
         boolean allFetched = true;
+        int fetched = 0;
         for (var task : tasks) {
-            if (clock.instant().isAfter(deadline)) {
+            if (clock.instant().isAfter(sliceEnd)) {
                 allFetched = false;
                 break;
             }
             try {
                 var content = processor.process(new DriveContentProcessor.Request(task.fileId(),
                         task.driveId(), task.kind(), task.name(), task.mimeType(), task.version(),
-                        task.knownFingerprint(), task.size()),
+                        task.knownFingerprint(), task.size(), task.reference()),
                     fp -> store.hasCopy(task.fileId(), task.driveId(), fp));
+                fetched++;
                 if (!store.storeContent(source.id(), task.fileId(), task.driveId(), content, task.modifiedAt())) {
                     if (!store.isSyncable(source.id())) {
                         log.info("Drive sync: source {} is gone or no longer syncable, stopping", source.id());
@@ -184,74 +213,14 @@ public class DriveSyncService {
             }
         }
         store.finishSync(source.id());
-        log.info("Drive sync: source {} synced ({} items, {} fetched, complete={})",
-            source.id(), walked.size(), tasks.size(), complete && allFetched);
-        return complete && allFetched ? Outcome.SYNCED : Outcome.PARTIAL;
+        boolean done = result.done() && allFetched;
+        log.info("Drive sync: source {} generation {}: {} items walked, {} folders left, {}/{} fetched, done={}",
+            source.id(), generation, result.walked().size(), result.frontier().size(), fetched, tasks.size(), done);
+        return done ? Outcome.SYNCED : Outcome.PARTIAL;
     }
 
-    // BFS from the root. Returns false when the walk stopped early (budget
-    // or a folder that vanished mid-walk): missing items must then not be
-    // treated as removed.
-    private boolean walk(DriveItem root, List<DriveSyncStore.WalkedItem> out, Instant deadline,
-                         String ownerEmail, UUID sourceId) {
-        var queue = new ArrayDeque<String>();
-        var visitedFolders = new HashSet<String>();
-        var seenItems = new HashSet<String>();
-        queue.add(root.id());
-        visitedFolders.add(root.id());
-        seenItems.add(root.id());
-        boolean complete = true;
-        int skippedShortcuts = 0;
-        while (!queue.isEmpty()) {
-            if (clock.instant().isAfter(deadline)) return false;
-            var folderId = queue.poll();
-            List<DriveItem> children;
-            try {
-                children = drive.listChildren(folderId);
-            } catch (DriveApiException e) {
-                if (e.isNotFoundOrForbidden() && !folderId.equals(root.id())) {
-                    complete = false;
-                    continue;
-                }
-                throw e;
-            }
-            var parent = folderId.equals(root.id()) ? null : folderId;
-            for (var child : children) {
-                var item = child;
-                if (child.isShortcut()) {
-                    item = resolveShortcut(child, ownerEmail);
-                    if (item == null) {
-                        skippedShortcuts++;
-                        continue;
-                    }
-                }
-                if (!seenItems.add(item.id())) continue;
-                var kind = DriveKinds.of(item.mimeType());
-                if (kind.isEmpty()) continue;
-                out.add(new DriveSyncStore.WalkedItem(item, parent, kind.get()));
-                if (item.isFolder() && visitedFolders.add(item.id())) queue.add(item.id());
-            }
-        }
-        if (skippedShortcuts > 0) {
-            log.info("Drive sync: source {}: skipped {} shortcuts (unreadable or not owned by the student)",
-                sourceId, skippedShortcuts);
-        }
-        return complete;
-    }
-
-    // The shortcut's target as if it sat where the shortcut is, or null
-    // (skipped) when the bot cannot read it or the source's student does not
-    // own it: the bot can read files other students shared with it, and a
-    // shortcut must never republish those under this source.
-    DriveItem resolveShortcut(DriveItem shortcut, String ownerEmail) {
-        if (shortcut.shortcutTargetId() == null || ownerEmail == null) return null;
-        try {
-            var target = drive.getFile(shortcut.shortcutTargetId());
-            return target.isShortcut() || !target.ownedBy(ownerEmail) ? null : target;
-        } catch (DriveApiException e) {
-            if (e.isNotFoundOrForbidden()) return null;
-            throw e;
-        }
+    private static Instant min(Instant a, Instant b) {
+        return a.isBefore(b) ? a : b;
     }
 
     private Outcome fail(DriveSyncStore.Snapshot source, DriveApiException e) {

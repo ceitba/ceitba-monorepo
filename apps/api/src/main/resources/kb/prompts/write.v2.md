@@ -45,6 +45,9 @@ Short introduction.
   and `## Qué falta` (gaps in the notes). The index sections need citations too.
 - Synthesize in your own words: never copy 40 or more consecutive words from a source.
 - Don't invent facts the material doesn't support. Never name students.
+- Sources' age: each source has its `academicYear` and `community` (true = an older community archive). When
+  sources overlap or contradict, follow the most recent student notes and use older or archive material only
+  to fill gaps; never present outdated archive content as current.
 - When you announce a list ("tres formas"), it must have that many items. Put each claim under the concept it belongs to.
 
 ## Concept coverage

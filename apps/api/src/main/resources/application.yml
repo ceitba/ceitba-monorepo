@@ -186,6 +186,20 @@ drive-sync:
   # Fake only: comma list of emails that each get a demo folder
   # "demo-<local part>" owned by them (register it with that id as the URL).
   fake-demo-owners: ${DRIVE_SYNC_FAKE_DEMO_OWNERS:}
+  # Max time one source gets per run (at most half of it walking, the rest
+  # fetching content), so a huge folder cannot starve the others.
+  source-budget: ${DRIVE_SYNC_SOURCE_BUDGET:PT3M}
+  # Files above this are handled by reference (text only, downloads stream
+  # from Drive) even in COPY sources.
+  reference-above-bytes: ${DRIVE_SYNC_REFERENCE_ABOVE_BYTES:20971520}
+  # Walk caps per source and generation: hitting one ends the generation
+  # with a warning (nothing is removed).
+  max-items-per-source: ${DRIVE_SYNC_MAX_ITEMS_PER_SOURCE:20000}
+  max-depth: ${DRIVE_SYNC_MAX_DEPTH:30}
+  # Community archives: one source per top-level "<code> - <name>" folder.
+  community-enabled: ${DRIVE_SYNC_COMMUNITY_ENABLED:true}
+  # Dev only: comma list of subject codes; expansion is limited to them.
+  community-only-codes: ${DRIVE_SYNC_COMMUNITY_ONLY_CODES:}
 
 # Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
 # instance. Paths are relative to the /api context path.

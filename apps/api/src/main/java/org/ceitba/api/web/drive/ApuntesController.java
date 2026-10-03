@@ -9,12 +9,17 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.service.capability.Capability;
 import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.drive.DriveReaderService;
+import org.ceitba.api.service.drive.DriveStreamer;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.drive.dto.ApuntesSubjectResponse;
 import org.ceitba.api.web.drive.dto.FileDetailResponse;
 import org.ceitba.api.web.drive.dto.ReportFileRequest;
 import org.ceitba.api.web.drive.dto.SubjectFilesResponse;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.util.UriUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +31,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,10 +45,12 @@ public class ApuntesController {
 
     private final DriveReaderService service;
     private final CapabilityService capabilities;
+    private final DriveStreamer streamer;
 
-    public ApuntesController(DriveReaderService service, CapabilityService capabilities) {
+    public ApuntesController(DriveReaderService service, CapabilityService capabilities, DriveStreamer streamer) {
         this.service = service;
         this.capabilities = capabilities;
+        this.streamer = streamer;
     }
 
     @GetMapping("/v1/wiki/apuntes/subjects")
@@ -75,15 +83,37 @@ public class ApuntesController {
     }
 
     @GetMapping("/v1/wiki/files/{fileId}/download")
-    @Operation(summary = "302 to a 5-minute signed URL of the PDF or the original",
+    @Operation(summary = "302 to a 5-minute signed URL of the PDF or the original, or (files kept by "
+            + "reference) the bytes streamed from Drive",
         description = "disposition=inline (default; PDF, images and text are shown by the browser) or "
             + "attachment. Other types are always attachments.")
     @ApiResponse(responseCode = "302", description = "Redirect to the signed URL")
-    public ResponseEntity<Void> download(@CurrentUser User user, @PathVariable UUID fileId,
-                                         @RequestParam(required = false) String variant,
-                                         @RequestParam(required = false) String disposition) {
+    @ApiResponse(responseCode = "200", description = "The file, streamed from Drive (REFERENCE mode)")
+    public ResponseEntity<StreamingResponseBody> download(@CurrentUser User user, @PathVariable UUID fileId,
+                                      @RequestParam(required = false) String variant,
+                                      @RequestParam(required = false) String disposition) {
         capabilities.require(user, Capability.APUNTES);
-        return redirect(service.downloadUrl(user, fileId, variant, disposition));
+        var download = service.download(user, fileId, variant, disposition);
+        if (download.redirectUrl() != null) {
+            // Typed as a streaming body (null here) so Spring picks the streaming handler.
+            return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(download.redirectUrl()))
+                .cacheControl(CacheControl.noStore())
+                .build();
+        }
+        var req = download.stream();
+        var in = streamer.open(req);
+        StreamingResponseBody body = out -> streamer.copy(in, out);
+        // Same form as the signed URLs' response-content-disposition.
+        var disp = (req.inline() ? "inline" : "attachment") + "; filename*=UTF-8''"
+            + UriUtils.encode(req.filename(), StandardCharsets.UTF_8);
+        var response = ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(req.contentType()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, disp)
+            .header("X-Content-Type-Options", "nosniff")
+            .cacheControl(CacheControl.noStore());
+        if (req.length() != null) response.contentLength(req.length());
+        return response.body(body);
     }
 
     @GetMapping("/v1/wiki/files/{fileId}/assets/{name}")

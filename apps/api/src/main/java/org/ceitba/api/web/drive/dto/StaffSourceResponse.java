@@ -16,5 +16,9 @@ public record StaffSourceResponse(
     long needsReviewCount,
     OffsetDateTime createdAt,
     String ownerName,
-    String ownerEmail
+    String ownerEmail,
+    // Community sources: no owner (ownerName/ownerEmail null), subjectId is
+    // the folder's subject.
+    boolean community,
+    String subjectId
 ) {}

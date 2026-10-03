@@ -7,7 +7,12 @@ import java.util.Optional;
 import java.util.Set;
 
 // Drive mimeType -> DriveFileKind; empty for items the sync skips entirely
-// (forms, sites, maps, Apps Script, ...).
+// (no row, no download, not counted): forms, sites, maps, Apps Script, and
+// anything the wiki pipeline cannot read (video, audio, archives,
+// executables, CAD, ...). OTHER is only kept for text-like files (code,
+// notebooks, CSV, Markdown, JSON: DriveMedia.isTextLike), which are
+// extracted as text. Images are kept for student sources (photos of notes)
+// and skipped in community sources (allowImages false).
 public final class DriveKinds {
 
     private static final Set<String> OFFICE = Set.of(
@@ -27,8 +32,8 @@ public final class DriveKinds {
 
     private DriveKinds() {}
 
-    public static Optional<DriveFileKind> of(String mimeType) {
-        if (mimeType == null) return Optional.of(DriveFileKind.OTHER);
+    public static Optional<DriveFileKind> of(String mimeType, String name, boolean allowImages) {
+        if (mimeType == null) return textLike(null, name);
         return switch (mimeType) {
             case DriveItem.FOLDER_MIME -> Optional.of(DriveFileKind.FOLDER);
             case "application/vnd.google-apps.document" -> Optional.of(DriveFileKind.DOC);
@@ -38,10 +43,16 @@ public final class DriveKinds {
             case "application/pdf" -> Optional.of(DriveFileKind.PDF);
             default -> {
                 if (mimeType.startsWith("application/vnd.google-apps.")) yield Optional.empty();
-                if (mimeType.startsWith("image/")) yield Optional.of(DriveFileKind.IMAGE);
+                if (mimeType.startsWith("image/")) {
+                    yield allowImages ? Optional.of(DriveFileKind.IMAGE) : Optional.empty();
+                }
                 if (OFFICE.contains(mimeType)) yield Optional.of(DriveFileKind.OFFICE);
-                yield Optional.of(DriveFileKind.OTHER);
+                yield textLike(mimeType, name);
             }
         };
+    }
+
+    private static Optional<DriveFileKind> textLike(String mimeType, String name) {
+        return DriveMedia.isTextLike(mimeType, name) ? Optional.of(DriveFileKind.OTHER) : Optional.empty();
     }
 }

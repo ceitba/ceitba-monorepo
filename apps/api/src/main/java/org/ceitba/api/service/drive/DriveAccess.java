@@ -36,7 +36,7 @@ public class DriveAccess {
     public boolean canView(UUID userId, DriveFile file, DriveSource source) {
         if (file.isFolder()) return false;
         if (file.getPublication() == DrivePublication.PUBLISHED) return true;
-        if (source.getUserId().equals(userId) && file.isOwnedBySharer()) return true;
+        if (userId != null && userId.equals(source.getUserId()) && file.isOwnedBySharer()) return true;
         return isStaff(userId);
     }
 
