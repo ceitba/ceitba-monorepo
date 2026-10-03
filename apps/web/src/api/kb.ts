@@ -1,5 +1,5 @@
 import { apiGet, apiSend } from './client'
-import type { AcademicYearSource, FileKind } from './drive'
+import type { AcademicYearSource, ApunteAuthor, FileKind } from './drive'
 
 // Subject wikis: AI-written Markdown pages per subject, built from the
 // published Apuntes and cross-linked between subjects.
@@ -24,7 +24,7 @@ export interface KbSource {
   id: string
   name: string
   kind: FileKind
-  author: { name: string | null; anonymous: boolean }
+  author: ApunteAuthor
   academicYear?: number | null
   academicYearSource?: AcademicYearSource | null
 }

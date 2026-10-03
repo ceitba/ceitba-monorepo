@@ -27,6 +27,7 @@ import KindIcon from '../../components/apuntes/KindIcon'
 import YearBadge from '../../components/apuntes/YearBadge'
 import { PublicationBadge, SourceStatusBadge } from '../../components/apuntes/Badges'
 import { apuntesErrorMessage, formatDate, formatDateTime } from '../../utils/apuntes'
+import CommunityBadge from '../../components/apuntes/CommunityBadge'
 
 const PAGE_SIZE = 20
 const SOURCE_STATUSES: (SourceStatus | '')[] = ['PENDING_REVIEW', 'ACTIVE', 'ERROR', 'BLOCKED', 'REVOKED', 'DISCONNECTED', '']
@@ -264,8 +265,14 @@ function SourcesView() {
                     {s.lastError && <p className="text-red-600 dark:text-red-400 mt-1">{s.lastError}</p>}
                   </td>
                   <td className="px-3 py-3">
-                    <p className="text-ink-primary dark:text-night-text">{s.ownerName ?? '—'}</p>
-                    <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{s.ownerEmail}</p>
+                    {s.community ? (
+                      <CommunityBadge />
+                    ) : (
+                      <>
+                        <p className="text-ink-primary dark:text-night-text">{s.ownerName ?? '—'}</p>
+                        <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{s.ownerEmail ?? '—'}</p>
+                      </>
+                    )}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-ink-secondary dark:text-night-muted">
                     {t('manage.drive.sources.counts', { files: s.fileCount, published: s.publishedCount, review: s.needsReviewCount })}
@@ -321,7 +328,10 @@ function SourcesView() {
           }
         >
           <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-            {t('manage.drive.sources.blockBody', { name: blocking.rootName, owner: blocking.ownerEmail })}
+            {t('manage.drive.sources.blockBody', {
+              name: blocking.rootName,
+              owner: blocking.community ? t('apuntes.community.label') : (blocking.ownerEmail ?? blocking.ownerName ?? '—'),
+            })}
           </p>
           <label className="flex flex-col gap-1">
             <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">

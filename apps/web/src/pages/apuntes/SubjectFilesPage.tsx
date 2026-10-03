@@ -11,7 +11,8 @@ import PinButton from '../../components/apuntes/PinButton'
 import PinNotice from '../../components/apuntes/PinNotice'
 import SubjectCorrelativas from '../../components/apuntes/correlativas/SubjectCorrelativas'
 import { ApiError } from '../../api/client'
-import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
+import { apuntesErrorMessage, authorName, formatDate, formatSize, isCommunity } from '../../utils/apuntes'
+import CommunityBadge from '../../components/apuntes/CommunityBadge'
 import EmptyState from '../../components/apuntes/EmptyState'
 import KindIcon from '../../components/apuntes/KindIcon'
 import { BTN_PRIMARY } from '../../components/apuntes/buttons'
@@ -281,11 +282,14 @@ export default function SubjectFilesPage() {
       {tab === 'archivos' && data && groups.length > 0 && (
         <div className="flex flex-col gap-10">
           {shownGroups.map((g) => {
-            const author = g.author?.anonymous || !g.author?.name ? t('apuntes.anonymousAuthor') : g.author.name
+            const community = isCommunity(g) || g.files.some((f) => f.community)
+            const author = community ? t('apuntes.community.label') : authorName(g.author, t)
             return (
               <section key={g.sourceId} aria-label={t('apuntes.subject.byAuthor', { author })}>
                 <h2 className="flex items-baseline gap-3 mb-3">
-                  <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{author}</span>
+                  {community
+                    ? <CommunityBadge className="self-center" />
+                    : <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{author}</span>}
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
                     {t('apuntes.home.fileCount', { count: g.files.length })}
                   </span>
@@ -301,7 +305,9 @@ export default function SubjectFilesPage() {
                         <div className="min-w-0 flex-1">
                           <p className="font-body text-body text-ink-primary dark:text-night-text group-hover:text-primary break-words">
                             {f.name}
-                            <YearBadge year={f.academicYear} source={f.academicYearSource} className="ml-2 align-middle" />
+                            {community || f.community
+                              ? f.academicYear != null && <CommunityBadge year={f.academicYear} className="ml-2 align-middle" />
+                              : <YearBadge year={f.academicYear} source={f.academicYearSource} className="ml-2 align-middle" />}
                           </p>
                           {f.path && (
                             <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-words">{f.path}</p>

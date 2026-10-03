@@ -29,6 +29,7 @@ export type DriveErrorCode =
   | 'DRIVE_FOLDER_NOT_SHARED'    // 422
   | 'DRIVE_FOLDER_NOT_OWNED'     // 403
   | 'DRIVE_SOURCE_EXISTS'        // 409
+  | 'DRIVE_SOURCE_BLOCKED'       // 409: staff blocked it; can't re-share or disconnect
   | 'DRIVE_SYNC_RATE_LIMITED'    // 429
   | 'DRIVE_SYNC_UNCONFIGURED'    // 503
 
@@ -51,6 +52,9 @@ export interface DriveSource {
   publishedCount: number
   needsReviewCount: number
   createdAt: string
+  // A community archive folder (no owning student). Optional until every
+  // API build sends it.
+  community?: boolean
 }
 
 export interface TreeItem {
@@ -191,11 +195,17 @@ export interface FileSummary {
   driveUrl: string | null
   academicYear?: number | null
   academicYearSource?: AcademicYearSource | null
+  // From a community archive: shown as "Comunidad · archivo <year>", never
+  // as a person.
+  community?: boolean
 }
 
+// Community archives come as { name: "Comunidad", community: true }: no
+// person, no email, no profile.
 export interface ApunteAuthor {
   name: string | null
   anonymous: boolean
+  community?: boolean
 }
 
 export interface SubjectFiles {
@@ -234,7 +244,8 @@ export function fetchFile(fileId: string): Promise<FileDetail> {
   return apiGet<FileDetail>(`/wiki/files/${enc(fileId)}`)
 }
 
-// The endpoint 302s to a 5-minute signed URL, so build the link fresh at
+// The endpoint 302s to a 5-minute signed URL (or, for files kept by
+// reference such as community archives, answers 200 and streams the bytes), so build the link fresh at
 // click/render time instead of caching the redirect target. `inline` (the
 // API default) is for viewing, `attachment` forces a download.
 export function fileDownloadUrl(
@@ -253,7 +264,8 @@ export class FileTooLargeError extends Error {
 }
 
 // Fetches the stored original for client-side rendering (docx, sheets,
-// text). Follows the redirect to the signed storage URL (same origin in
+// text). Follows the redirect to the signed storage URL, or reads the
+// streamed 200 body directly (same origin in
 // prod; local MinIO allows CORS). Refuses anything over `maxBytes`.
 // Needs the API and storage on the SPA's origin (Caddy in prod; the Vite
 // dev proxy locally): a credentialed fetch that redirects across three
@@ -278,9 +290,12 @@ export function reportFile(fileId: string, body: { reason: ReportReason; comment
 
 // ── Staff (/v1/staff/drive, STAFF role) ─────────────────────────────────────
 
+// Community sources have no owner: ownerName/ownerEmail are null and
+// subjectId is the archive folder's subject.
 export interface StaffSource extends DriveSource {
   ownerName: string | null
-  ownerEmail: string
+  ownerEmail: string | null
+  subjectId?: string | null
 }
 
 export interface StaffFileReport {

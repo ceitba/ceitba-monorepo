@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { fetchFile, fileAssetsBaseUrl, fileDownloadUrl, type FileDetail } from '../../api/drive'
 import { ApiError } from '../../api/client'
-import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
+import { apuntesErrorMessage, authorName, formatDate, formatSize, isCommunity } from '../../utils/apuntes'
+import CommunityBadge from '../../components/apuntes/CommunityBadge'
 import EmptyState from '../../components/apuntes/EmptyState'
 import FileViewer from '../../components/apuntes/viewers/FileViewer'
 import { sanitizeHtml } from '../../utils/sanitize'
@@ -78,7 +79,8 @@ export default function FilePage() {
     )
   }
 
-  const author = file?.author?.anonymous || !file?.author?.name ? t('apuntes.anonymousAuthor') : file.author.name
+  const community = isCommunity(file)
+  const author = authorName(file?.author, t)
   const meta = file
     ? [
         file.driveModifiedAt ? t('apuntes.file.updated', { date: formatDate(file.driveModifiedAt, i18n.language) }) : '',
@@ -131,7 +133,9 @@ export default function FilePage() {
                 {file.name}
               </h1>
               <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-2">
-                {t('apuntes.file.by', { author })}{meta && ` · ${meta}`}
+                {community
+                  ? <><CommunityBadge year={file.academicYear} className="align-middle" />{meta && ` · ${meta}`}</>
+                  : <>{t('apuntes.file.by', { author })}{meta && ` · ${meta}`}</>}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 flex-shrink-0">

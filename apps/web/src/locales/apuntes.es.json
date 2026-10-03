@@ -4,11 +4,17 @@
     "breadcrumbAria": "Ruta de navegación",
     "backToSearch": "Volver a apuntes",
     "anonymousAuthor": "Un/a estudiante",
+    "community": {
+      "label": "Comunidad",
+      "labelYear": "Comunidad · archivo {{year}}",
+      "hint": "Archivo compartido por la comunidad: material de otros años, sin un/a autor/a en particular."
+    },
     "errors": {
       "DRIVE_INVALID_FOLDER_URL": "Ese link no parece ser de una carpeta de Google Drive. Copiá el link desde «Compartir» → «Copiar vínculo» con la carpeta abierta.",
       "DRIVE_FOLDER_NOT_SHARED": "Todavía no vemos la carpeta. Revisá que la hayas compartido con la cuenta de CEITBA como Lector y probá de nuevo en un minuto.",
       "DRIVE_FOLDER_NOT_OWNED": "Esa carpeta no es tuya. Solo podés conectar carpetas de las que seas dueño/a en Drive.",
       "DRIVE_SOURCE_EXISTS": "Esa carpeta ya está conectada.",
+      "DRIVE_SOURCE_BLOCKED": "Esta carpeta fue bloqueada por el equipo de CEITBA y no se puede volver a compartir ni desconectar. Escribinos si creés que es un error.",
       "DRIVE_SYNC_RATE_LIMITED": "Ya pediste una sincronización hace poco. Podés volver a pedirla en unos minutos (máximo una cada 5 minutos).",
       "DRIVE_SYNC_UNCONFIGURED": "Apuntes todavía no está disponible: falta configurar la conexión con Google Drive.",
       "CAPABILITY_REQUIRED": "Apuntes todavía no está habilitado para tu cuenta."

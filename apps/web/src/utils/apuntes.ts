@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import { ApiError } from '../api/client'
+import type { ApunteAuthor } from '../api/drive'
 
 // Display helpers for the Apuntes (Drive notes) pages.
 
@@ -34,6 +35,29 @@ export function formatSize(bytes: number | null | undefined): string {
   let i = 0
   while (value >= 1024 && i < units.length - 1) { value /= 1024; i++ }
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`
+}
+
+// Community archive items ("Comunidad") have no student owner. The flag can
+// be on the item or on its author.
+export function isCommunity(
+  item: { community?: boolean; author?: Pick<ApunteAuthor, 'community'> | null } | null | undefined,
+): boolean {
+  return !!(item?.community || item?.author?.community)
+}
+
+// "Comunidad · archivo 2019", or "Comunidad" without a year.
+export function communityLabel(year: number | null | undefined, t: TFunction): string {
+  return year != null
+    ? t('apuntes.community.labelYear', { year })
+    : t('apuntes.community.label')
+}
+
+// Display name for a student author ("Un/a estudiante" when anonymous).
+// Community authors render with CommunityBadge instead; this falls back to
+// the community label for plain-text contexts (aria labels).
+export function authorName(author: ApunteAuthor | null | undefined, t: TFunction): string {
+  if (author?.community) return t('apuntes.community.label')
+  return author?.anonymous || !author?.name ? t('apuntes.anonymousAuthor') : author.name
 }
 
 // Friendly message for an API failure: Drive error codes have their own copy
