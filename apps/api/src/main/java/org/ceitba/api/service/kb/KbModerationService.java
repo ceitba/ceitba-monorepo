@@ -32,8 +32,11 @@ public class KbModerationService {
     private final KbPageRepository pages;
     private final KbPageReportRepository reports;
     private final KbViews views;
+    private final KbGraphService graph;
 
-    public KbModerationService(KbPageRepository pages, KbPageReportRepository reports, KbViews views) {
+    public KbModerationService(KbPageRepository pages, KbPageReportRepository reports, KbViews views,
+                               KbGraphService graph) {
+        this.graph = graph;
         this.pages = pages;
         this.reports = reports;
         this.views = views;
@@ -43,6 +46,7 @@ public class KbModerationService {
     public KbPageResponse hide(UUID staffId, UUID pageId) {
         var page = pages.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("KbPage", pageId.toString()));
         if (page.getStatus() == KbPageStatus.PUBLISHED) page.setStatus(KbPageStatus.HIDDEN);
+        graph.invalidate();
         return views.page(page, staffId, true);
     }
 
@@ -53,6 +57,7 @@ public class KbModerationService {
         page.setStatus(KbPageStatus.PUBLISHED);
         reports.deleteByPageId(pageId);
         page.setReportCount(0);
+        graph.invalidate();
         return views.page(page, staffId, true);
     }
 
@@ -79,6 +84,7 @@ public class KbModerationService {
         var literal = fileIds.stream().map(UUID::toString).collect(Collectors.joining(",", "{", "}"));
         var citing = pages.findPublishedCitingAny(literal);
         citing.forEach(p -> p.setStatus(KbPageStatus.HIDDEN));
+        if (!citing.isEmpty()) graph.invalidate();
         if (!citing.isEmpty()) log.info("KB takedown: {} pages hidden", citing.size());
         return citing.size();
     }

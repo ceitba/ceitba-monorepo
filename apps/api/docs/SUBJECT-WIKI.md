@@ -74,6 +74,7 @@ Readers (logged in, allowlisted):
 | `GET /v1/wiki/subjects/{subjectId}/kb` | `{ subjectId, subjectName, index: Page \| null, pages: PageSummary[], related: [{ subjectId, subjectName, reason, hasWiki }] }` |
 | `GET /v1/wiki/subjects/{subjectId}/kb/{slug}` | `Page` |
 | `GET /v1/wiki/subjects/{subjectId}/kb/graph` | `{ nodes: [{ id, subjectId, slug, title, type, external }], edges: [{ from, to }] }` — this subject's pages plus the pages of other subjects they link to or are linked from (`external: true`) |
+| `GET /v1/wiki/kb/graph?subjects=61.12,81.07` | `{ subjects: [{ subjectId, subjectName, pageCount }], nodes: [{ id, subjectId, slug, title, type }], edges: [{ from, to, crossSubject }] }` — the global graph for the /apuntes home: every `PUBLISHED` page (the same for staff) and every resolved link, deduplicated, no self-loops. With `subjects`: the pages of those subjects plus the pages linked from or to them (their subjects are listed too). `pageCount` = the subject's `PUBLISHED` pages. Served from an in-memory cache rebuilt after imports, hide/restore, report hiding and takedowns |
 | `PUT /v1/wiki/kb/pages/{pageId}/report` | body `{ reason, comment }`, reason ∈ `CONTENT_ERROR, COPYRIGHT, PERSONAL_DATA, SPAM, OTHER` → 204 |
 
 `PageSummary` = `{ id, slug, title, type, summary, aliases }`

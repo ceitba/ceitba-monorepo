@@ -6,7 +6,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.service.kb.KbGraphService;
 import org.ceitba.api.service.kb.KbReaderService;
+import org.ceitba.api.web.kb.dto.KbGlobalGraphResponse;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.kb.dto.KbGraphResponse;
 import org.ceitba.api.web.kb.dto.KbPageResponse;
@@ -29,9 +34,11 @@ import java.util.UUID;
 public class KbController {
 
     private final KbReaderService service;
+    private final KbGraphService graphService;
 
-    public KbController(KbReaderService service) {
+    public KbController(KbReaderService service, KbGraphService graphService) {
         this.service = service;
+        this.graphService = graphService;
     }
 
     @GetMapping("/v1/wiki/subjects/{subjectId}/kb")
@@ -39,6 +46,14 @@ public class KbController {
     @ApiResponse(responseCode = "200", description = "OK")
     public KbSubjectResponse subject(@CurrentUser User user, @PathVariable String subjectId) {
         return service.subject(user, subjectId);
+    }
+
+    @GetMapping("/v1/wiki/kb/graph")
+    @Operation(summary = "Global wiki graph: published pages and resolved links (optionally around some subjects)")
+    @ApiResponse(responseCode = "200", description = "OK")
+    public KbGlobalGraphResponse globalGraph(@RequestParam(required = false) List<String> subjects) {
+        return graphService.graph(subjects == null ? List.of()
+            : subjects.stream().map(String::trim).filter(s -> !s.isEmpty()).toList());
     }
 
     @GetMapping("/v1/wiki/subjects/{subjectId}/kb/graph")

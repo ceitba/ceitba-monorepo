@@ -69,6 +69,7 @@ class SubjectWikiIT {
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired KbRelationService relations;
+    @Autowired org.ceitba.api.service.kb.KbGraphService graphService;
 
     UUID f1;       // published file of 61.12
     UUID f2;       // published file of 61.12
@@ -89,6 +90,7 @@ class SubjectWikiIT {
             + "dependencies) VALUES ('61.12', 'P1', 'Ciclo', 2, 1, 0, ARRAY['81.07']), "
             + "('81.07', 'P1', 'Ciclo', 1, 2, 0, ARRAY[]::varchar[])");
         relations.refresh();
+        graphService.invalidate();   // the tables were truncated behind its back
 
         var owner = UUID.randomUUID();
         jdbc.update("INSERT INTO public.\"user\" (id, email, name, created_at, updated_at) "
@@ -131,7 +133,7 @@ class SubjectWikiIT {
 
     ResultActions call(MockHttpServletRequestBuilder req, RequestPostProcessor who, String body) throws Exception {
         if (body != null) req.contentType(MediaType.APPLICATION_JSON).content(body);
-        return mvc.perform(req.with(who));
+        return mvc.perform(who == null ? req : req.with(who));
     }
 
     JsonNode read(ResultActions r) throws Exception {
@@ -329,6 +331,45 @@ class SubjectWikiIT {
         assertThat(link(ok, "81.07/balance#cualquiera").get("anchor").asText()).isEqualTo("cualquiera");
         // A same-page anchor is not a backlink or a graph self-loop.
         assertThat(ok.get("backlinks")).isEmpty();
+    }
+
+    @Test
+    void globalGraphIsCachedAndInvalidated() throws Exception {
+        importPages(FIN, false, Map.of("index.md", finIndex(), "vtd.md", vtd("")));
+        importPages(CONT, false, Map.of(
+            "index.md", md(CONT, "index", "Contabilidad", List.of(fCont), "## Temas\n[[balance]] [[file:" + fCont + "]]\n"),
+            "balance.md", md(CONT, "concept", "Balance", List.of(fCont),
+                "## Qué es\nVuelve a [[61.12/vtd]] y [[#Qué es]] [[file:" + fCont + "]]\n")));
+
+        call(get("/v1/wiki/kb/graph"), null, null).andExpect(status().isUnauthorized());
+        var g = read(call(get("/v1/wiki/kb/graph"), reader(1), null).andExpect(status().isOk()));
+        assertThat(g.get("subjects")).hasSize(2);
+        assertThat(g.get("subjects").get(0).get("subjectId").asText()).isEqualTo(FIN);
+        assertThat(g.get("subjects").get(0).get("pageCount").asLong()).isEqualTo(2);
+        assertThat(g.get("nodes")).hasSize(4);
+        // FIN index->vtd, index->balance, index->CONT index, vtd->index,
+        // CONT index->balance, balance->vtd; no self-loop for [[#Qué es]].
+        assertThat(g.get("edges")).hasSize(6);
+        long cross = 0;
+        for (var e : g.get("edges")) {
+            assertThat(e.get("from").asText()).isNotEqualTo(e.get("to").asText());
+            if (e.get("crossSubject").asBoolean()) cross++;
+        }
+        assertThat(cross).isEqualTo(3);
+
+        // Restricted to 81.07: its pages plus the 61.12 pages linked from/to them.
+        var only = read(call(get("/v1/wiki/kb/graph?subjects=81.07"), reader(1), null).andExpect(status().isOk()));
+        assertThat(only.get("nodes")).hasSize(4);
+        assertThat(only.get("edges")).hasSize(4);
+
+        // Hiding a page invalidates the cache.
+        var vtdId = read(call(get("/v1/wiki/subjects/" + FIN + "/kb/vtd"), reader(1), null)).get("id").asText();
+        call(post("/v1/staff/kb/pages/" + vtdId + "/hide"), staff(), null).andExpect(status().isOk());
+        g = read(call(get("/v1/wiki/kb/graph"), staff(), null));
+        assertThat(g.get("nodes")).hasSize(3);
+        assertThat(g.get("subjects").get(0).get("pageCount").asLong()).isEqualTo(1);
+        call(post("/v1/staff/kb/pages/" + vtdId + "/restore"), staff(), null).andExpect(status().isOk());
+        assertThat(read(call(get("/v1/wiki/kb/graph"), reader(1), null)).get("nodes")).hasSize(4);
     }
 
     static JsonNode link(JsonNode page, String raw) {

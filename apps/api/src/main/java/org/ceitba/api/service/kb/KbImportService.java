@@ -51,9 +51,11 @@ public class KbImportService {
     private final KbLinkRepository links;
     private final SubjectRepository subjects;
     private final DriveFileRepository files;
+    private final KbGraphService graph;
 
     public KbImportService(KbPageRepository pages, KbPageRevisionRepository revisions, KbLinkRepository links,
-                           SubjectRepository subjects, DriveFileRepository files) {
+                           SubjectRepository subjects, DriveFileRepository files, KbGraphService graph) {
+        this.graph = graph;
         this.pages = pages;
         this.revisions = revisions;
         this.links = links;
@@ -125,6 +127,7 @@ public class KbImportService {
         }
 
         links.resolveForSubject(subjectId);
+        graph.invalidate();
         log.info("KB import {}: {} accepted, {} rejected, {} removed", subjectId, accepted.size(), rejected.size(),
             removed.size());
         return new KbImportResponse(accepted, rejected, removed);
