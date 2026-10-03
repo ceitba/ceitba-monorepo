@@ -14,6 +14,7 @@ import org.ceitba.api.service.auth.InvalidTokenException;
 import org.ceitba.api.service.auth.LoginRejectedException;
 import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
+import org.ceitba.api.service.capability.CapabilityRequiredException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
 import org.ceitba.api.service.drive.DriveException;
 import org.ceitba.api.service.kb.pipeline.KbPipelineException;
@@ -107,6 +108,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BookmarkLimitException.class)
     public ResponseEntity<ErrorResponse> handleBookmarkLimit(BookmarkLimitException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "BOOKMARK_LIMIT", ex.getMessage(), req);
+    }
+
+    // The caller lacks a capability (docs/CAPABILITIES.md).
+    @ExceptionHandler(CapabilityRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleCapabilityRequired(CapabilityRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "CAPABILITY_REQUIRED", ex.getMessage(), req);
     }
 
     @ExceptionHandler(StudyGroupForbiddenException.class)

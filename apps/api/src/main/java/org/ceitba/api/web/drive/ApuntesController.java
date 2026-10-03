@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.service.capability.Capability;
+import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.drive.DriveReaderService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.drive.dto.ApuntesSubjectResponse;
@@ -28,16 +30,19 @@ import java.util.List;
 import java.util.UUID;
 
 // Apuntes for logged-in readers. Readers only see PUBLISHED files; the
-// owner student and STAFF can also open unpublished ones (preview).
+// owner student and STAFF can also open unpublished ones (preview). Requires
+// the `apuntes` capability (docs/CAPABILITIES.md; 403 CAPABILITY_REQUIRED).
 @Tag(name = "Apuntes (Drive sync)")
 @RestController
 @SecurityRequirement(name = "bearerAuth")
 public class ApuntesController {
 
     private final DriveReaderService service;
+    private final CapabilityService capabilities;
 
-    public ApuntesController(DriveReaderService service) {
+    public ApuntesController(DriveReaderService service, CapabilityService capabilities) {
         this.service = service;
+        this.capabilities = capabilities;
     }
 
     @GetMapping("/v1/wiki/apuntes/subjects")
@@ -48,6 +53,7 @@ public class ApuntesController {
                                                  @RequestParam(required = false) String q,
                                                  @RequestParam(defaultValue = "20") int limit,
                                                  @RequestParam(defaultValue = "false") boolean mine) {
+        capabilities.require(user, Capability.APUNTES);
         if (mine) return service.mySubjects(user);
         return service.subjects(q, limit);
     }
@@ -55,7 +61,8 @@ public class ApuntesController {
     @GetMapping("/v1/wiki/subjects/{subjectId}/files")
     @Operation(summary = "Published apuntes of a subject, grouped by connected folder")
     @ApiResponse(responseCode = "200", description = "OK")
-    public SubjectFilesResponse subjectFiles(@PathVariable String subjectId) {
+    public SubjectFilesResponse subjectFiles(@CurrentUser User user, @PathVariable String subjectId) {
+        capabilities.require(user, Capability.APUNTES);
         return service.subjectFiles(subjectId);
     }
 
@@ -63,6 +70,7 @@ public class ApuntesController {
     @Operation(summary = "One file with its sanitized HTML (Docs only)")
     @ApiResponse(responseCode = "200", description = "OK")
     public FileDetailResponse file(@CurrentUser User user, @PathVariable UUID fileId) {
+        capabilities.require(user, Capability.APUNTES);
         return service.file(user, fileId);
     }
 
@@ -74,6 +82,7 @@ public class ApuntesController {
     public ResponseEntity<Void> download(@CurrentUser User user, @PathVariable UUID fileId,
                                          @RequestParam(required = false) String variant,
                                          @RequestParam(required = false) String disposition) {
+        capabilities.require(user, Capability.APUNTES);
         return redirect(service.downloadUrl(user, fileId, variant, disposition));
     }
 
@@ -81,6 +90,7 @@ public class ApuntesController {
     @Operation(summary = "302 to a signed URL of an image embedded in a Doc's HTML")
     @ApiResponse(responseCode = "302", description = "Redirect to the signed URL")
     public ResponseEntity<Void> asset(@CurrentUser User user, @PathVariable UUID fileId, @PathVariable String name) {
+        capabilities.require(user, Capability.APUNTES);
         return redirect(service.assetUrl(user, fileId, name));
     }
 
@@ -89,6 +99,7 @@ public class ApuntesController {
     @Operation(summary = "Report a file (one report per user; 3 reports hide it)")
     @ApiResponse(responseCode = "204", description = "Reported")
     public void report(@CurrentUser User user, @PathVariable UUID fileId, @Valid @RequestBody ReportFileRequest req) {
+        capabilities.require(user, Capability.APUNTES);
         service.report(user, fileId, req);
     }
 

@@ -18,6 +18,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
+    @Query("SELECT u FROM User u WHERE lower(u.email) IN :emails")
+    List<User> findByLowerEmailIn(@Param("emails") Collection<String> emails);
+
     Optional<User> findByFileNumber(Integer fileNumber);
 
     Optional<User> findByFirebaseUid(String firebaseUid);
