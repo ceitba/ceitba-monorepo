@@ -44,6 +44,7 @@ import org.ceitba.api.service.kb.pipeline.KbDigests;
 import org.ceitba.api.service.kb.pipeline.KbInputs;
 import org.ceitba.api.service.kb.pipeline.KbPageFiles;
 import org.ceitba.api.service.kb.pipeline.KbPayloads;
+import org.ceitba.api.service.kb.pipeline.KbPlanCheck;
 import org.ceitba.api.service.kb.pipeline.KbPipelineException;
 import org.ceitba.api.service.kb.pipeline.KbPipelineService;
 import org.ceitba.api.service.kb.pipeline.KbRunEngine;
@@ -837,8 +838,20 @@ public class KbEvalService implements KbRunHandler {
                         subj.putArray("operations");
                         continue;
                     }
-                    subj.set("operations", validateOps(r.getResult().path("operations"),
-                        set.getFrozenInputs().path(r.getSubjectId())));
+                    var proposed = r.getResult().path("operations");
+                    var check = new KbPlanCheck(proposed);
+                    var ops = validateOps(proposed, set.getFrozenInputs().path(r.getSubjectId()), check);
+                    if (check.anyDropped()) {
+                        log.warn("KB eval {}: PLAN of {} ({}, config {}) dropped operations: {} of {} kept, dropped {}",
+                            run.getId(), r.getSubjectId(), r.getModel(), key, check.keptCount(), check.proposed(),
+                            check.droppedByReason());
+                        subj.set("droppedPlanOps", check.toJson(json));
+                    }
+                    if (check.emptyAfterFiltering()) {
+                        subj.put("error", "PLAN: " + KbPlanCheck.EMPTY_PLAN_ERROR + " (dropped "
+                            + check.droppedByReason() + ")");
+                    }
+                    subj.set("operations", ops);
                 }
                 run.setStage("WRITE");
             }
@@ -875,6 +888,33 @@ public class KbEvalService implements KbRunHandler {
             default -> { }
         }
         eval.setResults(results);
+    }
+
+    // A configuration's PLAN whose operations were all dropped (typically:
+    // no valid `sources`) is asked once more with a corrective note listing
+    // the valid file ids; after() records the error if it is still empty.
+    @Override
+    public List<String> redo(KbRun run, String stage) {
+        if (!stage.equals("PLAN")) return List.of();
+        var eval = evals.findById(run.getId()).orElseThrow();
+        var frozen = sets.findById(eval.getSetId()).orElseThrow().getFrozenInputs();
+        var out = new ArrayList<String>();
+        for (var r : requests.findByRunIdAndStage(run.getId(), "PLAN")) {
+            if (!r.getStatus().equals("DONE")) continue;
+            var proposed = r.getResult().path("operations");
+            var check = new KbPlanCheck(proposed);
+            var files = frozen.path(r.getSubjectId());
+            validateOps(proposed, files, check);
+            if (!check.emptyAfterFiltering()) continue;
+            var ids = new ArrayList<String>();
+            files.forEach(f -> ids.add(f.path("fileId").asText()));
+            log.warn("KB eval {}: PLAN of {} ({}, config {}) had no usable operation ({} proposed, dropped {}); "
+                + "asking once more", run.getId(), r.getSubjectId(), r.getModel(), configOfTarget(r.getTarget()),
+                check.proposed(), check.droppedByReason());
+            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids)));
+            out.add(r.getCustomId());
+        }
+        return out;
     }
 
     // REPORT: metrics, pages to storage, done.
@@ -1057,6 +1097,11 @@ public class KbEvalService implements KbRunHandler {
     // The plan made safe for a full rebuild: creates only, Spanish-style
     // slugs, sources limited to the frozen files, an index page.
     JsonNode validateOps(JsonNode proposed, JsonNode frozenFiles) {
+        return validateOps(proposed, frozenFiles, new KbPlanCheck(proposed));
+    }
+
+    // `check` counts the operations kept and dropped (per reason).
+    JsonNode validateOps(JsonNode proposed, JsonNode frozenFiles, KbPlanCheck check) {
         var valid = new HashSet<String>();
         frozenFiles.forEach(f -> valid.add(f.path("fileId").asText()));
         var out = json.createArrayNode();
@@ -1064,13 +1109,27 @@ public class KbEvalService implements KbRunHandler {
         for (var op : proposed) {
             var kind = op.path("op").asText("create").toLowerCase(Locale.ROOT);
             var slug = op.path("slug").asText("").trim();
-            if (kind.equals("delete") || !KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph")
-                || !seen.add(slug)) continue;
+            if (kind.equals("delete")) {
+                check.dropped(KbPlanCheck.DELETE_IGNORED);
+                continue;
+            }
+            if (!KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph")) {
+                check.dropped(KbPlanCheck.INVALID_SLUG);
+                continue;
+            }
+            if (!seen.add(slug)) {
+                check.dropped(KbPlanCheck.DUPLICATE_SLUG);
+                continue;
+            }
             var type = slug.equals("index") ? "index" : op.path("type").asText("concept");
             if (!List.of("topic", "concept").contains(type) && !slug.equals("index")) type = "concept";
             var sources = json.createArrayNode();
             for (var s : op.path("sources")) if (valid.contains(s.asText())) sources.add(s.asText());
-            if (sources.isEmpty()) continue;
+            if (sources.isEmpty()) {
+                check.droppedForSources(op.path("sources"));
+                continue;
+            }
+            check.kept();
             var o = out.addObject();
             o.put("op", "create");
             o.put("slug", slug);

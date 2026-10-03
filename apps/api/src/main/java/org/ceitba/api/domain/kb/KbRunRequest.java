@@ -162,6 +162,14 @@ public class KbRunRequest {
     }
     public void setError(String error) { this.error = error; }
 
+    // Asked once more with amended params (a PLAN whose operations were all
+    // dropped); the next answer replaces the result, tokens add up.
+    public void redo(JsonNode params) {
+        this.params = params;
+        this.status = "PENDING";
+        this.error = null;
+    }
+
     // An answer arrived (ok or not): when, and how long the request took (sync).
     public void answered(OffsetDateTime at, Integer latencyMs) {
         this.completedAt = at;
