@@ -54,8 +54,9 @@ public class KbCostService {
 
     static final List<String> DIMENSIONS = List.of("week", "stage", "model", "subject");
 
-    // groupBy: one or more of week, stage, model, subject (comma separated).
-    @Transactional(readOnly = true)
+    // Longest range /costs reads at once.
+    static final int MAX_RANGE_DAYS = 366;
+
     // Values of the requested dimensions in groupBy order, joined with "|".
     private static String rowKey(List<String> dims, List<String> key) {
         var parts = new ArrayList<String>();
@@ -70,10 +71,17 @@ public class KbCostService {
         return String.join("|", parts);
     }
 
+    // groupBy: one or more of week, stage, model, subject (comma separated).
+    // Default range: the 30 days up to `to` (default now); at most 366 days.
+    @Transactional(readOnly = true)
     public List<KbCostRowResponse> costs(OffsetDateTime from, OffsetDateTime to, String groupBy, boolean reprice) {
         var now = OffsetDateTime.now(clock);
-        var f = from == null ? now.minusDays(30) : from;
         var t = to == null ? now : to;
+        var f = from == null ? t.minusDays(30) : from;
+        if (f.isAfter(t)) throw new ValidationException("from", f, "must not be after to");
+        if (f.plusDays(MAX_RANGE_DAYS).isBefore(t)) {
+            throw new ValidationException("from", f, "the range may span at most " + MAX_RANGE_DAYS + " days");
+        }
         var dims = list(groupBy == null || groupBy.isBlank() ? "week" : groupBy.toLowerCase(Locale.ROOT));
         for (var d : dims) {
             if (!DIMENSIONS.contains(d)) {
@@ -155,6 +163,13 @@ public class KbCostService {
             .toList();
         return new KbCostSummaryResponse(usd(last7), usd(total30), usd(projected), byStage, byModel, top,
             Math.round(ratio * 10000) / 10000.0, simulated, new KbCostSummaryResponse.Accuracy(accuracy));
+    }
+
+    // Everything recorded since `since` (the weekly cost limit).
+    @Transactional(readOnly = true)
+    public BigDecimal spentSince(OffsetDateTime since) {
+        var v = usage.sumCostSince(since);
+        return v == null ? BigDecimal.ZERO : v;
     }
 
     // Rough cost of requests before submitting them: estimated input tokens
