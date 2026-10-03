@@ -357,7 +357,8 @@
       "viewSite": "Ver sitio",
       "new": "Nuevo",
       "edit": "Editar",
-      "review": "Revisar"
+      "review": "Revisar",
+      "signOutUnsaved": "Tenés cambios sin guardar en el artículo. ¿Cerrar sesión igual y perderlos?"
     }
   },
   "imageUploader": {
