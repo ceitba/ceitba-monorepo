@@ -83,14 +83,27 @@ Sources show the year the material was made, not their last update (notes and TP
   PDF text + page count, Drawings = PNG bytes. Same hash = metadata only (no new objects).
 - Renames/moves are metadata only: path and effective subject are recomputed.
 - An item reached twice in one walk (shortcut + original, cycles) is one row; the first path (BFS) wins.
-  Shortcuts to items the bot cannot read are skipped.
+  A shortcut is followed only when its target is owned (Drive `owners`) by the source's student; shortcuts to items
+  the bot cannot read or that someone else owns are skipped (and counted in the sync log), so a shortcut can never
+  pull another student's file into a source through the bot's access.
 - Missing after a **complete** walk → `REMOVED`, row and copy purged 30 days later.
 - Cross-source move (same student): the row moves to the other source keeping its id, copy and explicit subject,
   whichever source syncs first. Same file in sources of different students → separate rows sharing one stored copy.
 - Stored copies: `drive/<driveId>/<hash of fingerprint>/...` in the media bucket; `drive/` is never anonymously
   readable (MinIO policy), only via 5-minute signed URLs. Objects are deleted when no row uses them any more.
 - Re-registering a `REVOKED` folder reactivates the same source; `POST .../sync` also retries a `REVOKED` source.
-  `DELETE` (disconnect) deletes every file row and copy; the source row stays `DISCONNECTED`.
+  `DELETE` (disconnect) deletes every file row and copy; the source row stays `DISCONNECTED`. Wiki pages citing
+  those files are hidden and their digests/LLM payloads dropped (`docs/SUBJECT-WIKI-PIPELINE.md`, "Privacy").
+- A `BLOCKED` source cannot be disconnected (409 `DRIVE_SOURCE_BLOCKED`), and a folder that is `BLOCKED` in any
+  source cannot be registered again (409 `DRIVE_SOURCE_BLOCKED`), so a block cannot be bypassed by re-registering.
+- A sync writes into a source under a row lock and stops when the source is gone, `DISCONNECTED` or `BLOCKED`, so a
+  disconnect, block or account deletion during a running sync is never undone; objects uploaded for a row that
+  vanished meanwhile are deleted. An unexpected error fails only its source (counted towards `ERROR`); the scheduled
+  run carries on and the 30-day purge always runs.
+- Requested syncs (register, `POST .../sync`, staff reprocess) run on a dedicated pool of 2 threads with a bounded
+  queue (500), not on the shared task executor; when the queue is full the request is left to the scheduled run.
+- Whenever a file stops being `PUBLISHED` (or moves to another subject), wiki pages citing it are hidden at once
+  (takedown); the next pipeline run rewrites those subjects.
 
 ## Endpoints (all under `/api/v1`, JSON, cookie auth)
 
@@ -99,7 +112,8 @@ sources/files that are not the caller's (or not visible), 400 `ValidationError` 
 not the current one or an unknown `subjectId`, 409 `InvalidState` for `POST .../sync` on a `BLOCKED` source.
 Drive-specific `error` codes:
 `DRIVE_INVALID_FOLDER_URL` (400), `DRIVE_FOLDER_NOT_SHARED` (422), `DRIVE_FOLDER_NOT_OWNED` (403),
-`DRIVE_SOURCE_EXISTS` (409), `DRIVE_SYNC_RATE_LIMITED` (429), `DRIVE_SYNC_UNCONFIGURED` (503).
+`DRIVE_SOURCE_EXISTS` (409), `DRIVE_SOURCE_BLOCKED` (409), `DRIVE_SYNC_RATE_LIMITED` (429),
+`DRIVE_SYNC_UNCONFIGURED` (503).
 
 ### Dev login (dev profile + `AUTH_DEV_LOGIN_ENABLED=true` only; otherwise 404)
 
@@ -169,8 +183,9 @@ else is 400.
   `https://drive.google.com/file/d/<id>/view` (also on `TreeItem`).
 Only `PUBLISHED`/`HIDDEN_REPORTED` files can be reported (else 404); re-reporting replaces the caller's report.
 
-Readers only see `PUBLISHED` files. The file's owner student and STAFF can open any of their/all files
-(`GET /v1/wiki/files/{id}` and downloads) so they can preview before publishing.
+Readers only see `PUBLISHED` files. STAFF can open any file, and the source's student can open the files of their
+source that they own in Drive (`ownedByMe`), so they can preview before publishing (`GET /v1/wiki/files/{id}` and
+downloads). A file owned by someone else that sits in the student's folder is not previewable by them.
 
 ### Staff (`/v1/staff/**`, STAFF role)
 

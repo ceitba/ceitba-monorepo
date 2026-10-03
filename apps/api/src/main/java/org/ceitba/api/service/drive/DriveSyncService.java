@@ -22,8 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
 //
 //   1. files.get(root): 404/403 -> REVOKED (everything unpublished).
 //   2. BFS walk ("'<id>' in parents and trashed=false"). Shortcuts resolve to
-//      their target when the bot can read it (else skipped); a folder seen
-//      twice (shortcut cycles) is walked once. Forms/sites/... are skipped.
+//      their target only when the bot can read it AND the source's student
+//      owns it (Drive `owners`); anything else is skipped, so a shortcut
+//      cannot pull another student's file through the bot's access. A
+//      folder seen twice (shortcut cycles) is walked once. Forms/sites/...
+//      are skipped.
 //   3. DriveSyncStore.applyWalk: upsert metadata, mark missing items REMOVED
 //      only when the walk was COMPLETE, recompute subjects/publication.
 //   4. Check new/changed content (DriveContentProcessor; see DriveSyncStore
@@ -35,7 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // one thread at a time (job and manual/async triggers share `inProgress`).
 // A source-level failure counts towards ERROR (5 in a row). Rate limits stop
 // the whole run (the client already backed off); the budget deadline stops
-// it too, leaving the rest for the next run.
+// it too, leaving the rest for the next run. Any other exception fails
+// only its source; the 30-day purge always runs.
 @Service
 public class DriveSyncService {
 
@@ -64,27 +68,47 @@ public class DriveSyncService {
     public void runAll() {
         if (!drive.available()) return;
         var deadline = clock.instant().plus(props.runBudget());
-        try {
-            store.recordUnclaimed(drive.listSharedFolders());
-        } catch (DriveApiException e) {
-            log.warn("Drive sync: listing shared folders failed: {} {}", e.status(), e.getMessage());
-            if (e.isRateLimited()) return;
-        }
         int synced = 0;
-        for (var id : store.idsToSync()) {
-            if (clock.instant().isAfter(deadline)) {
-                log.info("Drive sync: run budget exhausted after {} sources", synced);
-                break;
+        try {
+            try {
+                store.recordUnclaimed(drive.listSharedFolders());
+            } catch (DriveApiException e) {
+                log.warn("Drive sync: listing shared folders failed: {} {}", e.status(), e.getMessage());
+                if (e.isRateLimited()) return;
+            } catch (RuntimeException e) {
+                log.warn("Drive sync: recording unclaimed shares failed", e);
             }
-            var outcome = syncSource(id, deadline, false);
-            if (outcome == Outcome.RATE_LIMITED) {
-                log.warn("Drive sync: rate limited, stopping this run after {} sources", synced);
-                break;
+            for (var id : store.idsToSync()) {
+                if (clock.instant().isAfter(deadline)) {
+                    log.info("Drive sync: run budget exhausted after {} sources", synced);
+                    break;
+                }
+                Outcome outcome;
+                try {
+                    outcome = syncSource(id, deadline, false);
+                } catch (RuntimeException e) {
+                    log.error("Drive sync: source {} failed unexpectedly", id, e);
+                    recordFailureQuietly(id, "Unexpected error: " + e.getClass().getSimpleName());
+                    outcome = Outcome.FAILED;
+                }
+                if (outcome == Outcome.RATE_LIMITED) {
+                    log.warn("Drive sync: rate limited, stopping this run after {} sources", synced);
+                    break;
+                }
+                synced++;
             }
-            synced++;
+        } finally {
+            store.purgeExpired();
         }
-        store.purgeExpired();
         log.info("Drive sync run done: {} sources", synced);
+    }
+
+    private void recordFailureQuietly(UUID sourceId, String error) {
+        try {
+            store.recordFailure(sourceId, error);
+        } catch (RuntimeException e) {
+            log.warn("Drive sync: could not record the failure of source {}: {}", sourceId, e.getMessage());
+        }
     }
 
     public Outcome syncSource(UUID sourceId) {
@@ -123,12 +147,14 @@ public class DriveSyncService {
         List<DriveSyncStore.WalkedItem> walked = new ArrayList<>();
         boolean complete;
         try {
-            complete = walk(root, walked, deadline);
+            complete = walk(root, walked, deadline, source.ownerEmail(), source.id());
         } catch (DriveApiException e) {
             return fail(source, e);
         }
 
         var tasks = store.applyWalk(source.id(), root.name(), walked, complete, source.ownerEmail());
+        // Disconnected, blocked or deleted while we walked: nothing applied.
+        if (tasks == null) return Outcome.SKIPPED;
         boolean allFetched = true;
         for (var task : tasks) {
             if (clock.instant().isAfter(deadline)) {
@@ -140,7 +166,12 @@ public class DriveSyncService {
                         task.driveId(), task.kind(), task.name(), task.mimeType(), task.version(),
                         task.knownFingerprint(), task.size()),
                     fp -> store.hasCopy(task.fileId(), task.driveId(), fp));
-                store.storeContent(task.fileId(), content, task.modifiedAt());
+                if (!store.storeContent(source.id(), task.fileId(), task.driveId(), content, task.modifiedAt())) {
+                    if (!store.isSyncable(source.id())) {
+                        log.info("Drive sync: source {} is gone or no longer syncable, stopping", source.id());
+                        return Outcome.SKIPPED;
+                    }
+                }
             } catch (DriveApiException e) {
                 store.storeError(task.fileId(), "Drive " + e.status() + " " + e.reason() + ": " + e.getMessage());
                 if (e.isRateLimited()) {
@@ -161,7 +192,8 @@ public class DriveSyncService {
     // BFS from the root. Returns false when the walk stopped early (budget
     // or a folder that vanished mid-walk): missing items must then not be
     // treated as removed.
-    private boolean walk(DriveItem root, List<DriveSyncStore.WalkedItem> out, Instant deadline) {
+    private boolean walk(DriveItem root, List<DriveSyncStore.WalkedItem> out, Instant deadline,
+                         String ownerEmail, UUID sourceId) {
         var queue = new ArrayDeque<String>();
         var visitedFolders = new HashSet<String>();
         var seenItems = new HashSet<String>();
@@ -169,6 +201,7 @@ public class DriveSyncService {
         visitedFolders.add(root.id());
         seenItems.add(root.id());
         boolean complete = true;
+        int skippedShortcuts = 0;
         while (!queue.isEmpty()) {
             if (clock.instant().isAfter(deadline)) return false;
             var folderId = queue.poll();
@@ -186,8 +219,11 @@ public class DriveSyncService {
             for (var child : children) {
                 var item = child;
                 if (child.isShortcut()) {
-                    item = resolveShortcut(child);
-                    if (item == null) continue;
+                    item = resolveShortcut(child, ownerEmail);
+                    if (item == null) {
+                        skippedShortcuts++;
+                        continue;
+                    }
                 }
                 if (!seenItems.add(item.id())) continue;
                 var kind = DriveKinds.of(item.mimeType());
@@ -196,16 +232,22 @@ public class DriveSyncService {
                 if (item.isFolder() && visitedFolders.add(item.id())) queue.add(item.id());
             }
         }
+        if (skippedShortcuts > 0) {
+            log.info("Drive sync: source {}: skipped {} shortcuts (unreadable or not owned by the student)",
+                sourceId, skippedShortcuts);
+        }
         return complete;
     }
 
-    // The shortcut's target as if it sat where the shortcut is, or null when
-    // the bot cannot read it.
-    private DriveItem resolveShortcut(DriveItem shortcut) {
-        if (shortcut.shortcutTargetId() == null) return null;
+    // The shortcut's target as if it sat where the shortcut is, or null
+    // (skipped) when the bot cannot read it or the source's student does not
+    // own it: the bot can read files other students shared with it, and a
+    // shortcut must never republish those under this source.
+    DriveItem resolveShortcut(DriveItem shortcut, String ownerEmail) {
+        if (shortcut.shortcutTargetId() == null || ownerEmail == null) return null;
         try {
             var target = drive.getFile(shortcut.shortcutTargetId());
-            return target.isShortcut() ? null : target;
+            return target.isShortcut() || !target.ownedBy(ownerEmail) ? null : target;
         } catch (DriveApiException e) {
             if (e.isNotFoundOrForbidden()) return null;
             throw e;
