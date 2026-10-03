@@ -44,6 +44,12 @@ Body: GitHub-flavored Markdown, KaTeX math (`$…$`, `$$…$$`), plus wikilinks:
 | `[[61.12/slug]]`, `[[61.12/slug\|text]]` | page in another subject |
 | `[[61.12]]`, `[[61.12\|text]]` | another subject's index |
 | `[[file:<uuid>]]`, `[[file:<uuid>\|text]]` | citation of a source file |
+| `[[slug#anchor\|text]]`, `[[61.12/slug#anchor\|text]]`, `[[#anchor\|text]]` | a section of a page (`[[#…]]` = same page) |
+
+Anchors are heading text folded: lowercase, accents removed (NFD, combining marks dropped), runs of non-`[a-z0-9]`
+replaced by `-`, trimmed of `-` (`## Cómo se calcula` → `como-se-calcula`). A link whose anchor matches no `##`–`####`
+heading of its target page is rejected **when the target page exists** (in the same import, else stored and not
+`REMOVED`); links to pages that don't exist yet stay unresolved.
 
 Writing rules: Spanish (rioplatense, voseo), didactic; every `##` section contains at least one
 `[[file:…]]` citation; never more than 40 consecutive words copied from a source; pages never name students.
@@ -73,9 +79,10 @@ Readers (logged in, allowlisted):
 `PageSummary` = `{ id, slug, title, type, summary, aliases }`
 
 `Page` = `PageSummary` + `{ subjectId, subjectName, markdown (body without frontmatter), sources: [{ id, name, kind, author: { name, anonymous } }],
-links: [{ raw, subjectId, slug, resolved, title }], backlinks: [{ subjectId, subjectName, slug, title }], generator, generatedAt, revision, reportedByMe }`
+links: [{ raw, subjectId, slug, anchor, resolved, title }], backlinks: [{ subjectId, subjectName, slug, title }], generator, generatedAt, revision, reportedByMe }`
 
-`links` maps every wikilink target in the body (`raw` = the inner text before `|`, e.g. `81.07/balance`, `van-y-tir`, `81.07`)
+`links` maps every wikilink target in the body (`raw` = the inner text before `|` including any `#anchor`, e.g. `81.07/balance`, `van-y-tir#como-se-calcula`, `81.07`;
+`anchor` = the folded anchor or `null`)
 to its resolution, so the frontend can render `[[…]]` without extra calls. File citations are not in `links`;
 they reference `sources`.
 

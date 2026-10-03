@@ -90,6 +90,12 @@ public class KbImportService {
         Map<String, KbPage> existing = new HashMap<>();
         for (var page : pages.findBySubjectId(subjectId)) existing.put(page.getSlug(), page);
 
+        // Headings of the pages in this payload (they win over stored ones).
+        Map<String, java.util.Set<String>> payloadAnchors = new HashMap<>();
+        for (var e : entries) {
+            if (e.parsed().ok()) payloadAnchors.put(e.slug(), KbWikilinks.headingAnchors(e.parsed().draft().body()));
+        }
+
         var accepted = new ArrayList<String>();
         var rejected = new ArrayList<KbRejectedPage>();
         for (var e : entries) {
@@ -98,7 +104,8 @@ public class KbImportService {
                 continue;
             }
             var draft = e.parsed().draft();
-            var errors = KbValidator.validate(draft, sourceInfo);
+            var errors = new ArrayList<>(KbValidator.validate(draft, sourceInfo));
+            errors.addAll(anchorErrors(subjectId, draft, payloadAnchors));
             if (!errors.isEmpty()) {
                 rejected.add(new KbRejectedPage(e.slug(), errors));
                 continue;
@@ -121,6 +128,30 @@ public class KbImportService {
         log.info("KB import {}: {} accepted, {} rejected, {} removed", subjectId, accepted.size(), rejected.size(),
             removed.size());
         return new KbImportResponse(accepted, rejected, removed);
+    }
+
+    // A #anchor must name a ## to #### heading of its target page when that
+    // page exists (in this payload, else stored and not REMOVED); links to
+    // pages that do not exist yet stay unresolved, as without anchors.
+    private List<String> anchorErrors(String subjectId, KbPageParser.Draft draft,
+                                      Map<String, java.util.Set<String>> payloadAnchors) {
+        var errors = new ArrayList<String>();
+        for (var l : draft.links().links()) {
+            if (l.anchor() == null) continue;
+            java.util.Set<String> anchors;
+            if (l.subjectId().equals(subjectId) && payloadAnchors.containsKey(l.slug())) {
+                anchors = payloadAnchors.get(l.slug());
+            } else {
+                var target = pages.findBySubjectIdAndSlug(l.subjectId(), l.slug())
+                    .filter(p -> p.getStatus() != KbPageStatus.REMOVED);
+                if (target.isEmpty()) continue;
+                anchors = KbWikilinks.headingAnchors(target.get().getMarkdown());
+            }
+            if (!anchors.contains(l.anchor())) {
+                errors.add("link [[" + l.raw() + "]]: no heading '#" + l.anchor() + "' in " + l.subjectId() + "/" + l.slug());
+            }
+        }
+        return errors;
     }
 
     private void upsert(String subjectId, KbPageParser.Draft d, KbPage page) {

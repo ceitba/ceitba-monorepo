@@ -81,7 +81,8 @@ public class KbViews {
             .map(l -> {
                 var t = l.getToPageId() == null ? null : targets.get(l.getToPageId());
                 boolean resolved = visible(t, staff);
-                return new KbLinkResponse(l.getRaw(), l.getToSubjectId(), l.getToSlug(), resolved,
+                var anchor = KbWikilinks.target(l.getRaw(), p.getSubjectId(), p.getSlug()).anchor();
+                return new KbLinkResponse(l.getRaw(), l.getToSubjectId(), l.getToSlug(), anchor, resolved,
                     resolved ? t.getTitle() : null);
             })
             .toList();

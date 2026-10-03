@@ -309,6 +309,28 @@ class SubjectWikiIT {
             .andExpect(jsonPath("$.status").value("HIDDEN"));
     }
 
+    @Test
+    void sectionAnchorsAreValidatedAgainstExistingTargets() throws Exception {
+        importPages(FIN, false, Map.of("index.md", finIndex(), "vtd.md", vtd("")));
+        var res = importPages(FIN, false, Map.of(
+            "ok.md", md(FIN, "concept", "Ok", List.of(f1), "## Uno\nVer [[vtd#Idea]], [[#Uno|acá]] y "
+                + "[[81.07/balance#cualquiera]] [[file:" + f1 + "]]\n"),
+            "mal.md", md(FIN, "concept", "Mal", List.of(f1), "## Uno\nVer [[vtd#no-existe]] [[file:" + f1 + "]]\n")));
+        assertThat(json.convertValue(res.get("accepted"), List.class)).containsExactly("ok");
+        assertThat(res.get("rejected").get(0).get("errors").get(0).asText())
+            .isEqualTo("link [[vtd#no-existe]]: no heading '#no-existe' in 61.12/vtd");
+        var ok = read(call(get("/v1/wiki/subjects/" + FIN + "/kb/ok"), reader(1), null).andExpect(status().isOk()));
+        assertThat(link(ok, "vtd#Idea").get("anchor").asText()).isEqualTo("idea");
+        assertThat(link(ok, "vtd#Idea").get("slug").asText()).isEqualTo("vtd");
+        assertThat(link(ok, "vtd#Idea").get("resolved").asBoolean()).isTrue();
+        assertThat(link(ok, "#Uno").get("slug").asText()).isEqualTo("ok");
+        // The target subject has no pages yet: unresolved, not rejected.
+        assertThat(link(ok, "81.07/balance#cualquiera").get("resolved").asBoolean()).isFalse();
+        assertThat(link(ok, "81.07/balance#cualquiera").get("anchor").asText()).isEqualTo("cualquiera");
+        // A same-page anchor is not a backlink or a graph self-loop.
+        assertThat(ok.get("backlinks")).isEmpty();
+    }
+
     static JsonNode link(JsonNode page, String raw) {
         for (var l : page.get("links")) if (l.get("raw").asText().equals(raw)) return l;
         throw new AssertionError("no link " + raw + " in " + page.get("links"));

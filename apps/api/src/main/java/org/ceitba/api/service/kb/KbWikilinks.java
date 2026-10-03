@@ -11,6 +11,8 @@ import java.util.regex.Pattern;
 //   [[61.12/slug]] / [[61.12/slug|text]]      page in another subject
 //   [[61.12]] / [[61.12|text]]                another subject's index
 //   [[file:<uuid>]] / [[file:<uuid>|text]]    citation of a source file
+// Page links may end in #anchor ([[slug#a]], [[61.12/slug#a]], [[#a]] for
+// the same page); the anchor is a folded `##`-`####` heading (anchor()).
 // Links inside fenced code blocks and inline code are ignored.
 public final class KbWikilinks {
 
@@ -24,8 +26,11 @@ public final class KbWikilinks {
 
     private KbWikilinks() {}
 
-    // A link to a page: raw = the inner text before '|' (trimmed).
-    public record PageLink(String raw, String subjectId, String slug) {}
+    // A link to a page: raw = the inner text before '|' (trimmed), anchor
+    // included; anchor = the folded #anchor or null.
+    public record PageLink(String raw, String subjectId, String slug, String anchor) {}
+
+    private static final Pattern HEADING = Pattern.compile("^#{2,4}(?!#)\\s+(.*?)\\s*#*\\s*$");
 
     // A [[file:...]] citation; id is null when it is not a UUID.
     public record Citation(String raw, UUID id) {}
@@ -33,6 +38,11 @@ public final class KbWikilinks {
     public record Parsed(List<PageLink> links, List<Citation> citations) {}
 
     public static Parsed parse(String body, String currentSubjectId) {
+        return parse(body, currentSubjectId, null);
+    }
+
+    // currentSlug: target of same-page links ([[#anchor]]).
+    public static Parsed parse(String body, String currentSubjectId, String currentSlug) {
         var text = stripCode(body);
         var links = new LinkedHashMap<String, PageLink>();
         var citations = new ArrayList<Citation>();
@@ -44,16 +54,49 @@ public final class KbWikilinks {
                 citations.add(new Citation(raw, uuid(raw.substring(5).trim())));
                 continue;
             }
-            links.computeIfAbsent(raw, r -> target(r, currentSubjectId));
+            links.computeIfAbsent(raw, r -> target(r, currentSubjectId, currentSlug));
         }
         return new Parsed(List.copyOf(links.values()), List.copyOf(citations));
     }
 
-    static PageLink target(String raw, String currentSubjectId) {
-        int slash = raw.indexOf('/');
-        if (slash > 0) return new PageLink(raw, raw.substring(0, slash).trim(), raw.substring(slash + 1).trim());
-        if (SUBJECT_ID.matcher(raw).matches()) return new PageLink(raw, raw, "index");
-        return new PageLink(raw, currentSubjectId, raw);
+    public static PageLink target(String raw, String currentSubjectId, String currentSlug) {
+        String anchor = null;
+        var target = raw;
+        int hash = raw.indexOf('#');
+        if (hash >= 0) {
+            anchor = anchor(raw.substring(hash + 1));
+            if (anchor.isEmpty()) anchor = null;
+            target = raw.substring(0, hash).trim();
+        }
+        if (target.isEmpty()) {
+            return new PageLink(raw, currentSubjectId, currentSlug == null ? "index" : currentSlug, anchor);
+        }
+        int slash = target.indexOf('/');
+        if (slash > 0) {
+            return new PageLink(raw, target.substring(0, slash).trim(), target.substring(slash + 1).trim(), anchor);
+        }
+        if (SUBJECT_ID.matcher(target).matches()) return new PageLink(raw, target, "index", anchor);
+        return new PageLink(raw, currentSubjectId, target, anchor);
+    }
+
+    // "Cómo se calcula" -> "como-se-calcula": lowercase, accents removed,
+    // runs of anything but [a-z0-9] -> '-', trimmed of '-'.
+    public static String anchor(String text) {
+        var n = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return n.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+    }
+
+    // Anchors of a body's ## to #### headings (wikilinks in them count by text).
+    public static java.util.Set<String> headingAnchors(String body) {
+        var out = new java.util.LinkedHashSet<String>();
+        for (var line : stripCode(body).split("\n", -1)) {
+            var m = HEADING.matcher(line);
+            if (!m.matches()) continue;
+            var text = m.group(1).replaceAll("\\[\\[[^\\[\\]|\\n]+\\|([^\\[\\]\\n]*)]]", "$1")
+                .replaceAll("\\[\\[([^\\[\\]\\n]+)]]", "$1");
+            out.add(anchor(text));
+        }
+        return out;
     }
 
     // Body with code blocks/spans blanked out (line structure kept).

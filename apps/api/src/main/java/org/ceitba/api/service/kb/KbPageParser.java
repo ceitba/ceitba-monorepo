@@ -172,7 +172,7 @@ public final class KbPageParser {
         for (var section : sectionsWithoutCitation(body)) {
             errors.add("section '" + section + "' has no [[file:…]] citation");
         }
-        var links = KbWikilinks.parse(body, folderSubjectId);
+        var links = KbWikilinks.parse(body, folderSubjectId, slug);
         for (var c : links.citations()) {
             if (c.id() == null) errors.add("invalid citation [[" + c.raw() + "]]");
         }
