@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MODEL_STAGES, fetchForecast, fetchStageCost, isSelectable, sortModels, fetchModels, forecastFor, impactFrom, normalizeImpact, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
-  type CostImpact, type ExecutionMode, type KbModel, type KbSettings, type ModelStage, type SettingsBody, type SubjectOverride,
+  type CostImpact, type ExecutionMode, type KbModel, type KbSettings, type ModelStage, type SettingsBody, type SettingsPatch, type SubjectOverride,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
+import { apuntesErrorMessage } from '../../../utils/apuntes'
 import ReasoningSelect from './ReasoningSelect'
 import PriceTag from './PriceTag'
 import { priceText } from './prices'
@@ -19,6 +20,28 @@ const STAGE_FIELD: Record<ModelStage, 'modelDigest' | 'modelPlan' | 'modelWrite'
   digest: 'modelDigest', plan: 'modelPlan', write: 'modelWrite', retry: 'modelRetry',
 }
 const DAYS = [0, 1, 2, 3, 4, 5, 6] // cron day-of-week, 0 = Sunday
+
+// The budget field may be empty while editing; Save stays disabled then.
+type Draft = Omit<KbSettings, 'runTokenBudget'> & { runTokenBudget: number | '' }
+
+// Response metadata that rides along on the loaded settings and must never
+// be sent back: the API would store it (costImpact) or reject it.
+const isMeta = (k: string) => k === 'source' || k === 'costImpact' || k === 'updatedAt' || k.startsWith('updatedBy')
+
+function settingsFields(s: Draft | KbSettings): Omit<KbSettings, 'source'> {
+  return Object.fromEntries(Object.entries(s).filter(([k]) => !isMeta(k))) as Omit<KbSettings, 'source'>
+}
+
+// Fields of the draft that differ from what was loaded.
+function changedFields(draft: Draft, loaded: KbSettings): SettingsPatch {
+  const before = settingsFields(loaded) as Record<string, unknown>
+  const after = settingsFields(draft) as Record<string, unknown>
+  return Object.fromEntries(
+    Object.entries(after).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(before[k])),
+  ) as SettingsPatch
+}
+
+const budgetValid = (v: number | '') => v !== '' && Number.isFinite(v) && v >= 0
 
 // Pick from the catalog: enabled + successfully probed models only (the
 // current value stays selectable so nothing silently changes).
@@ -101,7 +124,9 @@ export default function SettingsView() {
   const settings = useLoad(fetchSettings)
   const models = useLoad(fetchModels)
   const history = useLoad(fetchSettingsHistory)
-  const [draft, setDraft] = useState<KbSettings | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [restoreBusy, setRestoreBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [restoring, setRestoring] = useState<string | null>(null)
   const [rawCron, setRawCron] = useState(false)
@@ -134,17 +159,15 @@ export default function SettingsView() {
   }, [models.data])
   const discountIsEstimate = forecast.data?.discountIsEstimate ?? false
 
-  const dirty = useMemo(() => {
-    if (!draft || !settings.data) return false
-    const strip = (s: KbSettings) => JSON.stringify({ ...s, source: undefined })
-    return strip(draft) !== strip(settings.data)
-  }, [draft, settings.data])
+  const changes = useMemo(
+    () => (draft && settings.data ? changedFields(draft, settings.data) : {}),
+    [draft, settings.data],
+  )
+  const dirty = Object.keys(changes).length > 0
+  const valid = !!draft && budgetValid(draft.runTokenBudget)
 
-  const body = useCallback((): SettingsBody => {
-    const { source: _source, ...rest } = draft!
-    void _source
-    return rest
-  }, [draft])
+  // Full proposed settings, for the forecast/preview endpoints.
+  const body = useCallback((): SettingsBody => settingsFields(draft!) as SettingsBody, [draft])
 
   // Current vs proposed forecast (ADMIN doc §7): weekly and monthly with
   // ranges plus the full-rebuild cost. Falls back to /settings/preview.
@@ -165,20 +188,28 @@ export default function SettingsView() {
   }, [body])
 
   async function save(note: string) {
-    const saved = await saveSettings({ ...body(), note: note || undefined })
+    const saved = await saveSettings({ ...changes, note: note || undefined })
     settings.setData(() => saved)
     history.reload()
     return normalizeImpact(saved.costImpact)
   }
 
   async function restore(id: string) {
-    const restored = await restoreSettings(id)
-    settings.setData(() => restored)
-    history.reload()
-    setRestoring(null)
+    setRestoreError(null)
+    setRestoreBusy(true)
+    try {
+      const restored = await restoreSettings(id)
+      settings.setData(() => restored)
+      history.reload()
+      setRestoring(null)
+    } catch (e) {
+      setRestoreError(`${t('manage.wikiAi.settings.restoreFailed')} ${apuntesErrorMessage(e, t)}`)
+    } finally {
+      setRestoreBusy(false)
+    }
   }
 
-  const set = <K extends keyof KbSettings>(k: K, v: KbSettings[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d))
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d))
   const catalog = models.data ?? []
 
   return (
@@ -278,7 +309,8 @@ export default function SettingsView() {
                 </div>
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.budget')}</span>
-                  <input type="number" min={0} step={10000} value={draft.runTokenBudget ?? ''} onChange={(e) => set('runTokenBudget', Number(e.target.value) || 0)} className={FIELD} />
+                  <input type="number" min={0} step={10000} value={draft.runTokenBudget ?? ''} onChange={(e) => set('runTokenBudget', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!budgetValid(draft.runTokenBudget)} className={FIELD} />
+                  {!budgetValid(draft.runTokenBudget) && <span role="alert" className="font-body text-[0.75rem] text-red-700 dark:text-red-300">{t('manage.wikiAi.settings.budgetRequired')}</span>}
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costLimit')}</span>
@@ -304,7 +336,7 @@ export default function SettingsView() {
             <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 py-3 bg-page-bg/95 dark:bg-night-bg/95 border-t border-border dark:border-night-border">
               {dirty && <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.unsaved')}</span>}
               <button type="button" disabled={!dirty} onClick={() => setDraft(settings.data)} className={BTN}>{t('manage.wikiAi.settings.discard')}</button>
-              <button type="button" disabled={!dirty} onClick={() => setConfirming(true)} className={BTN_PRI}>{t('manage.save')}</button>
+              <button type="button" disabled={!dirty || !valid} onClick={() => setConfirming(true)} className={BTN_PRI}>{t('manage.save')}</button>
             </div>
           </>
         )}
@@ -341,11 +373,15 @@ export default function SettingsView() {
       {restoring && (
         <ConfirmDialog
           title={t('manage.wikiAi.settings.restoreTitle')}
-          body={t('manage.wikiAi.settings.restoreBody')}
+          body={<>
+            {t('manage.wikiAi.settings.restoreBody')}
+            {restoreError && <span role="alert" className="mt-2 block text-red-700 dark:text-red-300">{restoreError}</span>}
+          </>}
           confirmLabel={t('manage.wikiAi.settings.restore')}
           danger={false}
+          busy={restoreBusy}
           onConfirm={() => void restore(restoring)}
-          onCancel={() => setRestoring(null)}
+          onCancel={() => { setRestoring(null); setRestoreError(null) }}
         />
       )}
     </div>

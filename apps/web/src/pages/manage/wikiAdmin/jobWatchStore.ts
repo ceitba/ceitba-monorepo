@@ -16,6 +16,9 @@ export interface WatchedJob {
   finalStatus?: string
   summary?: string
   seen?: boolean
+  // When it was first seen active (ms). Active entries older than
+  // MAX_ACTIVE_AGE are dropped, so a job the API forgot can't linger.
+  since?: number
 }
 
 export interface Toast {
@@ -23,10 +26,11 @@ export interface Toast {
   kind: JobKind
   id: string
   text: string
-  failed: boolean
+  tone: 'success' | 'warning' | 'error'
 }
 
 const KEY = 'wikiAi.jobs'
+const MAX_ACTIVE_AGE = 2 * 24 * 60 * 60 * 1000
 let jobs: WatchedJob[] = read()
 let toasts: Toast[] = []
 let openRequest: { kind: JobKind; id: string } | null = null
@@ -36,7 +40,12 @@ function read(): WatchedJob[] {
   try {
     const raw = localStorage.getItem(KEY)
     const list = raw ? (JSON.parse(raw) as WatchedJob[]) : []
-    return Array.isArray(list) ? list : []
+    if (!Array.isArray(list)) return []
+    const now = Date.now()
+    // Entries saved before `since` existed start their clock now.
+    return list
+      .map((j) => (j.state === 'active' && typeof j.since !== 'number' ? { ...j, since: now } : j))
+      .filter((j) => j.state !== 'active' || now - (j.since ?? now) < MAX_ACTIVE_AGE)
   } catch {
     return []
   }
@@ -67,8 +76,12 @@ const find = (kind: JobKind, id: string) => jobs.find((j) => j.kind === kind && 
 export function markActive(kind: JobKind, id: string, name: string) {
   const j = find(kind, id)
   if (j && j.state === 'active' && j.name === name) return
-  if (j && j.state === 'finished') return
-  jobs = j ? jobs.map((x) => (x === j ? { ...x, name, state: 'active' } : x)) : [...jobs, { kind, id, name, state: 'active' }]
+  // A finished job stays finished, except one that stopped BLOCKED (cost
+  // limit): approving it makes it run again.
+  if (j && j.state === 'finished' && !/BLOCKED/i.test(j.finalStatus ?? '')) return
+  jobs = j
+    ? jobs.map((x) => (x === j ? { ...x, name, state: 'active', since: x.state === 'active' ? x.since : Date.now() } : x))
+    : [...jobs, { kind, id, name, state: 'active', since: Date.now() }]
   write(); emit()
 }
 
@@ -77,15 +90,23 @@ export function setNotify(kind: JobKind, id: string, notify: boolean) {
   write(); emit()
 }
 
-export function finish(kind: JobKind, id: string, finalStatus: string, summary: string, text: string, failed: boolean) {
+export function finish(kind: JobKind, id: string, finalStatus: string, summary: string, text: string, tone: Toast['tone']) {
   const j = find(kind, id)
   if (!j || j.state === 'finished') return
   jobs = jobs.map((x) => (x === j ? { ...x, state: 'finished', finalStatus, summary, seen: false } : x))
-  toasts = [...toasts, { key: `${kind}:${id}`, kind, id, text, failed }]
+  const key = `${kind}:${id}`
+  toasts = [...toasts.filter((x) => x.key !== key), { key, kind, id, text, tone }]
   write(); emit()
   if (j.notify && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     try { new Notification('CEITBA · Wiki IA', { body: text, tag: `${kind}:${id}` }) } catch { /* ignore */ }
   }
+}
+
+// Stops watching a job without a toast (e.g. the API answers 404 for it).
+export function drop(kind: JobKind, id: string) {
+  const before = jobs.length
+  jobs = jobs.filter((j) => !(j.kind === kind && j.id === id))
+  if (jobs.length !== before) { write(); emit() }
 }
 
 export function dismissToast(key: string) {
@@ -105,7 +126,15 @@ export function markSeen(kind: JobKind, id?: string) {
 export const unseenCount = (kind?: JobKind) =>
   jobs.filter((j) => j.state === 'finished' && !j.seen && (!kind || j.kind === kind)).length
 
-export const activeJobs = () => jobs.filter((j) => j.state === 'active')
+export function activeJobs(): WatchedJob[] {
+  const now = Date.now()
+  const stale = jobs.filter((j) => j.state === 'active' && now - (j.since ?? now) >= MAX_ACTIVE_AGE)
+  if (stale.length) {
+    jobs = jobs.filter((j) => !stale.includes(j))
+    write(); emit()
+  }
+  return jobs.filter((j) => j.state === 'active')
+}
 
 // "ver resultados" from a toast: ManagePage / the section consume it.
 export function requestOpen(kind: JobKind, id: string) {

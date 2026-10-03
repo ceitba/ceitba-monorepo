@@ -165,20 +165,6 @@ html.dark .apunte-prose blockquote { color: #d4d4d8 !important; }
 html.dark .apunte-prose th, html.dark .apunte-prose td { border-color: #3f3f46; }
 html.dark .apunte-prose th { background-color: #18181b !important; }
 
-/* docx-preview output (.docx originals). Pages keep their paper look (white,
-   the document's own colours) in both themes; the grey host is the "desk". */
-.apunte-docx-host .apunte-docx-wrapper {
-  background: transparent !important;
-  padding: 16px !important;
-}
-.apunte-docx-host .apunte-docx-wrapper > section.apunte-docx {
-  box-shadow: 0 1px 3px rgba(26,60,110,0.08), 0 4px 16px rgba(26,60,110,0.06) !important;
-  margin-bottom: 16px !important;
-}
-@media (max-width: 640px) {
-  .apunte-docx-host .apunte-docx-wrapper { padding: 8px !important; }
-}
-
 /* SheetJS tables (spreadsheet originals). */
 .apunte-sheet table {
   border-collapse: collapse;
@@ -289,6 +275,7 @@ html.dark .kb-prose a { color: #7FA1D4; }
   display: inline-block;
 }
 .kb-prose .kb-unresolved { border-bottom: 1px dashed #9CA3AF; cursor: help; }
+.kb-prose .kb-img-alt { font-style: italic; color: #6B7280; }
 .kb-prose .kb-cite {
   /* AI-answer style citation marker: small, raised, muted, no fill. */
   display: inline;

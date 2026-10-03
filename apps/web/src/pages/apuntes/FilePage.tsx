@@ -3,32 +3,27 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { fetchFile, fileAssetsBaseUrl, fileDownloadUrl, type FileDetail } from '../../api/drive'
-import { ApiError, BASE_URL } from '../../api/client'
+import { ApiError } from '../../api/client'
 import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
 import FileViewer from '../../components/apuntes/viewers/FileViewer'
 import { sanitizeHtml } from '../../utils/sanitize'
-import { safeHttpUrl } from '../../utils/url'
+import { safeHttpUrl, trustedImageSrc } from '../../utils/url'
 import KindIcon from '../../components/apuntes/KindIcon'
 import YearBadge from '../../components/apuntes/YearBadge'
 import ReportDialog from '../../components/apuntes/ReportDialog'
 import Notice from '../../components/Notice'
 import { BTN_OUTLINE, BTN_PRIMARY } from '../../components/apuntes/buttons'
 
-// BASE_URL is ".../api/v1" (absolute, or "/api/v1" behind a proxy); its
-// parent is where "/v1/…" paths live.
-const API_ROOT = new URL(BASE_URL, window.location.origin).href.replace(/\/v1\/?$/, '')
-
 // Doc HTML is sanitized server-side; sanitize again (defence in depth) and
 // point embedded images at the API: they come as root-relative
 // "/api/v1/wiki/files/{id}/assets/{name}", and the SPA may run on another
-// origin in dev.
+// origin in dev. Remote images (other origins) are dropped.
 function prepareDocHtml(html: string, fileId: string): string {
   return sanitizeHtml(html, {
     rewriteImg: (src) => {
-      if (/^https?:\/\//i.test(src) || /^data:image\//i.test(src)) return src
-      if (src.startsWith('/api/')) return new URL(src, API_ROOT).href
-      if (src.startsWith('/v1/')) return API_ROOT + src
+      const trusted = trustedImageSrc(src)
+      if (trusted) return trusted
       if (!src.startsWith('/') && !/^[a-z]+:/i.test(src)) {
         return fileAssetsBaseUrl(fileId) + src.replace(/^\.?\/?(assets\/)?/, '')
       }

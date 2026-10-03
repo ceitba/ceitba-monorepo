@@ -175,13 +175,14 @@ export default function SubjectFilesPage() {
         </div>
       )}
 
-      {tab === null && !notFound && (
+      {/* Also while ?vista=wiki waits for /kb, so "no wiki" never flashes. */}
+      {(tab === null || (tab === 'wiki' && !kbLoaded)) && !notFound && (
         <div className="flex flex-col gap-3" aria-busy="true" aria-hidden="true">
           {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 rounded-card skeleton" />)}
         </div>
       )}
 
-      {tab === 'wiki' && (
+      {tab === 'wiki' && kbLoaded && (
         kb?.index ? (
           <WikiArticle
             page={kb.index}

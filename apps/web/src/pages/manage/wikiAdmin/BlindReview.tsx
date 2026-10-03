@@ -172,7 +172,7 @@ function ReviewColumn({ label, page, subjectId, slug, reveal }: {
     reportedByMe: false,
   }), [page, label, slug, subjectId])
   const order = useMemo(() => citationOrder(kbPage.markdown, kbPage.sources), [kbPage])
-  const ctx = useMemo(() => ({ order, highlighted: null, reportPart: () => {} }), [order])
+  const ctx = useMemo(() => ({ order, reportPart: () => {} }), [order])
 
   return (
     <article className="min-w-0 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface">
