@@ -29,9 +29,19 @@ public class KbUsageRecorder {
 
     public BigDecimal record(UUID runId, UUID evalId, String requestId, String model, String mode, String stage,
                              String subjectId, int input, int cached, int output) {
+        return record(runId, evalId, requestId, model, mode, stage, subjectId, input, cached, output, 1, null, null);
+    }
+
+    // One HTTP call: attempt is 1-based per request; latencyMs (sync) and
+    // reasoningTokens (when reported) may be null.
+    public BigDecimal record(UUID runId, UUID evalId, String requestId, String model, String mode, String stage,
+                             String subjectId, int input, int cached, int output, int attempt, Integer latencyMs,
+                             Integer reasoningTokens) {
         var cost = KbPricing.cost(models.findById(model).orElse(null), mode, input, cached, output);
-        usage.save(new KbLlmUsage(OffsetDateTime.now(clock), runId, evalId, requestId, model, mode, stage, subjectId,
-            input, cached, output, cost, router.simulated()));
+        var row = new KbLlmUsage(OffsetDateTime.now(clock), runId, evalId, requestId, model, mode, stage, subjectId,
+            input, cached, output, cost, router.simulated());
+        row.setCallInfo(attempt, latencyMs, reasoningTokens);
+        usage.save(row);
         return cost;
     }
 }

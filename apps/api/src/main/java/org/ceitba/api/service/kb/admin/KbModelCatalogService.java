@@ -31,6 +31,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -59,11 +61,17 @@ public class KbModelCatalogService {
     private final ObjectMapper json;
     private final Clock clock;
 
+    private final org.ceitba.api.external.llm.DoModelCatalog doCatalog;
+    private final org.ceitba.api.repository.kb.KbModelPriceHistoryRepository priceHistory;
+
     public KbModelCatalogService(KbModelRepository models,
                                  org.ceitba.api.repository.kb.KbRunRequestRepository requests, KbSettingsService settings, KbLlmRouter router,
                                  SyncLlmExecutor sync, BatchLlmExecutor batch, SyncChatClient chat,
                                  KbPayloads payloads, KbUsageRecorder usage, TransactionTemplate tx,
-                                 ObjectMapper json, Clock clock) {
+                                 ObjectMapper json, Clock clock, org.ceitba.api.external.llm.DoModelCatalog doCatalog,
+                                 org.ceitba.api.repository.kb.KbModelPriceHistoryRepository priceHistory) {
+        this.doCatalog = doCatalog;
+        this.priceHistory = priceHistory;
         this.models = models;
         this.requests = requests;
         this.settings = settings;
@@ -120,12 +128,123 @@ public class KbModelCatalogService {
     }
 
     // Adds the ids DO lists that the catalog lacks (disabled, no price).
+    // POST /models/sync (ADMIN doc §2): prices, context and names from DO's
+    // public catalog onto matching models (history per change), missing
+    // serverless chat models added disabled. Capabilities are hints only:
+    // probes win. Never touches batchDiscount, batchSupported, enabled or
+    // past costs. Without the catalog: ids from /v1/models only.
     public KbModelSyncResponse sync() {
+        return sync("do-catalog");
+    }
+
+    public KbModelSyncResponse sync(String historySource) {
+        List<JsonNode> items;
+        try {
+            items = doCatalog.fetch();
+        } catch (org.ceitba.api.external.llm.LlmApiException e) {
+            log.warn("KB catalog: DO model catalog unavailable ({}); falling back to /v1/models", e.getMessage());
+            return syncIds();
+        }
+        var now = OffsetDateTime.now(clock);
+        var parsed = items.stream().map(KbCatalogItem::of).filter(c -> c.id() != null && c.id().length() <= 128).toList();
+        return tx.execute(s -> {
+            Map<String, KbModel> existing = new java.util.LinkedHashMap<>();
+            models.findAllByOrderByIdAsc().forEach(m -> existing.put(m.getId(), m));
+            var updated = new ArrayList<KbModelSyncResponse.Updated>();
+            var added = new ArrayList<String>();
+            int unchanged = 0;
+            var seen = new HashSet<String>();
+            for (var c : parsed) {
+                if (!seen.add(c.id())) continue;
+                if (!c.perTokenFields().isEmpty()) {
+                    log.info("KB catalog: {} prices {} given per token, converted x1e6", c.id(), c.perTokenFields());
+                }
+                var m = existing.get(c.id());
+                if (m == null) {
+                    if (!c.serverlessChat() || c.inputPerM() == null) continue;
+                    m = new KbModel(c.id(), c.name() == null ? c.id() : c.name(),
+                        c.creator() == null ? provider(c.id()) : c.creator(), KbChatPayloads.batchByRule(c.id()), false);
+                    m.setPrices(c.inputPerM(), c.outputPerM(), c.cacheReadPerM(), null, now);
+                    m.setContextWindow(c.contextWindow());
+                    m.setMaxOutputTokens(c.maxOutputTokens());
+                    m.setPriceSource("do-catalog");
+                    if (c.has("reasoning")) m.setSupportsReasoningEffort(true);
+                    if (c.has("tool_calling")) m.setToolCalling("yes");
+                    models.save(m);
+                    added.add(c.id());
+                    continue;
+                }
+                var changes = applyCatalog(m, c, now, historySource);
+                if (changes.isEmpty()) unchanged++;
+                else updated.add(new KbModelSyncResponse.Updated(m.getId(), changes));
+            }
+            var notInCatalog = existing.keySet().stream().filter(id -> !seen.contains(id)).toList();
+            log.info("KB catalog: synced from DO catalog: {} updated, {} added, {} unchanged, {} not in catalog",
+                updated.size(), added.size(), unchanged, notInCatalog.size());
+            return new KbModelSyncResponse(updated, added, unchanged, notInCatalog, "do-catalog", now);
+        });
+    }
+
+    // Applies one catalog item to an existing model; returns the changes
+    // (each also written to kb_model_price_history).
+    List<KbModelSyncResponse.Change> applyCatalog(KbModel m, KbCatalogItem c, OffsetDateTime now, String source) {
+        var changes = new ArrayList<KbModelSyncResponse.Change>();
+        var input = c.inputPerM() != null ? c.inputPerM() : m.getInputPerM();
+        var output = c.outputPerM() != null ? c.outputPerM() : m.getOutputPerM();
+        var cache = c.cacheReadPerM() != null ? c.cacheReadPerM() : m.getCacheReadPerM();
+        change(changes, "inputPerM", m.getInputPerM(), input);
+        change(changes, "outputPerM", m.getOutputPerM(), output);
+        change(changes, "cacheReadPerM", m.getCacheReadPerM(), cache);
+        boolean pricesChanged = !changes.isEmpty();
+        if (c.contextWindow() != null) change(changes, "contextWindow", m.getContextWindow(), c.contextWindow());
+        if (c.maxOutputTokens() != null) change(changes, "maxOutputTokens", m.getMaxOutputTokens(), c.maxOutputTokens());
+        if (c.name() != null && !m.isDisplayNameManual()) change(changes, "displayName", m.getDisplayName(), c.name());
+        if (c.creator() != null) change(changes, "provider", m.getProvider(), c.creator());
+        if (pricesChanged || m.getPriceSource() == null) {
+            m.setPrices(input, output, cache, m.getBatchDiscount(), now);
+        }
+        if (c.contextWindow() != null) m.setContextWindow(c.contextWindow());
+        if (c.maxOutputTokens() != null) m.setMaxOutputTokens(c.maxOutputTokens());
+        if (c.name() != null && !m.isDisplayNameManual()) m.setDisplayName(c.name());
+        if (c.creator() != null) m.setProvider(c.creator());
+        m.setPriceSource("do-catalog");
+        // Hints, never over a probe's verdict.
+        if (c.has("reasoning") && !m.isSupportsReasoningEffort() && m.getLastProbe() == null) {
+            m.setSupportsReasoningEffort(true);
+            changes.add(new KbModelSyncResponse.Change("supportsReasoningEffort", "false", "true"));
+        }
+        if (c.has("tool_calling") && "unknown".equals(m.getToolCalling())) {
+            m.setToolCalling("yes");
+            changes.add(new KbModelSyncResponse.Change("toolCalling", "unknown", "yes"));
+        }
+        for (var ch : changes) {
+            priceHistory.save(new org.ceitba.api.domain.kb.KbModelPriceHistory(m.getId(), ch.field(), ch.old(),
+                ch.newValue(), now, source));
+        }
+        return changes;
+    }
+
+    private static void change(List<KbModelSyncResponse.Change> out, String field, Object old, Object now) {
+        String o = str(old);
+        String n = str(now);
+        if (java.util.Objects.equals(o, n)) return;
+        out.add(new KbModelSyncResponse.Change(field, o, n));
+    }
+
+    private static String str(Object v) {
+        if (v == null) return null;
+        if (v instanceof BigDecimal b) return b.stripTrailingZeros().toPlainString();
+        return v.toString();
+    }
+
+    // Fallback: ids from the inference /v1/models (no prices), added disabled.
+    private KbModelSyncResponse syncIds() {
         if (!chat.available()) {
             throw new KbPipelineException(KbPipelineException.Reason.LLM_UNCONFIGURED,
-                "Inference is not configured (KB_LLM_API_KEY)");
+                "Neither DO's model catalog nor inference (KB_LLM_API_KEY) is available");
         }
         var ids = chat.listModels();
+        var now = OffsetDateTime.now(clock);
         return tx.execute(s -> {
             var known = new HashSet<String>();
             models.findAll().forEach(m -> known.add(m.getId()));
@@ -137,7 +256,10 @@ public class KbModelCatalogService {
                 models.save(m);
                 added.add(id);
             }
-            return new KbModelSyncResponse(added, ids.size());
+            var listed = new HashSet<>(ids);
+            var notListed = known.stream().filter(id -> !listed.contains(id)).sorted().toList();
+            return new KbModelSyncResponse(List.of(), added, known.size() - notListed.size(), notListed,
+                "inference-models", now);
         });
     }
 
@@ -304,7 +426,10 @@ public class KbModelCatalogService {
     }
 
     private void apply(KbModel m, JsonNode b) {
-        if (b.hasNonNull("displayName")) m.setDisplayName(b.get("displayName").asText());
+        if (b.hasNonNull("displayName")) {
+            m.setDisplayName(b.get("displayName").asText());
+            m.setDisplayNameManual(true);   // a catalog sync keeps it
+        }
         if (b.hasNonNull("provider")) m.setProvider(b.get("provider").asText());
         if (b.hasNonNull("batchSupported")) m.setBatchSupported(b.get("batchSupported").asBoolean());
         if (b.hasNonNull("batchDiscountVerified")) m.setBatchDiscountVerified(b.get("batchDiscountVerified").asBoolean());
@@ -326,7 +451,18 @@ public class KbModelCatalogService {
             if (discount != null && (discount.signum() < 0 || discount.compareTo(BigDecimal.ONE) > 0)) {
                 throw new ValidationException("batchDiscount", discount, "must be between 0 and 1");
             }
-            m.setPrices(input, output, cache, discount, OffsetDateTime.now(clock));
+            var now = OffsetDateTime.now(clock);
+            var changes = new ArrayList<KbModelSyncResponse.Change>();
+            change(changes, "inputPerM", m.getInputPerM(), input);
+            change(changes, "outputPerM", m.getOutputPerM(), output);
+            change(changes, "cacheReadPerM", m.getCacheReadPerM(), cache);
+            change(changes, "batchDiscount", m.getBatchDiscount(), discount);
+            for (var ch : changes) {
+                priceHistory.save(new org.ceitba.api.domain.kb.KbModelPriceHistory(m.getId(), ch.field(), ch.old(),
+                    ch.newValue(), now, "manual"));
+            }
+            m.setPrices(input, output, cache, discount, now);
+            if (b.has("inputPerM") || b.has("outputPerM") || b.has("cacheReadPerM")) m.setPriceSource("manual");
         }
     }
 
@@ -361,7 +497,8 @@ public class KbModelCatalogService {
         return new KbModelResponse(m.getId(), m.getDisplayName(), m.getProvider(), m.isBatchSupported(),
             m.getBatchSource(), m.getBatchVerifiedAt(), m.isBatchDiscountVerified(), m.getToolCalling(),
             m.isSupportsReasoningEffort(), m.isEnabled(), m.getInputPerM(), m.getOutputPerM(), m.getCacheReadPerM(),
-            m.getBatchDiscount(), effective, m.getContextWindow(), m.getNotes(), m.getPricesUpdatedAt(),
+            m.getBatchDiscount(), effective, m.getContextWindow(), m.getMaxOutputTokens(), m.getNotes(),
+            m.getPricesUpdatedAt(), m.getPriceSource(),
             m.getLastProbe(), m.isEnabled() && m.probeSucceeded(), emptyToolCallRate);
     }
 }

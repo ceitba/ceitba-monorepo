@@ -142,7 +142,37 @@ public class KbRunEngine {
     }
 
     // One transition; false when the run has to wait (or is over/blocked).
+    // Stage changes are written to kb_run.stage_log and logged once (INFO).
     public boolean step(UUID runId) {
+        var before = inTx(() -> runs.findById(runId).map(r -> r.getStage() + "|" + r.getStatus()).orElse(null));
+        var moved = stepOnce(runId);
+        if (before != null) transitions(runId, before.split("\\|")[0], before.split("\\|")[1]);
+        return moved;
+    }
+
+    private void transitions(UUID runId, String stageBefore, String statusBefore) {
+        inTxVoid(() -> {
+            var r = runs.findById(runId).orElse(null);
+            if (r == null) return;
+            boolean stageChanged = !r.getStage().equals(stageBefore);
+            boolean ended = !r.isActive() && !statusBefore.equals(r.getStatus());
+            if (!stageChanged && !ended) return;
+            var at = now().toString();
+            var logNode = r.getStageLog() == null ? json.createObjectNode() : (ObjectNode) r.getStageLog().deepCopy();
+            var prev = logNode.with(stageBefore);
+            if (!prev.has("startedAt")) prev.put("startedAt", r.getStartedAt() == null ? at : r.getStartedAt().toString());
+            prev.put("finishedAt", at);
+            if (stageChanged && !r.getStage().equals("DONE")) logNode.with(r.getStage()).put("startedAt", at);
+            r.setStageLog(logNode);
+            var rows = requests.findByRunIdAndStage(runId, stageBefore);
+            long done = rows.stream().filter(x -> x.getStatus().equals("DONE")).count();
+            long failed = rows.stream().filter(x -> x.getStatus().equals("FAILED")).count();
+            log.info("KB {} {}: {} -> {} ({}; {} requests: {} done, {} failed)", r.isEval() ? "eval" : "run", runId,
+                stageBefore, r.getStage(), r.getStatus(), rows.size(), done, failed);
+        });
+    }
+
+    private boolean stepOnce(UUID runId) {
         var run = inTx(() -> runs.findById(runId).orElse(null));
         if (run == null || !run.isActive() || run.getStatus().equals("BLOCKED_BY_COST_LIMIT")) return false;
         var handler = handler(run);
@@ -237,12 +267,13 @@ public class KbRunEngine {
         var open = stageJobs.stream().filter(j -> j.getStatus().equals("SUBMITTED")).toList();
         if (!open.isEmpty()) {
             boolean allDone = true;
+            // Sync jobs (one per model) resume together, sharing the concurrency.
+            var openSync = open.stream().filter(j -> j.getMode().equals("SYNC")).map(KbBatchJob::getId).toList();
+            if (!openSync.isEmpty()) runSyncJobs(openSync);
             for (var job : open) {
-                if (job.getMode().equals("SYNC")) {
-                    runSyncJob(job.getId());   // resumes what a restart interrupted
-                    continue;
-                }
+                if (job.getMode().equals("SYNC")) continue;
                 var info = batch.poll(job.getDoBatchId());
+                observe(job.getId(), info);
                 if (info.finished()) collectBatch(job.getId(), info);
                 else allDone = false;
             }
@@ -320,6 +351,7 @@ public class KbRunEngine {
             return m;
         });
         int n = 0;
+        var syncJobs = new ArrayList<UUID>();
         for (var e : byModel.entrySet()) {
             n++;
             var model = e.getKey();
@@ -353,39 +385,64 @@ public class KbRunEngine {
                     jobs.findById(job.getId()).orElseThrow().submitted(null, null, now());
                     requests.findAllById(ids).forEach(r -> r.submitted(job.getId()));
                 });
-                runSyncJob(job.getId());
+                syncJobs.add(job.getId());
             }
         }
+        // Every model's sync job of the stage runs at once (one shared pool).
+        if (!syncJobs.isEmpty()) runSyncJobs(syncJobs);
     }
 
-    // SYNC: executes the job's requests that have no answer yet.
-    private void runSyncJob(UUID jobId) {
-        var job = inTx(() -> jobs.findById(jobId).orElseThrow());
-        var pending = inTx(() -> requests.findByBatchJobId(jobId).stream()
-            .filter(r -> r.getStatus().equals("SUBMITTED"))
-            .map(r -> new LlmLine(r.getCustomId(), r.getParams()))
-            .toList());
-        var outputs = new StringBuffer();
-        sync.run(pending, result -> {
-            synchronized (recordLock) {
-                inTxVoid(() -> record(job.getRunId(), job.getId(), "SYNC", result));
-            }
-            outputs.append(outputLine(result)).append('\n');
-        });
-        String outKey = null;
-        if (outputs.length() > 0) {
-            outKey = job.getPayloadKey().replace(".jsonl", "-out" + (pending.size() < job.getRequestCount() ? "-resumed" : "")
-                + ".jsonl");
-            var bytes = outputs.toString().getBytes(StandardCharsets.UTF_8);
-            storage.put(outKey, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
-        }
-        var key = outKey;
+    // SYNC: executes the jobs' requests that have no answer yet, all in one
+    // pool of KB_SYNC_CONCURRENCY in-flight requests; each answer is recorded
+    // as it arrives (restart-safe). Answers for a run that was cancelled
+    // meanwhile are recorded in usage (they were paid for) but not applied.
+    private void runSyncJobs(List<UUID> jobIds) {
+        Map<UUID, KbBatchJob> byId = new LinkedHashMap<>();
+        Map<String, UUID> jobOf = new java.util.HashMap<>();
+        var lines = new ArrayList<LlmLine>();
+        Map<UUID, Integer> pendingCount = new java.util.HashMap<>();
         inTxVoid(() -> {
-            jobs.findById(jobId).orElseThrow().finish("COMPLETED", key, now(), null);
-            runs.findById(job.getRunId()).ifPresent(r -> r.setStatus("RUNNING"));
+            for (var id : jobIds) {
+                var job = jobs.findById(id).orElseThrow();
+                byId.put(id, job);
+                int c = 0;
+                for (var r : requests.findByBatchJobId(id)) {
+                    if (!r.getStatus().equals("SUBMITTED") || r.getCompletedAt() != null) continue;
+                    lines.add(new LlmLine(r.getCustomId(), r.getParams()));
+                    jobOf.put(r.getCustomId(), id);
+                    c++;
+                }
+                pendingCount.put(id, c);
+            }
         });
-        log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(), pending.size(),
-            job.getModel());
+        Map<UUID, StringBuffer> outputs = new java.util.concurrent.ConcurrentHashMap<>();
+        sync.run(lines, (SyncLlmExecutor.Outcome outcome) -> {
+            var result = outcome.result();
+            var job = byId.get(jobOf.get(result.customId()));
+            synchronized (recordLock) {
+                inTxVoid(() -> record(job.getRunId(), job.getId(), "SYNC", result, outcome));
+            }
+            outputs.computeIfAbsent(job.getId(), k -> new StringBuffer()).append(outputLine(result)).append('\n');
+        }, () -> byId.values().stream().map(KbBatchJob::getRunId).distinct()
+            .noneMatch(id -> inTx(() -> runs.findById(id).map(KbRun::isActive).orElse(false))));
+        for (var job : byId.values()) {
+            var out = outputs.get(job.getId());
+            String outKey = null;
+            if (out != null && out.length() > 0) {
+                outKey = job.getPayloadKey().replace(".jsonl", "-out"
+                    + (pendingCount.get(job.getId()) < job.getRequestCount() ? "-resumed" : "") + ".jsonl");
+                var bytes = out.toString().getBytes(StandardCharsets.UTF_8);
+                storage.put(outKey, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
+            }
+            var key = outKey;
+            inTxVoid(() -> {
+                var j = jobs.findById(job.getId()).orElseThrow();
+                if (j.getStatus().equals("SUBMITTED")) j.finish("COMPLETED", key, now(), null);
+                runs.findById(job.getRunId()).filter(KbRun::isActive).ifPresent(r -> r.setStatus("RUNNING"));
+            });
+            log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(),
+                pendingCount.get(job.getId()), job.getModel());
+        }
     }
 
     private ObjectNode outputLine(LlmOutputParser.LlmResult r) {
@@ -422,7 +479,7 @@ public class KbRunEngine {
         inTxVoid(() -> {
             for (var r : requests.findByBatchJobId(jobId)) {
                 var res = collected.results().get(r.getCustomId());
-                if (res != null) record(job.getRunId(), jobId, "BATCH", res);
+                if (res != null) record(job.getRunId(), jobId, "BATCH", res, null);
             }
             var status = switch (info.status()) {
                 case "completed" -> "COMPLETED";
@@ -433,6 +490,18 @@ public class KbRunEngine {
             runs.findById(job.getRunId()).ifPresent(r -> r.setStatus("RUNNING"));
         });
         log.info("KB run {} {} batch {} {}", job.getRunId(), job.getStage(), info.id(), info.status());
+    }
+
+    // Keeps DO's status and request_counts of a polled batch (progress).
+    private void observe(UUID jobId, LlmBatchClient.BatchInfo info) {
+        com.fasterxml.jackson.databind.JsonNode counts = null;
+        try {
+            if (info.raw() != null) counts = json.readTree(info.raw()).path("request_counts");
+        } catch (Exception ignored) {
+            // no counts
+        }
+        var c = counts;
+        inTxVoid(() -> jobs.findById(jobId).ifPresent(j -> j.observed(info.status(), c, now())));
     }
 
     static boolean emptyOrTruncated(String error) {
@@ -471,9 +540,13 @@ public class KbRunEngine {
     }
 
     // One answer: request row, usage (frozen cost), job/run/subject totals.
-    private void record(UUID runId, UUID jobId, String mode, LlmOutputParser.LlmResult res) {
+    // outcome: the sync attempts (one usage row each, with latency and
+    // reasoning tokens); null for batch (one row, the job's attempt number).
+    private void record(UUID runId, UUID jobId, String mode, LlmOutputParser.LlmResult res,
+                        SyncLlmExecutor.Outcome outcome) {
         var r = requests.findById(res.customId()).orElse(null);
         if (r == null || r.getStatus().equals("DONE")) return;
+        r.answered(now(), outcome == null ? null : outcome.latencyMs());
         var run = runs.findById(runId).orElseThrow();
         var handler = handler(run);
         if (res.ok()) {
@@ -485,16 +558,31 @@ public class KbRunEngine {
             r.setError(res.error());
         }
         if (res.tokensIn() == 0 && res.tokensOut() == 0) return;
-        var cost = usage.record(run.isEval() ? null : runId, run.isEval() ? runId : null, r.getCustomId(),
-            r.getModel(), mode, handler.usageStage(r.getStage()), r.getSubjectId(), res.tokensIn(),
-            res.cachedTokens(), res.tokensOut());
-        jobs.findById(jobId).ifPresent(j -> j.addUsage(res.tokensIn(), res.tokensOut(), res.cachedTokens(), cost));
+        var stage = handler.usageStage(r.getStage());
+        var cost = BigDecimal.ZERO;
+        UUID usageRun = run.isEval() ? null : runId;
+        UUID usageEval = run.isEval() ? runId : null;
+        if (outcome != null && !outcome.attempts().isEmpty()) {
+            int n = 0;
+            for (var a : outcome.attempts()) {
+                n++;
+                cost = cost.add(usage.record(usageRun, usageEval, r.getCustomId(), r.getModel(), mode, stage,
+                    r.getSubjectId(), a.tokensIn(), a.cachedTokens(), a.tokensOut(), n, a.latencyMs(),
+                    a.reasoningTokens()));
+            }
+        } else {
+            int attempt = jobs.findById(jobId).map(KbBatchJob::getAttempt).orElse(1);
+            cost = usage.record(usageRun, usageEval, r.getCustomId(), r.getModel(), mode, stage, r.getSubjectId(),
+                res.tokensIn(), res.cachedTokens(), res.tokensOut(), attempt, null, null);
+        }
+        var total = cost;
+        jobs.findById(jobId).ifPresent(j -> j.addUsage(res.tokensIn(), res.tokensOut(), res.cachedTokens(), total));
         run.addTokens(res.tokensIn(), res.tokensOut());
         run.addCached(res.cachedTokens());
-        run.addCost(cost);
+        run.addCost(total);
         if (router.simulated()) run.setSimulated(true);
         runSubjects.findById(new KbRunSubjectId(runId, r.getSubjectId()))
-            .ifPresent(s -> s.addUsage(res.tokensIn(), res.tokensOut(), res.cachedTokens(), cost));
+            .ifPresent(s -> s.addUsage(res.tokensIn(), res.tokensOut(), res.cachedTokens(), total));
     }
 
     // ==== helpers for handlers ==================================================

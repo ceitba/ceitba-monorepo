@@ -64,6 +64,12 @@ public class StaffKbPipelineController {
         return pipeline.run(id);
     }
 
+    @GetMapping("/runs/{id}/progress")
+    @Operation(summary = "Just the progress of a run (cheap; for polling every few seconds)")
+    public org.ceitba.api.web.kb.dto.KbProgressResponse progress(@PathVariable UUID id) {
+        return pipeline.progress(id);
+    }
+
     @PostMapping("/runs/{id}/cancel")
     @Operation(summary = "Cancel an active run (cancels its open batches)")
     public KbRunResponse cancel(@PathVariable UUID id) {

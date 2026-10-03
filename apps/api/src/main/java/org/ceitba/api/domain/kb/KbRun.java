@@ -36,6 +36,10 @@ public class KbRun {
     @Column(length = 16)
     private String stage;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "stage_log", columnDefinition = "jsonb", nullable = false)
+    private JsonNode stageLog = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+
     @Column(name = "dry_run", nullable = false)
     private boolean dryRun;
 
@@ -155,4 +159,7 @@ public class KbRun {
         this.status = status;
         this.finishedAt = at;
     }
+
+    public JsonNode getStageLog() { return stageLog; }
+    public void setStageLog(JsonNode stageLog) { this.stageLog = stageLog; }
 }

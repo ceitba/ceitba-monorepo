@@ -248,7 +248,7 @@ public class KbForecastService {
                     changedFiles++;
                     var f = fp(i);
                     if (known.contains(f) || !planned.add(f)) continue;
-                    int chunks = (int) Math.max(1, Math.ceil(i.chars() / 70_000.0));
+                    int chunks = (int) Math.max(1, Math.ceil(i.chars() / (double) KbPayloads.CHUNK_CHARS));
                     lines.add(line(s, "DIGEST", null, chunks, (long) (i.chars() / 3.5) + (long) OVERHEAD * chunks,
                         ratios, cache));
                 }

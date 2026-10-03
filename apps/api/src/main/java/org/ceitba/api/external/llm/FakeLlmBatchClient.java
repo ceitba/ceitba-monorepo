@@ -27,6 +27,7 @@ public class FakeLlmBatchClient implements LlmBatchClient {
     private final AtomicInteger ids = new AtomicInteger();
     private volatile Function<FakeLlmRequest, JsonNode> responder = r -> null;
     private volatile boolean hold;
+    private final List<String> cancelled = java.util.Collections.synchronizedList(new ArrayList<>());
 
     public FakeLlmBatchClient(ObjectMapper json) {
         this.json = json;
@@ -37,6 +38,7 @@ public class FakeLlmBatchClient implements LlmBatchClient {
         batchFile.clear();
         status.clear();
         submitted.clear();
+        cancelled.clear();
         responder = r -> null;
         hold = false;
     }
@@ -140,7 +142,13 @@ public class FakeLlmBatchClient implements LlmBatchClient {
 
     @Override
     public void cancel(String batchId) {
+        cancelled.add(batchId);
         status.computeIfPresent(batchId, (k, v) -> "cancelled");
+    }
+
+    // Batch ids cancel() was called for.
+    public List<String> cancelled() {
+        return List.copyOf(cancelled);
     }
 
     // Anthropic lines {custom_id, params} or OpenAI lines {custom_id, body}.

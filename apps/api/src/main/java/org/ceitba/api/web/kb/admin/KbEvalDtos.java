@@ -19,19 +19,41 @@ public final class KbEvalDtos {
     public record FrozenSubject(String subjectId, String subjectName, int files, long chars, int digestsMissing) {}
 
     // configKey: "<plan>[@effort]|<write>[@effort]", e.g. glm-5.3@low|glm-5.3@medium.
+    // progress: this configuration's share of PLAN/WRITE/RETRY (detail only).
     public record Config(String configKey, String plan, String write, JsonNode reasoningEffort, String status,
-                         JsonNode metrics, List<SubjectResult> perSubject) {}
+                         JsonNode metrics, List<SubjectResult> perSubject, ConfigProgress progress) {}
 
-    public record SubjectResult(String subjectId, String subjectName, JsonNode metrics, List<PageResult> pages) {}
+    // percent 0-100 of estimated tokens; stage: the eval's current stage.
+    public record ConfigProgress(long done, long total, double percent, String stage) {}
+
+    // status: pending | planning | writing | validating | done | failed | cancelled.
+    public record SubjectResult(String subjectId, String subjectName, String status, int pagesPlanned,
+                                int pagesWritten, int pagesValid, JsonNode metrics, List<PageResult> pages) {}
 
     public record PageResult(String slug, String title, boolean valid, boolean firstPassValid, List<String> errors) {}
 
     // status: RUNNING | WAITING | SUCCEEDED | FAILED | CANCELLED; stage of the
     // underlying run. sharedDigest: digests computed for the set (not per config).
+    // progress (detail only): the run's progress, DIGEST shared by all
+    // configurations. reviewSummary: once the eval succeeded, the review
+    // progress for the caller.
     public record Eval(UUID id, UUID setId, String setName, String status, String stage, String note,
                        OffsetDateTime createdAt, OffsetDateTime finishedAt, Long durationSec, long tokensIn,
                        long tokensOut, BigDecimal costUsd, boolean simulated, String error, JsonNode sharedDigest,
-                       List<Config> configs) {}
+                       List<Config> configs, org.ceitba.api.web.kb.dto.KbProgressResponse progress,
+                       ReviewProgress reviewSummary) {}
+
+    // GET /evals/{id}/review/progress. A pair is one (subject, slug) written
+    // by two configurations. confident: every configuration has at least
+    // minRatingsForConfidence ratings.
+    public record ReviewProgress(int totalPairs, int reviewedByMe, int reviewedByAnyone, int remainingForMe,
+                                 List<SubjectReview> perSubject, List<ConfigRatings> ratingsPerConfig,
+                                 int minRatingsForConfidence, boolean confident) {}
+
+    public record SubjectReview(String subjectId, String subjectName, int totalPairs, int reviewedByMe,
+                                int reviewedByAnyone) {}
+
+    public record ConfigRatings(String configKey, String plan, String write, int ratings) {}
 
     public record Estimate(long estimatedInputTokens, long estimatedOutputTokens, BigDecimal estimatedCostUsd) {}
 
@@ -42,7 +64,8 @@ public final class KbEvalDtos {
                              List<org.ceitba.api.web.kb.dto.KbLinkResponse> links) {}
 
     // remaining: page pairs this reviewer has not rated yet (this one included).
-    public record ReviewPair(String subjectId, String slug, int remaining, ReviewPage a, ReviewPage b) {}
+    public record ReviewPair(String subjectId, String slug, int remaining, int reviewedByMe, int totalPairs,
+                             ReviewPage a, ReviewPage b) {}
 
     public record Revealed(ConfigRef A, ConfigRef B) {}
 

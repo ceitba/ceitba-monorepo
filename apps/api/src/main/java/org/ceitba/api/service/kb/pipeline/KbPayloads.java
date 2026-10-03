@@ -25,10 +25,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class KbPayloads {
 
-    public static final String PROMPT_VERSION = "v1";
+    public static final String PROMPT_VERSION = "v2";   // v2: 8k-token digest chunks, bounded digest schema
 
     // ~20k tokens per digest chunk (chars / 3.5).
-    static final int CHUNK_CHARS = 70_000;
+    // About 8k input tokens (3.5 chars/token): more parallel requests and a
+    // bounded output per call instead of one long pole per large file.
+    public static final int CHUNK_CHARS = 28_000;
     // ~12k tokens of raw excerpts per written page.
     static final int EXCERPT_CHARS = 42_000;
 
@@ -112,6 +114,12 @@ public class KbPayloads {
 
     // ---- tools ---------------------------------------------------------------
 
+    private ObjectNode boundedStrings(int maxItems, int maxLength) {
+        var a = json.createObjectNode().put("type", "array").put("maxItems", maxItems);
+        a.putObject("items").put("type", "string").put("maxLength", maxLength);
+        return a;
+    }
+
     ObjectNode tool(String stage) {
         var t = json.createObjectNode();
         var schema = json.createObjectNode();
@@ -121,15 +129,16 @@ public class KbPayloads {
             case "digest" -> {
                 t.put("name", "submit_digest");
                 t.put("description", "Submit the digest of this chunk");
+                // Bounded output (digest.v2.md states the same limits).
                 var topic = json.createObjectNode().put("type", "object");
                 var tp = topic.putObject("properties");
-                tp.putObject("name").put("type", "string");
-                tp.set("aliases", stringArray());
-                tp.putObject("summary").put("type", "string");
-                tp.set("keyPoints", stringArray());
-                tp.set("formulas", stringArray());
+                tp.putObject("name").put("type", "string").put("maxLength", 80);
+                tp.set("aliases", boundedStrings(4, 80));
+                tp.putObject("summary").put("type", "string").put("maxLength", 300);
+                tp.set("keyPoints", boundedStrings(5, 160));
+                tp.set("formulas", boundedStrings(5, 160));
                 topic.putArray("required").add("name").add("summary");
-                props.putObject("topics").put("type", "array").set("items", topic);
+                props.putObject("topics").put("type", "array").put("maxItems", 12).set("items", topic);
                 props.putObject("materialKind").put("type", "string");
                 props.putObject("unitHint").putArray("type").add("string").add("null");
                 props.putObject("language").put("type", "string");

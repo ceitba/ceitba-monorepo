@@ -75,6 +75,12 @@ public class KbRunRequest {
     @Column(name = "exec_path", length = 32)
     private String execPath;
 
+    @Column(name = "completed_at")
+    private OffsetDateTime completedAt;
+
+    @Column(name = "latency_ms")
+    private Integer latencyMs;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -146,4 +152,13 @@ public class KbRunRequest {
         }
     }
     public void setError(String error) { this.error = error; }
+
+    // An answer arrived (ok or not): when, and how long the request took (sync).
+    public void answered(OffsetDateTime at, Integer latencyMs) {
+        this.completedAt = at;
+        this.latencyMs = latencyMs;
+    }
+
+    public OffsetDateTime getCompletedAt() { return completedAt; }
+    public Integer getLatencyMs() { return latencyMs; }
 }

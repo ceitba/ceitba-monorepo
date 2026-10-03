@@ -42,4 +42,10 @@ public class KbPipelineConfig {
         if (!props.hasKey()) return new UnconfiguredSyncChatClient();
         return new DoChatClient(props.baseUrl(), props.apiKey(), json);
     }
+
+    @Bean
+    public org.ceitba.api.external.llm.DoModelCatalog doModelCatalog(KbLlmProperties props, ObjectMapper json) {
+        if (props.useFake()) return new org.ceitba.api.external.llm.FakeDoModelCatalog();
+        return new org.ceitba.api.external.llm.HttpDoModelCatalog(json);
+    }
 }

@@ -22,6 +22,9 @@ and require the STAFF role.
 | `weeklyCostLimitUsd` | null | hard stop: a run is not submitted if its estimate exceeds this |
 | `retryRejected` | `KB_RETRY_REJECTED` | |
 | `subjectOverrides` | `{}` | `{ "<subjectId>": { modelWrite?, modelPlan?, paused?: bool } }` |
+| `reasoningEffort` | `{digest: low, plan: low, write: medium, retry: medium}` | §8 |
+| `maxTokens` | `{digest: 4000, plan: 6000, write: 12000, retry: 12000}` | 256..32000 each |
+| `autoRefreshPrices` | `true` | refresh prices from DO's catalog (`POST /models/sync`) right before each scheduled run |
 
 Endpoints:
 - `GET /settings`, `PUT /settings` and `POST /settings/history/{id}/restore` all return the envelope
@@ -43,8 +46,28 @@ cacheReadPerM, batchDiscount (0..1), contextWindow, notes, pricesUpdatedAt, last
 
 - Seeded with the models listed in the pipeline doc. STAFF can edit prices or enable and disable models
   (`GET /models`, `PUT /models/{id}`, `POST /models` to add one).
-- `POST /models/sync` reads DO's OpenAI-compatible `GET https://inference.do-ai.run/v1/models` (if available) and adds any
-  missing ids as disabled entries with no price.
+- `POST /models/sync` reads DigitalOcean's **public, unauthenticated** model catalog
+  `GET https://api.digitalocean.com/v2/gen-ai/models/catalog` (items with `model_id`, `name`, `creator`, `context_window`,
+  `max_output_tokens`, `capabilities[]`, `availability[]`, `pricing`):
+  - **Unit trap:** the `pricing.*_price_per_million` fields (`input_price_per_million`, `output_price_per_million`,
+    `cache_read_input_price_per_million` or `input_cache_read`) hold **per-token** prices (glm-5.3 input `1.4e-06`).
+    Defensive rule: a value below 0.01 is per token and is multiplied by 1e6; otherwise it is taken as already per
+    million. Which case applied is logged.
+  - For each existing model matched by `model_id`: updates `inputPerM`, `outputPerM`, `cacheReadPerM`, `contextWindow`,
+    `maxOutputTokens`, `displayName` (unless staff edited it with `PUT /models/{id}`) and `provider` (from `creator`); sets
+    `pricesUpdatedAt` and `priceSource: "do-catalog"`. Every change is written to
+    `wiki.kb_model_price_history (model_id, field, old_value, new_value, changed_at, source)` (`do-catalog`; price edits
+    through `PUT /models/{id}` are recorded with `manual`).
+  - Missing serverless chat models are added **disabled**, with prices; `batchSupported` follows the rule.
+  - `capabilities` are hints only (Haiku lists none but calls tools): `reasoning` sets `supportsReasoningEffort` only when
+    no probe has run; `tool_calling` sets `toolCalling: yes` only while it is `unknown`. Probes win.
+  - Never touched: `batchDiscount`, a probe's `batchSupported`, `enabled`, and past run costs (frozen prices).
+  - The catalog has no batch information: batch support stays rule + probe.
+  - Response: `{ updated: [{ id, changes: [{ field, old, new }] }], added: [ids], unchanged, notInCatalog: [ids],
+    source: "do-catalog"|"inference-models", fetchedAt }`. If the catalog is unreachable it falls back to the inference
+    `GET /v1/models` (ids only, added disabled, no prices) with `source: "inference-models"`.
+  - With `autoRefreshPrices` (default true) the same sync runs before each scheduled pipeline run.
+- `GET /models` items also carry `maxOutputTokens` and `priceSource` (`do-catalog` | `manual` | null for seed prices).
 - `POST /models/{id}/probe` runs the probe from the pipeline doc and stores the result in `lastProbe`
   (mode, whether tool calling worked, latency, usage). A model can't be selected in the settings until a probe has succeeded.
 - All costs are computed from recorded token usage multiplied by the catalog price **at the time of the run**, and stored
@@ -52,8 +75,10 @@ cacheReadPerM, batchDiscount (0..1), contextWindow, notes, pricesUpdatedAt, last
 
 ## 3. Cost analytics
 
-- Every request result records `model, mode, stage, subjectId, inputTokens, cachedInputTokens, outputTokens, costUsd`
-  in `wiki.kb_llm_usage` (one row per request; aggregate queries run over it).
+- Every HTTP call records `model, mode, stage, subjectId, inputTokens, cachedInputTokens, outputTokens, costUsd` in
+  `wiki.kb_llm_usage`, plus `attempt` (1-based within the request: the json_object fallback and the doubled-max_tokens
+  retry are separate rows), `latency_ms` (sync) and `reasoning_tokens` (when the API reports
+  `completion_tokens_details.reasoning_tokens`). Aggregate queries run over it.
 - `GET /costs?from&to&groupBy=week|model|stage|subject` returns rows of `{ key, inputTokens, cachedInputTokens, outputTokens, costUsd, requests }`.
 - `GET /costs/summary` returns:
   - `{ last7dUsd, last30dUsd, projectedMonthUsd, byStage, byModel, topSubjects }`;
@@ -220,6 +245,60 @@ These complete sections 1–4; the frontend already calls them.
   200 structured requests.
 - **Eval metrics** add `emptyToolCallRate`.
 - `GET /models/{id}/stage-cost?stage=` returns `{ stage, model, mode, expectedWeeklyUsd, low, high, basis }`.
+
+## Progress (runs and evals)
+
+`GET /pipeline/runs/{id}` and `GET /evals/{id}` include `progress`; `GET /pipeline/runs/{id}/progress` and
+`GET /evals/{id}/progress` return just that object (cheap, for polling every few seconds):
+```
+progress: {
+  stages: [{ stage: "DIGEST"|"PLAN"|"WRITE"|"RETRY"|"LINK"|"VALIDATE"|"PUBLISH",
+             status: "pending"|"running"|"waiting_batch"|"done"|"failed"|"skipped",
+             total, done, failed, inFlight,       // requests; LINK/VALIDATE: pages; PUBLISH: subjects
+             mode: "sync"|"batch"|null,
+             batch: { doStatus, requestCounts: { total, completed, failed }, submittedAt } | null,
+             startedAt, finishedAt }],
+  overall: { done, total, percent },              // estimated input tokens, not request counts
+  current: "Generando resúmenes de archivos (7/11) con glm-5.3-flash",
+  etaSec: number|null,
+  lastActivityAt,
+  stalled: boolean
+}
+```
+- **Totals:** DIGEST = chunks needing a digest (known when the stage starts); PLAN = subjects (× configurations for an
+  eval), known up front; WRITE is `null` until PLAN finishes (the UI shows "por determinar"); RETRY is `null` until WRITE
+  finishes. `failed` includes answers that failed and wait for the stage's single resubmission.
+- **Batch stages** take `done`/`failed` from DO's `request_counts` (`GET /v1/batches/{id}`, stored at each poll) while
+  the batch is open.
+- **overall** weights each request by its estimated input tokens; stages not built yet are estimated (PLAN: 6k tokens
+  per request; WRITE: 4 pages per PLAN request × 9k; RETRY: 15% of the pages × 11k), so it firms up once WRITE is known.
+- **etaSec** (sync only, null while waiting for a batch): remaining requests (current and later stages, estimated as
+  above) × the average `latency_ms` of the last 10 answers ÷ the in-flight concurrency; without latencies, the average
+  gap between the last completions.
+- **lastActivityAt:** the last answer, batch status change or stage transition. **stalled:** active and no activity for
+  10 min (sync) or 26 h (batch).
+- **Evals:** DIGEST is shared by all configurations and appears only at the top level. Each `configs[]` adds
+  `progress: { done, total, percent, stage }` (its PLAN/WRITE/RETRY requests), and each `configs[].perSubject[]` adds
+  `status` (`pending|planning|writing|validating|done|failed|cancelled`, lowercase), `pagesPlanned`, `pagesWritten` and
+  `pagesValid`. PUBLISH is always `skipped` for evals; the eval's REPORT step shows as VALIDATE.
+- Each stage transition is logged once at INFO (`KB eval|run <id>: DIGEST -> PLAN (RUNNING; 11 requests: 11 done,
+  0 failed)`) and stored in `kb_run.stage_log` (`{ "<STAGE>": { startedAt, finishedAt } }`).
+
+**Cancel** (`POST /pipeline/runs/{id}/cancel`, `POST /evals/{id}/cancel`) cascades: open DO batches are cancelled;
+queued sync requests are abandoned (answers to requests already in flight are still recorded in usage, since they are
+paid for, but never applied); unfinished eval configurations become `CANCELLED` and their subjects `cancelled`.
+
+## Blind review progress
+
+`GET /evals/{id}/review/progress` (and `reviewSummary` in `GET /evals/{id}` once the eval succeeded, same shape):
+```
+{ totalPairs, reviewedByMe, reviewedByAnyone, remainingForMe,
+  perSubject: [{ subjectId, subjectName, totalPairs, reviewedByMe, reviewedByAnyone }],
+  ratingsPerConfig: [{ configKey, plan, write, ratings }],
+  minRatingsForConfidence: 20, confident: boolean }
+```
+A pair is one (subject, slug) written by two configurations; `confident` is true when every configuration has at least
+`minRatingsForConfidence` ratings. `review/next` also returns `reviewedByMe` and `totalPairs`.
 
 ## Date parameters and parameter errors
 

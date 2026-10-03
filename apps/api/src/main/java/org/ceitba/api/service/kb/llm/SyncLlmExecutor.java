@@ -36,14 +36,33 @@ public class SyncLlmExecutor {
         this.json = json;
     }
 
+    // One HTTP call of a request: its own usage and latency. reasoningTokens
+    // when the API reports completion_tokens_details.reasoning_tokens.
+    public record Attempt(int tokensIn, int tokensOut, int cachedTokens, Integer reasoningTokens, int latencyMs) {}
+
+    // A request's final result plus every HTTP call it took (tool call,
+    // json_object fallback, doubled max_tokens retry), in order.
+    public record Outcome(LlmOutputParser.LlmResult result, List<Attempt> attempts, int latencyMs) {}
+
     public void run(List<LlmLine> lines, Consumer<LlmOutputParser.LlmResult> onResult) {
+        run(lines, o -> onResult.accept(o.result()), () -> false);
+    }
+
+    // stop: checked before each request starts; once true, the remaining
+    // requests are abandoned (in-flight ones still report their answers).
+    public void run(List<LlmLine> lines, Consumer<Outcome> onResult, java.util.function.BooleanSupplier stop) {
         var permits = new Semaphore(props.syncConcurrency());
+        var stopped = new java.util.concurrent.atomic.AtomicBoolean(false);
         try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
             for (var line : lines) {
                 pool.submit(() -> {
                     permits.acquireUninterruptibly();
                     try {
-                        onResult.accept(runOne(line));
+                        if (stopped.get() || stop.getAsBoolean()) {
+                            stopped.set(true);
+                            return;
+                        }
+                        onResult.accept(runTracked(line));
                     } catch (RuntimeException e) {
                         log.warn("KB pipeline: sync request {} failed: {}", line.customId(), e.getMessage());
                     } finally {
@@ -56,27 +75,52 @@ public class SyncLlmExecutor {
 
     public static final int MAX_TOKENS_CAP = 32_000;
 
-    // Empty/unparseable tool arguments or a cut at max_tokens: retried once
-    // with double max_tokens (cap 32k), then failed (path gets "+retry").
-    public LlmOutputParser.LlmResult runOne(LlmLine line) {
-        var first = attempt(line);
-        if (first.ok() || first.error() == null
-                || !(first.error().startsWith("TRUNCATED") || first.error().startsWith("EMPTY_TOOL"))) {
-            return first;
-        }
-        var params = (com.fasterxml.jackson.databind.node.ObjectNode) line.params().deepCopy();
-        params.put("max_tokens", Math.min(MAX_TOKENS_CAP, params.path("max_tokens").asInt(4096) * 2));
-        var second = attempt(new LlmLine(line.customId(), params));
-        return new LlmOutputParser.LlmResult(line.customId(), second.ok(), second.toolInput(), second.text(),
-            first.tokensIn() + second.tokensIn(), first.tokensOut() + second.tokensOut(),
-            first.cachedTokens() + second.cachedTokens(), (second.path() == null ? "none" : second.path()) + "+retry",
-            second.ok() ? null : second.error());
+    public int concurrency() {
+        return props.syncConcurrency();
     }
 
-    private LlmOutputParser.LlmResult attempt(LlmLine line) {
+    public LlmOutputParser.LlmResult runOne(LlmLine line) {
+        return runTracked(line).result();
+    }
+
+    // Empty/unparseable tool arguments or a cut at max_tokens: retried once
+    // (never more) with double max_tokens (cap 32k), then failed (path gets
+    // "+retry").
+    public Outcome runTracked(LlmLine line) {
+        long started = System.nanoTime();
+        var attempts = new java.util.ArrayList<Attempt>();
+        var first = attempt(line, attempts);
+        LlmOutputParser.LlmResult result = first;
+        if (!first.ok() && first.error() != null
+                && (first.error().startsWith("TRUNCATED") || first.error().startsWith("EMPTY_TOOL"))) {
+            var params = (com.fasterxml.jackson.databind.node.ObjectNode) line.params().deepCopy();
+            params.put("max_tokens", Math.min(MAX_TOKENS_CAP, params.path("max_tokens").asInt(4096) * 2));
+            var second = attempt(new LlmLine(line.customId(), params), attempts);
+            result = new LlmOutputParser.LlmResult(line.customId(), second.ok(), second.toolInput(), second.text(),
+                first.tokensIn() + second.tokensIn(), first.tokensOut() + second.tokensOut(),
+                first.cachedTokens() + second.cachedTokens(), (second.path() == null ? "none" : second.path()) + "+retry",
+                second.ok() ? null : second.error());
+        }
+        return new Outcome(result, List.copyOf(attempts), (int) ((System.nanoTime() - started) / 1_000_000));
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode call(com.fasterxml.jackson.databind.JsonNode body,
+                                                         List<Attempt> attempts) {
+        long t = System.nanoTime();
+        var res = client.complete(body);
+        var u = res.path("usage");
+        var reasoning = u.path("completion_tokens_details").path("reasoning_tokens");
+        attempts.add(new Attempt(u.path("prompt_tokens").asInt(u.path("input_tokens").asInt(0)),
+            u.path("completion_tokens").asInt(u.path("output_tokens").asInt(0)),
+            u.path("cache_read_input_tokens").asInt(u.path("prompt_tokens_details").path("cached_tokens").asInt(0)),
+            reasoning.canConvertToInt() ? reasoning.asInt() : null, (int) ((System.nanoTime() - t) / 1_000_000)));
+        return res;
+    }
+
+    private LlmOutputParser.LlmResult attempt(LlmLine line, List<Attempt> attempts) {
         try {
             var first = LlmOutputParser.fromChatCompletion(line.customId(),
-                client.complete(KbChatPayloads.chatBody(line.params(), false, json)), json);
+                call(KbChatPayloads.chatBody(line.params(), false, json), attempts), json);
             if (first.error() != null && (first.error().startsWith("TRUNCATED") || first.error().startsWith("EMPTY_TOOL"))) {
                 return first;
             }
@@ -84,7 +128,7 @@ public class SyncLlmExecutor {
             if (!hasTool || first.toolInput() != null) return first;
             if (first.text() != null && first.text().strip().startsWith("---")) return first;
             var second = LlmOutputParser.fromChatCompletion(line.customId(),
-                client.complete(KbChatPayloads.chatBody(line.params(), true, json)), json);
+                call(KbChatPayloads.chatBody(line.params(), true, json), attempts), json);
             var usageIn = first.tokensIn() + second.tokensIn();
             var usageOut = first.tokensOut() + second.tokensOut();
             var cached = first.cachedTokens() + second.cachedTokens();

@@ -61,6 +61,15 @@ public class KbLlmUsage {
 
     protected KbLlmUsage() {}
 
+    @Column(name = "attempt", nullable = false)
+    private int attempt = 1;
+
+    @Column(name = "latency_ms")
+    private Integer latencyMs;
+
+    @Column(name = "reasoning_tokens")
+    private Integer reasoningTokens;
+
     public KbLlmUsage(OffsetDateTime createdAt, UUID runId, UUID evalId, String requestId, String model, String mode,
                       String stage, String subjectId, int inputTokens, int cachedInputTokens, int outputTokens,
                       BigDecimal costUsd, boolean simulated) {
@@ -92,4 +101,14 @@ public class KbLlmUsage {
     public int getCachedInputTokens() { return cachedInputTokens; }
     public int getOutputTokens() { return outputTokens; }
     public BigDecimal getCostUsd() { return costUsd; }
+
+    public void setCallInfo(int attempt, Integer latencyMs, Integer reasoningTokens) {
+        this.attempt = attempt;
+        this.latencyMs = latencyMs;
+        this.reasoningTokens = reasoningTokens;
+    }
+
+    public int getAttempt() { return attempt; }
+    public Integer getLatencyMs() { return latencyMs; }
+    public Integer getReasoningTokens() { return reasoningTokens; }
 }

@@ -87,8 +87,20 @@ public class StaffKbEvalController {
 
     @GetMapping("/{id}")
     @Operation(summary = "An eval with per-configuration metrics and per-subject pages")
-    public KbEvalDtos.Eval get(@PathVariable UUID id) {
-        return evals.get(id);
+    public KbEvalDtos.Eval get(@CurrentUser User user, @PathVariable UUID id) {
+        return evals.get(id, user.getId());
+    }
+
+    @GetMapping("/{id}/progress")
+    @Operation(summary = "Just the progress of an eval (cheap; for polling every few seconds)")
+    public org.ceitba.api.web.kb.dto.KbProgressResponse progress(@PathVariable UUID id) {
+        return evals.progress(id);
+    }
+
+    @GetMapping("/{id}/review/progress")
+    @Operation(summary = "Blind review progress: pairs reviewed by the caller and by anyone, ratings per configuration")
+    public KbEvalDtos.ReviewProgress reviewProgress(@CurrentUser User user, @PathVariable UUID id) {
+        return evals.reviewProgress(id, user.getId());
     }
 
     @PostMapping("/{id}/cancel")

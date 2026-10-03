@@ -105,6 +105,122 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
             .isEqualTo("ValidationError");
     }
 
+    @org.springframework.beans.factory.annotation.Autowired org.ceitba.api.external.llm.DoModelCatalog doCatalog;
+
+    @Test
+    void modelSyncTakesPricesFromDoCatalogWithoutClobberingProbesOrManualFields() throws Exception {
+        // The catalog rows are shared by every test of this context: restored afterwards.
+        jdbc.execute("DROP TABLE IF EXISTS wiki.kb_model_backup");
+        jdbc.execute("CREATE TABLE wiki.kb_model_backup AS SELECT * FROM wiki.kb_model");
+        try {
+            syncScenario();
+        } finally {
+            jdbc.execute("DELETE FROM wiki.kb_model");
+            jdbc.execute("INSERT INTO wiki.kb_model SELECT * FROM wiki.kb_model_backup");
+            jdbc.execute("DROP TABLE wiki.kb_model_backup");
+            jdbc.update("DELETE FROM wiki.kb_pipeline_settings");
+        }
+    }
+
+    void syncScenario() throws Exception {
+        var fake = (org.ceitba.api.external.llm.FakeDoModelCatalog) doCatalog;
+        // Unreachable catalog: falls back to /v1/models ids.
+        fake.items(null);
+        var fallback = call(post("/v1/staff/kb/models/sync"), null, 200);
+        assertThat(fallback.path("source").asText()).isEqualTo("inference-models");
+
+        var root = json.readTree(getClass().getResourceAsStream("/kb/do-model-catalog.json"));
+        var items = new java.util.ArrayList<JsonNode>();
+        root.path("data").forEach(items::add);
+        fake.items(items);
+        // Probe verdicts and manual fields that a sync must keep.
+        jdbc.update("UPDATE wiki.kb_model SET input_per_m = 9, batch_supported = false, batch_source = 'probe', "
+            + "batch_discount = 0.4, enabled = true, tool_calling = 'no', "
+            + "last_probe = '{\"ok\":false,\"mode\":\"batch\"}'::jsonb WHERE id = 'anthropic-claude-haiku-4.5'");
+        call(put("/v1/staff/kb/models/glm-5.3"), "{\"displayName\": \"GLM grande\"}", 200);
+        jdbc.update("UPDATE wiki.kb_model SET input_per_m = 2.0 WHERE id = 'glm-5.3'");
+
+        var res = call(post("/v1/staff/kb/models/sync"), null, 200);
+        assertThat(res.path("source").asText()).isEqualTo("do-catalog");
+        assertThat(res.path("fetchedAt").asText()).isNotBlank();
+        assertThat(res.path("added").toString()).contains("kimi-k2.6").doesNotContain("dedicated-only-x", "some-embedding");
+        assertThat(res.path("notInCatalog").toString()).contains("anthropic-claude-sonnet-5.5");
+        JsonNode glmUpdate = null;
+        for (var u : res.path("updated")) if (u.path("id").asText().equals("glm-5.3")) glmUpdate = u;
+        assertThat(glmUpdate.toString()).contains("\"field\":\"inputPerM\"", "\"old\":\"2\"", "\"new\":\"1.4\"");
+
+        var models = call(get("/v1/staff/kb/models"), null, 200);
+        for (var m : models) {
+            switch (m.path("id").asText()) {
+                case "glm-5.3" -> {
+                    assertThat(m.path("inputPerM").decimalValue()).isEqualByComparingTo("1.40");
+                    assertThat(m.path("displayName").asText()).isEqualTo("GLM grande");   // manual kept
+                    assertThat(m.path("priceSource").asText()).isEqualTo("do-catalog");
+                    assertThat(m.path("maxOutputTokens").asInt()).isEqualTo(128000);
+                }
+                case "anthropic-claude-haiku-4.5" -> {
+                    assertThat(m.path("inputPerM").decimalValue()).isEqualByComparingTo("1");
+                    assertThat(m.path("batchSupported").asBoolean()).isFalse();
+                    assertThat(m.path("batchSource").asText()).isEqualTo("probe");
+                    assertThat(m.path("batchDiscount").decimalValue()).isEqualByComparingTo("0.4");
+                    assertThat(m.path("enabled").asBoolean()).isTrue();
+                    assertThat(m.path("toolCalling").asText()).isEqualTo("no");   // probe wins over hints
+                }
+                case "kimi-k2.6" -> {
+                    assertThat(m.path("enabled").asBoolean()).isFalse();
+                    assertThat(m.path("outputPerM").decimalValue()).isEqualByComparingTo("2.5");
+                    assertThat(m.path("batchSupported").asBoolean()).isFalse();
+                }
+                default -> { }
+            }
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM wiki.kb_model_price_history WHERE model_id = 'glm-5.3' "
+            + "AND field = 'inputPerM' AND source = 'do-catalog'", Integer.class)).isEqualTo(1);
+        // A second sync changes nothing.
+        var again = call(post("/v1/staff/kb/models/sync"), null, 200);
+        assertThat(again.path("updated")).isEmpty();
+        assertThat(again.path("unchanged").asInt()).isPositive();
+        // The weekly refresh is a setting.
+        var s = call(put("/v1/staff/kb/settings"), "{\"autoRefreshPrices\": false}", 200);
+        assertThat(s.path("settings").path("autoRefreshPrices").asBoolean()).isFalse();
+        assertThat(s.path("source").path("autoRefreshPrices").asText()).isEqualTo("db");
+    }
+
+    @Test
+    void cancellingAnEvalCascades() throws Exception {
+        probed("anthropic-claude-haiku-4.5", "glm-5.3", "glm-5.3-flash");
+        var set = call(post("/v1/staff/kb/evals/sets"),
+            "{\"name\": \"Cancelar\", \"subjectIds\": [\"" + FIN + "\", \"" + CONT + "\"]}", 201);
+        // The haiku config runs through a batch that stays in progress.
+        fakeBatch().hold(true);
+        var models = "[{\"plan\": \"glm-5.3\", \"write\": \"glm-5.3\"}, "
+            + "{\"plan\": \"anthropic-claude-haiku-4.5\", \"write\": \"anthropic-claude-haiku-4.5\"}]";
+        var eval = call(post("/v1/staff/kb/evals"), "{\"setId\": \"" + set.path("id").asText() + "\", \"models\": "
+            + models + "}", 202);
+        var id = eval.path("id").asText();
+        for (int i = 0; i < 3; i++) engine.advanceActive();
+        var waiting = call(get("/v1/staff/kb/evals/" + id), null, 200);
+        assertThat(waiting.path("status").asText()).isEqualTo("WAITING");
+        var progress = call(get("/v1/staff/kb/evals/" + id + "/progress"), null, 200);
+        assertThat(progress.toString()).contains("waiting_batch");
+
+        var cancelled = call(post("/v1/staff/kb/evals/" + id + "/cancel"), null, 200);
+        assertThat(cancelled.path("status").asText()).isEqualTo("CANCELLED");
+        for (var c : cancelled.path("configs")) {
+            assertThat(c.path("status").asText()).isEqualTo("CANCELLED");
+            for (var s : c.path("perSubject")) assertThat(s.path("status").asText()).isEqualTo("cancelled");
+        }
+        assertThat(fakeBatch().cancelled()).isNotEmpty();   // DO cancel called for the open batch
+        int sent = fakeBatch().submitted().size() + fakeSync().received().size();
+        fakeBatch().hold(false);
+        fakeBatch().release();
+        engine.advanceActive();
+        assertThat(fakeBatch().submitted().size() + fakeSync().received().size()).isEqualTo(sent);
+        assertThat(call(get("/v1/staff/kb/evals/" + id), null, 200).path("status").asText()).isEqualTo("CANCELLED");
+        assertThat(call(get("/v1/staff/kb/evals/" + id + "/progress"), null, 200).path("current").asText())
+            .isEqualTo("Cancelado");
+    }
+
     @Test
     void catalogForecastAndStageCost() throws Exception {
         var models = call(get("/v1/staff/kb/models"), null, 200);
@@ -159,6 +275,8 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
 
         var eval = call(post("/v1/staff/kb/evals"), "{\"setId\": \"" + setId + "\", \"models\": " + models + "}", 202);
         var evalId = eval.path("id").asText();
+        var early = call(get("/v1/staff/kb/evals/" + evalId + "/progress"), null, 200);
+        assertThat(early.path("stages")).hasSize(7);
         call(post("/v1/staff/kb/evals"), "{\"setId\": \"" + setId + "\", \"models\": " + models + "}", 409);
         for (int i = 0; i < 5; i++) engine.advanceActive();
 
@@ -173,6 +291,19 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
             assertThat(c.path("metrics").has("unsupportedClaimsRate")).isTrue();
             assertThat(c.path("perSubject")).hasSize(2);
         }
+        for (var c : done.path("configs")) {
+            assertThat(c.path("progress").path("percent").asDouble()).isEqualTo(100.0);
+            for (var s : c.path("perSubject")) {
+                assertThat(s.path("status").asText()).isEqualTo("done");
+                assertThat(s.path("pagesPlanned").asInt()).isEqualTo(1);
+                assertThat(s.path("pagesWritten").asInt()).isEqualTo(1);
+                assertThat(s.path("pagesValid").asInt()).isEqualTo(1);
+            }
+        }
+        assertThat(done.path("progress").path("overall").path("percent").asDouble()).isEqualTo(100.0);
+        assertThat(done.path("progress").path("current").asText()).isEqualTo("Terminado");
+        assertThat(done.path("reviewSummary").path("totalPairs").asInt()).isEqualTo(2);
+        assertThat(done.path("reviewSummary").path("confident").asBoolean()).isFalse();
         assertThat(keys).containsExactlyInAnyOrder("glm-5.3@low|glm-5.3@medium",
             "anthropic-claude-haiku-4.5|anthropic-claude-haiku-4.5");
         // Never published; pages stored under kb/evals/<evalId>/.
@@ -192,6 +323,8 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
             var res = mvc.perform(get("/v1/staff/kb/evals/" + evalId + "/review/next").with(staff())).andReturn();
             if (res.getResponse().getStatus() == 204) break;
             var pair = json.readTree(res.getResponse().getContentAsString());
+            assertThat(pair.path("totalPairs").asInt()).isEqualTo(2);
+            assertThat(pair.path("reviewedByMe").asInt()).isEqualTo(reviews);
             assertThat(pair.path("a").path("markdown").asText()).contains("[[file:");
             var src = pair.path("a").path("sources").get(0);
             assertThat(src.path("kind").asText()).isEqualTo("PDF");
@@ -206,6 +339,21 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
             assertThat(reviews).isLessThan(5);
         }
         assertThat(reviews).isEqualTo(2);
+        var rp = call(get("/v1/staff/kb/evals/" + evalId + "/review/progress"), null, 200);
+        assertThat(rp.path("totalPairs").asInt()).isEqualTo(2);
+        assertThat(rp.path("reviewedByMe").asInt()).isEqualTo(2);
+        assertThat(rp.path("reviewedByAnyone").asInt()).isEqualTo(2);
+        assertThat(rp.path("remainingForMe").asInt()).isZero();
+        assertThat(rp.path("perSubject")).hasSize(2);
+        assertThat(rp.path("perSubject").get(0).path("totalPairs").asInt()).isEqualTo(1);
+        assertThat(rp.path("perSubject").get(0).path("subjectName").asText()).isNotBlank();
+        assertThat(rp.path("ratingsPerConfig")).hasSize(2);
+        for (var c : rp.path("ratingsPerConfig")) {
+            assertThat(c.path("ratings").asInt()).isEqualTo(2);
+            assertThat(c.has("plan") && c.has("write")).isTrue();
+        }
+        assertThat(rp.path("minRatingsForConfidence").asInt()).isEqualTo(20);
+        assertThat(rp.path("confident").asBoolean()).isFalse();
 
         var board = call(get("/v1/staff/kb/evals/leaderboard?setId=" + setId), null, 200);
         assertThat(board.path("entries")).hasSize(2);

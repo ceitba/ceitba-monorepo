@@ -79,6 +79,16 @@ public class KbBatchJob {
     @Column(columnDefinition = "text")
     private String error;
 
+    @Column(name = "do_status", length = 32)
+    private String doStatus;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "do_request_counts", columnDefinition = "jsonb")
+    private com.fasterxml.jackson.databind.JsonNode doRequestCounts;
+
+    @Column(name = "status_changed_at")
+    private OffsetDateTime statusChangedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -150,4 +160,17 @@ public class KbBatchJob {
 
     public void setStatus(String status) { this.status = status; }
     public void setError(String error) { this.error = error; }
+
+    // DO's view of the batch (GET /v1/batches/{id}): status and request_counts.
+    public void observed(String doStatus, com.fasterxml.jackson.databind.JsonNode requestCounts, OffsetDateTime at) {
+        if (doStatus != null && !doStatus.equals(this.doStatus)) this.statusChangedAt = at;
+        this.doStatus = doStatus;
+        if (requestCounts != null && !requestCounts.isMissingNode() && !requestCounts.isNull()) {
+            this.doRequestCounts = requestCounts;
+        }
+    }
+
+    public String getDoStatus() { return doStatus; }
+    public com.fasterxml.jackson.databind.JsonNode getDoRequestCounts() { return doRequestCounts; }
+    public OffsetDateTime getStatusChangedAt() { return statusChangedAt; }
 }

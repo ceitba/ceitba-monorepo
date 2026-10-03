@@ -36,4 +36,17 @@ public interface KbRunRequestRepository extends JpaRepository<KbRunRequest, Stri
         WHERE rn <= 200 GROUP BY model
         """, nativeQuery = true)
     List<Object[]> emptyToolCallStats();
+
+    // Progress rows without payloads: [stage, status, failedAnswer, estTokens,
+    // model, createdAt, completedAt (else the first usage row's time),
+    // latencyMs, target, subjectId].
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT r.stage, r.status, (r.status = 'SUBMITTED' AND r.error IS NOT NULL), r.est_tokens, r.model,
+               r.created_at,
+               COALESCE(r.completed_at, (SELECT min(u.created_at) FROM wiki.kb_llm_usage u
+                                         WHERE u.request_id = r.custom_id)),
+               r.latency_ms, r.target, r.subject_id
+        FROM wiki.kb_run_request r WHERE r.run_id = :runId
+        """, nativeQuery = true)
+    List<Object[]> progressRows(@org.springframework.data.repository.query.Param("runId") java.util.UUID runId);
 }

@@ -38,7 +38,7 @@ public class KbSettingsService {
 
     public static final List<String> FIELDS = List.of("modelDigest", "modelPlan", "modelWrite", "modelRetry",
         "executionMode", "enabled", "cron", "runTokenBudget", "weeklyCostLimitUsd", "retryRejected",
-        "subjectOverrides", "reasoningEffort", "maxTokens");
+        "subjectOverrides", "reasoningEffort", "maxTokens", "autoRefreshPrices");
     static final List<String> STAGES = List.of("digest", "plan", "write", "retry");
     private static final Set<String> MODEL_FIELDS = Set.of("modelDigest", "modelPlan", "modelWrite", "modelRetry");
 
@@ -204,7 +204,8 @@ public class KbSettingsService {
             s.has("retryRejected") ? s.get("retryRejected").asBoolean() : env.retryRejected(),
             s.has("subjectOverrides") ? s.get("subjectOverrides") : json.createObjectNode(),
             perStage(s.path("reasoningEffort"), true),
-            perStage(s.path("maxTokens"), false));
+            perStage(s.path("maxTokens"), false),
+            !s.has("autoRefreshPrices") || s.get("autoRefreshPrices").asBoolean(true));
     }
 
     // Defaults overlaid with the stored per-stage values.
@@ -314,6 +315,7 @@ public class KbSettingsService {
         values.set("subjectOverrides", e.subjectOverrides());
         values.set("reasoningEffort", e.reasoningEffort());
         values.set("maxTokens", e.maxTokens());
+        values.put("autoRefreshPrices", e.autoRefreshPrices());
         var source = json.createObjectNode();
         for (var f : FIELDS) {
             boolean db = stored.has(f) || (f.equals("modelRetry") && stored.has("modelWrite"));

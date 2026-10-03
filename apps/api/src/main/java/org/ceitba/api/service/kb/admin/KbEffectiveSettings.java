@@ -23,7 +23,8 @@ public record KbEffectiveSettings(
     boolean retryRejected,
     JsonNode subjectOverrides,
     JsonNode reasoningEffort,
-    JsonNode maxTokens
+    JsonNode maxTokens,
+    boolean autoRefreshPrices
 ) {
     // Keys: digest, plan, write, retry (ADMIN doc §8).
     public static final java.util.Map<String, String> DEFAULT_EFFORT =

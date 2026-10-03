@@ -33,8 +33,10 @@ public record KbModelResponse(
     BigDecimal batchDiscount,
     EffectivePrices effectivePrices,
     Integer contextWindow,
+    Integer maxOutputTokens,
     String notes,
     OffsetDateTime pricesUpdatedAt,
+    String priceSource,
     JsonNode lastProbe,
     boolean selectable,
     Double emptyToolCallRate

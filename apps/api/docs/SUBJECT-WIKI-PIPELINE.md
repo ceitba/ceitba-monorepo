@@ -177,3 +177,23 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
   `POST /v1/staff/kb/pipeline/runs/{id}/approve-cost` releases it once.
 - **Extra endpoints.** `POST /v1/staff/kb/pipeline/probe {model, mode?}` and `POST /v1/staff/kb/pipeline/compare`
   (an eval over a one-subject set).
+
+## Performance
+
+- **Chunks:** digests read files in chunks of about 8k input tokens (28,000 chars). Smaller chunks mean more requests
+  in flight and a bounded answer per call; a 33k-token file is 4-5 chunks instead of one long request.
+- **Bounded digest output** (prompt `digest.v2` and the tool schema): at most 12 topics per chunk, `summary` ≤ 300
+  chars, `keyPoints` ≤ 5 × 160 chars, `formulas` ≤ 5, `aliases` ≤ 4; `reasoning_effort: low`. Changing the digest
+  prompt/schema bumped `prompt_version` to `v2`, so v1 digests are regenerated once.
+- **Concurrency:** SYNC stages run up to `KB_SYNC_CONCURRENCY` (default 4) requests at once, across every model of the
+  stage (an eval's configurations run their PLAN/WRITE requests together). Each answer is persisted as it arrives
+  (restart-safe). Stages are barriers: PLAN starts when every digest is in.
+- **Retries:** an empty/unparseable tool answer or a cut at `max_tokens` is retried once with double `max_tokens`
+  (cap 32k), never more; each HTTP call is its own usage row (`attempt`, `latency_ms`, `reasoning_tokens`).
+- **Wall time (GLM, sync, measured on DO):** about 15-17 s for a request producing ~600 output tokens; a digest chunk
+  of 8k tokens takes roughly 10-30 s; DO served 4 concurrent requests in about the time of one. Throughput is roughly
+  concurrency ÷ average latency.
+- **Batch** (Anthropic/OpenAI models only) trades wall time for cost: a batch may take up to its 24 h window, at an
+  estimated 50% discount. Progress shows `waiting_batch` with DO's request counts and no ETA.
+- **Progress:** `GET /v1/staff/kb/pipeline/runs/{id}/progress` (see the admin doc, "Progress").
+

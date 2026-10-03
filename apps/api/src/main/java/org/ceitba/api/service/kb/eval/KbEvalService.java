@@ -117,6 +117,7 @@ public class KbEvalService implements KbRunHandler {
     private final KbModelRepository models;
     private final KbPageRepository pages;
     private final KbViews views;
+    private final org.ceitba.api.service.kb.progress.KbProgressService progress;
     private final KbRelationRepository relations;
     private final SubjectRepository subjects;
     private final DriveFileRepository files;
@@ -138,8 +139,10 @@ public class KbEvalService implements KbRunHandler {
                          KbRelationRepository relations, SubjectRepository subjects, DriveFileRepository files,
                          KbInputs inputs, KbPayloads payloads, KbRunEngine engine, KbSettingsService settings,
                          KbForecastService forecast, KbLlmRouter router, ObjectStorage storage,
-                         ApplicationEventPublisher events, ObjectMapper json, Clock clock, KbViews views) {
+                         ApplicationEventPublisher events, ObjectMapper json, Clock clock, KbViews views,
+                         org.ceitba.api.service.kb.progress.KbProgressService progress) {
         this.views = views;
+        this.progress = progress;
         this.sets = sets;
         this.evals = evals;
         this.ratings = ratings;
@@ -363,6 +366,21 @@ public class KbEvalService implements KbRunHandler {
     public KbEvalDtos.Eval cancel(UUID id) {
         engine.inTx(() -> evals.findById(id).orElseThrow(() -> new ResourceNotFoundException("KbEval", id.toString())));
         engine.cancel(id);
+        // Cascade: configurations and subjects not finished become CANCELLED.
+        engine.inTxVoid(() -> {
+            var eval = evals.findById(id).orElseThrow();
+            var results = (ObjectNode) eval.getResults().deepCopy();
+            results.with("configs").fields().forEachRemaining(c -> {
+                var cfg = (ObjectNode) c.getValue();
+                if (!List.of("SUCCEEDED", "FAILED").contains(cfg.path("status").asText())) cfg.put("status", "CANCELLED");
+                cfg.with("subjects").fields().forEachRemaining(s -> {
+                    var subj = (ObjectNode) s.getValue();
+                    if (!subj.has("metrics")) subj.put("status", "CANCELLED");
+                });
+            });
+            eval.setResults(results);
+            eval.finish(OffsetDateTime.now(clock));
+        });
         return get(id);
     }
 
@@ -384,42 +402,146 @@ public class KbEvalService implements KbRunHandler {
     }
 
     public KbEvalDtos.Eval get(UUID id) {
+        return get(id, null);
+    }
+
+    public KbEvalDtos.Eval get(UUID id, UUID viewer) {
         return engine.inTx(() -> view(evals.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("KbEval", id.toString())), true));
+            .orElseThrow(() -> new ResourceNotFoundException("KbEval", id.toString())), true, viewer));
     }
 
     private KbEvalDtos.Eval view(KbEval e, boolean full) {
+        return view(e, full, null);
+    }
+
+    private KbEvalDtos.Eval view(KbEval e, boolean full, UUID viewer) {
         var run = runs.findById(e.getId()).orElseThrow();
         var set = sets.findById(e.getSetId()).orElse(null);
         var results = e.getResults();
         var subjectNames = set == null ? Map.<String, String>of() : names(texts(set.getSubjectIds()));
+        var rows = full ? progress.rows(e.getId()) : List.<org.ceitba.api.service.kb.progress.KbProgressMath.Row>of();
+        var runState = full ? progress.state(run) : null;
+        int subjectsWithInputs = 0;
+        if (set != null && set.getFrozenInputs() != null) {
+            for (var sid : set.getSubjectIds()) if (!set.getFrozenInputs().path(sid.asText()).isEmpty()) subjectsWithInputs++;
+        }
         var configs = new ArrayList<KbEvalDtos.Config>();
         for (var c : configsOf(e)) {
             var r = results.path("configs").path(c.key());
             var perSubject = new ArrayList<KbEvalDtos.SubjectResult>();
+            KbEvalDtos.ConfigProgress cfgProgress = null;
             if (full) {
                 r.path("subjects").fields().forEachRemaining(s -> {
                     var pageList = new ArrayList<KbEvalDtos.PageResult>();
-                    s.getValue().path("pages").fields().forEachRemaining(p -> {
+                    int written = 0;
+                    int valid = 0;
+                    var it = s.getValue().path("pages").fields();
+                    while (it.hasNext()) {
+                        var p = it.next();
+                        var v = p.getValue();
                         var errs = new ArrayList<String>();
-                        p.getValue().path("errors").forEach(x -> errs.add(x.asText()));
-                        pageList.add(new KbEvalDtos.PageResult(p.getKey(), p.getValue().path("title").asText(null),
-                            p.getValue().path("valid").asBoolean(false), p.getValue().path("firstPassValid").asBoolean(false),
-                            errs));
-                    });
+                        v.path("errors").forEach(x -> errs.add(x.asText()));
+                        pageList.add(new KbEvalDtos.PageResult(p.getKey(), v.path("title").asText(null),
+                            v.path("valid").asBoolean(false), v.path("firstPassValid").asBoolean(false), errs));
+                        boolean isWritten = v.hasNonNull("key") || v.hasNonNull("first") || v.hasNonNull("final");
+                        if (isWritten) written++;
+                        boolean isValid = v.has("valid") ? v.path("valid").asBoolean(false)
+                            : isWritten && (v.has("finalErrors") ? v.path("finalErrors").isEmpty() : v.path("firstErrors").isEmpty());
+                        if (isValid) valid++;
+                    }
                     perSubject.add(new KbEvalDtos.SubjectResult(s.getKey(), subjectNames.get(s.getKey()),
+                        subjectStatus(run, s.getValue()), s.getValue().path("operations").size(), written, valid,
                         s.getValue().path("metrics"), pageList));
                 });
+                var prefix = target(c.key(), null);
+                var mine = rows.stream().filter(x -> !x.stage().equals("DIGEST")
+                    && (x.target().equals(prefix) || x.target().startsWith(prefix + "#"))).toList();
+                var o = org.ceitba.api.service.kb.progress.KbProgressMath.subset(mine, runState, subjectsWithInputs);
+                cfgProgress = new KbEvalDtos.ConfigProgress(o.done(), o.total(), o.percent(), run.getStage());
             }
             var status = r.path("status").asText(run.isActive() ? "RUNNING" : run.getStatus());
+            if (!run.isActive() && status.equals("RUNNING")) status = run.getStatus();   // ended mid-way
             configs.add(new KbEvalDtos.Config(c.key(), c.plan(), c.write(), c.effortNode(json), status,
-                r.has("metrics") ? r.get("metrics") : null, perSubject));
+                r.has("metrics") ? r.get("metrics") : null, perSubject, cfgProgress));
         }
         Long duration = e.getFinishedAt() == null ? null : Duration.between(e.getCreatedAt(), e.getFinishedAt()).toSeconds();
+        var runProgress = full ? progress.progress(e.getId()) : null;
+        var review = full && run.getStatus().equals("SUCCEEDED") ? reviewProgress(e, viewer) : null;
         return new KbEvalDtos.Eval(e.getId(), e.getSetId(), set == null ? null : set.getName(), run.getStatus(),
             run.getStage(), e.getNote(), e.getCreatedAt(), e.getFinishedAt(), duration, run.getTokensIn(),
             run.getTokensOut(), usd(run.getCostEstimate()), run.isSimulated(), run.getError(),
-            results.path("sharedDigest").isMissingNode() ? null : results.get("sharedDigest"), configs);
+            results.path("sharedDigest").isMissingNode() ? null : results.get("sharedDigest"), configs, runProgress,
+            review);
+    }
+
+    // pending | planning | writing | validating | done | failed | cancelled
+    static String subjectStatus(KbRun run, JsonNode subj) {
+        if (subj.path("status").asText("").equals("CANCELLED")) return "cancelled";
+        if (subj.hasNonNull("error")) return "failed";
+        if (subj.has("metrics")) return "done";
+        switch (run.getStatus()) {
+            case "CANCELLED" -> { return "cancelled"; }
+            case "FAILED" -> { return "failed"; }
+            case "SUCCEEDED" -> { return "done"; }
+            default -> { }
+        }
+        return switch (run.getStage()) {
+            case "DETECT", "DIGEST" -> "pending";
+            case "PLAN" -> "planning";
+            case "WRITE", "RETRY" -> subj.has("operations") && subj.path("operations").isEmpty() ? "done" : "writing";
+            case "REPORT" -> "validating";
+            default -> "pending";
+        };
+    }
+
+    public org.ceitba.api.web.kb.dto.KbProgressResponse progress(UUID id) {
+        engine.inTx(() -> evals.findById(id).orElseThrow(() -> new ResourceNotFoundException("KbEval", id.toString())));
+        return progress.progress(id);
+    }
+
+    public KbEvalDtos.ReviewProgress reviewProgress(UUID evalId, UUID viewer) {
+        return engine.inTx(() -> reviewProgress(evals.findById(evalId)
+            .orElseThrow(() -> new ResourceNotFoundException("KbEval", evalId.toString())), viewer));
+    }
+
+    private KbEvalDtos.ReviewProgress reviewProgress(KbEval eval, UUID viewer) {
+        var pairs = pairs(eval);
+        var rated = ratings.findByEvalId(eval.getId()).stream().filter(KbEvalRating::isRated).toList();
+        var byAnyone = new HashSet<String>();
+        var byMe = new HashSet<String>();
+        Map<String, Integer> perConfig = new LinkedHashMap<>();
+        configsOf(eval).forEach(c -> perConfig.put(c.key(), 0));
+        for (var r : rated) {
+            var k = pairKey(r.getSubjectId(), r.getSlug(), r.getConfigA(), r.getConfigB());
+            byAnyone.add(k);
+            if (r.getReviewerId().equals(viewer)) byMe.add(k);
+            perConfig.merge(r.getConfigA(), 1, Integer::sum);
+            perConfig.merge(r.getConfigB(), 1, Integer::sum);
+        }
+        Map<String, int[]> perSubject = new java.util.TreeMap<>();
+        for (var p : pairs) {
+            var k = pairKey(p.subjectId(), p.slug(), p.c1(), p.c2());
+            var a = perSubject.computeIfAbsent(p.subjectId(), x -> new int[3]);
+            a[0]++;
+            if (byMe.contains(k)) a[1]++;
+            if (byAnyone.contains(k)) a[2]++;
+        }
+        var names = names(new ArrayList<>(perSubject.keySet()));
+        var subjects = perSubject.entrySet().stream().map(x -> new KbEvalDtos.SubjectReview(x.getKey(),
+            names.get(x.getKey()), x.getValue()[0], x.getValue()[1], x.getValue()[2])).toList();
+        var byKey = new HashMap<String, Config>();
+        configsOf(eval).forEach(c -> byKey.put(c.key(), c));
+        var cfgs = perConfig.entrySet().stream().map(x -> {
+            var c = byKey.get(x.getKey());
+            return new KbEvalDtos.ConfigRatings(x.getKey(), c == null ? null : c.plan(), c == null ? null : c.write(),
+                x.getValue());
+        }).toList();
+        int mine = (int) pairs.stream().filter(p -> byMe.contains(pairKey(p.subjectId(), p.slug(), p.c1(), p.c2()))).count();
+        int anyone = (int) pairs.stream().filter(p -> byAnyone.contains(pairKey(p.subjectId(), p.slug(), p.c1(), p.c2())))
+            .count();
+        boolean confident = !cfgs.isEmpty() && cfgs.stream().allMatch(c -> c.ratings() >= SMALL_SAMPLE);
+        return new KbEvalDtos.ReviewProgress(pairs.size(), mine, anyone, pairs.size() - mine, subjects, cfgs,
+            SMALL_SAMPLE, confident);
     }
 
     // Rough input/output tokens and cost of an eval (missing digests, PLAN
@@ -987,7 +1109,10 @@ public class KbEvalService implements KbRunHandler {
             }
             var a = pageKeyOf(eval, assignment.getConfigA(), assignment.getSubjectId(), assignment.getSlug());
             var b = pageKeyOf(eval, assignment.getConfigB(), assignment.getSubjectId(), assignment.getSlug());
+            int reviewed = pairs(eval).size() - open.size();
+            var all = pairs(eval).size();
             return new KbEvalDtos.ReviewPair(assignment.getSubjectId(), assignment.getSlug(), open.size(),
+                subjectId == null && slug == null ? reviewed : reviewProgress(eval, reviewerId).reviewedByMe(), all,
                 reviewPage(eval, assignment.getConfigA(), assignment.getSubjectId(), a, set),
                 reviewPage(eval, assignment.getConfigB(), assignment.getSubjectId(), b, set));
         });

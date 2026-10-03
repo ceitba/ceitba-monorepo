@@ -99,6 +99,8 @@ public class KbPipelineService implements KbRunHandler {
     private final KbRunEngine engine;
     private final KbSettingsService settings;
     private final org.ceitba.api.service.kb.admin.KbForecastService forecast;
+    private final org.ceitba.api.service.kb.progress.KbProgressService progressService;
+    private final org.springframework.beans.factory.ObjectProvider<org.ceitba.api.service.kb.admin.KbModelCatalogService> catalogPrices;
     private final KbLlmRouter router;
     private final ObjectMapper json;
     private final ApplicationEventPublisher events;
@@ -111,6 +113,8 @@ public class KbPipelineService implements KbRunHandler {
                              SubjectRepository subjects, DriveFileRepository files, KbInputs inputs,
                              KbPayloads payloads, KbImportService importer, KbRunEngine engine,
                              KbSettingsService settings, org.ceitba.api.service.kb.admin.KbForecastService forecast,
+                             org.ceitba.api.service.kb.progress.KbProgressService progressService,
+                             org.springframework.beans.factory.ObjectProvider<org.ceitba.api.service.kb.admin.KbModelCatalogService> catalogPrices,
                              KbLlmRouter router, ObjectMapper json,
                              ApplicationEventPublisher events, Clock clock) {
         this.runs = runs;
@@ -129,6 +133,8 @@ public class KbPipelineService implements KbRunHandler {
         this.engine = engine;
         this.settings = settings;
         this.forecast = forecast;
+        this.progressService = progressService;
+        this.catalogPrices = catalogPrices;
         this.router = router;
         this.json = json;
         this.events = events;
@@ -171,6 +177,12 @@ public class KbPipelineService implements KbRunHandler {
             .orElseThrow(() -> new ResourceNotFoundException("KbRun", id.toString()))));
     }
 
+    public org.ceitba.api.web.kb.dto.KbProgressResponse progress(UUID id) {
+        engine.inTx(() -> runs.findById(id).filter(r -> !r.isEval())
+            .orElseThrow(() -> new ResourceNotFoundException("KbRun", id.toString())));
+        return progressService.progress(id);
+    }
+
     public KbRunResponse cancel(UUID id) {
         engine.cancel(id);
         return engine.inTx(() -> {
@@ -196,6 +208,13 @@ public class KbPipelineService implements KbRunHandler {
         if (last == null || !s.enabled() || !CronExpression.isValidExpression(s.cron())) return;
         var next = CronExpression.parse(s.cron()).next(last);
         if (next == null || next.isAfter(now)) return;
+        if (s.autoRefreshPrices()) {
+            try {
+                catalogPrices.ifAvailable(c -> c.sync("do-catalog"));   // weekly price refresh, same history
+            } catch (RuntimeException e) {
+                log.warn("KB pipeline: price refresh before the scheduled run failed: {}", e.getMessage());
+            }
+        }
         try {
             trigger("SCHEDULED", false);
         } catch (KbPipelineException e) {
@@ -1003,7 +1022,7 @@ public class KbPipelineService implements KbRunHandler {
             r.getTokensIn(), r.getTokensOut(), r.getTokensCached(), r.getCostEstimate(), usd(r.getCostEstimate()),
             r.getExpectedCostUsd(),
             full ? costByStage(r) : null, r.isCostApproved(), r.isSimulated(), r.getError(),
-            full ? subjectsOf(r) : null, full ? batchesOf(r) : null);
+            full ? subjectsOf(r) : null, full ? batchesOf(r) : null, full ? progressService.progress(r.getId()) : null);
     }
 
     private Map<String, BigDecimal> costByStage(KbRun r) {

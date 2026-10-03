@@ -34,5 +34,6 @@ public record KbRunResponse(
     boolean simulated,
     String error,
     List<KbRunSubjectResponse> subjects,
-    List<KbBatchJobResponse> batches
+    List<KbBatchJobResponse> batches,
+    KbProgressResponse progress
 ) {}

@@ -78,6 +78,15 @@ public class KbModel {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "max_output_tokens")
+    private Integer maxOutputTokens;
+
+    @Column(name = "price_source", length = 32)
+    private String priceSource;
+
+    @Column(name = "display_name_manual", nullable = false)
+    private boolean displayNameManual;
+
     protected KbModel() {}
 
     public KbModel(String id, String displayName, String provider, boolean batchSupported, boolean enabled) {
@@ -140,4 +149,11 @@ public class KbModel {
     public void setContextWindow(Integer v) { this.contextWindow = v; }
     public void setNotes(String v) { this.notes = v; }
     public void setLastProbe(JsonNode v) { this.lastProbe = v; }
+
+    public Integer getMaxOutputTokens() { return maxOutputTokens; }
+    public void setMaxOutputTokens(Integer v) { this.maxOutputTokens = v; }
+    public String getPriceSource() { return priceSource; }
+    public void setPriceSource(String v) { this.priceSource = v; }
+    public boolean isDisplayNameManual() { return displayNameManual; }
+    public void setDisplayNameManual(boolean v) { this.displayNameManual = v; }
 }
