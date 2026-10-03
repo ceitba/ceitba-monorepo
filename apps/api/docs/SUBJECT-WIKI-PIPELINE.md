@@ -1,0 +1,153 @@
+# Subject wiki self-update pipeline
+
+Weekly, automated, change-driven regeneration of the subject wikis (`docs/SUBJECT-WIKI.md`) through
+DigitalOcean **batch** inference. Design doc: https://claude.ai/code/artifact/fc40934b-7324-4fa7-a45a-6657f42a98c7
+
+## Rules
+
+1. **Weekly.** One run per week (default Sunday 03:00 America/Argentina/Buenos_Aires, `KB_PIPELINE_CRON`).
+   Staff can trigger a run manually. Takedowns stay immediate and need no LLM: the page is hidden at once,
+   as today, and the rewrite without that source waits for the next weekly run.
+2. **Only subjects whose content changed are processed.** A subject is *dirty* when its published inputs differ from the
+   snapshot of its last successful compile (see "Change detection"). Clean subjects cost zero tokens.
+3. **No re-reading unless something changed.** A file's text is sent to the LLM exactly once per content version
+   (`content_fingerprint`). Unchanged files are represented by their stored digest and by the existing pages, never by
+   their raw text. A page that none of the changes touch is never sent for rewriting.
+4. **All LLM calls go through DigitalOcean batch inference** (`https://inference.do-ai.run/v1/batches…`, `provider: anthropic`),
+   never synchronous calls. Model: `anthropic-claude-haiku-4.5` for every stage (`KB_MODEL`), with Sonnet only by explicit
+   per-subject override (`kb_subject_settings.model`).
+
+## Change detection
+
+- `wiki.kb_file_digest (file_id, content_fingerprint, prompt_version, model, digest jsonb, tokens_in, tokens_out, created_at)`,
+  unique on `(file_id, content_fingerprint, prompt_version)`. A digest exists ⇒ that content is never sent again,
+  unless `prompt_version` is bumped on purpose.
+- `wiki.kb_subject_state (subject_id PK, inputs_hash, inputs jsonb, compiled_at, last_run_id)`.
+  `inputs` = the sorted list of `{fileId, fingerprint, academicYear}` of the subject's PUBLISHED, non-hidden files with
+  usable text. `inputs_hash` = sha256 of it.
+- At run start, for each subject with published files or existing kb pages, compute the current inputs and diff them
+  against the stored ones:
+  - `added` (new file ids), `changed` (same id, new fingerprint), `removed` (gone, unpublished, hidden or removed by staff).
+  - The subject is dirty iff any list is non-empty. Year-only changes don't make it dirty; years are read live from sources.
+- **Baseline:** `POST /v1/staff/kb/pipeline/baseline` records the current inputs of every subject that has kb pages as
+  compiled. It is used once after the hand-written import, so the first run doesn't regenerate everything.
+
+## Stages (each LLM stage is one DO batch for all dirty subjects together)
+
+```
+DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, optional)] → LINK → VALIDATE → PUBLISH
+```
+
+1. **DETECT** (code): dirty subjects + their `added`/`changed`/`removed` lists; skip subjects over budget (see "Budget").
+2. **DIGEST** (batch): one request per *chunk* (~20k tokens) of each added/changed file without a digest.
+   - Output: JSON via tool use:
+     `{ topics: [{ name, aliases, summary, keyPoints, formulas }], materialKind, unitHint, language }`.
+   - Multi-chunk files are merged deterministically in code; no LLM merge.
+3. **PLAN** (batch): one request per dirty subject.
+   - Input:
+     - the current page index of the subject (`slug, type, title, summary, aliases, sources`, **no page bodies**);
+     - the digests of added/changed files only;
+     - the list of removed file ids with the pages citing them;
+     - the page index (titles/aliases/summaries) of up to 8 related subjects (`kb_subject_relation`).
+   - Output (tool use):
+     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason }] }`.
+   - Rules given to the model:
+     - update only pages whose sources changed or were removed, or that a new file clearly extends;
+     - create pages for new key concepts the new material explains;
+     - delete pages that lost all their sources;
+     - never touch other pages.
+4. **WRITE** (batch): one request per create/update op.
+   - Input:
+     - the current page Markdown (for updates);
+     - the digests of its new/changed sources;
+     - **raw text excerpts only from added/changed files** (selected by topic, capped at about 12k tokens);
+     - for removed sources, an instruction to drop what came only from them;
+     - the subject's page index (for links and anchors);
+     - the writing rules (port `KB-WRITER.md`, see below).
+   - Output: the full page file (frontmatter + Markdown).
+   - Delete ops need no LLM.
+5. **LINK** (code): port of the deterministic linker. The first mention of a same-subject page title or alias in every
+   section is linked; it runs on the new and updated pages and on unchanged pages of the same subject (no LLM).
+6. **VALIDATE** (code): the existing import validator, plus the coverage rule "no unlinked mention of a same-subject page"
+   and the anchor check.
+7. **RETRY** (optional, `KB_RETRY_REJECTED=true`): one extra batch with only the rejected pages, each with its validator errors.
+   Whatever still fails keeps its previous version (or isn't created) and is reported.
+8. **PUBLISH** (code): through the existing import service (one transaction per subject, revisions), then update
+   `kb_subject_state` with the inputs that were actually used. A subject whose run failed stays dirty for next week.
+
+## Orchestration
+
+- `wiki.kb_run`: `id, trigger (SCHEDULED|MANUAL), status, stage, started_at, finished_at, subjects jsonb, stats jsonb,
+  tokens_in, tokens_out, cost_estimate, error`.
+- `wiki.kb_batch_job`: `id, run_id, stage, do_batch_id, do_file_id, status, request_count, submitted_at, completed_at,
+  output_file_url_fetched_at, error`.
+  - Request payloads (JSONL) are stored in MinIO under `kb/runs/<runId>/<stage>.jsonl`, and results under `…-out.jsonl`, for audit.
+- A `KbPipelinePoller` (`@Scheduled` every 10 min, `KB_POLL_INTERVAL`) advances runs:
+  - submit pending stages;
+  - poll DO batch status (`validating|queued|in_progress|completed|failed|cancelling|cancelled|expired`);
+  - on `completed`, download the output and error files, parse them by `custom_id`, persist, and move to the next stage.
+  - `expired`/`failed`: keep partial results; the requests not completed are resubmitted once in a follow-up batch,
+    otherwise the subject stays dirty.
+  - Must survive API restarts: all state is in the DB.
+- One active run at a time. A manual trigger while a run is active → 409.
+- `custom_id` format: `<runId>:<stage>:<subjectId>:<slug|fileId>:<chunk>`.
+
+## DigitalOcean batch client (`external/llm/`)
+
+- `LlmBatchClient` interface plus `DoBatchClient`, following the `external/itba` pattern:
+  - `createFile(name)` → `{fileId, uploadUrl}` (`POST /v1/batches/files`);
+  - `upload(uploadUrl, bytes)`: PUT raw bytes, no extra headers;
+  - `createBatch(fileId, provider="anthropic", completionWindow="24h", requestId)`: `POST /v1/batches`, no `endpoint` for Anthropic;
+  - `get(batchId)`: `GET /v1/batches/{id}`;
+  - `results(batchId)` → `{outputFileUrl, errorFileUrl}`;
+  - `cancel(batchId)`.
+- Anthropic JSONL line: `{"custom_id": "...", "params": {"model": "...", "max_tokens": N, "system": "...", "messages": [...], "tools": [...], "tool_choice": {...}}}`.
+- Parse output lines by `custom_id`; record `usage` into `kb_batch_job`/`kb_run`.
+- **Verify the exact output shape for Anthropic and the model id accepted for Haiku 4.5** with a tiny real batch before relying on it.
+  The docs only show an OpenAI-shaped output example and an old model id.
+- `FakeLlmBatchClient` for tests: completes immediately with canned or scripted outputs, keyed by stage.
+- Config: `KB_LLM_BASE_URL` (default `https://inference.do-ai.run`), `KB_LLM_API_KEY` (a DO model access key),
+  `KB_MODEL`, `KB_PIPELINE_ENABLED` (default false), `KB_PIPELINE_CRON`, `KB_POLL_INTERVAL`, `KB_RUN_TOKEN_BUDGET`, `KB_RETRY_REJECTED`.
+
+## Budget
+
+Before submitting each stage, estimate input tokens (chars/3.5) and enforce `KB_RUN_TOKEN_BUDGET`. Subjects are
+prioritized by change size (added + changed chars, then removed count), and the ones that don't fit are deferred, staying
+dirty for next week. Actual usage from the results is recorded per run, per stage and per subject.
+
+## Prompts
+
+Versioned resources in `src/main/resources/kb/prompts/` (`digest.v1.md`, `plan.v1.md`, `write.v1.md`, `retry.v1.md`),
+with `prompt_version` stored on digests and runs. `write` ports the rules of the hand-written pipeline:
+- format and frontmatter;
+- citations `[[file:<id>|short name]]` at the end of sentences, never wrapping content;
+- every `##` section cited;
+- Spanish slugs;
+- no 40+ word copying;
+- voseo;
+- the concept-coverage rule with anchors;
+- no invented facts;
+- the false-friend warning for cross-subject links.
+
+## Staff endpoints
+
+- `POST /v1/staff/kb/pipeline/runs` (manual trigger, `?dryRun=true` supported).
+- `GET /v1/staff/kb/pipeline/runs?limit=` and `GET …/runs/{id}` (stage, per-subject status, tokens, rejected pages with errors).
+- `POST /v1/staff/kb/pipeline/runs/{id}/cancel`.
+- `POST /v1/staff/kb/pipeline/baseline`.
+- `GET /v1/staff/kb/pipeline/preview`: what the next run would do (dirty subjects with their added/changed/removed lists,
+  digests needed, estimated tokens), computed without calling DO.
+
+**Dry run** builds every JSONL and stores it in MinIO but doesn't submit. Use it to inspect prompts and token estimates.
+
+## Tests (FakeLlmBatchClient)
+
+- **No changes ⇒ zero requests:** a second run right after a completed one submits nothing.
+- **One file changed in one subject:** exactly its chunks are digested. PLAN contains only that subject; WRITE contains only
+  the planned pages; the raw text of other files is never present in any JSONL (assert on the stored payloads).
+- **File removed by staff:** the page is hidden immediately; the next run rewrites the citing pages without it, with no raw
+  text of the removed file in any payload.
+- **Digest reuse:** the same fingerprint in another subject or source is not digested again.
+- **Restart mid-run:** the poller resumes from the DB.
+- **Budget deferral** keeps subjects dirty.
+- **Validation failure** → RETRY batch → kept previous version.
