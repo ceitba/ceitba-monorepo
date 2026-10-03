@@ -151,3 +151,29 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
 - **Restart mid-run:** the poller resumes from the DB.
 - **Budget deferral** keeps subjects dirty.
 - **Validation failure** → RETRY batch → kept previous version.
+
+## Implementation notes and deviations
+
+- **Executors.** Each LLM stage runs as BATCH (DO `/v1/batches`, only `anthropic-*` / commercial `openai-*` models) or
+  SYNC (OpenAI-compatible `/v1/chat/completions`, `KB_SYNC_CONCURRENCY` parallel requests, each answer persisted as it
+  arrives). `KB_EXECUTION_MODE=auto|batch|sync`; the runtime settings override it. GLM, DeepSeek, Qwen, Kimi and
+  gpt-oss have no batch on DO, so with the default GLM models every stage is SYNC.
+- **Stored payloads.** The canonical request is Anthropic Messages params; the same JSONL lines are stored under
+  `kb/runs/<runId>/<stage>[-attempt].jsonl` in both modes (outputs `-out.jsonl`, errors `-err.jsonl`;
+  `reasoning_content` is stripped). MinIO denies anonymous reads of `kb/*`.
+- **custom_id** is `<run8>-<StageLetter>-<seq6>` (Anthropic limits it to `[A-Za-z0-9_-]{1,64}`); the long
+  `runId:stage:subject:slug:chunk` key is kept in `kb_run_request.item_key`.
+- **Structured output.** Tools + forced `tool_choice`; with no tool call the content is parsed as JSON, then one
+  retry with `response_format: json_object` (tool named in the system prompt). Empty/unparseable tool arguments or
+  `finish_reason=length` are failures, retried once with double `max_tokens` (cap 32k) and counted in
+  `emptyToolCallRate`.
+- **Reasoning models.** Per-stage `reasoning_effort` (settings `reasoningEffort`) is sent only to catalog models with
+  `supportsReasoningEffort`; `max_tokens` per stage defaults to 4000 / 6000 / 12000 / 12000.
+- **Dry run** stops after PLAN (operations are shown, nothing is written).
+- **Poller** (`KB_POLL_INTERVAL`) is always on so manual runs and evals progress; `KB_PIPELINE_ENABLED` (or the
+  settings' `enabled`) only gates the weekly cron. `kb.pipeline.background=false` turns all background work off (tests).
+- **Per-subject overrides** live in the settings (`subjectOverrides`) instead of a separate table.
+- **Cost limit.** A run whose next stage would exceed `weeklyCostLimitUsd` goes to `BLOCKED_BY_COST_LIMIT`;
+  `POST /v1/staff/kb/pipeline/runs/{id}/approve-cost` releases it once.
+- **Extra endpoints.** `POST /v1/staff/kb/pipeline/probe {model, mode?}` and `POST /v1/staff/kb/pipeline/compare`
+  (an eval over a one-subject set).
