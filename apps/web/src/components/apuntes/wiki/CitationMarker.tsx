@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import type { KbSource } from '../../../api/kb'
 import KindIcon from '../KindIcon'
 import YearBadge from '../YearBadge'
-import { useCitations } from './citationContext'
+import { useCitationHighlight, useCitations } from './citationContext'
 
 const POPOVER_WIDTH = 288 // 18rem
 const MARGIN = 8
@@ -24,7 +24,8 @@ interface Props {
 // popover is portalled and clamped to the viewport.
 export default function CitationMarker({ fileId, n, label, section, source }: Props) {
   const { t } = useTranslation()
-  const { highlighted, reportPart } = useCitations()
+  const { reportPart } = useCitations()
+  const highlighted = useCitationHighlight()
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)

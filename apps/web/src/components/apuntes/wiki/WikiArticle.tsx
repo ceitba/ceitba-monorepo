@@ -7,7 +7,7 @@ import Notice from '../../Notice'
 import ReportDialog from '../ReportDialog'
 import KindIcon from '../KindIcon'
 import YearBadge from '../YearBadge'
-import { CitationContext, type CitationContextValue } from './citationContext'
+import { CitationContext, CitationHighlightContext, type CitationContextValue } from './citationContext'
 import { citationOrder } from './wikilinks'
 
 const WikiMarkdown = lazy(() => import('./WikiMarkdown'))
@@ -40,14 +40,14 @@ export default function WikiArticle({
   const order = useMemo(() => citationOrder(page.markdown ?? '', page.sources ?? []), [page.markdown, page.sources])
   const citations = useMemo<CitationContextValue>(() => ({
     order,
-    highlighted,
     reportPart: (comment) => setReporting({ comment, partial: true }),
-  }), [order, highlighted])
+  }), [order])
   const [reported, setReported] = useState(page.reportedByMe)
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
     <CitationContext.Provider value={citations}>
+    <CitationHighlightContext.Provider value={highlighted}>
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-10">
       <article className="min-w-0">
         <header className="mb-6">
@@ -120,6 +120,7 @@ export default function WikiArticle({
         />
       )}
     </div>
+    </CitationHighlightContext.Provider>
     </CitationContext.Provider>
   )
 }
