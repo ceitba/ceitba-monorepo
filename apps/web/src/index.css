@@ -402,6 +402,8 @@ html.dark {
   stroke-width: calc(4px / var(--k));
   pointer-events: none;
 }
+.kbg-label.is-culled { visibility: hidden; }
+.kbg-label-host { pointer-events: none; }
 .kbg.zoom-low .lbl-concept,
 .kbg.zoom-low .lbl-muted { display: none; }
 .kbg.zoom-high .kbg-group-label { display: none; }

@@ -31,7 +31,9 @@ export default function SubjectGraphThumb({ subjectId }: { subjectId: string }) 
   return (
     <Link
       to={`/apuntes/${encodeURIComponent(subjectId)}/grafo`}
-      className="group block rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden hover:border-primary transition-colors"
+      // shrink-0: the sidebar is a scrollable flex column, and an
+      // overflow-hidden flex item would otherwise collapse to its border.
+      className="group block shrink-0 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden hover:border-primary transition-colors"
     >
       <GraphView
         mode="thumb"

@@ -87,6 +87,9 @@ export default function GraphView({
   const raf = useRef(0)
   const size = useRef({ w: 0, h: 0 })
   const tween = useRef(0)
+  // Zoom floor: the interactive minimum, lowered when a fit needs to go
+  // further out (big graph in a small box), so fit never overflows.
+  const minK = useRef(MIN_K)
   const [layout, setLayout] = useState<Map<string, LayoutNode> | null>(null)
 
   const [selected, setSelected] = useState<string | null>(null)
@@ -103,7 +106,12 @@ export default function GraphView({
     const run = () => {
       if (cancelled) return
       const groupOf = groups ? new Map(nodes.map((n) => [n.id, n.group ?? ''])) : null
-      const pos = forceLayout(nodes.map((n) => n.id), edges, groupOf ? { groupOf: (id) => groupOf.get(id) } : {})
+      const meta = new Map(nodes.map((n) => [n.id, n]))
+      const pos = forceLayout(nodes.map((n) => n.id), edges, {
+        groupOf: groupOf ? (id) => groupOf.get(id) : undefined,
+        isPeripheral: (id) => !!meta.get(id)?.muted,
+        radiusOf: (id) => { const n = meta.get(id); return n ? radiusOf(n) : 8 },
+      })
       if (!cancelled) setLayout(pos)
     }
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
@@ -147,6 +155,47 @@ export default function GraphView({
     return null
   }, [matches, selected, neighbours])
 
+  // ── Label collision culling ─────────────────────────────────────────────
+  // Greedy: selected/focused labels first, then index, topic, concept and
+  // other-subject labels; a label whose screen box overlaps one already
+  // placed is hidden. Runs once the view settles, not every frame.
+  const cullTimer = useRef(0)
+  const scheduleCull = useCallback(() => {
+    window.clearTimeout(cullTimer.current)
+    cullTimer.current = window.setTimeout(() => {
+      const svgEl = svgRef.current
+      if (!svgEl) return
+      const rank = (el: Element) => {
+        const g = el.parentElement
+        if (!g) return 9
+        if (g.classList.contains('is-selected') || g.classList.contains('is-match')) return 0
+        const focus = svgEl.classList.contains('has-focus')
+        const base = g.classList.contains('kbg-index') ? 2 : g.classList.contains('kbg-topic') ? 3 : 4
+        const muted = g.classList.contains('is-muted') ? 2 : 0
+        return (focus && !g.classList.contains('is-active') ? 10 : 0) + (focus && g.classList.contains('is-active') ? 1 : base) + muted
+      }
+      const labels = [...svgEl.querySelectorAll<SVGTextElement>('text.kbg-label')]
+        .map((el) => ({ el, rank: rank(el) }))
+        .sort((a, b) => a.rank - b.rank)
+      const placed: DOMRect[] = []
+      // A node only blocks labels of equal or lower priority than its own.
+      const rankById = new Map(labels.map(({ el, rank }) => [el.parentElement?.getAttribute('data-id') ?? '', rank]))
+      // Other nodes' circles are obstacles too: a label never covers a node.
+      const circles = [...svgEl.querySelectorAll<SVGCircleElement>('g.kbg-node:not(.kbg-label-host) > circle')]
+        .map((c) => ({ id: (c.parentElement as Element | null)?.getAttribute('data-id'), r: c.getBoundingClientRect() }))
+      const overlaps = (r: DOMRect, p: DOMRect) => r.left < p.right + 2 && r.right > p.left - 2 && r.top < p.bottom + 1 && r.bottom > p.top - 1
+      for (const { el, rank: labelRank } of labels) {
+        const r = el.getBoundingClientRect()
+        if (r.width === 0 && r.height === 0) { el.classList.remove('is-culled'); continue } // hidden by zoom rules
+        const own = el.parentElement?.getAttribute('data-id')
+        const hit = placed.some((p) => overlaps(r, p)) || (labelRank > 1 && circles.some((c) => c.id !== own && (rankById.get(c.id ?? '') ?? 9) <= labelRank && overlaps(r, c.r)))
+        el.classList.toggle('is-culled', hit)
+        if (!hit) placed.push(r)
+      }
+    }, 140)
+  }, [])
+  useEffect(() => () => window.clearTimeout(cullTimer.current), [])
+
   // ── View transform ──────────────────────────────────────────────────────
   const apply = useCallback(() => {
     if (raf.current) return
@@ -160,8 +209,9 @@ export default function GraphView({
         svg.classList.toggle('zoom-low', k < 1)
         svg.classList.toggle('zoom-high', k >= 1)
       }
+      scheduleCull()
     })
-  }, [])
+  }, [scheduleCull])
 
   const animateTo = useCallback((target: { k: number; x: number; y: number }, ms = 260) => {
     cancelAnimationFrame(tween.current)
@@ -185,33 +235,48 @@ export default function GraphView({
   const zoomAt = useCallback((factor: number, cx: number, cy: number) => {
     cancelAnimationFrame(tween.current)
     const v = view.current
-    const k = clamp(v.k * factor, MIN_K, MAX_K)
+    const k = clamp(v.k * factor, minK.current, MAX_K)
     const f = k / v.k
     view.current = { k, x: cx - (cx - v.x) * f, y: cy - (cy - v.y) * f }
     apply()
   }, [apply])
 
-  const fitTo = useCallback((ids: Iterable<string> | null, animate = true, maxK = 1.6) => {
-    if (!layout) return
+  // Fits `ids`, or by default the visible core nodes (pages of other
+  // subjects only count when nothing else is visible). Returns false when
+  // the box isn't measured yet.
+  const fitTo = useCallback((ids: Iterable<string> | null, animate = true, maxK = 1.6): boolean => {
+    if (!layout) return false
     const { w, h } = size.current
-    if (!w || !h) return
+    if (!w || !h) return false
+    let target = ids
+    if (!target) {
+      const core = visible.filter((n) => !n.muted).map((n) => n.id)
+      target = core.length ? core : visibleIds
+    }
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    for (const id of ids ?? visibleIds) {
+    for (const id of target) {
       const p = layout.get(id)
       if (!p) continue
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x)
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y)
+      const node = byId.get(id)
+      const r = node ? radiusOf(node) : 8
+      minX = Math.min(minX, p.x - r); maxX = Math.max(maxX, p.x + r)
+      minY = Math.min(minY, p.y - r); maxY = Math.max(maxY, p.y + r)
     }
-    if (!Number.isFinite(minX)) return
-    const pad = mode === 'thumb' ? 24 : 70
-    const bw = Math.max(maxX - minX, 1) + pad * 2
-    const bh = Math.max(maxY - minY, 1) + pad * 2
-    const k = clamp(Math.min(w / bw, h / bh), MIN_K, maxK)
+    if (!Number.isFinite(minX)) return false
+    // Margins in screen pixels; labels sit to the right of their node, so
+    // leave more room on that side and centre the circles+labels block.
+    const padL = mode === 'thumb' ? 10 : 30
+    const padR = mode === 'thumb' ? 10 : 170
+    const padY = mode === 'thumb' ? 10 : 36
+    const fitK = Math.min((w - padL - padR) / Math.max(maxX - minX, 1), (h - padY * 2) / Math.max(maxY - minY, 1))
+    minK.current = Math.min(MIN_K, Math.max(0.01, fitK * 0.8))
+    const k = clamp(fitK, minK.current, maxK)
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
-    const target = { k, x: w / 2 - cx * k, y: h / 2 - cy * k }
-    if (animate) animateTo(target)
-    else { view.current = target; apply() }
-  }, [layout, visibleIds, mode, animateTo, apply])
+    const next = { k, x: (w + padL - padR) / 2 - cx * k, y: h / 2 - cy * k }
+    if (animate) animateTo(next)
+    else { view.current = next; apply() }
+    return true
+  }, [layout, visible, visibleIds, byId, mode, animateTo, apply])
 
   const reset = useCallback(() => {
     if (!layout) return
@@ -224,23 +289,24 @@ export default function GraphView({
 
   // Track the container size; fit on first layout.
   const fitted = useRef(false)
+  const firstFit = useRef<() => void>(() => {})
   useLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
     const ro = new ResizeObserver(() => {
       size.current = { w: el.clientWidth, h: el.clientHeight }
+      // The first fit waits for a measured box (lazy/suspended mounts).
+      if (!fitted.current) firstFit.current()
     })
     size.current = { w: el.clientWidth, h: el.clientHeight }
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
   useEffect(() => { fitted.current = false }, [nodes])
-  useEffect(() => {
-    if (layout && !fitted.current) {
-      fitted.current = true
-      fitTo(null, false, mode === 'full' ? 1.2 : 1)
-    }
-  }, [layout, fitTo, mode])
+  firstFit.current = () => {
+    if (layout && !fitted.current && fitTo(null, false, mode === 'full' ? 1.4 : 1)) fitted.current = true
+  }
+  useEffect(() => { firstFit.current() }, [layout, fitTo, mode])
 
   // ── Pointer: drag to pan, pinch to zoom; wheel zoom around the cursor ──
   const pointers = useRef(new Map<number, { x: number; y: number }>())
@@ -371,6 +437,13 @@ export default function GraphView({
 
   const hasMuted = useMemo(() => nodes.some((n) => n.muted), [nodes])
 
+  function nodeClass(node: GraphNode, isActive: boolean): string {
+    return `kbg-node kbg-${node.type}${node.muted ? ' is-muted' : ''}${isActive && active ? ' is-active' : ''}${selected === node.id ? ' is-selected' : ''}${matches?.has(node.id) ? ' is-match' : ''}`
+  }
+
+  // Classes changed (focus, search, filters): re-cull after the commit.
+  useEffect(() => { if (layout) scheduleCull() }, [layout, active, visible, selected, scheduleCull])
+
   // ── Render ──────────────────────────────────────────────────────────────
   const svg = (
     <svg
@@ -413,12 +486,12 @@ export default function GraphView({
                 if (!p) return null
                 const r = radiusOf(node)
                 const isActive = !active || active.has(node.id)
-                const label = node.muted ? `${node.subjectId} · ${truncate(node.title, 22)}` : truncate(node.title, 30)
                 return (
                   <g
                     key={node.id}
                     transform={`translate(${p.x},${p.y})`}
-                    className={`kbg-node kbg-${node.type}${node.muted ? ' is-muted' : ''}${isActive && active ? ' is-active' : ''}${selected === node.id ? ' is-selected' : ''}${matches?.has(node.id) ? ' is-match' : ''}`}
+                    data-id={node.id}
+                    className={nodeClass(node, isActive)}
                     onClick={(e) => { e.stopPropagation(); clickNode(node) }}
                     role={mode === 'thumb' ? undefined : 'button'}
                     tabIndex={mode === 'full' ? 0 : undefined}
@@ -429,15 +502,30 @@ export default function GraphView({
                   >
                     {mode !== 'thumb' && <title>{`${node.subjectId} · ${node.title}`}</title>}
                     <circle r={r} style={{ fill: node.muted ? undefined : colorOf(node) }} vectorEffect="non-scaling-stroke" />
-                    {mode !== 'thumb' && (
-                      <text x={r + 3} y={0} dy="0.35em" className={`kbg-label lbl-${node.muted ? 'muted' : node.type}`}>
-                        {label}
-                      </text>
-                    )}
                   </g>
                 )
               })}
             </g>
+            {/* Labels in their own layer above every circle, so no node
+                ever covers a label; overlaps are culled (scheduleCull). */}
+            {mode !== 'thumb' && (
+              <g aria-hidden="true">
+                {visible.map((node) => {
+                  const p = layout.get(node.id)
+                  if (!p) return null
+                  const r = radiusOf(node)
+                  const isActive = !active || active.has(node.id)
+                  const label = node.muted ? `${node.subjectId} · ${truncate(node.title, 22)}` : truncate(node.title, 30)
+                  return (
+                    <g key={node.id} data-id={node.id} transform={`translate(${p.x},${p.y})`} className={`${nodeClass(node, isActive)} kbg-label-host`}>
+                      <text x={r + 3} y={0} dy="0.35em" className={`kbg-label lbl-${node.muted ? 'muted' : node.type}`}>
+                        {label}
+                      </text>
+                    </g>
+                  )
+                })}
+              </g>
+            )}
             {mode !== 'thumb' && (
               <g aria-hidden="true">
                 {groupLabels.map((g) => (
