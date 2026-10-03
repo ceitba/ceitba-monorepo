@@ -154,11 +154,12 @@ public class KbModelCatalogService {
             var added = new ArrayList<String>();
             int unchanged = 0;
             var seen = new HashSet<String>();
+            var perToken = new ArrayList<String>();
+            var perMillion = new ArrayList<String>();
             for (var c : parsed) {
                 if (!seen.add(c.id())) continue;
-                if (!c.perTokenFields().isEmpty()) {
-                    log.info("KB catalog: {} prices {} given per token, converted x1e6", c.id(), c.perTokenFields());
-                }
+                if (!c.perTokenFields().isEmpty()) perToken.add(c.id());
+                else if (c.inputPerM() != null) perMillion.add(c.id());
                 var m = existing.get(c.id());
                 if (m == null) {
                     if (!c.serverlessChat() || c.inputPerM() == null) continue;
@@ -179,8 +180,10 @@ public class KbModelCatalogService {
                 else updated.add(new KbModelSyncResponse.Updated(m.getId(), changes));
             }
             var notInCatalog = existing.keySet().stream().filter(id -> !seen.contains(id)).toList();
-            log.info("KB catalog: synced from DO catalog: {} updated, {} added, {} unchanged, {} not in catalog",
-                updated.size(), added.size(), unchanged, notInCatalog.size());
+            log.info("KB catalog: synced from DO catalog: {} updated, {} added, {} unchanged, {} not in catalog; "
+                + "prices given per token (converted x1e6) for {} models, already per million for {}{}",
+                updated.size(), added.size(), unchanged, notInCatalog.size(), perToken.size(), perMillion.size(),
+                perMillion.isEmpty() ? "" : " " + perMillion);
             return new KbModelSyncResponse(updated, added, unchanged, notInCatalog, "do-catalog", now);
         });
     }

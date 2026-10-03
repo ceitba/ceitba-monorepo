@@ -28,8 +28,8 @@ public record KbCatalogItem(String id, String name, String creator, Integer cont
         var creator = n.path("creator");
         String creatorName = creator.isTextual() ? creator.asText()
             : creator.path("name").asText(creator.path("id").asText(null));
-        return new KbCatalogItem(n.path("model_id").asText(n.path("id").asText(null)), n.path("name").asText(null),
-            creatorName, integer(n.path("context_window")), integer(n.path("max_output_tokens")), strings(n.path("capabilities")),
+        return new KbCatalogItem(n.path("model_id").asText(n.path("id").asText(null)), cut(n.path("name").asText(null), 128),
+            cut(creatorName, 32), integer(n.path("context_window")), integer(n.path("max_output_tokens")), strings(n.path("capabilities")),
             strings(n.path("availability")), n.path("type").asText(null), input, output, cache, List.copyOf(converted));
     }
 
@@ -58,6 +58,11 @@ public record KbCatalogItem(String id, String name, String creator, Integer cont
             d = d.multiply(BigDecimal.valueOf(1_000_000));
         }
         return d.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    // Fits the kb_model columns (display_name 128, provider 32).
+    static String cut(String v, int max) {
+        return v == null || v.length() <= max ? v : v.substring(0, max);
     }
 
     static Integer integer(JsonNode v) {
