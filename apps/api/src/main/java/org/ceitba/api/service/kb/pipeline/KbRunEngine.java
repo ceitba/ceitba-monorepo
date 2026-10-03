@@ -344,6 +344,11 @@ public class KbRunEngine {
                 }
                 ids.add(r.getCustomId());
             }
+            // Answered but unusable (e.g. a PLAN whose operations were all
+            // dropped): sent once more with the second attempt.
+            if (maxAttempt < 2) {
+                runs.findById(runId).filter(KbRun::isActive).ifPresent(r -> ids.addAll(handler.redo(r, stage)));
+            }
             return ids;
         });
         if (!leftover.isEmpty() && maxAttempt < 2) {

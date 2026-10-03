@@ -72,6 +72,15 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
      - create pages for new key concepts the new material explains;
      - delete pages that lost all their sources;
      - never touch other pages.
+   - Every op field is **required** in the tool schema; `sources` must be input `fileId`s copied exactly, at least one
+     for create/update (only a delete may have none).
+   - Validation drops unusable ops (`noSources`, `unknownSources`, `invalidSlug`, `duplicateSlug`, `invalidOp`,
+     `unknownPage`; evals also `deleteIgnored`). Drops are logged (WARN: run, subject, model, count per reason) and
+     recorded: `kb_run.stats.droppedPlanOps.<subjectId>` (exposed as `droppedPlanOps` on the run's subjects) or the
+     eval's `results.configs.<key>.subjects.<id>.droppedPlanOps`, as `{proposed, kept, dropped: {reason: n}}`.
+   - If the model proposed ops but **none** survived, that PLAN request is sent once more (as the stage's second
+     attempt, `KbRunHandler.redo`) with a corrective note listing the valid file ids. Still empty → the subject fails
+     with `PLAN: plan returned no operations with valid sources`.
 4. **WRITE** (batch): one request per create/update op.
    - Input:
      - the current page Markdown (for updates);
