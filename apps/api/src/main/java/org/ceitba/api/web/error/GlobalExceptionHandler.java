@@ -16,6 +16,7 @@ import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
 import org.ceitba.api.service.drive.DriveException;
+import org.ceitba.api.service.kb.pipeline.KbPipelineException;
 import org.ceitba.api.service.wiki.BookmarkLimitException;
 import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
@@ -95,6 +96,12 @@ public class GlobalExceptionHandler {
             builder.header("Retry-After", Long.toString(ex.retryAfterSeconds()));
         }
         return builder.body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(KbPipelineException.class)
+    public ResponseEntity<ErrorResponse> handleKbPipeline(KbPipelineException ex, HttpServletRequest req) {
+        return ResponseEntity.status(ex.reason().status())
+            .body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(BookmarkLimitException.class)
