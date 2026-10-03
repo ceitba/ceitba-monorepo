@@ -17,6 +17,19 @@ public interface KbRunRequestRepository extends JpaRepository<KbRunRequest, Stri
 
     long countByRunId(UUID runId);
 
+    // [customId, model] of a stage's PENDING requests, without their params.
+    @org.springframework.data.jpa.repository.Query("""
+        select r.customId, r.model from KbRunRequest r
+        where r.runId = :runId and r.stage = :stage and r.status = 'PENDING'
+        order by r.customId
+        """)
+    List<Object[]> pendingIdsAndModels(@org.springframework.data.repository.query.Param("runId") UUID runId,
+                                       @org.springframework.data.repository.query.Param("stage") String stage);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("delete from KbRunRequest r where r.customId in :ids")
+    int deleteByCustomIds(@org.springframework.data.repository.query.Param("ids") Collection<String> ids);
+
     long countByRunIdAndStage(UUID runId, String stage);
 
     long countByRunIdAndStageAndStatus(UUID runId, String stage, String status);

@@ -100,6 +100,23 @@ public class KbPayloads {
         return p;
     }
 
+    // A copy of `params` with one more text block at the end of the user
+    // message (the PLAN retry's corrective note).
+    public ObjectNode withNote(JsonNode params, String note) {
+        var p = (ObjectNode) params.deepCopy();
+        var msg = (ObjectNode) p.withArray("messages").get(0);
+        ArrayNode content;
+        if (msg.path("content").isArray()) {
+            content = (ArrayNode) msg.get("content");
+        } else {
+            var text = msg.path("content").asText("");
+            content = msg.putArray("content");
+            content.addObject().put("type", "text").put("text", text);
+        }
+        content.addObject().put("type", "text").put("text", note);
+        return p;
+    }
+
     public String toJson(Object o) {
         try {
             return json.writerWithDefaultPrettyPrinter().writeValueAsString(o);
@@ -150,12 +167,18 @@ public class KbPayloads {
                 var op = json.createObjectNode().put("type", "object");
                 var opProps = op.putObject("properties");
                 opProps.putObject("op").put("type", "string").putArray("enum").add("create").add("update").add("delete");
-                opProps.putObject("slug").put("type", "string");
+                opProps.putObject("slug").put("type", "string")
+                    .put("description", "Page slug: Spanish, lowercase ASCII words joined by hyphens");
                 opProps.putObject("type").put("type", "string").putArray("enum").add("index").add("topic").add("concept");
-                opProps.putObject("title").put("type", "string");
-                opProps.set("sources", stringArray());
-                opProps.putObject("reason").put("type", "string");
-                op.putArray("required").add("op").add("slug");
+                opProps.putObject("title").put("type", "string").put("description", "Page title, in Spanish");
+                var sources = stringArray();
+                sources.put("description", "Ids of the input source files that support the page, exactly as given in "
+                    + "the input (fileId). Required with at least one id for create/update; may be empty only for delete.");
+                opProps.set("sources", sources);
+                opProps.putObject("reason").put("type", "string").put("description", "Why, in one short sentence");
+                // Every field is required: a create/update without valid
+                // sources is dropped (KbPipelineService.validateOps).
+                op.putArray("required").add("op").add("slug").add("type").add("title").add("sources").add("reason");
                 props.putObject("operations").put("type", "array").set("items", op);
                 schema.putArray("required").add("operations");
             }

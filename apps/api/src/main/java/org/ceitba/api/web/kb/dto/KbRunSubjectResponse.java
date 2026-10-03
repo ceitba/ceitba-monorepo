@@ -24,5 +24,7 @@ public record KbRunSubjectResponse(
     long tokensCached,
     java.math.BigDecimal costEstimate,
     java.math.BigDecimal costUsd,
-    String error
+    String error,
+    // {proposed, kept, dropped: {reason: count}} when PLAN dropped operations, else null.
+    JsonNode droppedPlanOps
 ) {}

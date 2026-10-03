@@ -25,6 +25,13 @@ public interface KbRunHandler {
     // Uses the stage's results and sets the next stage.
     void after(KbRun run, String stage);
 
+    // Once the stage's first attempt is answered, before after(): the
+    // answered requests to send once more (already reset with redo(params)),
+    // as custom ids. Used for a PLAN whose operations were all dropped.
+    default java.util.List<String> redo(KbRun run, String stage) {
+        return java.util.List.of();
+    }
+
     // The final, non-LLM stage (PUBLISH for the pipeline, REPORT for evals).
     void complete(UUID runId);
 

@@ -107,6 +107,14 @@ public class KbPipelineService implements KbRunHandler {
     private final Clock clock;
     private volatile ZonedDateTime lastScheduleCheck;
 
+    // DIGEST reads the raw text of this many files at a time; id lists for
+    // IN queries are split into pages of ID_PAGE.
+    static final int DIGEST_PAGE = 20;
+    private static final int ID_PAGE = 1000;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     public KbPipelineService(KbRunRepository runs, KbBatchJobRepository jobs, KbRunSubjectRepository runSubjects,
                              KbRunRequestRepository requests, KbFileDigestRepository digests,
                              KbSubjectStateRepository states, KbPageRepository pages, KbRelationRepository relations,
@@ -349,9 +357,11 @@ public class KbPipelineService implements KbRunHandler {
         int built = 0;
         Set<String> plannedFingerprints = new HashSet<>();
         for (var rs : active) {
-            var before = new HashSet<>(plannedFingerprints);
+            if (stage.equals("DIGEST")) {
+                built += buildDigest(run, rs, plannedFingerprints, seq, s);
+                continue;
+            }
             List<KbRunRequest> mine = switch (stage) {
-                case "DIGEST" -> digestRequests(run, rs, plannedFingerprints, seq, s);
                 case "PLAN" -> planRequests(run, rs, seq, s);
                 case "WRITE" -> writeRequests(run, rs, seq, s);
                 case "RETRY" -> retryRequests(run, rs, seq, s);
@@ -360,16 +370,25 @@ public class KbPipelineService implements KbRunHandler {
             long est = mine.stream().mapToLong(KbRunRequest::getEstTokens).sum();
             if (!mine.isEmpty() && run.getEstimatedTokens() + est > s.runTokenBudget()) {
                 rs.setStatus("DEFERRED");
-                plannedFingerprints.retainAll(before);
                 log.info("KB pipeline: run {}: {} deferred (token budget)", run.getId(), rs.getSubjectId());
                 continue;
             }
             run.addEstimated(est);
-            requests.saveAll(mine);
+            persist(mine);
             built += mine.size();
         }
         refreshSummary(run);
         return built;
+    }
+
+    // Saves requests and drops them from the persistence context: the whole
+    // stage is built in one transaction, and their params (raw text, plus
+    // Hibernate's JSON snapshot) must not pile up across subjects.
+    private void persist(List<KbRunRequest> batch) {
+        if (batch.isEmpty()) return;
+        var saved = requests.saveAll(batch);
+        requests.flush();
+        saved.forEach(entityManager::detach);
     }
 
     @Override
@@ -383,15 +402,33 @@ public class KbPipelineService implements KbRunHandler {
                 run.setStage("PLAN");
             }
             case "PLAN" -> {
+                var dropped = json.createObjectNode();
                 for (var rs : active) {
                     var row = rows.stream().filter(r -> r.getSubjectId().equals(rs.getSubjectId())).findFirst();
                     if (row.isEmpty() || run.isDryRun()) continue;   // no-LLM plan, or dry
-                    if (row.get().getStatus().equals("DONE")) {
-                        rs.setOperations(validateOps(rs, row.get().getResult().path("operations"),
-                            livePages(rs.getSubjectId())));
-                    } else {
+                    if (!row.get().getStatus().equals("DONE")) {
                         rs.fail("PLAN: " + row.get().getError());
+                        continue;
                     }
+                    var proposed = row.get().getResult().path("operations");
+                    var check = new KbPlanCheck(proposed);
+                    var ops = validateOps(rs, proposed, livePages(rs.getSubjectId()), check);
+                    if (check.anyDropped()) {
+                        log.warn("KB run {}: PLAN of {} ({}) dropped operations: {} of {} kept, dropped {}",
+                            run.getId(), rs.getSubjectId(), row.get().getModel(), check.keptCount(),
+                            check.proposed(), check.droppedByReason());
+                        dropped.set(rs.getSubjectId(), check.toJson(json));
+                    }
+                    if (check.emptyAfterFiltering()) {
+                        rs.fail("PLAN: " + KbPlanCheck.EMPTY_PLAN_ERROR + " (dropped " + check.droppedByReason() + ")");
+                        continue;
+                    }
+                    rs.setOperations(ops);
+                }
+                if (!dropped.isEmpty()) {
+                    var stats = run.getStats() instanceof ObjectNode o ? o.deepCopy() : json.createObjectNode();
+                    stats.set("droppedPlanOps", dropped);
+                    run.setStats(stats);
                 }
                 if (run.isDryRun()) {
                     active.forEach(rs -> { if (rs.isActive()) rs.setStatus("DRY"); });
@@ -435,6 +472,33 @@ public class KbPipelineService implements KbRunHandler {
             default -> { }
         }
         refreshSummary(run);
+    }
+
+    // A PLAN whose operations were all dropped (typically: no valid
+    // `sources`) is asked once more with a corrective note listing the valid
+    // file ids; after() fails the subject if it is still empty.
+    @Override
+    public List<String> redo(KbRun run, String stage) {
+        if (!stage.equals("PLAN") || run.isDryRun()) return List.of();
+        Map<String, KbRunSubject> active = new HashMap<>();
+        runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(run.getId()).stream()
+            .filter(KbRunSubject::isActive).forEach(rs -> active.put(rs.getSubjectId(), rs));
+        var out = new ArrayList<String>();
+        for (var r : requests.findByRunIdAndStage(run.getId(), "PLAN")) {
+            var rs = active.get(r.getSubjectId());
+            if (rs == null || !r.getStatus().equals("DONE")) continue;
+            var proposed = r.getResult().path("operations");
+            var check = new KbPlanCheck(proposed);
+            validateOps(rs, proposed, livePages(rs.getSubjectId()), check);
+            if (!check.emptyAfterFiltering()) continue;
+            var ids = new ArrayList<String>();
+            rs.getInputs().forEach(i -> ids.add(i.path("fileId").asText()));
+            log.warn("KB run {}: PLAN of {} ({}) had no usable operation ({} proposed, dropped {}); asking once more",
+                run.getId(), rs.getSubjectId(), r.getModel(), check.proposed(), check.droppedByReason());
+            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids)));
+            out.add(r.getCustomId());
+        }
+        return out;
     }
 
     // PUBLISH: one transaction per subject; a failure leaves that subject
@@ -487,8 +551,64 @@ public class KbPipelineService implements KbRunHandler {
 
     // DIGEST: chunks of added/changed files whose content has no digest yet
     // (by fingerprint, so the same content elsewhere is not digested again).
-    private List<KbRunRequest> digestRequests(KbRun run, KbRunSubject rs, Set<String> planned, KbRunEngine.Seq seq,
-                                             KbEffectiveSettings s) {
+    // Memory stays bounded however large the corpus: a subject that clearly
+    // does not fit the budget (by its texts' lengths, read in SQL) is
+    // deferred without loading any text; otherwise its texts are read
+    // DIGEST_PAGE files at a time and each page's requests are saved and
+    // detached before the next. A subject whose exact estimate turns out
+    // over budget has its saved requests deleted and is deferred.
+    private int buildDigest(KbRun run, KbRunSubject rs, Set<String> planned, KbRunEngine.Seq seq,
+                            KbEffectiveSettings s) {
+        var before = new HashSet<>(planned);
+        var need = digestTargets(rs, planned);
+        if (need.isEmpty()) return 0;
+        long budget = s.runTokenBudget() - run.getEstimatedTokens();
+        long chars = 0;
+        for (var page : pages(need, ID_PAGE)) {
+            for (Object[] r : files.textLengths(page)) chars += ((Number) r[1]).longValue();
+        }
+        if ((long) (chars * 0.9 / 3.5) > budget) return defer(run, rs, planned, before);
+        long est = 0;
+        var saved = new ArrayList<String>();
+        for (var page : pages(need, DIGEST_PAGE)) {
+            var mine = new ArrayList<KbRunRequest>();
+            var rows = new ArrayList<>(files.textsOf(page));
+            rows.sort(Comparator.comparing(r -> r[0].toString()));
+            for (Object[] f : rows) {
+                var id = (UUID) f[0];
+                var sentFingerprint = fingerprintOf(id, (String) f[2]);
+                var chunks = KbPayloads.chunks((String) f[3]);
+                for (int i = 0; i < chunks.size(); i++) {
+                    var text = "Archivo: " + f[1] + " (parte " + (i + 1) + "/" + chunks.size() + ")\n\n" + chunks.get(i);
+                    var params = payloads.tuned(s.modelDigest(), "DIGEST", s, null, text);
+                    var r = engine.request(run, rs.getSubjectId(), "DIGEST", id.toString(), i, s.modelDigest(), params, seq);
+                    r.setContentFingerprint(sentFingerprint);
+                    mine.add(r);
+                }
+            }
+            est += mine.stream().mapToLong(KbRunRequest::getEstTokens).sum();
+            if (est > budget) {
+                if (!saved.isEmpty()) {
+                    for (var ids : pages(saved, ID_PAGE)) requests.deleteByCustomIds(ids);
+                }
+                return defer(run, rs, planned, before);
+            }
+            persist(mine);
+            mine.forEach(r -> saved.add(r.getCustomId()));
+        }
+        run.addEstimated(est);
+        return saved.size();
+    }
+
+    private int defer(KbRun run, KbRunSubject rs, Set<String> planned, Set<String> before) {
+        rs.setStatus("DEFERRED");
+        planned.retainAll(before);
+        log.info("KB pipeline: run {}: {} deferred (token budget)", run.getId(), rs.getSubjectId());
+        return 0;
+    }
+
+    // Files to digest (sorted by id), adding their fingerprints to `planned`.
+    private List<UUID> digestTargets(KbRunSubject rs, Set<String> planned) {
         var candidates = new ArrayList<JsonNode>();
         rs.getAdded().forEach(candidates::add);
         rs.getChanged().forEach(candidates::add);
@@ -505,19 +625,13 @@ public class KbPipelineService implements KbRunHandler {
             planned.add(fp);
             need.add(UUID.fromString(c.path("fileId").asText()));
         }
-        var out = new ArrayList<KbRunRequest>();
-        for (DriveFile f : files.findAllById(need)) {
-            var sentFingerprint = fingerprintOf(f.getId(), f.getContentFingerprint());
-            var chunks = KbPayloads.chunks(f.getTextContent());
-            for (int i = 0; i < chunks.size(); i++) {
-                var text = "Archivo: " + f.getName() + " (parte " + (i + 1) + "/" + chunks.size() + ")\n\n" + chunks.get(i);
-                var params = payloads.tuned(s.modelDigest(), "DIGEST", s, null, text);
-                var r = engine.request(run, rs.getSubjectId(), "DIGEST", f.getId().toString(), i, s.modelDigest(), params, seq);
-                r.setContentFingerprint(sentFingerprint);
-                out.add(r);
-            }
-        }
-        out.sort(Comparator.comparing(KbRunRequest::getItemKey));
+        need.sort(Comparator.comparing(UUID::toString));
+        return need;
+    }
+
+    private static <T> List<List<T>> pages(List<T> all, int size) {
+        var out = new ArrayList<List<T>>();
+        for (int i = 0; i < all.size(); i += size) out.add(all.subList(i, Math.min(all.size(), i + size)));
         return out;
     }
 
@@ -607,6 +721,7 @@ public class KbPipelineService implements KbRunHandler {
         var fileById = fileMap(rs);
         var community = communityIds(fileById.keySet());
         var digestByFp = digestsFor(rs);
+        var textById = sourceTexts(rs.getOperations(), changedIds);
         Map<String, JsonNode> inputById = new HashMap<>();
         rs.getInputs().forEach(i -> inputById.put(i.path("fileId").asText(), i));
         // Stable first (subject and its page index: the same for every page of
@@ -646,8 +761,8 @@ public class KbPipelineService implements KbRunHandler {
                     if (d != null) {
                         for (var t : d.getDigest().path("topics")) keywords.add(t.path("name").asText());
                     }
-                    if (f != null && f.getTextContent() != null) {
-                        sourceTexts.add(new KbPayloads.SourceText(id, name, f.getTextContent()));
+                    if (textById.containsKey(id)) {
+                        sourceTexts.add(new KbPayloads.SourceText(id, name, textById.get(id)));
                     }
                 } else {
                     keptSources.addObject().put("fileId", id).put("name", name)
@@ -757,6 +872,11 @@ public class KbPipelineService implements KbRunHandler {
     // pages that lost all their sources are deleted and pages that lost some
     // are updated even if the model forgot them.
     JsonNode validateOps(KbRunSubject rs, JsonNode proposed, List<KbPage> existing) {
+        return validateOps(rs, proposed, existing, new KbPlanCheck(proposed));
+    }
+
+    // `check` counts the model's operations kept and dropped (per reason).
+    JsonNode validateOps(KbRunSubject rs, JsonNode proposed, List<KbPage> existing, KbPlanCheck check) {
         var valid = new HashSet<String>();
         rs.getInputs().forEach(i -> valid.add(i.path("fileId").asText()));
         Map<String, KbPage> bySlug = new HashMap<>();
@@ -766,17 +886,31 @@ public class KbPipelineService implements KbRunHandler {
         for (var op : proposed) {
             var kind = op.path("op").asText("").toLowerCase(Locale.ROOT);
             var slug = op.path("slug").asText("").trim();
-            if (!KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph") || !seen.add(slug)) continue;
+            if (!KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph")) {
+                check.dropped(KbPlanCheck.INVALID_SLUG);
+                continue;
+            }
+            if (!seen.add(slug)) {
+                check.dropped(KbPlanCheck.DUPLICATE_SLUG);
+                continue;
+            }
             var current = bySlug.get(slug);
             if (kind.equals("create") && current != null) kind = "update";
-            if (!List.of("create", "update", "delete").contains(kind)) continue;
-            if (!kind.equals("create") && current == null) continue;
+            if (!List.of("create", "update", "delete").contains(kind)) {
+                check.dropped(KbPlanCheck.INVALID_OP);
+                continue;
+            }
+            if (!kind.equals("create") && current == null) {
+                check.dropped(KbPlanCheck.UNKNOWN_PAGE);
+                continue;
+            }
             var o = json.createObjectNode();
             o.put("op", kind);
             o.put("slug", slug);
             if (kind.equals("delete")) {
                 o.put("reason", op.path("reason").asText(""));
                 out.add(o);
+                check.kept();
                 continue;
             }
             var type = current != null ? current.getType().wire()
@@ -791,12 +925,16 @@ public class KbPipelineService implements KbRunHandler {
             if (sources.isEmpty() && current != null) {
                 for (var id : current.getSources()) if (valid.contains(id.toString())) sources.add(id.toString());
             }
-            if (sources.isEmpty()) continue;
+            if (sources.isEmpty()) {
+                check.droppedForSources(op.path("sources"));
+                continue;
+            }
             o.put("type", type);
             o.put("title", title);
             o.set("sources", sources);
             o.put("reason", op.path("reason").asText(""));
             out.add(o);
+            check.kept();
         }
         var removed = new HashSet<String>();
         rs.getRemoved().forEach(n -> removed.add(n.asText()));
@@ -1052,11 +1190,31 @@ public class KbPipelineService implements KbRunHandler {
         return ids.isEmpty() ? java.util.Set.of() : new HashSet<>(files.findCommunityFileIds(ids));
     }
 
-    private Map<UUID, DriveFile> fileMap(KbRunSubject rs) {
+    // A subject input's id and name (never its text: see sourceTexts).
+    private record FileRef(UUID getId, String getName) {}
+
+    private Map<UUID, FileRef> fileMap(KbRunSubject rs) {
         var ids = new ArrayList<UUID>();
         rs.getInputs().forEach(i -> ids.add(UUID.fromString(i.path("fileId").asText())));
-        Map<UUID, DriveFile> out = new HashMap<>();
-        files.findAllById(ids).forEach(f -> out.put(f.getId(), f));
+        Map<UUID, FileRef> out = new HashMap<>();
+        for (var page : pages(ids, ID_PAGE)) {
+            for (Object[] r : files.namesOf(page)) out.put((UUID) r[0], new FileRef((UUID) r[0], (String) r[1]));
+        }
+        return out;
+    }
+
+    // Raw text of the changed files the subject's operations draw on (WRITE),
+    // read for this subject only.
+    private Map<String, String> sourceTexts(JsonNode operations, Set<String> changedIds) {
+        var ids = new java.util.TreeSet<String>();
+        for (var op : operations) {
+            for (var src : op.path("sources")) if (changedIds.contains(src.asText())) ids.add(src.asText());
+        }
+        Map<String, String> out = new HashMap<>();
+        var uuids = ids.stream().map(UUID::fromString).toList();
+        for (var page : pages(uuids, DIGEST_PAGE)) {
+            for (Object[] r : files.textsOf(page)) if (r[3] != null) out.put(r[0].toString(), (String) r[3]);
+        }
         return out;
     }
 
@@ -1117,6 +1275,9 @@ public class KbPipelineService implements KbRunHandler {
             if (n > 0) byStage.put(st, n);
         }
         stats.put("estimatedTokens", run.getEstimatedTokens());
+        if (run.getStats() != null && run.getStats().has("droppedPlanOps")) {
+            stats.set("droppedPlanOps", run.getStats().get("droppedPlanOps"));
+        }
         run.setStats(stats);
     }
 
@@ -1153,7 +1314,8 @@ public class KbPipelineService implements KbRunHandler {
         return list.stream().map(s -> new KbRunSubjectResponse(s.getSubjectId(), names.get(s.getSubjectId()),
             s.getStatus(), s.getModel(), ids(s.getAdded()), ids(s.getChanged()), texts(s.getRemoved()),
             s.getOperations(), s.getAccepted(), s.getRejected(), s.getDeleted(), s.getTokensIn(), s.getTokensOut(),
-            s.getTokensCached(), s.getCostEstimate(), usd(s.getCostEstimate()), s.getError())).toList();
+            s.getTokensCached(), s.getCostEstimate(), usd(s.getCostEstimate()), s.getError(),
+            r.getStats() == null ? null : r.getStats().path("droppedPlanOps").get(s.getSubjectId()))).toList();
     }
 
     private static List<String> ids(JsonNode inputs) {

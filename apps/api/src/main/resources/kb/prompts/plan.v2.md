@@ -18,8 +18,12 @@ Rules:
 - If `hasIndex` is false, `create` the `index` page (type `index`). If pages are created or deleted, `update`
   the index so its page list stays right.
 - Slugs: Spanish, lowercase ASCII words joined by hyphens (`valor-tiempo-del-dinero`); reuse existing slugs for updates.
-- `sources`: the file ids the page should cite after the change (from `addedOrChanged` or the page's current sources,
-  never a removed file).
+- Every operation has all of `op`, `slug`, `type`, `title`, `sources` and `reason`.
+- `sources`: the file ids the page should cite after the change, copied exactly from the `fileId` values of
+  `addedOrChanged` or the page's current sources (never a removed file, never a file name or an invented id).
+  Every `create` and `update` needs at least one; an operation without valid sources is discarded. Only a `delete`
+  may have an empty list.
+- `title`: the page title in Spanish (for `update`/`delete`, the page's current title).
 - `reason`: one short sentence.
 - Sources' age: each file has its `academicYear` and `community` (true = an older community archive, not a
   current student's notes). When files overlap or contradict, base pages on the most recent student notes and
