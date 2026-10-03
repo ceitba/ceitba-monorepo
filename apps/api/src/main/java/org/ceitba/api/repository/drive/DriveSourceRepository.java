@@ -4,7 +4,9 @@ import org.ceitba.api.domain.drive.DriveSource;
 import org.ceitba.api.domain.drive.DriveSourceStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -39,4 +41,18 @@ public interface DriveSourceRepository extends JpaRepository<DriveSource, UUID> 
     Page<DriveSource> findByStatusNotOrderByCreatedAtDesc(DriveSourceStatus status, Pageable pageable);
 
     List<DriveSource> findByUserId(UUID userId);
+
+    // Row lock: a sync writing into the source serializes with a concurrent
+    // disconnect, block or account deletion (DriveSyncStore).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from DriveSource s where s.id = :id")
+    Optional<DriveSource> findByIdForUpdate(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from DriveSource s where s.userId = :userId")
+    List<DriveSource> findByUserIdForUpdate(@Param("userId") UUID userId);
+
+    @Query("select count(s) > 0 from DriveSource s where s.rootFolderId = :rootFolderId and s.status = :status")
+    boolean existsByRootFolderIdAndStatus(@Param("rootFolderId") String rootFolderId,
+                                          @Param("status") DriveSourceStatus status);
 }

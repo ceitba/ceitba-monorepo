@@ -53,4 +53,14 @@ public interface KbRunRequestRepository extends JpaRepository<KbRunRequest, Stri
         FROM wiki.kb_run_request r WHERE r.run_id = :runId
         """, nativeQuery = true)
     List<Object[]> progressRows(@org.springframework.data.repository.query.Param("runId") java.util.UUID runId);
+
+    // Privacy: drops the raw text (params) and digest (result) of the DIGEST
+    // requests of deleted files (target = file id). No persistence-context
+    // clear: callers hold Drive entities in the same transaction.
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(value = """
+        UPDATE wiki.kb_run_request SET params = CAST('{}' AS jsonb), result = NULL
+        WHERE stage = 'DIGEST' AND target IN (:targets)
+        """, nativeQuery = true)
+    int redactDigestRequests(@org.springframework.data.repository.query.Param("targets") Collection<String> targets);
 }

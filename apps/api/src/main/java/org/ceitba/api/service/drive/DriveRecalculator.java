@@ -10,6 +10,7 @@ import org.ceitba.api.domain.drive.DriveSource;
 import org.ceitba.api.repository.PlanSubjectRepository;
 import org.ceitba.api.repository.SubjectRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.kb.KbModerationService;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -36,19 +37,24 @@ import java.util.stream.Collectors;
 //   publication           PublicationRule (published_at set on each move into PUBLISHED)
 // Run after every walk, PATCH, source approve/block, staff decision, report
 // and POST .../recompute-suggestions, so a plan change shows on the next one.
+// A file that was PUBLISHED and no longer is (or now counts for another
+// subject) takes down the wiki pages citing it (KbModerationService), so
+// pages never keep quoting a file that stopped being public.
 @Component
 public class DriveRecalculator {
 
     private final SubjectRepository subjects;
     private final PlanSubjectRepository planSubjects;
     private final UserRepository users;
+    private final KbModerationService kb;
     private final Clock clock;
 
     public DriveRecalculator(SubjectRepository subjects, PlanSubjectRepository planSubjects, UserRepository users,
-                             Clock clock) {
+                             KbModerationService kb, Clock clock) {
         this.subjects = subjects;
         this.planSubjects = planSubjects;
         this.users = users;
+        this.kb = kb;
         this.clock = clock;
     }
 
@@ -83,8 +89,11 @@ public class DriveRecalculator {
         var ordered = new ArrayList<>(files);
         ordered.sort(Comparator.comparingInt(f -> depth(f, byDriveId)));
         Map<String, String> suggestionBelow = new HashMap<>();   // driveId -> suggestion it passes down
+        var takenDown = new ArrayList<UUID>();
 
         for (var f : ordered) {
+            boolean wasPublished = f.getPublication() == DrivePublication.PUBLISHED;
+            String publishedSubject = f.getEffectiveSubjectId();
             String effective = null;
             boolean hidden = false;
             var seen = new HashSet<String>();
@@ -112,7 +121,12 @@ public class DriveRecalculator {
                 f.setPublishedAt(now);
             }
             f.setPublication(publication);
+            if (wasPublished && f.getId() != null
+                && (publication != DrivePublication.PUBLISHED || !Objects.equals(publishedSubject, effective))) {
+                takenDown.add(f.getId());
+            }
         }
+        if (!takenDown.isEmpty()) kb.hidePagesCiting(takenDown);
     }
 
     // USER (own) > INHERITED (an ancestor's USER) > NAME (own name, else the

@@ -12,8 +12,10 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// Who may see what. Readers see PUBLISHED files only; the source's student
-// and STAFF can open any file of theirs/all files (preview before publishing).
+// Who may see what. Readers see PUBLISHED files only; STAFF can open any
+// file, and the source's student can preview the files of their source that
+// they own in Drive (ownedBySharer). A file someone else owns that sits in
+// their folder is not theirs to read through the bot.
 @Component
 public class DriveAccess {
 
@@ -34,7 +36,7 @@ public class DriveAccess {
     public boolean canView(UUID userId, DriveFile file, DriveSource source) {
         if (file.isFolder()) return false;
         if (file.getPublication() == DrivePublication.PUBLISHED) return true;
-        if (source.getUserId().equals(userId)) return true;
+        if (source.getUserId().equals(userId) && file.isOwnedBySharer()) return true;
         return isStaff(userId);
     }
 

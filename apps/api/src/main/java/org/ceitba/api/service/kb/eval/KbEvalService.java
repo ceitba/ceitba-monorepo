@@ -818,7 +818,9 @@ public class KbEvalService implements KbRunHandler {
                     if (fp == null || !digests.findByContentFingerprintInAndPromptVersion(List.of(fp),
                         KbPayloads.PROMPT_VERSION).isEmpty()) continue;
                     var fileId = UUID.fromString(e.getKey());
-                    digests.save(new KbFileDigest(files.existsById(fileId) ? fileId : null, fp,
+                    // A deleted file's digest is not kept (it would outlive the file).
+                    if (!files.existsById(fileId)) continue;
+                    digests.save(new KbFileDigest(fileId, fp,
                         KbPayloads.PROMPT_VERSION, chunks.get(0).getModel(),
                         KbDigests.merge(chunks.stream().map(KbRunRequest::getResult).toList(), json),
                         chunks.stream().mapToInt(KbRunRequest::getTokensIn).sum(),

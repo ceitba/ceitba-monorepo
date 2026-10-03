@@ -10,6 +10,7 @@ import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.drive.DriveFileRepository;
 import org.ceitba.api.repository.drive.DriveSourceRepository;
 import org.ceitba.api.repository.drive.DriveUnclaimedShareRepository;
+import org.ceitba.api.service.kb.KbModerationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,10 @@ import java.util.UUID;
 // source syncs first, the older row survives: B adopts A's row when A
 // already marked it removed; A, when it finds the item missing while B holds
 // a live row for it, moves its row into B and drops B's newer one.
+//
+// applyWalk and storeContent lock the source row and give up when it is gone,
+// DISCONNECTED or BLOCKED: a disconnect, block or account deletion that lands
+// mid-sync is never undone by the rest of that sync.
 @Service
 public class DriveSyncStore {
 
@@ -63,12 +68,13 @@ public class DriveSyncStore {
     private final DriveRecalculator recalculator;
     private final DriveBlobs blobs;
     private final DriveStorageJanitor janitor;
+    private final KbModerationService kb;
     private final Clock clock;
 
     public DriveSyncStore(DriveSourceRepository sources, DriveFileRepository files,
                           DriveUnclaimedShareRepository unclaimed, UserRepository users,
                           DriveRecalculator recalculator, DriveBlobs blobs, DriveStorageJanitor janitor,
-                          Clock clock) {
+                          KbModerationService kb, Clock clock) {
         this.sources = sources;
         this.files = files;
         this.unclaimed = unclaimed;
@@ -76,6 +82,7 @@ public class DriveSyncStore {
         this.recalculator = recalculator;
         this.blobs = blobs;
         this.janitor = janitor;
+        this.kb = kb;
         this.clock = clock;
     }
 
@@ -127,12 +134,25 @@ public class DriveSyncStore {
         });
     }
 
+    // Whether a sync may still write into the source (REVOKED counts: a
+    // manual sync may retry it).
+    static boolean writable(DriveSource s) {
+        return s.getStatus() != DriveSourceStatus.DISCONNECTED && s.getStatus() != DriveSourceStatus.BLOCKED;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isSyncable(UUID sourceId) {
+        return sources.findById(sourceId).filter(DriveSyncStore::writable).isPresent();
+    }
+
     // Applies a walk (see the class comment) and returns the files whose
-    // stored copy is missing or outdated.
+    // stored copy is missing or outdated; null (nothing applied) when the
+    // source is gone or no longer writable.
     @Transactional
     public List<FetchTask> applyWalk(UUID sourceId, String rootName, List<WalkedItem> walked, boolean complete,
                                      String ownerEmail) {
-        var source = sources.findById(sourceId).orElseThrow(() -> DriveAccess.sourceNotFound(sourceId));
+        var source = sources.findByIdForUpdate(sourceId).filter(DriveSyncStore::writable).orElse(null);
+        if (source == null) return null;
         if (rootName != null && !rootName.equals(source.getRootName())) source.setRootName(rootName);
         var now = now();
 
@@ -230,6 +250,7 @@ public class DriveSyncStore {
         if (!f.hasContent() && live.hasContent()) copyContent(live, f);
         var dropped = DriveBlobs.Ref.of(live);
         var droppedId = live.getId();
+        kb.forgetFiles(List.of(droppedId));
         files.delete(live);
         files.flush();
         f.moveTo(target);
@@ -283,10 +304,21 @@ public class DriveSyncStore {
     // Saves a checked copy; the previous copy's objects go after commit when
     // no other row shares them. An `existing` result keeps (same
     // fingerprint) or shares (another row's) a stored copy: no new objects.
+    // False when the row or its source is gone (or the source is no longer
+    // writable): the objects just uploaded for it are deleted unless another
+    // row holds the same copy.
     @Transactional
-    public void storeContent(UUID fileId, DriveContentProcessor.Content c, OffsetDateTime modifiedAt) {
-        var f = files.findById(fileId).orElse(null);
-        if (f == null) return;
+    public boolean storeContent(UUID sourceId, UUID fileId, String driveId, DriveContentProcessor.Content c,
+                                OffsetDateTime modifiedAt) {
+        var source = sources.findByIdForUpdate(sourceId).filter(DriveSyncStore::writable).orElse(null);
+        var f = source == null ? null : files.findById(fileId).filter(r -> r.getSourceId().equals(sourceId)).orElse(null);
+        if (f == null) {
+            if (!c.existing()) {
+                janitor.deleteAfterCommit(blobs.releasable(
+                    List.of(new DriveBlobs.Ref(driveId, c.fingerprint(), keysOf(c))), List.of(fileId)));
+            }
+            return false;
+        }
         f.setSyncError(null);
         if (c.existing()) {
             if (Objects.equals(f.getContentFingerprint(), c.fingerprint()) || reuseContent(f, c.fingerprint())) {
@@ -296,7 +328,7 @@ public class DriveSyncStore {
                 // The other holder vanished meanwhile: check again next sync.
                 f.setContentModifiedAt(null);
             }
-            return;
+            return true;
         }
         var old = DriveBlobs.Ref.of(f);
         f.setContent(c.version(), c.fingerprint(), c.html(), c.pdfKey(), c.originalKey(), c.originalContentType(),
@@ -306,6 +338,18 @@ public class DriveSyncStore {
         if (!Objects.equals(old.fingerprint(), c.fingerprint())) {
             janitor.deleteAfterCommit(blobs.releasable(List.of(old), List.of()));
         }
+        return true;
+    }
+
+    // The object keys a processed copy uploaded (same rule as DriveFile.storageKeys).
+    static List<String> keysOf(DriveContentProcessor.Content c) {
+        var keys = new ArrayList<String>();
+        if (c.pdfKey() != null) keys.add(c.pdfKey());
+        if (c.originalKey() != null && !c.originalKey().equals(c.pdfKey())) keys.add(c.originalKey());
+        if (c.assetPrefix() != null && c.assetNames() != null) {
+            for (var n : c.assetNames()) keys.add(c.assetPrefix() + n);
+        }
+        return keys;
     }
 
     @Transactional
@@ -336,6 +380,7 @@ public class DriveSyncStore {
         if (expired.isEmpty()) return;
         var refs = expired.stream().map(DriveBlobs.Ref::of).toList();
         var ids = expired.stream().map(DriveFile::getId).toList();
+        kb.forgetFiles(ids);
         files.deleteAll(expired);
         janitor.deleteAfterCommit(blobs.releasable(refs, ids));
     }

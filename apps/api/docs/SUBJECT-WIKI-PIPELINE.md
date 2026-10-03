@@ -32,6 +32,18 @@ DigitalOcean **batch** inference. Design doc: https://claude.ai/code/artifact/fc
 - **Baseline:** `POST /v1/staff/kb/pipeline/baseline` records the current inputs of every subject that has kb pages as
   compiled. It is used once after the hand-written import, so the first run doesn't regenerate everything.
 
+## Privacy
+
+- A file's digests are deleted with the file (`kb_file_digest.file_id` is `ON DELETE CASCADE` since V40; orphaned
+  digests were dropped). Evals never keep a digest of a file that no longer exists.
+- When file rows are deleted (disconnect, account deletion, 30-day purge of files removed from Drive),
+  `KbModerationService.forgetFiles` hides the pages citing them, deletes their digests, redacts their `DIGEST`
+  requests (`params` → `{}`, `result` → `NULL`; the only requests carrying raw text) and deletes the eval sets'
+  frozen copies of their text (`kb/evals/sets/<set>/<file>.txt`).
+- Retention: the JSONL of finished jobs of finished runs (`kb/runs/<runId>/*`) is deleted 30 days after the job was
+  created (`KbRunRetentionService`, nightly with `KbRelationJob`); the job's `payloadKey`/`outputKey` are cleared.
+  The API's MinIO service user may delete under `kb/` for this (`minio-init`).
+
 ## Stages (each LLM stage is one DO batch for all dirty subjects together)
 
 ```
