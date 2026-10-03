@@ -232,6 +232,12 @@ export default function SettingsView() {
                   <input type="checkbox" checked={draft.retryRejected} onChange={(e) => set('retryRejected', e.target.checked)} className="h-4 w-4 accent-primary" />
                   {t('manage.wikiAi.settings.retryRejected')}
                 </label>
+                {typeof draft.autoRefreshPrices === 'boolean' && (
+                  <label className="flex items-center gap-2 self-end min-h-[40px] cursor-pointer font-body text-body-sm" title={t('manage.wikiAi.settings.autoRefreshHint')}>
+                    <input type="checkbox" checked={draft.autoRefreshPrices} onChange={(e) => set('autoRefreshPrices', e.target.checked)} className="h-4 w-4 accent-primary" />
+                    {t('manage.wikiAi.settings.autoRefreshPrices')}
+                  </label>
+                )}
                 <div className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.schedule')}</span>
                   {rawCron ? (

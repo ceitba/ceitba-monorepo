@@ -581,7 +581,9 @@
         "restoreTitle": "Restore settings",
         "restoreBody": "Settings go back to that point. The change is kept in the history.",
         "confirmTitle": "Save settings",
-        "confirmBody": "Changes apply from the next stage submitted; anything already running keeps its model."
+        "confirmBody": "Changes apply from the next stage submitted; anything already running keeps its model.",
+        "autoRefreshPrices": "Refresh DigitalOcean prices weekly",
+        "autoRefreshHint": "Syncs prices from DO's catalog once a week. Costs already recorded don't change."
       },
       "models": {
         "intro": "Prices per million tokens. A model can only be picked once it's enabled and has passed the probe.",

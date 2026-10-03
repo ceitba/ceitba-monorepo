@@ -581,7 +581,9 @@
         "restoreTitle": "Restaurar configuración",
         "restoreBody": "La configuración vuelve a la de ese momento. El cambio queda en el historial.",
         "confirmTitle": "Guardar configuración",
-        "confirmBody": "Los cambios se aplican desde la próxima etapa que se envíe; lo que ya está corriendo sigue con su modelo."
+        "confirmBody": "Los cambios se aplican desde la próxima etapa que se envíe; lo que ya está corriendo sigue con su modelo.",
+        "autoRefreshPrices": "Actualizar precios de DigitalOcean semanalmente",
+        "autoRefreshHint": "Sincroniza los precios del catálogo de DO una vez por semana. Los costos ya registrados no cambian."
       },
       "models": {
         "intro": "Precios por millón de tokens. Un modelo solo se puede elegir cuando está habilitado y pasó la prueba.",

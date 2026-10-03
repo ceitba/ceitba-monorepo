@@ -41,6 +41,9 @@ export interface KbSettings {
   retryRejected: boolean
   // Per stage; only meaningful for models with supportsReasoningEffort.
   reasoningEffort?: StageReasoning
+  // Weekly refresh of DigitalOcean catalog prices. Absent on API builds
+  // without it (the toggle is hidden then).
+  autoRefreshPrices?: boolean
   // Output token cap per stage; not edited in the UI, passed through.
   maxTokens?: Partial<Record<ModelStage, number>>
   subjectOverrides: Record<string, SubjectOverride>
@@ -144,7 +147,11 @@ type SettingsEnvelope = {
 
 function unwrapSettings(res: SettingsEnvelope | KbSettings): KbSettings & { costImpact?: unknown } {
   if (res && typeof res === 'object' && 'settings' in res && res.settings) {
-    return { ...res.settings, source: res.source, costImpact: res.costImpact }
+    // autoRefreshPrices may sit next to `settings` in the envelope; keep it
+    // on the flat object so it round-trips through PUT /settings.
+    const top = (res as SettingsEnvelope & { autoRefreshPrices?: boolean }).autoRefreshPrices
+    const flat = { ...res.settings, source: res.source, costImpact: res.costImpact }
+    return top !== undefined && flat.autoRefreshPrices === undefined ? { ...flat, autoRefreshPrices: top } : flat
   }
   return res as KbSettings
 }
