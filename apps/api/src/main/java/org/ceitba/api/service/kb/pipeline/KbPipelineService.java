@@ -383,15 +383,33 @@ public class KbPipelineService implements KbRunHandler {
                 run.setStage("PLAN");
             }
             case "PLAN" -> {
+                var dropped = json.createObjectNode();
                 for (var rs : active) {
                     var row = rows.stream().filter(r -> r.getSubjectId().equals(rs.getSubjectId())).findFirst();
                     if (row.isEmpty() || run.isDryRun()) continue;   // no-LLM plan, or dry
-                    if (row.get().getStatus().equals("DONE")) {
-                        rs.setOperations(validateOps(rs, row.get().getResult().path("operations"),
-                            livePages(rs.getSubjectId())));
-                    } else {
+                    if (!row.get().getStatus().equals("DONE")) {
                         rs.fail("PLAN: " + row.get().getError());
+                        continue;
                     }
+                    var proposed = row.get().getResult().path("operations");
+                    var check = new KbPlanCheck(proposed);
+                    var ops = validateOps(rs, proposed, livePages(rs.getSubjectId()), check);
+                    if (check.anyDropped()) {
+                        log.warn("KB run {}: PLAN of {} ({}) dropped operations: {} of {} kept, dropped {}",
+                            run.getId(), rs.getSubjectId(), row.get().getModel(), check.keptCount(),
+                            check.proposed(), check.droppedByReason());
+                        dropped.set(rs.getSubjectId(), check.toJson(json));
+                    }
+                    if (check.emptyAfterFiltering()) {
+                        rs.fail("PLAN: " + KbPlanCheck.EMPTY_PLAN_ERROR + " (dropped " + check.droppedByReason() + ")");
+                        continue;
+                    }
+                    rs.setOperations(ops);
+                }
+                if (!dropped.isEmpty()) {
+                    var stats = run.getStats() instanceof ObjectNode o ? o.deepCopy() : json.createObjectNode();
+                    stats.set("droppedPlanOps", dropped);
+                    run.setStats(stats);
                 }
                 if (run.isDryRun()) {
                     active.forEach(rs -> { if (rs.isActive()) rs.setStatus("DRY"); });
@@ -435,6 +453,33 @@ public class KbPipelineService implements KbRunHandler {
             default -> { }
         }
         refreshSummary(run);
+    }
+
+    // A PLAN whose operations were all dropped (typically: no valid
+    // `sources`) is asked once more with a corrective note listing the valid
+    // file ids; after() fails the subject if it is still empty.
+    @Override
+    public List<String> redo(KbRun run, String stage) {
+        if (!stage.equals("PLAN") || run.isDryRun()) return List.of();
+        Map<String, KbRunSubject> active = new HashMap<>();
+        runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(run.getId()).stream()
+            .filter(KbRunSubject::isActive).forEach(rs -> active.put(rs.getSubjectId(), rs));
+        var out = new ArrayList<String>();
+        for (var r : requests.findByRunIdAndStage(run.getId(), "PLAN")) {
+            var rs = active.get(r.getSubjectId());
+            if (rs == null || !r.getStatus().equals("DONE")) continue;
+            var proposed = r.getResult().path("operations");
+            var check = new KbPlanCheck(proposed);
+            validateOps(rs, proposed, livePages(rs.getSubjectId()), check);
+            if (!check.emptyAfterFiltering()) continue;
+            var ids = new ArrayList<String>();
+            rs.getInputs().forEach(i -> ids.add(i.path("fileId").asText()));
+            log.warn("KB run {}: PLAN of {} ({}) had no usable operation ({} proposed, dropped {}); asking once more",
+                run.getId(), rs.getSubjectId(), r.getModel(), check.proposed(), check.droppedByReason());
+            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids)));
+            out.add(r.getCustomId());
+        }
+        return out;
     }
 
     // PUBLISH: one transaction per subject; a failure leaves that subject
@@ -757,6 +802,11 @@ public class KbPipelineService implements KbRunHandler {
     // pages that lost all their sources are deleted and pages that lost some
     // are updated even if the model forgot them.
     JsonNode validateOps(KbRunSubject rs, JsonNode proposed, List<KbPage> existing) {
+        return validateOps(rs, proposed, existing, new KbPlanCheck(proposed));
+    }
+
+    // `check` counts the model's operations kept and dropped (per reason).
+    JsonNode validateOps(KbRunSubject rs, JsonNode proposed, List<KbPage> existing, KbPlanCheck check) {
         var valid = new HashSet<String>();
         rs.getInputs().forEach(i -> valid.add(i.path("fileId").asText()));
         Map<String, KbPage> bySlug = new HashMap<>();
@@ -766,17 +816,31 @@ public class KbPipelineService implements KbRunHandler {
         for (var op : proposed) {
             var kind = op.path("op").asText("").toLowerCase(Locale.ROOT);
             var slug = op.path("slug").asText("").trim();
-            if (!KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph") || !seen.add(slug)) continue;
+            if (!KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph")) {
+                check.dropped(KbPlanCheck.INVALID_SLUG);
+                continue;
+            }
+            if (!seen.add(slug)) {
+                check.dropped(KbPlanCheck.DUPLICATE_SLUG);
+                continue;
+            }
             var current = bySlug.get(slug);
             if (kind.equals("create") && current != null) kind = "update";
-            if (!List.of("create", "update", "delete").contains(kind)) continue;
-            if (!kind.equals("create") && current == null) continue;
+            if (!List.of("create", "update", "delete").contains(kind)) {
+                check.dropped(KbPlanCheck.INVALID_OP);
+                continue;
+            }
+            if (!kind.equals("create") && current == null) {
+                check.dropped(KbPlanCheck.UNKNOWN_PAGE);
+                continue;
+            }
             var o = json.createObjectNode();
             o.put("op", kind);
             o.put("slug", slug);
             if (kind.equals("delete")) {
                 o.put("reason", op.path("reason").asText(""));
                 out.add(o);
+                check.kept();
                 continue;
             }
             var type = current != null ? current.getType().wire()
@@ -791,12 +855,16 @@ public class KbPipelineService implements KbRunHandler {
             if (sources.isEmpty() && current != null) {
                 for (var id : current.getSources()) if (valid.contains(id.toString())) sources.add(id.toString());
             }
-            if (sources.isEmpty()) continue;
+            if (sources.isEmpty()) {
+                check.droppedForSources(op.path("sources"));
+                continue;
+            }
             o.put("type", type);
             o.put("title", title);
             o.set("sources", sources);
             o.put("reason", op.path("reason").asText(""));
             out.add(o);
+            check.kept();
         }
         var removed = new HashSet<String>();
         rs.getRemoved().forEach(n -> removed.add(n.asText()));
@@ -1117,6 +1185,9 @@ public class KbPipelineService implements KbRunHandler {
             if (n > 0) byStage.put(st, n);
         }
         stats.put("estimatedTokens", run.getEstimatedTokens());
+        if (run.getStats() != null && run.getStats().has("droppedPlanOps")) {
+            stats.set("droppedPlanOps", run.getStats().get("droppedPlanOps"));
+        }
         run.setStats(stats);
     }
 
@@ -1153,7 +1224,8 @@ public class KbPipelineService implements KbRunHandler {
         return list.stream().map(s -> new KbRunSubjectResponse(s.getSubjectId(), names.get(s.getSubjectId()),
             s.getStatus(), s.getModel(), ids(s.getAdded()), ids(s.getChanged()), texts(s.getRemoved()),
             s.getOperations(), s.getAccepted(), s.getRejected(), s.getDeleted(), s.getTokensIn(), s.getTokensOut(),
-            s.getTokensCached(), s.getCostEstimate(), usd(s.getCostEstimate()), s.getError())).toList();
+            s.getTokensCached(), s.getCostEstimate(), usd(s.getCostEstimate()), s.getError(),
+            r.getStats() == null ? null : r.getStats().path("droppedPlanOps").get(s.getSubjectId()))).toList();
     }
 
     private static List<String> ids(JsonNode inputs) {
