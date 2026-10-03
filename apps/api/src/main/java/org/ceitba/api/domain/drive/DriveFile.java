@@ -149,6 +149,14 @@ public class DriveFile {
     @Column(name = "export_blocked", nullable = false)
     private boolean exportBlocked;
 
+    // Content not stored: downloads stream from Drive (REFERENCE mode).
+    @Column(name = "by_reference", nullable = false)
+    private boolean byReference;
+
+    // The last walk generation that reached the item (drive_source_walk).
+    @Column(name = "seen_generation")
+    private Long seenGeneration;
+
     @Column(name = "sync_error", columnDefinition = "text")
     private String syncError;
 
@@ -233,6 +241,10 @@ public class DriveFile {
     public boolean isExportBlocked() { return exportBlocked; }
     public void setExportBlocked(boolean exportBlocked) { this.exportBlocked = exportBlocked; }
     public String getSyncError() { return syncError; }
+    public boolean isByReference() { return byReference; }
+    public void setByReference(boolean byReference) { this.byReference = byReference; }
+    public Long getSeenGeneration() { return seenGeneration; }
+    public void setSeenGeneration(Long generation) { this.seenGeneration = generation; }
     public OffsetDateTime getRemovedAt() { return removedAt; }
     public OffsetDateTime getPurgeAfter() { return purgeAfter; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

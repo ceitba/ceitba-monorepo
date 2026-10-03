@@ -27,7 +27,8 @@ import java.util.stream.Collectors;
 
 // Recomputes the derived columns of every file of a source, in memory (the
 // caller's transaction flushes them):
-//   effective_subject_id  own subject, else the nearest ancestor's
+//   effective_subject_id  own subject, else the nearest ancestor's, else the
+//                         source's (community sources: the folder's subject)
 //   suggested_subject_id  SubjectMatcher on the name (the source owner's plan
 //                         first), only without an effective subject, and
 //                         only where it differs from the suggestion the item
@@ -61,6 +62,7 @@ public class DriveRecalculator {
     // Subject ids of the user's plan in plan order (year, semester, id);
     // empty without a plan.
     public List<String> planSubjectIds(UUID userId) {
+        if (userId == null) return List.of();
         var plan = users.findById(userId).map(u -> u.getPlan()).orElse(null);
         if (plan == null || plan.isBlank()) return List.of();
         return planSubjects.findByPlanId(plan).stream()
@@ -102,6 +104,7 @@ public class DriveRecalculator {
                 if (effective == null && cur.getSubjectId() != null) effective = cur.getSubjectId();
                 if (cur.isHidden()) hidden = true;
             }
+            if (effective == null) effective = source.getSubjectId();
             f.setEffectiveSubjectId(effective);
             academicYear(f, byDriveId, currentYear);
 

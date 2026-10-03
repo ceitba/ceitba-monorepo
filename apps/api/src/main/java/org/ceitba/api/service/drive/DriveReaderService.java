@@ -36,8 +36,9 @@ import java.util.UUID;
 
 // Apuntes for logged-in readers (/v1/wiki/...). Readers see PUBLISHED files
 // only; the source's student and STAFF may open any of theirs/all (preview).
-// Downloads are 5-minute signed URLs to the drive/ prefix, which is never
-// anonymously readable.
+// Downloads of stored copies are 5-minute signed URLs to the drive/ prefix,
+// which is never anonymously readable; files kept by reference are streamed
+// from Drive by the same endpoint (DriveStreamer), nothing is stored.
 @Service
 public class DriveReaderService {
 
@@ -182,7 +183,7 @@ public class DriveReaderService {
             if (source == null) continue;
             var sourceFolders = folders.getOrDefault(e.getKey(), Map.of());
             var summaries = e.getValue().stream()
-                .map(f -> DriveViews.summary(f, DriveViews.path(f, sourceFolders)))
+                .map(f -> DriveViews.summary(f, DriveViews.path(f, sourceFolders), source.isCommunity()))
                 .sorted(Comparator.comparing((org.ceitba.api.web.drive.dto.FileSummaryResponse s) -> s.path(),
                         String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(s -> s.name(), String.CASE_INSENSITIVE_ORDER))
@@ -197,19 +198,23 @@ public class DriveReaderService {
     public FileDetailResponse file(User user, UUID fileId) {
         var v = visible(user, fileId);
         var folders = views.foldersBySource(List.of(v.source().getId())).getOrDefault(v.source().getId(), Map.of());
-        var owner = views.usersById(List.of(v.source().getUserId())).get(v.source().getUserId());
+        var owner = views.usersById(java.util.Collections.singletonList(v.source().getUserId())).get(v.source().getUserId());
         var subjectName = v.file().getEffectiveSubjectId() == null ? null
             : views.subjectNames(List.of(v.file().getEffectiveSubjectId())).get(v.file().getEffectiveSubjectId());
         return DriveViews.detail(v.file(), DriveViews.path(v.file(), folders), subjectName,
             DriveViews.author(v.source(), owner), reports.existsByFileIdAndUserId(fileId, user.getId()));
     }
 
+    // Either a redirect to a signed URL of the stored copy, or (by
+    // reference) what to stream from Drive.
+    public record Download(String redirectUrl, DriveStreamer.Request stream) {}
+
     // variant: "pdf", "original", or null (pdf when there is one).
     // disposition: "inline" (default: shown by the browser) or "attachment".
     // Inline is only granted to types that are safe on the site's origin
     // (DriveMedia); the rest are always attachments.
     @Transactional(readOnly = true)
-    public String downloadUrl(User user, UUID fileId, String variant, String disposition) {
+    public Download download(User user, UUID fileId, String variant, String disposition) {
         boolean inline;
         if (disposition == null || disposition.isBlank() || "inline".equalsIgnoreCase(disposition)) {
             inline = true;
@@ -219,24 +224,53 @@ public class DriveReaderService {
             throw new org.ceitba.api.common.exception.ValidationException("disposition", disposition,
                 "must be inline or attachment");
         }
+        boolean noVariant = variant == null || variant.isBlank();
+        if (!noVariant && !"original".equalsIgnoreCase(variant) && !"pdf".equalsIgnoreCase(variant)) {
+            throw new org.ceitba.api.common.exception.ValidationException("variant", variant, "must be pdf or original");
+        }
         var f = visible(user, fileId).file();
+        if (DriveViews.streamable(f) && f.getPdfKey() == null && f.getOriginalKey() == null) {
+            return new Download(null, streamRequest(f, fileId, variant, noVariant, inline));
+        }
         String key;
         String filename;
         if ("original".equalsIgnoreCase(variant)) {
             key = f.getOriginalKey();
             filename = f.getName();
-        } else if (variant == null || variant.isBlank() || "pdf".equalsIgnoreCase(variant)) {
-            key = f.getPdfKey() != null ? f.getPdfKey() : (variant == null || variant.isBlank() ? f.getOriginalKey() : null);
-            filename = key != null && key.equals(f.getPdfKey()) ? pdfName(f.getName()) : f.getName();
         } else {
-            throw new org.ceitba.api.common.exception.ValidationException("variant", variant, "must be pdf or original");
+            key = f.getPdfKey() != null ? f.getPdfKey() : (noVariant ? f.getOriginalKey() : null);
+            filename = key != null && key.equals(f.getPdfKey()) ? pdfName(f.getName()) : f.getName();
         }
         if (key == null) throw new ResourceNotFoundException("DriveFile download", fileId + "/" + variant);
         boolean isPdf = key.equals(f.getPdfKey());
         String storedType = isPdf ? DriveMedia.PDF : f.getOriginalContentType();
         String inlineType = isPdf ? DriveMedia.PDF : DriveMedia.inlineType(storedType, f.getName());
-        if (inline && inlineType != null) return storage.presignGet(key, DOWNLOAD_TTL, filename, true, inlineType);
-        return storage.presignGet(key, DOWNLOAD_TTL, filename, false, storedType);
+        if (inline && inlineType != null) {
+            return new Download(storage.presignGet(key, DOWNLOAD_TTL, filename, true, inlineType), null);
+        }
+        return new Download(storage.presignGet(key, DOWNLOAD_TTL, filename, false, storedType), null);
+    }
+
+    // A file kept by reference: the PDF (a PDF file, or the export of a
+    // Doc/Slides/Sheet) or the original (download; Drawings: PNG export),
+    // with the same inline rule as stored copies.
+    private DriveStreamer.Request streamRequest(DriveFile f, UUID fileId, String variant, boolean noVariant,
+                                                boolean inline) {
+        boolean wantPdf = !"original".equalsIgnoreCase(variant) && (DriveViews.hasPdf(f) || !noVariant);
+        if (wantPdf) {
+            if (!DriveViews.hasPdf(f)) throw new ResourceNotFoundException("DriveFile download", fileId + "/" + variant);
+            boolean export = f.getKind() != org.ceitba.api.domain.drive.DriveFileKind.PDF;
+            return new DriveStreamer.Request(f.getDriveId(), export ? DriveMedia.PDF : null, DriveMedia.PDF,
+                inline, pdfName(f.getName()), export ? null : f.getSizeBytes());
+        }
+        if (!DriveViews.hasOriginal(f)) throw new ResourceNotFoundException("DriveFile download", fileId + "/" + variant);
+        boolean drawing = f.getKind() == org.ceitba.api.domain.drive.DriveFileKind.DRAWING;
+        var storedType = f.getOriginalContentType();
+        var inlineType = DriveMedia.inlineType(storedType, f.getName());
+        boolean showInline = inline && inlineType != null;
+        return new DriveStreamer.Request(f.getDriveId(), drawing ? "image/png" : null,
+            showInline ? inlineType : "application/octet-stream", showInline, f.getName(),
+            drawing ? null : f.getSizeBytes());
     }
 
     @Transactional(readOnly = true)

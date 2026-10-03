@@ -14,6 +14,12 @@ import java.util.List;
 //   DRIVE_SYNC_USE_FAKE=true                in-memory FakeDriveClient instead
 //   DRIVE_SYNC_MAX_FILE_BYTES=52428800      bigger files: metadata only
 //   DRIVE_SYNC_FAKE_DEMO_OWNERS=a@itba.edu.ar,b@itba.edu.ar   (fake only)
+//   DRIVE_SYNC_SOURCE_BUDGET=PT3M           max time slice of one source per run
+//   DRIVE_SYNC_REFERENCE_ABOVE_BYTES=20971520  bigger files: by reference (no copy)
+//   DRIVE_SYNC_MAX_ITEMS_PER_SOURCE=20000   walk cap per source and generation
+//   DRIVE_SYNC_MAX_DEPTH=30                 folders deeper than this are not listed
+//   DRIVE_SYNC_COMMUNITY_ENABLED=true       expand community archives each run
+//   DRIVE_SYNC_COMMUNITY_ONLY_CODES=71.88,72.08  (dev) only these subject folders
 //
 // The feature is usable (configured()) with a key or with the fake; without
 // either the student endpoints answer 503 DRIVE_SYNC_UNCONFIGURED.
@@ -25,7 +31,13 @@ public record DriveSyncProperties(
     String serviceAccountJson,
     boolean useFake,
     Long maxFileBytes,
-    List<String> fakeDemoOwners
+    List<String> fakeDemoOwners,
+    Duration sourceBudget,
+    Long referenceAboveBytes,
+    Integer maxItemsPerSource,
+    Integer maxDepth,
+    Boolean communityEnabled,
+    List<String> communityOnlyCodes
 ) {
     public DriveSyncProperties {
         interval = positiveOr(interval, Duration.ofMinutes(30));
@@ -33,6 +45,14 @@ public record DriveSyncProperties(
         maxFileBytes = maxFileBytes == null || maxFileBytes <= 0 ? 50L * 1024 * 1024 : maxFileBytes;
         fakeDemoOwners = fakeDemoOwners == null ? List.of()
             : fakeDemoOwners.stream().filter(s -> s != null && !s.isBlank()).map(String::trim).toList();
+        sourceBudget = positiveOr(sourceBudget, Duration.ofMinutes(3));
+        referenceAboveBytes = referenceAboveBytes == null || referenceAboveBytes <= 0 ? 20L * 1024 * 1024
+            : referenceAboveBytes;
+        maxItemsPerSource = maxItemsPerSource == null || maxItemsPerSource <= 0 ? 20_000 : maxItemsPerSource;
+        maxDepth = maxDepth == null || maxDepth <= 0 ? 30 : maxDepth;
+        communityEnabled = communityEnabled == null || communityEnabled;
+        communityOnlyCodes = communityOnlyCodes == null ? List.of()
+            : communityOnlyCodes.stream().filter(s -> s != null && !s.isBlank()).map(String::trim).toList();
     }
 
     public boolean configured() {

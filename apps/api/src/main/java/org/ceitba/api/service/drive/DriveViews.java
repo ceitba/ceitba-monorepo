@@ -69,7 +69,8 @@ public class DriveViews {
     private static SourceResponse source(DriveSource s, Counts c) {
         var k = c == null ? new Counts(0, 0, 0) : c;
         return new SourceResponse(s.getId(), s.getRootName(), s.getStatus().name(), s.isAnonymous(),
-            s.getLastSyncedAt(), s.getLastError(), k.files(), k.published(), k.needsReview(), s.getCreatedAt());
+            s.getLastSyncedAt(), s.getLastError(), k.files(), k.published(), k.needsReview(), s.getCreatedAt(),
+            s.isCommunity());
     }
 
     public List<StaffSourceResponse> staffSources(List<DriveSource> sources) {
@@ -81,12 +82,16 @@ public class DriveViews {
             return new StaffSourceResponse(src.id(), src.rootName(), src.status(), src.anonymous(),
                 src.lastSyncedAt(), src.lastError(), src.fileCount(), src.publishedCount(),
                 src.needsReviewCount(), src.createdAt(),
-                owner == null ? null : owner.getName(), owner == null ? null : owner.getEmail());
+                owner == null ? null : owner.getName(), owner == null ? null : owner.getEmail(),
+                s.isCommunity(), s.getSubjectId());
         }).toList();
     }
 
+    // Null ids (community sources have no user) are ignored.
     public Map<UUID, User> usersById(Collection<UUID> ids) {
-        return users.findAllById(new HashSet<>(ids)).stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        var wanted = ids.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (wanted.isEmpty()) return new HashMap<>();
+        return users.findAllById(wanted).stream().collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
     public Map<String, String> subjectNames(Collection<String> ids) {
@@ -131,9 +136,17 @@ public class DriveViews {
         return f.getAcademicYearSource() == null ? null : f.getAcademicYearSource().name();
     }
 
+    static final String COMMUNITY_LABEL = "Comunidad";
+
+    // Community sources show their label, never a contributor.
     public static AuthorResponse author(DriveSource source, User owner) {
-        if (source.isAnonymous()) return new AuthorResponse(null, true);
-        return new AuthorResponse(owner == null ? null : owner.getName(), false);
+        if (source.isCommunity()) {
+            var label = source.getDisplayName() == null || source.getDisplayName().isBlank()
+                ? COMMUNITY_LABEL : source.getDisplayName();
+            return new AuthorResponse(label, false, true);
+        }
+        if (source.isAnonymous()) return new AuthorResponse(null, true, false);
+        return new AuthorResponse(owner == null ? null : owner.getName(), false, false);
     }
 
     // Folder path of `file` inside its source, from the source's folders.
@@ -159,28 +172,48 @@ public class DriveViews {
         return out;
     }
 
-    public static FileSummaryResponse summary(DriveFile f, String path) {
+    public static FileSummaryResponse summary(DriveFile f, String path, boolean community) {
         return new FileSummaryResponse(f.getId(), f.getName(), f.getKind().name(), path, f.getSizeBytes(),
-            f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, f.getPdfKey() != null,
-            f.getOriginalKey() != null, pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
-            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getAcademicYear(), source(f));
+            f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, hasPdf(f),
+            hasOriginal(f), pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getAcademicYear(), source(f), community);
+    }
+
+    private static final java.util.Set<DriveFileKind> PDF_KINDS =
+        java.util.EnumSet.of(DriveFileKind.PDF, DriveFileKind.DOC, DriveFileKind.SLIDES, DriveFileKind.SHEET);
+
+    // Whether the download endpoint can serve a variant: a stored copy, or
+    // (by reference) one Drive can stream: a PDF, or the PDF export of a
+    // Doc/Slides/Sheet; the original of anything with a known type.
+    static boolean hasPdf(DriveFile f) {
+        if (f.getPdfKey() != null) return true;
+        return streamable(f) && PDF_KINDS.contains(f.getKind());
+    }
+
+    static boolean hasOriginal(DriveFile f) {
+        if (f.getOriginalKey() != null) return true;
+        return streamable(f) && f.getOriginalContentType() != null;
+    }
+
+    static boolean streamable(DriveFile f) {
+        return f.isByReference() && f.hasContent() && !f.isMetadataOnly() && !f.isExportBlocked();
     }
 
     static String pdfMimeType(DriveFile f) {
-        return f.getPdfKey() == null ? null : DriveMedia.PDF;
+        return hasPdf(f) ? DriveMedia.PDF : null;
     }
 
     static String originalMimeType(DriveFile f) {
-        return f.getOriginalKey() == null ? null : DriveMedia.servedType(f.getOriginalContentType(), f.getName());
+        return hasOriginal(f) ? DriveMedia.servedType(f.getOriginalContentType(), f.getName()) : null;
     }
 
     public static FileDetailResponse detail(DriveFile f, String path, String subjectName, AuthorResponse author,
                                             boolean reportedByMe) {
         return new FileDetailResponse(f.getId(), f.getName(), f.getKind().name(), path, f.getSizeBytes(),
-            f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, f.getPdfKey() != null,
-            f.getOriginalKey() != null, pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
+            f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, hasPdf(f),
+            hasOriginal(f), pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
             DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getAcademicYear(), source(f),
             f.getEffectiveSubjectId(), subjectName, author,
-            f.getHtmlContent(), reportedByMe);
+            f.getHtmlContent(), reportedByMe, author != null && author.community());
     }
 }

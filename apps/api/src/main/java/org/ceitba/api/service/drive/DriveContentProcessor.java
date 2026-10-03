@@ -40,7 +40,17 @@ import java.util.zip.ZipInputStream;
 //   DRAWING        export image/png (original)
 //   PDF            download (original, also served as the pdf variant)
 //   IMAGE, OFFICE  download (original)
-//   OTHER, or over DRIVE_SYNC_MAX_FILE_BYTES: metadata only
+//   OTHER, or over DRIVE_SYNC_MAX_FILE_BYTES: metadata only (OTHER is only
+//                  text-like files, stored as text; DriveKinds skips the rest,
+//                  so videos, audio and archives are never downloaded)
+//
+// Request.reference (REFERENCE sources, files above
+// DRIVE_SYNC_REFERENCE_ABOVE_BYTES): nothing is uploaded. Only what the wiki
+// and search need is kept: text (PDFs, Slides/Sheets exports, text-like
+// files: downloaded/exported to a temp file, read, deleted) and Docs'
+// sanitized HTML without its images. Images, Office files and Drawings are
+// not downloaded at all, Docs are not exported to PDF. Downloads stream from
+// Drive on request (DriveStreamer). The fingerprint gets the "ref:" prefix.
 //
 // Content fingerprint: md5Checksum for binary files (known before
 // downloading). Native Google files have none (modifiedTime also moves on
@@ -80,19 +90,26 @@ public class DriveContentProcessor {
 
     // knownFingerprint: the binary fingerprint (md5) when Drive gave one.
     public record Request(UUID fileId, String driveId, DriveFileKind kind, String name,
-                          String mimeType, Long version, String knownFingerprint, Long size) {}
+                          String mimeType, Long version, String knownFingerprint, Long size, boolean reference) {}
 
     // existing = a copy with this fingerprint is already stored: no keys here.
     // exportBlocked = the owner disabled download/export (metadata only).
+    // byReference = nothing stored (see the class comment).
     public record Content(Long version, String fingerprint, String html, String pdfKey, String originalKey,
                           String originalContentType, String assetPrefix, List<String> assetNames,
-                          String text, boolean metadataOnly, boolean existing, boolean exportBlocked) {
+                          String text, boolean metadataOnly, boolean existing, boolean exportBlocked,
+                          boolean byReference) {
 
         Content(Long version, String fingerprint, String html, String pdfKey, String originalKey,
                 String originalContentType, String assetPrefix, List<String> assetNames, String text,
                 boolean metadataOnly, boolean existing) {
             this(version, fingerprint, html, pdfKey, originalKey, originalContentType, assetPrefix, assetNames,
-                text, metadataOnly, existing, false);
+                text, metadataOnly, existing, false, false);
+        }
+
+        Content asReference() {
+            return new Content(version, DriveSyncStore.REF + fingerprint, html, null, null, originalContentType,
+                null, List.of(), text, metadataOnly, existing, exportBlocked, true);
         }
 
         static Content metadataOnly(Request r) {
@@ -103,7 +120,7 @@ public class DriveContentProcessor {
         // Not the md5: nothing is stored, so it must never pass for a copy.
         static Content blocked(Request r) {
             return new Content(r.version(), "blocked:" + (r.version() == null ? 0 : r.version()), null, null, null, null, null, List.of(), null,
-                true, false, true);
+                true, false, true, false);
         }
 
         private static String metaFingerprint(Request r) {
@@ -122,6 +139,11 @@ public class DriveContentProcessor {
     }
 
     public Content process(Request r, Predicate<String> haveCopy) {
+        if (!r.reference()) return fetch(r, haveCopy);
+        return fetch(r, fp -> haveCopy.test(DriveSyncStore.REF + fp)).asReference();
+    }
+
+    private Content fetch(Request r, Predicate<String> haveCopy) {
         if (r.size() != null && r.size() > props.maxFileBytes()) return Content.metadataOnly(r);
         var written = new ArrayList<String>();
         try {
@@ -155,7 +177,7 @@ public class DriveContentProcessor {
         try {
             var zip = spool(drive.export(r.driveId(), "application/zip"));
             try {
-                parsed = parseDoc(zip);
+                parsed = parseDoc(zip, r.reference());
             } finally {
                 deleteQuietly(zip);
             }
@@ -167,6 +189,13 @@ public class DriveContentProcessor {
 
         var fp = parsed.fingerprint();
         if (haveCopy.test(fp)) return Content.existing(r, fp);
+        if (r.reference()) {
+            // Neither images nor the PDF export are stored (the PDF streams on request).
+            var html = parsed.html().replace("/api/v1/wiki/files/" + NEUTRAL_FILE + "/assets/",
+                "/api/v1/wiki/files/" + r.fileId() + "/assets/");
+            return new Content(r.version(), fp, html.length() <= MAX_HTML_CHARS ? html : null, null, null, null,
+                null, List.of(), cap(parsed.text()), false, false);
+        }
         var prefix = DriveBlobs.prefix(r.driveId(), fp);
         for (var asset : parsed.usedAssets()) {
             var bytes = parsed.assetBytes().get(asset);
@@ -192,7 +221,8 @@ public class DriveContentProcessor {
     private record ParsedDoc(String html, String text, List<String> usedAssets, Map<String, byte[]> assetBytes,
                              String fingerprint) {}
 
-    private ParsedDoc parseDoc(Path zipFile) {
+    // withoutImages: the images are dropped from the HTML (reference mode).
+    private ParsedDoc parseDoc(Path zipFile, boolean withoutImages) {
         String rawHtml = null;
         Map<String, byte[]> images = new LinkedHashMap<>();
         try (var zip = new ZipInputStream(Files.newInputStream(zipFile))) {
@@ -202,7 +232,7 @@ public class DriveContentProcessor {
                 var bytes = readCapped(zip);
                 if (name.toLowerCase(Locale.ROOT).endsWith(".html") && rawHtml == null) {
                     rawHtml = new String(bytes, StandardCharsets.UTF_8);
-                } else if (images.size() < MAX_ASSETS && isImageName(name)) {
+                } else if (!withoutImages && images.size() < MAX_ASSETS && isImageName(name)) {
                     images.put(name, bytes);
                 }
             }
@@ -263,8 +293,11 @@ public class DriveContentProcessor {
             var fp = info == null ? fileFingerprint(file)
                 : fingerprint(sha256(("pdf\n" + info.pages() + "\n" + info.text()).getBytes(StandardCharsets.UTF_8)));
             if (haveCopy.test(fp)) return Content.existing(r, fp);
-            var key = DriveBlobs.prefix(r.driveId(), fp) + "export.pdf";
-            storeFile(key, "application/pdf", file, written);
+            String key = null;
+            if (!r.reference()) {
+                key = DriveBlobs.prefix(r.driveId(), fp) + "export.pdf";
+                storeFile(key, "application/pdf", file, written);
+            }
             return new Content(r.version(), fp, null, key, null, null, null, List.of(),
                 info == null ? null : cap(info.text()), false, false);
         } finally {
@@ -275,6 +308,12 @@ public class DriveContentProcessor {
     // ---- Drawings -------------------------------------------------------------
 
     private Content drawing(Request r, Predicate<String> haveCopy, List<String> written) {
+        if (r.reference()) {
+            // No text to extract: not exported; the PNG streams on request.
+            var fp = "meta:" + (r.version() == null ? 0 : r.version());
+            if (haveCopy.test(fp)) return Content.existing(r, fp);
+            return new Content(r.version(), fp, null, null, null, "image/png", null, List.of(), null, false, false);
+        }
         var file = spool(drive.export(r.driveId(), "image/png"));
         try {
             var fp = fileFingerprint(file);
@@ -293,21 +332,34 @@ public class DriveContentProcessor {
         if (r.knownFingerprint() != null && haveCopy.test(r.knownFingerprint())) {
             return Content.existing(r, r.knownFingerprint());
         }
+        var type = isPdf ? "application/pdf" : r.mimeType() == null ? "application/octet-stream" : r.mimeType();
+        if (r.reference() && !isPdf && !DriveMedia.isTextLike(type, r.name())) {
+            // Nothing to extract (images, Office): not downloaded at all.
+            var fp = r.knownFingerprint() != null ? r.knownFingerprint()
+                : "meta:" + (r.version() == null ? 0 : r.version()) + ":" + r.size();
+            if (haveCopy.test(fp)) return Content.existing(r, fp);
+            return new Content(r.version(), fp, null, null, null, type, null, List.of(), null, false, false);
+        }
         var file = spool(drive.download(r.driveId()));
         try {
             var fp = r.knownFingerprint() != null ? r.knownFingerprint() : fileFingerprint(file);
             if (r.knownFingerprint() == null && haveCopy.test(fp)) return Content.existing(r, fp);
             var prefix = DriveBlobs.prefix(r.driveId(), fp);
             if (isPdf) {
-                var key = prefix + "original.pdf";
-                storeFile(key, "application/pdf", file, written);
+                String key = null;
+                if (!r.reference()) {
+                    key = prefix + "original.pdf";
+                    storeFile(key, "application/pdf", file, written);
+                }
                 var info = pdfInfo(file);
                 return new Content(r.version(), fp, null, key, key, "application/pdf", null, List.of(),
                     info == null ? null : cap(info.text()), false, false);
             }
-            var type = r.mimeType() == null ? "application/octet-stream" : r.mimeType();
-            var key = prefix + "original" + extension(r.name());
-            storeFile(key, type, file, written);
+            String key = null;
+            if (!r.reference()) {
+                key = prefix + "original" + extension(r.name());
+                storeFile(key, type, file, written);
+            }
             String text = DriveMedia.isTextLike(type, r.name()) ? cap(readText(file)) : null;
             return new Content(r.version(), fp, null, null, key, type, null, List.of(), text, false, false);
         } finally {

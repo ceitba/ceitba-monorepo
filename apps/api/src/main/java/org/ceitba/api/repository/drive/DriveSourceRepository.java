@@ -26,9 +26,11 @@ public interface DriveSourceRepository extends JpaRepository<DriveSource, UUID> 
 
     boolean existsByUserIdAndStatus(UUID userId, DriveSourceStatus status);
 
-    // The job's queue: never-synced first, then oldest sync.
+    // The job's queue: never-synced first, then oldest sync. Community
+    // archive roots are never walked themselves (DriveCommunityService).
     @Query("""
         select s.id from DriveSource s where s.status in :statuses
+          and s.kind <> org.ceitba.api.domain.drive.DriveSourceKind.COMMUNITY_ROOT
         order by s.lastSyncedAt asc nulls first, s.createdAt asc
         """)
     List<UUID> findIdsToSync(@Param("statuses") Collection<DriveSourceStatus> statuses);
@@ -41,6 +43,13 @@ public interface DriveSourceRepository extends JpaRepository<DriveSource, UUID> 
     Page<DriveSource> findByStatusNotOrderByCreatedAtDesc(DriveSourceStatus status, Pageable pageable);
 
     List<DriveSource> findByUserId(UUID userId);
+
+    List<DriveSource> findByKindAndStatus(org.ceitba.api.domain.drive.DriveSourceKind kind, DriveSourceStatus status);
+
+    List<DriveSource> findByParentSourceId(UUID parentSourceId);
+
+    @Query("select s.id from DriveSource s where s.kind <> org.ceitba.api.domain.drive.DriveSourceKind.STUDENT")
+    List<UUID> findCommunityIds();
 
     // Row lock: a sync writing into the source serializes with a concurrent
     // disconnect, block or account deletion (DriveSyncStore).

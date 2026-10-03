@@ -376,9 +376,8 @@ class DriveSyncIT {
         assertThat(files.findById(py).orElseThrow().getTextContent()).contains("hola");
         call(get("/v1/wiki/files/" + fileId("ipynb-colab-00001")), reader(1), null)
             .andExpect(jsonPath("$.originalMimeType").value("text/plain; charset=utf-8"));
-        // HTML is never stored nor served inline.
-        call(get("/v1/wiki/files/" + fileId("html-page-000001")), reader(1), null)
-            .andExpect(jsonPath("$.hasOriginal").value(false));
+        // HTML is not text the pipeline can use: skipped entirely (no row), like video, audio and archives.
+        assertThat(files.findAll()).noneMatch(f -> f.getDriveId().equals("html-page-000001"));
 
         for (var blocked : List.of("doc-blocked-00001", "pdf-blocked-00001")) {
             var row = files.findById(fileId(blocked)).orElseThrow();

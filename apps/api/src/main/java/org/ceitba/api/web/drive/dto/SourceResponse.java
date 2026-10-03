@@ -13,5 +13,7 @@ public record SourceResponse(
     long fileCount,
     long publishedCount,
     long needsReviewCount,
-    OffsetDateTime createdAt
+    OffsetDateTime createdAt,
+    // A community source (archive folder, no owning student).
+    boolean community
 ) {}
