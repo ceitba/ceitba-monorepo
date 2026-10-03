@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { fetchForecast, type CostSummary } from '../../../api/kbAdmin'
-import { Panel, ViewState, basisText, range, tokens, usd, useLoad, type Loaded } from './shared'
+import { Panel, ViewState } from './shared'
+import { basisText, range, tokens, usd } from './format'
+import { useLoad, type Loaded } from './useLoad'
 
 const STAGES = ['DIGEST', 'PLAN', 'WRITE', 'RETRY'] as const
 

@@ -1,54 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiError } from '../../../api/client'
 import type { CostImpact } from '../../../api/kbAdmin'
 import Modal from '../../../components/Modal'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
+import { basisText, range, usd } from './format'
+import { BTN_PRI, FIELD } from './styles'
+import type { Loaded } from './useLoad'
 
-// Shared bits for the "Wiki IA" admin views.
-
-export interface Loaded<T> {
-  data: T | null
-  loading: boolean
-  error: string | null
-  // The endpoint doesn't exist on this API build yet (404).
-  unavailable: boolean
-  reload: () => void
-  setData: (fn: (d: T | null) => T | null) => void
-}
-
-export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []): Loaded<T> {
-  const { t } = useTranslation()
-  const [data, setDataState] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [unavailable, setUnavailable] = useState(false)
-  const [tick, setTick] = useState(0)
-  const req = useRef(0)
-  const fnRef = useRef(fn)
-  fnRef.current = fn
-
-  useEffect(() => {
-    const id = ++req.current
-    setLoading(true)
-    fnRef.current()
-      .then((d) => { if (req.current === id) { setDataState(d); setError(null); setUnavailable(false) } })
-      .catch((e) => {
-        if (req.current !== id) return
-        if (isUnavailable(e)) setUnavailable(true)
-        else setError(apuntesErrorMessage(e, t))
-      })
-      .finally(() => { if (req.current === id) setLoading(false) })
-  }, [tick, t, ...deps]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const reload = useCallback(() => setTick((n) => n + 1), [])
-  const setData = useCallback((f: (d: T | null) => T | null) => setDataState((d) => f(d)), [])
-  return { data, loading, error, unavailable, reload, setData }
-}
-
-export function isUnavailable(e: unknown): boolean {
-  return e instanceof ApiError && (e.status === 404 || e.status === 405 || e.status === 501)
-}
+// Shared components for the "Wiki IA" admin views. Formatting helpers live
+// in format.ts, class strings in styles.ts and useLoad in useLoad.ts.
 
 // Loading / unavailable / error / empty wrapper for a view or a panel.
 export function ViewState<T>({ state, empty, emptyText, skeleton = 'block', children }: {
@@ -94,54 +54,6 @@ export function ViewState<T>({ state, empty, emptyText, skeleton = 'block', chil
   return <>{children(state.data)}</>
 }
 
-// ── Formatting ───────────────────────────────────────────────────────────
-
-export function usd(n: number | null | undefined, digits?: number): string {
-  if (n == null || Number.isNaN(n)) return '—'
-  // Sub-cent amounts (probes, small runs) keep 4 decimals so they don't
-  // all read "0.01" / "0.00".
-  let d = digits ?? (Math.abs(n) < 1 ? 4 : 2)
-  if (n !== 0 && Math.abs(n) < 0.01) d = Math.max(d, 4)
-  return `US$ ${n.toLocaleString('en-US', { minimumFractionDigits: Math.min(d, 2), maximumFractionDigits: d })}`
-}
-
-export function tokens(n: number | null | undefined): string {
-  if (n == null) return '—'
-  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`
-  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k`
-  return String(n)
-}
-
-export function pct(r: number | null | undefined, digits = 0): string {
-  if (r == null || Number.isNaN(r)) return '—'
-  return `${(r * 100).toFixed(digits)}%`
-}
-
-export function duration(start?: string | null, end?: string | null): string {
-  if (!start) return '—'
-  const ms = (end ? new Date(end).getTime() : Date.now()) - new Date(start).getTime()
-  if (!Number.isFinite(ms) || ms < 0) return '—'
-  const s = Math.round(ms / 1000)
-  if (s < 60) return `${s}s`
-  const m = Math.round(s / 60)
-  if (m < 60) return `${m} min`
-  const h = Math.floor(m / 60)
-  return h < 48 ? `${h} h ${m % 60} min` : `${Math.round(h / 24)} d`
-}
-
-export function secs(n: number | null | undefined): string {
-  if (n == null) return '—'
-  return n < 60 ? `${Math.round(n)}s` : n < 3600 ? `${Math.round(n / 60)} min` : `${(n / 3600).toFixed(1)} h`
-}
-
-// ── UI pieces ────────────────────────────────────────────────────────────
-
-export const TH = 'px-3 py-2 font-mono text-label uppercase tracking-widest text-left whitespace-nowrap'
-export const TD = 'px-3 py-2 align-top'
-export const BTN = 'px-3 py-1.5 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:pointer-events-none'
-export const BTN_PRI = 'px-3 py-1.5 rounded-sm font-mono text-label uppercase tracking-widest bg-primary text-white hover:bg-primary-600 disabled:opacity-50 disabled:pointer-events-none'
-export const BTN_DANGER = 'px-3 py-1.5 rounded-sm font-mono text-label uppercase tracking-widest text-red-600 dark:text-red-400 hover:underline disabled:opacity-50'
-export const FIELD = 'px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm text-ink-primary dark:text-night-text focus:outline-none focus:border-primary disabled:opacity-50'
 
 export function Panel({ title, actions, children, className = '' }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -295,17 +207,4 @@ function ImpactCard({ label, value, delta }: { label: string; value: number | nu
 
 function stripNulls<T extends object>(o: T): Partial<T> {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v != null)) as Partial<T>
-}
-
-export function range(low: number | null | undefined, high: number | null | undefined): string {
-  if (low == null || high == null) return '—'
-  return `${usd(low, 2)} – ${usd(high, 2)}`
-}
-
-// "según las últimas N ejecuciones" / "estimado por el volumen de apuntes".
-export function basisText(basis: string | null | undefined, runs: number | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): string {
-  if (basis === 'history') return t('manage.wikiAi.forecast.basis.history', { count: runs ?? 0 })
-  if (basis === 'corpus') return t('manage.wikiAi.forecast.basis.corpus')
-  if (basis === 'blend') return t('manage.wikiAi.forecast.basis.blend', { count: runs ?? 0 })
-  return ''
 }

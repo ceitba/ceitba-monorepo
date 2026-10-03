@@ -12,13 +12,17 @@ import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
 import BlindReview from './BlindReview'
 import ReasoningSelect from './ReasoningSelect'
-import ProgressPanel, { EVAL_STAGES, ProgressBar } from './ProgressPanel'
+import ProgressPanel, { ProgressBar } from './ProgressPanel'
+import { EVAL_STAGES } from './stages'
 import { useLiveProgress } from './useLiveProgress'
 import NotifyButton from './NotifyButton'
 import { ReviewSummaryLine } from './ReviewProgressView'
 import { markActive } from './jobWatchStore'
 import { ModelSelect } from './SettingsView'
-import { BTN, BTN_PRI, CostImpactDialog, FIELD, Panel, StatusPill, TD, TH, ViewState, isUnavailable, pct, secs, tokens, usd, useLoad } from './shared'
+import { CostImpactDialog, Panel, StatusPill, ViewState } from './shared'
+import { pct, secs, tokens, usd } from './format'
+import { BTN, BTN_PRI, FIELD, TD, TH } from './styles'
+import { isUnavailable, useLoad } from './useLoad'
 
 const FEW_RATINGS = 20
 
@@ -65,11 +69,13 @@ export default function EvalsView({ requestedId, onRequestHandled }: { requested
   useEffect(() => {
     (evals.data ?? []).forEach((e) => { if (isActiveStatus(e.status)) markActive('eval', e.id, e.setName ?? e.setId) })
   }, [evals.data])
+  // reload is a stable callback, so polling restarts only when anyActive flips.
+  const { reload: reloadEvals } = evals
   useEffect(() => {
     if (!anyActive) return
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') evals.reload() }, 10000)
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') reloadEvals() }, 10000)
     return () => window.clearInterval(id)
-  }, [anyActive, evals.reload])
+  }, [anyActive, reloadEvals])
   const models = useLoad(fetchModels)
   const [lbSet, setLbSet] = useState<string>('')
 

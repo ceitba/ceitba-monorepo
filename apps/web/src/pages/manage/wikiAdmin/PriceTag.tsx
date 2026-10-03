@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { effectivePrices, type ExecutionMode, type KbModel } from '../../../api/kbAdmin'
-
-const n = (v: number | null | undefined) => (v == null ? '?' : String(+v.toFixed(3)))
+import { priceNum as n } from './prices'
 
 // Effective price of a model (ADMIN doc §7): when the stage would run in
 // batch, the batch price with the list price struck through and a
@@ -35,10 +34,4 @@ export default function PriceTag({ m, mode, estimate, className = '' }: {
       )}
     </span>
   )
-}
-
-// Plain-text effective price for <option> labels (no markup there).
-export function priceText(m: KbModel, mode?: ExecutionMode): string {
-  const { prices, batched } = effectivePrices(m, mode)
-  return `$${n(prices.inputPerM)}/$${n(prices.outputPerM)}${batched ? ` batch −${Math.round((m.batchDiscount ?? 0.5) * 100)}%` : ' sync'}`
 }

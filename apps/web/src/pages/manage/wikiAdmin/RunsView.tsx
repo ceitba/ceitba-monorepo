@@ -9,11 +9,15 @@ import ConfirmDialog from '../../../components/ConfirmDialog'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Modal from '../../../components/Modal'
 import Notice from '../../../components/Notice'
-import ProgressPanel, { ProgressBar, RUN_STAGES } from './ProgressPanel'
+import ProgressPanel, { ProgressBar } from './ProgressPanel'
+import { RUN_STAGES } from './stages'
 import { useLiveProgress } from './useLiveProgress'
 import NotifyButton from './NotifyButton'
 import { markActive } from './jobWatchStore'
-import { BTN, BTN_DANGER, BTN_PRI, Panel, StatusPill, TD, TH, ViewState, duration, tokens, usd, useLoad } from './shared'
+import { Panel, StatusPill, ViewState } from './shared'
+import { duration, tokens, usd } from './format'
+import { BTN, BTN_DANGER, BTN_PRI, TD, TH } from './styles'
+import { useLoad } from './useLoad'
 
 const PIPELINE: string[] = ['DETECT', 'DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE', 'PUBLISH']
 const ACTIVE = /RUNNING|PENDING|SUBMITTED|IN_PROGRESS|QUEUED|VALIDATING|BLOCKED/i
@@ -29,11 +33,13 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
   useEffect(() => {
     (runs.data ?? []).forEach((r) => { if (ACTIVE.test(r.status)) markActive('run', r.id, r.startedAt ?? r.id) })
   }, [runs.data])
+  // reload is a stable callback, so polling restarts only when anyActive flips.
+  const { reload: reloadRuns } = runs
   useEffect(() => {
     if (!anyActive) return
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') runs.reload() }, 10000)
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') reloadRuns() }, 10000)
     return () => window.clearInterval(id)
-  }, [anyActive, runs.reload])
+  }, [anyActive, reloadRuns])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)

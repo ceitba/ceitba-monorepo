@@ -7,9 +7,13 @@ import {
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
 import ReasoningSelect from './ReasoningSelect'
-import PriceTag, { priceText } from './PriceTag'
+import PriceTag from './PriceTag'
+import { priceText } from './prices'
 import ConfirmDialog from '../../../components/ConfirmDialog'
-import { BTN, BTN_DANGER, BTN_PRI, CostImpactDialog, FIELD, Panel, TD, TH, ViewState, isUnavailable, usd, useLoad } from './shared'
+import { CostImpactDialog, Panel, ViewState } from './shared'
+import { usd } from './format'
+import { BTN, BTN_DANGER, BTN_PRI, FIELD, TD, TH } from './styles'
+import { isUnavailable, useLoad } from './useLoad'
 
 const STAGE_FIELD: Record<ModelStage, 'modelDigest' | 'modelPlan' | 'modelWrite' | 'modelRetry'> = {
   digest: 'modelDigest', plan: 'modelPlan', write: 'modelWrite', retry: 'modelRetry',

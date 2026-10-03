@@ -6,7 +6,9 @@ import {
 } from '../../../api/kbAdmin'
 import CostChart from './CostChart'
 import Forecast from './Forecast'
-import { Panel, StatusPill, ViewState, duration, pct, tokens, usd, useLoad } from './shared'
+import { Panel, StatusPill, ViewState } from './shared'
+import { duration, pct, tokens, usd } from './format'
+import { useLoad } from './useLoad'
 
 const WEEKS = 12
 
