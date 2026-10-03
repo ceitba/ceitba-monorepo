@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  MODEL_STAGES, fetchForecast, fetchStageCost, fetchModels, forecastFor, impactFrom, normalizeImpact, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
+  MODEL_STAGES, fetchForecast, fetchStageCost, isSelectable, fetchModels, forecastFor, impactFrom, normalizeImpact, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
   type CostImpact, type ExecutionMode, type KbModel, type KbSettings, type ModelStage, type SettingsBody, type SubjectOverride,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
@@ -42,7 +42,7 @@ export function ModelSelect({ value, models, onChange, allowDefault, label, mode
         {allowDefault && <option value="">{t('manage.wikiAi.settings.useDefault')}</option>}
         {!allowDefault && !current && value && <option value={value}>{value}</option>}
         {models.map((m) => {
-          const usable = m.enabled && probeOk(m) && !(mode === 'batch' && !m.batchSupported)
+          const usable = isSelectable(m, mode)
           return (
             <option key={m.id} value={m.id} disabled={!usable && m.id !== value}>
               {m.displayName || m.id} · {priceText(m, mode)}
@@ -70,16 +70,26 @@ export function ModelBadges({ m, mode, estimate }: { m: KbModel; mode?: Executio
   )
 }
 
-// cron "m h * * d" ⇄ day + time; anything else is edited raw.
-function parseCron(cron: string): { day: number; time: string } | null {
-  const m = /^\s*(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+([0-7])\s*$/.exec(cron ?? '')
-  if (!m) return null
-  return { day: Number(m[3]) % 7, time: `${m[2].padStart(2, '0')}:${m[1].padStart(2, '0')}` }
+// Schedule ⇄ day + time. The API uses Spring's 6-field cron with seconds
+// and day names ("0 0 3 * * SUN"); plain 5-field crons ("0 3 * * 0") are
+// read too. Anything else is edited raw.
+const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+
+function parseCron(cron: string): { day: number; time: string; seconds: boolean } | null {
+  const f = (cron ?? '').trim().split(/\s+/)
+  let sec: string, min: string, hour: string, dom: string, mon: string, dow: string
+  if (f.length === 6) [sec, min, hour, dom, mon, dow] = f
+  else if (f.length === 5) { [min, hour, dom, mon, dow] = f; sec = '0' }
+  else return null
+  if (sec !== '0' || dom !== '*' || mon !== '*' || !/^\d{1,2}$/.test(min) || !/^\d{1,2}$/.test(hour)) return null
+  const d = /^\d$/.test(dow) ? Number(dow) % 7 : DOW.indexOf(dow.toUpperCase())
+  if (d < 0) return null
+  return { day: d, time: `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`, seconds: f.length === 6 }
 }
 
-function toCron(day: number, time: string): string {
+function toCron(day: number, time: string, seconds = true): string {
   const [h, mi] = time.split(':').map((x) => Number(x) || 0)
-  return `${mi} ${h} * * ${day}`
+  return seconds ? `0 ${mi} ${h} * * ${DOW[day]}` : `${mi} ${h} * * ${day}`
 }
 
 export default function SettingsView() {
@@ -99,7 +109,7 @@ export default function SettingsView() {
   const [stageCosts, setStageCosts] = useState<Map<string, number | null>>(new Map())
   const forecast = useLoad(fetchForecast)
   useEffect(() => {
-    const list = (models.data ?? []).filter((m) => m.enabled && probeOk(m))
+    const list = (models.data ?? []).filter((m) => isSelectable(m))
     if (!list.length) return
     let cancelled = false
     ;(async () => {
@@ -231,7 +241,7 @@ export default function SettingsView() {
                       <select
                         aria-label={t('manage.wikiAi.settings.day')}
                         value={parseCron(draft.cron)?.day ?? 0}
-                        onChange={(e) => set('cron', toCron(Number(e.target.value), parseCron(draft.cron)?.time ?? '03:00'))}
+                        onChange={(e) => set('cron', toCron(Number(e.target.value), parseCron(draft.cron)?.time ?? '03:00', parseCron(draft.cron)?.seconds ?? true))}
                         className={`${FIELD} flex-1`}
                       >
                         {DAYS.map((d) => (
@@ -244,7 +254,7 @@ export default function SettingsView() {
                         type="time"
                         aria-label={t('manage.wikiAi.settings.time')}
                         value={parseCron(draft.cron)?.time ?? '03:00'}
-                        onChange={(e) => set('cron', toCron(parseCron(draft.cron)?.day ?? 0, e.target.value || '03:00'))}
+                        onChange={(e) => set('cron', toCron(parseCron(draft.cron)?.day ?? 0, e.target.value || '03:00', parseCron(draft.cron)?.seconds ?? true))}
                         className={FIELD}
                       />
                     </div>
@@ -297,7 +307,7 @@ export default function SettingsView() {
               {h.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-center gap-3 py-2 font-body text-body-sm">
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.changedAt).toLocaleString(i18n.language)}</span>
-                  <span>{e.changedByName ?? e.changedBy ?? '—'}</span>
+                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted" title={e.changedBy ?? undefined}>{e.changedByName ?? (e.changedBy ? e.changedBy.slice(0, 8) : '—')}</span>
                   <span className="flex-1 min-w-0 text-ink-secondary dark:text-night-muted truncate">
                     {e.note ? `“${e.note}”` : ''} {e.settings.modelWrite && <code className="font-mono text-[0.7rem]">write={e.settings.modelWrite}</code>}
                   </span>

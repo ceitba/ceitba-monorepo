@@ -486,7 +486,8 @@
         "LINK": "Link",
         "VALIDATE": "Validate",
         "PUBLISH": "Publish",
-        "EVAL": "Eval"
+        "EVAL": "Eval",
+        "PROBE": "Probes"
       },
       "metrics": {
         "costPerValidPage": "Cost per valid page",
@@ -691,7 +692,9 @@
         "fewRatingsHint": "Fewer than {{n}} ratings: take it with care.",
         "refreeze": "Re-freeze",
         "refreezeBody": "“{{name}}” takes its subjects’ current inputs. New evaluations stop being comparable with earlier ones.",
-        "refrozen": "“{{name}}” was re-frozen."
+        "refrozen": "“{{name}}” was re-frozen.",
+        "frozenAt": "Frozen on {{date}} · {{files}} files",
+        "digestsMissing": "{{count}} digests to generate"
       },
       "review": {
         "start": "Blind review",
@@ -766,7 +769,10 @@
           "blend_one": "Blends material volume with {{count}} run.",
           "blend_other": "Blends material volume with {{count}} runs."
         }
-      }
+      },
+      "crashed": "This view failed to render the data the API returned.",
+      "simulated": "Simulated costs (fake LLM client), not real billing.",
+      "simulatedShort": "simulated"
     }
   },
   "devLogin": {

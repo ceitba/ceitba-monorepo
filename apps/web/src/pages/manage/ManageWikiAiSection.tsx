@@ -6,6 +6,7 @@ import SettingsView from './wikiAdmin/SettingsView'
 import ModelsView from './wikiAdmin/ModelsView'
 import RunsView from './wikiAdmin/RunsView'
 import EvalsView from './wikiAdmin/EvalsView'
+import ViewBoundary from './wikiAdmin/ViewBoundary'
 
 type View = 'overview' | 'settings' | 'models' | 'runs' | 'evals'
 const VIEWS: View[] = ['overview', 'settings', 'models', 'runs', 'evals']
@@ -35,11 +36,13 @@ export default function ManageWikiAiSection() {
           </button>
         ))}
       </div>
-      {view === 'overview' && <Overview onOpenRun={(id) => { setRunId(id); setView('runs') }} />}
-      {view === 'settings' && <SettingsView />}
-      {view === 'models' && <ModelsView />}
-      {view === 'runs' && <RunsView openId={runId} onOpen={setRunId} />}
-      {view === 'evals' && <EvalsView />}
+      <ViewBoundary key={view}>
+        {view === 'overview' && <Overview onOpenRun={(id) => { setRunId(id); setView('runs') }} />}
+        {view === 'settings' && <SettingsView />}
+        {view === 'models' && <ModelsView />}
+        {view === 'runs' && <RunsView openId={runId} onOpen={setRunId} />}
+        {view === 'evals' && <EvalsView />}
+      </ViewBoundary>
     </div>
   )
 }

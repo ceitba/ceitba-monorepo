@@ -219,6 +219,12 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
                 <div className="flex-1 min-w-0">
                   <p className="font-body text-body-sm font-semibold">{s.name}</p>
                   <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{s.subjectIds.join(' · ')}</p>
+                  {s.frozenAt && (
+                    <p className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">
+                      {t('manage.wikiAi.evals.frozenAt', { date: new Date(s.frozenAt).toLocaleDateString(), files: (s.frozen ?? []).reduce((a, f) => a + (f.files ?? 0), 0) })}
+                      {(s.frozen ?? []).some((f) => f.digestsMissing > 0) && ` · ${t('manage.wikiAi.evals.digestsMissing', { count: (s.frozen ?? []).reduce((a, f) => a + (f.digestsMissing ?? 0), 0) })}`}
+                    </p>
+                  )}
                 </div>
                 <button type="button" onClick={() => setRefreezing({ id: s.id, name: s.name })} className={BTN}>{t('manage.wikiAi.evals.refreeze')}</button>
               </li>
@@ -289,11 +295,13 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
             </select>
           </label>
           {configs.map((c, i) => (
-            <fieldset key={i} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] items-start gap-2 p-2 rounded-sm border border-border dark:border-night-border">
+            <fieldset key={i} className="grid grid-cols-[auto_1fr_auto] items-start gap-2 p-2 rounded-sm border border-border dark:border-night-border">
               <legend className="sr-only">{t('manage.wikiAi.evals.config', { n: i + 1 })}</legend>
               <span className="font-display font-bold text-h5 self-center w-6 text-center" aria-hidden="true">{String.fromCharCode(65 + i)}</span>
+              <div className="flex flex-col gap-2 min-w-0">
               {(['plan', 'write'] as const).map((stage) => (
-                <div key={stage} className="grid grid-cols-[1fr_7.5rem] gap-2 items-start min-w-0">
+                <div key={stage} className="grid grid-cols-[4.5rem_1fr_7.5rem] gap-2 items-start min-w-0">
+                  <span className="pt-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t(`manage.wikiAi.stages.${stage.toUpperCase()}`)}</span>
                   <ModelSelect
                     label={`${t(`manage.wikiAi.stages.${stage.toUpperCase()}`)} ${i + 1}`}
                     value={c[stage] || null}
@@ -309,6 +317,7 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
                   />
                 </div>
               ))}
+              </div>
               <button type="button" disabled={configs.length <= 2} onClick={() => setConfigs(configs.filter((_, j) => j !== i))} aria-label={t('manage.delete')} className="self-center px-2 text-ink-secondary hover:text-red-600 disabled:opacity-30">×</button>
             </fieldset>
           ))}
@@ -499,7 +508,7 @@ function Leaderboard({ setId }: { setId: string }) {
                   <td className={`${TD} text-right tabular-nums`}>{usd(r.costPerValidPage)}</td>
                   <td className={`${TD} text-right tabular-nums`}>
                     {r.ratings}
-                    {r.ratings < FEW_RATINGS && (
+                    {(r.smallSample || r.ratings < FEW_RATINGS) && (
                       <span className="ml-1.5 px-1 rounded-sm bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-mono text-[0.65rem]" title={t('manage.wikiAi.evals.fewRatingsHint', { n: FEW_RATINGS })}>
                         {t('manage.wikiAi.evals.fewRatings')}
                       </span>

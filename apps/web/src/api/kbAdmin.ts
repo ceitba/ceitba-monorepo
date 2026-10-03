@@ -8,8 +8,9 @@ import { apiGet, apiSend } from './client'
 const enc = encodeURIComponent
 const BASE = '/staff/kb'
 
-export type Stage = 'DIGEST' | 'PLAN' | 'WRITE' | 'RETRY' | 'EVAL'
-export const COST_STAGES: Stage[] = ['DIGEST', 'PLAN', 'WRITE', 'RETRY', 'EVAL']
+// PROBE: catalog probes, recorded in usage like any other request.
+export type Stage = 'DIGEST' | 'PLAN' | 'WRITE' | 'RETRY' | 'EVAL' | 'PROBE'
+export const COST_STAGES: Stage[] = ['DIGEST', 'PLAN', 'WRITE', 'RETRY', 'EVAL', 'PROBE']
 export const MODEL_STAGES = ['digest', 'plan', 'write', 'retry'] as const
 export type ModelStage = typeof MODEL_STAGES[number]
 export type ExecutionMode = 'auto' | 'batch' | 'sync'
@@ -33,12 +34,15 @@ export interface KbSettings {
   modelRetry: string
   executionMode: ExecutionMode
   enabled: boolean
+  // Spring cron, 6 fields with seconds: "0 0 3 * * SUN" (Buenos Aires).
   cron: string
   runTokenBudget: number
   weeklyCostLimitUsd: number | null
   retryRejected: boolean
   // Per stage; only meaningful for models with supportsReasoningEffort.
   reasoningEffort?: StageReasoning
+  // Output token cap per stage; not edited in the UI, passed through.
+  maxTokens?: Partial<Record<ModelStage, number>>
   subjectOverrides: Record<string, SubjectOverride>
   // Where each field's value comes from.
   source?: Partial<Record<keyof KbSettings, 'env' | 'db'>>
@@ -123,6 +127,7 @@ export type SettingsBody = Omit<KbSettings, 'source'> & { note?: string }
 export interface SettingsHistoryEntry {
   id: string
   settings: Partial<KbSettings>
+  // User id (UUID); the API doesn't send a name.
   changedBy?: string | null
   changedByName?: string | null
   changedAt: string
@@ -182,6 +187,8 @@ export interface KbModel {
   provider: string | null
   batchSupported: boolean
   supportsReasoningEffort?: boolean
+  // enabled + probed OK + usable in the current mode (API).
+  selectable?: boolean
   // Effective prices (ADMIN doc §7): batch is null when the model can't
   // batch. batchSource tells whether support comes from the default rule
   // or a probe.
@@ -236,6 +243,14 @@ export function effectivePrices(m: KbModel, mode: ExecutionMode | undefined): { 
   return { prices: m.effectivePrices?.batch ?? fallback, list, batched: true }
 }
 
+// Pickable in settings: the API's `selectable` (enabled + successfully
+// probed + mode supported) when present, else derived locally.
+export function isSelectable(m: KbModel, mode?: ExecutionMode): boolean {
+  if (mode === 'batch' && !m.batchSupported) return false
+  if (typeof m.selectable === 'boolean') return m.selectable
+  return m.enabled && probeOk(m)
+}
+
 // A model can be picked once a probe succeeded.
 export function probeOk(m: KbModel | undefined | null): boolean {
   const p = m?.lastProbe
@@ -270,6 +285,8 @@ export interface CostSummary {
   byStage: CostRow[] | Record<string, number>
   byModel: CostRow[] | Record<string, number>
   topSubjects: (CostRow & { subjectName?: string })[]
+  // Costs come from the fake LLM client (local/dev), not real billing.
+  simulated?: boolean
   accuracy?: { lastRuns: { runId: string; expectedUsd: number | null; actualUsd: number | null; startedAt?: string | null }[] } | null
 }
 
@@ -349,6 +366,9 @@ export interface KbRun {
   costUsd?: number | null
   // Forecast at submission (ADMIN doc §7).
   expectedCostUsd?: number | null
+  tokensCached?: number
+  costApproved?: boolean
+  simulated?: boolean
   // ADMIN doc §6: { DIGEST, PLAN, WRITE, RETRY }.
   costByStage?: Record<string, number> | null
   error: string | null
@@ -388,6 +408,9 @@ export interface EvalSet {
   subjectIds: string[]
   createdBy?: string | null
   createdAt: string
+  // What the set froze (null until frozen).
+  frozenAt?: string | null
+  frozen?: { subjectId: string; subjectName: string; files: number; chars: number; digestsMissing: number }[] | null
 }
 
 export interface ModelConfig {
@@ -453,8 +476,8 @@ export interface ReviewPage {
   title: string
   summary?: string | null
   markdown: string
-  sources?: { id: string; name: string; kind: string; author?: { name: string | null; anonymous: boolean } }[]
-  links?: { raw: string; subjectId: string; slug: string | null; resolved: boolean; title: string | null; anchor?: string | null }[]
+  sources?: { id: string; name: string; kind?: string; author?: { name: string | null; anonymous: boolean } }[]
+  links?: { raw: string; subjectId: string; slug: string | null; resolved?: boolean; title?: string | null; anchor?: string | null }[]
 }
 
 export interface ReviewPair {
@@ -470,6 +493,7 @@ export interface ReviewResult {
   revealed?: { A?: ModelConfig & { configKey?: string }; B?: ModelConfig & { configKey?: string } }
 }
 
+// Normalised leaderboard row for the UI (built from the API entry below).
 export interface LeaderboardRow extends EvalMetrics {
   configKey: string
   plan: string
@@ -480,6 +504,52 @@ export interface LeaderboardRow extends EvalMetrics {
   avgAccuracy: number | null
   avgClarity: number | null
   avgUsefulness: number | null
+  smallSample: boolean
+  wins?: number
+  losses?: number
+  ties?: number
+  evals?: number
+}
+
+// GET /evals/leaderboard → { setId, setName, entries: [...] } (API).
+interface LeaderboardEntryApi {
+  configKey: string
+  plan: string
+  write: string
+  reasoningEffort?: ModelConfig['reasoningEffort'] | null
+  evals?: number
+  ratings?: number
+  wins?: number
+  losses?: number
+  ties?: number
+  winRate?: number | null
+  avgScores?: { accuracy?: number | null; clarity?: number | null; usefulness?: number | null } | null
+  metrics?: EvalMetrics | null
+  costUsd?: number | null
+  costPerValidPage?: number | null
+  smallSample?: boolean
+}
+
+function toLeaderboardRow(e: LeaderboardEntryApi): LeaderboardRow {
+  return {
+    ...(e.metrics ?? {}),
+    configKey: e.configKey,
+    plan: e.plan,
+    write: e.write,
+    reasoningEffort: e.reasoningEffort ?? undefined,
+    winRate: e.winRate ?? null,
+    ratings: e.ratings ?? 0,
+    avgAccuracy: e.avgScores?.accuracy ?? null,
+    avgClarity: e.avgScores?.clarity ?? null,
+    avgUsefulness: e.avgScores?.usefulness ?? null,
+    costUsd: e.costUsd ?? e.metrics?.costUsd ?? null,
+    costPerValidPage: e.costPerValidPage ?? e.metrics?.costPerValidPage ?? null,
+    smallSample: e.smallSample ?? (e.ratings ?? 0) < 20,
+    wins: e.wins,
+    losses: e.losses,
+    ties: e.ties,
+    evals: e.evals,
+  }
 }
 
 const EVALS = `${BASE}/evals`
@@ -501,7 +571,29 @@ export function fetchNextReview(evalId: string, opts: { subjectId?: string; slug
   if (opts.slug) qs.set('slug', opts.slug)
   const q = qs.toString()
   // apiSend tolerates an empty 204 ("nothing left to review") → undefined.
-  return apiSend<ReviewPair | null | undefined>('GET', `${EVALS}/${enc(evalId)}/review/next${q ? `?${q}` : ''}`).then((r) => r ?? null)
+  return apiSend<ReviewPair | null | undefined>('GET', `${EVALS}/${enc(evalId)}/review/next${q ? `?${q}` : ''}`)
+    .then((r) => (r ? { ...r, a: normalizeReviewPage(r.a, 'A'), b: normalizeReviewPage(r.b, 'B') } : null))
+}
+
+// The API's review pages carry sources as {id, name} and links as
+// {raw, subjectId, slug, anchor}: fill what WikiMarkdown expects (a link
+// with a slug resolves; sources default to kind OTHER, anonymous author).
+function normalizeReviewPage(p: Partial<ReviewPage> | undefined, label: 'A' | 'B'): ReviewPage {
+  return {
+    label,
+    title: p?.title ?? '',
+    summary: p?.summary ?? null,
+    markdown: p?.markdown ?? '',
+    sources: (p?.sources ?? []).map((s) => ({ id: s.id, name: s.name, kind: s.kind ?? 'OTHER', author: s.author ?? { name: null, anonymous: true } })),
+    links: (p?.links ?? []).map((l) => ({
+      raw: l.raw,
+      subjectId: l.subjectId,
+      slug: l.slug ?? null,
+      resolved: l.resolved ?? !!l.slug,
+      title: l.title ?? null,
+      anchor: l.anchor ?? null,
+    })),
+  }
 }
 
 export function submitReview(evalId: string, body: {
@@ -516,5 +608,9 @@ export function submitReview(evalId: string, body: {
   return apiSend('POST', `${EVALS}/${enc(evalId)}/review`, body)
 }
 
-export const fetchLeaderboard = (setId: string) => apiGet<LeaderboardRow[]>(`${EVALS}/leaderboard?setId=${enc(setId)}`)
+export async function fetchLeaderboard(setId: string): Promise<LeaderboardRow[]> {
+  const r = await apiGet<{ entries?: LeaderboardEntryApi[] } | LeaderboardEntryApi[]>(`${EVALS}/leaderboard?setId=${enc(setId)}`)
+  const entries = Array.isArray(r) ? r : r?.entries ?? []
+  return entries.map(toLeaderboardRow)
+}
 export const promoteEval = (id: string, key: string) => apiSend<KbSettings & { costImpact?: unknown }>('POST', `${EVALS}/${enc(id)}/promote`, { configKey: key })

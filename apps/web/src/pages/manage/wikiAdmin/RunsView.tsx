@@ -77,6 +77,7 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
                         <StatusPill status={r.status} />
                         {r.stage && <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{r.stage}</span>}
                         {r.dryRun && <span className="font-mono text-label uppercase text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.runs.dry')}</span>}
+                        {r.simulated && <span className="font-mono text-label uppercase text-amber-700 dark:text-amber-300">{t('manage.wikiAi.simulatedShort')}</span>}
                       </div>
                     </td>
                     <td className={`${TD} font-mono text-label`}>{r.trigger}</td>

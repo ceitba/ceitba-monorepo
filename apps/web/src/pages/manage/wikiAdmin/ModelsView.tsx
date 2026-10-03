@@ -86,7 +86,7 @@ export default function ModelsView() {
               <tbody>
                 {list.map((m) => (
                   <tr key={m.id} className="border-t border-border dark:border-night-border">
-                    <td className={TD}>
+                    <td className={`${TD} min-w-[13rem]`}>
                       <p className="font-semibold text-ink-primary dark:text-night-text">{m.displayName || m.id}</p>
                       <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{m.id}{m.provider ? ` · ${m.provider}` : ''}</p>
                       {m.contextWindow && <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.context', { k: Math.round(m.contextWindow / 1000) })}</p>}

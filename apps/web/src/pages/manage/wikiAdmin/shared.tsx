@@ -98,7 +98,10 @@ export function ViewState<T>({ state, empty, emptyText, skeleton = 'block', chil
 
 export function usd(n: number | null | undefined, digits?: number): string {
   if (n == null || Number.isNaN(n)) return '—'
-  const d = digits ?? (Math.abs(n) < 1 ? 4 : 2)
+  // Sub-cent amounts (probes, small runs) keep 4 decimals so they don't
+  // all read "0.01" / "0.00".
+  let d = digits ?? (Math.abs(n) < 1 ? 4 : 2)
+  if (n !== 0 && Math.abs(n) < 0.01) d = Math.max(d, 4)
   return `US$ ${n.toLocaleString('en-US', { minimumFractionDigits: Math.min(d, 2), maximumFractionDigits: d })}`
 }
 

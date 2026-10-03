@@ -10,9 +10,11 @@ import { Panel, StatusPill, ViewState, duration, pct, tokens, usd, useLoad } fro
 
 const WEEKS = 12
 
+// ISO datetime with the Buenos Aires offset: older API builds reject a
+// bare date for `from` (OffsetDateTime parsing).
 function since(weeks: number): string {
-  const d = new Date(Date.now() - weeks * 7 * 864e5)
-  return d.toISOString().slice(0, 10)
+  const d = new Date(Date.now() - weeks * 7 * 864e5 - 3 * 36e5)
+  return `${d.toISOString().slice(0, 10)}T00:00:00-03:00`
 }
 
 // Resumen: cost cards, weekly cost (by stage or model), top subjects, the
@@ -30,6 +32,9 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
       <ViewState state={summary} skeleton="cards">
         {(s) => (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {s.simulated && (
+              <p className="col-span-2 lg:col-span-4 font-mono text-label uppercase tracking-widest text-amber-700 dark:text-amber-300">{t('manage.wikiAi.simulated')}</p>
+            )}
             <Stat label={t('manage.wikiAi.overview.last7')} value={usd(s.last7dUsd, 2)} />
             <Stat label={t('manage.wikiAi.overview.last30')} value={usd(s.last30dUsd, 2)} />
             <Stat label={t('manage.wikiAi.overview.projected')} value={usd(s.projectedMonthUsd, 2)} />

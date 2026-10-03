@@ -486,7 +486,8 @@
         "LINK": "Enlaces",
         "VALIDATE": "Validación",
         "PUBLISH": "Publicación",
-        "EVAL": "Evaluación"
+        "EVAL": "Evaluación",
+        "PROBE": "Pruebas"
       },
       "metrics": {
         "costPerValidPage": "Costo por página válida",
@@ -691,7 +692,9 @@
         "fewRatingsHint": "Menos de {{n}} calificaciones: tomalo con cuidado.",
         "refreeze": "Volver a congelar",
         "refreezeBody": "«{{name}}» toma las entradas actuales de sus materias. Las evaluaciones nuevas dejan de ser comparables con las anteriores.",
-        "refrozen": "Se volvió a congelar «{{name}}»."
+        "refrozen": "Se volvió a congelar «{{name}}».",
+        "frozenAt": "Congelado el {{date}} · {{files}} archivos",
+        "digestsMissing": "{{count}} digests por generar"
       },
       "review": {
         "start": "Revisión a ciegas",
@@ -766,7 +769,10 @@
           "blend_one": "Combina el volumen de apuntes con {{count}} ejecución.",
           "blend_other": "Combina el volumen de apuntes con {{count}} ejecuciones."
         }
-      }
+      },
+      "crashed": "Esta vista falló al mostrar los datos que devolvió la API.",
+      "simulated": "Costos simulados (cliente LLM de prueba), no facturación real.",
+      "simulatedShort": "simulado"
     }
   },
   "devLogin": {
