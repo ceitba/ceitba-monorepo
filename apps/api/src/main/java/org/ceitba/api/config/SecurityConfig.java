@@ -6,12 +6,15 @@ import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.service.auth.SessionAllowlist;
 import org.ceitba.api.web.auth.ApiKeyFilter;
 import org.ceitba.api.web.auth.CookieOrHeaderBearerTokenResolver;
+import org.ceitba.api.web.auth.DevLoginController;
 import org.ceitba.api.web.auth.IssuerAudienceValidator;
 import org.ceitba.api.web.auth.StaffAwareJwtAuthenticationConverter;
 import org.ceitba.api.web.ratelimit.RateLimitFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
@@ -46,6 +49,7 @@ import java.util.List;
 //                  POST /v1/auth/google/mobile, /v1/auth/refresh, /v1/auth/logout
 //                  POST /v1/auth/review-login  (store review account; 404 unless configured)
 //                  GET /v1/app/config
+//                  POST /v1/auth/dev-login  (only with the dev profile AND AUTH_DEV_LOGIN_ENABLED=true)
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
 //   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
@@ -105,7 +109,8 @@ public class SecurityConfig {
                                                    ApiKeyService apiKeyService,
                                                    CeitbaStaffRepository staffRepository,
                                                    CeitbaModeratorRepository moderatorRepository,
-                                                   RateLimitProperties rateLimit) throws Exception {
+                                                   RateLimitProperties rateLimit,
+                                                   Environment env) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
         // 403 only for allowlist denials.
@@ -127,6 +132,8 @@ public class SecurityConfig {
                 emailAllowlisted
             );
 
+        boolean devLogin = devLoginEnabled(env);
+
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsSource()))
@@ -136,7 +143,10 @@ public class SecurityConfig {
             .addFilterAfter(new RateLimitFilter(rateLimit), CorsFilter.class)
             .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository, moderatorRepository),
                              UsernamePasswordAuthenticationFilter.class)
-            .authorizeHttpRequests(reg -> reg
+            .authorizeHttpRequests(reg -> {
+                // Local dev sign-in; otherwise the path is not even permitted.
+                if (devLogin) reg.requestMatchers(HttpMethod.POST, DevLoginController.PATH).permitAll();
+                reg
                 .requestMatchers(HttpMethod.GET,
                     "/", "/health",
                     "/actuator/health", "/actuator/info",
@@ -188,8 +198,8 @@ public class SecurityConfig {
                 .requestMatchers("/v1/staff/**")
                     .access(AuthorizationManagers.allOf(
                         AuthorityAuthorizationManager.hasRole("STAFF"), emailAllowlisted))
-                .anyRequest().access(authenticatedAndAllowlisted)
-            )
+                .anyRequest().access(authenticatedAndAllowlisted);
+            })
             .oauth2ResourceServer(oauth -> {
                 oauth.bearerTokenResolver(bearerResolver);
                 oauth.jwt(jwt -> {
@@ -199,6 +209,12 @@ public class SecurityConfig {
             });
 
         return http.build();
+    }
+
+    // Same condition as the DevLoginController bean (@Profile + @ConditionalOnProperty).
+    static boolean devLoginEnabled(Environment env) {
+        return env.acceptsProfiles(Profiles.of("dev"))
+            && env.getProperty("auth.dev-login.enabled", Boolean.class, false);
     }
 
     private static CorsConfigurationSource corsSource() {

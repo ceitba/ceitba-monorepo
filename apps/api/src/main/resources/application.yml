@@ -90,6 +90,10 @@ auth:
   review-login:
     email: ${REVIEW_LOGIN_EMAIL:}
     password-hash: ${REVIEW_LOGIN_PASSWORD_HASH:}
+  # POST /v1/auth/dev-login (sign in as any email, optionally STAFF). Only
+  # exists when this is true AND the `dev` profile is active. Never in prod.
+  dev-login:
+    enabled: ${AUTH_DEV_LOGIN_ENABLED:false}
 
 # Root secret for keyed content hashes (service/crypto/ContentHmac): proposal
 # attachment keys and imported Firestore comment ids. Empty = derive from
@@ -134,6 +138,25 @@ storage:
   secret-access-key: ${STORAGE_SECRET_ACCESS_KEY:${R2_SECRET_ACCESS_KEY:}}
   public-base-url: ${STORAGE_PUBLIC_URL:${R2_PUBLIC_URL:}}
   presign-ttl: ${STORAGE_PRESIGN_TTL:${R2_PRESIGN_TTL:10m}}
+  # Server-side reads/writes (Drive sync) bypass Caddy: http://minio:9000 in
+  # the compose network. Empty = use endpoint.
+  internal-endpoint: ${STORAGE_INTERNAL_ENDPOINT:}
+
+# Drive sync / Apuntes (docs/DRIVE-SYNC.md). Students share a Drive folder
+# with the bot service account; the job copies it into storage (drive/ prefix,
+# never anonymously readable) and serves it per subject.
+drive-sync:
+  enabled: ${DRIVE_SYNC_ENABLED:false}
+  interval: ${DRIVE_SYNC_INTERVAL:PT30M}
+  run-budget: ${DRIVE_SYNC_RUN_BUDGET:PT10M}
+  # Base64 of the service-account key JSON. Empty (and use-fake false) = the
+  # /v1/me/drive endpoints answer 503 DRIVE_SYNC_UNCONFIGURED.
+  service-account-json: ${DRIVE_SYNC_SERVICE_ACCOUNT_JSON:}
+  use-fake: ${DRIVE_SYNC_USE_FAKE:false}
+  max-file-bytes: ${DRIVE_SYNC_MAX_FILE_BYTES:52428800}
+  # Fake only: comma list of emails that each get a demo folder
+  # "demo-<local part>" owned by them (register it with that id as the URL).
+  fake-demo-owners: ${DRIVE_SYNC_FAKE_DEMO_OWNERS:}
 
 # Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
 # instance. Paths are relative to the /api context path.

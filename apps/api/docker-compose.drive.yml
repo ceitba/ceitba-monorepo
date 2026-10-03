@@ -1,0 +1,170 @@
+# Self-contained local stack for Drive sync (Apuntes) development, separate
+# from docker-compose.yml (no fixed container names, its own volumes and
+# ports), so it runs next to the regular dev stack:
+#
+#   cp .env.drive.example .env.drive   # fill AUTH_JWT_SECRET, pick fake or real Drive
+#   docker compose --env-file .env.drive -f docker-compose.drive.yml up -d --build
+#   docker compose --env-file .env.drive -f docker-compose.drive.yml exec -T postgres \
+#     psql -U postgres -d ceitba_db < scripts/dev-seed-subjects.sql
+#   docker compose --env-file .env.drive -f docker-compose.drive.yml down      # (-v wipes data)
+#
+#   API       http://localhost:8081/api   (dev profile, dev login, CORS for :5173)
+#   Postgres  127.0.0.1:5433  (postgres/postgres, ceitba_db)
+#   MinIO     http://localhost:9002 (S3) / http://localhost:9003 (console)
+#
+# Signed download URLs are signed for http://localhost:9002 (STORAGE_ENDPOINT,
+# what the browser reaches); the API itself writes to http://minio:9000
+# (STORAGE_INTERNAL_ENDPOINT). drive/ is never anonymously readable.
+name: ceitba-drive
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ceitba_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - drive_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ceitba_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env.drive}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.drive}
+    ports:
+      - "127.0.0.1:9002:9000"
+      - "127.0.0.1:9003:9001"
+    volumes:
+      - drive_minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Same setup as docker-compose.yml's minio-init: bucket, anonymous GET
+  # except drive/, and a service user (put/get, delete under drive/).
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z@sha256:cfc83108c3abb371f8fb84d99c1fdc88f8c237e022409b0081fb7c0a3be634dd
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MC_CONFIG_DIR: /tmp/.mc
+      MINIO_URL: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      STORAGE_BUCKET: ceitba-media
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?set STORAGE_ACCESS_KEY_ID in .env.drive}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?set STORAGE_SECRET_ACCESS_KEY in .env.drive}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        i=0
+        until mc alias set local "$$MINIO_URL" "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+          i=$$((i + 1)); [ "$$i" -lt 30 ] || { echo "minio-init: MinIO not reachable" >&2; exit 1; }
+          sleep 2
+        done
+        mc mb --ignore-existing "local/$$STORAGE_BUCKET"
+        cat > /tmp/anonymous-policy.json <<EOF
+        {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": ["*"]},
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/*"]
+          }, {
+            "Effect": "Deny",
+            "Principal": {"AWS": ["*"]},
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
+          }]
+        }
+        EOF
+        mc anonymous set-json /tmp/anonymous-policy.json "local/$$STORAGE_BUCKET"
+        cat > /tmp/ceitba-api-policy.json <<EOF
+        {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:PutObject", "s3:GetObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/*"]
+          }, {
+            "Effect": "Allow",
+            "Action": ["s3:DeleteObject"],
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
+          }]
+        }
+        EOF
+        mc admin policy create local ceitba-api /tmp/ceitba-api-policy.json
+        mc admin user add local "$$STORAGE_ACCESS_KEY_ID" "$$STORAGE_SECRET_ACCESS_KEY"
+        if ! mc admin user info local "$$STORAGE_ACCESS_KEY_ID" --json \
+            | grep -Eq '"policyName":"([^"]*,)?ceitba-api(,[^"]*)?"'; then
+          mc admin policy attach local ceitba-api --user "$$STORAGE_ACCESS_KEY_ID"
+        fi
+        echo "minio-init: bucket $$STORAGE_BUCKET ready"
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DATABASE_URL: jdbc:postgresql://postgres:5432/ceitba_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      ITBA_API_USE_FAKE: "true"
+      SYNC_ENABLED: "false"
+      AUTH_ALLOWED_DOMAINS: ${AUTH_ALLOWED_DOMAINS:-itba.edu.ar}
+      AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:-}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env.drive (openssl rand -base64 32)}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-ceitba_drive_session}
+      # Plain http://localhost: a Secure cookie would be dropped. localhost:5173
+      # -> localhost:8081 is same-site, so Lax cookies ride credentialed fetches.
+      AUTH_COOKIE_SECURE: "false"
+      AUTH_COOKIE_SAMESITE: Lax
+      AUTH_DEV_LOGIN_ENABLED: ${AUTH_DEV_LOGIN_ENABLED:-true}
+      FRONTEND_URL: http://localhost:5173
+      GOOGLE_REDIRECT_URI: http://localhost:8081/api/v1/auth/callback
+      RATE_LIMIT_ENABLED: "false"
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://localhost:9002}
+      STORAGE_INTERNAL_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: ceitba-media
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY}
+      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-http://localhost:9002/ceitba-media}
+      DRIVE_SYNC_ENABLED: ${DRIVE_SYNC_ENABLED:-true}
+      DRIVE_SYNC_INTERVAL: ${DRIVE_SYNC_INTERVAL:-PT5M}
+      DRIVE_SYNC_RUN_BUDGET: ${DRIVE_SYNC_RUN_BUDGET:-PT5M}
+      DRIVE_SYNC_SERVICE_ACCOUNT_JSON: ${DRIVE_SYNC_SERVICE_ACCOUNT_JSON:-}
+      DRIVE_SYNC_USE_FAKE: ${DRIVE_SYNC_USE_FAKE:-false}
+      DRIVE_SYNC_FAKE_DEMO_OWNERS: ${DRIVE_SYNC_FAKE_DEMO_OWNERS:-}
+      DRIVE_SYNC_MAX_FILE_BYTES: ${DRIVE_SYNC_MAX_FILE_BYTES:-52428800}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  drive_postgres:
+  drive_minio:

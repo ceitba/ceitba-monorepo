@@ -138,6 +138,16 @@ public class AccountDeletionRepository {
         exec("UPDATE public.schedule_correction SET reviewed_by = NULL WHERE reviewed_by = :u", userId);
     }
 
+    // Drive sync (Apuntes): the user's registered folders and every copied
+    // file (drive_file and the reports on them cascade). Their reports on
+    // other students' files and the stored objects are handled first by
+    // DriveModerationService.prepareAccountDeletion.
+    public void deleteDriveSources(UUID userId) {
+        exec("UPDATE wiki.drive_source SET reviewed_by = NULL WHERE reviewed_by = :u", userId);
+        exec("DELETE FROM wiki.drive_file_report WHERE user_id = :u", userId);
+        exec("DELETE FROM wiki.drive_source WHERE user_id = :u", userId);
+    }
+
     // Wiki contributions other students rely on whose author FK is NOT NULL:
     // notes, career notes, wiki page revisions, reviewed edit proposals.
     public long countRetainedContributions(UUID userId) {
