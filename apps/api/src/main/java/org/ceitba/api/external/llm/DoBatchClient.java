@@ -39,11 +39,17 @@ public class DoBatchClient implements LlmBatchClient {
 
     @Override
     public FileUpload createFile(String fileName) {
-        var node = call("POST", "/v1/batches/files", Map.of("file_name", fileName));
+        var node = call("POST", "/v1/batches/files", Map.of("file_name", jsonlFileName(fileName)));
         var fileId = text(node, "file_id", "id");
         var url = text(node, "upload_url", "url");
         if (fileId == null || url == null) throw new LlmApiException(0, "Unexpected createFile response: " + node);
         return new FileUpload(fileId, url);
+    }
+
+    // DO rejects batch files without a .jsonl extension (400 "file must have a .jsonl extension").
+    static String jsonlFileName(String name) {
+        var base = (name == null || name.isBlank() ? "batch" : name).replaceAll("[^A-Za-z0-9._-]", "-");
+        return base.endsWith(".jsonl") ? base : base + ".jsonl";
     }
 
     @Override
