@@ -71,7 +71,8 @@ public class KbViews {
 
     public static KbStaffPageResponse staff(KbPage p) {
         return new KbStaffPageResponse(p.getId(), p.getSlug(), p.getTitle(), p.getType().wire(), p.getSummary(),
-            p.getAliases(), p.getSubjectId(), p.getStatus().name(), p.getReportCount());
+            p.getAliases(), p.getSubjectId(), p.getStatus().name(), p.getReportCount(),
+            p.getHiddenReason() == null ? null : p.getHiddenReason().name());
     }
 
     public KbPageResponse page(KbPage p, UUID viewerId, boolean staff) {

@@ -146,6 +146,26 @@ storage:
 # source is older than this many years.
 kb:
   stale-years: ${KB_STALE_YEARS:3}
+  # Inference (DigitalOcean: batch for anthropic-*/openai-* models, sync chat
+  # completions otherwise) for the wiki pipeline (docs/SUBJECT-WIKI-PIPELINE.md,
+  # docs/SUBJECT-WIKI-ADMIN.md). Empty key = dry runs only.
+  llm:
+    base-url: ${KB_LLM_BASE_URL:https://inference.do-ai.run}
+    api-key: ${KB_LLM_API_KEY:}
+    use-fake: ${KB_LLM_USE_FAKE:false}
+    execution-mode: ${KB_EXECUTION_MODE:auto}
+    sync-concurrency: ${KB_SYNC_CONCURRENCY:4}
+  pipeline:
+    enabled: ${KB_PIPELINE_ENABLED:false}
+    cron: ${KB_PIPELINE_CRON:0 0 3 * * SUN}
+    poll-interval: ${KB_POLL_INTERVAL:PT10M}
+    model-digest: ${KB_MODEL_DIGEST:glm-5.3-flash}
+    model-plan: ${KB_MODEL_PLAN:glm-5.3}
+    model-write: ${KB_MODEL_WRITE:glm-5.3}
+    model-retry: ${KB_MODEL_RETRY:}
+    run-token-budget: ${KB_RUN_TOKEN_BUDGET:3000000}
+    retry-rejected: ${KB_RETRY_REJECTED:true}
+    background: ${KB_PIPELINE_BACKGROUND:true}
 
 # Drive sync / Apuntes (docs/DRIVE-SYNC.md). Students share a Drive folder
 # with the bot service account; the job copies it into storage (drive/ prefix,

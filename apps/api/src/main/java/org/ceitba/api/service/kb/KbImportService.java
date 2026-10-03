@@ -12,6 +12,7 @@ import org.ceitba.api.repository.drive.DriveFileRepository;
 import org.ceitba.api.repository.kb.KbLinkRepository;
 import org.ceitba.api.repository.kb.KbPageRepository;
 import org.ceitba.api.repository.kb.KbPageRevisionRepository;
+import org.ceitba.api.web.kb.dto.KbImportPage;
 import org.ceitba.api.web.kb.dto.KbImportRequest;
 import org.ceitba.api.web.kb.dto.KbImportResponse;
 import org.ceitba.api.web.kb.dto.KbRejectedPage;
@@ -61,16 +62,26 @@ public class KbImportService {
         this.files = files;
     }
 
-    @Transactional
-    public KbImportResponse importSubject(String subjectId, KbImportRequest req) {
-        if (!subjects.existsById(subjectId)) throw new ResourceNotFoundException("Subject", subjectId);
+    // The outcome of validating a payload without writing anything.
+    public record Validation(Map<String, KbPageParser.Draft> accepted, List<KbRejectedPage> rejected,
+                             java.util.Set<String> payloadSlugs) {}
 
-        // Parse everything first, so sources can be loaded in one query.
+    // Parses and validates a payload against the current database (sources,
+    // anchors, concept coverage). Writes nothing; the pipeline uses it to
+    // decide what to retry.
+    @Transactional(readOnly = true)
+    public Validation validate(String subjectId, List<KbImportPage> payload) {
+        return validate(subjectId, payload, java.util.Set.of());
+    }
+
+    // removing: slugs about to be removed (not linkable, not coverage targets).
+    @Transactional(readOnly = true)
+    public Validation validate(String subjectId, List<KbImportPage> payload, java.util.Set<String> removing) {
         record Entry(String slug, KbPageParser.Result parsed) {}
         var entries = new ArrayList<Entry>();
-        var payloadSlugs = new HashSet<String>();
+        var payloadSlugs = new java.util.LinkedHashSet<String>();
         var sourceIds = new LinkedHashSet<UUID>();
-        for (var p : req.pages()) {
+        for (var p : payload) {
             var parsed = KbPageParser.parse(p.path(), p.content(), subjectId);
             var slug = KbPageParser.slugOf(p.path());
             if (!payloadSlugs.add(slug)) {
@@ -87,16 +98,24 @@ public class KbImportService {
                 f.getPublication() == DrivePublication.PUBLISHED, f.getEffectiveSubjectId(), f.getTextContent()));
         }
 
-        Map<String, KbPage> existing = new HashMap<>();
-        for (var page : pages.findBySubjectId(subjectId)) existing.put(page.getSlug(), page);
-
         // Headings of the pages in this payload (they win over stored ones).
         Map<String, java.util.Set<String>> payloadAnchors = new HashMap<>();
+        // The subject's pages after this import, for the coverage rule.
+        Map<String, KbLinker.Target> targets = new java.util.TreeMap<>();
+        for (var page : pages.findBySubjectId(subjectId)) {
+            if (page.getStatus() != KbPageStatus.REMOVED && !payloadSlugs.contains(page.getSlug())
+                    && !removing.contains(page.getSlug())) {
+                targets.put(page.getSlug(), new KbLinker.Target(page.getSlug(), page.getTitle(), page.getAliases()));
+            }
+        }
         for (var e : entries) {
-            if (e.parsed().ok()) payloadAnchors.put(e.slug(), KbWikilinks.headingAnchors(e.parsed().draft().body()));
+            if (!e.parsed().ok()) continue;
+            var d = e.parsed().draft();
+            payloadAnchors.put(e.slug(), KbWikilinks.headingAnchors(d.body()));
+            targets.put(d.slug(), new KbLinker.Target(d.slug(), d.title(), d.aliases()));
         }
 
-        var accepted = new ArrayList<String>();
+        Map<String, KbPageParser.Draft> accepted = new java.util.LinkedHashMap<>();
         var rejected = new ArrayList<KbRejectedPage>();
         for (var e : entries) {
             if (!e.parsed().ok()) {
@@ -106,10 +125,27 @@ public class KbImportService {
             var draft = e.parsed().draft();
             var errors = new ArrayList<>(KbValidator.validate(draft, sourceInfo));
             errors.addAll(anchorErrors(subjectId, draft, payloadAnchors));
+            for (var m : KbLinker.unlinked(draft.body(), draft.slug(), List.copyOf(targets.values()))) {
+                errors.add("unlinked mention of '" + m.text() + "': link it as [[" + m.slug() + "|" + m.text() + "]]");
+            }
             if (!errors.isEmpty()) {
                 rejected.add(new KbRejectedPage(e.slug(), errors));
                 continue;
             }
+            accepted.put(draft.slug(), draft);
+        }
+        return new Validation(accepted, rejected, payloadSlugs);
+    }
+
+    @Transactional
+    public KbImportResponse importSubject(String subjectId, KbImportRequest req) {
+        if (!subjects.existsById(subjectId)) throw new ResourceNotFoundException("Subject", subjectId);
+        var v = validate(subjectId, req.pages());
+
+        Map<String, KbPage> existing = new HashMap<>();
+        for (var page : pages.findBySubjectId(subjectId)) existing.put(page.getSlug(), page);
+        var accepted = new ArrayList<String>();
+        for (var draft : v.accepted().values()) {
             upsert(subjectId, draft, existing.get(draft.slug()));
             accepted.add(draft.slug());
         }
@@ -117,7 +153,7 @@ public class KbImportService {
         var removed = new ArrayList<String>();
         if (req.replace()) {
             for (var page : existing.values()) {
-                if (payloadSlugs.contains(page.getSlug()) || page.getStatus() == KbPageStatus.REMOVED) continue;
+                if (v.payloadSlugs().contains(page.getSlug()) || page.getStatus() == KbPageStatus.REMOVED) continue;
                 page.setStatus(KbPageStatus.REMOVED);
                 removed.add(page.getSlug());
             }
@@ -125,9 +161,9 @@ public class KbImportService {
         }
 
         links.resolveForSubject(subjectId);
-        log.info("KB import {}: {} accepted, {} rejected, {} removed", subjectId, accepted.size(), rejected.size(),
+        log.info("KB import {}: {} accepted, {} rejected, {} removed", subjectId, accepted.size(), v.rejected().size(),
             removed.size());
-        return new KbImportResponse(accepted, rejected, removed);
+        return new KbImportResponse(accepted, v.rejected(), removed);
     }
 
     // A #anchor must name a ## to #### heading of its target page when that

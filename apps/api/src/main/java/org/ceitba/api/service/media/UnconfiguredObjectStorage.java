@@ -25,6 +25,11 @@ public class UnconfiguredObjectStorage implements ObjectStorage {
     }
 
     @Override
+    public byte[] get(String key) {
+        throw notConfigured();
+    }
+
+    @Override
     public void delete(String key) {
         throw notConfigured();
     }

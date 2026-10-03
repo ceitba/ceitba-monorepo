@@ -40,6 +40,11 @@ public interface ObjectStorage {
         }
     }
 
+    // Reads an object (server side); null when it does not exist.
+    default byte[] get(String key) {
+        throw new UnsupportedOperationException("get is not supported by " + getClass().getSimpleName());
+    }
+
     // Deletes `key`; deleting a missing object is not an error. Throws
     // FeatureNotConfiguredException when storage is not configured.
     default void delete(String key) {

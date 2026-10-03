@@ -175,7 +175,7 @@ public class KbReaderService {
         reports.flush();
         page.setReportCount((int) reports.countByPageId(pageId));
         if (page.getStatus() == KbPageStatus.PUBLISHED && page.getReportCount() >= REPORT_THRESHOLD) {
-            page.setStatus(KbPageStatus.HIDDEN);
+            page.hide(org.ceitba.api.domain.kb.KbHiddenReason.REPORTS);
         }
     }
 }

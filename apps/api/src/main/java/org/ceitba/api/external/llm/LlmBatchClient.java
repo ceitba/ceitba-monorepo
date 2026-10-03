@@ -1,0 +1,49 @@
+package org.ceitba.api.external.llm;
+
+// Batch inference (DigitalOcean serverless inference; commercial providers
+// anthropic and openai only).
+// Every call throws LlmApiException on failure. Implementations:
+// DoBatchClient (real), FakeLlmBatchClient (kb.llm.use-fake, tests and
+// offline dev), UnconfiguredLlmBatchClient (no key: available() is false).
+public interface LlmBatchClient {
+
+    boolean available();
+
+    // POST /v1/batches/files {file_name} -> where to PUT the JSONL.
+    FileUpload createFile(String fileName);
+
+    // PUT of the raw bytes to the upload URL (no extra headers).
+    void upload(String uploadUrl, byte[] bytes);
+
+    // POST /v1/batches {file_id, provider, completion_window: 24h, request_id[, endpoint]}.
+    // provider: anthropic (no endpoint) or openai (endpoint /v1/chat/completions).
+    BatchInfo createBatch(String fileId, String requestId, String provider, String endpoint);
+
+    // GET /v1/batches/{id}.
+    BatchInfo get(String batchId);
+
+    // GET /v1/batches/{id}/results.
+    BatchResults results(String batchId);
+
+    // Downloads an output/error file URL (signed; no auth header).
+    byte[] download(String url);
+
+    // POST /v1/batches/{id}/cancel.
+    void cancel(String batchId);
+
+    record FileUpload(String fileId, String uploadUrl) {}
+
+    // status: validating | queued | in_progress | completed | failed |
+    // cancelling | cancelled | expired (lowercase, as DO reports it).
+    record BatchInfo(String id, String status, String raw) {
+
+        public boolean finished() {
+            return switch (status == null ? "" : status) {
+                case "completed", "failed", "cancelled", "expired" -> true;
+                default -> false;
+            };
+        }
+    }
+
+    record BatchResults(boolean available, String outputFileUrl, String errorFileUrl) {}
+}

@@ -27,6 +27,11 @@ public final class KbPageParser {
 
     static final int MAX_CONTENT_CHARS = 400_000;
 
+    // Common English slugs the writers produce; pages use Spanish slugs.
+    static final java.util.Set<String> ENGLISH_SLUGS = java.util.Set.of(
+        "fundamentals", "vouchers", "introduction", "overview", "summary", "basics");
+    static final int MAX_CITATION_LABEL = 60;
+
     // "graph" would collide with GET /v1/wiki/subjects/{id}/kb/graph.
     static final java.util.Set<String> RESERVED = java.util.Set.of("graph");
 
@@ -172,6 +177,8 @@ public final class KbPageParser {
         for (var section : sectionsWithoutCitation(body)) {
             errors.add("section '" + section + "' has no [[file:…]] citation");
         }
+        errors.addAll(citationFormatErrors(body));
+        if (slug != null && ENGLISH_SLUGS.contains(slug)) errors.add("slug must be Spanish ('" + slug + "')");
         var links = KbWikilinks.parse(body, folderSubjectId, slug);
         for (var c : links.citations()) {
             if (c.id() == null) errors.add("invalid citation [[" + c.raw() + "]]");
@@ -182,8 +189,43 @@ public final class KbPageParser {
             generator, generatedAt, body, links), errors);
     }
 
+    // Citations are short references at the end of a sentence, never wrapping
+    // content (port of scripts/kb/validate_kb.py): closed on the same line,
+    // label <= 60 characters, no math in the label.
+    static List<String> citationFormatErrors(String body) {
+        var out = new ArrayList<String>();
+        var text = KbWikilinks.stripCode(body);
+        int from = 0;
+        while (true) {
+            int at = text.indexOf("[[file:", from);
+            if (at < 0) break;
+            int end = text.indexOf("]]", at);
+            var seg = text.substring(at, end < 0 ? text.length() : end);
+            if (end < 0 || seg.contains("\n")) {
+                out.add("citation not closed on the same line: " + preview(seg) + "...");
+            } else {
+                int bar = seg.indexOf('|');
+                if (bar >= 0 && (seg.length() - bar - 1 > MAX_CITATION_LABEL || seg.contains("$"))) {
+                    out.add("citation label must be a short file name (<= " + MAX_CITATION_LABEL
+                        + " chars, no math): " + preview(seg));
+                }
+            }
+            from = at + 7;
+        }
+        return out;
+    }
+
+    private static String preview(String s) {
+        var p = s.replace('\n', ' ');
+        return p.length() <= 70 ? p : p.substring(0, 70);
+    }
+
     // Headings of `##` sections (up to the next `##`, ### included) without a
     // [[file:...]] citation. Code blocks are not headings.
+    public static int sectionsWithoutCitationCount(String body) {
+        return sectionsWithoutCitation(body).size();
+    }
+
     static List<String> sectionsWithoutCitation(String body) {
         var out = new ArrayList<String>();
         String heading = null;

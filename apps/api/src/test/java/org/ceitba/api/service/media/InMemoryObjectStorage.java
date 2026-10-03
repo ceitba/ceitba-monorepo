@@ -40,6 +40,7 @@ public class InMemoryObjectStorage implements ObjectStorage {
         return new TreeSet<>(objects.keySet());
     }
 
+    @Override
     public byte[] get(String key) {
         return objects.get(key);
     }

@@ -42,7 +42,7 @@ public class KbModerationService {
     @Transactional
     public KbPageResponse hide(UUID staffId, UUID pageId) {
         var page = pages.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("KbPage", pageId.toString()));
-        if (page.getStatus() == KbPageStatus.PUBLISHED) page.setStatus(KbPageStatus.HIDDEN);
+        if (page.getStatus() == KbPageStatus.PUBLISHED) page.hide(org.ceitba.api.domain.kb.KbHiddenReason.STAFF);
         return views.page(page, staffId, true);
     }
 
@@ -78,7 +78,7 @@ public class KbModerationService {
         if (fileIds.isEmpty()) return 0;
         var literal = fileIds.stream().map(UUID::toString).collect(Collectors.joining(",", "{", "}"));
         var citing = pages.findPublishedCitingAny(literal);
-        citing.forEach(p -> p.setStatus(KbPageStatus.HIDDEN));
+        citing.forEach(p -> p.hide(org.ceitba.api.domain.kb.KbHiddenReason.TAKEDOWN));
         if (!citing.isEmpty()) log.info("KB takedown: {} pages hidden", citing.size());
         return citing.size();
     }
