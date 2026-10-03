@@ -20,7 +20,9 @@ public record UserMeResponse(
     String instagram,
     String discord,
     List<MembershipDto> organizations,
-    List<String> follows
+    List<String> follows,
+    // Effective capability keys (docs/CAPABILITIES.md), sorted.
+    List<String> capabilities
 ) {
     public record MembershipDto(String slug, String role) {}
 }

@@ -104,6 +104,8 @@ class DriveSyncIT {
         jdbc.execute("TRUNCATE wiki.kb_page, wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file, "
             + "wiki.drive_source, public.\"user\", public.plan_subject, public.subject, public.plan, "
             + "public.careers CASCADE");
+        jdbc.update("INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true) "
+            + "ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true"); // docs/CAPABILITIES.md
         drive.reset();
         storage.clear();
         subjects.saveAll(List.of(

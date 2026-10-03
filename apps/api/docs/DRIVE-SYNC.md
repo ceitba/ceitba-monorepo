@@ -4,6 +4,8 @@ Students share a Google Drive folder with the CEITBA bot service account; the AP
 stores copies in MinIO + metadata in Postgres, and serves them per subject. Full design:
 https://claude.ai/code/artifact/0c362715-0f9a-45bf-844a-a87c225d1c6d
 
+Student and reader endpoints require the `apuntes` capability (see [CAPABILITIES.md](CAPABILITIES.md)).
+
 ## Configuration
 
 | Env var | Default | Meaning |

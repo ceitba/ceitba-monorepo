@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -46,6 +47,7 @@ class DevLoginDisabledIT {
 
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
+    @Autowired JdbcTemplate jdbc;
 
     @Test
     void devLoginDoesNotExistWithoutTheDevProfile() throws Exception {
@@ -62,6 +64,8 @@ class DevLoginDisabledIT {
 
     @Test
     void driveEndpointsAnswer503WhenUnconfigured() throws Exception {
+        jdbc.update("INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true) "
+            + "ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true");
         mvc.perform(get("/v1/me/drive/info").with(jwt().jwt(t -> t.claim("email", "x@itba.edu.ar"))))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.error").value("DRIVE_SYNC_UNCONFIGURED"));

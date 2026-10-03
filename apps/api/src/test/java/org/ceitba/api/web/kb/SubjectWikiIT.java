@@ -79,6 +79,8 @@ class SubjectWikiIT {
     void seed() {
         jdbc.execute("TRUNCATE wiki.kb_page, wiki.kb_subject_relation, wiki.drive_file, wiki.drive_source, "
             + "public.\"user\", public.plan_subject, public.subject, public.plan, public.careers CASCADE");
+        jdbc.update("INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true) "
+            + "ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true"); // docs/CAPABILITIES.md
         jdbc.update("INSERT INTO public.subject (id, name, credits, updated_at) VALUES "
             + "('61.12', 'Matemática Financiera', 3, now()), ('81.07', 'Contabilidad', 3, now()), "
             + "('93.26', 'Análisis Matemático I', 6, now())");

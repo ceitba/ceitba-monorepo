@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.service.capability.Capability;
+import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.drive.DriveSourceService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.drive.dto.AcceptSuggestionsResponse;
@@ -30,8 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
-// A student's Drive folders for Apuntes (docs/DRIVE-SYNC.md). Any allowlisted
-// user (SecurityConfig anyRequest). 503 DRIVE_SYNC_UNCONFIGURED when the
+// A student's Drive folders for Apuntes (docs/DRIVE-SYNC.md). Requires the
+// `apuntes` capability (docs/CAPABILITIES.md; 403 CAPABILITY_REQUIRED). 503 DRIVE_SYNC_UNCONFIGURED when the
 // server has no Drive key.
 @Tag(name = "Apuntes (Drive sync)")
 @RestController
@@ -40,15 +42,18 @@ import java.util.UUID;
 public class MyDriveController {
 
     private final DriveSourceService service;
+    private final CapabilityService capabilities;
 
-    public MyDriveController(DriveSourceService service) {
+    public MyDriveController(DriveSourceService service, CapabilityService capabilities) {
         this.service = service;
+        this.capabilities = capabilities;
     }
 
     @GetMapping("/info")
     @Operation(summary = "Bot email to share folders with, and the current consent text/version")
     @ApiResponse(responseCode = "200", description = "OK")
-    public DriveInfoResponse info() {
+    public DriveInfoResponse info(@CurrentUser User user) {
+        capabilities.require(user, Capability.APUNTES);
         return service.info();
     }
 
@@ -59,6 +64,7 @@ public class MyDriveController {
             + "DRIVE_FOLDER_NOT_OWNED 403, DRIVE_SOURCE_EXISTS 409. Queues an immediate sync.")
     @ApiResponse(responseCode = "201", description = "Connected")
     public SourceResponse register(@CurrentUser User user, @Valid @RequestBody RegisterSourceRequest req) {
+        capabilities.require(user, Capability.APUNTES);
         return service.register(user, req);
     }
 
@@ -66,6 +72,7 @@ public class MyDriveController {
     @Operation(summary = "The caller's connected folders")
     @ApiResponse(responseCode = "200", description = "OK")
     public List<SourceResponse> list(@CurrentUser User user) {
+        capabilities.require(user, Capability.APUNTES);
         return service.list(user);
     }
 
@@ -73,6 +80,7 @@ public class MyDriveController {
     @Operation(summary = "Flat tree of a connected folder with subjects, suggestions and publication")
     @ApiResponse(responseCode = "200", description = "OK")
     public SourceTreeResponse tree(@CurrentUser User user, @PathVariable UUID id) {
+        capabilities.require(user, Capability.APUNTES);
         return service.tree(user, id);
     }
 
@@ -81,6 +89,7 @@ public class MyDriveController {
     @ApiResponse(responseCode = "200", description = "OK")
     public SourceResponse update(@CurrentUser User user, @PathVariable UUID id,
                                  @Valid @RequestBody UpdateSourceRequest req) {
+        capabilities.require(user, Capability.APUNTES);
         return service.update(user, id, req.anonymous());
     }
 
@@ -89,6 +98,7 @@ public class MyDriveController {
     @Operation(summary = "Disconnect a folder: unpublishes and deletes every copied file")
     @ApiResponse(responseCode = "204", description = "Disconnected")
     public void disconnect(@CurrentUser User user, @PathVariable UUID id) {
+        capabilities.require(user, Capability.APUNTES);
         service.disconnect(user, id);
     }
 
@@ -98,6 +108,7 @@ public class MyDriveController {
         description = "429 DRIVE_SYNC_RATE_LIMITED with Retry-After when called too soon.")
     @ApiResponse(responseCode = "202", description = "Queued")
     public void sync(@CurrentUser User user, @PathVariable UUID id) {
+        capabilities.require(user, Capability.APUNTES);
         service.requestSync(user, id);
     }
 
@@ -105,6 +116,7 @@ public class MyDriveController {
     @Operation(summary = "Apply every suggested subject (top-down; inherited subjects win)")
     @ApiResponse(responseCode = "200", description = "OK")
     public AcceptSuggestionsResponse acceptSuggestions(@CurrentUser User user, @PathVariable UUID id) {
+        capabilities.require(user, Capability.APUNTES);
         return service.acceptSuggestions(user, id);
     }
 
@@ -112,6 +124,7 @@ public class MyDriveController {
     @Operation(summary = "Recompute subject suggestions with the caller's current plan; returns the tree")
     @ApiResponse(responseCode = "200", description = "OK")
     public SourceTreeResponse recomputeSuggestions(@CurrentUser User user, @PathVariable UUID id) {
+        capabilities.require(user, Capability.APUNTES);
         return service.recomputeSuggestions(user, id);
     }
 
@@ -120,6 +133,7 @@ public class MyDriveController {
     @ApiResponse(responseCode = "200", description = "OK")
     public TreeItemResponse updateFile(@CurrentUser User user, @PathVariable UUID fileId,
                                        @Valid @RequestBody UpdateFileRequest req) {
+        capabilities.require(user, Capability.APUNTES);
         return service.updateFile(user, fileId, req);
     }
 }
