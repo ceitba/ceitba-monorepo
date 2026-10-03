@@ -2,11 +2,12 @@ import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { KB_REPORT_REASONS, kbPagePath, reportKbPage, type KbPage, type KbPageSummary } from '../../../api/kb'
-import { formatDate } from '../../../utils/apuntes'
+import { authorName, formatDate, isCommunity } from '../../../utils/apuntes'
 import Notice from '../../Notice'
 import ReportDialog from '../ReportDialog'
 import KindIcon from '../KindIcon'
 import YearBadge from '../YearBadge'
+import CommunityBadge from '../CommunityBadge'
 import { CitationContext, CitationHighlightContext, type CitationContextValue } from './citationContext'
 import { citationOrder } from './wikilinks'
 
@@ -151,7 +152,7 @@ function SourcesPanel({ page, order, onHighlight }: {
     <PanelSection title={t('wiki.sources')}>
       <ol className="flex flex-col gap-2">
         {numbered.map(({ n, source: s }) => {
-          const author = s!.author?.anonymous || !s!.author?.name ? t('apuntes.anonymousAuthor') : s!.author.name
+          const author = authorName(s!.author, t)
           return (
             <li
               key={s!.id}
@@ -167,12 +168,16 @@ function SourcesPanel({ page, order, onHighlight }: {
                   <KindIcon kind={s!.kind} size={14} className="mt-1" />
                   <span>{s!.name}</span>
                 </Link>
-                <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
-                  {s!.academicYear != null && (
-                    <><YearBadge variant="text" year={s!.academicYear} source={s!.academicYearSource} /> · </>
-                  )}
-                  {author}
-                </p>
+                {isCommunity(s) ? (
+                  <p className="mt-0.5"><CommunityBadge year={s!.academicYear} /></p>
+                ) : (
+                  <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
+                    {s!.academicYear != null && (
+                      <><YearBadge variant="text" year={s!.academicYear} source={s!.academicYearSource} /> · </>
+                    )}
+                    {author}
+                  </p>
+                )}
               </div>
             </li>
           )

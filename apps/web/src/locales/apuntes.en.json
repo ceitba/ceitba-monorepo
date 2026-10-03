@@ -4,11 +4,17 @@
     "breadcrumbAria": "Breadcrumb",
     "backToSearch": "Back to notes",
     "anonymousAuthor": "A student",
+    "community": {
+      "label": "Community",
+      "labelYear": "Community · archive {{year}}",
+      "hint": "Shared community archive: material from past years, with no individual author."
+    },
     "errors": {
       "DRIVE_INVALID_FOLDER_URL": "That link doesn't look like a Google Drive folder. Copy it from “Share” → “Copy link” with the folder open.",
       "DRIVE_FOLDER_NOT_SHARED": "We can't see the folder yet. Check that you shared it with the CEITBA account as Viewer and try again in a minute.",
       "DRIVE_FOLDER_NOT_OWNED": "That folder isn't yours. You can only connect folders you own in Drive.",
       "DRIVE_SOURCE_EXISTS": "That folder is already connected.",
+      "DRIVE_SOURCE_BLOCKED": "This folder was blocked by the CEITBA team and can't be shared again or disconnected. Write to us if you think this is a mistake.",
       "DRIVE_SYNC_RATE_LIMITED": "You requested a sync recently. You can request another one in a few minutes (at most one every 5 minutes).",
       "DRIVE_SYNC_UNCONFIGURED": "Notes isn't available yet: the Google Drive connection hasn't been configured.",
       "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet."
