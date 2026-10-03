@@ -10,7 +10,8 @@
       "DRIVE_FOLDER_NOT_OWNED": "That folder isn't yours. You can only connect folders you own in Drive.",
       "DRIVE_SOURCE_EXISTS": "That folder is already connected.",
       "DRIVE_SYNC_RATE_LIMITED": "You requested a sync recently. You can request another one in a few minutes (at most one every 5 minutes).",
-      "DRIVE_SYNC_UNCONFIGURED": "Notes isn't available yet: the Google Drive connection hasn't been configured."
+      "DRIVE_SYNC_UNCONFIGURED": "Notes isn't available yet: the Google Drive connection hasn't been configured.",
+      "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet."
     },
     "sourceStatus": {
       "PENDING_REVIEW": "In review",

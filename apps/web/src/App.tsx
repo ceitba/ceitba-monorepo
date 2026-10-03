@@ -8,7 +8,7 @@ import HomePage from './pages/HomePage'
 import ManagePage from './pages/ManagePage'
 import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
-import AuthGuard from './components/AuthGuard'
+import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
 import { getSession, takeReturnTo } from './store/authStore'
@@ -67,13 +67,13 @@ function Layout() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/apuntes" element={<AuthGuard><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></AuthGuard>} />
-          <Route path="/apuntes/mis-apuntes" element={<AuthGuard><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></AuthGuard>} />
-          <Route path="/apuntes/correlativas" element={<AuthGuard><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></AuthGuard>} />
-          <Route path="/apuntes/archivo/:fileId" element={<AuthGuard><Suspense fallback={<PageFallback />}><FilePage /></Suspense></AuthGuard>} />
-          <Route path="/apuntes/:subjectId" element={<AuthGuard><Suspense fallback={<PageFallback />}><SubjectFilesPage /></Suspense></AuthGuard>} />
-          <Route path="/apuntes/:subjectId/wiki/:slug" element={<AuthGuard><Suspense fallback={<PageFallback />}><WikiPage /></Suspense></AuthGuard>} />
-          <Route path="/apuntes/:subjectId/grafo" element={<AuthGuard><Suspense fallback={<PageFallback />}><WikiGraphPage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
+          <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />
+          <Route path="/apuntes/correlativas" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></CapabilityGuard>} />
+          <Route path="/apuntes/archivo/:fileId" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><FilePage /></Suspense></CapabilityGuard>} />
+          <Route path="/apuntes/:subjectId" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><SubjectFilesPage /></Suspense></CapabilityGuard>} />
+          <Route path="/apuntes/:subjectId/wiki/:slug" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><WikiPage /></Suspense></CapabilityGuard>} />
+          <Route path="/apuntes/:subjectId/grafo" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><WikiGraphPage /></Suspense></CapabilityGuard>} />
           {DevLoginPage && (
             <Route path="/dev-login" element={<Suspense fallback={null}><DevLoginPage /></Suspense>} />
           )}

@@ -42,9 +42,22 @@ export async function apiSend<T>(method: string, path: string, body?: unknown): 
   return (text ? JSON.parse(text) : undefined) as T
 }
 
+// A 403 {error: "CAPABILITY_REQUIRED"} means the user lacks a feature
+// capability (e.g. "apuntes"). The auth store listens so guarded pages can
+// swap to the "not enabled for your account" screen wherever the call came from.
+export const CAPABILITY_REQUIRED = 'CAPABILITY_REQUIRED'
+const _capabilityListeners = new Set<(capability: string | null) => void>()
+export function onCapabilityRequired(fn: (capability: string | null) => void): () => void {
+  _capabilityListeners.add(fn)
+  return () => { _capabilityListeners.delete(fn) }
+}
+
 async function toError(res: Response): Promise<ApiError> {
-  let body: { error?: string; code?: string; message?: string } = {}
+  let body: { error?: string; code?: string; message?: string; capability?: string } = {}
   try { body = await res.json() } catch { /* non-JSON */ }
+  if (res.status === 403 && body.error === CAPABILITY_REQUIRED) {
+    _capabilityListeners.forEach((fn) => fn(body.capability ?? null))
+  }
   return new ApiError(
     body.message ?? `Request failed (${res.status})`,
     res.status,

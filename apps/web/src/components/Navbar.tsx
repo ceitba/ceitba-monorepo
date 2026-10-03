@@ -2,10 +2,12 @@ import { useTranslation } from 'react-i18next'
 import { Link, NavLink } from 'react-router-dom'
 import { useThemeContext } from '../context/useThemeContext'
 import AuthMenu from './AuthMenu'
+import { useCapability } from '../hooks/useCapability'
 
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { theme, toggle } = useThemeContext()
+  const { enabled: apuntesEnabled } = useCapability('apuntes')
 
   const toggleLanguage = () => {
     const next = i18n.language === 'es' ? 'en' : 'es'
@@ -38,18 +40,20 @@ export default function Navbar() {
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Hidden on phones (no room next to the brand); the avatar menu and
               the home "Nuestras herramientas" card link there instead. */}
-          <NavLink
-            to="/apuntes"
-            className={({ isActive }) =>
-              `min-h-[36px] hidden sm:inline-flex items-center px-2 font-mono text-label uppercase tracking-widest transition-colors duration-150 border-b-2 ${
-                isActive
-                  ? 'text-primary border-accent'
-                  : 'text-ink-secondary dark:text-night-muted hover:text-primary border-transparent'
-              }`
-            }
-          >
-            {t('nav.apuntes')}
-          </NavLink>
+          {apuntesEnabled && (
+            <NavLink
+              to="/apuntes"
+              className={({ isActive }) =>
+                `min-h-[36px] hidden sm:inline-flex items-center px-2 font-mono text-label uppercase tracking-widest transition-colors duration-150 border-b-2 ${
+                  isActive
+                    ? 'text-primary border-accent'
+                    : 'text-ink-secondary dark:text-night-muted hover:text-primary border-transparent'
+                }`
+              }
+            >
+              {t('nav.apuntes')}
+            </NavLink>
+          )}
           <button
             onClick={toggleLanguage}
             className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
