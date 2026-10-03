@@ -375,7 +375,9 @@ export default function GraphView({
   const svg = (
     <svg
       ref={svgRef}
-      className={`kbg ${active ? 'has-focus' : ''} ${interactive ? 'is-interactive' : ''}`}
+      // Absolutely positioned: the wrappers only have a min-height, and a percentage height
+      // doesn't resolve against min-height (the svg would fall back to 150px and fit wrong).
+      className={`kbg absolute inset-0 block ${active ? 'has-focus' : ''} ${interactive ? 'is-interactive' : ''}`}
       style={{ touchAction: interactive ? 'none' : 'auto' }}
       width="100%"
       height="100%"
