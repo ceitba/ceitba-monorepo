@@ -1,4 +1,4 @@
-import { apiRequest, BASE_URL } from '../api/client'
+import { apiRequest, BASE_URL, onCapabilityRequired } from '../api/client'
 
 export interface UserMembership {
   slug: string
@@ -18,6 +18,9 @@ export interface UserProfile {
   fileNumber: number | null
   organizations: UserMembership[]
   follows: string[]
+  // Feature flags granted to this user (GET /auth/me), e.g. ["apuntes"].
+  // STAFF users always have every capability.
+  capabilities?: string[]
 }
 
 let _profile: UserProfile | null = null
@@ -25,7 +28,26 @@ let _hydrated = false
 let _hydratePromise: Promise<UserProfile | null> | null = null
 const _listeners = new Set<(p: UserProfile | null) => void>()
 
+// Capabilities the API refused with 403 CAPABILITY_REQUIRED during this
+// session, even if /me still lists them (revoked mid-session). Cleared when
+// the signed-in user changes.
+const _denied = new Set<string>()
+
 function notify() { _listeners.forEach((fn) => fn(_profile)) }
+
+onCapabilityRequired((capability) => {
+  // The only gated feature today is Apuntes; older API builds may omit the key.
+  const key = capability ?? 'apuntes'
+  if (_denied.has(key)) return
+  _denied.add(key)
+  notify()
+})
+
+export function hasCapability(profile: UserProfile | null, key: string): boolean {
+  if (!profile || _denied.has(key)) return false
+  if (profile.role === 'staff') return true
+  return profile.capabilities?.includes(key) ?? false
+}
 
 // Subscribe to profile changes (login, logout, refresh). Returns an unsubscribe.
 export function subscribe(fn: (p: UserProfile | null) => void): () => void {
@@ -64,7 +86,9 @@ export async function getSession(opts: { force?: boolean } = {}): Promise<UserPr
   _hydratePromise = (async () => {
     try {
       const res = await apiRequest('GET', '/auth/me')
+      const prevId = _profile?.id
       _profile = res.ok ? ((await res.json()) as UserProfile) : null
+      if (_profile?.id !== prevId) _denied.clear()
     } catch {
       _profile = null
     } finally {
@@ -97,5 +121,6 @@ export async function signOut(): Promise<void> {
   }
   _profile = null
   _hydrated = true
+  _denied.clear()
   notify()
 }

@@ -5,6 +5,7 @@ import ManageBenefitsSection from './manage/ManageBenefitsSection'
 import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
+import ManageCapabilitiesSection from './manage/ManageCapabilitiesSection'
 // Apuntes moderation pulls in the Drive/wiki APIs and badges: load on demand.
 const ManageDriveSection = lazy(() => import('./manage/ManageDriveSection'))
 const ManageWikiAiSection = lazy(() => import('./manage/ManageWikiAiSection'))
@@ -14,7 +15,7 @@ import { activeJobs, unseenCount } from './manage/wikiAdmin/jobWatchStore'
 import { useJobWatch } from './manage/wikiAdmin/useJobWatch'
 import type { OrganizationSummary } from '../api/admin'
 
-type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive' | 'wikiAi'
+type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'capabilities' | 'drive' | 'wikiAi'
 
 export default function ManagePage() {
   const { t } = useTranslation()
@@ -43,6 +44,7 @@ export default function ManagePage() {
     { id: 'users',    label: t('manage.tabs.users') },
     { id: 'organizations', label: t('manage.tabs.organizations') },
     { id: 'corrections', label: t('manage.tabs.corrections') },
+    { id: 'capabilities', label: t('manage.tabs.capabilities') },
     { id: 'drive', label: t('manage.tabs.drive') },
     { id: 'wikiAi', label: t('manage.tabs.wikiAi') },
   ]
@@ -84,6 +86,7 @@ export default function ManagePage() {
       {tab === 'users'    && <ManageUsersSection initialAddingTo={addingTo} />}
       {tab === 'organizations' && <ManageOrganizationsSection onAddMembers={addMembers} />}
       {tab === 'corrections' && <ManageCorrectionsSection />}
+      {tab === 'capabilities' && <ManageCapabilitiesSection />}
       {tab === 'drive' && (
         <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
           <ManageDriveSection />

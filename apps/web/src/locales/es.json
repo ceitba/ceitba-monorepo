@@ -33,7 +33,8 @@
       "corrections": "Correcciones de horario",
       "drive": "Apuntes",
       "wikiAi": "Wiki IA",
-      "wikiAiUnseen": "{{count}} novedades en Wiki IA"
+      "wikiAiUnseen": "{{count}} novedades en Wiki IA",
+      "capabilities": "Capacidades"
     },
     "staff": {
       "year": "Año",
@@ -254,6 +255,44 @@
       },
       "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
       "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+    },
+    "capabilities": {
+      "intro": "Habilitá funciones en prueba para todos, para personas puntuales (por email, aunque nunca hayan entrado) o para organizaciones enteras. El staff siempre tiene todas.",
+      "empty": "No hay capacidades definidas.",
+      "enabledForAll": "Habilitado para todos",
+      "everyone": "Habilitado para todos",
+      "everyoneNote": "Esta capacidad está habilitada para todos: los accesos de abajo se conservan para cuando la vuelvas a restringir.",
+      "counts": "{{users}} · {{orgs}}",
+      "userCount_one": "{{count}} persona",
+      "userCount_other": "{{count}} personas",
+      "orgCount_one": "{{count}} organización",
+      "orgCount_other": "{{count}} organizaciones",
+      "manageGrants": "Gestionar accesos",
+      "hideGrants": "Ocultar accesos",
+      "confirmTitle": "¿Habilitar {{label}} para todos?",
+      "confirmBody": "Cualquier persona que inicie sesión va a poder usar {{label}}. Podés volver a restringirlo cuando quieras.",
+      "confirmCta": "Habilitar para todos",
+      "grantedOn": "Otorgado el {{date}}",
+      "grantedBy": "Otorgado el {{date}} por {{name}}",
+      "remove": "Quitar",
+      "removeAria": "Quitar acceso a {{name}}",
+      "users": {
+        "title": "Personas",
+        "help": "Pegá uno o más emails, separados por coma o salto de línea.",
+        "placeholder": "nombre@itba.edu.ar, otra@itba.edu.ar",
+        "invalid": "Estos emails no son válidos: {{emails}}",
+        "grant": "Otorgar acceso",
+        "empty": "Nadie tiene acceso individual todavía.",
+        "neverLoggedIn": "Sin ingresar"
+      },
+      "orgs": {
+        "title": "Organizaciones",
+        "pick": "Elegí una organización…",
+        "add": "Agregar",
+        "empty": "Ninguna organización tiene acceso todavía.",
+        "members_one": "{{count}} miembro",
+        "members_other": "{{count}} miembros"
+      }
     }
   },
   "profile": {
@@ -414,5 +453,14 @@
     "title": "Iniciá sesión para seguir",
     "body": "Los apuntes son para la comunidad ITBA. Entrá con tu cuenta @itba.edu.ar para verlos y compartir los tuyos.",
     "signIn": "Iniciar sesión con Google"
+  },
+  "capabilityGuard": {
+    "title": "Apuntes todavía no está habilitado para tu cuenta",
+    "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú.",
+    "home": "Volver al inicio",
+    "apuntes": {
+      "title": "Apuntes todavía no está habilitado para tu cuenta",
+      "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
+    }
   }
 }

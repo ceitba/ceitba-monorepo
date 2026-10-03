@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { useCapability } from '../../hooks/useCapability'
 
 interface AppCardProps {
   href: string
@@ -79,6 +80,8 @@ const ApuntesIcon = () => (
 
 export default function AppsSection() {
   const { t } = useTranslation()
+  // Apuntes is capability-gated (and hidden while logged out).
+  const { enabled: apuntesEnabled } = useCapability('apuntes')
 
   return (
     <section className="py-section-mobile lg:py-section bg-white dark:bg-night-raised" aria-labelledby="apps-heading">
@@ -108,15 +111,17 @@ export default function AppsSection() {
             icon={<NewsletterIcon />}
             colorVar="--dept-color-nautica"
           />
-          <AppCard
-            href="/apuntes"
-            internal
-            label={t('apps.apuntes.label')}
-            description={t('apps.apuntes.description')}
-            cta={t('apps.apuntes.cta')}
-            icon={<ApuntesIcon />}
-            colorVar="--dept-color-infra"
-          />
+          {apuntesEnabled && (
+            <AppCard
+              href="/apuntes"
+              internal
+              label={t('apps.apuntes.label')}
+              description={t('apps.apuntes.description')}
+              cta={t('apps.apuntes.cta')}
+              icon={<ApuntesIcon />}
+              colorVar="--dept-color-infra"
+            />
+          )}
         </div>
       </div>
     </section>
