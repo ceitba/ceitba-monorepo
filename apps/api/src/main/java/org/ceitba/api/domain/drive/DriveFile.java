@@ -68,6 +68,19 @@ public class DriveFile {
     @Column(name = "drive_modified_at")
     private OffsetDateTime driveModifiedAt;
 
+    @Column(name = "drive_created_at")
+    private OffsetDateTime driveCreatedAt;
+
+    @Column(name = "academic_year_user")
+    private Short academicYearUser;
+
+    @Column(name = "academic_year")
+    private Short academicYear;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "academic_year_source", length = 16)
+    private DriveAcademicYearSource academicYearSource;
+
     @Column(name = "subject_id", length = 25)
     private String subjectId;
 
@@ -187,6 +200,16 @@ public class DriveFile {
     public String getMd5Checksum() { return md5Checksum; }
     public Long getSizeBytes() { return sizeBytes; }
     public OffsetDateTime getDriveModifiedAt() { return driveModifiedAt; }
+    public OffsetDateTime getDriveCreatedAt() { return driveCreatedAt; }
+    public Integer getAcademicYearUser() { return academicYearUser == null ? null : academicYearUser.intValue(); }
+    public Integer getAcademicYear() { return academicYear == null ? null : academicYear.intValue(); }
+    public DriveAcademicYearSource getAcademicYearSource() { return academicYearSource; }
+    public void setDriveCreatedAt(OffsetDateTime at) { this.driveCreatedAt = at; }
+    public void setAcademicYearUser(Integer year) { this.academicYearUser = year == null ? null : year.shortValue(); }
+    public void setAcademicYear(Integer year, DriveAcademicYearSource source) {
+        this.academicYear = year == null ? null : year.shortValue();
+        this.academicYearSource = year == null ? null : source;
+    }
     public String getSubjectId() { return subjectId; }
     public String getEffectiveSubjectId() { return effectiveSubjectId; }
     public String getSuggestedSubjectId() { return suggestedSubjectId; }

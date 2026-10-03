@@ -101,7 +101,7 @@ class DriveSyncIT {
 
     @BeforeEach
     void seed() {
-        jdbc.execute("TRUNCATE wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file, "
+        jdbc.execute("TRUNCATE wiki.kb_page, wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file, "
             + "wiki.drive_source, public.\"user\", public.plan_subject, public.subject, public.plan, "
             + "public.careers CASCADE");
         drive.reset();
@@ -323,14 +323,20 @@ class DriveSyncIT {
         syncNow(sourceId);
         assertThat(item(tree(sourceId), "Guia catedra.pdf").get("publication").asText()).isEqualTo("PUBLISHED");
 
-        // Subject listings.
+        // Subject listings; hasWiki once the subject has a published wiki page.
         call(get("/v1/wiki/apuntes/subjects"), reader(1), null)
             .andExpect(jsonPath("$[0].subjectId").value("93.41"))
-            .andExpect(jsonPath("$[0].fileCount").value(3));
+            .andExpect(jsonPath("$[0].fileCount").value(3))
+            .andExpect(jsonPath("$[0].hasWiki").value(false));
+        jdbc.update("INSERT INTO wiki.kb_page (subject_id, slug, type, title, summary, markdown, generator, "
+            + "generated_at) VALUES ('93.42', 'index', 'INDEX', 'Física II', 's', 'm', 'manual', now())");
+        call(get("/v1/wiki/apuntes/subjects"), reader(1), null).andExpect(jsonPath("$[0].hasWiki").value(false));
         var search = read(call(get("/v1/wiki/apuntes/subjects?q=fisica"), reader(1), null).andExpect(status().isOk()));
         assertThat(search).hasSize(2);
         assertThat(search.get(0).get("subjectId").asText()).isEqualTo("93.41");
+        assertThat(search.get(0).get("hasWiki").asBoolean()).isFalse();
         assertThat(search.get(1).get("fileCount").asLong()).isZero();
+        assertThat(search.get(1).get("hasWiki").asBoolean()).isTrue();
 
         // Hiding a folder hides what is in it.
         call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"hidden\":true}")
@@ -393,6 +399,80 @@ class DriveSyncIT {
         var unblocked = files.findById(blockedPdf).orElseThrow();
         assertThat(unblocked.isExportBlocked()).isFalse();
         assertThat(unblocked.getPdfKey()).isNotNull();
+    }
+
+    @Test
+    void reprocessReExportsDocsAndKeepsUnchangedCopies() throws Exception {
+        var sourceId = publishedSource();
+        syncNow(sourceId);
+        var before = files.findById(fileId(DOC)).orElseThrow();
+        int fetches = drive.fetchCount(DOC);
+        int puts = storage.putCount();
+
+        call(post("/v1/staff/drive/reprocess?kind=DOC"), staff(), null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.files").value(1))
+            .andExpect(jsonPath("$.sources").value(1));
+        call(post("/v1/staff/drive/reprocess?kind=PDF"), staff(), null).andExpect(status().isBadRequest());
+        call(post("/v1/staff/drive/reprocess"), student(), null).andExpect(status().isForbidden());
+        await().atMost(Duration.ofSeconds(20)).until(() -> drive.fetchCount(DOC) > fetches);
+        await().atMost(Duration.ofSeconds(20)).until(() ->
+            files.findById(fileId(DOC)).orElseThrow().getContentModifiedAt() != null);
+        var after = files.findById(fileId(DOC)).orElseThrow();
+        assertThat(after.getContentFingerprint()).isEqualTo(before.getContentFingerprint());
+        assertThat(storage.putCount()).isEqualTo(puts);
+    }
+
+    @Test
+    void academicYears() throws Exception {
+        drive.folder("folder-parc-2019", "Parciales 2019", ROOT, ALUMNO)
+            .file("pdf-parcial-0001", "Parcial 1C'21.pdf", "application/pdf", "folder-parc-2019", ALUMNO,
+                FakeDriveClient.pdf("parcial"))
+            .file("pdf-viejo-000001", "Viejo.pdf", "application/pdf", "folder-parc-2019", ALUMNO,
+                FakeDriveClient.pdf("viejo"));
+        drive.setCreated(PDF, java.time.Instant.parse("2018-05-01T12:00:00Z"));
+        var sourceId = publishedSource();
+
+        var t = tree(sourceId);
+        // Fake Drive dates start at 2026-01-01T00:00Z: still 2025 in Buenos Aires.
+        assertThat(item(t, "Resumen cinemática").get("academicYear").asInt()).isEqualTo(2025);
+        assertThat(item(t, "Resumen cinemática").get("academicYearSource").asText()).isEqualTo("DRIVE");
+        assertThat(item(t, "Resumen cinemática").get("ownAcademicYear").isNull()).isTrue();
+        assertThat(item(t, "TP1.pdf").get("academicYear").asInt()).isEqualTo(2018);
+        assertThat(item(t, "Parcial 1C'21.pdf").get("academicYear").asInt()).isEqualTo(2021);
+        assertThat(item(t, "Parcial 1C'21.pdf").get("academicYearSource").asText()).isEqualTo("NAME");
+        // From the folder name.
+        assertThat(item(t, "Viejo.pdf").get("academicYear").asInt()).isEqualTo(2019);
+        assertThat(item(t, "Viejo.pdf").get("academicYearSource").asText()).isEqualTo("NAME");
+
+        // A folder's own year flows to its contents; an item's own year wins.
+        call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"academicYear\":2020}")
+            .andExpect(jsonPath("$.academicYear").value(2020))
+            .andExpect(jsonPath("$.academicYearSource").value("USER"))
+            .andExpect(jsonPath("$.ownAcademicYear").value(2020));
+        call(patch("/v1/me/drive/files/" + fileId(DOC)), student(), "{\"academicYear\":2022}").andExpect(status().isOk());
+        syncNow(sourceId);
+        t = tree(sourceId);
+        assertThat(item(t, "TP1.pdf").get("academicYear").asInt()).isEqualTo(2020);
+        assertThat(item(t, "TP1.pdf").get("academicYearSource").asText()).isEqualTo("INHERITED");
+        assertThat(item(t, "TP1.pdf").get("ownAcademicYear").isNull()).isTrue();
+        assertThat(item(t, "Resumen cinemática").get("academicYear").asInt()).isEqualTo(2022);
+        assertThat(item(t, "Resumen cinemática").get("academicYearSource").asText()).isEqualTo("USER");
+
+        // Absent = unchanged; null = automatic again; out of range = 400.
+        call(patch("/v1/me/drive/files/" + fileId(DOC)), student(), "{\"hidden\":false}")
+            .andExpect(jsonPath("$.academicYear").value(2022));
+        call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"academicYear\":null}")
+            .andExpect(jsonPath("$.ownAcademicYear").doesNotExist());
+        assertThat(item(tree(sourceId), "TP1.pdf").get("academicYearSource").asText()).isEqualTo("DRIVE");
+        call(patch("/v1/me/drive/files/" + fileId(DOC)), student(), "{\"academicYear\":2099}")
+            .andExpect(status().isBadRequest());
+
+        call(get("/v1/wiki/files/" + fileId(PDF)), reader(1), null)
+            .andExpect(jsonPath("$.academicYear").value(2018))
+            .andExpect(jsonPath("$.academicYearSource").value("DRIVE"));
+        call(get("/v1/wiki/subjects/93.41/files"), reader(1), null)
+            .andExpect(jsonPath("$.groups[0].files[0].academicYear").exists());
     }
 
     // ---- plan-aware suggestions -------------------------------------------
@@ -463,6 +543,13 @@ class DriveSyncIT {
         assertThat(mine.get(0).get("fileCount").asLong()).isEqualTo(1);
         assertThat(mine.get(1).get("subjectId").asText()).isEqualTo("93.16");
         assertThat(mine.get(2).get("fileCount").asLong()).isEqualTo(1);
+        assertThat(mine.get(0).get("hasWiki").asBoolean()).isFalse();
+        jdbc.update("INSERT INTO wiki.kb_page (subject_id, slug, type, title, summary, markdown, generator, "
+            + "generated_at, status) VALUES ('93.16', 'index', 'INDEX', 'Discreta', 's', 'm', 'manual', now(), 'PUBLISHED'), "
+            + "('82.15', 'index', 'INDEX', 'Aplicada', 's', 'm', 'manual', now(), 'HIDDEN')");
+        mine = read(call(get("/v1/wiki/apuntes/subjects?mine=true"), student(), null));
+        assertThat(mine.get(0).get("hasWiki").asBoolean()).isFalse();   // only a HIDDEN page
+        assertThat(mine.get(1).get("hasWiki").asBoolean()).isTrue();
         call(get("/v1/wiki/apuntes/subjects"), reader(1), null).andExpect(jsonPath("$[0].year").doesNotExist());
     }
 

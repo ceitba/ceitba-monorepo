@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 // Turns the HTML of a Google Doc export into something safe to inline in the
-// SPA: Safelist.relaxed (no style, class, script, iframe, event handlers),
+// SPA: Safelist.relaxed (no style, class, script, iframe, event handlers)
+// plus <s> and data-align (from GoogleDocsHtml; ol keeps start/type),
 // images only from our asset endpoint, Google's link redirector unwrapped and
 // links marked nofollow. Returns the body's inner HTML and its plain text.
 public final class DocHtmlSanitizer {
@@ -45,6 +46,14 @@ public final class DocHtmlSanitizer {
         }
 
         var safelist = Safelist.relaxed()
+            .addTags("s")
+            .addAttributes("p", "data-align")
+            .addAttributes("li", "data-align")
+            .addAttributes("td", "data-align")
+            .addAttributes("th", "data-align")
+            .addAttributes("div", "data-align")
+            .addAttributes("h1", "data-align").addAttributes("h2", "data-align").addAttributes("h3", "data-align")
+            .addAttributes("h4", "data-align").addAttributes("h5", "data-align").addAttributes("h6", "data-align")
             .addEnforcedAttribute("a", "rel", "nofollow noopener noreferrer")
             .addEnforcedAttribute("a", "target", "_blank");
         var cleaned = Jsoup.clean(doc.body().html(), "", safelist,

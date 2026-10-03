@@ -9,6 +9,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.service.drive.DriveModerationService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.drive.dto.PageResponse;
+import org.ceitba.api.web.drive.dto.ReprocessResponse;
 import org.ceitba.api.web.drive.dto.StaffCommentRequest;
 import org.ceitba.api.web.drive.dto.StaffFileResponse;
 import org.ceitba.api.web.drive.dto.StaffSourceResponse;
@@ -93,6 +94,14 @@ public class StaffDriveController {
     @ApiResponse(responseCode = "200", description = "OK")
     public StaffFileResponse restore(@PathVariable UUID id) {
         return service.restore(id);
+    }
+
+    @PostMapping("/reprocess")
+    @Operation(summary = "Re-export Google files of a kind (default DOC) on a sync queued now",
+        description = "Kinds: DOC, SLIDES, SHEET, DRAWING. Unchanged results keep their stored copy.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    public ReprocessResponse reprocess(@RequestParam(required = false) String kind) {
+        return service.reprocess(kind);
     }
 
     @GetMapping("/unclaimed")

@@ -254,6 +254,18 @@ public class DriveSourceService {
             }
         }
         if (req.hidden() != null) file.setHiddenByUser(req.hidden());
+        if (req.academicYear() != null) {
+            var node = req.academicYear();
+            if (!node.isNull() && !node.canConvertToInt()) {
+                throw new ValidationException("academicYear", node, "must be a year or null");
+            }
+            Integer year = node.isNull() ? null : node.asInt();
+            int current = OffsetDateTime.now(clock).atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE).getYear();
+            if (year != null && (year < 1990 || year > current)) {
+                throw new ValidationException("academicYear", year, "must be between 1990 and " + current);
+            }
+            file.setAcademicYearUser(year);
+        }
         var all = files.findBySourceId(source.getId());
         recalculator.recompute(source, all);
         Map<String, UUID> idByDriveId = new HashMap<>();

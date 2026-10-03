@@ -58,6 +58,20 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
   from the suggestion it inherits from its folders. `accept-suggestions` applies every suggestion, so a matched folder
   covers its unmatched children.
 
+## Academic year
+
+Sources show the year the material was made, not their last update (notes and TPs go stale as courses change).
+`academicYear` is computed on every sync and PATCH, first match wins (`academicYearSource`):
+
+1. `USER` — set by the student on this item (`PATCH … { academicYear }`; `ownAcademicYear` on `TreeItem`).
+2. `INHERITED` — set by the student on an ancestor folder (`ownAcademicYear` is `null`: show "Automático"
+   relative to the item, the year comes from the folder).
+3. `NAME` — a 4-digit year 2000..current year as its own token in the file name, else in the nearest folder name on
+   its path ("Resumen Quimica ingreso 2020", "Parciales 2019"); also `1C'21`, `2C-22`, `cuatri-20`. A number followed
+   by a quantity word ("Tabla 2000 filas") is not a year.
+4. `DRIVE` — the year of min(createdTime, modifiedTime) in America/Argentina/Buenos_Aires. `createdTime` is now
+   synced (`drive_created_at`; existing rows are filled by the next walk).
+
 ## Sync and change detection
 
 - Identity is `(source_id, drive_id)`; our file `id` is stable across renames and moves.
@@ -103,7 +117,7 @@ Drive-specific `error` codes:
 | `POST /v1/me/drive/sources/{id}/sync` | — | 202 (max once per 5 min per source) |
 | `POST /v1/me/drive/sources/{id}/accept-suggestions` | — | `{ applied }` |
 | `POST /v1/me/drive/sources/{id}/recompute-suggestions` | — | `{ source: Source, items: TreeItem[] }` (fresh tree, with the caller's current plan) |
-| `PATCH /v1/me/drive/files/{fileId}` | `{ subjectId?, hidden? }` (`subjectId: ""` clears) | `TreeItem` |
+| `PATCH /v1/me/drive/files/{fileId}` | `{ subjectId?, hidden?, academicYear? }` (`subjectId: ""` clears; `academicYear: null` = automatic again, absent = unchanged; 1990..current year) | `TreeItem` |
 
 `consentVersion` must equal `GET /v1/me/drive/info`'s. New sources start `PENDING_REVIEW`, or `ACTIVE` when the
 student already has an `ACTIVE` one. `accept-suggestions` applies suggestions top-down (a matched folder covers its
@@ -112,14 +126,15 @@ files). The `429` carries `Retry-After` (seconds).
 `Source` = `{ id, rootName, status, anonymous, lastSyncedAt, lastError, fileCount, publishedCount, needsReviewCount, createdAt }`
 
 `TreeItem` = `{ id, parentId, name, kind, subjectId, subjectName, effectiveSubjectId, effectiveSubjectName,
-suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError, exportBlocked, driveUrl }`
+suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError, exportBlocked, driveUrl,
+academicYear, academicYearSource, ownAcademicYear }`
 — a flat list; `parentId` is another item's `id`, or `null` for direct children of the shared folder.
 
 ### Reader (logged in)
 
 | Method + path | Response |
 |---|---|
-| `GET /v1/wiki/apuntes/subjects?q=&limit=20&mine=` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt, year, semester, section }]` — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive); `mine=true`: the caller's plan subjects (`q`/`limit` ignored, `[]` without a plan): curricular subjects by year/semester first, then electives and other year-0 entries grouped by `section` (sections alphabetically, subjects by name); a subject that is both keeps its curricular entry. `year`/`semester`/`section` are only set with `mine=true` (else `null`); `year`/`semester` are `null` for year-0 entries, whose group is `section` (e.g. `"Electivas Analytics"`, `"SAT"`) |
+| `GET /v1/wiki/apuntes/subjects?q=&limit=20&mine=` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt, year, semester, section, hasWiki }]` (`hasWiki`: the subject wiki has at least one `PUBLISHED` page; every listing) — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive); `mine=true`: the caller's plan subjects (`q`/`limit` ignored, `[]` without a plan): curricular subjects by year/semester first, then electives and other year-0 entries grouped by `section` (sections alphabetically, subjects by name); a subject that is both keeps its curricular entry. `year`/`semester`/`section` are only set with `mine=true` (else `null`); `year`/`semester` are `null` for year-0 entries, whose group is `section` (e.g. `"Electivas Analytics"`, `"SAT"`) |
 | `GET /v1/wiki/subjects/{subjectId}/files` | `{ subjectId, subjectName, groups: [{ sourceId, author: { name, anonymous }, files: FileSummary[] }] }` |
 | `GET /v1/wiki/files/{fileId}` | `FileSummary` + `{ subjectId, subjectName, author, html, reportedByMe }` (`html` only for Docs) |
 | `GET /v1/wiki/files/{fileId}/download?variant=pdf\|original&disposition=inline\|attachment` | 302 to a 5-minute signed URL (default `disposition=inline`) |
@@ -127,10 +142,12 @@ suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, 
 | `PUT /v1/wiki/files/{fileId}/report` | body `{ reason, comment }`, reason ∈ `COPYRIGHT, PERSONAL_DATA, WRONG_SUBJECT, SPAM, OTHER` → 204 |
 
 `FileSummary` = `{ id, name, kind, path, sizeBytes, driveModifiedAt, publishedAt, hasHtml, hasPdf, hasOriginal,
-pdfMimeType, originalMimeType, exportBlocked, driveUrl }`
+pdfMimeType, originalMimeType, exportBlocked, driveUrl, academicYear, academicYearSource }`
 (`path` = folder path inside the source, e.g. `"Comunicación/Trabajo Plasticos"`).
 
-`html` is sanitized (no style/class/script/iframe); its `<img src>` are root-relative
+`html` is sanitized (no style/class/script/iframe) after turning the export's CSS classes into markup: real nested
+`<ul>`/`<ol>` (`<ol type="1|a|A|i|I" start>`), `<strong>`, `<em>`, `<u>`, `<s>`, `<sup>`, `<sub>`, indented paragraphs
+as `<blockquote>`, and `data-align="center|right"` on paragraphs/headings/cells; its `<img src>` are root-relative
 `/api/v1/wiki/files/{fileId}/assets/{name}` (an SPA on another origin must prefix the API origin, or proxy `/api`).
 `download` without `variant` serves the PDF when there is one, else the original; a missing variant is 404.
 `disposition=inline` (default) presigns `response-content-disposition: inline; filename*=UTF-8''<name>` with the
@@ -161,9 +178,22 @@ Readers only see `PUBLISHED` files. The file's owner student and STAFF can open 
 | `POST /v1/staff/drive/sources/{id}/approve` · `/block` (body `{ comment? }`) | `StaffSource` |
 | `GET /v1/staff/drive/files?publication=NEEDS_REVIEW\|HIDDEN_REPORTED&page=0&limit=20` | `{ items: StaffFile[], total }` (default `NEEDS_REVIEW`; files of `PENDING_REVIEW` sources are left out: approve/block the source) |
 | `POST /v1/staff/drive/files/{id}/publish` · `/remove` · `/restore` | `StaffFile` |
+| `POST /v1/staff/drive/reprocess?kind=DOC\|SLIDES\|SHEET\|DRAWING` | `{ files, sources }` — re-export those files on a sync queued now (default `DOC`); results identical to the stored copy keep it |
 | `GET /v1/staff/drive/unclaimed` | `[{ name, ownerEmail, firstSeenAt, lastSeenAt }]` |
 
 `StaffSource` = `Source` + `{ ownerName, ownerEmail }`
 
 `StaffFile` = `{ id, name, kind, sourceId, sourceRootName, ownerEmail, sharerName, sharerEmail,
-effectiveSubjectId, effectiveSubjectName, publication, reportCount, reports: [{ reason, comment, createdAt }], driveModifiedAt }`
+effectiveSubjectId, effectiveSubjectName, publication, reportCount, reports: [{ reason, comment, createdAt }], driveModifiedAt,
+academicYear, academicYearSource }`
+
+## Pinned subjects
+
+Pins on top of `/apuntes` reuse the subject bookmarks (`wiki.subject_bookmarks`, `/v1/wiki/bookmarks`):
+
+| Method + path | Response |
+|---|---|
+| `GET /v1/wiki/bookmarks` (logged in) | `[{ subjectId, subjectName, fileCount, hasWiki, pinnedAt }]`, most recently pinned first. `fileCount` = published Apuntes files; `hasWiki` = the subject wiki has a published page |
+| `GET /v1/wiki/bookmarks/{subjectId}` (public) | `{ count, bookmarked }` (unchanged) |
+| `PUT` / `POST /v1/wiki/bookmarks/{subjectId}` | pin (idempotent) → `{ count, bookmarked }`; 409 `BOOKMARK_LIMIT` when the user already has 30 pins |
+| `DELETE /v1/wiki/bookmarks/{subjectId}` | unpin → 204 |

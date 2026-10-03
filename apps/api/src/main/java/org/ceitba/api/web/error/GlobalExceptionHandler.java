@@ -16,6 +16,7 @@ import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
 import org.ceitba.api.service.drive.DriveException;
+import org.ceitba.api.service.wiki.BookmarkLimitException;
 import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.FileNumberAlreadySetException;
@@ -94,6 +95,11 @@ public class GlobalExceptionHandler {
             builder.header("Retry-After", Long.toString(ex.retryAfterSeconds()));
         }
         return builder.body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(BookmarkLimitException.class)
+    public ResponseEntity<ErrorResponse> handleBookmarkLimit(BookmarkLimitException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "BOOKMARK_LIMIT", ex.getMessage(), req);
     }
 
     @ExceptionHandler(StudyGroupForbiddenException.class)

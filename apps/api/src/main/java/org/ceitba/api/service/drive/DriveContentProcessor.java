@@ -218,7 +218,9 @@ public class DriveContentProcessor {
             srcToAsset.put(img.getKey(), asset);
             assetBytes.put(asset, img.getValue());
         }
-        var result = DocHtmlSanitizer.sanitize(rawHtml, srcToAsset,
+        // Lists, bold/italic, alignment live in the export's CSS classes:
+        // turned into markup before the sanitizer drops classes.
+        var result = DocHtmlSanitizer.sanitize(GoogleDocsHtml.normalize(rawHtml), srcToAsset,
             "/api/v1/wiki/files/" + NEUTRAL_FILE + "/assets/");
         var digest = sha256();
         digest.update(("doc\n" + result.html()).getBytes(StandardCharsets.UTF_8));

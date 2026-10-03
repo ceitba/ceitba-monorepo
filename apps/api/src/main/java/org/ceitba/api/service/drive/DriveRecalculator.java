@@ -2,6 +2,8 @@ package org.ceitba.api.service.drive;
 
 import org.ceitba.api.domain.PlanSubject;
 import org.ceitba.api.domain.Subject;
+import org.ceitba.api.config.ClockConfig;
+import org.ceitba.api.domain.drive.DriveAcademicYearSource;
 import org.ceitba.api.domain.drive.DriveFile;
 import org.ceitba.api.domain.drive.DrivePublication;
 import org.ceitba.api.domain.drive.DriveSource;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 //                         only where it differs from the suggestion the item
 //                         inherits from its folders (a matched folder covers
 //                         its unmatched children)
+//   academic_year(_source) see academicYear()
 //   publication           PublicationRule (published_at set on each move into PUBLISHED)
 // Run after every walk, PATCH, source approve/block, staff decision, report
 // and POST .../recompute-suggestions, so a plan change shows on the next one.
@@ -72,6 +75,7 @@ public class DriveRecalculator {
 
     public void recompute(DriveSource source, List<DriveFile> files, SubjectMatcher matcher) {
         var now = OffsetDateTime.now(clock);
+        int currentYear = now.atZoneSameInstant(ClockConfig.ZONE).getYear();
         Map<String, DriveFile> byDriveId = new HashMap<>();
         for (var f : files) byDriveId.put(f.getDriveId(), f);
 
@@ -90,6 +94,7 @@ public class DriveRecalculator {
                 if (cur.isHidden()) hidden = true;
             }
             f.setEffectiveSubjectId(effective);
+            academicYear(f, byDriveId, currentYear);
 
             var inherited = f.getParentDriveId() == null ? null : suggestionBelow.get(f.getParentDriveId());
             String suggested = null;
@@ -108,6 +113,40 @@ public class DriveRecalculator {
             }
             f.setPublication(publication);
         }
+    }
+
+    // USER (own) > INHERITED (an ancestor's USER) > NAME (own name, else the
+    // nearest folder name with a year) > DRIVE (min(created, modified) in ART).
+    static void academicYear(DriveFile f, Map<String, DriveFile> byDriveId, int currentYear) {
+        if (f.getAcademicYearUser() != null) {
+            f.setAcademicYear(f.getAcademicYearUser(), DriveAcademicYearSource.USER);
+            return;
+        }
+        var seen = new HashSet<String>();
+        seen.add(f.getDriveId());
+        for (var p = parent(f, byDriveId); p != null && seen.add(p.getDriveId()); p = parent(p, byDriveId)) {
+            if (p.getAcademicYearUser() != null) {
+                f.setAcademicYear(p.getAcademicYearUser(), DriveAcademicYearSource.INHERITED);
+                return;
+            }
+        }
+        seen.clear();
+        for (var cur = f; cur != null && seen.add(cur.getDriveId()); cur = parent(cur, byDriveId)) {
+            var y = AcademicYears.fromName(cur.getName(), currentYear);
+            if (y.isPresent()) {
+                f.setAcademicYear(y.getAsInt(), DriveAcademicYearSource.NAME);
+                return;
+            }
+        }
+        OffsetDateTime first = f.getDriveCreatedAt();
+        var modified = f.getDriveModifiedAt();
+        if (first == null || (modified != null && modified.isBefore(first))) first = modified;
+        f.setAcademicYear(first == null ? null : first.atZoneSameInstant(ClockConfig.ZONE).getYear(),
+            DriveAcademicYearSource.DRIVE);
+    }
+
+    private static DriveFile parent(DriveFile f, Map<String, DriveFile> byDriveId) {
+        return f.getParentDriveId() == null ? null : byDriveId.get(f.getParentDriveId());
     }
 
     // Depth of each item below the root (direct children: 0).

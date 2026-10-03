@@ -184,6 +184,7 @@ public class GoogleDriveClient implements DriveClient {
             f.getVersion(),
             f.getSize(),
             shortcut == null ? null : shortcut.getTargetId(),
-            shortcut == null ? null : shortcut.getTargetMimeType());
+            shortcut == null ? null : shortcut.getTargetMimeType(),
+            f.getCreatedTime() == null ? null : Instant.ofEpochMilli(f.getCreatedTime().getValue()));
     }
 }

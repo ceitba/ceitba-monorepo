@@ -8,6 +8,9 @@ import java.util.UUID;
 // effectiveInMyPlan: whether that subject is in the student's plan (false
 // when null or without a plan). A child without its own suggestion inherits
 // its folder's (shown on the folder only).
+// academicYear/academicYearSource: effective year and USER | INHERITED |
+// NAME | DRIVE; ownAcademicYear: the year the student set on this exact
+// item (null = automatic).
 public record TreeItemResponse(
     UUID id,
     UUID parentId,
@@ -28,5 +31,8 @@ public record TreeItemResponse(
     OffsetDateTime driveModifiedAt,
     String syncError,
     boolean exportBlocked,
-    String driveUrl
+    String driveUrl,
+    Integer academicYear,
+    String academicYearSource,
+    Integer ownAcademicYear
 ) {}

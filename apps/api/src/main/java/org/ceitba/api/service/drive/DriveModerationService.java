@@ -12,7 +12,10 @@ import org.ceitba.api.repository.drive.DriveFileReportRepository;
 import org.ceitba.api.repository.drive.DriveFileRepository;
 import org.ceitba.api.repository.drive.DriveSourceRepository;
 import org.ceitba.api.repository.drive.DriveUnclaimedShareRepository;
+import org.ceitba.api.service.kb.KbModerationService;
+import org.ceitba.api.domain.drive.DriveFileKind;
 import org.ceitba.api.web.drive.dto.PageResponse;
+import org.ceitba.api.web.drive.dto.ReprocessResponse;
 import org.ceitba.api.web.drive.dto.StaffFileResponse;
 import org.ceitba.api.web.drive.dto.StaffReportResponse;
 import org.ceitba.api.web.drive.dto.StaffSourceResponse;
@@ -38,6 +41,8 @@ import java.util.UUID;
 public class DriveModerationService {
 
     static final int MAX_LIMIT = 100;
+    static final java.util.Set<DriveFileKind> REPROCESSABLE =
+        java.util.EnumSet.of(DriveFileKind.DOC, DriveFileKind.SLIDES, DriveFileKind.SHEET, DriveFileKind.DRAWING);
 
     private final DriveSourceRepository sources;
     private final DriveFileRepository files;
@@ -47,12 +52,15 @@ public class DriveModerationService {
     private final DriveViews views;
     private final DriveStorageJanitor janitor;
     private final DriveBlobs blobs;
+    private final KbModerationService kb;
+    private final org.springframework.context.ApplicationEventPublisher events;
     private final Clock clock;
 
     public DriveModerationService(DriveSourceRepository sources, DriveFileRepository files,
                                   DriveFileReportRepository reports, DriveUnclaimedShareRepository unclaimed,
                                   DriveRecalculator recalculator, DriveViews views, DriveStorageJanitor janitor,
-                                  DriveBlobs blobs, Clock clock) {
+                                  DriveBlobs blobs, KbModerationService kb,
+                                  org.springframework.context.ApplicationEventPublisher events, Clock clock) {
         this.sources = sources;
         this.files = files;
         this.reports = reports;
@@ -61,6 +69,8 @@ public class DriveModerationService {
         this.views = views;
         this.janitor = janitor;
         this.blobs = blobs;
+        this.kb = kb;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -97,7 +107,10 @@ public class DriveModerationService {
         var now = OffsetDateTime.now(clock);
         source.setStatus(DriveSourceStatus.BLOCKED);
         source.setReview(staffId, now, blankToNull(comment));
-        recalculator.recompute(source, files.findBySourceId(sourceId));
+        var all = files.findBySourceId(sourceId);
+        recalculator.recompute(source, all);
+        // Takedown: wiki pages built on this folder's files go hidden.
+        kb.hidePagesCiting(all.stream().map(DriveFile::getId).toList());
         return views.staffSources(List.of(source)).get(0);
     }
 
@@ -138,7 +151,30 @@ public class DriveModerationService {
         }
         var source = source(file.getSourceId());
         recalculator.recompute(source, files.findBySourceId(source.getId()));
+        // Takedown: wiki pages citing a file staff removed go hidden.
+        if (decision == DriveStaffDecision.REMOVE) kb.hidePagesCiting(List.of(fileId));
         return staffFiles(List.of(file)).get(0);
+    }
+
+    // Re-export every Google-native file of `kind` on the next sync of its
+    // source (queued now), e.g. after the Doc processing changed. Clears
+    // content_modified_at, the trigger for native files: the export is
+    // hashed again and stored only when the result differs, so unchanged
+    // files keep their copy and replaced copies are released properly.
+    @Transactional
+    public ReprocessResponse reprocess(String kind) {
+        var k = parse(DriveFileKind.class, "kind", kind == null ? "DOC" : kind);
+        if (!REPROCESSABLE.contains(k)) {
+            throw new ValidationException("kind", kind, "must be one of " + REPROCESSABLE);
+        }
+        var rows = files.findByKindAndRemovedAtIsNull(k).stream()
+            .filter(f -> f.hasContent() && !f.isExportBlocked())
+            .toList();
+        rows.forEach(f -> f.setContentModifiedAt(null));
+        var sourceIds = new java.util.LinkedHashSet<UUID>();
+        rows.forEach(f -> sourceIds.add(f.getSourceId()));
+        sourceIds.forEach(id -> events.publishEvent(new DriveSyncRequested(id)));
+        return new ReprocessResponse(rows.size(), sourceIds.size());
     }
 
     @Transactional(readOnly = true)
@@ -197,7 +233,8 @@ public class DriveModerationService {
                 source == null ? null : source.getRootName(), f.getOwnerEmail(),
                 sharer == null ? null : sharer.getName(), sharer == null ? null : sharer.getEmail(),
                 f.getEffectiveSubjectId(), names.get(f.getEffectiveSubjectId()), f.getPublication().name(),
-                f.getReportCount(), reportsByFile.getOrDefault(f.getId(), List.of()), f.getDriveModifiedAt());
+                f.getReportCount(), reportsByFile.getOrDefault(f.getId(), List.of()), f.getDriveModifiedAt(),
+                f.getAcademicYear(), f.getAcademicYearSource() == null ? null : f.getAcademicYearSource().name());
         }).toList();
     }
 

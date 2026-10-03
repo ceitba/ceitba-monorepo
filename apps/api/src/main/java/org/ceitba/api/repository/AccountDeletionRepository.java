@@ -148,6 +148,15 @@ public class AccountDeletionRepository {
         exec("DELETE FROM wiki.drive_source WHERE user_id = :u", userId);
     }
 
+    // Subject-wiki reports by the user (page counters adjusted first).
+    public void deleteKbReports(UUID userId) {
+        exec("""
+            UPDATE wiki.kb_page p SET report_count = greatest(p.report_count - 1, 0)
+            WHERE p.id IN (SELECT r.page_id FROM wiki.kb_page_report r WHERE r.user_id = :u)
+            """, userId);
+        exec("DELETE FROM wiki.kb_page_report WHERE user_id = :u", userId);
+    }
+
     // Wiki contributions other students rely on whose author FK is NOT NULL:
     // notes, career notes, wiki page revisions, reviewed edit proposals.
     public long countRetainedContributions(UUID userId) {

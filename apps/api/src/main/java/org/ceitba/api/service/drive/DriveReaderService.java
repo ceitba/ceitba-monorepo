@@ -48,6 +48,7 @@ public class DriveReaderService {
     private final DriveSourceRepository sources;
     private final DriveFileReportRepository reports;
     private final SubjectRepository subjects;
+    private final org.ceitba.api.repository.kb.KbPageRepository kbPages;
     private final org.ceitba.api.repository.PlanSubjectRepository planSubjects;
     private final DriveAccess access;
     private final DriveViews views;
@@ -57,13 +58,15 @@ public class DriveReaderService {
 
     public DriveReaderService(DriveFileRepository files, DriveSourceRepository sources,
                               DriveFileReportRepository reports, SubjectRepository subjects,
-                              org.ceitba.api.repository.PlanSubjectRepository planSubjects, DriveAccess access,
+                              org.ceitba.api.repository.PlanSubjectRepository planSubjects,
+                              org.ceitba.api.repository.kb.KbPageRepository kbPages, DriveAccess access,
                               DriveViews views, DriveRecalculator recalculator, ObjectStorage storage, Clock clock) {
         this.files = files;
         this.sources = sources;
         this.reports = reports;
         this.subjects = subjects;
         this.planSubjects = planSubjects;
+        this.kbPages = kbPages;
         this.access = access;
         this.views = views;
         this.recalculator = recalculator;
@@ -76,13 +79,32 @@ public class DriveReaderService {
     // with its published count (possibly 0), most files first.
     @Transactional(readOnly = true)
     public List<ApuntesSubjectResponse> subjects(String q, int limit) {
+        return withWiki(listSubjects(q, limit));
+    }
+
+    // ?mine=true: see listMySubjects.
+    @Transactional(readOnly = true)
+    public List<ApuntesSubjectResponse> mySubjects(User user) {
+        return withWiki(listMySubjects(user));
+    }
+
+    // hasWiki for every item, in one query.
+    private List<ApuntesSubjectResponse> withWiki(List<ApuntesSubjectResponse> items) {
+        if (items.isEmpty()) return items;
+        var withWiki = new java.util.HashSet<>(kbPages.findSubjectIdsWithPages(
+            items.stream().map(ApuntesSubjectResponse::subjectId).toList(),
+            List.of(org.ceitba.api.domain.kb.KbPageStatus.PUBLISHED)));
+        return items.stream().map(i -> i.withWiki(withWiki.contains(i.subjectId()))).toList();
+    }
+
+    private List<ApuntesSubjectResponse> listSubjects(String q, int limit) {
         int n = Math.max(1, Math.min(limit, MAX_LIMIT));
         if (q == null || q.isBlank()) {
             var rows = files.publishedSubjects(PageRequest.of(0, n));
             var names = views.subjectNames(rows.stream().map(r -> (String) r[0]).toList());
             return rows.stream()
                 .map(r -> new ApuntesSubjectResponse((String) r[0], names.get((String) r[0]),
-                    ((Number) r[1]).longValue(), (OffsetDateTime) r[2], null, null, null))
+                    ((Number) r[1]).longValue(), (OffsetDateTime) r[2], null, null, null, false))
                 .toList();
         }
         var needle = SubjectMatcher.normalize(q);
@@ -99,7 +121,7 @@ public class DriveReaderService {
             .map(s -> {
                 var r = stats.get(s.getId());
                 return new ApuntesSubjectResponse(s.getId(), s.getName(),
-                    r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2], null, null, null);
+                    r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2], null, null, null, false);
             })
             .sorted(Comparator.comparingLong(ApuntesSubjectResponse::fileCount).reversed()
                 .thenComparing(ApuntesSubjectResponse::subjectName, String.CASE_INSENSITIVE_ORDER))
@@ -109,8 +131,7 @@ public class DriveReaderService {
 
     // ?mine=true: the caller's plan subjects in plan order (year, semester),
     // each with its published count; [] without a plan.
-    @Transactional(readOnly = true)
-    public List<ApuntesSubjectResponse> mySubjects(User user) {
+    private List<ApuntesSubjectResponse> listMySubjects(User user) {
         if (user.getPlan() == null || user.getPlan().isBlank()) return List.of();
         var rows = planSubjects.findByPlanId(user.getPlan());
         if (rows.isEmpty()) return List.of();
@@ -138,7 +159,7 @@ public class DriveReaderService {
             return new ApuntesSubjectResponse(e.getSubjectId(), names.get(e.getSubjectId()),
                 r == null ? 0 : ((Number) r[1]).longValue(), r == null ? null : (OffsetDateTime) r[2],
                 e.getYear() > 0 ? e.getYear() : null, e.getSemester() > 0 ? e.getSemester() : null,
-                e.getSection());
+                e.getSection(), false);
         }).toList();
     }
 

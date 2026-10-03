@@ -142,6 +142,11 @@ storage:
   # the compose network. Empty = use endpoint.
   internal-endpoint: ${STORAGE_INTERNAL_ENDPOINT:}
 
+# Subject wikis (docs/SUBJECT-WIKI.md): a page is "stale" when its newest
+# source is older than this many years.
+kb:
+  stale-years: ${KB_STALE_YEARS:3}
+
 # Drive sync / Apuntes (docs/DRIVE-SYNC.md). Students share a Drive folder
 # with the bot service account; the job copies it into storage (drive/ prefix,
 # never anonymously readable) and serves it per subject.
