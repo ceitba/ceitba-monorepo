@@ -1,5 +1,5 @@
 import '../../i18nApuntes'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
@@ -11,6 +11,10 @@ import { BTN_PRIMARY, INPUT } from '../../components/apuntes/buttons'
 import PinButton, { PinIcon } from '../../components/apuntes/PinButton'
 import PinNotice from '../../components/apuntes/PinNotice'
 import { usePins } from '../../hooks/usePins'
+
+// The correlatividades card loads after first paint so it never slows the
+// page down.
+const CorrelativasMini = lazy(() => import('../../components/apuntes/correlativas/CorrelativasMini'))
 
 const PIN_HINT_KEY = 'apuntes.pinHintDismissed'
 
@@ -62,6 +66,14 @@ export default function ApuntesHomePage() {
   const searching = debounced !== ''
   const { pins } = usePins()
   const [hintDismissed, setHintDismissed] = useState(readHintDismissed)
+  const [showCorr, setShowCorr] = useState(false)
+
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+    const go = () => setShowCorr(true)
+    if (w.requestIdleCallback) w.requestIdleCallback(go, { timeout: 1500 })
+    else window.setTimeout(go, 300)
+  }, [])
 
   // Once something is pinned the hint has done its job.
   useEffect(() => {
@@ -135,6 +147,11 @@ export default function ApuntesHomePage() {
               ))}
             </ul>
           </section>
+        )}
+        {showCorr && !searching && (
+          <Suspense fallback={null}>
+            <CorrelativasMini />
+          </Suspense>
         )}
         {pins && pins.length === 0 && !hintDismissed && (
           <p className="mb-6 flex items-center gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">

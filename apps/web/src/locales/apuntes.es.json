@@ -256,6 +256,26 @@
       "sortLabel": "Orden",
       "sortRecent": "Más recientes primero",
       "sortFolder": "Por carpeta"
+    },
+    "corr": {
+      "title": "Mapa de correlatividades",
+      "open": "Ver mapa",
+      "seeMap": "Ver mapa de correlatividades",
+      "miniHint": "Tu plan {{plan}}, cuatrimestre por cuatrimestre, con sus correlativas.",
+      "subtitle": "Las materias de tu plan {{plan}} por cuatrimestre. Pasá el mouse (o enfocá) una materia para ver lo que necesitás antes y lo que habilita.",
+      "noPlanTitle": "Elegí tu plan",
+      "noPlan": "Elegí tu carrera y plan en tu perfil para ver tu mapa de correlatividades.",
+      "emptyTitle": "Tu plan no tiene materias cargadas",
+      "search": "Buscar una materia en el mapa…",
+      "zoom": "Zoom",
+      "legendUp": "Lo que necesitás antes",
+      "legendDown": "Lo que habilita",
+      "electives": "Electivas y otras materias",
+      "requires": "Correlativas",
+      "unlocks": "Habilita",
+      "noDeps": "Sin correlativas",
+      "credits_one": "requiere {{count}} crédito",
+      "credits_other": "requiere {{count}} créditos"
     }
   },
   "wiki": {

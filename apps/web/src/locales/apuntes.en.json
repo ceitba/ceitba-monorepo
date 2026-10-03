@@ -256,6 +256,26 @@
       "sortLabel": "Order",
       "sortRecent": "Newest first",
       "sortFolder": "By folder"
+    },
+    "corr": {
+      "title": "Prerequisite map",
+      "open": "View map",
+      "seeMap": "View prerequisite map",
+      "miniHint": "Your plan {{plan}}, term by term, with its prerequisites.",
+      "subtitle": "Your plan {{plan}}'s subjects by term. Hover (or focus) a subject to see what you need first and what it unlocks.",
+      "noPlanTitle": "Pick your plan",
+      "noPlan": "Pick your career and plan in your profile to see your prerequisite map.",
+      "emptyTitle": "Your plan has no subjects loaded",
+      "search": "Find a subject on the map…",
+      "zoom": "Zoom",
+      "legendUp": "What you need first",
+      "legendDown": "What it unlocks",
+      "electives": "Electives and other subjects",
+      "requires": "Prerequisites",
+      "unlocks": "Unlocks",
+      "noDeps": "No prerequisites",
+      "credits_one": "requires {{count}} credit",
+      "credits_other": "requires {{count}} credits"
     }
   },
   "wiki": {

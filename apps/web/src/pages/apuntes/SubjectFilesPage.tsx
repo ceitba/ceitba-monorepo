@@ -9,6 +9,7 @@ import WikiArticle, { PagesPanel } from '../../components/apuntes/wiki/WikiArtic
 import RelatedPanel from '../../components/apuntes/wiki/RelatedPanel'
 import PinButton from '../../components/apuntes/PinButton'
 import PinNotice from '../../components/apuntes/PinNotice'
+import SubjectCorrelativas from '../../components/apuntes/correlativas/SubjectCorrelativas'
 import { ApiError } from '../../api/client'
 import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
 import EmptyState from '../../components/apuntes/EmptyState'
@@ -141,6 +142,7 @@ export default function SubjectFilesPage() {
                 {t('apuntes.subject.summary', { count: totalFiles, authors: groups.length })}
               </p>
             )}
+            {!notFound && <SubjectCorrelativas subjectId={subjectId} />}
           </>
         )}
       </header>

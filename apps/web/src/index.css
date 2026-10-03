@@ -400,3 +400,40 @@ html.dark {
 .kbg.has-focus .kbg-edge:not(.is-active) { opacity: 0.12; }
 /* An active node's concept label shows even at low zoom. */
 .kbg.has-focus .kbg-node.is-active .kbg-label { display: inline; }
+
+/* Correlatividades map. Upstream ("lo que necesitás antes") in brand blue,
+   downstream ("lo que habilita") in green; the rest dims. */
+:root {
+  --corr-edge: #C9CED6;
+  --corr-up: #1A3C6E;
+  --corr-up-bg: #EEF3FA;
+  --corr-down: #047857;
+  --corr-down-bg: #ECFDF5;
+}
+html.dark {
+  --corr-edge: #52525b;
+  --corr-up: #7FA1D4;
+  --corr-up-bg: rgba(127, 161, 212, 0.14);
+  --corr-down: #34D399;
+  --corr-down-bg: rgba(52, 211, 153, 0.12);
+}
+.corr-swatch-up { background: var(--corr-up); }
+.corr-swatch-down { background: var(--corr-down); }
+.corr-card { border-color: #E5E7EB; transition: opacity 120ms, border-color 120ms, background-color 120ms; }
+html.dark .corr-card { border-color: #3f3f46; }
+.corr-card:hover { border-color: #1A3C6E; }
+html.dark .corr-card:hover { border-color: #7FA1D4; }
+.corr-card.is-focus { border-color: #F5A623; box-shadow: 0 0 0 2px #F5A623; }
+.corr-card.is-match { border-color: #F5A623; box-shadow: 0 0 0 2px #F5A623; }
+.corr-card.is-up { border-color: var(--corr-up); background: var(--corr-up-bg); }
+.corr-card.is-down { border-color: var(--corr-down); background: var(--corr-down-bg); }
+.corr-card.is-dim { opacity: 0.32; }
+.corr-edge { fill: none; stroke: var(--corr-edge); stroke-width: 1.4; transition: opacity 120ms, stroke 120ms; }
+.corr-edge.is-up { stroke: var(--corr-up); stroke-width: 2.4; }
+.corr-edge.is-down { stroke: var(--corr-down); stroke-width: 2.4; }
+.corr-edge.is-dim { opacity: 0.15; }
+.corr-mini-card { fill: #ffffff; stroke: #D1D5DB; stroke-width: 1; }
+.corr-mini-text { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; fill: #6B7280; }
+.corr-mini-dot { fill: #F5A623; }
+html.dark .corr-mini-card { fill: #27272a; stroke: #52525b; }
+html.dark .corr-mini-text { fill: #a1a1aa; }
