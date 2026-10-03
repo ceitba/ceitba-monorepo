@@ -89,8 +89,12 @@ public class KbRunEngine {
     private final java.util.concurrent.ConcurrentHashMap<UUID, AtomicBoolean> again =
         new java.util.concurrent.ConcurrentHashMap<>();
     public static final java.time.Duration LEASE = java.time.Duration.ofMinutes(3);
+    static final java.time.Duration CANCEL_CHECK = java.time.Duration.ofSeconds(5);
     static final java.time.Duration LEASE_RENEW = java.time.Duration.ofSeconds(60);
-    private final Object recordLock = new Object();
+    // Not `synchronized`: on Java 21 a virtual thread blocked on a monitor pins
+    // its carrier, and with the sync workers queued here every carrier was
+    // pinned while other workers sat mid-transaction: the pool ran dry.
+    private final java.util.concurrent.locks.ReentrantLock recordLock = new java.util.concurrent.locks.ReentrantLock();
 
     public KbRunEngine(KbRunRepository runs, KbBatchJobRepository jobs, KbRunRequestRepository requests,
                        KbRunSubjectRepository runSubjects, @Lazy List<KbRunHandler> handlers, KbLlmRouter router,
@@ -520,15 +524,18 @@ public class KbRunEngine {
             }
         });
         Map<UUID, StringBuffer> outputs = new java.util.concurrent.ConcurrentHashMap<>();
+        var runIds = byId.values().stream().map(KbBatchJob::getRunId).distinct().toList();
         sync.run(lines, (SyncLlmExecutor.Outcome outcome) -> {
             var result = outcome.result();
             var job = byId.get(jobOf.get(result.customId()));
-            synchronized (recordLock) {
+            recordLock.lock();
+            try {
                 inTxVoid(() -> record(job.getRunId(), job.getId(), "SYNC", result, outcome));
+            } finally {
+                recordLock.unlock();
             }
             outputs.computeIfAbsent(job.getId(), k -> new StringBuffer()).append(outputLine(result)).append('\n');
-        }, () -> byId.values().stream().map(KbBatchJob::getRunId).distinct()
-            .noneMatch(id -> inTx(() -> runs.findById(id).map(KbRun::isActive).orElse(false))));
+        }, cancelCheck(runIds));
         for (var job : byId.values()) {
             var out = outputs.get(job.getId());
             String outKey = null;
@@ -546,6 +553,23 @@ public class KbRunEngine {
             log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(),
                 pendingCount.get(job.getId()), job.getModel());
         }
+    }
+
+    // Whether every run of a sync pool was cancelled, read from the DB at most
+    // every few seconds and shared by all workers (one transaction per check,
+    // not one per request).
+    private java.util.function.BooleanSupplier cancelCheck(List<UUID> runIds) {
+        var stopped = new java.util.concurrent.atomic.AtomicBoolean(false);
+        var checkedAt = new java.util.concurrent.atomic.AtomicLong(System.nanoTime() - CANCEL_CHECK.toNanos());
+        return () -> {
+            long last = checkedAt.get();
+            long t = System.nanoTime();
+            if (!stopped.get() && t - last >= CANCEL_CHECK.toNanos() && checkedAt.compareAndSet(last, t)) {
+                stopped.set(runIds.stream()
+                    .noneMatch(id -> inTx(() -> runs.findById(id).map(KbRun::isActive).orElse(false))));
+            }
+            return stopped.get();
+        };
     }
 
     private ObjectNode outputLine(LlmOutputParser.LlmResult r) {
