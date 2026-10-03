@@ -1,6 +1,12 @@
 spring:
   application:
     name: ceitba-api
+  # One thread per scheduled job (8 >= the @Scheduled methods): with Spring's default single thread a
+  # long Drive sync run delayed the wiki pipeline's sweep and batch polling.
+  task:
+    scheduling:
+      pool:
+        size: 8
   profiles:
     active: dev
   datasource:
@@ -154,7 +160,8 @@ kb:
     api-key: ${KB_LLM_API_KEY:}
     use-fake: ${KB_LLM_USE_FAKE:false}
     execution-mode: ${KB_EXECUTION_MODE:auto}
-    sync-concurrency: ${KB_SYNC_CONCURRENCY:4}
+    sync-concurrency: ${KB_SYNC_CONCURRENCY:16}
+    request-timeout: ${KB_LLM_REQUEST_TIMEOUT:PT5M}
   pipeline:
     enabled: ${KB_PIPELINE_ENABLED:false}
     cron: ${KB_PIPELINE_CRON:0 0 3 * * SUN}

@@ -40,7 +40,7 @@ public class KbPipelineConfig {
     public SyncChatClient syncChatClient(KbLlmProperties props, ObjectMapper json) {
         if (props.useFake()) return new FakeSyncChatClient(json);
         if (!props.hasKey()) return new UnconfiguredSyncChatClient();
-        return new DoChatClient(props.baseUrl(), props.apiKey(), json);
+        return new DoChatClient(props.baseUrl(), props.apiKey(), json, props.requestTimeout());
     }
 
     @Bean
