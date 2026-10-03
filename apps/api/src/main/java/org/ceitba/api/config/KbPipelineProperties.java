@@ -9,7 +9,8 @@ import java.time.Duration;
 // (kb_pipeline_settings, docs/SUBJECT-WIKI-ADMIN.md):
 //   KB_PIPELINE_ENABLED=false        weekly scheduled run (manual runs always work)
 //   KB_PIPELINE_CRON="0 0 3 * * SUN" Spring cron, America/Argentina/Buenos_Aires
-//   KB_POLL_INTERVAL=PT10M           how often active runs are advanced
+//   KB_POLL_INTERVAL=PT10M           safety sweep (runs advance as soon as triggered)
+//   KB_BATCH_POLL_INTERVAL=PT1M      DO batch status polling (only while a batch is open)
 //   KB_MODEL_DIGEST=glm-5.3-flash, KB_MODEL_PLAN=glm-5.3, KB_MODEL_WRITE=glm-5.3,
 //   KB_MODEL_RETRY=(write model)
 //   KB_RUN_TOKEN_BUDGET=3000000      estimated input tokens per run

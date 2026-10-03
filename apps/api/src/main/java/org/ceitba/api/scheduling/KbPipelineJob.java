@@ -1,27 +1,33 @@
 package org.ceitba.api.scheduling;
 
+import org.ceitba.api.repository.kb.KbBatchJobRepository;
 import org.ceitba.api.service.kb.admin.KbModelCatalogService;
 import org.ceitba.api.service.kb.eval.KbEvalService;
 import org.ceitba.api.service.kb.pipeline.KbPipelineService;
 import org.ceitba.api.service.kb.pipeline.KbRunEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-// Background side of the wiki pipeline (docs/SUBJECT-WIKI-PIPELINE.md):
-//   - every KB_POLL_INTERVAL: advance active runs and evals (poll batches,
-//     resume sync jobs), refresh pending batch probes; always on, so manual
-//     runs and evals progress even with KB_PIPELINE_ENABLED=false
-//   - every minute: start the weekly run when the cron is due (only when
-//     enabled in the settings)
-//   - right after a run/eval is triggered: advance it without waiting for
-//     the poller (async, after the trigger's transaction commits)
+import java.util.UUID;
+
+// Background side of the wiki pipeline (docs/SUBJECT-WIKI-PIPELINE.md, "Orchestration"):
+//   - kick: a run/eval created, approved or resumed is advanced at once, on
+//     the task executor, one task per run (a long sync stage of one run
+//     never delays another); sync stages flow straight into the next stage
+//   - batch poller, every KB_BATCH_POLL_INTERVAL (PT1M): only runs with a
+//     SUBMITTED DO batch (and pending batch probes)
+//   - safety sweep, every KB_POLL_INTERVAL (PT10M) and at startup: kicks
+//     every active run, resuming whatever a restart interrupted
+//   - every minute: the weekly cron (only when enabled in the settings)
+// Each run has one advancer at a time (KbRunEngine.advance, DB lease).
 // Off with kb.pipeline.background=false (tests drive the engine directly).
 @Component
 @ConditionalOnProperty(name = "kb.pipeline.background", havingValue = "true", matchIfMissing = true)
@@ -33,26 +39,56 @@ public class KbPipelineJob {
     private final KbPipelineService pipeline;
     private final KbModelCatalogService catalog;
     private final KbEvalService evals;
+    private final KbBatchJobRepository jobs;
+    private final TaskExecutor executor;
 
     public KbPipelineJob(KbRunEngine engine, KbPipelineService pipeline, KbModelCatalogService catalog,
-                         KbEvalService evals) {
+                         KbEvalService evals, KbBatchJobRepository jobs,
+                         @Qualifier("applicationTaskExecutor") TaskExecutor executor) {
         this.engine = engine;
         this.pipeline = pipeline;
         this.catalog = catalog;
         this.evals = evals;
+        this.jobs = jobs;
+        this.executor = executor;
     }
 
-    @Scheduled(fixedDelayString = "${kb.pipeline.poll-interval:PT10M}", initialDelayString = "PT1M")
-    public void poll() {
+    // Advances one run on the task executor.
+    void kick(UUID runId) {
+        executor.execute(() -> {
+            try {
+                engine.advance(runId);
+            } catch (RuntimeException e) {
+                log.warn("KB run {} could not be advanced now (the sweep retries): {}", runId, e.getMessage());
+            }
+        });
+    }
+
+    @TransactionalEventListener(fallbackExecution = true)
+    public void onTriggered(KbPipelineService.RunTriggered event) {
+        kick(event.runId());
+    }
+
+    @Scheduled(fixedDelayString = "${kb.pipeline.batch-poll-interval:PT1M}", initialDelayString = "PT30S")
+    public void pollBatches() {
         try {
-            engine.advanceActive();
+            jobs.runsWithOpenBatches().forEach(this::kick);
         } catch (RuntimeException e) {
-            log.warn("KB pipeline poll failed: {}", e.getMessage());
+            log.warn("KB batch poll failed: {}", e.getMessage());
         }
         try {
             catalog.refreshPendingProbes();
         } catch (RuntimeException e) {
             log.warn("KB probe refresh failed: {}", e.getMessage());
+        }
+    }
+
+    @Scheduled(fixedDelayString = "${kb.pipeline.poll-interval:PT10M}", initialDelayString = "${kb.pipeline.poll-interval:PT10M}")
+    public void sweep() {
+        try {
+            engine.activeRunIds().forEach(this::kick);
+        } catch (RuntimeException e) {
+            log.warn("KB pipeline sweep failed: {}", e.getMessage());
         }
     }
 
@@ -65,18 +101,9 @@ public class KbPipelineJob {
         }
     }
 
-    @Async("applicationTaskExecutor")
-    @TransactionalEventListener(fallbackExecution = true)
-    public void onTriggered(KbPipelineService.RunTriggered event) {
-        try {
-            engine.advanceActive();
-        } catch (RuntimeException e) {
-            log.warn("KB run {} could not be advanced now (the poller retries): {}", event.runId(), e.getMessage());
-        }
-    }
-
     @EventListener(ApplicationReadyEvent.class)
-    public void seedDefaultEvalSet() {
+    public void onStartup() {
         evals.ensureDefaultSet();
+        sweep();   // resume runs a restart interrupted
     }
 }

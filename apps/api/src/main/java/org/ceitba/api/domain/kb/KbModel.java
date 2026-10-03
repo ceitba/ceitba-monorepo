@@ -97,8 +97,44 @@ public class KbModel {
         this.enabled = enabled;
     }
 
+    // Any successful probe (either mode).
     public boolean probeSucceeded() {
-        return lastProbe != null && lastProbe.path("ok").asBoolean(false);
+        return probeOk("sync") || probeOk("batch");
+    }
+
+    // The mode a stage would run this model in (BATCH | SYNC) for an
+    // execution mode (auto | batch | sync); same rule as KbLlmRouter.
+    public String modeFor(String executionMode) {
+        boolean batch = batchSupported && (id.startsWith("anthropic-") || id.startsWith("openai-"));
+        var m = executionMode == null ? "auto" : executionMode.toLowerCase(java.util.Locale.ROOT);
+        return m.equals("sync") || !batch ? "SYNC" : "BATCH";
+    }
+
+    // The last probe in a mode (lastProbe.sync / lastProbe.batch; entries
+    // stored before per-mode probes count for their own mode).
+    public JsonNode probeIn(String mode) {
+        if (lastProbe == null) return null;
+        var key = mode.toLowerCase(java.util.Locale.ROOT);
+        if (lastProbe.has(key) && lastProbe.get(key).isObject()) return lastProbe.get(key);
+        boolean perMode = lastProbe.has("sync") || lastProbe.has("batch");
+        return !perMode && key.equals(lastProbe.path("mode").asText("")) ? lastProbe : null;
+    }
+
+    public boolean probeOk(String mode) {
+        var p = probeIn(mode);
+        return p != null && p.path("ok").asBoolean(false);
+    }
+
+    // Selectable for a stage running in `mode`: a successful probe in that
+    // mode; a pending (or missing) batch probe falls back to the sync probe,
+    // so it never blocks selection.
+    public boolean selectableIn(String mode) {
+        if (!enabled) return false;
+        if (!mode.equalsIgnoreCase("BATCH")) return probeOk("sync");
+        if (probeOk("batch")) return true;
+        var batch = probeIn("batch");
+        boolean pendingOrNone = batch == null || batch.path("pending").asBoolean(false);
+        return pendingOrNone && probeOk("sync");
     }
 
     public String getId() { return id; }

@@ -158,7 +158,11 @@ kb:
   pipeline:
     enabled: ${KB_PIPELINE_ENABLED:false}
     cron: ${KB_PIPELINE_CRON:0 0 3 * * SUN}
+    # Safety sweep (resumes anything stuck, e.g. after a restart); runs are
+    # otherwise advanced as soon as they are triggered.
     poll-interval: ${KB_POLL_INTERVAL:PT10M}
+    # DO batch status polling (only while a batch is open).
+    batch-poll-interval: ${KB_BATCH_POLL_INTERVAL:PT1M}
     model-digest: ${KB_MODEL_DIGEST:glm-5.3-flash}
     model-plan: ${KB_MODEL_PLAN:glm-5.3}
     model-write: ${KB_MODEL_WRITE:glm-5.3}

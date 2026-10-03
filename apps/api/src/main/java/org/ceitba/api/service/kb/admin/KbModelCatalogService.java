@@ -319,7 +319,7 @@ public class KbModelCatalogService {
         var rejected = batchRejected;
         return tx.execute(s -> {
             var m = models.findById(model.getId()).orElseThrow();
-            m.setLastProbe(probe);
+            m.setLastProbe(mergeProbe(m.getLastProbe(), probe));
             updateToolCalling(m, probe);
             if (rejected) m.setBatchFromProbe(false, OffsetDateTime.now(clock));
             return view(m);
@@ -355,7 +355,7 @@ public class KbModelCatalogService {
                 boolean worked = res != null && res.ok();
                 tx.executeWithoutResult(s -> {
                     var mm = models.findById(id).orElseThrow();
-                    mm.setLastProbe(probe);
+                    mm.setLastProbe(mergeProbe(mm.getLastProbe(), probe));
                     updateToolCalling(mm, probe);
                     if (worked) mm.setBatchFromProbe(true, OffsetDateTime.now(clock));
                     else if (info.status().equals("failed") && batchUnsupported(400, info.raw()
@@ -389,6 +389,33 @@ public class KbModelCatalogService {
     public static boolean batchUnsupported(int status, String message) {
         if (status < 400 || status >= 500 || message == null) return false;
         return UNSUPPORTED.matcher(message).find();
+    }
+
+    // lastProbe keeps one entry per mode (sync, batch); its top level is the
+    // most recent probe (ADMIN doc §6 shape) for compatibility.
+    static ObjectNode mergeProbe(JsonNode previous, ObjectNode probe) {
+        var out = probe.deepCopy();
+        out.remove("sync");
+        out.remove("batch");
+        for (var mode : List.of("sync", "batch")) {
+            JsonNode entry = null;
+            if (previous != null) {
+                if (previous.has(mode) && previous.get(mode).isObject()) entry = previous.get(mode);
+                else if (!previous.has("sync") && !previous.has("batch") && mode.equals(previous.path("mode").asText(""))) {
+                    entry = previous;   // stored before per-mode probes
+                }
+            }
+            if (mode.equals(probe.path("mode").asText())) entry = probe;
+            if (entry != null) {
+                var copy = entry.deepCopy();
+                if (copy instanceof ObjectNode o) {
+                    o.remove("sync");
+                    o.remove("batch");
+                }
+                out.set(mode, copy);
+            }
+        }
+        return out;
     }
 
     // lastProbe always carries the ADMIN doc §6 fields: without an answer,
@@ -486,11 +513,11 @@ public class KbModelCatalogService {
         return "do";
     }
 
-    static KbModelResponse view(KbModel m) {
+    KbModelResponse view(KbModel m) {
         return view(m, null);
     }
 
-    static KbModelResponse view(KbModel m, Double emptyToolCallRate) {
+    KbModelResponse view(KbModel m, Double emptyToolCallRate) {
         var sync = KbPricing.effective(m, "SYNC");
         var batchPrices = m.isBatchSupported() ? KbPricing.effective(m, "BATCH") : null;
         var effective = new KbModelResponse.EffectivePrices(
@@ -502,6 +529,6 @@ public class KbModelCatalogService {
             m.isSupportsReasoningEffort(), m.isEnabled(), m.getInputPerM(), m.getOutputPerM(), m.getCacheReadPerM(),
             m.getBatchDiscount(), effective, m.getContextWindow(), m.getMaxOutputTokens(), m.getNotes(),
             m.getPricesUpdatedAt(), m.getPriceSource(),
-            m.getLastProbe(), m.isEnabled() && m.probeSucceeded(), emptyToolCallRate);
+            m.getLastProbe(), m.selectableIn(m.modeFor(settings.effective().executionMode())), emptyToolCallRate);
     }
 }

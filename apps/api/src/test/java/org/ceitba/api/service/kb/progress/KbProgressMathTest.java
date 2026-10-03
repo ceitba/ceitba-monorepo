@@ -45,7 +45,7 @@ class KbProgressMathTest {
         assertThat(digest.status()).isEqualTo("running");
         assertThat(digest.total()).isEqualTo(11);
         assertThat(digest.done()).isEqualTo(7);
-        assertThat(digest.inFlight()).isEqualTo(4);
+        assertThat(digest.inFlight()).isEqualTo(4);   // capped at the concurrency
         assertThat(digest.mode()).isEqualTo("sync");
         assertThat(stage(p, "PLAN").status()).isEqualTo("pending");
         assertThat(stage(p, "PLAN").total()).isEqualTo(6);
@@ -123,5 +123,15 @@ class KbProgressMathTest {
         assertThat(p.current()).isEqualTo("Cancelado");
         assertThat(p.etaSec()).isNull();
         assertThat(p.stalled()).isFalse();
+    }
+
+    @Test
+    void syncInFlightIsCappedAtConcurrency() {
+        var rows = new ArrayList<KbProgressMath.Row>();
+        for (int i = 0; i < 12; i++) rows.add(submitted("WRITE", i));
+        var jobs = List.of(new KbProgressMath.Job("WRITE", "SYNC", "SUBMITTED", null, null, null, null, T0, null, null));
+        var p = KbProgressMath.compute(run(false, "WRITE", "RUNNING", 1), rows, jobs, 4, T0.plusSeconds(30));
+        assertThat(stage(p, "WRITE").inFlight()).isEqualTo(4);
+        assertThat(stage(p, "WRITE").total()).isEqualTo(12);
     }
 }

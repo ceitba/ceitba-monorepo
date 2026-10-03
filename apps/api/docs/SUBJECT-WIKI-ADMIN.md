@@ -328,6 +328,11 @@ A pair is one (subject, slug) written by two configurations; `confident` is true
   support batch (a 4xx whose code or message says so, e.g. `model_not_supported`). Any other failure (bad file name,
   account blocked, rate limit, 5xx) leaves `batchSupported` and `batchSource` untouched. A staff edit of
   `batchSupported` resets `batchSource` to `rule`.
+- **Probes per mode:** `lastProbe` keeps one entry per mode, `lastProbe.sync` and `lastProbe.batch`; its top level is the
+  most recent probe (the §6 shape) for compatibility. A batch probe waiting for DO shows `pending: true`.
+- **selectable** = enabled AND a successful probe in the mode the stage would actually use (`auto`: batch if
+  `batchSupported`, else sync; `sync`: sync; `batch`: batch when supported). A pending (or missing) batch probe never
+  blocks selection: the sync probe decides until the batch result arrives. `PUT /settings` uses the same rule.
 - **Probe.** `lastProbe` always has `ok, mode, toolCalling, latencyMs, usage, at` (§6); without an answer (account
   error, pending or failed batch) `toolCalling` is `"no"` and usage is zero, and the catalog's own `toolCalling` is left
   unchanged. Extra keys: `path` (tool | content-json | json_object | text), and `pending` / `batchId` while a batch

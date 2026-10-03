@@ -80,8 +80,11 @@ public class KbRunEngine {
     private final TransactionTemplate tx;
     private final ObjectMapper json;
     private final Clock clock;
-    private final AtomicBoolean advancing = new AtomicBoolean(false);
-    private final AtomicBoolean again = new AtomicBoolean(false);
+    // Per run: "advance again" requests that arrived while it was advancing.
+    private final java.util.concurrent.ConcurrentHashMap<UUID, AtomicBoolean> again =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.time.Duration LEASE = java.time.Duration.ofMinutes(3);
+    static final java.time.Duration LEASE_RENEW = java.time.Duration.ofSeconds(60);
     private final Object recordLock = new Object();
 
     public KbRunEngine(KbRunRepository runs, KbBatchJobRepository jobs, KbRunRequestRepository requests,
@@ -121,24 +124,55 @@ public class KbRunEngine {
 
     // ==== driving runs ===========================================================
 
-    // Advances every active run as far as it can go now. A call made while
-    // another is advancing returns at once and makes that one loop again (so
-    // a run triggered meanwhile is not left for the next poll).
+    // Advances every active run (synchronously, one after another): tests
+    // and the safety sweep's fallback. Normally runs are advanced one by one
+    // through advance(runId) on the task executor (KbPipelineJob).
     public void advanceActive() {
-        again.set(true);
-        while (again.get() && advancing.compareAndSet(false, true)) {
+        for (var id : activeRunIds()) advance(id);
+    }
+
+    public List<UUID> activeRunIds() {
+        return inTx(() -> runs.findByStatusIn(ACTIVE).stream().map(KbRun::getId).toList());
+    }
+
+    // Advances one run as far as it can go now (through sync stages and the
+    // code-only steps; stops when it waits for a batch or ends). One advancer
+    // per run: a DB lease (V37, renewed every minute while advancing); a call
+    // that finds the run busy only asks the holder to loop once more, so a
+    // kick is never lost. False when another advancer holds the run.
+    public boolean advance(UUID runId) {
+        var flag = again.computeIfAbsent(runId, k -> new AtomicBoolean());
+        flag.set(true);
+        var token = UUID.randomUUID().toString();
+        if (!takeLease(runId, token)) return false;
+        var heartbeat = Thread.ofVirtual().start(() -> {
             try {
-                again.set(false);
-                var active = inTx(() -> runs.findByStatusIn(ACTIVE).stream().map(KbRun::getId).toList());
-                for (var id : active) {
-                    for (int i = 0; i < MAX_STEPS && step(id); i++) {
-                        // keep going
-                    }
+                while (!Thread.currentThread().isInterrupted()) {
+                    Thread.sleep(LEASE_RENEW.toMillis());
+                    takeLease(runId, token);
                 }
-            } finally {
-                advancing.set(false);
+            } catch (InterruptedException ignored) {
+                // done
             }
+        });
+        try {
+            while (flag.getAndSet(false)) {
+                for (int i = 0; i < MAX_STEPS && step(runId); i++) {
+                    // keep going
+                }
+            }
+        } finally {
+            heartbeat.interrupt();
+            inTxVoid(() -> runs.releaseLease(runId, token));
         }
+        if (flag.get()) return advance(runId);   // a kick arrived while releasing
+        again.remove(runId, flag);
+        return true;
+    }
+
+    private boolean takeLease(UUID runId, String token) {
+        var now = now();
+        return inTx(() -> runs.takeLease(runId, token, now.plus(LEASE), now)) == 1;
     }
 
     // One transition; false when the run has to wait (or is over/blocked).

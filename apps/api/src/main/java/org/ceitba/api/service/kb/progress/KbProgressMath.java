@@ -141,6 +141,9 @@ public final class KbProgressMath {
                 inFlight = 0;
             }
 
+            // Sync jobs mark every row submitted up front; only `concurrency`
+            // of them are actually in flight, the rest are queued.
+            if (!openBatch && "sync".equals(mode)) inFlight = Math.min(inFlight, concurrency);
             if (ended) inFlight = 0;   // abandoned when the run ended
 
             String status;

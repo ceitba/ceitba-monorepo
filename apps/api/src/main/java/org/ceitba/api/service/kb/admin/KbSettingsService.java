@@ -239,7 +239,7 @@ public class KbSettingsService {
         }
         for (var e : chosen.entrySet()) {
             if (e.getValue().equals(previous.get(e.getKey()))) continue;
-            checkModel(e.getKey(), e.getValue());
+            checkModel(e.getKey(), e.getValue(), merged.executionMode());
         }
         var overrides = merged.subjectOverrides();
         if (!overrides.isObject()) throw new ValidationException("subjectOverrides", overrides, "must be an object");
@@ -251,7 +251,7 @@ public class KbSettingsService {
                 var v = o.getValue().path(f);
                 if (v.isMissingNode() || v.isNull()) continue;
                 var prev = before.subjectOverrides().path(o.getKey()).path(f);
-                if (!v.equals(prev)) checkModel("subjectOverrides." + o.getKey() + "." + f, v.asText());
+                if (!v.equals(prev)) checkModel("subjectOverrides." + o.getKey() + "." + f, v.asText(), merged.executionMode());
                 chosen.put("subjectOverrides." + o.getKey() + "." + f, v.asText());
             }
         }
@@ -291,11 +291,15 @@ public class KbSettingsService {
         }
     }
 
-    void checkModel(String field, String id) {
+    void checkModel(String field, String id, String executionMode) {
         var m = models.findById(id)
             .orElseThrow(() -> new ValidationException(field, id, "not in the model catalog"));
         if (!m.isEnabled()) throw new ValidationException(field, id, "is disabled in the catalog");
-        if (!m.probeSucceeded()) throw new ValidationException(field, id, "has no successful probe yet");
+        var mode = m.modeFor(executionMode);
+        if (!m.selectableIn(mode)) {
+            throw new ValidationException(field, id, "has no successful " + mode.toLowerCase(java.util.Locale.ROOT)
+                + " probe yet");
+        }
     }
 
     private KbSettingsResponse response(ObjectNode stored, KbPipelineSettingsRow row, KbSettingsResponse.CostImpact impact) {

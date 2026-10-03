@@ -449,8 +449,13 @@ public class KbEvalService implements KbRunHandler {
                             : isWritten && (v.has("finalErrors") ? v.path("finalErrors").isEmpty() : v.path("firstErrors").isEmpty());
                         if (isValid) valid++;
                     }
+                    // While WRITE runs, pages are only in the request rows.
+                    var cfgPrefix = target(c.key(), null) + "#";
+                    int answered = (int) rows.stream().filter(x -> x.stage().equals("WRITE") && x.status().equals("DONE")
+                        && x.subjectId().equals(s.getKey()) && x.target().startsWith(cfgPrefix)).count();
                     perSubject.add(new KbEvalDtos.SubjectResult(s.getKey(), subjectNames.get(s.getKey()),
-                        subjectStatus(run, s.getValue()), s.getValue().path("operations").size(), written, valid,
+                        subjectStatus(run, s.getValue()), s.getValue().path("operations").size(), Math.max(written, answered),
+                        valid,
                         s.getValue().path("metrics"), pageList));
                 });
                 var prefix = target(c.key(), null);

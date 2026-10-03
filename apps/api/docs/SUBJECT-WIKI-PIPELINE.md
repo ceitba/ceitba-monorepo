@@ -170,8 +170,15 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
 - **Reasoning models.** Per-stage `reasoning_effort` (settings `reasoningEffort`) is sent only to catalog models with
   `supportsReasoningEffort`; `max_tokens` per stage defaults to 4000 / 6000 / 12000 / 12000.
 - **Dry run** stops after PLAN (operations are shown, nothing is written).
-- **Poller** (`KB_POLL_INTERVAL`) is always on so manual runs and evals progress; `KB_PIPELINE_ENABLED` (or the
-  settings' `enabled`) only gates the weekly cron. `kb.pipeline.background=false` turns all background work off (tests).
+- **Advancing runs:** a run or eval is advanced **as soon as it is created** (`POST /pipeline/runs`, dry runs included,
+  `POST /evals`, approve-cost), on the task executor, one task per run, so a long sync stage of one run never delays
+  another. Sync stages and the code-only steps (LINK, VALIDATE, PUBLISH) flow straight into the next stage. The
+  **batch poller** (`KB_BATCH_POLL_INTERVAL`, default `PT1M`) only checks runs with a SUBMITTED DO batch (and pending
+  batch probes). A **safety sweep** (`KB_POLL_INTERVAL`, default `PT10M`, and once at startup) kicks every active run to
+  resume anything a restart interrupted. Each run has one advancer at a time: a lease on `kb_run` (`lease_owner`,
+  `lease_until`, V37) taken with a conditional UPDATE and renewed every minute; a kick that finds the run busy makes the
+  holder loop once more. `KB_PIPELINE_ENABLED` (or the settings' `enabled`) only gates the weekly cron.
+  `kb.pipeline.background=false` turns all background work off (tests drive the engine).
 - **Per-subject overrides** live in the settings (`subjectOverrides`) instead of a separate table.
 - **Cost limit.** A run whose next stage would exceed `weeklyCostLimitUsd` goes to `BLOCKED_BY_COST_LIMIT`;
   `POST /v1/staff/kb/pipeline/runs/{id}/approve-cost` releases it once.

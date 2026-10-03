@@ -43,6 +43,29 @@ class SyncPipelineIT extends KbPipelineAcceptanceIT {
             run.path("id").asText())).contains("DIGEST", "finishedAt");
     }
 
+    @org.springframework.beans.factory.annotation.Autowired org.ceitba.api.repository.kb.KbRunRepository runRepo;
+    @org.springframework.beans.factory.annotation.Autowired org.springframework.transaction.support.TransactionTemplate tx;
+
+    // One advancer per run: a second lease is refused until released or expired.
+    @Test
+    void runLeaseGuardsDoubleAdvancement() throws Exception {
+        var id = java.util.UUID.fromString(run().path("id").asText());
+        var now = java.time.OffsetDateTime.now();
+        java.util.function.Supplier<Integer> takeA = () -> tx.execute(s -> runRepo.takeLease(id, "a", now.plusMinutes(3), now));
+        java.util.function.Supplier<Integer> takeB = () -> tx.execute(s -> runRepo.takeLease(id, "b", now.plusMinutes(3), now));
+        assertThat(takeA.get()).isEqualTo(1);
+        assertThat(takeB.get()).isZero();
+        assertThat(takeA.get()).isEqualTo(1);   // renewal by the holder
+        tx.execute(s -> runRepo.releaseLease(id, "a"));
+        assertThat(takeB.get()).isEqualTo(1);
+        // An expired lease can be taken over.
+        var later = now.plusMinutes(10);
+        Integer takenOver = tx.execute(s -> runRepo.takeLease(id, "c", later.plusMinutes(3), later));
+        assertThat(takenOver).isEqualTo(1);
+        tx.execute(s -> runRepo.releaseLease(id, "c"));
+        assertThat(engine.advance(id)).isTrue();   // free again: advances (nothing to do)
+    }
+
     // Reasoning effort reaches the wire for GLM (supportsReasoningEffort).
     @Test
     void reasoningEffortIsSent() throws Exception {
