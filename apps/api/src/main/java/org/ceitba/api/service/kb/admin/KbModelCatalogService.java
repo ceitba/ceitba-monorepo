@@ -176,10 +176,12 @@ public class KbModelCatalogService {
                 probe.put("ok", false);
                 probe.put("pending", true);
                 probe.put("batchId", submitted.batchId());
+                noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
             } catch (org.ceitba.api.external.llm.LlmApiException e) {
                 if (e.status() == 0 || e.status() >= 500 || e.status() == 429) throw e;
                 probe.put("ok", false);
                 probe.put("error", "batch rejected: " + e.getMessage());
+                noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
                 // Only a rejection of this request (400/404/422) says the model
                 // has no batch; 401/402/403 are about the account or the key.
                 batchRejected = e.status() == 400 || e.status() == 404 || e.status() == 422;
@@ -220,6 +222,7 @@ public class KbModelCatalogService {
                 if (res == null) {
                     probe.put("ok", false);
                     probe.put("error", "batch " + info.status() + " without results");
+                    noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
                 } else {
                     fill(probe, res, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
                     recordUsage(id, "BATCH", res);
@@ -242,6 +245,17 @@ public class KbModelCatalogService {
                 log.warn("KB catalog: probe of {} not refreshed: {}", id, e.getMessage());
             }
         }
+    }
+
+    // lastProbe always carries the ADMIN doc §6 fields: without an answer,
+    // toolCalling "no", the elapsed latency and zero usage.
+    private void noAnswer(ObjectNode probe, long latencyMs) {
+        probe.put("toolCalling", "no");
+        probe.put("latencyMs", latencyMs);
+        var u = probe.putObject("usage");
+        u.put("inputTokens", 0);
+        u.put("cachedInputTokens", 0);
+        u.put("outputTokens", 0);
     }
 
     private void fill(ObjectNode probe, LlmOutputParser.LlmResult res, long latencyMs) {

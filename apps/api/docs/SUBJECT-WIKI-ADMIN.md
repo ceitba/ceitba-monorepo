@@ -200,6 +200,20 @@ These complete sections 1–4; the frontend already calls them.
 - **Eval metrics** add `emptyToolCallRate`.
 - `GET /models/{id}/stage-cost?stage=` returns `{ stage, model, mode, expectedWeeklyUsd, low, high, basis }`.
 
+## Date parameters and parameter errors
+
+- Every `from` / `to` query parameter of the staff kb endpoints (today only `GET /costs`; runs, evals and the summary
+  take none) accepts either:
+  - a date `YYYY-MM-DD`, read in America/Argentina/Buenos_Aires: `from` is the start of that day (00:00) and `to` the
+    end of it (23:59:59.999999999), so `from=2026-07-11&to=2026-07-11` is that whole day, both ends inclusive;
+  - a full ISO datetime with offset, e.g. `2026-07-11T00:00:00-03:00` or `2026-07-11T03:00:00Z` (URL-encode the `+` of
+    a positive offset).
+- Defaults: `from` = 30 days ago, `to` = now. `from` after `to` is a 400.
+- A malformed value (or any wrong-typed parameter on these endpoints: a bad UUID, a non-numeric `limit`) is
+  `400 { error: "ValidationError", message: "<param>: ..." }`, never a 500 or a raw conversion message.
+- `GET /costs` rows always carry `key`: the value of the single `groupBy` dimension (§3), or the values joined with
+  `|` in `groupBy` order for several (`"2026-09-28|WRITE"`), next to the named fields of §6.
+
 ## Implementation notes and deviations
 
 - All paths are under `/v1/staff/kb` (STAFF only). Extra: `POST /evals/{id}/cancel`,
@@ -210,7 +224,11 @@ These complete sections 1–4; the frontend already calls them.
   version.
 - **costImpact** is a superset: `{previousWeeklyAvgUsd, projectedWeeklyAvgUsd, previous, projected}` where
   `previous`/`projected` are `forecast.weekly` objects for the current and the new settings.
-- **Probe.** A batch probe on a model without a batch provider (GLM, DeepSeek...) is not attempted: `lastProbe` records
+- **Probe.** `lastProbe` always has `ok, mode, toolCalling, latencyMs, usage, at` (§6); without an answer (account
+  error, pending or failed batch) `toolCalling` is `"no"` and usage is zero, and the catalog's own `toolCalling` is left
+  unchanged. Extra keys: `path` (tool | content-json | json_object | text), and `pending` / `batchId` while a batch
+  probe waits. A batch probe rejected with 400/404/422 sets `batchSupported=false`; 401/402/403 (key or account
+  problems) don't change it. A batch probe on a model without a batch provider (GLM, DeepSeek...) is not attempted: `lastProbe` records
   `{ok:false, mode:"batch", error}` and `batchSupported` stays false. Batch probes complete on the poller
   (`refreshPendingProbes`). Prompt-token overhead differs per provider: the same tiny probe counted 752 prompt tokens
   on Anthropic Haiku vs 240 on GLM (tool schema framing); the forecast uses a flat 1,500-token overhead per request.

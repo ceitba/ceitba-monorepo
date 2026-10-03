@@ -67,6 +67,37 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
     }
 
     @Test
+    void costsAcceptDateOnlyAndIsoDatetimeAndRejectGarbage() throws Exception {
+        run();   // usage rows created now
+        var today = java.time.LocalDate.now(org.ceitba.api.config.ClockConfig.ZONE).toString();
+        var tomorrow = java.time.LocalDate.now(org.ceitba.api.config.ClockConfig.ZONE).plusDays(1).toString();
+        var rows = call(get("/v1/staff/kb/costs?from=" + today + "&to=" + today + "&groupBy=model"), null, 200);
+        assertThat(rows).isNotEmpty();
+        assertThat(rows.get(0).path("key").asText()).isEqualTo(rows.get(0).path("model").asText());
+        assertThat(call(get("/v1/staff/kb/costs?from=" + tomorrow + "&to=" + tomorrow), null, 200)).isEmpty();
+        var weekly = call(get("/v1/staff/kb/costs?from=" + today + "&groupBy=week,stage"), null, 200);
+        assertThat(weekly.get(0).path("key").asText()).isEqualTo(weekly.get(0).path("week").asText() + "|"
+            + weekly.get(0).path("stage").asText());
+        var iso = java.time.OffsetDateTime.now().minusHours(1).toString();
+        assertThat(call(get("/v1/staff/kb/costs").param("from", iso), null, 200)).isNotEmpty();
+        assertThat(call(get("/v1/staff/kb/costs").param("from", today + "T00:00:00-03:00")
+            .param("to", today + "T23:59:59.999-03:00"), null, 200)).isNotEmpty();
+        for (var bad : new String[]{"2026-07-32", "11/07/2026", "nope"}) {
+            var err = call(get("/v1/staff/kb/costs?from=" + bad), null, 400);
+            assertThat(err.path("error").asText()).isEqualTo("ValidationError");
+            assertThat(err.path("message").asText()).contains("from").doesNotContain("Failed to convert");
+        }
+        assertThat(call(get("/v1/staff/kb/costs?to=x"), null, 400).path("error").asText()).isEqualTo("ValidationError");
+        call(get("/v1/staff/kb/costs?from=" + tomorrow + "&to=" + today), null, 400);
+        // Other typed parameters: a clean ValidationError too.
+        var uuid = call(get("/v1/staff/kb/evals/leaderboard?setId=not-a-uuid"), null, 400);
+        assertThat(uuid.path("error").asText()).isEqualTo("ValidationError");
+        assertThat(uuid.path("message").asText()).startsWith("setId:").doesNotContain("Failed to convert");
+        assertThat(call(get("/v1/staff/kb/pipeline/runs?limit=abc"), null, 400).path("error").asText())
+            .isEqualTo("ValidationError");
+    }
+
+    @Test
     void catalogForecastAndStageCost() throws Exception {
         var models = call(get("/v1/staff/kb/models"), null, 200);
         JsonNode haiku = null;

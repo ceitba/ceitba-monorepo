@@ -12,7 +12,6 @@ import org.ceitba.api.service.kb.admin.KbForecastService;
 import org.ceitba.api.service.kb.admin.KbModelCatalogService;
 import org.ceitba.api.service.kb.admin.KbSettingsService;
 import org.ceitba.api.web.auth.CurrentUser;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -132,11 +130,14 @@ public class StaffKbAdminController {
     @GetMapping("/costs")
     @Operation(summary = "Recorded LLM usage grouped by week, model, stage, subject (or week,stage / week,model)")
     public List<KbCostRowResponse> costs(
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+        @RequestParam(required = false) String from,
+        @RequestParam(required = false) String to,
         @RequestParam(defaultValue = "week") String groupBy,
         @RequestParam(defaultValue = "false") boolean reprice) {
-        return costs.costs(from, to, groupBy, reprice);
+        var f = KbDateParam.from(from);
+        var t = KbDateParam.to(to);
+        if (f != null && t != null && f.isAfter(t)) throw new ValidationException("from", from, "must not be after to");
+        return costs.costs(f, t, groupBy, reprice);
     }
 
     @GetMapping("/costs/summary")

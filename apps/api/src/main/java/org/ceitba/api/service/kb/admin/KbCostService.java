@@ -56,6 +56,20 @@ public class KbCostService {
 
     // groupBy: one or more of week, stage, model, subject (comma separated).
     @Transactional(readOnly = true)
+    // Values of the requested dimensions in groupBy order, joined with "|".
+    private static String rowKey(List<String> dims, List<String> key) {
+        var parts = new ArrayList<String>();
+        for (var d : dims) {
+            parts.add(switch (d) {
+                case "week" -> key.get(0);
+                case "stage" -> key.get(1);
+                case "model" -> key.get(2);
+                default -> key.get(3);
+            });
+        }
+        return String.join("|", parts);
+    }
+
     public List<KbCostRowResponse> costs(OffsetDateTime from, OffsetDateTime to, String groupBy, boolean reprice) {
         var now = OffsetDateTime.now(clock);
         var f = from == null ? now.minusDays(30) : from;
@@ -89,7 +103,8 @@ public class KbCostService {
             .thenComparing(KbCostRowResponse::model, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(KbCostRowResponse::subjectId, Comparator.nullsFirst(Comparator.naturalOrder()));
         return tokens.entrySet().stream()
-            .map(e -> new KbCostRowResponse(e.getKey().get(0), e.getKey().get(1), e.getKey().get(2), e.getKey().get(3),
+            .map(e -> new KbCostRowResponse(rowKey(dims, e.getKey()), e.getKey().get(0), e.getKey().get(1),
+                e.getKey().get(2), e.getKey().get(3),
                 e.getValue()[0], e.getValue()[1], e.getValue()[2], usd(cost.get(e.getKey())), e.getValue()[3]))
             .sorted(order)
             .toList();
