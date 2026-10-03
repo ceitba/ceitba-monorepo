@@ -307,7 +307,7 @@ class MinioPresignedUploadIT {
     // Drive sync copies (drive/): written server side straight to MinIO
     // (internal endpoint), never anonymously readable through the proxy,
     // served only by signed GETs, and deletable by the service user (which
-    // cannot delete anything else).
+    // can also delete kb/ pipeline payloads, nothing else).
     @Test
     void driveObjects_serverSidePutSignedGetDelete_neverAnonymous() throws Exception {
         var internal = "http://" + MINIO.getHost() + ":" + MINIO.getMappedPort(9000);
@@ -338,7 +338,7 @@ class MinioPresignedUploadIT {
             assertThat(get(storage.presignGet(key, Duration.ofMinutes(5))).statusCode()).isEqualTo(404);
             storage.delete(key);   // deleting a missing object is fine
 
-            // Outside drive/ the service user still cannot delete.
+            // Outside drive/ and kb/ the service user still cannot delete.
             byte[] png = randomBytes(256);
             var signedUpload = sign("/v1/media/sign-upload", "image/png", png.length, as("boss@itba.edu.ar", "USER", "STAFF"));
             assertThat(upload(signedUpload, png, Map.of()).statusCode()).isEqualTo(200);
