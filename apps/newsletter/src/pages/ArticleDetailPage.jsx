@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import CategoryBadge from '../components/CategoryBadge'
 import { useCategoryLabel } from '../hooks/useCategoryLabel'
 import ArticleCard from '../components/ArticleCard'
+import ArticleBody from '../components/article/ArticleBody'
 import VoteButtons from '../components/VoteButtons'
 import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
@@ -117,13 +118,7 @@ export default function ArticleDetailPage() {
           </div>
 
           {/* Body */}
-          <div className="mt-8 flex flex-col gap-5">
-            {(article.body ?? [article.excerpt]).map((para, i) => (
-              <p key={i} className="font-body text-body text-ink-primary leading-[1.75]">
-                {para}
-              </p>
-            ))}
-          </div>
+          <ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} className="mt-8" />
 
           {/* Vote bar — counts hidden from public */}
           <div className="mt-10 pt-6 border-t border-border">

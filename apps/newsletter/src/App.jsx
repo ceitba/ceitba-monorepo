@@ -15,7 +15,6 @@ import OrgPortalPage       from './pages/OrgPortalPage'
 import AdminLoginPage             from './pages/admin/AdminLoginPage'
 import AdminCallbackPage          from './pages/admin/AdminCallbackPage'
 import AdminArticlesPage          from './pages/admin/AdminArticlesPage'
-import AdminArticleFormPage       from './pages/admin/AdminArticleFormPage'
 import AdminEventsPage            from './pages/admin/AdminEventsPage'
 import AdminEventFormPage         from './pages/admin/AdminEventFormPage'
 import AdminAnalyticsPage         from './pages/admin/AdminAnalyticsPage'
@@ -28,6 +27,8 @@ import AdminOrganizationsListPage     from './pages/admin/AdminOrganizationsList
 // stores are never loaded while the flag is off.
 const ContributorLayout             = lazy(() => import('./layouts/ContributorLayout'))
 const ContributorAuthGuard          = lazy(() => import('./admin/ContributorAuthGuard'))
+// The article editor bundles TipTap; keep it out of the public chunk.
+const AdminArticleFormPage          = lazy(() => import('./pages/admin/AdminArticleFormPage'))
 const AdminSuggestionsPage          = lazy(() => import('./pages/admin/AdminSuggestionsPage'))
 const AdminSuggestionReviewPage     = lazy(() => import('./pages/admin/AdminSuggestionReviewPage'))
 const ContributorSuggestionsPage    = lazy(() => import('./pages/contributor/ContributorSuggestionsPage'))
@@ -56,8 +57,8 @@ export default function App() {
       >
         <Route index element={<Navigate to="articles" replace />} />
         <Route path="articles"                       element={<AdminArticlesPage />} />
-        <Route path="articles/new"                   element={<AdminArticleFormPage />} />
-        <Route path="articles/:id/edit"              element={<AdminArticleFormPage />} />
+        <Route path="articles/new"                   element={<Suspense fallback={null}><AdminArticleFormPage /></Suspense>} />
+        <Route path="articles/:id/edit"              element={<Suspense fallback={null}><AdminArticleFormPage /></Suspense>} />
         <Route path="events"                         element={<AdminEventsPage />} />
         <Route path="events/new"                     element={<AdminEventFormPage />} />
         <Route path="events/:id/edit"                element={<AdminEventFormPage />} />

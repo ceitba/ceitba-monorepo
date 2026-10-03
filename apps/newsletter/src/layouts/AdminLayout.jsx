@@ -215,13 +215,7 @@ export default function AdminLayout() {
           </button>
           <Breadcrumb />
           <div className="ml-auto">
-            <Link
-              to="/admin/articles/new"
-              className="hidden sm:inline-flex items-center gap-2 min-h-[36px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              {t('admin.articles.new')}
-            </Link>
+            <TopbarAction />
           </div>
         </header>
 
@@ -231,6 +225,25 @@ export default function AdminLayout() {
         </main>
       </div>
     </div>
+  )
+}
+
+// The primary "new …" shortcut follows the section: events get "Nuevo
+// evento", and it is hidden inside an editor, where it only read as the
+// title of the page being edited.
+function TopbarAction() {
+  const { pathname } = useLocation()
+  const { t } = useTranslation()
+  if (/\/(new|edit)$/.test(pathname)) return null
+  const events = pathname.startsWith('/admin/events')
+  return (
+    <Link
+      to={events ? '/admin/events/new' : '/admin/articles/new'}
+      className="hidden sm:inline-flex items-center gap-2 min-h-[36px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      {events ? t('admin.events.new') : t('admin.articles.new')}
+    </Link>
   )
 }
 
