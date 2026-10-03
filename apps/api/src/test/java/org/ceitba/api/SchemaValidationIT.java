@@ -1,5 +1,6 @@
 package org.ceitba.api;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.repository.CareerRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.CommissionRepository;
@@ -23,9 +24,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,11 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 // V1__baseline.sql, then Hibernate validates every entity mapping against
 // the schema. If any @Entity / @Column is wrong, this test fails on startup.
 @SpringBootTest
-@Testcontainers
 class SchemaValidationIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry registry) {

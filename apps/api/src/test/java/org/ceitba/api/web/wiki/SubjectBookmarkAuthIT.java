@@ -1,5 +1,6 @@
 package org.ceitba.api.web.wiki;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.repository.SubjectRepository;
 import org.ceitba.api.repository.UserRepository;
@@ -13,9 +14,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -31,15 +29,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // (first authenticated request creates a User row).
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
     "auth.allowed-emails=external@gmail.com"
 })
 class SubjectBookmarkAuthIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

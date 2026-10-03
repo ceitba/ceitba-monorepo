@@ -1,5 +1,6 @@
 package org.ceitba.api.web.auth;
 
+import org.ceitba.api.support.SharedPostgres;
 import jakarta.servlet.http.Cookie;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
@@ -13,9 +14,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.OffsetDateTime;
 
@@ -30,7 +28,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // ceitba_staff row. DevLoginDisabledIT covers the 404 otherwise.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @ActiveProfiles("dev")
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
@@ -39,8 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class DevLoginIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {
