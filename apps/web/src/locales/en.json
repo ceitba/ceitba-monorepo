@@ -31,7 +31,9 @@
       "users": "Users",
       "organizations": "Organizations",
       "corrections": "Schedule corrections",
-      "drive": "Notes"
+      "drive": "Notes",
+      "wikiAi": "Wiki AI",
+      "wikiAiUnseen": "{{count}} updates in Wiki AI"
     },
     "staff": {
       "year": "Year",

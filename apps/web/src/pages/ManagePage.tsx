@@ -7,9 +7,14 @@ import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
 // Apuntes moderation pulls in the Drive/wiki APIs and badges: load on demand.
 const ManageDriveSection = lazy(() => import('./manage/ManageDriveSection'))
+const ManageWikiAiSection = lazy(() => import('./manage/ManageWikiAiSection'))
+// Watches evals/runs seen RUNNING and toasts when they finish, from any tab.
+const JobWatcher = lazy(() => import('./manage/wikiAdmin/JobWatcher'))
+import { activeJobs, unseenCount } from './manage/wikiAdmin/jobWatchStore'
+import { useJobWatch } from './manage/wikiAdmin/useJobWatch'
 import type { OrganizationSummary } from '../api/admin'
 
-type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive'
+type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive' | 'wikiAi'
 
 export default function ManagePage() {
   const { t } = useTranslation()
@@ -18,6 +23,9 @@ export default function ManagePage() {
   // "Agregar miembros" after creating an org). Picking a tab from the nav
   // clears it.
   const [addingTo, setAddingTo] = useState<OrganizationSummary | undefined>(undefined)
+  const watch = useJobWatch()
+  const wikiUnseen = unseenCount()
+  const watching = activeJobs().length > 0 || watch.toasts.length > 0
 
   function selectTab(next: Tab) {
     setAddingTo(undefined)
@@ -36,6 +44,7 @@ export default function ManagePage() {
     { id: 'organizations', label: t('manage.tabs.organizations') },
     { id: 'corrections', label: t('manage.tabs.corrections') },
     { id: 'drive', label: t('manage.tabs.drive') },
+    { id: 'wikiAi', label: t('manage.tabs.wikiAi') },
   ]
 
   return (
@@ -63,6 +72,9 @@ export default function ManagePage() {
             }`}
           >
             {it.label}
+            {it.id === 'wikiAi' && wikiUnseen > 0 && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-accent align-middle" aria-label={t('manage.tabs.wikiAiUnseen', { count: wikiUnseen })} />
+            )}
           </button>
         ))}
       </nav>
@@ -75,6 +87,16 @@ export default function ManagePage() {
       {tab === 'drive' && (
         <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
           <ManageDriveSection />
+        </Suspense>
+      )}
+      {tab === 'wikiAi' && (
+        <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
+          <ManageWikiAiSection />
+        </Suspense>
+      )}
+      {watching && (
+        <Suspense fallback={null}>
+          <JobWatcher onOpen={() => selectTab('wikiAi')} />
         </Suspense>
       )}
     </main>
