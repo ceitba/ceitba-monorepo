@@ -20,18 +20,30 @@ public final class KbCopyDetector {
 
     // The first copied run (as text, up to WINDOW words) or null.
     public static String findCopy(String pageBody, List<String> sourceTexts) {
+        var sets = new java.util.ArrayList<Set<Long>>();
+        for (var source : sourceTexts) if (source != null) sets.add(shinglesOf(source));
+        return findCopyIn(pageBody, sets);
+    }
+
+    // Same against precomputed shingle sets (shinglesOf): an import builds
+    // each source's set once and reuses it for every page citing it.
+    public static String findCopyIn(String pageBody, List<Set<Long>> sourceShingles) {
         var page = words(stripLinks(pageBody));
         if (page.length < WINDOW) return null;
-        for (var source : sourceTexts) {
-            if (source == null) continue;
-            var src = words(source);
-            if (src.length < WINDOW) continue;
-            var shingles = shingles(src);
+        for (var shingles : sourceShingles) {
+            if (shingles.isEmpty()) continue;
             for (int i = 0; i + WINDOW <= page.length; i++) {
                 if (shingles.contains(hash(page, i))) return String.join(" ", java.util.Arrays.copyOfRange(page, i, i + WINDOW));
             }
         }
         return null;
+    }
+
+    // Hashes of every WINDOW-word run of a source text (empty when shorter).
+    public static Set<Long> shinglesOf(String sourceText) {
+        if (sourceText == null) return Set.of();
+        var src = words(sourceText);
+        return src.length < WINDOW ? Set.of() : shingles(src);
     }
 
     static String[] words(String text) {

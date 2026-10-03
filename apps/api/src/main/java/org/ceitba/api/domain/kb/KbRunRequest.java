@@ -81,6 +81,11 @@ public class KbRunRequest {
     @Column(name = "latency_ms")
     private Integer latencyMs;
 
+    // DIGEST: fingerprint of the content actually sent (V41); the digest is
+    // stored under it even if the file changed after DETECT.
+    @Column(name = "content_fingerprint", length = 64)
+    private String contentFingerprint;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -118,9 +123,13 @@ public class KbRunRequest {
     public int getTokensIn() { return tokensIn; }
     public int getTokensOut() { return tokensOut; }
 
+    // Sent (again): a resubmission clears the previous attempt's answer
+    // time, so the sync executor picks it up.
     public void submitted(UUID batchJobId) {
         this.batchJobId = batchJobId;
         this.status = "SUBMITTED";
+        this.completedAt = null;
+        this.latencyMs = null;
     }
 
     public void done(JsonNode result, int in, int out, int cached, String execPath) {
@@ -160,5 +169,7 @@ public class KbRunRequest {
     }
 
     public OffsetDateTime getCompletedAt() { return completedAt; }
+    public String getContentFingerprint() { return contentFingerprint; }
+    public void setContentFingerprint(String fingerprint) { this.contentFingerprint = fingerprint; }
     public Integer getLatencyMs() { return latencyMs; }
 }

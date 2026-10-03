@@ -28,6 +28,14 @@ public interface KbPageRepository extends JpaRepository<KbPage, UUID> {
     List<String> findSubjectIdsWithPages(@Param("ids") Collection<String> ids,
                                          @Param("statuses") Collection<KbPageStatus> statuses);
 
+    // Projections without page bodies (forecast, change detection).
+    @Query("select distinct p.subjectId from KbPage p where p.status <> :status")
+    List<String> findSubjectIdsWithStatusNot(@Param("status") KbPageStatus status);
+
+    // [subjectId, sources (UUID[])] of every page with one of `statuses`.
+    @Query("select p.subjectId, p.sources from KbPage p where p.status in :statuses")
+    List<Object[]> findSubjectSources(@Param("statuses") Collection<KbPageStatus> statuses);
+
     // Takedown: PUBLISHED pages citing any of the files. `ids` is a Postgres
     // array literal ("{uuid,uuid}"): JPQL has no array operators.
     @Query(value = """

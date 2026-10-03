@@ -45,4 +45,5 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.30 kb_batch_submission | V38 |
 | V4.31 capabilities | V39 |
 | V4.32 drive_kb_privacy | V40 |
+| V4.33 kb_pipeline_review_fixes | V41 |
 | V4.34 drive_community_sources | V42 |

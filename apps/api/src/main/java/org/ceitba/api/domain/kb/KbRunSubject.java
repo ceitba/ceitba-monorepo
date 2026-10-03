@@ -105,6 +105,7 @@ public class KbRunSubject {
         this.status = "FAILED";
         this.error = error;
     }
+    public void setError(String error) { this.error = error; }
     public void setOperations(JsonNode operations) { this.operations = operations; }
     public void setDrafts(JsonNode drafts) { this.drafts = drafts; }
     public void setOutcome(JsonNode accepted, JsonNode rejected, JsonNode deleted) {

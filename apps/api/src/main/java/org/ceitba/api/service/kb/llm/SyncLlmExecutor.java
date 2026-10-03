@@ -127,8 +127,17 @@ public class SyncLlmExecutor {
             boolean hasTool = line.params().path("tools").size() > 0;
             if (!hasTool || first.toolInput() != null) return first;
             if (first.text() != null && first.text().strip().startsWith("---")) return first;
-            var second = LlmOutputParser.fromChatCompletion(line.customId(),
-                call(KbChatPayloads.chatBody(line.params(), true, json), attempts), json);
+            LlmOutputParser.LlmResult second;
+            try {
+                second = LlmOutputParser.fromChatCompletion(line.customId(),
+                    call(KbChatPayloads.chatBody(line.params(), true, json), attempts), json);
+            } catch (LlmApiException e) {
+                // The fallback failed: keep the first answer as when the
+                // fallback brings no JSON, with its (paid) tokens.
+                log.warn("KB pipeline: json_object fallback of {} failed: HTTP {}", line.customId(), e.status());
+                return new LlmOutputParser.LlmResult(line.customId(), first.ok(), null, first.text(), first.tokensIn(),
+                    first.tokensOut(), first.cachedTokens(), "text", first.error());
+            }
             var usageIn = first.tokensIn() + second.tokensIn();
             var usageOut = first.tokensOut() + second.tokensOut();
             var cached = first.cachedTokens() + second.cachedTokens();
