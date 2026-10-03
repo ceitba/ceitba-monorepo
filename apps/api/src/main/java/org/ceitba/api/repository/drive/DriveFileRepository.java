@@ -32,6 +32,27 @@ public interface DriveFileRepository extends JpaRepository<DriveFile, UUID> {
 
     List<DriveFile> findByKindAndRemovedAtIsNull(DriveFileKind kind);
 
+    // Published files with text whose Drive modifiedTime is after `since`
+    // (the forecast's weekly change rate).
+    @Query("""
+        select count(f) from DriveFile f
+        where f.publication = org.ceitba.api.domain.drive.DrivePublication.PUBLISHED
+          and f.textContent is not null and f.driveModifiedAt >= :since
+        """)
+    long countPublishedModifiedSince(@Param("since") OffsetDateTime since);
+
+    // Wiki pipeline inputs: [id, effectiveSubjectId, contentFingerprint,
+    // academicYear, name, textLength] of published files with usable text.
+    @Query("""
+        select f.id, f.effectiveSubjectId, f.contentFingerprint, f.academicYear, f.name, length(f.textContent)
+        from DriveFile f
+        where f.publication = org.ceitba.api.domain.drive.DrivePublication.PUBLISHED
+          and f.kind <> org.ceitba.api.domain.drive.DriveFileKind.FOLDER
+          and f.effectiveSubjectId is not null and f.textContent is not null
+          and length(f.textContent) >= :minChars
+        """)
+    List<Object[]> pipelineInputs(@Param("minChars") int minChars);
+
     // Rows of the same Drive item in the student's OTHER sources (cross-source moves).
     @Query("""
         select f from DriveFile f, DriveSource s
