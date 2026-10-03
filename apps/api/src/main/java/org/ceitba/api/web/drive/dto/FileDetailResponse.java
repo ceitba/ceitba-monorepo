@@ -20,6 +20,8 @@ public record FileDetailResponse(
     String originalMimeType,
     boolean exportBlocked,
     String driveUrl,
+    Integer academicYear,
+    String academicYearSource,
     String subjectId,
     String subjectName,
     AuthorResponse author,

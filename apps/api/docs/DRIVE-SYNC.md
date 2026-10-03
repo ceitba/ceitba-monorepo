@@ -58,6 +58,20 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
   from the suggestion it inherits from its folders. `accept-suggestions` applies every suggestion, so a matched folder
   covers its unmatched children.
 
+## Academic year
+
+Sources show the year the material was made, not their last update (notes and TPs go stale as courses change).
+`academicYear` is computed on every sync and PATCH, first match wins (`academicYearSource`):
+
+1. `USER` — set by the student on this item (`PATCH … { academicYear }`; `ownAcademicYear` on `TreeItem`).
+2. `INHERITED` — set by the student on an ancestor folder (`ownAcademicYear` is `null`: show "Automático"
+   relative to the item, the year comes from the folder).
+3. `NAME` — a 4-digit year 2000..current year as its own token in the file name, else in the nearest folder name on
+   its path ("Resumen Quimica ingreso 2020", "Parciales 2019"); also `1C'21`, `2C-22`, `cuatri-20`. A number followed
+   by a quantity word ("Tabla 2000 filas") is not a year.
+4. `DRIVE` — the year of min(createdTime, modifiedTime) in America/Argentina/Buenos_Aires. `createdTime` is now
+   synced (`drive_created_at`; existing rows are filled by the next walk).
+
 ## Sync and change detection
 
 - Identity is `(source_id, drive_id)`; our file `id` is stable across renames and moves.
@@ -103,7 +117,7 @@ Drive-specific `error` codes:
 | `POST /v1/me/drive/sources/{id}/sync` | — | 202 (max once per 5 min per source) |
 | `POST /v1/me/drive/sources/{id}/accept-suggestions` | — | `{ applied }` |
 | `POST /v1/me/drive/sources/{id}/recompute-suggestions` | — | `{ source: Source, items: TreeItem[] }` (fresh tree, with the caller's current plan) |
-| `PATCH /v1/me/drive/files/{fileId}` | `{ subjectId?, hidden? }` (`subjectId: ""` clears) | `TreeItem` |
+| `PATCH /v1/me/drive/files/{fileId}` | `{ subjectId?, hidden?, academicYear? }` (`subjectId: ""` clears; `academicYear: null` = automatic again, absent = unchanged; 1990..current year) | `TreeItem` |
 
 `consentVersion` must equal `GET /v1/me/drive/info`'s. New sources start `PENDING_REVIEW`, or `ACTIVE` when the
 student already has an `ACTIVE` one. `accept-suggestions` applies suggestions top-down (a matched folder covers its
@@ -112,7 +126,8 @@ files). The `429` carries `Retry-After` (seconds).
 `Source` = `{ id, rootName, status, anonymous, lastSyncedAt, lastError, fileCount, publishedCount, needsReviewCount, createdAt }`
 
 `TreeItem` = `{ id, parentId, name, kind, subjectId, subjectName, effectiveSubjectId, effectiveSubjectName,
-suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError, exportBlocked, driveUrl }`
+suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError, exportBlocked, driveUrl,
+academicYear, academicYearSource, ownAcademicYear }`
 — a flat list; `parentId` is another item's `id`, or `null` for direct children of the shared folder.
 
 ### Reader (logged in)
@@ -127,7 +142,7 @@ suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, 
 | `PUT /v1/wiki/files/{fileId}/report` | body `{ reason, comment }`, reason ∈ `COPYRIGHT, PERSONAL_DATA, WRONG_SUBJECT, SPAM, OTHER` → 204 |
 
 `FileSummary` = `{ id, name, kind, path, sizeBytes, driveModifiedAt, publishedAt, hasHtml, hasPdf, hasOriginal,
-pdfMimeType, originalMimeType, exportBlocked, driveUrl }`
+pdfMimeType, originalMimeType, exportBlocked, driveUrl, academicYear, academicYearSource }`
 (`path` = folder path inside the source, e.g. `"Comunicación/Trabajo Plasticos"`).
 
 `html` is sanitized (no style/class/script/iframe) after turning the export's CSS classes into markup: real nested
@@ -169,7 +184,8 @@ Readers only see `PUBLISHED` files. The file's owner student and STAFF can open 
 `StaffSource` = `Source` + `{ ownerName, ownerEmail }`
 
 `StaffFile` = `{ id, name, kind, sourceId, sourceRootName, ownerEmail, sharerName, sharerEmail,
-effectiveSubjectId, effectiveSubjectName, publication, reportCount, reports: [{ reason, comment, createdAt }], driveModifiedAt }`
+effectiveSubjectId, effectiveSubjectName, publication, reportCount, reports: [{ reason, comment, createdAt }], driveModifiedAt,
+academicYear, academicYearSource }`
 
 ## Pinned subjects
 

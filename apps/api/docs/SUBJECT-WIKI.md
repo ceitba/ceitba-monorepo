@@ -79,7 +79,8 @@ Readers (logged in, allowlisted):
 
 `PageSummary` = `{ id, slug, title, type, summary, aliases }`
 
-`Page` = `PageSummary` + `{ subjectId, subjectName, markdown (body without frontmatter), sources: [{ id, name, kind, author: { name, anonymous } }],
+`Page` = `PageSummary` + `{ subjectId, subjectName, markdown (body without frontmatter), sources: [{ id, name, kind, author: { name, anonymous }, academicYear, academicYearSource }],
+sourceYears: { min, max }, stale,
 links: [{ raw, subjectId, slug, anchor, resolved, title }], backlinks: [{ subjectId, subjectName, slug, title }], generator, generatedAt, revision, reportedByMe }`
 
 `links` maps every wikilink target in the body (`raw` = the inner text before `|` including any `#anchor`, e.g. `81.07/balance`, `van-y-tir#como-se-calcula`, `81.07`;
@@ -107,6 +108,8 @@ endpoint using a dev-login staff session cookie, and prints accepted/rejected pa
 
 ## Implementation notes (as built)
 
+- `sourceYears` = min/max `academicYear` of the listed sources (both `null` without any); `stale` = `max` is older than
+  current year − `KB_STALE_YEARS` (default 3). The kb export can read `wiki.drive_file.academic_year`.
 - `Page` also carries `status` (`PUBLISHED | HIDDEN | REMOVED`; readers only ever get `PUBLISHED`). `type` is lowercase
   (`index | topic | concept`) everywhere. `generatedAt` is an ISO timestamp (a frontmatter date becomes midnight UTC).
 - `GET .../kb`: `pages` lists every visible page **including** the index (index, then topics, then concepts, by

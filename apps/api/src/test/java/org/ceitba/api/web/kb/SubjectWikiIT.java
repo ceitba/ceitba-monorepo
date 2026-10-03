@@ -372,6 +372,24 @@ class SubjectWikiIT {
         assertThat(read(call(get("/v1/wiki/kb/graph"), reader(1), null)).get("nodes")).hasSize(4);
     }
 
+    @Test
+    void sourceYearsAndStaleness() throws Exception {
+        int now = java.time.LocalDate.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).getYear();
+        jdbc.update("UPDATE wiki.drive_file SET academic_year = ?, academic_year_source = 'NAME' WHERE id = ?", now - 10, f1);
+        jdbc.update("UPDATE wiki.drive_file SET academic_year = ?, academic_year_source = 'DRIVE' WHERE id = ?", now - 8, f2);
+        importPages(FIN, false, Map.of("index.md", finIndex(), "vtd.md", vtd("")));
+        var vtd = read(call(get("/v1/wiki/subjects/" + FIN + "/kb/vtd"), reader(1), null).andExpect(status().isOk()));
+        assertThat(vtd.get("sources").get(0).get("academicYear").asInt()).isEqualTo(now - 10);
+        assertThat(vtd.get("sources").get(0).get("academicYearSource").asText()).isEqualTo("NAME");
+        assertThat(vtd.get("sourceYears").get("min").asInt()).isEqualTo(now - 10);
+        assertThat(vtd.get("sourceYears").get("max").asInt()).isEqualTo(now - 8);
+        assertThat(vtd.get("stale").asBoolean()).isTrue();
+
+        jdbc.update("UPDATE wiki.drive_file SET academic_year = ? WHERE id = ?", now - 3, f2);
+        vtd = read(call(get("/v1/wiki/subjects/" + FIN + "/kb/vtd"), reader(1), null));
+        assertThat(vtd.get("stale").asBoolean()).isFalse();
+    }
+
     static JsonNode link(JsonNode page, String raw) {
         for (var l : page.get("links")) if (l.get("raw").asText().equals(raw)) return l;
         throw new AssertionError("no link " + raw + " in " + page.get("links"));

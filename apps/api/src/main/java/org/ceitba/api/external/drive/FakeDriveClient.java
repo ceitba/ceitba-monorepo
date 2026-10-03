@@ -57,6 +57,7 @@ public class FakeDriveClient implements DriveClient {
         String owner;
         long version = 1;
         Instant modified;
+        Instant created;
         byte[] content;
         String html;
         Map<String, byte[]> images = new LinkedHashMap<>();
@@ -151,6 +152,14 @@ public class FakeDriveClient implements DriveClient {
         sharedWithBot.remove(id);
     }
 
+    // Backdates an item (createdTime and modifiedTime), e.g. "made in 2019".
+    public synchronized void setCreated(String id, Instant created) {
+        var n = require(id);
+        n.created = created;
+        n.modified = created;
+        n.version++;
+    }
+
     public void setExportTooLarge(String id, boolean tooLarge) {
         if (tooLarge) exportTooLarge.add(id); else exportTooLarge.remove(id);
     }
@@ -196,6 +205,7 @@ public class FakeDriveClient implements DriveClient {
         n.parent = parent;
         n.owner = owner;
         n.modified = Instant.ofEpochMilli(clock.addAndGet(60_000));
+        n.created = n.modified;
         nodes.put(id, n);
         return n;
     }
@@ -316,7 +326,7 @@ public class FakeDriveClient implements DriveClient {
             binary && n.content != null ? md5(n.content) : null,
             n.version,
             binary && n.content != null ? (long) n.content.length : null,
-            n.shortcutTarget, targetMime);
+            n.shortcutTarget, targetMime, n.created);
     }
 
     // ---- content helpers ---------------------------------------------------

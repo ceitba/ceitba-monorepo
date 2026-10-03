@@ -233,7 +233,8 @@ public class DriveModerationService {
                 source == null ? null : source.getRootName(), f.getOwnerEmail(),
                 sharer == null ? null : sharer.getName(), sharer == null ? null : sharer.getEmail(),
                 f.getEffectiveSubjectId(), names.get(f.getEffectiveSubjectId()), f.getPublication().name(),
-                f.getReportCount(), reportsByFile.getOrDefault(f.getId(), List.of()), f.getDriveModifiedAt());
+                f.getReportCount(), reportsByFile.getOrDefault(f.getId(), List.of()), f.getDriveModifiedAt(),
+                f.getAcademicYear(), f.getAcademicYearSource() == null ? null : f.getAcademicYearSource().name());
         }).toList();
     }
 

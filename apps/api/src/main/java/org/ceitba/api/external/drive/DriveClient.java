@@ -10,7 +10,7 @@ import java.util.List;
 public interface DriveClient {
 
     // Fields requested for every item.
-    String FIELDS = "id,name,mimeType,parents,owners(emailAddress),modifiedTime,md5Checksum,version,size,"
+    String FIELDS = "id,name,mimeType,parents,owners(emailAddress),createdTime,modifiedTime,md5Checksum,version,size,"
         + "shortcutDetails(targetId,targetMimeType)";
 
     boolean available();

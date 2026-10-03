@@ -1,5 +1,6 @@
 package org.ceitba.api.service.kb;
 
+import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.domain.drive.DriveFile;
 import org.ceitba.api.domain.drive.DrivePublication;
 import org.ceitba.api.domain.drive.DriveSource;
@@ -37,9 +38,15 @@ public class KbViews {
     private final DriveFileRepository files;
     private final DriveSourceRepository sources;
     private final DriveViews driveViews;
+    private final java.time.Clock clock;
+    private final int staleYears;
 
     public KbViews(KbPageRepository pages, KbLinkRepository links, KbPageReportRepository reports,
-                   DriveFileRepository files, DriveSourceRepository sources, DriveViews driveViews) {
+                   DriveFileRepository files, DriveSourceRepository sources, DriveViews driveViews,
+                   java.time.Clock clock,
+                   @org.springframework.beans.factory.annotation.Value("${kb.stale-years:3}") int staleYears) {
+        this.clock = clock;
+        this.staleYears = staleYears;
         this.pages = pages;
         this.links = links;
         this.reports = reports;
@@ -99,9 +106,15 @@ public class KbViews {
             .map(f -> new KbBacklinkResponse(f.getSubjectId(), names.get(f.getSubjectId()), f.getSlug(), f.getTitle()))
             .toList();
 
+        var sourceDtos = sources(p.getSources(), staff);
+        var years = sourceDtos.stream().map(KbSourceResponse::academicYear).filter(Objects::nonNull).toList();
+        var min = years.stream().min(Integer::compare).orElse(null);
+        var max = years.stream().max(Integer::compare).orElse(null);
+        int currentYear = java.time.ZonedDateTime.now(clock).withZoneSameInstant(ClockConfig.ZONE).getYear();
+        boolean stale = max != null && max < currentYear - staleYears;
         return new KbPageResponse(p.getId(), p.getSlug(), p.getTitle(), p.getType().wire(), p.getSummary(),
             p.getAliases(), p.getSubjectId(), names.get(p.getSubjectId()), p.getMarkdown(),
-            sources(p.getSources(), staff), linkDtos, backlinks, p.getGenerator(), p.getGeneratedAt(),
+            sourceDtos, new KbPageResponse.SourceYears(min, max), stale, linkDtos, backlinks, p.getGenerator(), p.getGeneratedAt(),
             p.getRevision(), viewerId != null && reports.existsByPageIdAndUserId(p.getId(), viewerId),
             p.getStatus().name());
     }
@@ -121,7 +134,8 @@ public class KbViews {
             .map(f -> {
                 var src = sourceById.get(f.getSourceId());
                 var author = src == null ? null : DriveViews.author(src, owners.get(src.getUserId()));
-                return new KbSourceResponse(f.getId(), f.getName(), f.getKind().name(), author);
+                return new KbSourceResponse(f.getId(), f.getName(), f.getKind().name(), author, f.getAcademicYear(),
+                    f.getAcademicYearSource() == null ? null : f.getAcademicYearSource().name());
             })
             .toList();
     }

@@ -10,6 +10,8 @@ import java.util.UUID;
 // "text/plain; charset=utf-8"), null without an original.
 // exportBlocked: the owner disabled download for viewers; only driveUrl works.
 // driveUrl: opens the file in Google Drive / the Docs editor.
+// academicYear: the year the material belongs to; academicYearSource: USER |
+// INHERITED | NAME | DRIVE (see docs/DRIVE-SYNC.md).
 public record FileSummaryResponse(
     UUID id,
     String name,
@@ -24,5 +26,7 @@ public record FileSummaryResponse(
     String pdfMimeType,
     String originalMimeType,
     boolean exportBlocked,
-    String driveUrl
+    String driveUrl,
+    Integer academicYear,
+    String academicYearSource
 ) {}

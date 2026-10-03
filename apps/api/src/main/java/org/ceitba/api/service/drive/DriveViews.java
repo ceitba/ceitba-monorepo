@@ -123,7 +123,12 @@ public class DriveViews {
             f.getEffectiveSubjectId() != null && planSubjects.contains(f.getEffectiveSubjectId()),
             f.isHidden(), f.getPublication().name(), f.isOwnedBySharer(),
             f.getSizeBytes(), f.getDriveModifiedAt(), f.getSyncError(), f.isExportBlocked(),
-            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()));
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getAcademicYear(), source(f),
+            f.getAcademicYearUser());
+    }
+
+    static String source(DriveFile f) {
+        return f.getAcademicYearSource() == null ? null : f.getAcademicYearSource().name();
     }
 
     public static AuthorResponse author(DriveSource source, User owner) {
@@ -158,7 +163,7 @@ public class DriveViews {
         return new FileSummaryResponse(f.getId(), f.getName(), f.getKind().name(), path, f.getSizeBytes(),
             f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, f.getPdfKey() != null,
             f.getOriginalKey() != null, pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
-            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()));
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getAcademicYear(), source(f));
     }
 
     static String pdfMimeType(DriveFile f) {
@@ -174,7 +179,8 @@ public class DriveViews {
         return new FileDetailResponse(f.getId(), f.getName(), f.getKind().name(), path, f.getSizeBytes(),
             f.getDriveModifiedAt(), f.getPublishedAt(), f.getHtmlContent() != null, f.getPdfKey() != null,
             f.getOriginalKey() != null, pdfMimeType(f), originalMimeType(f), f.isExportBlocked(),
-            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getEffectiveSubjectId(), subjectName, author,
+            DriveMedia.driveUrl(f.getDriveId(), f.getMimeType()), f.getAcademicYear(), source(f),
+            f.getEffectiveSubjectId(), subjectName, author,
             f.getHtmlContent(), reportedByMe);
     }
 }

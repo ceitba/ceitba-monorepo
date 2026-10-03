@@ -417,6 +417,58 @@ class DriveSyncIT {
         assertThat(storage.putCount()).isEqualTo(puts);
     }
 
+    @Test
+    void academicYears() throws Exception {
+        drive.folder("folder-parc-2019", "Parciales 2019", ROOT, ALUMNO)
+            .file("pdf-parcial-0001", "Parcial 1C'21.pdf", "application/pdf", "folder-parc-2019", ALUMNO,
+                FakeDriveClient.pdf("parcial"))
+            .file("pdf-viejo-000001", "Viejo.pdf", "application/pdf", "folder-parc-2019", ALUMNO,
+                FakeDriveClient.pdf("viejo"));
+        drive.setCreated(PDF, java.time.Instant.parse("2018-05-01T12:00:00Z"));
+        var sourceId = publishedSource();
+
+        var t = tree(sourceId);
+        // Fake Drive dates start at 2026-01-01T00:00Z: still 2025 in Buenos Aires.
+        assertThat(item(t, "Resumen cinemática").get("academicYear").asInt()).isEqualTo(2025);
+        assertThat(item(t, "Resumen cinemática").get("academicYearSource").asText()).isEqualTo("DRIVE");
+        assertThat(item(t, "Resumen cinemática").get("ownAcademicYear").isNull()).isTrue();
+        assertThat(item(t, "TP1.pdf").get("academicYear").asInt()).isEqualTo(2018);
+        assertThat(item(t, "Parcial 1C'21.pdf").get("academicYear").asInt()).isEqualTo(2021);
+        assertThat(item(t, "Parcial 1C'21.pdf").get("academicYearSource").asText()).isEqualTo("NAME");
+        // From the folder name.
+        assertThat(item(t, "Viejo.pdf").get("academicYear").asInt()).isEqualTo(2019);
+        assertThat(item(t, "Viejo.pdf").get("academicYearSource").asText()).isEqualTo("NAME");
+
+        // A folder's own year flows to its contents; an item's own year wins.
+        call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"academicYear\":2020}")
+            .andExpect(jsonPath("$.academicYear").value(2020))
+            .andExpect(jsonPath("$.academicYearSource").value("USER"))
+            .andExpect(jsonPath("$.ownAcademicYear").value(2020));
+        call(patch("/v1/me/drive/files/" + fileId(DOC)), student(), "{\"academicYear\":2022}").andExpect(status().isOk());
+        syncNow(sourceId);
+        t = tree(sourceId);
+        assertThat(item(t, "TP1.pdf").get("academicYear").asInt()).isEqualTo(2020);
+        assertThat(item(t, "TP1.pdf").get("academicYearSource").asText()).isEqualTo("INHERITED");
+        assertThat(item(t, "TP1.pdf").get("ownAcademicYear").isNull()).isTrue();
+        assertThat(item(t, "Resumen cinemática").get("academicYear").asInt()).isEqualTo(2022);
+        assertThat(item(t, "Resumen cinemática").get("academicYearSource").asText()).isEqualTo("USER");
+
+        // Absent = unchanged; null = automatic again; out of range = 400.
+        call(patch("/v1/me/drive/files/" + fileId(DOC)), student(), "{\"hidden\":false}")
+            .andExpect(jsonPath("$.academicYear").value(2022));
+        call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"academicYear\":null}")
+            .andExpect(jsonPath("$.ownAcademicYear").doesNotExist());
+        assertThat(item(tree(sourceId), "TP1.pdf").get("academicYearSource").asText()).isEqualTo("DRIVE");
+        call(patch("/v1/me/drive/files/" + fileId(DOC)), student(), "{\"academicYear\":2099}")
+            .andExpect(status().isBadRequest());
+
+        call(get("/v1/wiki/files/" + fileId(PDF)), reader(1), null)
+            .andExpect(jsonPath("$.academicYear").value(2018))
+            .andExpect(jsonPath("$.academicYearSource").value("DRIVE"));
+        call(get("/v1/wiki/subjects/93.41/files"), reader(1), null)
+            .andExpect(jsonPath("$.groups[0].files[0].academicYear").exists());
+    }
+
     // ---- plan-aware suggestions -------------------------------------------
 
     @Test

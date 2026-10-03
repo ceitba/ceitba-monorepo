@@ -19,5 +19,7 @@ public record StaffFileResponse(
     String publication,
     int reportCount,
     List<StaffReportResponse> reports,
-    OffsetDateTime driveModifiedAt
+    OffsetDateTime driveModifiedAt,
+    Integer academicYear,
+    String academicYearSource
 ) {}

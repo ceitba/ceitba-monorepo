@@ -196,6 +196,7 @@ public class DriveSyncStore {
         var item = w.item();
         f.setMetadata(w.parentDriveId(), item.name(), item.mimeType(), w.kind(), item.firstOwner(),
             item.ownedBy(ownerEmail), item.version(), item.md5Checksum(), item.size(), at(item));
+        f.setDriveCreatedAt(item.createdTime() == null ? null : item.createdTime().atOffset(ZoneOffset.UTC));
         f.applyHiddenDefault();
     }
 
@@ -223,6 +224,7 @@ public class DriveSyncStore {
         f.setMetadata(live.getParentDriveId(), live.getName(), live.getMimeType(), live.getKind(),
             live.getOwnerEmail(), live.isOwnedBySharer(), live.getDriveVersion(), live.getMd5Checksum(),
             live.getSizeBytes(), live.getDriveModifiedAt());
+        f.setDriveCreatedAt(live.getDriveCreatedAt());
         f.applyHiddenDefault();
         if (f.getSubjectId() == null) f.setSubjectId(live.getSubjectId());
         if (!f.hasContent() && live.hasContent()) copyContent(live, f);

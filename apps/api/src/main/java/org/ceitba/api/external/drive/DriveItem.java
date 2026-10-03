@@ -17,7 +17,8 @@ public record DriveItem(
     Long version,
     Long size,
     String shortcutTargetId,
-    String shortcutTargetMimeType
+    String shortcutTargetMimeType,
+    Instant createdTime
 ) {
     public static final String FOLDER_MIME = "application/vnd.google-apps.folder";
     public static final String SHORTCUT_MIME = "application/vnd.google-apps.shortcut";
