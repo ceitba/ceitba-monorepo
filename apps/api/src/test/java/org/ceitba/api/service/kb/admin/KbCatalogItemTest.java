@@ -57,6 +57,13 @@ class KbCatalogItemTest {
         assertThat(items().get("some-embedding").serverlessChat()).isFalse();
         assertThat(items().get("kimi-k2.6").serverlessChat()).isTrue();
         assertThat(items().get("kimi-k2.6").cacheReadPerM()).isNull();
+        // OpenAI's GPT-5/6 models are listed as "reasoning": still chat completions.
+        var luna = KbCatalogItem.of(new ObjectMapper().readTree(
+            "{\"model_id\":\"openai-gpt-6-luna\",\"type\":\"reasoning\",\"availability\":[\"serverless\"]}"));
+        assertThat(luna.serverlessChat()).isTrue();
+        var image = KbCatalogItem.of(new ObjectMapper().readTree(
+            "{\"model_id\":\"img\",\"type\":\"image\",\"availability\":[\"serverless\"]}"));
+        assertThat(image.serverlessChat()).isFalse();
         // Long creators are cut to the provider column (32).
         var node = new ObjectMapper().readTree("{\"model_id\":\"m\",\"creator\":\"UKP Lab (Technical University of Darmstadt)\"}");
         assertThat(KbCatalogItem.of(node).creator()).hasSize(32);
