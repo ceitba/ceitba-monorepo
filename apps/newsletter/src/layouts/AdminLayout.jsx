@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { signOut, getOrganizations, isStaff as isStaffProfile } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
+import { hasUnsavedChanges } from '../store/unsavedStore'
 
 function buildNav(profile, t) {
   const orgs = getOrganizations(profile)
@@ -73,6 +74,7 @@ export default function AdminLayout() {
   }, [sidebarOpen])
 
   async function handleSignOut() {
+    if (hasUnsavedChanges() && !window.confirm(t('admin.nav.signOutUnsaved'))) return
     await signOut()
     navigate('/admin/login', { replace: true })
   }

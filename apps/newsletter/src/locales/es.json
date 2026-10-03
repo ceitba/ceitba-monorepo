@@ -253,7 +253,13 @@
       "readingTimeComputed": "calculado del texto",
       "readingTimeEdit": "Editar",
       "readingTimeAuto": "Automático",
-      "cover": "Portada"
+      "cover": "Portada",
+      "leave": {
+        "title": "¿Salir sin guardar?",
+        "body": "Tenés cambios sin guardar en este artículo. Si salís ahora, se pierden.",
+        "discard": "Salir sin guardar",
+        "stay": "Seguir editando"
+      }
     },
     "eventForm": {
       "loading": "Cargando evento…",
@@ -351,7 +357,8 @@
       "viewSite": "Ver sitio",
       "new": "Nuevo",
       "edit": "Editar",
-      "review": "Revisar"
+      "review": "Revisar",
+      "signOutUnsaved": "Tenés cambios sin guardar en el artículo. ¿Cerrar sesión igual y perderlos?"
     }
   },
   "imageUploader": {
@@ -437,5 +444,17 @@
   "articleBody": {
     "diagram": "Diagrama",
     "mermaidError": "No se pudo dibujar el diagrama Mermaid:"
+  },
+  "write": {
+    "cta": "Escribir en el newsletter",
+    "title": "Publicá en el newsletter",
+    "intro": "Las agrupaciones, centros y equipos del ITBA publican sus propias notas acá: novedades, coberturas, convocatorias y lo que quieran contar.",
+    "signedOut": "Si sos parte de una, iniciá sesión con tu cuenta @itba.edu.ar y vas a poder escribir desde un editor visual.",
+    "notMember": "Tu cuenta todavía no está vinculada a ninguna organización. Pedile al admin de tu agrupación que te sume como miembro, o escribinos y te ayudamos.",
+    "signIn": "Iniciar sesión con Google",
+    "contact": "Escribir a CEITBA",
+    "emailSubject": "Quiero publicar en el newsletter",
+    "organizations": "Ver organizaciones",
+    "close": "Cerrar"
   }
 }

@@ -253,7 +253,13 @@
       "readingTimeComputed": "computed from the text",
       "readingTimeEdit": "Edit",
       "readingTimeAuto": "Automatic",
-      "cover": "Cover"
+      "cover": "Cover",
+      "leave": {
+        "title": "Leave without saving?",
+        "body": "This article has unsaved changes. If you leave now, they'll be lost.",
+        "discard": "Leave without saving",
+        "stay": "Keep editing"
+      }
     },
     "eventForm": {
       "loading": "Loading event…",
@@ -351,7 +357,8 @@
       "viewSite": "View site",
       "new": "New",
       "edit": "Edit",
-      "review": "Review"
+      "review": "Review",
+      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?"
     }
   },
   "imageUploader": {
@@ -437,5 +444,17 @@
   "articleBody": {
     "diagram": "Diagram",
     "mermaidError": "Couldn't draw the Mermaid diagram:"
+  },
+  "write": {
+    "cta": "Write for the newsletter",
+    "title": "Publish in the newsletter",
+    "intro": "ITBA's student groups, centers and teams publish their own stories here: news, coverage, calls and anything they want to share.",
+    "signedOut": "If you're part of one, sign in with your @itba.edu.ar account and you'll be able to write in a visual editor.",
+    "notMember": "Your account isn't linked to any organization yet. Ask your group's admin to add you as a member, or write to us and we'll help.",
+    "signIn": "Sign in with Google",
+    "contact": "Email CEITBA",
+    "emailSubject": "I'd like to publish in the newsletter",
+    "organizations": "See organizations",
+    "close": "Close"
   }
 }
