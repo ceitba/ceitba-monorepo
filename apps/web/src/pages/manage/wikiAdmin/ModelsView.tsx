@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { effectivePrices, fetchForecast, fetchModels, probeModel, probeOk, syncModels, updateModel, type KbModel } from '../../../api/kbAdmin'
+import { effectivePrices, fetchForecast, fetchModels, probeModel, probeOk, syncModels, updateModel, sortModels, type KbModel, type ModelSyncResult } from '../../../api/kbAdmin'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
@@ -9,13 +9,14 @@ import { BTN, FIELD, TD, TH, ViewState, pct, useLoad } from './shared'
 // Modelos: the catalog with editable prices, enable toggle, batch flag and
 // probe result; "Probar" per model and "Sincronizar con DigitalOcean".
 export default function ModelsView() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const models = useLoad(fetchModels)
   const forecast = useLoad(fetchForecast)
   const estimateFlag = forecast.data?.discountIsEstimate ?? false
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [syncResult, setSyncResult] = useState<ModelSyncResult | null>(null)
 
   function replace(m: KbModel) {
     models.setData((list) => list && list.map((x) => (x.id === m.id ? { ...x, ...m } : x)))
@@ -23,7 +24,9 @@ export default function ModelsView() {
 
   async function patch(m: KbModel, body: Partial<KbModel>) {
     setError(null); setBusy(`save:${m.id}`)
-    replace({ ...m, ...body })
+    // A hand-edited price becomes "manual" (the API marks it; show it now).
+    const priceEdit = ['inputPerM', 'outputPerM', 'cacheReadPerM'].some((k) => k in body)
+    replace({ ...m, ...body, ...(priceEdit ? { priceSource: 'manual' as const, pricesUpdatedAt: new Date().toISOString() } : {}) })
     try {
       replace(await updateModel(m.id, body))
     } catch (e) {
@@ -52,8 +55,7 @@ export default function ModelsView() {
     setError(null); setNotice(null); setBusy('sync')
     try {
       const r = await syncModels()
-      const added = Array.isArray(r) ? null : r?.added
-      setNotice(added ? t('manage.wikiAi.models.synced', { count: added.length }) : t('manage.wikiAi.models.syncedPlain'))
+      setSyncResult(r ?? {})
       models.reload()
     } catch (e) {
       setError(apuntesErrorMessage(e, t))
@@ -72,6 +74,7 @@ export default function ModelsView() {
       </div>
       {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
       {notice && <Notice onDismiss={() => setNotice(null)}>{notice}</Notice>}
+      {syncResult && <SyncResult r={syncResult} names={new Map((models.data ?? []).map((m) => [m.id, m.displayName || m.id]))} onClose={() => setSyncResult(null)} />}
       <ViewState state={models} skeleton="rows" empty={(m) => m.length === 0} emptyText={t('manage.wikiAi.models.empty')}>
         {(list) => (
           <div className="overflow-x-auto rounded-card border border-border dark:border-night-border">
@@ -84,13 +87,13 @@ export default function ModelsView() {
                 <th className={TH}>{t('manage.wikiAi.models.probe')}</th>
               </tr></thead>
               <tbody>
-                {list.map((m) => (
+                {sortModels(list).map((m) => (
                   <tr key={m.id} className="border-t border-border dark:border-night-border">
                     <td className={`${TD} min-w-[13rem]`}>
                       <p className="font-semibold text-ink-primary dark:text-night-text">{m.displayName || m.id}</p>
                       <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{m.id}{m.provider ? ` · ${m.provider}` : ''}</p>
                       {m.contextWindow && <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.context', { k: Math.round(m.contextWindow / 1000) })}</p>}
-                      {m.pricesUpdatedAt && <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.pricesAt', { date: new Date(m.pricesUpdatedAt).toLocaleDateString(i18n.language) })}</p>}
+                      <PriceSourceLine m={m} />
                     </td>
                     {(['inputPerM', 'outputPerM', 'cacheReadPerM'] as const).map((f) => (
                       <td key={f} className={TD}>
@@ -217,5 +220,62 @@ function BatchCell({ m, estimate, onToggle, onDiscount }: {
         </span>
       )}
     </div>
+  )
+}
+
+function PriceSourceLine({ m }: { m: KbModel }) {
+  const { t, i18n } = useTranslation()
+  const date = m.pricesUpdatedAt ? new Date(m.pricesUpdatedAt).toLocaleDateString(i18n.language) : null
+  if (m.priceSource === 'do-catalog') {
+    return <p className="font-body text-[0.72rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.priceSync.fromDo', { date: date ?? '—' })}</p>
+  }
+  if (m.priceSource === 'manual') {
+    return <p className="font-body text-[0.72rem] text-amber-700 dark:text-amber-300">{t('manage.wikiAi.priceSync.manual', { date: date ?? '—' })}</p>
+  }
+  return date ? <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.pricesAt', { date })}</p> : null
+}
+
+const FIELD_LABEL: Record<string, string> = { inputPerM: 'input', outputPerM: 'output', cacheReadPerM: 'cache', batchSupported: 'batch', batchDiscount: 'batch −%' }
+
+// Result of "Sincronizar con DigitalOcean": price changes per model
+// (old → new), new models, unchanged and not-in-catalog counts.
+function SyncResult({ r, names, onClose }: { r: ModelSyncResult; names: Map<string, string>; onClose: () => void }) {
+  const { t, i18n } = useTranslation()
+  const updated = r.updated ?? []
+  const unchanged = Array.isArray(r.unchanged) ? r.unchanged.length : r.unchanged ?? null
+  return (
+    <section role="status" className="rounded-card border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 p-4 flex flex-col gap-3 font-body text-body-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-ink-primary dark:text-night-text">{t('manage.wikiAi.priceSync.title')}</p>
+          {r.fetchedAt && (
+            <p className="font-mono text-[0.72rem] text-ink-secondary dark:text-night-muted">
+              {t('manage.wikiAi.priceSync.fetched', { date: new Date(r.fetchedAt).toLocaleString(i18n.language), source: r.source ?? 'DigitalOcean' })}
+            </p>
+          )}
+        </div>
+        <button type="button" onClick={onClose} aria-label={t('errors.dismiss')} className="leading-none text-h5 opacity-60 hover:opacity-100">×</button>
+      </div>
+      {updated.length > 0 ? (
+        <ul className="flex flex-col gap-1.5">
+          {updated.map((u) => (
+            <li key={u.id}>
+              <span className="font-semibold">{names.get(u.id) ?? u.id}</span>
+              <span className="ml-2 font-mono text-[0.72rem] text-ink-secondary dark:text-night-muted">
+                {u.changes.map((c) => `${FIELD_LABEL[c.field] ?? c.field}: ${c.old ?? '—'} → ${c.new ?? '—'}`).join(' · ')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.priceSync.noChanges')}</p>
+      )}
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-ink-secondary dark:text-night-muted">
+        {(r.added?.length ?? 0) > 0 && <span>{t('manage.wikiAi.priceSync.added', { count: r.added!.length })}</span>}
+        {unchanged != null && <span>{t('manage.wikiAi.priceSync.unchanged', { count: unchanged })}</span>}
+        {(r.notInCatalog?.length ?? 0) > 0 && <span title={r.notInCatalog!.join(', ')}>{t('manage.wikiAi.priceSync.notInCatalog', { count: r.notInCatalog!.length })}</span>}
+      </p>
+      <p className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.priceSync.historyNote')}</p>
+    </section>
   )
 }

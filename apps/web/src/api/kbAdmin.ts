@@ -208,13 +208,29 @@ export interface KbModel {
   contextWindow: number | null
   notes: string | null
   pricesUpdatedAt: string | null
+  // Where the prices come from: DigitalOcean's public catalog (synced) or
+  // edited by hand by staff.
+  priceSource?: 'do-catalog' | 'manual' | null
   lastProbe: ModelProbe | null
+}
+
+export interface PriceChange { field: string; old: number | string | null; new: number | string | null }
+
+// POST /models/sync. Older API builds answered { added, available }.
+export interface ModelSyncResult {
+  updated?: { id: string; changes: PriceChange[] }[]
+  added?: string[]
+  unchanged?: number | string[]
+  notInCatalog?: string[]
+  source?: string | null
+  fetchedAt?: string | null
+  available?: number
 }
 
 export const fetchModels = () => apiGet<KbModel[]>(`${BASE}/models`)
 export const updateModel = (id: string, body: Partial<KbModel>) => apiSend<KbModel>('PUT', `${BASE}/models/${enc(id)}`, body)
 export const createModel = (body: Partial<KbModel> & { id: string }) => apiSend<KbModel>('POST', `${BASE}/models`, body)
-export const syncModels = () => apiSend<KbModel[] | { added?: string[] }>('POST', `${BASE}/models/sync`)
+export const syncModels = () => apiSend<ModelSyncResult>('POST', `${BASE}/models/sync`)
 export const probeModel = (id: string) => apiSend<KbModel | ModelProbe>('POST', `${BASE}/models/${enc(id)}/probe`)
 
 export interface Prices { inputPerM: number | null; outputPerM: number | null; cacheReadPerM: number | null }
@@ -241,6 +257,13 @@ export function effectivePrices(m: KbModel, mode: ExecutionMode | undefined): { 
   const cut = (v: number | null) => (v == null ? null : +(v * (1 - d)).toFixed(4))
   const fallback: Prices = { inputPerM: cut(list.inputPerM), outputPerM: cut(list.outputPerM), cacheReadPerM: cut(list.cacheReadPerM) }
   return { prices: m.effectivePrices?.batch ?? fallback, list, batched: true }
+}
+
+// Catalog order for tables and pickers: enabled first, then priced, then
+// by name (the DO catalog adds dozens of disabled, unpriced models).
+export function sortModels(list: KbModel[]): KbModel[] {
+  const rank = (m: KbModel) => (m.enabled ? 0 : 2) + (m.inputPerM != null ? 0 : 1)
+  return [...list].sort((a, b) => rank(a) - rank(b) || (a.displayName || a.id).localeCompare(b.displayName || b.id))
 }
 
 // Pickable in settings: the API's `selectable` (enabled + successfully

@@ -586,9 +586,6 @@
       "models": {
         "intro": "Prices per million tokens. A model can only be picked once it's enabled and has passed the probe.",
         "sync": "Sync with DigitalOcean",
-        "synced_one": "Added {{count}} new model (disabled, no price).",
-        "synced_other": "Added {{count}} new models (disabled, no price).",
-        "syncedPlain": "Catalog synced.",
         "empty": "The catalog is empty.",
         "model": "Model",
         "input": "Input / 1M",
@@ -838,6 +835,20 @@
         "confidence": "{{n}}/{{min}} ratings for a reliable result",
         "allDone": "Done! You've reviewed every page",
         "toLeaderboard": "See leaderboard"
+      },
+      "priceSync": {
+        "title": "Prices synced with DigitalOcean",
+        "fetched": "Catalog read on {{date}} ({{source}})",
+        "noChanges": "No price changed.",
+        "added_one": "{{count}} new model added (disabled)",
+        "added_other": "{{count}} new models added (disabled)",
+        "unchanged_one": "{{count}} unchanged",
+        "unchanged_other": "{{count}} unchanged",
+        "notInCatalog_one": "{{count}} not in DO's catalog",
+        "notInCatalog_other": "{{count}} not in DO's catalog",
+        "historyNote": "Costs already recorded keep the prices of their day; only estimates and what runs from now on change.",
+        "fromDo": "DigitalOcean prices · updated {{date}}",
+        "manual": "Manual price · {{date}}"
       }
     }
   },

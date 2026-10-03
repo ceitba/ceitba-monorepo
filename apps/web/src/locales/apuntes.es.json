@@ -586,9 +586,6 @@
       "models": {
         "intro": "Precios por millón de tokens. Un modelo solo se puede elegir cuando está habilitado y pasó la prueba.",
         "sync": "Sincronizar con DigitalOcean",
-        "synced_one": "Se agregó {{count}} modelo nuevo (deshabilitado, sin precio).",
-        "synced_other": "Se agregaron {{count}} modelos nuevos (deshabilitados, sin precio).",
-        "syncedPlain": "Catálogo sincronizado.",
         "empty": "El catálogo está vacío.",
         "model": "Modelo",
         "input": "Entrada / 1M",
@@ -838,6 +835,20 @@
         "confidence": "{{n}}/{{min}} valoraciones para un resultado confiable",
         "allDone": "¡Listo! Ya evaluaste todas las páginas",
         "toLeaderboard": "Ver ranking"
+      },
+      "priceSync": {
+        "title": "Precios sincronizados con DigitalOcean",
+        "fetched": "Catálogo leído el {{date}} ({{source}})",
+        "noChanges": "Ningún precio cambió.",
+        "added_one": "{{count}} modelo nuevo agregado (deshabilitado)",
+        "added_other": "{{count}} modelos nuevos agregados (deshabilitados)",
+        "unchanged_one": "{{count}} sin cambios",
+        "unchanged_other": "{{count}} sin cambios",
+        "notInCatalog_one": "{{count}} no figura en el catálogo de DO",
+        "notInCatalog_other": "{{count}} no figuran en el catálogo de DO",
+        "historyNote": "Los costos ya registrados mantienen los precios de su día; solo cambian las estimaciones y lo que se ejecute desde ahora.",
+        "fromDo": "Precios de DigitalOcean · actualizado el {{date}}",
+        "manual": "Precio manual · {{date}}"
       }
     }
   },

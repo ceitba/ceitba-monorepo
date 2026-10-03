@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  MODEL_STAGES, fetchForecast, fetchStageCost, isSelectable, fetchModels, forecastFor, impactFrom, normalizeImpact, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
+  MODEL_STAGES, fetchForecast, fetchStageCost, isSelectable, sortModels, fetchModels, forecastFor, impactFrom, normalizeImpact, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
   type CostImpact, type ExecutionMode, type KbModel, type KbSettings, type ModelStage, type SettingsBody, type SubjectOverride,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
@@ -41,7 +41,7 @@ export function ModelSelect({ value, models, onChange, allowDefault, label, mode
       >
         {allowDefault && <option value="">{t('manage.wikiAi.settings.useDefault')}</option>}
         {!allowDefault && !current && value && <option value={value}>{value}</option>}
-        {models.map((m) => {
+        {sortModels(models).map((m) => {
           const usable = isSelectable(m, mode)
           return (
             <option key={m.id} value={m.id} disabled={!usable && m.id !== value}>
