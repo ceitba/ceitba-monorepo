@@ -3,11 +3,20 @@ import { ApiError } from '../api/client'
 
 // Display helpers for the Apuntes (Drive notes) pages.
 
+// Date-only values ("2026-10-02", or midnight UTC like generatedAt's
+// "2026-10-02T00:00:00Z") are calendar dates, not instants: format them in
+// UTC so they don't show the previous day in Argentina (UTC-3).
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}(?:T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00))?$/
+
 export function formatDate(iso: string | null | undefined, lang: string): string {
   if (!iso) return '—'
-  const d = new Date(iso)
+  const dateOnly = DATE_ONLY.test(iso)
+  const d = new Date(dateOnly ? `${iso.slice(0, 10)}T00:00:00Z` : iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString(lang, {
+    day: 'numeric', month: 'short', year: 'numeric',
+    ...(dateOnly ? { timeZone: 'UTC' } : {}),
+  })
 }
 
 export function formatDateTime(iso: string | null | undefined, lang: string): string {

@@ -274,6 +274,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                 </span>
               )}
             </div>
+            <YearSelect item={item} disabled={busy} onChange={(academicYear) => update(item, { academicYear })} />
             <label className="inline-flex items-center gap-2 min-h-[36px] cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               <input
                 type="checkbox"
@@ -351,5 +352,43 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
         </ul>
       )}
     </div>
+  )
+}
+
+const FIRST_YEAR = 2000
+
+// Academic year per item: "Automático" shows the derived (or inherited)
+// year muted, with where it came from as tooltip; picking a year sets it
+// (PATCH academicYear), "Automático" sends null.
+function YearSelect({ item, disabled, onChange }: {
+  item: TreeItem
+  disabled: boolean
+  onChange: (year: number | null) => void
+}) {
+  const { t } = useTranslation()
+  const current = new Date().getFullYear()
+  const years = Array.from({ length: current - FIRST_YEAR + 1 }, (_, i) => current - i)
+  const explicit = item.academicYearSource === 'USER' ? item.academicYear ?? null : null
+  const derived = explicit == null ? item.academicYear ?? null : null
+  const sourceTip = item.academicYearSource ? t(`apuntes.year.source.${item.academicYearSource}`) : t('apuntes.year.unknown')
+  const autoLabel = derived != null
+    ? t('apuntes.year.autoWith', { year: `${item.academicYearSource === 'DRIVE' ? '≈' : ''}${derived}` })
+    : t('apuntes.year.auto')
+  return (
+    <label className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted" title={sourceTip}>
+      <span className="sr-only sm:not-sr-only">{t('apuntes.year.label')}</span>
+      <select
+        value={explicit ?? ''}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+        aria-label={t('apuntes.year.forItem', { name: item.name })}
+        className={`min-h-[36px] px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm normal-case tracking-normal disabled:opacity-50 ${
+          explicit == null ? 'text-ink-secondary dark:text-night-muted italic' : 'text-ink-primary dark:text-night-text'
+        }`}
+      >
+        <option value="">{autoLabel}</option>
+        {years.map((y) => <option key={y} value={y}>{y}</option>)}
+      </select>
+    </label>
   )
 }

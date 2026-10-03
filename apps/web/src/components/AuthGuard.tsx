@@ -45,7 +45,7 @@ export default function AuthGuard({ children }: { children: ReactElement }) {
             to={`/dev-login?returnTo=${encodeURIComponent(returnTo)}`}
             className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary"
           >
-            {t('devLogin.link')}
+            {t('devLogin.link', { defaultValue: 'Dev login' })}
           </Link>
         )}
       </div>

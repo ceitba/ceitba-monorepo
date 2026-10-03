@@ -1,3 +1,4 @@
+import '../../i18nApuntes'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,11 +18,13 @@ import {
   type UnclaimedShare,
 } from '../../api/drive'
 import { ApiError } from '../../api/client'
+import { fetchStaffKbPages, hideKbPage, kbPagePath, restoreKbPage, type KbPageStatus, type StaffKbPage } from '../../api/kb'
 import Modal from '../../components/Modal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import ErrorBanner from '../../components/ErrorBanner'
 import Notice from '../../components/Notice'
 import KindIcon from '../../components/apuntes/KindIcon'
+import YearBadge from '../../components/apuntes/YearBadge'
 import { PublicationBadge, SourceStatusBadge } from '../../components/apuntes/Badges'
 import { apuntesErrorMessage, formatDate, formatDateTime } from '../../utils/apuntes'
 
@@ -29,7 +32,7 @@ const PAGE_SIZE = 20
 const SOURCE_STATUSES: (SourceStatus | '')[] = ['PENDING_REVIEW', 'ACTIVE', 'ERROR', 'BLOCKED', 'REVOKED', 'DISCONNECTED', '']
 const FILE_QUEUES: StaffFileQueue[] = ['NEEDS_REVIEW', 'HIDDEN_REPORTED']
 
-type View = 'sources' | 'files' | 'unclaimed'
+type View = 'sources' | 'files' | 'wiki' | 'unclaimed'
 
 const TH = 'px-3 py-2 font-mono text-label uppercase tracking-widest'
 const ACTION_BTN = 'px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50'
@@ -47,6 +50,7 @@ export default function ManageDriveSection() {
   const views: { id: View; label: string }[] = [
     { id: 'sources', label: t('manage.drive.views.sources') },
     { id: 'files', label: t('manage.drive.views.files') },
+    { id: 'wiki', label: t('manage.drive.views.wiki') },
     { id: 'unclaimed', label: t('manage.drive.views.unclaimed') },
   ]
 
@@ -72,6 +76,7 @@ export default function ManageDriveSection() {
       </div>
       {view === 'sources' && <SourcesView />}
       {view === 'files' && <FilesView />}
+      {view === 'wiki' && <WikiView />}
       {view === 'unclaimed' && <UnclaimedView />}
     </div>
   )
@@ -427,7 +432,10 @@ function FilesView() {
                         <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
                           {f.sourceRootName}{f.driveModifiedAt && ` · ${formatDate(f.driveModifiedAt, i18n.language)}`}
                         </p>
-                        <div className="mt-1"><PublicationBadge publication={f.publication} /></div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <PublicationBadge publication={f.publication} />
+                          <YearBadge year={f.academicYear} source={f.academicYearSource} />
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -507,6 +515,137 @@ function FilesView() {
           busy={busyId === removing.id}
           onConfirm={() => act(removing, 'remove')}
           onCancel={() => setRemoving(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Wiki pages ──────────────────────────────────────────────────────────────
+
+const KB_STATUSES: KbPageStatus[] = ['HIDDEN', 'PUBLISHED']
+
+// Hidden pages (by staff, or automatically when a cited file is taken down)
+// and published ones with their report counts; hide / restore.
+function WikiView() {
+  const { t } = useTranslation()
+  const [status, setStatus] = useState<KbPageStatus>('HIDDEN')
+  const { data, setData, page, setPage, loading, loadError, setLoadError, reload } =
+    usePaged<StaffKbPage>((p) => fetchStaffKbPages({ status, page: p, limit: PAGE_SIZE }), [status])
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [hiding, setHiding] = useState<StaffKbPage | null>(null)
+
+  async function act(p: StaffKbPage, action: 'hide' | 'restore') {
+    setError(null); setNotice(null); setBusyId(p.id)
+    try {
+      await (action === 'hide' ? hideKbPage(p.id) : restoreKbPage(p.id))
+      const next: KbPageStatus = action === 'hide' ? 'HIDDEN' : 'PUBLISHED'
+      setData((d) => d && { ...d, items: d.items.map((x) => (x.id === p.id ? { ...x, status: next } : x)) })
+      setNotice(t(`manage.drive.wiki.${action}Notice`, { title: p.title }))
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setError(t('manage.drive.conflict'))
+        reload()
+      } else {
+        setError(apuntesErrorMessage(e, t))
+      }
+    } finally {
+      setBusyId(null)
+      setHiding(null)
+    }
+  }
+
+  const rows = data?.items ?? []
+  const base = import.meta.env.BASE_URL.replace(/\/+$/, '')
+
+  return (
+    <div className="flex flex-col gap-4">
+      {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+      {loadError && <ErrorBanner onDismiss={() => setLoadError(null)}>{loadError}</ErrorBanner>}
+      {notice && <Notice onDismiss={() => setNotice(null)}>{notice}</Notice>}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="drive-kb-status" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+          {t('manage.drive.filterLabel')}
+        </label>
+        <select
+          id="drive-kb-status"
+          value={status}
+          onChange={(e) => { setStatus(e.target.value as KbPageStatus); setNotice(null) }}
+          className={SELECT}
+        >
+          {KB_STATUSES.map((st) => <option key={st} value={st}>{t(`manage.drive.wiki.status.${st}`)}</option>)}
+        </select>
+      </div>
+
+      <div className="overflow-x-auto rounded-card border border-border dark:border-night-border">
+        <table className="w-full font-body text-body-sm">
+          <thead className="bg-page-bg dark:bg-night-bg">
+            <tr className="text-left">
+              <th className={TH}>{t('manage.drive.wiki.col.page')}</th>
+              <th className={TH}>{t('manage.drive.wiki.col.type')}</th>
+              <th className={TH}>{t('manage.drive.files.col.reports')}</th>
+              <th className={TH}>{t('manage.drive.col.actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => {
+              const busy = busyId === p.id
+              return (
+                <tr key={p.id} className="border-t border-border dark:border-night-border align-top">
+                  <td className="px-3 py-3 min-w-[16rem]">
+                    <a
+                      href={`${base}${kbPagePath(p.subjectId, p.slug)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-ink-primary dark:text-night-text hover:text-primary hover:underline"
+                    >
+                      {p.title}
+                    </a>
+                    <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{p.subjectId} · {p.slug}</p>
+                    {p.summary && <p className="text-ink-secondary dark:text-night-muted mt-1 line-clamp-2">{p.summary}</p>}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">{t(`wiki.types.${p.type}`)}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    {p.reportCount > 0 ? t('manage.drive.files.reportCount', { count: p.reportCount }) : '—'}
+                  </td>
+                  <td className="px-3 py-3">
+                    {p.status === 'HIDDEN' ? (
+                      <button type="button" disabled={busy} onClick={() => act(p, 'restore')} className={ACTION_BTN}>
+                        {busy ? '…' : t('manage.drive.files.restore')}
+                      </button>
+                    ) : p.status === 'PUBLISHED' ? (
+                      <button type="button" disabled={busy} onClick={() => setHiding(p)} className={DANGER_BTN}>
+                        {t('manage.drive.wiki.hide')}
+                      </button>
+                    ) : <span className="text-ink-secondary dark:text-night-muted">—</span>}
+                  </td>
+                </tr>
+              )
+            })}
+            {loading && rows.length === 0 && (
+              <tr><td colSpan={4} className="px-3 py-6 text-center text-ink-secondary dark:text-night-muted">{t('manage.loading')}</td></tr>
+            )}
+            {!loading && !loadError && rows.length === 0 && (
+              <tr><td colSpan={4} className="px-3 py-8 text-center text-ink-secondary dark:text-night-muted">{t(`manage.drive.wiki.empty.${status}`)}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Pager page={page} total={data?.total ?? 0} loading={loading} onPage={setPage} label={t('manage.drive.wiki.unit')} />
+
+      {hiding && (
+        <ConfirmDialog
+          title={t('manage.drive.wiki.hideTitle')}
+          body={t('manage.drive.wiki.hideBody', { title: hiding.title })}
+          confirmLabel={t('manage.drive.wiki.hide')}
+          danger
+          busy={busyId === hiding.id}
+          onConfirm={() => act(hiding, 'hide')}
+          onCancel={() => setHiding(null)}
         />
       )}
     </div>

@@ -15,6 +15,10 @@ export type Publication =
 export type FileKind =
   | 'FOLDER' | 'DOC' | 'SLIDES' | 'SHEET' | 'DRAWING' | 'PDF' | 'IMAGE' | 'OFFICE' | 'OTHER'
 
+// Where a file's academic year (when the material was made) comes from:
+// set by the student, parsed from the name, or estimated from Drive dates.
+export type AcademicYearSource = 'USER' | 'NAME' | 'DRIVE'
+
 export type ReportReason = 'COPYRIGHT' | 'PERSONAL_DATA' | 'WRONG_SUBJECT' | 'SPAM' | 'OTHER'
 
 export const REPORT_REASONS: ReportReason[] = ['COPYRIGHT', 'PERSONAL_DATA', 'WRONG_SUBJECT', 'SPAM', 'OTHER']
@@ -76,6 +80,9 @@ export interface TreeItem {
   syncError: string | null
   exportBlocked: boolean
   driveUrl: string | null
+  // Effective academic year (own, inherited or derived) and its origin.
+  academicYear?: number | null
+  academicYearSource?: AcademicYearSource | null
 }
 
 export interface SourceTree {
@@ -93,6 +100,8 @@ export interface CreateSourceBody {
 export interface PatchFileBody {
   subjectId?: string
   hidden?: boolean
+  // null goes back to automatic (name / Drive date).
+  academicYear?: number | null
 }
 
 const enc = encodeURIComponent
@@ -154,6 +163,9 @@ export interface ApunteSubject {
   // Electives and other non-curricular subjects have year/semester null
   // (older API builds sent year 0).
   section?: string | null
+  // The subject has a published wiki. Optional until every API build sends
+  // it; callers fall back to the pins list's hasWiki.
+  hasWiki?: boolean
 }
 
 export interface FileSummary {
@@ -177,6 +189,8 @@ export interface FileSummary {
   exportBlocked: boolean
   // Opens the item in Google Drive.
   driveUrl: string | null
+  academicYear?: number | null
+  academicYearSource?: AcademicYearSource | null
 }
 
 export interface ApunteAuthor {
@@ -290,6 +304,8 @@ export interface StaffFile {
   reportCount: number
   reports: StaffFileReport[]
   driveModifiedAt: string | null
+  academicYear?: number | null
+  academicYearSource?: AcademicYearSource | null
 }
 
 export interface UnclaimedShare {

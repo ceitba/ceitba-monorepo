@@ -73,13 +73,8 @@
   .apunte-prose h4 { @apply text-body-lg; }
   .apunte-prose > :first-child { @apply mt-0; }
   .apunte-prose p { @apply my-3; }
-  .apunte-prose ul { @apply list-disc pl-6 my-3; }
-  .apunte-prose ol { @apply list-decimal pl-6 my-3; }
-  .apunte-prose li { @apply my-1; }
-  .apunte-prose li > p { @apply my-0; }
   .apunte-prose a { @apply underline underline-offset-2; color: #1A3C6E !important; }
   .apunte-prose img { @apply max-w-full h-auto my-4 rounded-sm; }
-  .apunte-prose blockquote { @apply border-l-4 border-accent pl-4 italic my-4; }
   .apunte-prose hr { @apply my-8 border-border dark:border-night-border; }
   .apunte-prose code,
   .apunte-prose pre {
@@ -88,13 +83,87 @@
   }
   .apunte-prose code { @apply px-1 py-0.5; }
   .apunte-prose pre { @apply p-4 my-4 overflow-x-auto; }
-  .apunte-prose table { @apply block w-full overflow-x-auto my-4 border-collapse text-body-sm; }
-  .apunte-prose th,
-  .apunte-prose td { @apply border border-border dark:border-night-border px-3 py-2 align-top; }
-  .apunte-prose th { @apply font-semibold; }
 }
 
 html.dark .apunte-prose a { color: #7FA1D4 !important; }
+
+/* Lists, inline marks, alignment, tables and quotes in the file reader's
+   Doc HTML (.apunte-prose) and the wiki (.kb-prose). Tailwind's preflight
+   sets `list-style: none` and zero padding on ul/ol, so everything is
+   restated here, outside @layer, for both containers. */
+.apunte-prose ul, .apunte-prose ol,
+.kb-prose ul, .kb-prose ol {
+  padding-left: 1.5em;
+  margin: 0.75rem 0;
+}
+.apunte-prose ul, .kb-prose ul { list-style-type: disc; }
+.apunte-prose ul ul, .kb-prose ul ul,
+.apunte-prose ol ul, .kb-prose ol ul { list-style-type: circle; }
+.apunte-prose ul ul ul, .kb-prose ul ul ul,
+.apunte-prose ol ul ul, .kb-prose ol ul ul,
+.apunte-prose ul ol ul, .kb-prose ul ol ul { list-style-type: square; }
+.apunte-prose ul ul ul ul, .kb-prose ul ul ul ul { list-style-type: disc; }
+.apunte-prose ol, .kb-prose ol { list-style-type: decimal; }
+/* Docs export the numbering style as type="1|a|A|i|I" (case-sensitive) and
+   the first number as start= (honoured natively). */
+.apunte-prose ol[type="1"], .kb-prose ol[type="1"] { list-style-type: decimal; }
+.apunte-prose ol[type="a" s], .kb-prose ol[type="a" s] { list-style-type: lower-alpha; }
+.apunte-prose ol[type="A" s], .kb-prose ol[type="A" s] { list-style-type: upper-alpha; }
+.apunte-prose ol[type="i" s], .kb-prose ol[type="i" s] { list-style-type: lower-roman; }
+.apunte-prose ol[type="I" s], .kb-prose ol[type="I" s] { list-style-type: upper-roman; }
+.apunte-prose li, .kb-prose li { margin: 0.25rem 0; display: list-item; }
+.apunte-prose li::marker, .kb-prose li::marker { color: #6B7280; }
+html.dark .apunte-prose li::marker, html.dark .kb-prose li::marker { color: #a1a1aa; }
+/* Items aren't paragraphs: collapse the <p> margins inside them, and keep
+   nested lists tight. */
+.apunte-prose li > p, .kb-prose li > p { margin: 0; }
+.apunte-prose li > ul, .apunte-prose li > ol,
+.kb-prose li > ul, .kb-prose li > ol { margin: 0.25rem 0; }
+
+.apunte-prose strong, .apunte-prose b { font-weight: 700; }
+.apunte-prose em, .apunte-prose i { font-style: italic; }
+.apunte-prose u, .kb-prose u { text-decoration: underline; text-underline-offset: 2px; }
+.apunte-prose s, .apunte-prose del, .kb-prose s, .kb-prose del { text-decoration: line-through; }
+.apunte-prose sup, .apunte-prose sub { font-size: 0.75em; line-height: 0; position: relative; }
+.apunte-prose sup { vertical-align: baseline; top: -0.5em; }
+.apunte-prose sub { vertical-align: baseline; bottom: -0.25em; }
+
+.apunte-prose [data-align="center"] { text-align: center; }
+.apunte-prose [data-align="right"] { text-align: right; }
+.apunte-prose [data-align="justify"] { text-align: justify; }
+/* An aligned list keeps its markers next to the text. */
+.apunte-prose ul[data-align], .apunte-prose ol[data-align] { list-style-position: inside; }
+
+.apunte-prose blockquote {
+  margin: 1.25rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 3px solid #F5A623;
+  color: #4B5563 !important;
+}
+html.dark .apunte-prose blockquote { color: #d4d4d8 !important; }
+.apunte-prose blockquote > :first-child { margin-top: 0; }
+.apunte-prose blockquote > :last-child { margin-bottom: 0; }
+
+/* Tables: bordered, scrollable sideways inside the reading column. */
+.apunte-prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.apunte-prose th, .apunte-prose td {
+  border: 1px solid #E5E7EB;
+  padding: 0.4rem 0.75rem;
+  vertical-align: top;
+  min-width: 4rem;
+}
+.apunte-prose th { font-weight: 600; background-color: #FAFAF8 !important; }
+.apunte-prose td > p, .apunte-prose th > p { margin: 0; }
+html.dark .apunte-prose th, html.dark .apunte-prose td { border-color: #3f3f46; }
+html.dark .apunte-prose th { background-color: #18181b !important; }
 
 /* docx-preview output (.docx originals). Pages keep their paper look (white,
    the document's own colours) in both themes; the grey host is the "desk". */
@@ -160,3 +229,213 @@ main {
   width: 100%;
   overflow-x: hidden;
 }
+
+/* Subject wiki pages (react-markdown output). Readable ~70ch column in the
+   editorial type: Fraunces headings, Source Sans body. */
+.kb-prose {
+  max-width: 70ch;
+  font-family: 'Source Sans 3', Lato, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: #1C1C1E;
+  overflow-wrap: break-word;
+}
+html.dark .kb-prose { color: #f4f4f5; }
+.kb-prose > :first-child { margin-top: 0; }
+.kb-prose h2, .kb-prose h3, .kb-prose h4 {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 2.25rem 0 0.75rem;
+  position: relative;
+}
+.kb-prose h2 { font-size: 1.625rem; }
+.kb-prose h3 { font-size: 1.3125rem; }
+.kb-prose h4 { font-size: 1.125rem; }
+.kb-prose .heading-anchor {
+  margin-left: 0.4rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.8em;
+  color: #F5A623;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.kb-prose h2:hover .heading-anchor,
+.kb-prose h3:hover .heading-anchor,
+.kb-prose h4:hover .heading-anchor,
+.kb-prose .heading-anchor:focus-visible { opacity: 1; }
+@media (hover: none) { .kb-prose .heading-anchor { opacity: 0.5; } }
+.kb-prose p { margin: 0.9rem 0; }
+.kb-prose strong { font-weight: 600; }
+.kb-prose blockquote { border-left: 3px solid #F5A623; padding-left: 1rem; color: #6B7280; font-style: italic; margin: 1.25rem 0; }
+html.dark .kb-prose blockquote { color: #a1a1aa; }
+.kb-prose hr { border-color: #E5E7EB; margin: 2rem 0; }
+html.dark .kb-prose hr { border-color: #3f3f46; }
+.kb-prose code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.85em; background: #EEF3FA; padding: 0.1em 0.35em; border-radius: 0.2rem; }
+.kb-prose pre { background: #FAFAF8; border: 1px solid #E5E7EB; border-radius: 0.375rem; padding: 1rem; overflow-x: auto; margin: 1.25rem 0; }
+.kb-prose pre code { background: transparent; padding: 0; }
+html.dark .kb-prose code { background: #27272a; }
+html.dark .kb-prose pre { background: #18181b; border-color: #3f3f46; }
+.kb-prose a { color: #1A3C6E; text-decoration: underline; text-underline-offset: 2px; }
+html.dark .kb-prose a { color: #7FA1D4; }
+.kb-prose .kb-link { text-decoration-color: rgba(26,60,110,0.35); }
+.kb-prose .kb-link-subject {
+  margin-left: 0.25rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.7em;
+  color: #6B7280;
+  text-decoration: none;
+  display: inline-block;
+}
+.kb-prose .kb-unresolved { border-bottom: 1px dashed #9CA3AF; cursor: help; }
+.kb-prose .kb-cite {
+  /* AI-answer style citation marker: small, raised, muted, no fill. */
+  display: inline;
+  padding: 0 0.05em;
+  margin: 0;
+  border: 0;
+  background: none;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.68em;
+  line-height: 1;
+  vertical-align: super;
+  color: #6B7280;
+  cursor: pointer;
+  border-radius: 2px;
+  text-decoration: none;
+  transition: color 150ms;
+}
+.kb-prose .kb-cite:hover,
+.kb-prose .kb-cite[aria-expanded="true"] {
+  color: #1A3C6E;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kb-prose .kb-cite.is-highlighted { color: #B87005; text-decoration: underline; text-underline-offset: 2px; }
+html.dark .kb-prose .kb-cite { color: #a1a1aa; }
+html.dark .kb-prose .kb-cite:hover,
+html.dark .kb-prose .kb-cite[aria-expanded="true"] { color: #7FA1D4; }
+html.dark .kb-prose .kb-cite.is-highlighted { color: #F8C150; }
+.kb-prose .kb-table { overflow-x: auto; margin: 1.25rem 0; }
+.kb-prose table { border-collapse: collapse; font-size: 0.9375rem; }
+.kb-prose th, .kb-prose td { border: 1px solid #E5E7EB; padding: 0.4rem 0.75rem; text-align: left; vertical-align: top; }
+.kb-prose th { background: #FAFAF8; font-weight: 600; }
+html.dark .kb-prose th, html.dark .kb-prose td { border-color: #3f3f46; }
+html.dark .kb-prose th { background: #18181b; }
+.kb-prose .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25rem 0; }
+.kb-prose img { max-width: 100%; height: auto; }
+
+/* Section reached through an anchor link: brief accent wash. */
+@keyframes kb-heading-flash {
+  0%, 35% { background-color: rgba(245, 166, 35, 0.28); }
+  100%    { background-color: transparent; }
+}
+.kb-prose .kb-heading-flash {
+  animation: kb-heading-flash 1.8s ease-out;
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 0.35rem transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kb-prose .kb-heading-flash { animation: none; text-decoration: underline; text-decoration-color: #F5A623; }
+}
+
+/* Wiki graphs (GraphView). --k is the current zoom: labels divide by it so
+   they keep a constant on-screen size; .zoom-low hides concept labels. */
+:root {
+  --kbg-index: #F5A623;
+  --kbg-topic: #1A3C6E;
+  --kbg-concept: #059669;
+  --kbg-muted: #D1D5DB;
+  --kbg-edge: #D9DCE1;
+  --kbg-edge-strong: #9AA3B2;
+  --kbg-text: #1C1C1E;
+  --kbg-text-muted: #6B7280;
+  --kbg-halo: #ffffff;
+}
+html.dark {
+  --kbg-topic: #7FA1D4;
+  --kbg-concept: #34D399;
+  --kbg-muted: #52525b;
+  --kbg-edge: #3f3f46;
+  --kbg-edge-strong: #71717a;
+  --kbg-text: #f4f4f5;
+  --kbg-text-muted: #a1a1aa;
+  --kbg-halo: #27272a;
+}
+.kbg { --k: 1; display: block; user-select: none; -webkit-user-select: none; }
+.kbg.is-interactive { cursor: grab; }
+.kbg.is-interactive:active { cursor: grabbing; }
+.kbg-swatch-index { fill: var(--kbg-index); }
+.kbg-swatch-topic { fill: var(--kbg-topic); }
+.kbg-swatch-concept { fill: var(--kbg-concept); }
+.kbg-swatch-muted { fill: var(--kbg-muted); }
+.kbg-edge { stroke: var(--kbg-edge); stroke-width: 1; transition: opacity 150ms; }
+.kbg-edge.is-strong { stroke: var(--kbg-edge-strong); stroke-width: 1.6; }
+.kbg-node { cursor: pointer; transition: opacity 150ms; }
+.kbg-node circle { stroke: var(--kbg-halo); stroke-width: 1.5; }
+.kbg-node.is-muted circle { fill: var(--kbg-muted); stroke: var(--kbg-edge-strong); stroke-width: 1; }
+.kbg-node.kbg-index:not(.is-muted) circle { stroke: var(--kbg-text); stroke-width: 1.5; }
+.kbg-node.is-selected circle,
+.kbg-node.is-match circle { stroke: #F5A623; stroke-width: 3; }
+.kbg-node:focus { outline: none; }
+.kbg-node:focus-visible circle { stroke: #F5A623; stroke-width: 3; }
+.kbg-label {
+  font-family: 'Source Sans 3', Lato, system-ui, sans-serif;
+  font-size: calc(12px / var(--k));
+  fill: var(--kbg-text);
+  paint-order: stroke;
+  stroke: var(--kbg-halo);
+  stroke-width: calc(3px / var(--k));
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.kbg-label.lbl-index { font-weight: 700; font-size: calc(14px / var(--k)); }
+.kbg-label.lbl-muted { fill: var(--kbg-text-muted); }
+.kbg-label.is-culled { visibility: hidden; }
+.kbg-label-host { pointer-events: none; }
+.kbg.zoom-low .lbl-concept,
+.kbg.zoom-low .lbl-muted { display: none; }
+.kbg.has-focus .kbg-node:not(.is-active) { opacity: 0.15; }
+.kbg.has-focus .kbg-edge:not(.is-active) { opacity: 0.12; }
+/* An active node's concept label shows even at low zoom. */
+.kbg.has-focus .kbg-node.is-active .kbg-label { display: inline; }
+
+/* Correlatividades map. Upstream ("lo que necesitás antes") in brand blue,
+   downstream ("lo que habilita") in green; the rest dims. */
+:root {
+  --corr-edge: #C9CED6;
+  --corr-up: #1A3C6E;
+  --corr-up-bg: #EEF3FA;
+  --corr-down: #047857;
+  --corr-down-bg: #ECFDF5;
+}
+html.dark {
+  --corr-edge: #52525b;
+  --corr-up: #7FA1D4;
+  --corr-up-bg: rgba(127, 161, 212, 0.14);
+  --corr-down: #34D399;
+  --corr-down-bg: rgba(52, 211, 153, 0.12);
+}
+.corr-swatch-up { background: var(--corr-up); }
+.corr-swatch-down { background: var(--corr-down); }
+.corr-card { border-color: #E5E7EB; transition: opacity 120ms, border-color 120ms, background-color 120ms; }
+html.dark .corr-card { border-color: #3f3f46; }
+.corr-card:hover { border-color: #1A3C6E; }
+html.dark .corr-card:hover { border-color: #7FA1D4; }
+.corr-card.is-focus { border-color: #F5A623; box-shadow: 0 0 0 2px #F5A623; }
+.corr-card.is-match { border-color: #F5A623; box-shadow: 0 0 0 2px #F5A623; }
+.corr-card.is-up { border-color: var(--corr-up); background: var(--corr-up-bg); }
+.corr-card.is-down { border-color: var(--corr-down); background: var(--corr-down-bg); }
+.corr-card.is-dim { opacity: 0.32; }
+.corr-edge { fill: none; stroke: var(--corr-edge); stroke-width: 1.4; transition: opacity 120ms, stroke 120ms; }
+.corr-edge.is-up { stroke: var(--corr-up); stroke-width: 2.4; }
+.corr-edge.is-down { stroke: var(--corr-down); stroke-width: 2.4; }
+.corr-edge.is-dim { opacity: 0.15; }
+.corr-mini-card { fill: #ffffff; stroke: #D1D5DB; stroke-width: 1; }
+.corr-mini-text { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; fill: #6B7280; }
+.corr-mini-dot { fill: #F5A623; }
+.corr-mini-wiki { fill: #1A3C6E; }
+html.dark .corr-mini-wiki { fill: #7FA1D4; }
+html.dark .corr-mini-card { fill: #27272a; stroke: #52525b; }
+html.dark .corr-mini-text { fill: #a1a1aa; }

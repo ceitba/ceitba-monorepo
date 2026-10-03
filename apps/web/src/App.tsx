@@ -9,13 +9,20 @@ import ManagePage from './pages/ManagePage'
 import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
 import AuthGuard from './components/AuthGuard'
-import ApuntesHomePage from './pages/apuntes/ApuntesHomePage'
-import SubjectFilesPage from './pages/apuntes/SubjectFilesPage'
-import FilePage from './pages/apuntes/FilePage'
-import MyApuntesPage from './pages/apuntes/MyApuntesPage'
+import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
 import { getSession, takeReturnTo } from './store/authStore'
 import { isSafeReturnPath } from './utils/apuntes'
+
+// Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
+// load on demand so the home page bundle stays lean.
+const ApuntesHomePage = lazy(() => import('./pages/apuntes/ApuntesHomePage'))
+const SubjectFilesPage = lazy(() => import('./pages/apuntes/SubjectFilesPage'))
+const FilePage = lazy(() => import('./pages/apuntes/FilePage'))
+const MyApuntesPage = lazy(() => import('./pages/apuntes/MyApuntesPage'))
+const WikiPage = lazy(() => import('./pages/apuntes/WikiPage'))
+const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
+const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 
 // Local dev-only sign-in (CEITBA-API POST /v1/auth/dev-login). Both env
 // checks are inlined so Vite folds them to `false` in production builds and
@@ -60,10 +67,13 @@ function Layout() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/apuntes" element={<AuthGuard><ApuntesHomePage /></AuthGuard>} />
-          <Route path="/apuntes/mis-apuntes" element={<AuthGuard><MyApuntesPage /></AuthGuard>} />
-          <Route path="/apuntes/archivo/:fileId" element={<AuthGuard><FilePage /></AuthGuard>} />
-          <Route path="/apuntes/:subjectId" element={<AuthGuard><SubjectFilesPage /></AuthGuard>} />
+          <Route path="/apuntes" element={<AuthGuard><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/mis-apuntes" element={<AuthGuard><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/correlativas" element={<AuthGuard><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/archivo/:fileId" element={<AuthGuard><Suspense fallback={<PageFallback />}><FilePage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/:subjectId" element={<AuthGuard><Suspense fallback={<PageFallback />}><SubjectFilesPage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/:subjectId/wiki/:slug" element={<AuthGuard><Suspense fallback={<PageFallback />}><WikiPage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/:subjectId/grafo" element={<AuthGuard><Suspense fallback={<PageFallback />}><WikiGraphPage /></Suspense></AuthGuard>} />
           {DevLoginPage && (
             <Route path="/dev-login" element={<Suspense fallback={null}><DevLoginPage /></Suspense>} />
           )}

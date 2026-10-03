@@ -1,3 +1,4 @@
+import '../../i18nApuntes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
@@ -9,6 +10,7 @@ import FileViewer from '../../components/apuntes/viewers/FileViewer'
 import { sanitizeHtml } from '../../utils/sanitize'
 import { safeHttpUrl } from '../../utils/url'
 import KindIcon from '../../components/apuntes/KindIcon'
+import YearBadge from '../../components/apuntes/YearBadge'
 import ReportDialog from '../../components/apuntes/ReportDialog'
 import Notice from '../../components/Notice'
 import { BTN_OUTLINE, BTN_PRIMARY } from '../../components/apuntes/buttons'
@@ -127,6 +129,7 @@ export default function FilePage() {
               <div className="flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                 <KindIcon kind={file.kind} size={16} />
                 <span>{t(`apuntes.kind.${file.kind}`, { defaultValue: file.kind })}</span>
+                <YearBadge year={file.academicYear} source={file.academicYearSource} className="normal-case tracking-normal" />
                 {file.path && <span className="normal-case tracking-normal truncate">· {file.path}</span>}
               </div>
               <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text mt-2 break-words">
