@@ -14,8 +14,6 @@ public interface KbLinkRepository extends JpaRepository<KbLink, UUID> {
 
     List<KbLink> findByFromPageId(UUID fromPageId);
 
-    List<KbLink> findByToPageIdIsNotNull();
-
     List<KbLink> findByFromPageIdIn(Collection<UUID> fromPageIds);
 
     List<KbLink> findByToPageId(UUID toPageId);

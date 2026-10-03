@@ -49,13 +49,11 @@ public class KbReaderService {
     private final SubjectRepository subjects;
     private final KbViews views;
     private final DriveAccess access;
-    private final KbGraphService graph;
     private final Clock clock;
 
     public KbReaderService(KbPageRepository pages, KbLinkRepository links, KbPageReportRepository reports,
                            KbRelationRepository relations, SubjectRepository subjects, KbViews views,
-                           DriveAccess access, KbGraphService graph, Clock clock) {
-        this.graph = graph;
+                           DriveAccess access, Clock clock) {
         this.pages = pages;
         this.links = links;
         this.reports = reports;
@@ -178,7 +176,6 @@ public class KbReaderService {
         page.setReportCount((int) reports.countByPageId(pageId));
         if (page.getStatus() == KbPageStatus.PUBLISHED && page.getReportCount() >= REPORT_THRESHOLD) {
             page.setStatus(KbPageStatus.HIDDEN);
-            graph.invalidate();
         }
     }
 }

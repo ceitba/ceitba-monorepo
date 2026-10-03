@@ -17,8 +17,6 @@ public interface KbPageRepository extends JpaRepository<KbPage, UUID> {
 
     List<KbPage> findBySubjectId(String subjectId);
 
-    List<KbPage> findByStatus(KbPageStatus status);
-
     Optional<KbPage> findBySubjectIdAndSlug(String subjectId, String slug);
 
     List<KbPage> findBySubjectIdAndStatusIn(String subjectId, Collection<KbPageStatus> statuses);
