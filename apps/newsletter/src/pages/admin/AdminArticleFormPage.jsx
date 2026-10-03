@@ -165,6 +165,9 @@ export default function AdminArticleFormPage() {
   const computedReading = useMemo(() => readingTimeFor(form.body), [form.body])
   const readingTime = autoReading ? computedReading : form.readingTime
 
+  const [leaveTo, setLeaveTo] = useState(null)
+  useUnsavedLinkGuard(dirty, setLeaveTo)
+
   useEffect(() => {
     if (!dirty) return
     const warn = (e) => { e.preventDefault(); e.returnValue = '' }
@@ -521,11 +524,70 @@ export default function AdminArticleFormPage() {
         </aside>
       </div>
 
+      {leaveTo && (
+        <LeaveDialog
+          onStay={() => setLeaveTo(null)}
+          onLeave={() => { setDirty(false); setLeaveTo(null); navigate(leaveTo) }}
+        />
+      )}
+
       {previewOpen && (
         <PreviewDialog onClose={() => setPreviewOpen(false)}>
           <ArticleLivePreview article={previewArticle} orgs={orgs} />
         </PreviewDialog>
       )}
+    </div>
+  )
+}
+
+// BrowserRouter has no useBlocker, so while there are unsaved changes,
+// clicks on same-site links (sidebar, "← Artículos", topbar) are caught
+// before React Router handles them and confirmed in a dialog. Closing or
+// reloading the tab is covered by beforeunload.
+function useUnsavedLinkGuard(active, onBlocked) {
+  useEffect(() => {
+    if (!active) return
+    const base = import.meta.env.BASE_URL.replace(/\/+$/, '')
+    const onClick = (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      const a = e.target.closest?.('a[href]')
+      if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return
+      const url = new URL(a.href, window.location.href)
+      if (url.origin !== window.location.origin || !url.pathname.startsWith(base)) return
+      const to = (url.pathname.slice(base.length) || '/') + url.search + url.hash
+      if (to === window.location.pathname.slice(base.length) + window.location.search) return
+      e.preventDefault()
+      e.stopPropagation()
+      onBlocked(to)
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [active, onBlocked])
+}
+
+function LeaveDialog({ onStay, onLeave }) {
+  const { t } = useTranslation()
+  const stayRef = useRef(null)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onStay() }
+    document.addEventListener('keydown', onKey)
+    stayRef.current?.focus()
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onStay])
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={(e) => { if (e.target === e.currentTarget) onStay() }}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="leave-title" aria-describedby="leave-body" className="w-full max-w-sm bg-white rounded-card shadow-card-hover p-6 flex flex-col gap-3">
+        <h2 id="leave-title" className="font-display text-h5 font-bold text-ink-primary">{t('admin.articleForm.leave.title')}</h2>
+        <p id="leave-body" className="font-body text-body-sm text-ink-secondary leading-relaxed">{t('admin.articleForm.leave.body')}</p>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onLeave} className="min-h-[40px] px-4 rounded-sm font-body text-body-sm font-semibold text-red-600 hover:bg-red-50">
+            {t('admin.articleForm.leave.discard')}
+          </button>
+          <button ref={stayRef} type="button" onClick={onStay} className="min-h-[40px] px-4 bg-primary text-surface rounded-sm font-body text-body-sm font-semibold hover:bg-primary-600">
+            {t('admin.articleForm.leave.stay')}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

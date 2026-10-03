@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getArticleById, acceptArticleChanges, rejectArticleChanges } from '../../store/articleStore'
 import { getEventById, acceptEventChanges, rejectEventChanges } from '../../store/eventStore'
+import ArticleBody from '../../components/article/ArticleBody'
+import { bodyToMarkdown } from '../../utils/articleBody'
 
 export default function ContributorReviewChangesPage() {
   const { type, id } = useParams()  // type = 'article' | 'event'
@@ -153,25 +155,15 @@ export default function ContributorReviewChangesPage() {
             <div className="grid grid-cols-2">
               <div className="px-5 py-4 border-r border-border">
                 <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">Cuerpo</p>
-                <div className="flex flex-col gap-2">
-                  {(original.body ?? []).filter(Boolean).map((p, i) => (
-                    <p key={i} className="font-body text-body-sm text-ink-primary leading-relaxed">{p}</p>
-                  ))}
-                  {(original.body ?? []).filter(Boolean).length === 0 && (
-                    <em className="font-body text-body-sm text-border">Sin cuerpo</em>
-                  )}
-                </div>
+                {bodyToMarkdown(original.body).trim()
+                  ? <ArticleBody body={original.body} className="text-body-sm" />
+                  : <em className="font-body text-body-sm text-border">Sin cuerpo</em>}
               </div>
               <div className="px-5 py-4 bg-blue-50/40">
                 <p className="font-mono text-label uppercase tracking-widest text-blue-600 mb-2">Cuerpo</p>
-                <div className="flex flex-col gap-2">
-                  {(proposed.body ?? []).filter(Boolean).map((p, i) => (
-                    <p key={i} className="font-body text-body-sm text-ink-primary leading-relaxed">{p}</p>
-                  ))}
-                  {(proposed.body ?? []).filter(Boolean).length === 0 && (
-                    <em className="font-body text-body-sm text-border">Sin cuerpo</em>
-                  )}
-                </div>
+                {bodyToMarkdown(proposed.body).trim()
+                  ? <ArticleBody body={proposed.body} className="text-body-sm" />
+                  : <em className="font-body text-body-sm text-border">Sin cuerpo</em>}
               </div>
             </div>
           )}
