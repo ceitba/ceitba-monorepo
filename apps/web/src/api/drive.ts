@@ -163,6 +163,9 @@ export interface ApunteSubject {
   // Electives and other non-curricular subjects have year/semester null
   // (older API builds sent year 0).
   section?: string | null
+  // The subject has a published wiki. Optional until every API build sends
+  // it; callers fall back to the pins list's hasWiki.
+  hasWiki?: boolean
 }
 
 export interface FileSummary {

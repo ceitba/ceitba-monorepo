@@ -220,8 +220,8 @@ export function edgePath(fromId: string, toId: string, l: CorrLayout): string | 
 
 const cache = new Map<string, Promise<CorrModel>>()
 
-// Plan subjects + file counts (mine=true). hasWiki comes from callers that
-// know it (pins); the API's subject list doesn't carry it.
+// Plan subjects + file counts and wiki flags (mine=true). Callers OR the
+// wiki flag with the pins list's, for API builds without hasWiki.
 export function loadCorrModel(planId: string): Promise<CorrModel> {
   let p = cache.get(planId)
   if (!p) {
@@ -231,7 +231,7 @@ export function loadCorrModel(planId: string): Promise<CorrModel> {
     ]).then(([list, mine]) => {
       const extra = new Map(mine.map((m) => [m.subjectId, {
         fileCount: m.fileCount,
-        hasWiki: (m as { hasWiki?: boolean }).hasWiki,
+        hasWiki: m.hasWiki,
       }]))
       return buildModel(planId, list, extra)
     })

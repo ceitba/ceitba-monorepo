@@ -275,7 +275,9 @@
       "unlocks": "Habilita",
       "noDeps": "Sin correlativas",
       "credits_one": "requiere {{count}} crédito",
-      "credits_other": "requiere {{count}} créditos"
+      "credits_other": "requiere {{count}} créditos",
+      "miniWiki": "con wiki",
+      "miniFiles": "con apuntes"
     }
   },
   "wiki": {

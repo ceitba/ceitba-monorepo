@@ -266,6 +266,9 @@ export default function ApuntesHomePage() {
 
 function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: string }) {
   const { t } = useTranslation()
+  const { pins } = usePins()
+  // hasWiki from the API, else (older builds) from the pins list.
+  const hasWiki = s.hasWiki ?? !!pins?.find((p) => p.subjectId === s.subjectId)?.hasWiki
   return (
     <div className="relative h-full">
       <Link
@@ -274,9 +277,16 @@ function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: strin
           s.fileCount > 0 ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border'
         }`}
       >
-        <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-          {s.subjectId}
-          {semesterLabel(s, t) && ` · ${semesterLabel(s, t)}`}
+        <span className="flex flex-wrap items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+          <span>
+            {s.subjectId}
+            {semesterLabel(s, t) && ` · ${semesterLabel(s, t)}`}
+          </span>
+          {hasWiki && (
+            <span className="px-1.5 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 normal-case tracking-normal">
+              {t('apuntes.pins.wiki')}
+            </span>
+          )}
         </span>
         <span className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 line-clamp-2">
           {s.subjectName}
@@ -289,7 +299,7 @@ function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: strin
         </span>
       </Link>
       <PinButton
-        subject={{ subjectId: s.subjectId, subjectName: s.subjectName, fileCount: s.fileCount }}
+        subject={{ subjectId: s.subjectId, subjectName: s.subjectName, fileCount: s.fileCount, hasWiki }}
         className="absolute top-3 right-3"
       />
     </div>

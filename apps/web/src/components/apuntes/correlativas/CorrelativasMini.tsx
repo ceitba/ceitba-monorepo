@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
+import { usePins } from '../../../hooks/usePins'
 import { edgePath, layoutColumns, loadCorrModel, type CorrModel } from '../../../utils/correlatividades'
 import { BTN_PRIMARY } from '../buttons'
 
@@ -14,6 +15,8 @@ export default function CorrelativasMini() {
   const plan = profile?.plan ?? null
   const [model, setModel] = useState<CorrModel | null>(null)
   const [failed, setFailed] = useState(false)
+  const { pins } = usePins()
+  const pinnedWiki = useMemo(() => new Set((pins ?? []).filter((p) => p.hasWiki).map((p) => p.subjectId)), [pins])
 
   useEffect(() => {
     if (!plan) return
@@ -33,6 +36,12 @@ export default function CorrelativasMini() {
           <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {plan ? t('apuntes.corr.miniHint', { plan }) : t('apuntes.corr.noPlan')}
           </p>
+          {plan && (
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 font-mono text-label text-ink-secondary dark:text-night-muted" aria-hidden="true">
+              <span className="inline-flex items-center gap-1"><svg width="9" height="9"><rect width="9" height="9" rx="1.5" className="corr-mini-wiki" /></svg>{t('apuntes.corr.miniWiki')}</span>
+              <span className="inline-flex items-center gap-1"><svg width="9" height="9"><circle cx="4.5" cy="4.5" r="3.5" className="corr-mini-dot" /></svg>{t('apuntes.corr.miniFiles')}</span>
+            </p>
+          )}
         </div>
         {plan ? (
           <Link to="/apuntes/correlativas" className={`${BTN_PRIMARY} self-start sm:self-auto`}>{t('apuntes.corr.open')}</Link>
@@ -57,7 +66,11 @@ export default function CorrelativasMini() {
                   <g key={id} transform={`translate(${p.x},${p.y})`}>
                     <rect width={layout.cardW} height={layout.cardH} rx="5" className="corr-mini-card" />
                     <text x="7" y={layout.cardH / 2} dy="0.35em" className="corr-mini-text">{id}</text>
-                    {n.fileCount > 0 && <circle cx={layout.cardW - 9} cy={layout.cardH / 2} r="3.5" className="corr-mini-dot" />}
+                    {(n.hasWiki || pinnedWiki.has(id)) ? (
+                      <rect x={layout.cardW - 13} y={layout.cardH / 2 - 4} width="8" height="8" rx="1.5" className="corr-mini-wiki" />
+                    ) : n.fileCount > 0 ? (
+                      <circle cx={layout.cardW - 9} cy={layout.cardH / 2} r="3.5" className="corr-mini-dot" />
+                    ) : null}
                   </g>
                 )
               })}

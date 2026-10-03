@@ -435,5 +435,7 @@ html.dark .corr-card:hover { border-color: #7FA1D4; }
 .corr-mini-card { fill: #ffffff; stroke: #D1D5DB; stroke-width: 1; }
 .corr-mini-text { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; fill: #6B7280; }
 .corr-mini-dot { fill: #F5A623; }
+.corr-mini-wiki { fill: #1A3C6E; }
+html.dark .corr-mini-wiki { fill: #7FA1D4; }
 html.dark .corr-mini-card { fill: #27272a; stroke: #52525b; }
 html.dark .corr-mini-text { fill: #a1a1aa; }

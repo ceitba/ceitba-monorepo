@@ -275,7 +275,9 @@
       "unlocks": "Unlocks",
       "noDeps": "No prerequisites",
       "credits_one": "requires {{count}} credit",
-      "credits_other": "requires {{count}} credits"
+      "credits_other": "requires {{count}} credits",
+      "miniWiki": "with wiki",
+      "miniFiles": "with notes"
     }
   },
   "wiki": {
