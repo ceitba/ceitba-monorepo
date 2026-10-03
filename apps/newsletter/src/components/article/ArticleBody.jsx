@@ -16,8 +16,22 @@ function domProps(props) {
   return rest
 }
 
+function isExternal(href) {
+  try {
+    return new URL(href, window.location.href).origin !== window.location.origin
+  } catch {
+    return false
+  }
+}
+
 const COMPONENTS = {
-  a: (props) => <a {...domProps(props)} target="_blank" rel="noopener noreferrer" />,
+  // Only links leaving the site open in a new tab; anchors (footnotes) and
+  // same-site links stay in place.
+  a: (props) => (
+    isExternal(props.href)
+      ? <a {...domProps(props)} target="_blank" rel="noopener noreferrer" />
+      : <a {...domProps(props)} />
+  ),
   img: (props) => <img {...domProps(props)} alt={props.alt ?? ''} loading="lazy" />,
   pre: ({ node, children, ...props }) => {
     const code = node?.children?.[0]

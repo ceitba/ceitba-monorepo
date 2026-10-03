@@ -285,3 +285,7 @@ html.dark .article-prose th, html.dark .article-prose td, html.dark .article-pro
 .code-block-node__preview > p { @apply font-mono text-label text-ink-secondary; margin: 0; }
 .code-block-node:has(.code-block-node__preview) pre { border-radius: 0; }
 html.dark .code-block-node__preview { background-color: #27272a; border-color: #3f3f46; }
+html.dark .code-block-node__preview > p,
+html.dark .article-editor p.is-editor-empty:first-child::before { color: #a1a1aa; }
+html.dark .article-prose .mermaid-diagram--loading { background-color: #18181b; }
+html.dark .article-prose .mermaid-diagram--error figcaption { color: #fbbf24; }
