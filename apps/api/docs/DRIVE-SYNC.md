@@ -16,6 +16,12 @@ Student and reader endpoints require the `apuntes` capability (see [CAPABILITIES
 | `DRIVE_SYNC_SERVICE_ACCOUNT_JSON` | — | Base64 of the service-account key JSON |
 | `DRIVE_SYNC_USE_FAKE` | `false` | Use the in-memory `FakeDriveClient` (tests / offline dev) |
 | `DRIVE_SYNC_MAX_FILE_BYTES` | `52428800` | Larger files are stored as metadata only |
+| `DRIVE_SYNC_SOURCE_BUDGET` | `PT3M` | Max time slice of one source per run (min with what is left of the run budget) |
+| `DRIVE_SYNC_REFERENCE_ABOVE_BYTES` | `20971520` | Files above this are kept by reference (no stored copy), in any source |
+| `DRIVE_SYNC_MAX_ITEMS_PER_SOURCE` | `20000` | Walk cap per source and generation |
+| `DRIVE_SYNC_MAX_DEPTH` | `30` | Folders deeper than this are not listed |
+| `DRIVE_SYNC_COMMUNITY_ENABLED` | `true` | Expand community archives at the start of every run |
+| `DRIVE_SYNC_COMMUNITY_ONLY_CODES` | — | Dev only: comma list of subject codes; expansion creates sources only for those folders (others are disconnected) |
 | `DRIVE_SYNC_FAKE_DEMO_OWNERS` | — | Fake only: comma list of emails; each gets a demo folder `demo-<local part>` it owns |
 | `STORAGE_INTERNAL_ENDPOINT` | — (= `STORAGE_ENDPOINT`) | Where the API itself writes copies (compose: `http://minio:9000`), bypassing Caddy's upload body limit |
 | `AUTH_DEV_LOGIN_ENABLED` | `false` | Enables `POST /v1/auth/dev-login`, **only** with the `dev` profile |
@@ -30,7 +36,19 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
 
 - Source `status`: `PENDING_REVIEW`, `ACTIVE`, `BLOCKED`, `REVOKED`, `DISCONNECTED`, `ERROR`.
 - File `publication`: `PRIVATE` (no subject or hidden), `NEEDS_REVIEW`, `PUBLISHED`, `HIDDEN_REPORTED`, `REMOVED_BY_STAFF`, `REMOVED`.
+- Source `kind`: `STUDENT`, `COMMUNITY_ROOT`, `COMMUNITY` (see "Community sources").
 - File `kind`: `FOLDER`, `DOC`, `SLIDES`, `SHEET`, `DRAWING`, `PDF`, `IMAGE`, `OFFICE`, `OTHER`.
+- What is imported at all (`service/drive/DriveKinds`): only what the wiki pipeline can read. `OTHER` is kept only
+  for text-like files (code, notebooks, CSV, Markdown, JSON...: `DriveMedia.isTextLike`), stored as text. Everything
+  else that is not a Google Doc/Slides/Sheet/Drawing, PDF, image or Office file is skipped entirely: no row, no
+  download, not counted. That includes every `video/*`, `audio/*`, archives (zip, rar, 7z), executables, disk
+  images, CAD files, HTML/XML/SVG-as-text, forms, sites and maps. Images are kept in student sources (photos of
+  handwritten notes) and skipped in community sources. Rows of kinds that are skipped now (from before this rule)
+  are not seen by the next walk generation, so they go `REMOVED` when it completes (wiki pages citing them are
+  hidden) and are purged with their copies 30 days later.
+- Community sources: every file counts as the community's (`ownedBySharer` true), the source is `ACTIVE` and
+  approved, so files with a subject are `PUBLISHED` without review. Reports, staff hide/remove/block and the
+  `apuntes` capability apply as usual.
 - Publish rule: a non-folder file with an effective subject, not hidden, is `PUBLISHED` when it is owned by the
   source's student **and** the source is `ACTIVE`; otherwise `NEEDS_REVIEW` (owner differs) or held while the
   source is `PENDING_REVIEW`. Staff decisions (`REMOVED_BY_STAFF`, explicit publish) stick across syncs.
@@ -86,7 +104,8 @@ Sources show the year the material was made, not their last update (notes and TP
   A shortcut is followed only when its target is owned (Drive `owners`) by the source's student; shortcuts to items
   the bot cannot read or that someone else owns are skipped (and counted in the sync log), so a shortcut can never
   pull another student's file into a source through the bot's access.
-- Missing after a **complete** walk → `REMOVED`, row and copy purged 30 days later.
+- Missing after a **complete, clean walk generation** → `REMOVED`, row and copy purged 30 days later (see
+  "Resumable walk"; a partial or capped walk never removes anything).
 - Cross-source move (same student): the row moves to the other source keeping its id, copy and explicit subject,
   whichever source syncs first. Same file in sources of different students → separate rows sharing one stored copy.
 - Stored copies: `drive/<driveId>/<hash of fingerprint>/...` in the media bucket; `drive/` is never anonymously
@@ -104,6 +123,78 @@ Sources show the year the material was made, not their last update (notes and TP
   queue (500), not on the shared task executor; when the queue is full the request is left to the scheduled run.
 - Whenever a file stops being `PUBLISHED` (or moves to another subject), wiki pages citing it are hidden at once
   (takedown); the next pipeline run rewrites those subjects.
+
+## Resumable walk
+
+Every source is walked in **generations** (`wiki.drive_source_walk`, `service/drive/DriveWalker`):
+
+- A generation starts at the root and is a BFS; the folders still to list (the frontier, with their depth) are
+  saved after every slice. The next run continues from that frontier instead of starting over, so a huge tree
+  makes progress run after run.
+- Items reached get `drive_file.seen_generation`. Folders and items already seen in the generation (also in
+  earlier runs) are skipped, so a folder is listed at most once per generation.
+- When the frontier is empty the generation is complete. Only then, and only if nothing went wrong in it (no
+  folder vanished mid-walk, no cap hit), are rows not seen in it marked `REMOVED`. The next run starts a new
+  generation.
+- Time: each source gets a slice of min(remaining run budget, `DRIVE_SYNC_SOURCE_BUDGET`). At most **half** of it is
+  spent walking; the rest fetches content. Fetch tasks are computed from the rows (content missing or older than
+  the Drive metadata the walk recorded), so files found by earlier slices are fetched while the walk is still
+  unfinished; files that failed last time go last. `lastSyncedAt` is set after every slice (also partial ones), so
+  the scheduler (oldest `lastSyncedAt` first) rotates an unfinished source to the back and one heavy source cannot
+  starve the others.
+- Loops are impossible: besides the per-generation "seen" set, a shortcut is never followed to the source's root
+  or to any folder above it (`root_ancestors`, read once per generation); community sources never follow shortcuts
+  into the archive (another subject's folder). Hard caps: `DRIVE_SYNC_MAX_ITEMS_PER_SOURCE` items per generation
+  and `DRIVE_SYNC_MAX_DEPTH` levels. Hitting one ends the generation as incomplete (nothing is removed) with a
+  warning in the source's `lastError`.
+
+## Community sources
+
+A community archive is a Drive folder shared with the bot that belongs to no student, e.g. "1-Materias"
+(`1V3b2mlgCODmHaUh4WbvuHa4_POyvJvd1`, seeded by V42 as a `COMMUNITY_ROOT`, `ACTIVE`, label "Comunidad",
+storage `REFERENCE`). It is never walked itself:
+
+- At the start of every run (`DriveCommunityService`), its top-level folders are listed and kept as one
+  `COMMUNITY` source each (`user_id` null, `parent_source_id` = the root, same label and storage mode), so every
+  walk stays small. New folders are picked up, folders that disappear are disconnected (rows and copies deleted).
+  A listing that fails changes nothing. `BLOCKED` sources are left alone.
+- Subject: from the folder name `<code> - <name>`; the leading codes `^\d{2}\.\d{2}` (several allowed:
+  `12.43 - 12.44 - Ciencia de Materiales`). A source has one subject: the **first** listed code that exists in
+  `public.subject`. Every file of the source counts for it (`drive_source.subject_id`, the fallback of the
+  effective subject).
+- Skipped (no source is created): names starting with `00.` (`00.00 - ORGANIZAR...`, `00.00 - Resúmenes`,
+  `00.01 Útil`), names without a leading code, and codes not in `public.subject` (created on a later run once the
+  subject exists). `DRIVE_SYNC_COMMUNITY_ONLY_CODES` (dev) limits expansion to those codes.
+- Files: no student-ownership checks; every file is community content (`ownedBySharer` true) and published without
+  review. The contributors' Drive owners (personal Gmail addresses) are **never stored** (`owner_email` null) and
+  never returned; the archive owner's address is kept only on the source row for the shortcut rule (shortcuts are
+  followed only to items it owns) and is not exposed either. Author = the label: `author: { name: "Comunidad",
+  anonymous: false, community: true }`. File and source DTOs carry `community: true`, so the SPA can show
+  "Comunidad · archivo <academicYear>" (the academic year is computed as for any file).
+- Wiki pipeline: PLAN/WRITE inputs carry each source's `academicYear` and `community`; the prompts prefer recent
+  student notes when sources overlap or contradict and use the archive to fill gaps (`KB_STALE_YEARS` still drives
+  the "stale" flag of pages).
+
+## Reference storage (no copies)
+
+Per source `storage_mode`: `COPY` (default for students) or `REFERENCE` (default for community sources). Any file
+above `DRIVE_SYNC_REFERENCE_ABOVE_BYTES` is handled by reference in any source.
+
+- By reference nothing goes to MinIO. Only what the wiki and search need is kept: extracted text (PDFs and the PDF
+  export of Slides/Sheets are spooled to a temp file, read and deleted; text-like files likewise) and Docs'
+  sanitized HTML **without images** (a Doc's images and its PDF export are not stored). Images, Office files and
+  Drawings are not downloaded at all during the sync. Videos and audio are never imported (see "Statuses").
+- `GET /v1/wiki/files/{id}/download` keeps its URL and parameters: for a file kept by reference it answers **200
+  with the bytes streamed from Drive through the bot** instead of a 302 (same auth and capability checks, same
+  inline rule: PDF, raster images and text inline, everything else an attachment served as
+  `application/octet-stream`; `Content-Disposition` with the file name, `X-Content-Type-Options: nosniff`,
+  `Cache-Control: no-store`). `pdf` = the PDF itself or the on-demand PDF export of a Doc/Slides/Sheet; `original` =
+  the file (Drawings: PNG export). Capped at `DRIVE_SYNC_MAX_FILE_BYTES` (the response is cut past it). 404 when
+  the bot lost access or the owner disabled downloads. `hasPdf`/`hasOriginal`/`*MimeType` describe what can be
+  streamed. Doc image assets do not exist for these files.
+- Rows kept by reference have `by_reference` true and a `ref:`-prefixed fingerprint (never shared with stored
+  copies). Changing the mode (or a file crossing the threshold) fetches the file again in the new mode and
+  releases its old copy.
 
 ## Endpoints (all under `/api/v1`, JSON, cookie auth)
 
@@ -139,7 +230,7 @@ Drive-specific `error` codes:
 student already has an `ACTIVE` one. `accept-suggestions` applies suggestions top-down (a matched folder covers its
 files). The `429` carries `Retry-After` (seconds).
 
-`Source` = `{ id, rootName, status, anonymous, lastSyncedAt, lastError, fileCount, publishedCount, needsReviewCount, createdAt }`
+`Source` = `{ id, rootName, status, anonymous, lastSyncedAt, lastError, fileCount, publishedCount, needsReviewCount, createdAt, community }`
 
 `TreeItem` = `{ id, parentId, name, kind, subjectId, subjectName, effectiveSubjectId, effectiveSubjectName,
 suggestedSubjectId, suggestedSubjectName, suggestedInMyPlan, effectiveInMyPlan, hidden, publication, ownedByMe, sizeBytes, driveModifiedAt, syncError, exportBlocked, driveUrl,
@@ -151,14 +242,14 @@ academicYear, academicYearSource, ownAcademicYear }`
 | Method + path | Response |
 |---|---|
 | `GET /v1/wiki/apuntes/subjects?q=&limit=20&mine=` | `[{ subjectId, subjectName, fileCount, lastUpdatedAt, year, semester, section, hasWiki }]` (`hasWiki`: the subject wiki has at least one `PUBLISHED` page; every listing) — no `q`: subjects with published files, most recently updated first; with `q`: all subjects matching code or name (accent-insensitive); `mine=true`: the caller's plan subjects (`q`/`limit` ignored, `[]` without a plan): curricular subjects by year/semester first, then electives and other year-0 entries grouped by `section` (sections alphabetically, subjects by name); a subject that is both keeps its curricular entry. `year`/`semester`/`section` are only set with `mine=true` (else `null`); `year`/`semester` are `null` for year-0 entries, whose group is `section` (e.g. `"Electivas Analytics"`, `"SAT"`) |
-| `GET /v1/wiki/subjects/{subjectId}/files` | `{ subjectId, subjectName, groups: [{ sourceId, author: { name, anonymous }, files: FileSummary[] }] }` |
+| `GET /v1/wiki/subjects/{subjectId}/files` | `{ subjectId, subjectName, groups: [{ sourceId, author: { name, anonymous, community }, files: FileSummary[] }] }` (community groups: `name` = "Comunidad") |
 | `GET /v1/wiki/files/{fileId}` | `FileSummary` + `{ subjectId, subjectName, author, html, reportedByMe }` (`html` only for Docs) |
-| `GET /v1/wiki/files/{fileId}/download?variant=pdf\|original&disposition=inline\|attachment` | 302 to a 5-minute signed URL (default `disposition=inline`) |
+| `GET /v1/wiki/files/{fileId}/download?variant=pdf\|original&disposition=inline\|attachment` | 302 to a 5-minute signed URL (default `disposition=inline`); files kept by reference: 200 streamed from Drive (see "Reference storage") |
 | `GET /v1/wiki/files/{fileId}/assets/{name}` | 302 to a signed URL of an image embedded in a Doc's HTML (always inline, image content type) |
 | `PUT /v1/wiki/files/{fileId}/report` | body `{ reason, comment }`, reason ∈ `COPYRIGHT, PERSONAL_DATA, WRONG_SUBJECT, SPAM, OTHER` → 204 |
 
 `FileSummary` = `{ id, name, kind, path, sizeBytes, driveModifiedAt, publishedAt, hasHtml, hasPdf, hasOriginal,
-pdfMimeType, originalMimeType, exportBlocked, driveUrl, academicYear, academicYearSource }`
+pdfMimeType, originalMimeType, exportBlocked, driveUrl, academicYear, academicYearSource, community }`
 (`path` = folder path inside the source, e.g. `"Comunicación/Trabajo Plasticos"`).
 
 `html` is sanitized (no style/class/script/iframe) after turning the export's CSS classes into markup: real nested
@@ -198,7 +289,8 @@ downloads). A file owned by someone else that sits in the student's folder is no
 | `POST /v1/staff/drive/reprocess?kind=DOC\|SLIDES\|SHEET\|DRAWING` | `{ files, sources }` — re-export those files on a sync queued now (default `DOC`); results identical to the stored copy keep it |
 | `GET /v1/staff/drive/unclaimed` | `[{ name, ownerEmail, firstSeenAt, lastSeenAt }]` |
 
-`StaffSource` = `Source` + `{ ownerName, ownerEmail }`
+`StaffSource` = `Source` + `{ ownerName, ownerEmail, subjectId }` (community sources: owner `null`, `subjectId` = the
+folder's subject). `StaffFile.ownerEmail` is `null` for community files.
 
 `StaffFile` = `{ id, name, kind, sourceId, sourceRootName, ownerEmail, sharerName, sharerEmail,
 effectiveSubjectId, effectiveSubjectName, publication, reportCount, reports: [{ reason, comment, createdAt }], driveModifiedAt,
