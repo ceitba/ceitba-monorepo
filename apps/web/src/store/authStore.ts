@@ -29,8 +29,8 @@ let _hydratePromise: Promise<UserProfile | null> | null = null
 const _listeners = new Set<(p: UserProfile | null) => void>()
 
 // Capabilities the API refused with 403 CAPABILITY_REQUIRED during this
-// session, even if /me still lists them (revoked mid-session). Cleared when
-// the signed-in user changes.
+// session (revoked mid-session). A key is cleared when a later /me refresh
+// lists it again, and all are cleared when the signed-in user changes.
 const _denied = new Set<string>()
 
 function notify() { _listeners.forEach((fn) => fn(_profile)) }
@@ -89,6 +89,8 @@ export async function getSession(opts: { force?: boolean } = {}): Promise<UserPr
       const prevId = _profile?.id
       _profile = res.ok ? ((await res.json()) as UserProfile) : null
       if (_profile?.id !== prevId) _denied.clear()
+      // A fresh /me that lists a capability means it was granted (again).
+      _profile?.capabilities?.forEach((key) => _denied.delete(key))
     } catch {
       _profile = null
     } finally {

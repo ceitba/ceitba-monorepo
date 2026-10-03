@@ -264,14 +264,19 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
 
   async function revokeUser(email: string) {
     if (!grants) return
-    const prev = grants
+    const index = grants.users.findIndex((u) => u.email === email)
+    const removed = grants.users[index]
+    if (!removed) return
     setError(null)
     markPending(`u:${email}`, true)
-    setGrants({ ...grants, users: grants.users.filter((u) => u.email !== email) }) // optimistic
+    setGrants((g) => (g ? { ...g, users: g.users.filter((u) => u.email !== email) } : g)) // optimistic
     try {
       await revokeCapabilityFromUser(capabilityKey, email)
     } catch (err) {
-      setGrants(prev)
+      // Put back only this item: other revokes may have finished meanwhile.
+      setGrants((g) => (g && !g.users.some((u) => u.email === email)
+        ? { ...g, users: [...g.users.slice(0, index), removed, ...g.users.slice(index)] }
+        : g))
       setError(errorMessage(err))
     } finally {
       markPending(`u:${email}`, false)
@@ -297,14 +302,19 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
 
   async function revokeOrg(slug: string) {
     if (!grants) return
-    const prev = grants
+    const index = grants.orgs.findIndex((o) => o.slug === slug)
+    const removed = grants.orgs[index]
+    if (!removed) return
     setError(null)
     markPending(`o:${slug}`, true)
-    setGrants({ ...grants, orgs: grants.orgs.filter((o) => o.slug !== slug) }) // optimistic
+    setGrants((g) => (g ? { ...g, orgs: g.orgs.filter((o) => o.slug !== slug) } : g)) // optimistic
     try {
       await revokeCapabilityFromOrg(capabilityKey, slug)
     } catch (err) {
-      setGrants(prev)
+      // Put back only this item: other revokes may have finished meanwhile.
+      setGrants((g) => (g && !g.orgs.some((o) => o.slug === slug)
+        ? { ...g, orgs: [...g.orgs.slice(0, index), removed, ...g.orgs.slice(index)] }
+        : g))
       setError(errorMessage(err))
     } finally {
       markPending(`o:${slug}`, false)
