@@ -16,10 +16,10 @@ import org.ceitba.api.web.drive.dto.FileDetailResponse;
 import org.ceitba.api.web.drive.dto.ReportFileRequest;
 import org.ceitba.api.web.drive.dto.SubjectFilesResponse;
 import org.springframework.http.CacheControl;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.util.UriUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -89,20 +89,27 @@ public class ApuntesController {
             + "attachment. Other types are always attachments.")
     @ApiResponse(responseCode = "302", description = "Redirect to the signed URL")
     @ApiResponse(responseCode = "200", description = "The file, streamed from Drive (REFERENCE mode)")
-    public ResponseEntity<?> download(@CurrentUser User user, @PathVariable UUID fileId,
+    public ResponseEntity<StreamingResponseBody> download(@CurrentUser User user, @PathVariable UUID fileId,
                                       @RequestParam(required = false) String variant,
                                       @RequestParam(required = false) String disposition) {
         capabilities.require(user, Capability.APUNTES);
         var download = service.download(user, fileId, variant, disposition);
-        if (download.redirectUrl() != null) return redirect(download.redirectUrl());
+        if (download.redirectUrl() != null) {
+            // Typed as a streaming body (null here) so Spring picks the streaming handler.
+            return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(download.redirectUrl()))
+                .cacheControl(CacheControl.noStore())
+                .build();
+        }
         var req = download.stream();
         var in = streamer.open(req);
         StreamingResponseBody body = out -> streamer.copy(in, out);
-        var disp = (req.inline() ? ContentDisposition.inline() : ContentDisposition.attachment())
-            .filename(req.filename(), StandardCharsets.UTF_8).build();
+        // Same form as the signed URLs' response-content-disposition.
+        var disp = (req.inline() ? "inline" : "attachment") + "; filename*=UTF-8''"
+            + UriUtils.encode(req.filename(), StandardCharsets.UTF_8);
         var response = ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(req.contentType()))
-            .header(HttpHeaders.CONTENT_DISPOSITION, disp.toString())
+            .header(HttpHeaders.CONTENT_DISPOSITION, disp)
             .header("X-Content-Type-Options", "nosniff")
             .cacheControl(CacheControl.noStore());
         if (req.length() != null) response.contentLength(req.length());
