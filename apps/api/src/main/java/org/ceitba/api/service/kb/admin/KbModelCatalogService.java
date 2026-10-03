@@ -143,7 +143,8 @@ public class KbModelCatalogService {
 
     // One tiny structured-output request through the model's mode (or the
     // given one: batch | sync). A batch probe decides batchSupported: a
-    // successful one sets it true, a rejected submission false (batchSource probe).
+    // successful one sets it true, a submission rejected as a bad request
+    // (400/404/422) false (batchSource probe); account errors change nothing.
     public KbModelResponse probe(String id, String modeOverride) {
         var model = tx.execute(s -> models.findById(id).orElseThrow(() -> new ResourceNotFoundException("KbModel", id)));
         String mode;
@@ -179,7 +180,9 @@ public class KbModelCatalogService {
                 if (e.status() == 0 || e.status() >= 500 || e.status() == 429) throw e;
                 probe.put("ok", false);
                 probe.put("error", "batch rejected: " + e.getMessage());
-                batchRejected = true;
+                // Only a rejection of this request (400/404/422) says the model
+                // has no batch; 401/402/403 are about the account or the key.
+                batchRejected = e.status() == 400 || e.status() == 404 || e.status() == 422;
             }
         } else {
             var res = sync.runOne(line);

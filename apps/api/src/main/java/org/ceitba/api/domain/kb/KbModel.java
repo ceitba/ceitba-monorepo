@@ -121,7 +121,12 @@ public class KbModel {
 
     public void setDisplayName(String v) { this.displayName = v; }
     public void setProvider(String v) { this.provider = v; }
-    public void setBatchSupported(boolean v) { this.batchSupported = v; }
+    // Set by staff: clears a previous probe verdict.
+    public void setBatchSupported(boolean v) {
+        this.batchSupported = v;
+        this.batchSource = "rule";
+        this.batchVerifiedAt = null;
+    }
     public void setToolCalling(String v) { this.toolCalling = v; }
     public void setEnabled(boolean v) { this.enabled = v; }
     public void setPrices(BigDecimal input, BigDecimal output, BigDecimal cacheRead, BigDecimal batchDiscount,
