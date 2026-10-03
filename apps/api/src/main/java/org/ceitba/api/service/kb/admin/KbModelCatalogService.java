@@ -335,7 +335,15 @@ public class KbModelCatalogService {
     // pending {batchId} or {retryAt}, or finished (ok false).
     ObjectNode submitBatchProbe(String id, String batchModelId, List<String> tried, OffsetDateTime started,
                                 int retries) {
+        return submitBatchProbe(id, batchModelId, tried, json.createObjectNode(), started, retries);
+    }
+
+    // triedErrors: DO's error per refused form ({"gpt-6-luna": "..."}), kept
+    // so the admin panel can show why batch is not available.
+    ObjectNode submitBatchProbe(String id, String batchModelId, List<String> tried, JsonNode triedErrors,
+                                OffsetDateTime started, int retries) {
         var probe = json.createObjectNode();
+        if (triedErrors != null && triedErrors.size() > 0) probe.set("triedErrors", triedErrors.deepCopy());
         probe.put("mode", "batch");
         probe.put("at", started.toString());
         probe.put("batchModelId", batchModelId);
@@ -369,7 +377,7 @@ public class KbModelCatalogService {
                     return probe;
                 }
                 case UNSUPPORTED_MODEL -> {
-                    return unsupported(id, batchModelId, tried, started, "batch rejected: " + e.getMessage(), probe);
+                    return unsupported(id, batchModelId, tried, started, e.getMessage(), probe);
                 }
                 default -> {
                     probe.put("error", "batch rejected: " + e.getMessage());
@@ -385,17 +393,28 @@ public class KbModelCatalogService {
                                    String error, ObjectNode probe) {
         var triedNow = new ArrayList<>(tried);
         if (!triedNow.contains(batchModelId)) triedNow.add(batchModelId);
+        var errors = probe.has("triedErrors") ? (ObjectNode) probe.get("triedErrors") : probe.putObject("triedErrors");
+        errors.put(batchModelId, error);
         var other = KbChatPayloads.otherBatchModelId(id, batchModelId);
         if (other != null && !triedNow.contains(other)) {
-            log.info("KB catalog: batch probe of {}: {} unsupported, retrying with {}", id, batchModelId, other);
-            return submitBatchProbe(id, other, triedNow, started, 0);
+            log.info("KB catalog: batch probe of {}: {} unsupported ({}), retrying with {}", id, batchModelId, error,
+                other);
+            return submitBatchProbe(id, other, triedNow, errors, started, 0);
         }
         var triedNode = probe.putArray("tried");
         triedNow.forEach(triedNode::add);
         probe.remove("pending");
         probe.put("ok", false);
         probe.put("unsupportedModel", true);
-        probe.put("error", error);
+        // DO's own words per id form, e.g. "gpt-6-luna: OpenAI Batch is not available; openai-gpt-6-luna: ...".
+        var sb = new StringBuilder("batch not available for this model on DigitalOcean: ");
+        var it = errors.fields();
+        while (it.hasNext()) {
+            var e = it.next();
+            sb.append(e.getKey()).append(": ").append(e.getValue().asText());
+            if (it.hasNext()) sb.append("; ");
+        }
+        probe.put("error", sb.toString());
         return probe;
     }
 
@@ -446,7 +465,8 @@ public class KbModelCatalogService {
             // A refused creation, retried when due.
             var retryAt = p.hasNonNull("retryAt") ? OffsetDateTime.parse(p.path("retryAt").asText()) : null;
             if (retryAt != null && OffsetDateTime.now(clock).isBefore(retryAt)) return;
-            saveBatchProbe(id, submitBatchProbe(id, batchModelId, tried, started, p.path("retries").asInt(0)), null);
+            saveBatchProbe(id, submitBatchProbe(id, batchModelId, tried, p.path("triedErrors"), started,
+                p.path("retries").asInt(0)), null);
             return;
         }
         var batchId = p.path("batchId").asText();
@@ -459,11 +479,11 @@ public class KbModelCatalogService {
         probe.put("batchModelId", batchModelId);
         var triedNode = probe.putArray("tried");
         tried.forEach(triedNode::add);
+        if (p.path("triedErrors").size() > 0) probe.set("triedErrors", p.path("triedErrors").deepCopy());
         if (info.status().equals("failed") && info.errorMessage() != null
             && DoBatchErrors.classifyFailure(info.errorMessage()) == DoBatchErrors.Kind.UNSUPPORTED_MODEL) {
             noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-            saveBatchProbe(id, unsupported(id, batchModelId, tried, started,
-                "batch failed: " + info.errorMessage(), probe), null);
+            saveBatchProbe(id, unsupported(id, batchModelId, tried, started, info.errorMessage(), probe), null);
             return;
         }
         var collected = batch.collect(batchId, info.status().equals("completed"));

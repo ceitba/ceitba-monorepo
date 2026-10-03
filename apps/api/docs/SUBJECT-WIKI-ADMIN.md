@@ -338,7 +338,9 @@ A pair is one (subject, slug) written by two configurations; `confident` is true
 - **Batch support from a probe.** A batch probe that DO refuses with "unsupported model" (at creation or in the failed
   batch's `error_message`) is retried once with the other id form (native ↔ prefixed); the form that works is stored in
   `batchModelId` with `batchSupported=true`. `batchSupported` turns `false` only when **both** forms are unsupported
-  (`lastProbe.batch.unsupportedModel: true`). Any other failure (bad file name, account blocked, 5xx) leaves
+  (`lastProbe.batch.unsupportedModel: true`, `triedErrors` = DO's message per id form, and `error` = "batch not
+  available for this model on DigitalOcean: <form>: <DO message>; …"); the batch price then disappears from
+  `effectivePrices`. Any other failure (bad file name, account blocked, 5xx) leaves
   `batchSupported` and `batchSource` untouched. A `429`/no answer on creation keeps the probe pending with `retryAt`
   (1, 5, 15, 60 min) and the poller resubmits it. At most one batch probe per model is pending: probing again returns
   the pending one. A staff edit of `batchSupported` resets `batchSource` to `rule`.
