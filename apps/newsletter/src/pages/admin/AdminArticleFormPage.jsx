@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,12 +8,15 @@ import {
 } from '../../api/articles'
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
+import { useAuthSession } from '../../hooks/useAuthSession'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import ImageUploader from '../../components/ImageUploader'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 import LoadErrorState from '../../components/admin/LoadErrorState'
-import { todayISO } from '../../utils/dates'
+import RichTextEditor from '../../components/admin/editor/RichTextEditor'
+import { formatDate, todayISO } from '../../utils/dates'
+import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
 
 const COLOR_SCHEMES = [
   { value: 'blue',   bg: 'bg-primary-500' },
@@ -22,43 +25,83 @@ const COLOR_SCHEMES = [
   { value: 'violet', bg: 'bg-violet-600'  },
 ]
 
-function buildEmptyForm() {
-  const myOrgs = getOrganizations()
+// Roughly what the article cards show before line-clamp cuts the copete:
+// two lines on a regular card, three on the featured one.
+const EXCERPT_CARD_CHARS = 110
+const EXCERPT_FEATURED_CHARS = 180
+
+function buildEmptyForm(profile) {
+  const myOrgs = getOrganizations(profile)
   return {
     title:        '',
     excerpt:      '',
-    body:         [''],
+    body:         '',
     category:     DEFAULT_CATEGORY,
     organization: myOrgs[0]?.slug ?? 'ceitba',
-    authors:      [''],
+    authors:      profile?.name ? [profile.name] : [],
     date:         todayISO(),
     readingTime:  '',
     featured:     false,
     colorScheme:  'blue',
     coverImage:   '',
-    status:       'published',
   }
 }
 
+// Only what the API accepts — the loaded article also carries id, status,
+// timestamps, etc.
+function toPayload(form, status) {
+  return {
+    title:        form.title.trim(),
+    excerpt:      form.excerpt.trim(),
+    body:         form.body.trim() ? [form.body.trim()] : [],
+    category:     form.category,
+    organization: form.organization,
+    authors:      form.authors.map((a) => a.trim()).filter(Boolean),
+    date:         form.date,
+    readingTime:  form.readingTime,
+    featured:     form.featured,
+    colorScheme:  form.colorScheme,
+    coverImage:   form.coverImage,
+    status,
+  }
+}
+
+function formatTime(date, lang) {
+  return date.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
+}
+
 export default function AdminArticleFormPage() {
-  const { id } = useParams()
+  const { id: routeId } = useParams()
   const navigate = useNavigate()
-  const isEdit = Boolean(id)
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
+  const { profile } = useAuthSession()
+
+  // The id of the article being edited. A new article gets one on its first
+  // save (draft or publish); the URL then switches to /edit without
+  // reloading the form.
+  const [articleId, setArticleId] = useState(routeId ?? null)
+  const loadedIdRef = useRef(null)
+  const isEdit = Boolean(articleId)
+
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
   // possible once the article loaded, so a failed load can't overwrite it.
-  const [loadState, setLoadState] = useState(isEdit ? 'loading' : 'ready')
+  const [loadState, setLoadState] = useState(routeId ? 'loading' : 'ready')
   const [reloadKey, setReloadKey] = useState(0)
 
-  const [form, setForm]         = useState(buildEmptyForm)
-  const [orgs, setOrgs]         = useState([])
-  const [errors, setErrors]     = useState({})
-  const [touched, setTouched]   = useState(false)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
-  const [apiError, setApiError] = useState('')
-  const [viewMode, setViewMode] = useState('edit')
+  const [form, setForm]               = useState(() => buildEmptyForm(profile))
+  const [savedStatus, setSavedStatus] = useState(null) // null = never saved
+  const [autoReading, setAutoReading] = useState(true)
+  const [editorKey, setEditorKey]     = useState(0)    // remounts the editor with loaded content
+  const [orgs, setOrgs]               = useState([])
+  const [errors, setErrors]           = useState({})
+  const [attempted, setAttempted]     = useState(null) // 'published' | 'draft' after a failed attempt
+  const [saving, setSaving]           = useState(null) // status being saved
+  const [dirty, setDirty]             = useState(false)
+  const [lastSaved, setLastSaved]     = useState(null)
+  const [published, setPublished]     = useState(false)
+  const [apiError, setApiError]       = useState('')
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
@@ -66,91 +109,134 @@ export default function AdminArticleFormPage() {
       .catch(() => {})
   }, [])
 
+  // The session can arrive after the page mounted: default the byline to
+  // whoever is writing, unless they already typed authors.
   useEffect(() => {
-    if (!isEdit) return
+    if (routeId || !profile?.name) return
+    setForm((f) => (f.authors.length ? f : { ...f, authors: [profile.name] }))
+  }, [profile?.name, routeId])
+
+  useEffect(() => {
+    if (!routeId || loadedIdRef.current === routeId) return
     let cancelled = false
     setLoadState('loading')
-    fetchArticleById(id)
+    fetchArticleById(routeId)
       .then((existing) => {
         if (cancelled) return
+        const body = bodyToMarkdown(existing.body) || (existing.excerpt ?? '')
+        const readingTime = existing.readingTime ?? ''
         setForm({
-          ...buildEmptyForm(),
-          ...existing,
-          title:       existing.title ?? '',
-          excerpt:     existing.excerpt ?? '',
-          readingTime: existing.readingTime ?? '',
-          coverImage:  existing.coverImage ?? '',
-          colorScheme: existing.colorScheme ?? 'blue',
-          status:      existing.status ?? 'published',
-          category: existing.category || DEFAULT_CATEGORY,
-          body: Array.isArray(existing.body) && existing.body.length
-            ? existing.body
-            : [existing.excerpt ?? ''],
-          authors: Array.isArray(existing.authors) && existing.authors.length
-            ? existing.authors
-            : [''],
+          ...buildEmptyForm(profile),
+          title:        existing.title ?? '',
+          excerpt:      existing.excerpt ?? '',
+          body,
+          category:     existing.category || DEFAULT_CATEGORY,
+          organization: existing.organization ?? buildEmptyForm(profile).organization,
+          authors:      Array.isArray(existing.authors) ? existing.authors.filter(Boolean) : [],
+          date:         existing.date ?? todayISO(),
+          readingTime,
+          featured:     Boolean(existing.featured),
+          colorScheme:  existing.colorScheme ?? 'blue',
+          coverImage:   existing.coverImage ?? '',
         })
+        setAutoReading(!readingTime || readingTime === readingTimeFor(body))
+        setSavedStatus(existing.status ?? 'published')
+        setArticleId(routeId)
+        loadedIdRef.current = routeId
+        setEditorKey((k) => k + 1)
+        setDirty(false)
         setLoadState('ready')
       })
       .catch((err) => {
         if (!cancelled) setLoadState(err?.status === 404 ? 'notFound' : 'error')
       })
     return () => { cancelled = true }
-  }, [id, isEdit, reloadKey])
+    // profile only seeds defaults for missing fields; don't refetch on it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeId, reloadKey])
+
+  // Reading time follows the body unless the editor typed their own.
+  const computedReading = useMemo(() => readingTimeFor(form.body), [form.body])
+  const readingTime = autoReading ? computedReading : form.readingTime
+
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   function set(key, value) {
-    setForm((f) => ({ ...f, [key]: value }))
-    if (touched) validate({ ...form, [key]: value })
+    setForm((f) => {
+      const next = { ...f, [key]: value }
+      if (attempted) setErrors(validate(next, attempted))
+      return next
+    })
+    setDirty(true)
   }
 
-  function validate(values = form) {
+  // Publishing needs the whole article; a draft only needs a title so it can
+  // be found again in the list.
+  function validate(values, status) {
     const e = {}
-    if (!values.title.trim())       e.title       = t('admin.articleForm.errors.title')
-    if (!values.excerpt.trim())     e.excerpt     = t('admin.articleForm.errors.excerpt')
-    if (!values.authors.some((a) => a.trim())) e.authors = t('admin.articleForm.errors.authors')
-    if (!values.date)               e.date        = t('admin.articleForm.errors.date')
-    if (!values.readingTime.trim()) e.readingTime = t('admin.articleForm.errors.readingTime')
-    if (values.body.every((p) => !p.trim())) e.body = t('admin.articleForm.errors.body')
+    if (!values.title.trim()) e.title = t('admin.articleForm.errors.title')
+    if (status === 'published') {
+      if (!values.excerpt.trim())                 e.excerpt  = t('admin.articleForm.errors.excerpt')
+      if (!values.authors.some((a) => a.trim()))   e.authors  = t('admin.articleForm.errors.authors')
+      if (!values.date)                            e.date     = t('admin.articleForm.errors.date')
+      if (!markdownToPlainText(values.body))       e.body     = t('admin.articleForm.errors.body')
+      if (!autoReading && !values.readingTime.trim()) e.readingTime = t('admin.articleForm.errors.readingTime')
+    }
     if (!isCanonicalCategory(values.category)) e.category = t('admin.form.errors.category')
-    setErrors(e)
-    return Object.keys(e).length === 0
+    return e
   }
 
-  async function handleSubmit(status) {
-    if (loadState !== 'ready') return
-    setTouched(true)
-    if (!validate()) return
+  async function save(status) {
+    if (loadState !== 'ready' || saving) return
+    const e = validate(form, status)
+    setErrors(e)
+    setAttempted(status)
+    if (Object.keys(e).length) {
+      document.querySelector(`[data-field="${Object.keys(e)[0]}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
 
-    setSaving(true)
+    setSaving(status)
     setApiError('')
     try {
-      const payload = {
-        ...form,
-        status,
-        body: form.body.filter((p) => p.trim()),
-        authors: form.authors.map((a) => a.trim()).filter(Boolean),
+      const payload = toPayload({ ...form, readingTime }, status)
+      // The API requires a copete and an author on every article, drafts
+      // included: fill a draft's blanks from what's already written.
+      if (!payload.excerpt) payload.excerpt = markdownToPlainText(form.body).slice(0, EXCERPT_CARD_CHARS) || payload.title
+      if (!payload.authors.length) payload.authors = [profile?.name || payload.organization]
+
+      const saved = isEdit ? await updateArticle(articleId, payload) : await createArticle(payload)
+      setSavedStatus(saved?.status ?? status)
+      setDirty(false)
+      setAttempted(null)
+      setLastSaved(new Date())
+      // Show the filled-in blanks; they are what got saved.
+      setForm((f) => ({
+        ...f,
+        excerpt: f.excerpt.trim() ? f.excerpt : payload.excerpt,
+        authors: f.authors.length ? f.authors : payload.authors,
+      }))
+      if (!isEdit && saved?.id) {
+        loadedIdRef.current = saved.id
+        setArticleId(saved.id)
+        navigate(`/admin/articles/${saved.id}/edit`, { replace: true })
       }
-      if (isEdit) {
-        await updateArticle(id, payload)
-      } else {
-        await createArticle(payload)
+      if (status === 'published') {
+        setPublished(true)
+        setTimeout(() => navigate('/admin/articles'), 1200)
       }
-      setSaved(true)
-      setTimeout(() => navigate('/admin/articles'), 800)
     } catch {
       setApiError(t('admin.articleForm.saveError'))
     } finally {
-      setSaving(false)
+      setSaving(null)
     }
   }
-
-  function updatePara(i, val) { set('body', form.body.map((p, idx) => (idx === i ? val : p))) }
-  function addPara()          { set('body', [...form.body, '']) }
-  function removePara(i)      { set('body', form.body.filter((_, idx) => idx !== i)) }
-
-  function updateAuthor(i, val) { set('authors', form.authors.map((a, idx) => (idx === i ? val : a))) }
-  function addAuthor()          { set('authors', [...form.authors, '']) }
-  function removeAuthor(i)      { set('authors', form.authors.filter((_, idx) => idx !== i)) }
 
   if (loadState === 'loading') {
     return (
@@ -171,291 +257,398 @@ export default function AdminArticleFormPage() {
     )
   }
 
-  if (saved) {
+  if (published) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3 animate-fade-in">
         <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <p className="font-display text-h5 font-bold text-ink-primary">
-          {isEdit ? t('admin.articleForm.updated') : t('admin.articleForm.created')}
-        </p>
+        <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.articleForm.publishedDone')}</p>
       </div>
     )
   }
 
-  const previewArticle = { ...form, id: 'preview', body: form.body.filter((p) => p.trim()) }
+  const isPublished = savedStatus === 'published'
+  const myOrgs = getOrganizations(profile)
+  const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
+  const visibleOrgs = isStaff(profile) ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
+  const orgLocked = !isStaff(profile) && myOrgs.length === 1
+  const previewArticle = { ...form, readingTime, id: 'preview', body: [form.body] }
+  const errorCount = Object.keys(errors).length
 
-  const formFields = (
-    <>
-      <div className="flex-1 flex flex-col gap-5">
-        <FormField label={t('admin.articleForm.title')} error={errors.title} required>
-          <input type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder={t('admin.articleForm.titlePlaceholder')} className={inputClass(errors.title)} />
-        </FormField>
-
-        <FormField label={t('admin.articleForm.excerpt')} hint={t('admin.articleForm.excerptHint')} error={errors.excerpt} required>
-          <textarea rows={3} value={form.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder={t('admin.articleForm.excerptPlaceholder')} className={inputClass(errors.excerpt)} />
-        </FormField>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-baseline justify-between">
-            <label className="font-body text-body-sm font-semibold text-ink-primary">
-              {t('admin.articleForm.body')} <span className="text-red-500" aria-hidden="true">*</span>
-            </label>
-            {errors.body && <span className="font-body text-body-sm text-red-600">{errors.body}</span>}
-          </div>
-          {form.body.map((para, i) => (
-            <div key={i} className="relative group">
-              <textarea rows={5} value={para} onChange={(e) => updatePara(i, e.target.value)} placeholder={t('admin.articleForm.paragraphPlaceholder', { n: i + 1 })} className={[inputClass(null), 'pr-10'].join(' ')} />
-              {form.body.length > 1 && (
-                <button type="button" onClick={() => removePara(i)} aria-label={t('admin.articleForm.removeParagraph', { n: i + 1 })} className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded text-ink-secondary hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              )}
-            </div>
-          ))}
-          <button type="button" onClick={addPara} className="self-start min-h-[36px] px-3 flex items-center gap-2 font-body text-body-sm text-primary border border-dashed border-primary/40 hover:border-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {t('admin.articleForm.addParagraph')}
-          </button>
-        </div>
-
-        <FormField label={t('admin.articleForm.coverImage')} hint={t('admin.form.optional')}>
-          <ImageUploader value={form.coverImage} onChange={(v) => set('coverImage', v)} />
-        </FormField>
-      </div>
-
-      <aside className="lg:w-72 flex-shrink-0 flex flex-col gap-4">
-        <div className="bg-white rounded-card border border-border shadow-card p-4 flex flex-col gap-3">
-          {apiError && (
-            <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
-              {apiError}
-            </p>
-          )}
-          <button type="button" onClick={() => handleSubmit('published')} disabled={saving || loadState !== 'ready'} className="min-h-[44px] bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
-            {saving ? t('admin.form.saving') : isEdit ? t('admin.form.saveChanges') : t('admin.articleForm.publish')}
-          </button>
-          <button type="button" onClick={() => handleSubmit('draft')} disabled={saving || loadState !== 'ready'} className="min-h-[44px] bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
-            {t('admin.articleForm.saveDraft')}
-          </button>
-        </div>
-
-        <SidebarCard title={t('admin.articleForm.status')}>
-          <StatusToggle value={form.status} onChange={(v) => set('status', v)} />
-        </SidebarCard>
-
-        <SidebarCard title={t('admin.form.category')}>
-          <select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass()}>
-            {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
-          </select>
-          {errors.category && <span role="alert" className="mt-1.5 block font-body text-body-sm text-red-600">{errors.category}</span>}
-        </SidebarCard>
-
-        <SidebarCard title={t('admin.form.organization')}>
-          {(() => {
-            const myOrgs = getOrganizations()
-            const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
-            const visibleOrgs = isStaff() ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
-            const locked = !isStaff() && myOrgs.length === 1
-            return (
-              <select
-                value={form.organization}
-                onChange={(e) => set('organization', e.target.value)}
-                disabled={locked}
-                className={selectClass()}
-              >
-                {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-              </select>
-            )
-          })()}
-        </SidebarCard>
-
-        <SidebarCard title={t('admin.articleForm.metadata')}>
-          <div className="flex flex-col gap-3">
-            <FormField label={t('admin.articleForm.authors')} error={errors.authors} required small>
-              <div className="flex flex-col gap-2">
-                {form.authors.map((author, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={author}
-                      onChange={(e) => updateAuthor(i, e.target.value)}
-                      placeholder={t('admin.articleForm.authorPlaceholder', { n: i + 1 })}
-                      className={[inputClass(errors.authors), 'flex-1'].join(' ')}
-                    />
-                    {form.authors.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeAuthor(i)}
-                        aria-label={t('admin.articleForm.removeAuthor', { n: i + 1 })}
-                        className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-sm text-ink-secondary hover:text-red-600 hover:bg-red-50 transition-colors duration-150"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addAuthor}
-                  className="self-start min-h-[32px] px-2 flex items-center gap-1.5 font-body text-body-sm text-primary border border-dashed border-primary/40 hover:border-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  {t('admin.articleForm.addAuthor')}
-                </button>
-              </div>
-            </FormField>
-            <FormField label={t('admin.form.date')} error={errors.date} required small>
-              <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass(errors.date)} />
-            </FormField>
-            <FormField label={t('admin.articleForm.readingTime')} error={errors.readingTime} required small>
-              <input type="text" value={form.readingTime} onChange={(e) => set('readingTime', e.target.value)} placeholder={t('admin.articleForm.readingTimePlaceholder')} className={inputClass(errors.readingTime)} />
-            </FormField>
-          </div>
-        </SidebarCard>
-
-        <SidebarCard title={t('admin.articleForm.featured')}>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div className="relative">
-              <input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} className="sr-only peer" />
-              <div className="w-10 h-5 bg-border rounded-full peer-checked:bg-primary transition-colors duration-150" />
-              <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-150 peer-checked:translate-x-5" />
-            </div>
-            <span className="font-body text-body-sm text-ink-secondary">
-              {form.featured ? t('admin.articleForm.featuredOn') : t('admin.articleForm.featuredOff')}
-            </span>
-          </label>
-          {form.featured && (
-            <p className="mt-2 font-mono text-label text-ink-secondary leading-relaxed">
-              {t('admin.articleForm.featuredHint')}
-            </p>
-          )}
-        </SidebarCard>
-
-        <SidebarCard title={t('admin.articleForm.coverColor')}>
-          <div className="grid grid-cols-4 gap-2">
-            {COLOR_SCHEMES.map(({ value, bg }) => (
-              <button key={value} type="button" onClick={() => set('colorScheme', value)} aria-label={t(`admin.articleForm.colors.${value}`)} aria-pressed={form.colorScheme === value} className={['h-10 rounded-sm transition-all duration-150 focus-visible:rounded relative', bg, form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-70 hover:opacity-100'].join(' ')}>
-                {form.colorScheme === value && (
-                  <svg className="absolute inset-0 m-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                )}
-              </button>
-            ))}
-          </div>
-        </SidebarCard>
-      </aside>
-    </>
-  )
+  const primaryAction = isPublished
+    ? { status: 'published', label: t('admin.articleForm.saveChanges') }
+    : { status: 'published', label: t('admin.articleForm.publish') }
+  const secondaryAction = isPublished
+    ? { status: 'draft', label: t('admin.articleForm.unpublish') }
+    : { status: 'draft', label: t('admin.articleForm.saveDraft') }
 
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: viewMode === 'split' ? 'none' : '64rem' }}>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
-          <Link to="/admin/articles" className="font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
+    <div className="flex flex-col gap-6 max-w-[80rem]">
+      {/* Header: where you are, what state the article is in, and actions */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex flex-col gap-2 min-w-0">
+          <Link to="/admin/articles" className="self-start font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
             {t('admin.articleForm.back')}
           </Link>
-          <h1 className="font-display text-h3 font-bold text-ink-primary">
-            {isEdit ? t('admin.articleForm.editTitle') : t('admin.articleForm.newTitle')}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="font-display text-h4 font-bold text-ink-primary">
+              {!isEdit
+                ? t('admin.articleForm.newTitle')
+                : isPublished ? t('admin.articleForm.editPublishedTitle') : t('admin.articleForm.editDraftTitle')}
+            </h1>
+            <StatusPill status={savedStatus} />
+          </div>
+          <p className="font-mono text-label text-ink-secondary" aria-live="polite">
+            {saving
+              ? t('admin.form.saving')
+              : dirty
+                ? t('admin.articleForm.unsaved')
+                : lastSaved
+                  ? t('admin.articleForm.savedAt', { time: formatTime(lastSaved, i18n.language) })
+                  : isEdit ? t('admin.articleForm.upToDate') : t('admin.articleForm.notSavedYet')}
+          </p>
         </div>
-        <ViewModeToggle value={viewMode} onChange={setViewMode} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="min-h-[40px] px-3 flex items-center gap-2 rounded-sm border border-border text-ink-secondary font-body text-body-sm font-semibold hover:border-primary hover:text-primary transition-colors duration-150"
+          >
+            <IconEye /> {t('admin.articleForm.preview')}
+          </button>
+          <button
+            type="button"
+            onClick={() => save(secondaryAction.status)}
+            disabled={Boolean(saving)}
+            className="min-h-[40px] px-4 bg-white border border-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60"
+          >
+            {saving === secondaryAction.status ? t('admin.form.saving') : secondaryAction.label}
+          </button>
+          <button
+            type="button"
+            onClick={() => save(primaryAction.status)}
+            disabled={Boolean(saving)}
+            className="min-h-[40px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60"
+          >
+            {saving === primaryAction.status ? t('admin.form.saving') : primaryAction.label}
+          </button>
+        </div>
       </div>
 
-      {viewMode === 'preview' && (
-        <div className="bg-white rounded-card border border-border shadow-card p-6">
-          <ArticleLivePreview article={previewArticle} orgs={orgs} />
+      {(apiError || errorCount > 0) && (
+        <div role="alert" className="font-body text-body-sm text-red-700 bg-red-50 border border-red-200 rounded-sm px-4 py-3">
+          {apiError || t('admin.articleForm.fixErrors', { count: errorCount })}
         </div>
       )}
 
-      {viewMode === 'edit' && (
-        <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
-          {formFields}
-        </div>
-      )}
-
-      {viewMode === 'split' && (
-        <div className="flex -mx-4 sm:-mx-6 lg:-mx-8">
-          <div className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 lg:px-8 pb-16" style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
-            <div className="flex flex-col lg:flex-row gap-6 lg:items-start">{formFields}</div>
+      <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
+        {/* Writing column — laid out like the published article */}
+        <div className="flex-1 min-w-0 flex flex-col gap-5 max-w-3xl">
+          <div data-field="title">
+            <AutoGrowTextarea
+              value={form.title}
+              onChange={(v) => set('title', v.replace(/\n/g, ' '))}
+              placeholder={t('admin.articleForm.titlePlaceholder')}
+              ariaLabel={t('admin.articleForm.title')}
+              className="font-display text-h3 sm:text-h2 font-bold text-ink-primary leading-tight"
+            />
+            {errors.title && <FieldError>{errors.title}</FieldError>}
           </div>
-          <div className="w-[44%] flex-shrink-0 border-l border-border bg-surface overflow-y-auto px-6 lg:px-8 pt-6 pb-16" style={{ maxHeight: 'calc(100vh - 3.5rem)' }} aria-label={t('admin.articleForm.livePreview')}>
-            <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-6 flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" aria-hidden="true" />
-              {t('admin.articleForm.livePreview')}
+
+          <div data-field="excerpt">
+            <AutoGrowTextarea
+              value={form.excerpt}
+              onChange={(v) => set('excerpt', v.replace(/\n/g, ' '))}
+              placeholder={t('admin.articleForm.excerptPlaceholder')}
+              ariaLabel={t('admin.articleForm.excerpt')}
+              className="font-body text-body-lg text-ink-secondary leading-relaxed"
+            />
+            <ExcerptMeter value={form.excerpt} featured={form.featured} />
+            {errors.excerpt && <FieldError>{errors.excerpt}</FieldError>}
+          </div>
+
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-5 border-b border-border font-body text-body-sm text-ink-secondary">
+            <span>
+              {t('articles.meta.by')}{' '}
+              <strong className="text-ink-primary font-semibold">
+                {form.authors.filter(Boolean).join(', ') || t('admin.articleForm.noAuthors')}
+              </strong>
+            </span>
+            <span className="text-border" aria-hidden="true">·</span>
+            <span className="font-mono text-label">{formatDate(form.date, i18n.language)}</span>
+            <span className="text-border" aria-hidden="true">·</span>
+            <span className="font-mono text-label">{t('articles.meta.readingTime', { time: readingTime || '—' })}</span>
+          </p>
+
+          <div data-field="body">
+            <RichTextEditor
+              key={editorKey}
+              value={form.body}
+              onChange={(md) => set('body', md)}
+              canUpload={isStaff(profile)}
+              invalid={Boolean(errors.body)}
+            />
+            {errors.body && <FieldError>{errors.body}</FieldError>}
+          </div>
+        </div>
+
+        {/* Settings */}
+        <aside className="lg:w-80 flex-shrink-0 flex flex-col gap-4 lg:sticky lg:top-20">
+          <SidebarCard title={t('admin.articleForm.publication')}>
+            <p className="font-body text-body-sm text-ink-secondary leading-relaxed">
+              {isPublished ? t('admin.articleForm.statusHelp.published')
+                : savedStatus ? t('admin.articleForm.statusHelp.draft')
+                : t('admin.articleForm.statusHelp.new')}
             </p>
-            <ArticleLivePreview article={previewArticle} orgs={orgs} />
-          </div>
-        </div>
+            <div className="mt-3" data-field="date">
+              <FieldLabel>{t('admin.articleForm.date')}</FieldLabel>
+              <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass(errors.date)} />
+              {errors.date && <FieldError>{errors.date}</FieldError>}
+            </div>
+          </SidebarCard>
+
+          <SidebarCard title={t('admin.articleForm.placement')}>
+            <div className="flex flex-col gap-3">
+              <div data-field="category">
+                <FieldLabel>{t('admin.form.category')}</FieldLabel>
+                <select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass()}>
+                  {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+                </select>
+                {errors.category && <FieldError>{errors.category}</FieldError>}
+              </div>
+              <div>
+                <FieldLabel>{t('admin.form.organization')}</FieldLabel>
+                <select value={form.organization} onChange={(e) => set('organization', e.target.value)} disabled={orgLocked} className={selectClass()}>
+                  {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+                </select>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer pt-1">
+                <span className="relative">
+                  <input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} className="sr-only peer" />
+                  <span className="block w-10 h-5 bg-border rounded-full peer-checked:bg-primary transition-colors duration-150" />
+                  <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-150 peer-checked:translate-x-5" />
+                </span>
+                <span className="font-body text-body-sm text-ink-primary">{t('admin.articleForm.featured')}</span>
+              </label>
+              {form.featured && (
+                <p className="font-mono text-label text-ink-secondary leading-relaxed">{t('admin.articleForm.featuredHint')}</p>
+              )}
+            </div>
+          </SidebarCard>
+
+          <SidebarCard title={t('admin.articleForm.byline')}>
+            <div className="flex flex-col gap-3">
+              <div data-field="authors">
+                <FieldLabel>{t('admin.articleForm.authors')}</FieldLabel>
+                <AuthorsInput value={form.authors} onChange={(v) => set('authors', v)} invalid={Boolean(errors.authors)} />
+                {errors.authors && <FieldError>{errors.authors}</FieldError>}
+              </div>
+              <div data-field="readingTime">
+                <div className="flex items-baseline justify-between gap-2">
+                  <FieldLabel>{t('admin.articleForm.readingTime')}</FieldLabel>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!autoReading) { setAutoReading(true); setDirty(true) }
+                      else { setAutoReading(false); set('readingTime', computedReading) }
+                    }}
+                    className="font-mono text-label text-primary underline underline-offset-2"
+                  >
+                    {autoReading ? t('admin.articleForm.readingTimeEdit') : t('admin.articleForm.readingTimeAuto')}
+                  </button>
+                </div>
+                {autoReading ? (
+                  <p className="font-body text-body-sm text-ink-primary">
+                    {computedReading}
+                    <span className="text-ink-secondary"> · {t('admin.articleForm.readingTimeComputed')}</span>
+                  </p>
+                ) : (
+                  <input type="text" value={form.readingTime} onChange={(e) => set('readingTime', e.target.value)} placeholder={t('admin.articleForm.readingTimePlaceholder')} className={inputClass(errors.readingTime)} />
+                )}
+                {errors.readingTime && <FieldError>{errors.readingTime}</FieldError>}
+              </div>
+            </div>
+          </SidebarCard>
+
+          <SidebarCard title={t('admin.articleForm.cover')}>
+            <ImageUploader value={form.coverImage} onChange={(v) => set('coverImage', v)} />
+            {!form.coverImage && (
+              <div className="mt-3">
+                <FieldLabel>{t('admin.articleForm.coverColor')}</FieldLabel>
+                <div className="grid grid-cols-4 gap-2">
+                  {COLOR_SCHEMES.map(({ value, bg }) => (
+                    <button key={value} type="button" onClick={() => set('colorScheme', value)} aria-label={t(`admin.articleForm.colors.${value}`)} aria-pressed={form.colorScheme === value} className={['h-9 rounded-sm transition-all duration-150 relative', bg, form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-70 hover:opacity-100'].join(' ')}>
+                      {form.colorScheme === value && (
+                        <svg className="absolute inset-0 m-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </SidebarCard>
+        </aside>
+      </div>
+
+      {previewOpen && (
+        <PreviewDialog onClose={() => setPreviewOpen(false)}>
+          <ArticleLivePreview article={previewArticle} orgs={orgs} />
+        </PreviewDialog>
       )}
     </div>
   )
 }
 
-function ViewModeToggle({ value, onChange }) {
+function StatusPill({ status }) {
   const { t } = useTranslation()
-  const modes = [
-    { key: 'edit',    label: t('admin.articleForm.viewModes.edit'),    icon: <IconEdit /> },
-    { key: 'split',   label: t('admin.articleForm.viewModes.split'),   icon: <IconSplit />, desktopOnly: true },
-    { key: 'preview', label: t('admin.articleForm.viewModes.preview'), icon: <IconEye /> },
-  ]
+  const styles = {
+    published: 'bg-emerald-50 text-emerald-700',
+    draft:     'bg-amber-50 text-amber-700',
+  }
   return (
-    <div className="flex rounded-sm border border-border overflow-hidden" role="group" aria-label={t('admin.articleForm.viewModes.label')}>
-      {modes.map(({ key, label, icon, desktopOnly }) => (
-        <button key={key} type="button" onClick={() => onChange(key)} aria-pressed={value === key} className={['flex items-center gap-1.5 min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150', desktopOnly ? 'hidden lg:flex' : 'flex', value === key ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface'].join(' ')}>
-          <span className="w-3.5 h-3.5">{icon}</span>
-          <span className="hidden sm:inline">{label}</span>
-        </button>
+    <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest', styles[status] ?? 'bg-surface text-ink-secondary border border-border'].join(' ')}>
+      <span className={['w-1.5 h-1.5 rounded-full', status === 'published' ? 'bg-emerald-600' : status === 'draft' ? 'bg-amber-500' : 'bg-border'].join(' ')} aria-hidden="true" />
+      {status ? t(`admin.status.${status}`, { defaultValue: status }) : t('admin.articleForm.unsavedStatus')}
+    </span>
+  )
+}
+
+function ExcerptMeter({ value, featured }) {
+  const { t } = useTranslation()
+  const length = value.trim().length
+  const limit = featured ? EXCERPT_FEATURED_CHARS : EXCERPT_CARD_CHARS
+  const over = length > limit
+  return (
+    <p className={['mt-1 font-mono text-label', over ? 'text-amber-700' : 'text-ink-secondary'].join(' ')} aria-live="polite">
+      {length}/{limit}
+      {' · '}
+      {over
+        ? t('admin.articleForm.excerptTruncated', { shown: value.trim().slice(0, limit).trimEnd() })
+        : t('admin.articleForm.excerptHint')}
+    </p>
+  )
+}
+
+function AuthorsInput({ value, onChange, invalid }) {
+  const { t } = useTranslation()
+  const [draft, setDraft] = useState('')
+
+  function add() {
+    const name = draft.trim()
+    if (!name) return
+    if (!value.includes(name)) onChange([...value, name])
+    setDraft('')
+  }
+
+  return (
+    <div className={['flex flex-wrap items-center gap-1.5 p-1.5 border rounded-sm bg-white', invalid ? 'border-red-400' : 'border-border focus-within:border-primary'].join(' ')}>
+      {value.map((name) => (
+        <span key={name} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-sm bg-primary-50 text-primary font-body text-body-sm">
+          {name}
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((a) => a !== name))}
+            aria-label={t('admin.articleForm.removeAuthor', { name })}
+            className="w-5 h-5 flex items-center justify-center rounded-sm hover:bg-primary-100"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </span>
       ))}
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add() }
+          if (e.key === 'Backspace' && !draft && value.length) onChange(value.slice(0, -1))
+        }}
+        onBlur={add}
+        placeholder={value.length ? t('admin.articleForm.addAuthor') : t('admin.articleForm.authorPlaceholder')}
+        aria-label={t('admin.articleForm.addAuthor')}
+        className="flex-1 min-w-[8rem] min-h-[30px] px-1.5 font-body text-body-sm text-ink-primary bg-transparent focus:outline-none"
+      />
     </div>
   )
 }
 
-function IconEdit()  { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> }
-function IconSplit() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg> }
-function IconEye()   { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> }
+function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      className={['w-full resize-none overflow-hidden bg-transparent border-0 p-0 focus:outline-none focus:ring-0 placeholder:text-ink-secondary/50', className].join(' ')}
+    />
+  )
+}
+
+function PreviewDialog({ onClose, children }) {
+  const { t } = useTranslation()
+  const closeRef = useRef(null)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
+  }, [onClose])
+  return (
+    <div className="fixed inset-0 z-50 flex justify-center items-start bg-black/50 p-3 sm:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-label={t('admin.articleForm.preview')} className="w-full max-w-4xl max-h-full flex flex-col bg-surface rounded-card shadow-card-hover">
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
+          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-accent" aria-hidden="true" />
+            {t('admin.articleForm.previewTitle')}
+          </p>
+          <button ref={closeRef} type="button" onClick={onClose} className="min-h-[36px] px-3 rounded-sm border border-border font-body text-body-sm text-ink-secondary hover:border-primary hover:text-primary">
+            {t('admin.articleForm.closePreview')}
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-8">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function IconEye() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> }
 
 function SidebarCard({ title, children }) {
   return (
-    <div className="bg-white rounded-card border border-border shadow-card p-4">
-      <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-3">{title}</p>
+    <section className="bg-white rounded-card border border-border shadow-card p-4">
+      <h2 className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-3">{title}</h2>
       {children}
-    </div>
+    </section>
   )
 }
 
-function FormField({ label, hint, error, required, small, children }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <label className={['font-body font-semibold text-ink-primary', small ? 'text-body-sm' : 'text-body-sm'].join(' ')}>
-          {label}
-          {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
-        </label>
-        {hint  && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
-        {error && <span className="font-body text-body-sm text-red-600">{error}</span>}
-      </div>
-      {children}
-    </div>
-  )
+function FieldLabel({ children }) {
+  return <span className="block mb-1.5 font-body text-body-sm font-semibold text-ink-primary">{children}</span>
 }
 
-function StatusToggle({ value, onChange }) {
-  const { t } = useTranslation()
-  return (
-    <div className="flex rounded-sm border border-border overflow-hidden">
-      {['published', 'draft'].map((s) => (
-        <button key={s} type="button" onClick={() => onChange(s)} className={['flex-1 min-h-[36px] font-mono text-label uppercase tracking-widest transition-colors duration-150', value === s ? (s === 'published' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white') : 'text-ink-secondary hover:bg-surface'].join(' ')}>
-          {t(`admin.status.${s}`)}
-        </button>
-      ))}
-    </div>
-  )
+function FieldError({ children }) {
+  return <span role="alert" className="mt-1.5 block font-body text-body-sm text-red-600">{children}</span>
 }
 
 function inputClass(error) {
-  return ['w-full px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
+  return ['w-full min-h-[40px] px-3 py-2 border rounded-sm font-body text-body-sm text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
 }
 
 function selectClass() {
-  return 'w-full min-h-[44px] px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors duration-150'
+  return 'w-full min-h-[40px] px-3 py-2 border border-border rounded-sm font-body text-body-sm text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors duration-150 disabled:opacity-70'
 }
