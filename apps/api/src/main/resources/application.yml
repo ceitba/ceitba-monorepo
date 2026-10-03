@@ -295,3 +295,7 @@ logging:
   level:
     root: INFO
     org.ceitba.api: DEBUG
+    # Text extraction of real-world PDFs floods WARNs (bad ToUnicode CMaps,
+    # cmap format 14, missing PostScript names) that change nothing.
+    org.apache.pdfbox: ERROR
+    org.apache.fontbox: ERROR

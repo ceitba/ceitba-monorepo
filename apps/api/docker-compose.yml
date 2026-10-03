@@ -243,6 +243,10 @@ services:
       KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
       KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
       KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
+      # Heap = 75% of the container limit (~1.5 GB of 2G; the JVM default of
+      # 25% gave ~256 MB). A real OOM exits so restart: unless-stopped brings
+      # the API back instead of leaving it half-broken.
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
     networks:
       - ceitba-network
       - ceitba-proxy
@@ -255,9 +259,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
         reservations:
-          memory: 512M
+          memory: 1G
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health || exit 1"]
       interval: 30s

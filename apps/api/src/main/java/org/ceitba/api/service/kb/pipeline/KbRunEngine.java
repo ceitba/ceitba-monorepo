@@ -67,6 +67,7 @@ public class KbRunEngine {
     static final List<String> MOVING = List.of("RUNNING", "WAITING");
     static final List<String> LLM_STAGES = List.of("DIGEST", "PLAN", "WRITE", "RETRY");
     static final int MAX_STEPS = 200;
+    static final int JSONL_PAGE = 50;
 
     private final KbRunRepository runs;
     private final KbBatchJobRepository jobs;
@@ -417,10 +418,12 @@ public class KbRunEngine {
     // model) and, unless dry, executes them in that model's mode.
     private void submit(UUID runId, String stage, int attempt, boolean dry) {
         var executionMode = settings.effective().executionMode();
-        Map<String, List<KbRunRequest>> byModel = inTx(() -> {
-            Map<String, List<KbRunRequest>> m = new LinkedHashMap<>();
-            for (var r : requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING"))) {
-                m.computeIfAbsent(r.getModel(), k -> new ArrayList<>()).add(r);
+        // Ids only; the params (raw text for DIGEST) are streamed to a temp
+        // file a page at a time, so a large stage never sits in the heap.
+        Map<String, List<String>> byModel = inTx(() -> {
+            Map<String, List<String>> m = new LinkedHashMap<>();
+            for (Object[] r : requests.pendingIdsAndModels(runId, stage)) {
+                m.computeIfAbsent((String) r[1], k -> new ArrayList<>()).add((String) r[0]);
             }
             return m;
         });
@@ -430,26 +433,17 @@ public class KbRunEngine {
             n++;
             var model = e.getKey();
             var mode = router.modeFor(model, executionMode);
-            var lines = e.getValue().stream().map(r -> new LlmLine(r.getCustomId(), r.getParams())).toList();
-            var sb = new StringBuilder();
-            for (var l : lines) {
-                var line = json.createObjectNode();
-                line.put("custom_id", l.customId());
-                line.set("params", l.params());
-                sb.append(line).append('\n');
-            }
-            var bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
+            var ids = e.getValue();
             var key = "kb/runs/" + runId + "/" + stage.toLowerCase(Locale.ROOT)
                 + (attempt > 1 ? "-" + attempt : "") + (byModel.size() > 1 ? "-" + n : "") + ".jsonl";
-            storage.put(key, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
-            var ids = lines.stream().map(LlmLine::customId).toList();
+            storeJsonl(key, ids);
             if (!dry && mode.equals("BATCH")) {
                 // The row first (own transaction, unique per stage/attempt/model), then DO.
                 var queued = submitter.queue(runId, stage, attempt, model, ids, key);
                 if (queued != null) submitter.submitQueued(queued.getId());
                 continue;
             }
-            var job = inTx(() -> jobs.save(new KbBatchJob(runId, stage, attempt, model, mode, lines.size(), key)));
+            var job = inTx(() -> jobs.save(new KbBatchJob(runId, stage, attempt, model, mode, ids.size(), key)));
             if (dry) continue;
             inTxVoid(() -> {
                 jobs.findById(job.getId()).orElseThrow().submitted(null, null, now());
@@ -459,6 +453,47 @@ public class KbRunEngine {
         }
         // Every model's sync job of the stage runs at once (one shared pool).
         if (!syncJobs.isEmpty()) runSyncJobs(syncJobs);
+    }
+
+    // Writes the canonical JSONL of these requests (in id order) through a
+    // temp file, reading JSONL_PAGE requests per transaction.
+    private void storeJsonl(String key, List<String> ids) {
+        java.nio.file.Path tmp = null;
+        try {
+            tmp = java.nio.file.Files.createTempFile("kb-run-", ".jsonl");
+            try (var out = new java.io.BufferedWriter(new java.io.OutputStreamWriter(
+                    java.nio.file.Files.newOutputStream(tmp), StandardCharsets.UTF_8))) {
+                for (int i = 0; i < ids.size(); i += JSONL_PAGE) {
+                    var page = ids.subList(i, Math.min(ids.size(), i + JSONL_PAGE));
+                    var text = inTx(() -> {
+                        Map<String, KbRunRequest> byId = new java.util.HashMap<>();
+                        requests.findAllById(page).forEach(r -> byId.put(r.getCustomId(), r));
+                        var sb = new StringBuilder();
+                        for (var id : page) {
+                            var r = byId.get(id);
+                            if (r == null) continue;
+                            var line = json.createObjectNode();
+                            line.put("custom_id", id);
+                            line.set("params", r.getParams());
+                            sb.append(line).append('\n');
+                        }
+                        return sb.toString();
+                    });
+                    out.write(text);
+                }
+            }
+            storage.putFile(key, "application/x-ndjson", tmp);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        } finally {
+            if (tmp != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(tmp);
+                } catch (java.io.IOException ignored) {
+                    // best effort
+                }
+            }
+        }
     }
 
     // SYNC: executes the jobs' requests that have no answer yet, all in one
