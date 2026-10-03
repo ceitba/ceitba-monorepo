@@ -32,7 +32,8 @@ import java.util.regex.Pattern;
 //   indents     a paragraph (outside lists) with margin-left >= 36pt
 //               -> <blockquote>
 //
-// Google's CSS is flat (one class per selector), so a small regex parser is
+// Current exports also (or only) put formatting in inline style attributes;
+// both are read. Google's CSS is flat (one class per selector), so a small regex parser is
 // enough. Anything not understood is left as is.
 public final class GoogleDocsHtml {
 
@@ -56,7 +57,7 @@ public final class GoogleDocsHtml {
         var classes = classDeclarations(rules);
         var listTypes = listTypes(rules);
 
-        for (var el : doc.body().select("[class]")) {
+        for (var el : doc.body().select("[class], [style]")) {
             var decls = declarationsOf(el, classes);
             if (decls.isEmpty()) continue;
             align(el, decls);
@@ -114,11 +115,19 @@ public final class GoogleDocsHtml {
         return out;
     }
 
+    // Class rules, then the inline style (current exports put formatting
+    // inline: style="font-weight:700;text-decoration:underline").
     private static Map<String, String> declarationsOf(Element el, Map<String, Map<String, String>> classes) {
         Map<String, String> out = new HashMap<>();
         for (var c : el.classNames()) {
             var decls = classes.get(c);
             if (decls != null) out.putAll(decls);
+        }
+        if (el.hasAttr("style")) {
+            for (var d : el.attr("style").split(";")) {
+                int colon = d.indexOf(':');
+                if (colon > 0) out.put(d.substring(0, colon).trim().toLowerCase(Locale.ROOT), d.substring(colon + 1).trim());
+            }
         }
         return out;
     }

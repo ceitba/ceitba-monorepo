@@ -80,6 +80,22 @@ class GoogleDocsHtmlTest {
         assertThat(body.select("li blockquote")).isEmpty();
     }
 
+    // Current exports: formatting inline, lists still by class (real sample, trimmed).
+    @Test
+    void inlineStylesFromCurrentExports() {
+        var raw = "<html><head><style>.lst-kix_3hg-0>li:before{content:\"\\0025cf   \"}"
+            + ".lst-kix_3hg-1>li:before{content:\"\\0025cb   \"}</style></head><body>"
+            + "<ul class=\"lst-kix_3hg-0 start\"><li style=\"margin-left:36pt\"><span>Sistemas</span></li></ul>"
+            + "<ul class=\"lst-kix_3hg-1 start\"><li><span>La </span><span style=\"color:#000000;font-weight:700;"
+            + "text-decoration:underline;vertical-align:baseline;font-style:normal\">Ley 19550 </span></li></ul>"
+            + "<p style=\"margin-left:36pt;text-align:right\"><span style=\"font-style:italic\">nota</span></p></body></html>";
+        var body = Jsoup.parseBodyFragment(DocHtmlSanitizer.sanitize(GoogleDocsHtml.normalize(raw), Map.of(), "/a/").html()).body();
+        var nested = body.select("> ul > li > ul > li").first();
+        assertThat(nested.select("strong > u").text()).isEqualTo("Ley 19550");
+        assertThat(body.select("blockquote > p[data-align=right] em").text()).isEqualTo("nota");
+        assertThat(body.html()).doesNotContain("style=");
+    }
+
     @Test
     void parsesFlatCss() {
         var rules = GoogleDocsHtml.parseCss("@import url(x);.c1,.c2{font-weight:700;color:red}.a>li:before{content:\"x\"}");
