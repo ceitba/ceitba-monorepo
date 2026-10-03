@@ -533,6 +533,7 @@ public class KbPipelineService implements KbRunHandler {
         var body = json.createObjectNode();
         var changedArr = body.putArray("addedOrChanged");
         var fileById = fileMap(rs);
+        var community = communityIds(fileById.keySet());
         var digestByFp = digestsFor(rs);
         for (var list : List.of(rs.getAdded(), rs.getChanged())) {
             for (var c : list) {
@@ -541,6 +542,7 @@ public class KbPipelineService implements KbRunHandler {
                 var f = fileById.get(UUID.fromString(c.path("fileId").asText()));
                 o.put("name", f == null ? null : f.getName());
                 o.set("academicYear", c.path("academicYear"));
+                o.put("community", f != null && community.contains(f.getId()));
                 var d = digestByFp.get(fingerprintOf(c));
                 o.set("digest", d == null ? null : d.getDigest());
             }
@@ -574,6 +576,7 @@ public class KbPipelineService implements KbRunHandler {
         var removed = new HashSet<String>();
         rs.getRemoved().forEach(n -> removed.add(n.asText()));
         var fileById = fileMap(rs);
+        var community = communityIds(fileById.keySet());
         var digestByFp = digestsFor(rs);
         Map<String, JsonNode> inputById = new HashMap<>();
         rs.getInputs().forEach(i -> inputById.put(i.path("fileId").asText(), i));
@@ -608,6 +611,7 @@ public class KbPipelineService implements KbRunHandler {
                     o.put("fileId", id);
                     o.put("name", name);
                     o.set("academicYear", inputById.getOrDefault(id, json.createObjectNode()).path("academicYear"));
+                    o.put("community", community.contains(UUID.fromString(id)));
                     var d = digestByFp.get(fingerprintOf(inputById.getOrDefault(id, json.createObjectNode())));
                     o.set("digest", d == null ? null : d.getDigest());
                     if (d != null) {
@@ -617,7 +621,9 @@ public class KbPipelineService implements KbRunHandler {
                         sourceTexts.add(new KbPayloads.SourceText(id, name, f.getTextContent()));
                     }
                 } else {
-                    keptSources.addObject().put("fileId", id).put("name", name);
+                    keptSources.addObject().put("fileId", id).put("name", name)
+                        .put("community", community.contains(UUID.fromString(id)))
+                        .set("academicYear", inputById.getOrDefault(id, json.createObjectNode()).path("academicYear"));
                 }
             }
             var excerpts = body.putArray("excerpts");
@@ -954,6 +960,12 @@ public class KbPipelineService implements KbRunHandler {
     private JsonNode operation(KbRunSubject rs, String slug) {
         for (var op : rs.getOperations()) if (op.path("slug").asText().equals(slug)) return op;
         return null;
+    }
+
+    // Files of community archives (older material: the prompts prefer recent
+    // student notes and use the archive to fill gaps).
+    private java.util.Set<UUID> communityIds(java.util.Collection<UUID> ids) {
+        return ids.isEmpty() ? java.util.Set.of() : new HashSet<>(files.findCommunityFileIds(ids));
     }
 
     private Map<UUID, DriveFile> fileMap(KbRunSubject rs) {

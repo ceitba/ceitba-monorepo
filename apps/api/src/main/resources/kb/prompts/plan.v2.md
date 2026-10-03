@@ -21,3 +21,6 @@ Rules:
 - `sources`: the file ids the page should cite after the change (from `addedOrChanged` or the page's current sources,
   never a removed file).
 - `reason`: one short sentence.
+- Sources' age: each file has its `academicYear` and `community` (true = an older community archive, not a
+  current student's notes). When files overlap or contradict, base pages on the most recent student notes and
+  use older or archive files only to fill gaps.
