@@ -5,9 +5,10 @@ import ManageBenefitsSection from './manage/ManageBenefitsSection'
 import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
+import ManageDriveSection from './manage/ManageDriveSection'
 import type { OrganizationSummary } from '../api/admin'
 
-type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections'
+type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive'
 
 export default function ManagePage() {
   const { t } = useTranslation()
@@ -33,6 +34,7 @@ export default function ManagePage() {
     { id: 'users',    label: t('manage.tabs.users') },
     { id: 'organizations', label: t('manage.tabs.organizations') },
     { id: 'corrections', label: t('manage.tabs.corrections') },
+    { id: 'drive', label: t('manage.tabs.drive') },
   ]
 
   return (
@@ -69,6 +71,7 @@ export default function ManagePage() {
       {tab === 'users'    && <ManageUsersSection initialAddingTo={addingTo} />}
       {tab === 'organizations' && <ManageOrganizationsSection onAddMembers={addMembers} />}
       {tab === 'corrections' && <ManageCorrectionsSection />}
+      {tab === 'drive' && <ManageDriveSection />}
     </main>
   )
 }

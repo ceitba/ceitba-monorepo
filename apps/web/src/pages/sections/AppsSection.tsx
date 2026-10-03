@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 interface AppCardProps {
   href: string
@@ -9,12 +10,12 @@ interface AppCardProps {
   colorVar: string
 }
 
-function AppCard({ href, label, description, cta, icon, colorVar }: AppCardProps) {
-  return (
-    <a
-      href={href}
-      className="group flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden"
-    >
+// Other SPAs (/scheduler, /newsletter) are separate apps behind Caddy, so
+// they need a full page load; in-app routes (e.g. /apuntes) use the router.
+function AppCard({ href, label, description, cta, icon, colorVar, internal = false }: AppCardProps & { internal?: boolean }) {
+  const className = 'group flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden'
+  const body = (
+    <>
       <div
         className="flex items-center justify-center h-24 sm:h-32"
         style={{ backgroundColor: `var(${colorVar})` }}
@@ -39,8 +40,11 @@ function AppCard({ href, label, description, cta, icon, colorVar }: AppCardProps
           </svg>
         </div>
       </div>
-    </a>
+    </>
   )
+  return internal
+    ? <Link to={href} className={className}>{body}</Link>
+    : <a href={href} className={className}>{body}</a>
 }
 
 const SchedulerIcon = () => (
@@ -64,6 +68,15 @@ const NewsletterIcon = () => (
   </svg>
 )
 
+const ApuntesIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    <line x1="9" y1="7" x2="16" y2="7" />
+    <line x1="9" y1="11" x2="14" y2="11" />
+  </svg>
+)
+
 export default function AppsSection() {
   const { t } = useTranslation()
 
@@ -78,7 +91,7 @@ export default function AppsSection() {
             {t('apps.sectionSubtitle')}
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AppCard
             href="/scheduler"
             label={t('apps.scheduler.label')}
@@ -94,6 +107,15 @@ export default function AppsSection() {
             cta={t('apps.newsletter.cta')}
             icon={<NewsletterIcon />}
             colorVar="--dept-color-nautica"
+          />
+          <AppCard
+            href="/apuntes"
+            internal
+            label={t('apps.apuntes.label')}
+            description={t('apps.apuntes.description')}
+            cta={t('apps.apuntes.cta')}
+            icon={<ApuntesIcon />}
+            colorVar="--dept-color-infra"
           />
         </div>
       </div>

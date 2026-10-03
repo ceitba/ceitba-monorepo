@@ -36,9 +36,10 @@ export async function apiGet<T>(path: string): Promise<T> {
 export async function apiSend<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await apiRequest(method, path, body)
   if (!res.ok) throw await toError(res)
-  // 204 No Content
+  // 204 No Content, or a 202 Accepted with an empty body
   if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  const text = await res.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 async function toError(res: Response): Promise<ApiError> {
