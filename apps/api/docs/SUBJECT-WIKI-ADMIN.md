@@ -256,7 +256,10 @@ progress: {
              status: "pending"|"running"|"waiting_batch"|"done"|"failed"|"skipped",
              total, done, failed, inFlight,       // requests; LINK/VALIDATE: pages; PUBLISH: subjects
              mode: "sync"|"batch"|null,
-             batch: { doStatus, requestCounts: { total, completed, failed }, submittedAt } | null,
+             batch: { doStatus, requestCounts: { total, completed, failed }, submittedAt,
+                      status,          // QUEUED (DO not called yet / creation rate-limited) | SUBMITTED | COMPLETED | FAILED | CANCELLED
+                      error,           // DO's error_message of a failed batch, or RATE_LIMITED: ... while retrying
+                      nextAttemptAt } | null,
              startedAt, finishedAt }],
   overall: { done, total, percent },              // estimated input tokens, not request counts
   current: "Generando resúmenes de archivos (7/11) con glm-5.3-flash",
@@ -268,6 +271,10 @@ progress: {
 - **Totals:** DIGEST = chunks needing a digest (known when the stage starts); PLAN = subjects (× configurations for an
   eval), known up front; WRITE is `null` until PLAN finishes (the UI shows "por determinar"); RETRY is `null` until WRITE
   finishes. `failed` includes answers that failed and wait for the stage's single resubmission.
+- **Run status** in responses: `SUCCEEDED`, `PARTIAL` (some subjects/configurations failed; `current` = "Terminado con
+  fallas: …"), `FAILED` (all failed), `CANCELLED`, plus the active ones.
+- **Rate-limited batch creation** shows the stage as `waiting_batch` and `current` ends with "DigitalOcean limitó la
+  creación de lotes; reintento a las HH:MM" (Buenos Aires time).
 - **Batch stages** take `done`/`failed` from DO's `request_counts` (`GET /v1/batches/{id}`, stored at each poll) while
   the batch is open.
 - **overall** weights each request by its estimated input tokens; stages not built yet are estimated (PLAN: 6k tokens
@@ -324,10 +331,17 @@ A pair is one (subject, slug) written by two configurations; `confident` is true
   Validation only checks models that change (an unprobed env default doesn't block unrelated edits). `modelRetry`
   follows `modelWrite` unless set. History stores each saved version (newest first); restore saves it again as a new
   version.
-- **Batch support from a probe** is set to `false` only when the error explicitly says the model or provider doesn't
-  support batch (a 4xx whose code or message says so, e.g. `model_not_supported`). Any other failure (bad file name,
-  account blocked, rate limit, 5xx) leaves `batchSupported` and `batchSource` untouched. A staff edit of
-  `batchSupported` resets `batchSource` to `rule`.
+- **Batch model id.** `batchModelId` (nullable, editable with `PUT /models/{id}`; `null`/blank = default) is the id batch
+  JSONL lines use; the default is the catalog id without its `openai-`/`anthropic-` prefix (DO's batch API rejected
+  `openai-gpt-6-luna` as `unsupported model … not available on DigitalOcean` while sync accepts it). The models
+  response has `batchModelId` (stored) and `effectiveBatchModelId` (what a batch sends). Sync always uses `id`.
+- **Batch support from a probe.** A batch probe that DO refuses with "unsupported model" (at creation or in the failed
+  batch's `error_message`) is retried once with the other id form (native ↔ prefixed); the form that works is stored in
+  `batchModelId` with `batchSupported=true`. `batchSupported` turns `false` only when **both** forms are unsupported
+  (`lastProbe.batch.unsupportedModel: true`). Any other failure (bad file name, account blocked, 5xx) leaves
+  `batchSupported` and `batchSource` untouched. A `429`/no answer on creation keeps the probe pending with `retryAt`
+  (1, 5, 15, 60 min) and the poller resubmits it. At most one batch probe per model is pending: probing again returns
+  the pending one. A staff edit of `batchSupported` resets `batchSource` to `rule`.
 - **Probes per mode:** `lastProbe` keeps one entry per mode, `lastProbe.sync` and `lastProbe.batch`; its top level is the
   most recent probe (the §6 shape) for compatibility. A batch probe waiting for DO shows `pending: true`.
 - **selectable** = enabled AND a successful probe in the mode the stage would actually use (`auto`: batch if
@@ -335,8 +349,8 @@ A pair is one (subject, slug) written by two configurations; `confident` is true
   blocks selection: the sync probe decides until the batch result arrives. `PUT /settings` uses the same rule.
 - **Probe.** `lastProbe` always has `ok, mode, toolCalling, latencyMs, usage, at` (§6); without an answer (account
   error, pending or failed batch) `toolCalling` is `"no"` and usage is zero, and the catalog's own `toolCalling` is left
-  unchanged. Extra keys: `path` (tool | content-json | json_object | text), and `pending` / `batchId` while a batch
-  probe waits. Batch support follows the rule above. A batch probe on a model without a batch provider (GLM,
+  unchanged. Extra keys: `path` (tool | content-json | json_object | text), `pending` with `batchId` (or `retryAt`,
+  `retries` while creation is rate-limited) while a batch probe waits, and `batchModelId` / `tried` on batch probes. Batch support follows the rule above. A batch probe on a model without a batch provider (GLM,
   DeepSeek...) is not attempted: `lastProbe` records `{ok:false, mode:"batch", error}` and `batchSupported` stays false. Batch probes complete on the poller
   (`refreshPendingProbes`). Prompt-token overhead differs per provider: the same tiny probe counted 752 prompt tokens
   on Anthropic Haiku vs 240 on GLM (tool schema framing); the forecast uses a flat 1,500-token overhead per request.

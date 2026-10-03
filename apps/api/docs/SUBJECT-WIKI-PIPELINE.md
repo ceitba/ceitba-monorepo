@@ -79,8 +79,9 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
 
 - `wiki.kb_run`: `id, trigger (SCHEDULED|MANUAL), status, stage, started_at, finished_at, subjects jsonb, stats jsonb,
   tokens_in, tokens_out, cost_estimate, error`.
-- `wiki.kb_batch_job`: `id, run_id, stage, do_batch_id, do_file_id, status, request_count, submitted_at, completed_at,
-  output_file_url_fetched_at, error`.
+- `wiki.kb_batch_job`: `id, run_id, stage, attempt, model, do_batch_id, do_file_id, status
+  (DRY|QUEUED|SUBMITTED|COMPLETED|FAILED|CANCELLED), request_count, submitted_at, completed_at,
+  output_file_url_fetched_at, error, next_attempt_at, submit_failures, do_request_id`.
   - Request payloads (JSONL) are stored in MinIO under `kb/runs/<runId>/<stage>.jsonl`, and results under `…-out.jsonl`, for audit.
 - A `KbPipelinePoller` (`@Scheduled` every 10 min, `KB_POLL_INTERVAL`) advances runs:
   - submit pending stages;
@@ -88,6 +89,9 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
   - on `completed`, download the output and error files, parse them by `custom_id`, persist, and move to the next stage.
   - `expired`/`failed`: keep partial results; the requests not completed are resubmitted once in a follow-up batch,
     otherwise the subject stays dirty.
+    A batch DO fails as a whole (e.g. `JSONL model validation failed: … unsupported model …`, `request_counts.total: 0`)
+    is not resubmitted: its requests fail with DO's `error_message`, which is stored in `kb_batch_job.error`, the run's
+    `error` and the progress (`stages[].batch.error`).
   - Must survive API restarts: all state is in the DB.
 - One active run at a time. A manual trigger while a run is active → 409.
 - `custom_id` format: `<runId>:<stage>:<subjectId>:<slug|fileId>:<chunk>`.
@@ -173,12 +177,30 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
 - **Advancing runs:** a run or eval is advanced **as soon as it is created** (`POST /pipeline/runs`, dry runs included,
   `POST /evals`, approve-cost), on the task executor, one task per run, so a long sync stage of one run never delays
   another. Sync stages and the code-only steps (LINK, VALIDATE, PUBLISH) flow straight into the next stage. The
-  **batch poller** (`KB_BATCH_POLL_INTERVAL`, default `PT1M`) only checks runs with a SUBMITTED DO batch (and pending
-  batch probes). A **safety sweep** (`KB_POLL_INTERVAL`, default `PT10M`, and once at startup) kicks every active run to
+  **batch poller** (`KB_BATCH_POLL_INTERVAL`, default `PT1M`) only checks runs with a SUBMITTED DO batch or a QUEUED one
+  whose `nextAttemptAt` is due (and pending batch probes). A **safety sweep** (`KB_POLL_INTERVAL`, default `PT10M`, and once at startup) kicks every active run to
   resume anything a restart interrupted. Each run has one advancer at a time: a lease on `kb_run` (`lease_owner`,
   `lease_until`, V37) taken with a conditional UPDATE and renewed every minute; a kick that finds the run busy makes the
   holder loop once more. `KB_PIPELINE_ENABLED` (or the settings' `enabled`) only gates the weekly cron.
   `kb.pipeline.background=false` turns all background work off (tests drive the engine).
+- **Batch submission** (`KbBatchSubmitter`, V38). Idempotent and never fatal on rate limits:
+  - The `kb_batch_job` row is created (`QUEUED`) in its own transaction **before** DO is called, under a unique index on
+    `(run_id, stage, attempt, model)` (a stage has one job per model, e.g. per eval configuration). An advancer that
+    finds the row already there never submits again. Advancing always holds the run's lease.
+  - DO gets a deterministic `request_id` = `<runId>:<stage>:<attempt>:<model>`. Before re-creating a batch whose
+    creation got no clear answer, `GET /v1/batches` (`{edges: [{node}], page_info}`) is checked for that request_id.
+  - JSONL lines carry the model's **batch model id** (catalog `batchModelId`, else the catalog id without its
+    `openai-`/`anthropic-` prefix: `openai-gpt-6-luna` → `gpt-6-luna`); sync requests keep the catalog id.
+  - A `429` (`batch_create_per_minute`, `batch_creations_per_hour`), no response or 5xx on creation keeps the job
+    `QUEUED` and the stage `waiting_batch` with `nextAttemptAt` after 1, 5, 15, 60 min, then hourly; the batch poller
+    only picks it up when due. Progress `current` reads "DigitalOcean limitó la creación de lotes; reintento a las
+    HH:MM". Any other refusal fails the job and its requests with DO's message.
+  - **No sync fallback:** a stage resolved to BATCH either batches or waits; there is no `fallbackToSyncAfterMinutes`.
+    (The execution mode is chosen per model when the stage is submitted; `batch` on a model without batch support
+    resolves to sync up front, as before.)
+- **Final status.** `FAILED` when every subject (pipeline; deferred/cancelled ones don't count) or every configuration
+  (eval) failed, `PARTIAL` when some did, `SUCCEEDED` otherwise (also when there was nothing to do). `kb_run.status`
+  is `VARCHAR(32)`; V38 adds `PARTIAL` to its check constraint.
 - **Per-subject overrides** live in the settings (`subjectOverrides`) instead of a separate table.
 - **Cost limit.** A run whose next stage would exceed `weeklyCostLimitUsd` goes to `BLOCKED_BY_COST_LIMIT`;
   `POST /v1/staff/kb/pipeline/runs/{id}/approve-cost` releases it once.
