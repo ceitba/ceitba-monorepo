@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  COST_STAGES, MODEL_STAGES, costPairs, fetchCostSummary, fetchCosts, fetchRuns, fetchSettings,
+  COST_STAGES, MODEL_STAGES, costPairs, rowKey, fetchCostSummary, fetchCosts, fetchRuns, fetchSettings,
   type KbSettings,
 } from '../../../api/kbAdmin'
 import CostChart from './CostChart'
@@ -75,7 +75,7 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
               return (
                 <ol className="flex flex-col gap-2">
                   {rows.map((r) => {
-                    const id = r.subjectId ?? (typeof r.key === 'string' ? r.key : Object.values(r.key)[0])
+                    const id = r.subjectId ?? rowKey(r)
                     return (
                       <li key={id} className="flex flex-col gap-1">
                         <div className="flex justify-between gap-2 font-body text-body-sm">

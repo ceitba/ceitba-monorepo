@@ -686,7 +686,10 @@
         "winRate": "Win rate",
         "ratings": "Ratings",
         "fewRatings": "few",
-        "fewRatingsHint": "Fewer than {{n}} ratings: take it with care."
+        "fewRatingsHint": "Fewer than {{n}} ratings: take it with care.",
+        "refreeze": "Re-freeze",
+        "refreezeBody": "“{{name}}” takes its subjects’ current inputs. New evaluations stop being comparable with earlier ones.",
+        "refrozen": "“{{name}}” was re-frozen."
       },
       "review": {
         "start": "Blind review",
@@ -700,7 +703,7 @@
           "clarity": "Clarity",
           "usefulness": "Usefulness"
         },
-        "scoresHint": "Rate the pair overall (1 = poor, 5 = excellent).",
+        "scoresHint": "Rate each page separately (1 = poor, 5 = excellent) and pick the better one.",
         "comment": "Comment (optional)",
         "submit": "Submit",
         "skip": "Skip",
@@ -709,7 +712,8 @@
         "noMore": "No pairs left to review in this evaluation.",
         "back": "Back",
         "remaining_one": "{{count}} left",
-        "remaining_other": "{{count}} left"
+        "remaining_other": "{{count}} left",
+        "scoresFor": "{{label}} scores"
       }
     }
   },

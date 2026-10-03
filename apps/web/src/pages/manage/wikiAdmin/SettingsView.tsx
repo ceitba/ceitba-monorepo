@@ -116,7 +116,9 @@ export default function SettingsView() {
   const loadImpact = useCallback(async (): Promise<CostImpact | null> => {
     try {
       const r = await previewSettingsImpact(body())
-      return r.costImpact ?? (r.previousWeeklyAvgUsd !== undefined ? { previousWeeklyAvgUsd: r.previousWeeklyAvgUsd ?? null, projectedWeeklyAvgUsd: r.projectedWeeklyAvgUsd ?? null } : null)
+      // Validation problems found by the preview are shown in the dialog.
+      if (r.errors?.length) throw new Error(r.errors.join(' · '))
+      return r.costImpact ?? null
     } catch (e) {
       if (isUnavailable(e)) return null
       throw e

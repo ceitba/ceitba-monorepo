@@ -686,7 +686,10 @@
         "winRate": "Victorias",
         "ratings": "Calificaciones",
         "fewRatings": "pocas",
-        "fewRatingsHint": "Menos de {{n}} calificaciones: tomalo con cuidado."
+        "fewRatingsHint": "Menos de {{n}} calificaciones: tomalo con cuidado.",
+        "refreeze": "Volver a congelar",
+        "refreezeBody": "«{{name}}» toma las entradas actuales de sus materias. Las evaluaciones nuevas dejan de ser comparables con las anteriores.",
+        "refrozen": "Se volvió a congelar «{{name}}»."
       },
       "review": {
         "start": "Revisión a ciegas",
@@ -700,7 +703,7 @@
           "clarity": "Claridad",
           "usefulness": "Utilidad"
         },
-        "scoresHint": "Puntuá el par en general (1 = malo, 5 = excelente).",
+        "scoresHint": "Puntuá cada página por separado (1 = malo, 5 = excelente) y elegí la mejor.",
         "comment": "Comentario (opcional)",
         "submit": "Enviar",
         "skip": "Saltear",
@@ -709,7 +712,8 @@
         "noMore": "No quedan pares para revisar en esta evaluación.",
         "back": "Volver",
         "remaining_one": "queda {{count}}",
-        "remaining_other": "quedan {{count}}"
+        "remaining_other": "quedan {{count}}",
+        "scoresFor": "Puntajes de {{label}}"
       }
     }
   },

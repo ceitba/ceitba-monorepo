@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchNextReview, submitReview, type ModelConfig, type ReviewPage, type ReviewPair, type ReviewResult } from '../../../api/kbAdmin'
+import { fetchNextReview, submitReview, type ModelConfig, type ReviewPage, type ReviewPair, type ReviewResult, type ReviewScores } from '../../../api/kbAdmin'
 import type { KbPage } from '../../../api/kb'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import { CitationContext } from '../../../components/apuntes/wiki/citationContext'
@@ -11,6 +11,8 @@ import { isUnavailable } from './shared'
 const WikiMarkdown = lazy(() => import('../../../components/apuntes/wiki/WikiMarkdown'))
 
 type Winner = 'A' | 'B' | 'tie'
+const DIMENSIONS = ['accuracy', 'clarity', 'usefulness'] as const
+const NEUTRAL: ReviewScores = { accuracy: 3, clarity: 3, usefulness: 3 }
 
 // Blind A/B review of one eval: the same page from two configurations,
 // model names hidden until the rating is submitted.
@@ -20,14 +22,16 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
   const [error, setError] = useState<string | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [winner, setWinner] = useState<Winner | null>(null)
-  const [scores, setScores] = useState({ accuracy: 3, clarity: 3, usefulness: 3 })
+  // Scores per side, 1–5 each (ADMIN doc §6).
+  const [scoresA, setScoresA] = useState<ReviewScores>(NEUTRAL)
+  const [scoresB, setScoresB] = useState<ReviewScores>(NEUTRAL)
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<ReviewResult['revealed'] | null>(null)
 
   const next = useCallback(() => {
     setPair(undefined); setError(null); setWinner(null); setRevealed(null); setComment('')
-    setScores({ accuracy: 3, clarity: 3, usefulness: 3 })
+    setScoresA(NEUTRAL); setScoresB(NEUTRAL)
     fetchNextReview(evalId)
       .then((p) => setPair(p))
       .catch((e) => { if (isUnavailable(e)) setUnavailable(true); else setError(apuntesErrorMessage(e, t)) })
@@ -39,7 +43,7 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
     if (!pair || !winner) return
     setBusy(true); setError(null)
     try {
-      const r = await submitReview(evalId, { subjectId: pair.subjectId, slug: pair.slug, winner, scores, comment: comment.trim() })
+      const r = await submitReview(evalId, { subjectId: pair.subjectId, slug: pair.slug, winner, scoresA, scoresB, comment: comment.trim() })
       setRevealed(r?.revealed ?? {})
     } catch (e) {
       setError(apuntesErrorMessage(e, t))
@@ -72,7 +76,15 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {[pair.a, pair.b].map((p, i) => (
-              <ReviewColumn key={i} label={i === 0 ? 'A' : 'B'} page={p} subjectId={pair.subjectId} slug={pair.slug} reveal={revealed ? (i === 0 ? revealed.A : revealed.B) : undefined} />
+              <div key={i} className="flex flex-col gap-3 min-w-0">
+                <ReviewColumn label={i === 0 ? 'A' : 'B'} page={p} subjectId={pair.subjectId} slug={pair.slug} reveal={revealed ? (i === 0 ? revealed.A : revealed.B) : undefined} />
+                <ScoreSliders
+                  label={i === 0 ? 'A' : 'B'}
+                  value={i === 0 ? scoresA : scoresB}
+                  onChange={i === 0 ? setScoresA : setScoresB}
+                  disabled={!!revealed}
+                />
+              </div>
             ))}
           </div>
 
@@ -97,16 +109,6 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
                   >
                     {w === 'tie' ? t('manage.wikiAi.review.tie') : w}
                   </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(['accuracy', 'clarity', 'usefulness'] as const).map((k) => (
-                  <label key={k} className="flex flex-col gap-1">
-                    <span className="flex justify-between font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-                      {t(`manage.wikiAi.review.scores.${k}`)} <span className="text-ink-primary dark:text-night-text">{scores[k]}</span>
-                    </span>
-                    <input type="range" min={1} max={5} step={1} value={scores[k]} onChange={(e) => setScores((s) => ({ ...s, [k]: Number(e.target.value) }))} className="accent-primary" />
-                  </label>
                 ))}
               </div>
               <p className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.scoresHint')}</p>
@@ -174,5 +176,36 @@ function ReviewColumn({ label, page, subjectId, slug, reveal }: {
         </CitationContext.Provider>
       </div>
     </article>
+  )
+}
+
+function ScoreSliders({ label, value, onChange, disabled }: {
+  label: string
+  value: ReviewScores
+  onChange: (v: ReviewScores) => void
+  disabled: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <fieldset disabled={disabled} className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface disabled:opacity-60">
+      <legend className="px-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.scoresFor', { label })}</legend>
+      {DIMENSIONS.map((k) => (
+        <label key={k} className="flex flex-col gap-1">
+          <span className="flex justify-between font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+            {t(`manage.wikiAi.review.scores.${k}`)} <span className="text-ink-primary dark:text-night-text">{value[k]}</span>
+          </span>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            step={1}
+            value={value[k]}
+            aria-label={`${label} · ${t(`manage.wikiAi.review.scores.${k}`)}`}
+            onChange={(e) => onChange({ ...value, [k]: Number(e.target.value) })}
+            className="accent-primary"
+          />
+        </label>
+      ))}
+    </fieldset>
   )
 }

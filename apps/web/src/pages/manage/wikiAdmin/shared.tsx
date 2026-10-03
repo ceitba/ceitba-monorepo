@@ -184,9 +184,11 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
   useEffect(() => {
     if (!loadImpact) { setImpact(null); return }
     let cancelled = false
-    loadImpact().then((i) => { if (!cancelled) setImpact(i) }).catch(() => { if (!cancelled) setImpact(null) })
+    loadImpact()
+      .then((i) => { if (!cancelled) setImpact(i) })
+      .catch((e) => { if (!cancelled) { setImpact(null); setError(apuntesErrorMessage(e, t)) } })
     return () => { cancelled = true }
-  }, [loadImpact])
+  }, [loadImpact, t])
 
   async function confirm() {
     setBusy(true); setError(null)

@@ -62,7 +62,7 @@ export function saveSettings(body: SettingsBody): Promise<KbSettings & { costImp
 
 // Not in the contract yet: cost impact of a settings change without saving
 // it. Callers treat a 404 as "only known after saving".
-export function previewSettingsImpact(body: SettingsBody): Promise<{ costImpact?: CostImpact } & Partial<CostImpact>> {
+export function previewSettingsImpact(body: SettingsBody): Promise<{ costImpact?: CostImpact; errors?: string[] }> {
   return apiSend('POST', `${BASE}/settings/preview`, body)
 }
 
@@ -74,11 +74,12 @@ export function restoreSettings(id: string): Promise<KbSettings> {
 
 // ── Model catalog ────────────────────────────────────────────────────────
 
+// ADMIN doc §6: { ok, mode: batch|sync, toolCalling: yes|no, latencyMs, usage, error?, at }.
 export interface ModelProbe {
-  ok?: boolean
+  ok: boolean
   status?: string
-  mode?: string
-  toolCalling?: boolean | string
+  mode?: 'batch' | 'sync' | string
+  toolCalling?: 'yes' | 'no' | boolean | string
   latencyMs?: number
   usage?: { inputTokens?: number; outputTokens?: number } | null
   error?: string | null
@@ -119,7 +120,10 @@ export function probeOk(m: KbModel | undefined | null): boolean {
 // ── Costs ────────────────────────────────────────────────────────────────
 
 export interface CostRow {
-  key: string | Record<string, string>
+  // Single-dimension groupings; multi-dimension rows (week,stage) carry
+  // week + stage/model fields instead (ADMIN doc §6).
+  key?: string | Record<string, string>
+  // ISO date of the Monday (America/Argentina/Buenos_Aires).
   week?: string
   stage?: string
   model?: string
@@ -151,10 +155,16 @@ export function fetchCosts(params: { from?: string; to?: string; groupBy: string
   return apiGet<CostRow[]>(`${BASE}/costs?${qs}`)
 }
 
+export function rowKey(r: CostRow): string {
+  if (typeof r.key === 'string') return r.key
+  if (r.key) return Object.values(r.key).join(' · ')
+  return r.subjectId ?? r.stage ?? r.model ?? r.week ?? ''
+}
+
 // Normalises a {key: number} map or a CostRow[] into [key, costUsd] pairs.
 export function costPairs(v: CostRow[] | Record<string, number> | null | undefined): [string, number][] {
   if (!v) return []
-  if (Array.isArray(v)) return v.map((r) => [typeof r.key === 'string' ? r.key : Object.values(r.key).join(' · '), r.costUsd ?? 0])
+  if (Array.isArray(v)) return v.map((r) => [rowKey(r), r.costUsd ?? 0])
   return Object.entries(v).map(([k, n]) => [k, Number(n) || 0])
 }
 
@@ -209,7 +219,8 @@ export interface KbRun {
   tokensOut: number
   costEstimate: number | null
   costUsd?: number | null
-  costByStage?: Record<string, number> | CostRow[] | null
+  // ADMIN doc §6: { DIGEST, PLAN, WRITE, RETRY }.
+  costByStage?: Record<string, number> | null
   error: string | null
   subjects: KbRunSubject[]
   batches: KbBatchJob[]
@@ -283,7 +294,7 @@ export interface EvalConfigResult {
   write: string
   status?: string
   metrics: EvalMetrics
-  subjects?: ({ subjectId: string } & EvalMetrics)[]
+  perSubject?: ({ subjectId: string } & EvalMetrics)[]
 }
 
 export interface EvalRun {
@@ -338,7 +349,10 @@ export const fetchEval = (id: string) => apiGet<EvalRun>(`${EVALS}/${enc(id)}`)
 export const createEval = (body: { setId: string; models: ModelConfig[]; note?: string }) => apiSend<EvalRun>('POST', EVALS, body)
 // Not in the contract yet; a 404 means "no estimate available".
 export const estimateEval = (body: { setId: string; models: ModelConfig[] }) =>
-  apiSend<{ estimatedUsd?: number; perConfig?: Record<string, number>; estimatedTokens?: number }>('POST', `${EVALS}/estimate`, body)
+  apiSend<{ estimatedInputTokens?: number; estimatedOutputTokens?: number; estimatedCostUsd?: number }>('POST', `${EVALS}/estimate`, body)
+export const refreezeEvalSet = (id: string) => apiSend<EvalSet>('POST', `${EVALS}/sets/${enc(id)}/refreeze`)
+
+export interface ReviewScores { accuracy: number; clarity: number; usefulness: number }
 
 export function fetchNextReview(evalId: string, opts: { subjectId?: string; slug?: string } = {}): Promise<ReviewPair | null> {
   const qs = new URLSearchParams()
@@ -353,7 +367,9 @@ export function submitReview(evalId: string, body: {
   subjectId: string
   slug: string
   winner: 'A' | 'B' | 'tie'
-  scores: { accuracy: number; clarity: number; usefulness: number }
+  // Per side, 1–5 each.
+  scoresA: ReviewScores
+  scoresB: ReviewScores
   comment: string
 }): Promise<ReviewResult | undefined> {
   return apiSend('POST', `${EVALS}/${enc(evalId)}/review`, body)

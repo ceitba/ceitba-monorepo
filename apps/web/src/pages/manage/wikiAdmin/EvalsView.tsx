@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  configKey, createEval, createEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
+  configKey, createEval, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
   type EvalConfigResult, type EvalMetrics, type EvalRun, type KbModel, type LeaderboardRow, type ModelConfig,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
+import ConfirmDialog from '../../../components/ConfirmDialog'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
 import BlindReview from './BlindReview'
@@ -54,7 +55,15 @@ export default function EvalsView() {
 
   useEffect(() => { if (!lbSet && sets.data?.length) setLbSet(sets.data[0].id) }, [sets.data, lbSet])
 
-  if (openEval) return <EvalDetail id={openEval} models={models.data ?? []} onBack={() => { setOpenEval(null); evals.reload() }} />
+  if (openEval) {
+    return (
+      <EvalDetail
+        id={openEval}
+        setName={(sid) => sets.data?.find((s) => s.id === sid)?.name}
+        onBack={() => { setOpenEval(null); evals.reload() }}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -110,6 +119,22 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
   const [options, setOptions] = useState<ApunteSubject[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreezing, setRefreezing] = useState<{ id: string; name: string } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  async function refreeze() {
+    if (!refreezing) return
+    setBusy(true); setError(null)
+    try {
+      await refreezeEvalSet(refreezing.id)
+      setNotice(t('manage.wikiAi.evals.refrozen', { name: refreezing.name }))
+      sets.reload()
+    } catch (e) {
+      setError(apuntesErrorMessage(e, t))
+    } finally {
+      setBusy(false); setRefreezing(null)
+    }
+  }
 
   useEffect(() => {
     if (!debounced.trim()) { setOptions([]); return }
@@ -172,13 +197,28 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
           </div>
         </div>
       )}
+      {!creating && error && <ErrorBanner className="mb-2" onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+      {notice && <Notice className="mb-2" onDismiss={() => setNotice(null)}>{notice}</Notice>}
+      {refreezing && (
+        <ConfirmDialog
+          title={t('manage.wikiAi.evals.refreeze')}
+          body={t('manage.wikiAi.evals.refreezeBody', { name: refreezing.name })}
+          confirmLabel={t('manage.wikiAi.evals.refreeze')}
+          busy={busy}
+          onConfirm={() => void refreeze()}
+          onCancel={() => setRefreezing(null)}
+        />
+      )}
       <ViewState state={sets} skeleton="rows" empty={(s) => s.length === 0} emptyText={t('manage.wikiAi.evals.noSets')}>
         {(list) => (
           <ul className="flex flex-col divide-y divide-border dark:divide-night-border">
             {list.map((s) => (
-              <li key={s.id} className="py-2">
-                <p className="font-body text-body-sm font-semibold">{s.name}</p>
-                <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{s.subjectIds.join(' · ')}</p>
+              <li key={s.id} className="py-2 flex flex-wrap items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-body text-body-sm font-semibold">{s.name}</p>
+                  <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{s.subjectIds.join(' · ')}</p>
+                </div>
+                <button type="button" onClick={() => setRefreezing({ id: s.id, name: s.name })} className={BTN}>{t('manage.wikiAi.evals.refreeze')}</button>
               </li>
             ))}
           </ul>
@@ -198,7 +238,7 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
   const [setId, setSetId] = useState('')
   const [configs, setConfigs] = useState<ModelConfig[]>([{ plan: '', write: '' }, { plan: '', write: '' }])
   const [note, setNote] = useState('')
-  const [estimate, setEstimate] = useState<{ total?: number; per?: Record<string, number>; tokens?: number } | null | undefined>(undefined)
+  const [estimate, setEstimate] = useState<{ total?: number; tokens?: number } | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -214,7 +254,7 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
     setEstimate(undefined)
     const id = window.setTimeout(() => {
       estimateEval({ setId, models: configs })
-        .then((r) => { if (!cancelled) setEstimate({ total: r.estimatedUsd, per: r.perConfig, tokens: r.estimatedTokens }) })
+        .then((r) => { if (!cancelled) setEstimate({ total: r.estimatedCostUsd, tokens: (r.estimatedInputTokens ?? 0) + (r.estimatedOutputTokens ?? 0) || undefined }) })
         .catch((e) => { if (!cancelled) setEstimate(isUnavailable(e) ? null : null) })
     }, 300)
     return () => { cancelled = true; window.clearTimeout(id) }
@@ -277,12 +317,11 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
   )
 }
 
-function EvalDetail({ id, models, onBack }: { id: string; models: KbModel[]; onBack: () => void }) {
+function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: string) => string | undefined; onBack: () => void }) {
   const { t } = useTranslation()
   const ev = useLoad(() => fetchEval(id), [id])
   const [reviewing, setReviewing] = useState(false)
   const [promoting, setPromoting] = useState<EvalConfigResult | null>(null)
-  void models
 
   if (reviewing) {
     return (
@@ -305,7 +344,7 @@ function EvalDetail({ id, models, onBack }: { id: string; models: KbModel[]; onB
           return (
             <>
               <Panel
-                title={<span className="flex flex-wrap items-center gap-2">{e.setName ?? e.setId} <StatusPill status={e.status} /></span>}
+                title={<span className="flex flex-wrap items-center gap-2">{e.setName ?? setName(e.setId) ?? e.setId} <StatusPill status={e.status} /></span>}
                 actions={<button type="button" onClick={() => setReviewing(true)} disabled={cfgs.length < 2} className={BTN_PRI}>{t('manage.wikiAi.review.start')}</button>}
               >
                 {e.note && <p className="mb-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">“{e.note}”</p>}
