@@ -7,6 +7,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.service.wiki.SubjectBookmarkService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.wiki.dto.BookmarkStateResponse;
+import org.ceitba.api.web.wiki.dto.PinnedSubjectResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "Wiki")
 @RestController
@@ -28,6 +31,15 @@ public class SubjectBookmarkController {
         this.service = service;
     }
 
+    // Logged-in only (SecurityConfig permits GET /v1/wiki/bookmarks/* only):
+    // the caller's pinned subjects for /apuntes, most recent first.
+    @GetMapping
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Materias fijadas del usuario actual (más recientes primero)")
+    public List<PinnedSubjectResponse> pinned(@CurrentUser User user) {
+        return service.pinned(user.getId());
+    }
+
     // Public — returns the global count + (false if anonymous) bookmark flag.
     @GetMapping("/{subjectId}")
     @Operation(summary = "Estado de bookmark del usuario y conteo global")
@@ -38,7 +50,7 @@ public class SubjectBookmarkController {
 
     @PostMapping("/{subjectId}")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Crear bookmark (usuario actual)")
+    @Operation(summary = "Crear bookmark (usuario actual); 409 BOOKMARK_LIMIT pasadas las 30")
     public BookmarkStateResponse create(@PathVariable String subjectId,
                                          @CurrentUser User user) {
         return service.upsert(subjectId, user.getId());

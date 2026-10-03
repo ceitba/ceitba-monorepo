@@ -35,3 +35,15 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.20 article_push_sent_at | V27 |
 | V4.21 drop_user_sga_synced_at | V28 |
 | V4.22 schedule_corrections | V30 |
+| V4.23 drive_sync | V31 |
+| V4.24 drive_file_flags | V32 |
+| V4.25 subject_wiki | V33 |
+| V4.26 drive_academic_year | V34 |
+| V4.27 wiki_pipeline | V35 |
+| V4.28 kb_progress | V36 |
+| V4.29 kb_run_lease | V37 |
+| V4.30 kb_batch_submission | V38 |
+| V4.31 capabilities | V39 |
+| V4.32 drive_kb_privacy | V40 |
+| V4.33 kb_pipeline_review_fixes | V41 |
+| V4.34 drive_community_sources | V42 |

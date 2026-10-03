@@ -14,6 +14,8 @@ public interface UserOrganizationRepository
 
     List<UserOrganization> findByOrganization(String organization);
 
+    long countByOrganization(String organization);
+
     boolean existsByUserIdAndOrganization(UUID userId, String organization);
 
     boolean existsByUserIdAndOrganizationAndRole(UUID userId, String organization, String role);

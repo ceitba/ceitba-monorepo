@@ -304,6 +304,50 @@ class MinioPresignedUploadIT {
         assertThat(get(proxyBase() + "/" + BUCKET + "/media/too-big.bin").statusCode()).isIn(403, 404);
     }
 
+    // Drive sync copies (drive/): written server side straight to MinIO
+    // (internal endpoint), never anonymously readable through the proxy,
+    // served only by signed GETs, and deletable by the service user (which
+    // can also delete kb/ pipeline payloads, nothing else).
+    @Test
+    void driveObjects_serverSidePutSignedGetDelete_neverAnonymous() throws Exception {
+        var internal = "http://" + MINIO.getHost() + ":" + MINIO.getMappedPort(9000);
+        var props = new StorageProperties(proxyBase(), null, BUCKET, SERVICE_KEY, SERVICE_SECRET,
+            proxyBase() + "/" + BUCKET, Duration.ofMinutes(5), internal);
+        try (var presigner = StorageConfig.presigner(props); var client = StorageConfig.client(props)) {
+            var storage = new org.ceitba.api.service.media.S3ObjectStorage(presigner, client, props, Clock.systemUTC());
+            byte[] pdf = randomBytes(20_000);
+            var key = "drive/1AbCdEf/0123456789abcdef/original.pdf";
+            storage.put(key, "application/pdf", new java.io.ByteArrayInputStream(pdf), pdf.length);
+            var tmp = Files.createTempFile("drive-it", ".bin");
+            Files.write(tmp, randomBytes(13 * 1024 * 1024));   // above Caddy's upload limit: internal path
+            storage.putFile("drive/1AbCdEf/0123456789abcdef/big.bin", "application/octet-stream", tmp);
+            Files.delete(tmp);
+
+            assertThat(get(storage.publicUrl(key)).statusCode()).isEqualTo(403);
+
+            var signed = storage.presignGet(key, Duration.ofMinutes(5), "Apunte ñ.pdf");
+            assertThat(signed).startsWith(proxyBase() + "/" + BUCKET + "/" + key + "?");
+            var got = get(signed);
+            assertThat(got.statusCode()).isEqualTo(200);
+            assertThat(got.body()).isEqualTo(pdf);
+            assertThat(got.headers().firstValue("Content-Disposition")).hasValueSatisfying(
+                v -> assertThat(v).startsWith("attachment;").contains("filename*=UTF-8''Apunte%20%C3%B1.pdf"));
+
+            storage.delete(key);
+            storage.delete("drive/1AbCdEf/0123456789abcdef/big.bin");
+            assertThat(get(storage.presignGet(key, Duration.ofMinutes(5))).statusCode()).isEqualTo(404);
+            storage.delete(key);   // deleting a missing object is fine
+
+            // Outside drive/ and kb/ the service user still cannot delete.
+            byte[] png = randomBytes(256);
+            var signedUpload = sign("/v1/media/sign-upload", "image/png", png.length, as("boss@itba.edu.ar", "USER", "STAFF"));
+            assertThat(upload(signedUpload, png, Map.of()).statusCode()).isEqualTo(200);
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> storage.delete(signedUpload.get("key").asText()))
+                .isInstanceOf(software.amazon.awssdk.services.s3.model.S3Exception.class);
+            assertThat(get(signedUpload.get("publicUrl").asText()).statusCode()).isEqualTo(200);
+        }
+    }
+
     // --- repo files -------------------------------------------------------
 
     @SuppressWarnings("unchecked")

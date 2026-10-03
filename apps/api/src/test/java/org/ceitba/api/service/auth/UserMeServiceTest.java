@@ -5,6 +5,7 @@ import org.ceitba.api.domain.news.UserFollow;
 import org.ceitba.api.domain.news.UserOrganization;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
+import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +50,11 @@ class UserMeServiceTest {
                 if (!method.getName().equals("isActiveModerator")) throw new UnsupportedOperationException(method.getName());
                 return false;
             });
-        var service = new UserMeService(staff, memberships, follows, moderators, Clock.fixed(NOW, ZoneOffset.UTC));
+        var capabilities = new CapabilityService(null, null, null, null, null) {
+            @Override public Set<String> effective(User user) { return Set.of(); }
+        };
+        var service = new UserMeService(staff, memberships, follows, moderators, capabilities,
+            Clock.fixed(NOW, ZoneOffset.UTC));
 
         var me = service.describe(new User(UUID.randomUUID(), "a@itba.edu.ar", "A"));
 

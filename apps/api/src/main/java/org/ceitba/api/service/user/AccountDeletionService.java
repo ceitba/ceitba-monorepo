@@ -3,6 +3,7 @@ package org.ceitba.api.service.user;
 import org.ceitba.api.repository.AccountDeletionRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.correction.ScheduleCorrectionService;
+import org.ceitba.api.service.drive.DriveModerationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,14 @@ import java.util.UUID;
 //             so replies keep their parent.
 //             schedule_correction_vote rows (the corrections they touched
 //             are recounted and re-evaluated under the commission lock).
+//             wiki.drive_source (Apuntes folders) with every copied file
+//             and the reports on them, plus the stored copies (after
+//             commit, best effort); the user's drive_file_report rows (the
+//             reported files are recounted and re-evaluated);
+//             wiki.kb_page_report rows (page counters adjusted);
+//             capability_user_grants for the user's email. Wiki pages
+//             citing the user's files are hidden, and the files' digests
+//             and the raw text of their DIGEST requests go with them.
 //   detached  articles.created_by, news_events.created_by -> NULL
 //             (content belongs to the organization);
 //             schedule_correction.suggester_id / reviewed_by -> NULL; APPROVED
@@ -68,13 +77,16 @@ public class AccountDeletionService {
     private final AccountDeletionRepository deletion;
     private final CeitbaStaffRepository staff;
     private final ScheduleCorrectionService scheduleCorrections;
+    private final DriveModerationService drive;
     private final Clock clock;
 
     public AccountDeletionService(AccountDeletionRepository deletion, CeitbaStaffRepository staff,
-                                  ScheduleCorrectionService scheduleCorrections, Clock clock) {
+                                  ScheduleCorrectionService scheduleCorrections, DriveModerationService drive,
+                                  Clock clock) {
         this.deletion            = deletion;
         this.staff               = staff;
         this.scheduleCorrections = scheduleCorrections;
+        this.drive               = drive;
         this.clock               = clock;
     }
 
@@ -95,6 +107,10 @@ public class AccountDeletionService {
         deletion.deleteProposalData(userId);
         scheduleCorrections.withdrawVotesOf(userId);
         deletion.detachScheduleCorrections(userId);
+        drive.prepareAccountDeletion(userId);
+        deletion.deleteDriveSources(userId);
+        deletion.deleteKbReports(userId);
+        deletion.deleteCapabilityGrants(userId);
 
         if (deletion.countRetainedContributions(userId) > 0) {
             deletion.anonymizeUser(userId);
