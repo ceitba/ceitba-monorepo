@@ -4,7 +4,9 @@ import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from 
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlock from '@tiptap/extension-code-block'
 import Image from '@tiptap/extension-image'
-import { TableKit } from '@tiptap/extension-table'
+import { TableCell, TableHeader, TableKit } from '@tiptap/extension-table'
+import HardBreak from '@tiptap/extension-hard-break'
+import Paragraph from '@tiptap/extension-paragraph'
 import { Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import CodeBlockView from './CodeBlockView'
@@ -12,12 +14,71 @@ import EditorToolbar from './EditorToolbar'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, uploadViaSignedUrl } from '../../../api/media'
 import { looksLikeMarkdown } from '../../../utils/articleBody'
 
+// The fence must be longer than any backtick run inside the code, or a
+// ``` line in the code would end the block early.
 const CodeBlockWithPreview = CodeBlock.extend({
   addNodeView() { return ReactNodeViewRenderer(CodeBlockView) },
+  renderMarkdown(node, h) {
+    const code = node.content ? h.renderChildren(node.content) : ''
+    const longest = Math.max(0, ...(code.match(/`{3,}/g) ?? []).map((run) => run.length))
+    const fence = '`'.repeat(Math.max(3, longest + 1))
+    return `${fence}${node.attrs?.language ?? ''}\n${code}\n${fence}`
+  },
 })
+
+// The Markdown serializer doesn't escape text that only means something at
+// the start of a line, so a paragraph reading "1. Ser alumno" or "- x" came
+// back as a list after saving. Escape those markers (and setext underlines,
+// and indentation that would make a code block) line by line.
+function escapeLineStarts(markdown) {
+  return markdown
+    .split('\n')
+    .map((line) => line
+      .replace(/^ {4,}/, '')
+      .replace(/^(\s{0,3})(\d+)([.)])(\s|$)/, '$1$2\\$3$4')
+      .replace(/^(\s{0,3})([-+])(\s|$)/, '$1\\$2$3')
+      .replace(/^(\s{0,3})(#{1,6})(\s|$)/, '$1\\$2$3')
+      .replace(/^(\s{0,3})([=-]+\s*)$/, '$1\\$2'))
+    .join('\n')
+}
+
+const SafeParagraph = Paragraph.extend({
+  renderMarkdown(node, h, ctx) {
+    return escapeLineStarts(this.parent?.(node, h, ctx) ?? '')
+  },
+})
+
+// Line breaks inside a table cell or a heading can't be written as
+// Markdown (a cell would need raw <br>, a heading would split in two), so
+// Shift+Enter does nothing there.
+const SafeHardBreak = HardBreak.extend({
+  addKeyboardShortcuts() {
+    const insert = () => {
+      const { editor } = this
+      if (editor.isActive('heading') || editor.isActive('tableCell') || editor.isActive('tableHeader')) return true
+      return editor.commands.setHardBreak()
+    }
+    return { 'Mod-Enter': insert, 'Shift-Enter': insert }
+  },
+})
+
+// GFM table cells hold one line of inline text.
+const SingleLineCell = TableCell.extend({ content: 'paragraph' })
+const SingleLineHeader = TableHeader.extend({ content: 'paragraph' })
 
 function imageFiles(dataTransfer) {
   return [...(dataTransfer?.files ?? [])].filter((f) => f.type.startsWith('image/'))
+}
+
+// Word/Excel/PowerPoint put a PNG rendering of the selection next to the
+// HTML: that's a text paste, not an image paste. Only treat the clipboard
+// as images when its HTML (if any) is nothing but images.
+function isImagePaste(clipboard) {
+  if (!imageFiles(clipboard).length) return false
+  const html = clipboard.getData('text/html')
+  if (!html) return true
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return !doc.body.textContent.trim() && doc.body.querySelectorAll('img').length > 0
 }
 
 // WYSIWYG article body editor. The document is Markdown in and out
@@ -37,8 +98,11 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
   const editorRef = useRef(null)
+  const placeholderRef = useRef(t('editor.placeholder'))
+  placeholderRef.current = t('editor.placeholder')
+  const sourceAtToggleRef = useRef('')
 
-  async function uploadImages(files, pos) {
+  async function uploadImages(files) {
     const editor = editorRef.current
     if (!editor || !files.length) return
     if (!canUpload) { setUploadError(t('editor.errors.uploadForbidden')); return }
@@ -49,9 +113,8 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) { setUploadError(t('imageUploader.errors.type')); continue }
         if (file.size > MAX_IMAGE_BYTES) { setUploadError(t('imageUploader.errors.size')); continue }
         const src = await uploadViaSignedUrl(file)
-        const image = { type: 'image', attrs: { src, alt: file.name.replace(/\.[^.]+$/, '') } }
-        if (pos != null) editor.chain().focus().insertContentAt(pos, image).run()
-        else editor.chain().focus().insertContent(image).run()
+        // At the cursor as it is now: the user may have kept typing.
+        editor.chain().focus().insertContent({ type: 'image', attrs: { src, alt: file.name.replace(/\.[^.]+$/, '') } }).run()
       }
     } catch (err) {
       setUploadError(
@@ -69,14 +132,20 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4] },
         codeBlock: false,
+        paragraph: false,
+        hardBreak: false,
         // `++text++` isn't Markdown any renderer understands.
         underline: false,
         link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
       }),
+      SafeParagraph,
+      SafeHardBreak,
       CodeBlockWithPreview,
       Image,
-      TableKit.configure({ table: { resizable: false } }),
-      Placeholder.configure({ placeholder: t('editor.placeholder') }),
+      TableKit.configure({ table: { resizable: false }, tableCell: false, tableHeader: false }),
+      SingleLineCell,
+      SingleLineHeader,
+      Placeholder.configure({ placeholder: () => placeholderRef.current }),
       Markdown,
     ],
     content: value ?? '',
@@ -90,10 +159,9 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
       },
       handlePaste(view, event) {
         const ed = editorRef.current
-        const files = imageFiles(event.clipboardData)
-        if (files.length) {
+        if (event.clipboardData && isImagePaste(event.clipboardData)) {
           event.preventDefault()
-          uploadImages(files)
+          uploadImages(imageFiles(event.clipboardData))
           return true
         }
         const html = event.clipboardData?.getData('text/html')
@@ -110,7 +178,8 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
         if (!files.length) return false
         event.preventDefault()
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
-        uploadImages(files, pos)
+        if (pos != null) editorRef.current?.commands.setTextSelection(pos)
+        uploadImages(files)
         return true
       },
     },
@@ -120,11 +189,10 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
   })
   editorRef.current = editor
 
-  // Placeholder text follows the UI language.
+  // Placeholder text follows the UI language (read through the ref); an
+  // empty transaction makes ProseMirror redraw the decoration.
   useEffect(() => {
-    if (!editor) return
-    const ext = editor.extensionManager.extensions.find((e) => e.name === 'placeholder')
-    if (ext) { ext.options.placeholder = t('editor.placeholder'); editor.view.dispatch(editor.state.tr) }
+    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr)
   }, [editor, t])
 
   const counts = useEditorState({
@@ -138,10 +206,14 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
   function toggleMode() {
     if (!editor) return
     if (mode === 'visual') {
-      setSource(editor.getMarkdown())
+      const md = editor.getMarkdown()
+      sourceAtToggleRef.current = md
+      setSource(md)
       setMode('markdown')
     } else {
-      editor.commands.setContent(source, { contentType: 'markdown', emitUpdate: true })
+      // Re-parsing normalizes the Markdown; only report it when it was edited.
+      const edited = source !== sourceAtToggleRef.current
+      editor.commands.setContent(source, { contentType: 'markdown', emitUpdate: edited })
       setMode('visual')
     }
   }

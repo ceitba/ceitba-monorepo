@@ -82,6 +82,10 @@ export default function AdminArticleFormPage() {
   // reloading the form.
   const [articleId, setArticleId] = useState(routeId ?? null)
   const loadedIdRef = useRef(null)
+  // Bumped on every edit, so a save only marks the form clean when nothing
+  // changed while the request was in flight.
+  const editVersionRef = useRef(0)
+  const redirectTimerRef = useRef(null)
   const isEdit = Boolean(articleId)
 
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
@@ -123,7 +127,9 @@ export default function AdminArticleFormPage() {
     fetchArticleById(routeId)
       .then((existing) => {
         if (cancelled) return
-        const body = bodyToMarkdown(existing.body) || (existing.excerpt ?? '')
+        // No excerpt fallback: drafts saved before the body was written
+        // store the title as copete, which must not turn into body text.
+        const body = bodyToMarkdown(existing.body)
         const readingTime = existing.readingTime ?? ''
         setForm({
           ...buildEmptyForm(profile),
@@ -166,12 +172,35 @@ export default function AdminArticleFormPage() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
 
+  // After a failed save attempt, errors follow the form as it is edited.
+  useEffect(() => {
+    if (attempted) setErrors(validate(form, attempted))
+    // validate only reads form/autoReading and the translations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, autoReading, attempted])
+
+  useEffect(() => () => clearTimeout(redirectTimerRef.current), [])
+
+  // Leaving the editor for a new article (e.g. a future "Nuevo" link while
+  // editing) reuses this instance: start over instead of editing the old one.
+  useEffect(() => {
+    if (routeId || !articleId) return
+    loadedIdRef.current = null
+    setArticleId(null)
+    setForm(buildEmptyForm(profile))
+    setSavedStatus(null)
+    setAutoReading(true)
+    setErrors({})
+    setAttempted(null)
+    setDirty(false)
+    setLastSaved(null)
+    setEditorKey((k) => k + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeId])
+
   function set(key, value) {
-    setForm((f) => {
-      const next = { ...f, [key]: value }
-      if (attempted) setErrors(validate(next, attempted))
-      return next
-    })
+    setForm((f) => ({ ...f, [key]: value }))
+    editVersionRef.current += 1
     setDirty(true)
   }
 
@@ -203,6 +232,7 @@ export default function AdminArticleFormPage() {
     }
 
     setSaving(status)
+    const versionAtSave = editVersionRef.current
     setApiError('')
     try {
       const payload = toPayload({ ...form, readingTime }, status)
@@ -213,7 +243,7 @@ export default function AdminArticleFormPage() {
 
       const saved = isEdit ? await updateArticle(articleId, payload) : await createArticle(payload)
       setSavedStatus(saved?.status ?? status)
-      setDirty(false)
+      if (editVersionRef.current === versionAtSave) setDirty(false)
       setAttempted(null)
       setLastSaved(new Date())
       // Show the filled-in blanks; they are what got saved.
@@ -229,7 +259,7 @@ export default function AdminArticleFormPage() {
       }
       if (status === 'published') {
         setPublished(true)
-        setTimeout(() => navigate('/admin/articles'), 1200)
+        redirectTimerRef.current = setTimeout(() => navigate('/admin/articles'), 1200)
       }
     } catch {
       setApiError(t('admin.articleForm.saveError'))
@@ -450,7 +480,7 @@ export default function AdminArticleFormPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!autoReading) { setAutoReading(true); setDirty(true) }
+                      if (!autoReading) { setAutoReading(true); editVersionRef.current += 1; setDirty(true) }
                       else { setAutoReading(false); set('readingTime', computedReading) }
                     }}
                     className="font-mono text-label text-primary underline underline-offset-2"
