@@ -35,9 +35,21 @@ export function useLiveProgress(opts: {
     let cancelled = false
     let timer = 0
     let progressSupported = supported !== false
+    // One polling chain only: a tick started while another is awaiting the
+    // network (e.g. from visibilitychange) would fork a second chain.
+    let inFlight = false
 
     const tick = async () => {
-      if (cancelled) return
+      if (cancelled || inFlight) return
+      inFlight = true
+      try {
+        await poll()
+      } finally {
+        inFlight = false
+      }
+      schedule()
+    }
+    const poll = async () => {
       if (progressSupported) {
         try {
           const p = await fetchRef.current()
@@ -55,10 +67,10 @@ export function useLiveProgress(opts: {
         refreshRef.current()
         setUpdatedAt(Date.now())
       }
-      schedule()
     }
     const schedule = () => {
       if (cancelled) return
+      window.clearTimeout(timer)
       const hidden = document.visibilityState === 'hidden'
       const ms = hidden ? 30000 : progressSupported ? 3000 : 5000
       timer = window.setTimeout(tick, ms)
@@ -69,7 +81,8 @@ export function useLiveProgress(opts: {
       if (progressSupported && document.visibilityState !== 'hidden') refreshRef.current()
     }, 15000)
     const onVisible = () => {
-      if (document.visibilityState === 'visible') { window.clearTimeout(timer); void tick() }
+      // If a tick is in flight it reschedules itself when it finishes.
+      if (document.visibilityState === 'visible' && !inFlight) { window.clearTimeout(timer); void tick() }
     }
     document.addEventListener('visibilitychange', onVisible)
     void tick()

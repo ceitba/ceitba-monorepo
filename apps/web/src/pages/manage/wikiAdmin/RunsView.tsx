@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  approveRunCost, cancelRun, fetchRunProgress, costPairs, fetchPreview, fetchRun, fetchRuns, startRun, type KbRun, type KbRunSubject,
+  approveRunCost, cancelRun, isActiveStatus, isBlockedStatus, fetchRunProgress, costPairs, fetchPreview, fetchRun, fetchRuns, startRun, type KbRun, type KbRunSubject,
 } from '../../../api/kbAdmin'
 import { ApiError } from '../../../api/client'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
@@ -20,7 +20,6 @@ import { BTN, BTN_DANGER, BTN_PRI, TD, TH } from './styles'
 import { useLoad } from './useLoad'
 
 const PIPELINE: string[] = ['DETECT', 'DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE', 'PUBLISH']
-const ACTIVE = /RUNNING|PENDING|SUBMITTED|IN_PROGRESS|QUEUED|VALIDATING|BLOCKED/i
 
 // Ejecuciones: list + detail, run now / dry run / preview, cancel, approve
 // cost for BLOCKED_BY_COST_LIMIT runs.
@@ -29,9 +28,9 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
   const runs = useLoad(() => fetchRuns(30))
   // Keep RUNNING rows moving: refresh the list every 10 s while any run is
   // active and the browser tab is visible.
-  const anyActive = (runs.data ?? []).some((r) => ACTIVE.test(r.status))
+  const anyActive = (runs.data ?? []).some((r) => isActiveStatus(r.status))
   useEffect(() => {
-    (runs.data ?? []).forEach((r) => { if (ACTIVE.test(r.status)) markActive('run', r.id, r.startedAt ?? r.id) })
+    (runs.data ?? []).forEach((r) => { if (isActiveStatus(r.status)) markActive('run', r.id, r.startedAt ?? r.id) })
   }, [runs.data])
   // reload is a stable callback, so polling restarts only when anyActive flips.
   const { reload: reloadRuns } = runs
@@ -100,7 +99,7 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
                         {r.dryRun && <span className="font-mono text-label uppercase text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.runs.dry')}</span>}
                         {r.simulated && <span className="font-mono text-label uppercase text-amber-700 dark:text-amber-300">{t('manage.wikiAi.simulatedShort')}</span>}
                       </div>
-                      {ACTIVE.test(r.status) && (
+                      {isActiveStatus(r.status) && (
                         <ProgressBar className="mt-1.5 w-40" percent={r.progress?.overall?.percent} indeterminate={!r.progress?.overall} />
                       )}
                     </td>
@@ -182,9 +181,9 @@ function asList(v: unknown): { slug?: string; errors?: string[]; title?: string 
 function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { t, i18n } = useTranslation()
   const run = useLoad(() => fetchRun(id), [id])
-  const live = useLiveProgress({ active: ACTIVE.test(run.data?.status ?? ''), fetchProgress: () => fetchRunProgress(id), refreshDetail: run.reload })
+  const live = useLiveProgress({ active: isActiveStatus(run.data?.status ?? ''), fetchProgress: () => fetchRunProgress(id), refreshDetail: run.reload })
   const progress = live.progress ?? run.data?.progress ?? null
-  useEffect(() => { if (run.data && ACTIVE.test(run.data.status)) markActive('run', id, run.data.startedAt ?? id) }, [run.data, id])
+  useEffect(() => { if (run.data && isActiveStatus(run.data.status)) markActive('run', id, run.data.startedAt ?? id) }, [run.data, id])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -213,7 +212,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
           r.batches?.forEach((b) => { if (b.costUsd != null) batchCost.set(b.stage, (batchCost.get(b.stage) ?? 0) + b.costUsd) })
           const costOf = (st: string) => stageCost.find(([k]) => k.toUpperCase() === st)?.[1] ?? batchCost.get(st)
           const currentIdx = r.stage ? PIPELINE.indexOf(r.stage.toUpperCase()) : -1
-          const finished = !ACTIVE.test(r.status)
+          const finished = !isActiveStatus(r.status)
           return (
             <>
               <Panel
@@ -224,7 +223,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <button type="button" onClick={() => act('approve')} disabled={!!busy} className={BTN_PRI}>{busy === 'approve' ? '…' : t('manage.wikiAi.runs.approveCost')}</button>
                     )}
                     {!finished && <NotifyButton kind="run" id={id} />}
-                    {!finished && <button type="button" onClick={() => setConfirmCancel(true)} disabled={!!busy} className={BTN_DANGER}>{t('manage.wikiAi.runs.cancel')}</button>}
+                    {(!finished || isBlockedStatus(r.status)) && <button type="button" onClick={() => setConfirmCancel(true)} disabled={!!busy} className={BTN_DANGER}>{t('manage.wikiAi.runs.cancel')}</button>}
                     <button type="button" onClick={run.reload} className={BTN}>{t('manage.wikiAi.refresh')}</button>
                   </div>
                 }
