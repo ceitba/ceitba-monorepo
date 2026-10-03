@@ -7,9 +7,10 @@ import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
 // Apuntes moderation pulls in the Drive/wiki APIs and badges: load on demand.
 const ManageDriveSection = lazy(() => import('./manage/ManageDriveSection'))
+const ManageWikiAiSection = lazy(() => import('./manage/ManageWikiAiSection'))
 import type { OrganizationSummary } from '../api/admin'
 
-type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive'
+type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'drive' | 'wikiAi'
 
 export default function ManagePage() {
   const { t } = useTranslation()
@@ -36,6 +37,7 @@ export default function ManagePage() {
     { id: 'organizations', label: t('manage.tabs.organizations') },
     { id: 'corrections', label: t('manage.tabs.corrections') },
     { id: 'drive', label: t('manage.tabs.drive') },
+    { id: 'wikiAi', label: t('manage.tabs.wikiAi') },
   ]
 
   return (
@@ -75,6 +77,11 @@ export default function ManagePage() {
       {tab === 'drive' && (
         <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
           <ManageDriveSection />
+        </Suspense>
+      )}
+      {tab === 'wikiAi' && (
+        <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
+          <ManageWikiAiSection />
         </Suspense>
       )}
     </main>
