@@ -22,6 +22,7 @@ const FilePage = lazy(() => import('./pages/apuntes/FilePage'))
 const MyApuntesPage = lazy(() => import('./pages/apuntes/MyApuntesPage'))
 const WikiPage = lazy(() => import('./pages/apuntes/WikiPage'))
 const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
+const WikiMapPage = lazy(() => import('./pages/apuntes/WikiMapPage'))
 
 // Local dev-only sign-in (CEITBA-API POST /v1/auth/dev-login). Both env
 // checks are inlined so Vite folds them to `false` in production builds and
@@ -68,6 +69,7 @@ function Layout() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/apuntes" element={<AuthGuard><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></AuthGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<AuthGuard><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></AuthGuard>} />
+          <Route path="/apuntes/mapa" element={<AuthGuard><Suspense fallback={<PageFallback />}><WikiMapPage /></Suspense></AuthGuard>} />
           <Route path="/apuntes/archivo/:fileId" element={<AuthGuard><Suspense fallback={<PageFallback />}><FilePage /></Suspense></AuthGuard>} />
           <Route path="/apuntes/:subjectId" element={<AuthGuard><Suspense fallback={<PageFallback />}><SubjectFilesPage /></Suspense></AuthGuard>} />
           <Route path="/apuntes/:subjectId/wiki/:slug" element={<AuthGuard><Suspense fallback={<PageFallback />}><WikiPage /></Suspense></AuthGuard>} />

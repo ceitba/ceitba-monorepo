@@ -339,3 +339,73 @@ html.dark .kb-prose th { background: #18181b; }
 @media (prefers-reduced-motion: reduce) {
   .kb-prose .kb-heading-flash { animation: none; text-decoration: underline; text-decoration-color: #F5A623; }
 }
+
+/* Wiki graphs (GraphView). --k is the current zoom: labels divide by it so
+   they keep a constant on-screen size; .zoom-low hides concept labels and
+   shows cluster (subject) labels. */
+:root {
+  --kbg-index: #F5A623;
+  --kbg-topic: #1A3C6E;
+  --kbg-concept: #059669;
+  --kbg-muted: #D1D5DB;
+  --kbg-edge: #D9DCE1;
+  --kbg-edge-strong: #9AA3B2;
+  --kbg-text: #1C1C1E;
+  --kbg-text-muted: #6B7280;
+  --kbg-halo: #ffffff;
+}
+html.dark {
+  --kbg-topic: #7FA1D4;
+  --kbg-concept: #34D399;
+  --kbg-muted: #52525b;
+  --kbg-edge: #3f3f46;
+  --kbg-edge-strong: #71717a;
+  --kbg-text: #f4f4f5;
+  --kbg-text-muted: #a1a1aa;
+  --kbg-halo: #27272a;
+}
+.kbg { --k: 1; display: block; user-select: none; -webkit-user-select: none; }
+.kbg.is-interactive { cursor: grab; }
+.kbg.is-interactive:active { cursor: grabbing; }
+.kbg-swatch-index { fill: var(--kbg-index); }
+.kbg-swatch-topic { fill: var(--kbg-topic); }
+.kbg-swatch-concept { fill: var(--kbg-concept); }
+.kbg-swatch-muted { fill: var(--kbg-muted); }
+.kbg-edge { stroke: var(--kbg-edge); stroke-width: 1; transition: opacity 150ms; }
+.kbg-edge.is-strong { stroke: var(--kbg-edge-strong); stroke-width: 1.6; }
+.kbg-node { cursor: pointer; transition: opacity 150ms; }
+.kbg-node circle { stroke: var(--kbg-halo); stroke-width: 1.5; }
+.kbg-node.is-muted circle { fill: var(--kbg-muted); stroke: var(--kbg-edge-strong); stroke-width: 1; }
+.kbg-node.kbg-index:not(.is-muted) circle { stroke: var(--kbg-text); stroke-width: 1.5; }
+.kbg-node.is-selected circle,
+.kbg-node.is-match circle { stroke: #F5A623; stroke-width: 3; }
+.kbg-node:focus { outline: none; }
+.kbg-node:focus-visible circle { stroke: #F5A623; stroke-width: 3; }
+.kbg-label {
+  font-family: 'Source Sans 3', Lato, system-ui, sans-serif;
+  font-size: calc(12px / var(--k));
+  fill: var(--kbg-text);
+  paint-order: stroke;
+  stroke: var(--kbg-halo);
+  stroke-width: calc(3px / var(--k));
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.kbg-label.lbl-index { font-weight: 700; font-size: calc(14px / var(--k)); }
+.kbg-label.lbl-muted { fill: var(--kbg-text-muted); }
+.kbg-group-label {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  font-size: calc(17px / var(--k));
+  paint-order: stroke;
+  stroke: var(--kbg-halo);
+  stroke-width: calc(4px / var(--k));
+  pointer-events: none;
+}
+.kbg.zoom-low .lbl-concept,
+.kbg.zoom-low .lbl-muted { display: none; }
+.kbg.zoom-high .kbg-group-label { display: none; }
+.kbg.has-focus .kbg-node:not(.is-active) { opacity: 0.15; }
+.kbg.has-focus .kbg-edge:not(.is-active) { opacity: 0.12; }
+/* An active node's concept label shows even at low zoom. */
+.kbg.has-focus .kbg-node.is-active .kbg-label { display: inline; }

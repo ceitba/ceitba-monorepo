@@ -1,5 +1,5 @@
 import '../../i18nApuntes'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { fetchSubjectFiles, type SubjectFiles } from '../../api/drive'
@@ -13,6 +13,8 @@ import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes
 import EmptyState from '../../components/apuntes/EmptyState'
 import KindIcon from '../../components/apuntes/KindIcon'
 import { BTN_PRIMARY } from '../../components/apuntes/buttons'
+
+const SubjectGraphThumb = lazy(() => import('../../components/apuntes/graph/SubjectGraphThumb'))
 
 type Tab = 'wiki' | 'archivos'
 
@@ -158,6 +160,7 @@ export default function SubjectFilesPage() {
             showTitle={false}
             aside={
               <>
+                <Suspense fallback={null}><SubjectGraphThumb subjectId={subjectId} /></Suspense>
                 <PagesPanel subjectId={subjectId} pages={kb.pages} />
                 <RelatedPanel related={kb.related} />
               </>

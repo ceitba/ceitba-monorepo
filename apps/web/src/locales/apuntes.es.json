@@ -288,6 +288,36 @@
       "report": "Reportar un error en esta parte",
       "reportSection": "Sección: {{section}}",
       "reportSource": "Fuente [{{n}}]: {{name}}"
+    },
+    "graphUi": {
+      "search": "Buscar en el grafo…",
+      "matches_one": "{{count}} resultado",
+      "matches_other": "{{count}} resultados",
+      "typeFilter": "Filtrar por tipo",
+      "subjectFilter": "Filtrar por materia",
+      "canvasAria": "Grafo: arrastrá para moverte, rueda o pellizco para hacer zoom; teclas + − 0 y flechas",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "fit": "Ajustar a la pantalla",
+      "reset": "Restablecer zoom",
+      "keysHint": "+ − zoom · 0 ajustar · flechas mover · Esc limpiar",
+      "open": "Abrir página"
+    },
+    "typeOne": {
+      "index": "Inicio",
+      "topic": "Tema",
+      "concept": "Concepto"
+    },
+    "map": {
+      "title": "Mapa de apuntes",
+      "subtitle": "Todas las wikis de materias en un solo mapa, agrupadas por materia. Las líneas más marcadas unen materias distintas.",
+      "onlyMine": "Solo mis materias",
+      "open": "Ver mapa de todas las materias",
+      "explore": "Explorar mapa",
+      "previewHint": "{{subjects}} materias · {{pages}} páginas conectadas",
+      "empty": "Todavía no hay wikis para mostrar",
+      "emptyMine": "No hay wikis de tus materias todavía",
+      "emptyMineBody": "Fijá materias o elegí tu plan en el perfil; también podés ver el mapa completo."
     }
   },
   "manage": {
