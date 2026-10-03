@@ -35,12 +35,11 @@ public final class KbEvalDtos {
 
     public record Estimate(long estimatedInputTokens, long estimatedOutputTokens, BigDecimal estimatedCostUsd) {}
 
-    public record Source(String id, String name) {}
-
-    public record Link(String raw, String subjectId, String slug, String anchor) {}
-
-    // A page as the reviewer sees it (configuration hidden).
-    public record ReviewPage(String title, String markdown, List<Source> sources, List<Link> links) {}
+    // A page as the reviewer sees it (configuration hidden). sources and links
+    // have the reader's Page shapes (KbSourceResponse, KbLinkResponse); a link
+    // resolves to a page the same configuration wrote, or to a live page.
+    public record ReviewPage(String title, String markdown, List<org.ceitba.api.web.kb.dto.KbSourceResponse> sources,
+                             List<org.ceitba.api.web.kb.dto.KbLinkResponse> links) {}
 
     // remaining: page pairs this reviewer has not rated yet (this one included).
     public record ReviewPair(String subjectId, String slug, int remaining, ReviewPage a, ReviewPage b) {}

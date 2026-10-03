@@ -15,7 +15,8 @@ public record KbCostSummaryResponse(BigDecimal last7dUsd, BigDecimal last30dUsd,
     // Expected (forecast at detection) vs actual of the last completed runs.
     public record Accuracy(List<RunAccuracy> lastRuns) {}
 
-    public record RunAccuracy(java.util.UUID runId, BigDecimal expectedUsd, BigDecimal actualUsd) {}
+    public record RunAccuracy(java.util.UUID runId, java.time.OffsetDateTime startedAt, String trigger,
+                              BigDecimal expectedUsd, BigDecimal actualUsd) {}
 
     public record SubjectCost(String subjectId, String subjectName, BigDecimal costUsd) {}
 }

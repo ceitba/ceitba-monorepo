@@ -27,6 +27,30 @@ class KbForecastBasisTest {
     }
 
     @Test
+    void weeklyNeverBelowTheBacklog() {
+        var raised = KbForecastService.weekly(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            new BigDecimal("0.11"), "corpus", 0);
+        assertThat(raised.expectedUsd()).isEqualByComparingTo("0.11");
+        assertThat(raised.low()).isEqualByComparingTo("0.11");
+        assertThat(raised.includesBacklog()).isTrue();
+        assertThat(raised.basis()).isEqualTo("corpus");
+        var kept = KbForecastService.weekly(new BigDecimal("2"), new BigDecimal("1"), new BigDecimal("3"),
+            new BigDecimal("0.11"), "history", 5);
+        assertThat(kept.expectedUsd()).isEqualByComparingTo("2");
+        assertThat(kept.includesBacklog()).isFalse();
+        var none = KbForecastService.weekly(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            "corpus", 0);
+        assertThat(none.includesBacklog()).isFalse();
+    }
+
+    @Test
+    void cronIsAlwaysSixFields() {
+        assertThat(KbSettingsService.cron6("0 3 * * SUN")).isEqualTo("0 0 3 * * SUN");
+        assertThat(KbSettingsService.cron6("  0 0 3 * * SUN ")).isEqualTo("0 0 3 * * SUN");
+        assertThat(KbSettingsService.cron6("30  4 * *  MON")).isEqualTo("0 30 4 * * MON");
+    }
+
+    @Test
     void quantilesAreP25MedianP75() {
         var q = KbForecastService.quantiles(List.of(new BigDecimal("4"), new BigDecimal("1"), new BigDecimal("3"),
             new BigDecimal("2"), new BigDecimal("5")));

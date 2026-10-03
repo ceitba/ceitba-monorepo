@@ -150,7 +150,8 @@ public class KbCostService {
         var accuracy = runs.findByTriggerNotOrderByStartedAtDesc("EVAL", PageRequest.of(0, 30)).stream()
             .filter(r -> r.getStatus().equals("SUCCEEDED") && r.getExpectedCostUsd() != null)
             .limit(8)
-            .map(r -> new KbCostSummaryResponse.RunAccuracy(r.getId(), usd(r.getExpectedCostUsd()), usd(r.getCostEstimate())))
+            .map(r -> new KbCostSummaryResponse.RunAccuracy(r.getId(), r.getStartedAt(), r.getTrigger(),
+                usd(r.getExpectedCostUsd()), usd(r.getCostEstimate())))
             .toList();
         return new KbCostSummaryResponse(usd(last7), usd(total30), usd(projected), byStage, byModel, top,
             Math.round(ratio * 10000) / 10000.0, simulated, new KbCostSummaryResponse.Accuracy(accuracy));

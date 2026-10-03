@@ -17,18 +17,21 @@ and require the STAFF role.
 | `modelRetry` | `KB_MODEL_RETRY` (= write) | |
 | `executionMode` | `auto` | `auto`, `batch` or `sync`; `batch` is rejected for models without batch support |
 | `enabled` | `KB_PIPELINE_ENABLED` | weekly schedule on or off |
-| `cron` | `KB_PIPELINE_CRON` | validated cron expression, America/Argentina/Buenos_Aires |
+| `cron` | `KB_PIPELINE_CRON` (`0 0 3 * * SUN`) | Spring cron, **6 fields with seconds first**, America/Argentina/Buenos_Aires. A standard 5-field expression is accepted on PUT and stored/returned with `0 ` prepended (`0 3 * * SUN` → `0 0 3 * * SUN`) |
 | `runTokenBudget` | `KB_RUN_TOKEN_BUDGET` | |
 | `weeklyCostLimitUsd` | null | hard stop: a run is not submitted if its estimate exceeds this |
 | `retryRejected` | `KB_RETRY_REJECTED` | |
 | `subjectOverrides` | `{}` | `{ "<subjectId>": { modelWrite?, modelPlan?, paused?: bool } }` |
 
 Endpoints:
-- `GET /settings` → the effective settings, plus a `source` (env or db) for each field.
-- `PUT /settings` with the body `{ …fields, note }`. It validates every model against the catalog (enabled, and the mode is
-  supported). The response includes `costImpact`: the last 4 runs' recorded token usage re-priced with the new models,
-  as `{ previousWeeklyAvgUsd, projectedWeeklyAvgUsd }`.
-- `GET /settings/history`, and `POST /settings/history/{id}/restore`.
+- `GET /settings`, `PUT /settings` and `POST /settings/history/{id}/restore` all return the envelope
+  `{ settings: { …every field, effective value }, source: { <field>: "env"|"db" }, updatedAt, updatedBy, updatedByName, costImpact }`.
+  `costImpact` is `null` on GET.
+- `PUT /settings` with the body `{ …fields, note }` (a field set to `null` goes back to its env default). It validates the
+  models that change against the catalog (enabled, probed, and the mode is supported). `costImpact` is
+  `{ previous, projected }`, each a `weekly` object of the forecast (§7) for the current and the new settings.
+- `GET /settings/history` returns `[{ id, settings, changedBy, changedByName, changedAt, note }]`, newest first; each entry
+  is a saved version (the stored overrides), and a restore saves it again as a new version.
 - Changes take effect at the next stage submission. A stage that is already running keeps the model it started with,
   and the model is recorded per batch or request.
 
@@ -70,7 +73,7 @@ Goal: compare models on the **same inputs** with automatic metrics and blind hum
 - Default seed: "Básico" with 81.07, 61.81 and 93.39 (one large, one medium, one small).
 
 ### Evaluation runs
-- `POST /evals {setId, models: [{ plan, write }], note}` runs PLAN and WRITE as a full rebuild per subject, for each model
+- `POST /evals {setId, models: [{ plan, write, reasoningEffort?: { plan?, write? } }], note}` runs PLAN and WRITE as a full rebuild per subject, for each model
   configuration. It reuses the frozen digests, never publishes, and stores the pages under `kb/evals/<evalId>/<configKey>/<subject>/<slug>.md`.
 - This is the explicit, staff-triggered exception to the "no re-reading" rule (it only re-sends digests and the frozen
   excerpts, never new Drive reads). Its tokens are recorded in `kb_llm_usage` with `stage = EVAL`.
@@ -101,7 +104,20 @@ Goal: compare models on the **same inputs** with automatic metrics and blind hum
 - `wiki.kb_eval_rating` stores the ratings, one per reviewer per page pair.
 
 ### Leaderboard
-`GET /evals/leaderboard?setId` aggregates every eval of a set, per model configuration:
+A configuration is identified by `configKey` = `plan[@effort]|write[@effort]`, e.g. `glm-5.3@low|glm-5.3@medium` or
+`anthropic-claude-haiku-4.5|anthropic-claude-haiku-4.5` (the `@effort` part only when a reasoning effort was given).
+
+`GET /evals/leaderboard?setId` (default: "Básico") aggregates every completed eval of a set, per model configuration, and
+returns an envelope:
+```
+{ setId, setName,
+  entries: [{ configKey, plan, write, reasoningEffort: { plan?, write? } | null,
+              evals, ratings, wins, losses, ties, winRate: number|null,
+              avgScores: { accuracy, clarity, usefulness },     // each number|null
+              metrics: { …the automatic metrics, summed/weighted over the evals },
+              costUsd, costPerValidPage, smallSample }] }      // smallSample: ratings < 20
+```
+Entries are sorted by `winRate` (no ratings last), then by `costPerValidPage`. It includes:
 - win rate (Bradley-Terry or plain win% with tie = ½, whichever is simpler);
 - average human scores;
 - automatic metrics;
@@ -126,7 +142,7 @@ These complete sections 1–4; the frontend already calls them.
   `{ week, stage?, model?, subjectId?, inputTokens, cachedInputTokens, outputTokens, costUsd, requests }`, with `week` = ISO date
   of the Monday in America/Argentina/Buenos_Aires.
 - **Cost impact before saving:** `POST /settings/preview` takes the same body as `PUT /settings`, returns
-  `{ costImpact: { previousWeeklyAvgUsd, projectedWeeklyAvgUsd }, errors: [] }` and persists nothing.
+  `{ costImpact: { previous, projected }, errors: [] }` (each a forecast `weekly` object, §7) and persists nothing.
 - **Runs** live under `/pipeline/runs…` (pipeline doc). `POST /pipeline/runs/{id}/approve-cost`. The run detail adds
   `costUsd`, `costByStage: { DIGEST, PLAN, WRITE, RETRY }`, per-subject `costUsd`, and per-batch `costUsd`.
 - **Benchmark sets:** `GET /evals/sets`, `POST /evals/sets { name, subjectIds }` (it freezes the inputs on creation), and
@@ -136,7 +152,10 @@ These complete sections 1–4; the frontend already calls them.
   - `POST /evals/estimate { setId, models }` returns `{ estimatedInputTokens, estimatedOutputTokens, estimatedCostUsd }`.
 - **Blind review:**
   - `GET /evals/{id}/review/next?subjectId&slug` returns `{ subjectId, slug, remaining, a: Page, b: Page }`, where `Page` is
-    `{ title, markdown, sources, links }`. It returns 204 when nothing is left to review.
+    `{ title, markdown, sources, links }`. `sources` and `links` have the reader's `Page.sources` / `Page.links` shapes:
+    `{ id, name, kind, academicYear, academicYearSource, author: { name, anonymous } }` and
+    `{ raw, subjectId, slug, anchor, resolved, title }` (a link resolves to a page the same configuration wrote, or to a
+    live page). It returns 204 when nothing is left to review.
   - `POST /evals/{id}/review { subjectId, slug, winner: A|B|tie, scoresA: { accuracy, clarity, usefulness }, scoresB: {…}, comment }`.
     Scores are **per side**, 1–5 each. The response includes `revealed: { A: { configKey, plan, write }, B: {…} }`.
 - **Probe:** `lastProbe` is `{ ok: boolean, mode: batch|sync, toolCalling: yes|no, latencyMs, usage, error?, at }`.
@@ -163,7 +182,7 @@ These complete sections 1–4; the frontend already calls them.
 {
   settingsHash,
   nextRun: { dirtySubjects, perStage: { DIGEST|PLAN|WRITE|RETRY: { model, mode, inputTokens, cachedInputTokens, outputTokens, costUsd } }, totalUsd },
-  weekly: { expectedUsd, low, high, basis: "history"|"corpus"|"blend", runsUsed },
+  weekly: { expectedUsd, low, high, basis: "history"|"corpus"|"blend", runsUsed, includesBacklog },
   monthly: { expectedUsd, low, high },
   fullRebuild: { inputTokens, outputTokens, costUsd },          // regenerate every wiki from digests (e.g. after a model switch)
   savings: { batchUsd, cacheUsd },                               // vs. list price without batch/cache, for the expected week
@@ -179,15 +198,17 @@ These complete sections 1–4; the frontend already calls them.
   - **corpus:** with fewer than 3 runs, estimate from the weekly change rate of published files (the files whose fingerprint
     changed per week over the last 4 weeks), times the average tokens per file;
   - **blend:** both, weighted by the number of runs.
+- **Backlog floor:** when there are dirty subjects, `weekly` (expected, low, high) and `monthly` are never below
+  `nextRun.totalUsd`; `includesBacklog: true` says the floor kicked in. `basis` still names the estimate's method.
 - `?settings=<json>` (or `POST /costs/forecast` with a settings body) computes the same forecast for **proposed** settings. It
   powers the settings dialog and the model picker. `POST /settings/preview` returns this forecast as `costImpact`
   `{ previous: forecast.weekly, projected: forecast.weekly }`.
-- `GET /models/{id}/stage-cost?stage=` returns the expected weekly cost if this model were used for that stage, everything else
+- `GET /models/{id}/stage-cost?stage=` (`digest|plan|write|retry`, case-insensitive; returned lowercase) returns the expected weekly cost if this model were used for that stage, everything else
   unchanged. It's used to show a cost next to each option in the model picker.
 
 ### Actuals vs expected
 - Each completed run stores `expectedCostUsd` (the forecast at submission) next to `costUsd` (actual).
-- `GET /costs/summary` adds `accuracy: { lastRuns: [{ runId, expectedUsd, actualUsd }] }`, so admins can see how good the estimates are.
+- `GET /costs/summary` adds `accuracy: { lastRuns: [{ runId, startedAt, trigger, expectedUsd, actualUsd }] }`, so admins can see how good the estimates are.
 
 ## 8. Reasoning effort and structured-output reliability (field shapes)
 
@@ -222,14 +243,15 @@ These complete sections 1–4; the frontend already calls them.
   Validation only checks models that change (an unprobed env default doesn't block unrelated edits). `modelRetry`
   follows `modelWrite` unless set. History stores each saved version (newest first); restore saves it again as a new
   version.
-- **costImpact** is a superset: `{previousWeeklyAvgUsd, projectedWeeklyAvgUsd, previous, projected}` where
-  `previous`/`projected` are `forecast.weekly` objects for the current and the new settings.
+- **Batch support from a probe** is set to `false` only when the error explicitly says the model or provider doesn't
+  support batch (a 4xx whose code or message says so, e.g. `model_not_supported`). Any other failure (bad file name,
+  account blocked, rate limit, 5xx) leaves `batchSupported` and `batchSource` untouched. A staff edit of
+  `batchSupported` resets `batchSource` to `rule`.
 - **Probe.** `lastProbe` always has `ok, mode, toolCalling, latencyMs, usage, at` (§6); without an answer (account
   error, pending or failed batch) `toolCalling` is `"no"` and usage is zero, and the catalog's own `toolCalling` is left
   unchanged. Extra keys: `path` (tool | content-json | json_object | text), and `pending` / `batchId` while a batch
-  probe waits. A batch probe rejected with 400/404/422 sets `batchSupported=false`; 401/402/403 (key or account
-  problems) don't change it. A batch probe on a model without a batch provider (GLM, DeepSeek...) is not attempted: `lastProbe` records
-  `{ok:false, mode:"batch", error}` and `batchSupported` stays false. Batch probes complete on the poller
+  probe waits. Batch support follows the rule above. A batch probe on a model without a batch provider (GLM,
+  DeepSeek...) is not attempted: `lastProbe` records `{ok:false, mode:"batch", error}` and `batchSupported` stays false. Batch probes complete on the poller
   (`refreshPendingProbes`). Prompt-token overhead differs per provider: the same tiny probe counted 752 prompt tokens
   on Anthropic Haiku vs 240 on GLM (tool schema framing); the forecast uses a flat 1,500-token overhead per request.
 - **Catalog.** `openai-gpt-oss-120b` is `batchSupported=false` by rule (open-weight on DO). `emptyToolCallRate` is

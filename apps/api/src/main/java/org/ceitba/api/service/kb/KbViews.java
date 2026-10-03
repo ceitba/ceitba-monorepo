@@ -120,6 +120,11 @@ public class KbViews {
             p.getStatus().name());
     }
 
+    // Cited files as STAFF see them (eval review pages).
+    public List<KbSourceResponse> staffSources(List<UUID> ids) {
+        return sources(ids, true);
+    }
+
     // The cited files, in frontmatter order; readers only get PUBLISHED ones.
     private List<KbSourceResponse> sources(List<UUID> ids, boolean staff) {
         if (ids.isEmpty()) return List.of();

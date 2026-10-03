@@ -34,6 +34,7 @@ import org.ceitba.api.repository.kb.KbRunRequestRepository;
 import org.ceitba.api.service.kb.KbLinker;
 import org.ceitba.api.service.kb.KbPageParser;
 import org.ceitba.api.service.kb.KbValidator;
+import org.ceitba.api.service.kb.KbViews;
 import org.ceitba.api.service.kb.KbWikilinks;
 import org.ceitba.api.service.kb.admin.KbForecastService;
 import org.ceitba.api.service.kb.admin.KbSettingsService;
@@ -115,6 +116,7 @@ public class KbEvalService implements KbRunHandler {
     private final KbLlmUsageRepository usage;
     private final KbModelRepository models;
     private final KbPageRepository pages;
+    private final KbViews views;
     private final KbRelationRepository relations;
     private final SubjectRepository subjects;
     private final DriveFileRepository files;
@@ -136,7 +138,8 @@ public class KbEvalService implements KbRunHandler {
                          KbRelationRepository relations, SubjectRepository subjects, DriveFileRepository files,
                          KbInputs inputs, KbPayloads payloads, KbRunEngine engine, KbSettingsService settings,
                          KbForecastService forecast, KbLlmRouter router, ObjectStorage storage,
-                         ApplicationEventPublisher events, ObjectMapper json, Clock clock) {
+                         ApplicationEventPublisher events, ObjectMapper json, Clock clock, KbViews views) {
+        this.views = views;
         this.sets = sets;
         this.evals = evals;
         this.ratings = ratings;
@@ -945,7 +948,7 @@ public class KbEvalService implements KbRunHandler {
             var key = eval.getResults().path("configs").path(configKey).path("subjects").path(subjectId)
                 .path("pages").path(slug).path("key").asText(null);
             if (key == null) throw new ResourceNotFoundException("KbEval page", configKey + "/" + subjectId + "/" + slug);
-            return reviewPage(subjectId, key, sets.findById(eval.getSetId()).orElseThrow());
+            return reviewPage(eval, configKey, subjectId, key, sets.findById(eval.getSetId()).orElseThrow());
         });
     }
 
@@ -985,7 +988,8 @@ public class KbEvalService implements KbRunHandler {
             var a = pageKeyOf(eval, assignment.getConfigA(), assignment.getSubjectId(), assignment.getSlug());
             var b = pageKeyOf(eval, assignment.getConfigB(), assignment.getSubjectId(), assignment.getSlug());
             return new KbEvalDtos.ReviewPair(assignment.getSubjectId(), assignment.getSlug(), open.size(),
-                reviewPage(assignment.getSubjectId(), a, set), reviewPage(assignment.getSubjectId(), b, set));
+                reviewPage(eval, assignment.getConfigA(), assignment.getSubjectId(), a, set),
+                reviewPage(eval, assignment.getConfigB(), assignment.getSubjectId(), b, set));
         });
     }
 
@@ -1066,19 +1070,51 @@ public class KbEvalService implements KbRunHandler {
             .path(slug).path("key").asText(null);
     }
 
-    private KbEvalDtos.ReviewPage reviewPage(String subjectId, String key, KbEvalSet set) {
+    private KbEvalDtos.ReviewPage reviewPage(KbEval eval, String configKey, String subjectId, String key,
+                                             KbEvalSet set) {
         var content = key == null ? "" : text(key);
         var parts = KbPageFiles.split(content);
         var fm = parts.frontmatter();
-        Map<String, String> names = new HashMap<>();
-        set.getFrozenInputs().path(subjectId).forEach(f -> names.put(f.path("fileId").asText(), f.path("name").asText()));
-        var sources = new ArrayList<KbEvalDtos.Source>();
+        // Sources: the reader's shape; files gone since the freeze keep their frozen name.
+        var ids = new ArrayList<UUID>();
         if (fm != null && fm.get("sources") instanceof java.util.Collection<?> c) {
-            c.forEach(s -> sources.add(new KbEvalDtos.Source(String.valueOf(s), names.get(String.valueOf(s)))));
+            for (var s : c) {
+                try {
+                    ids.add(UUID.fromString(String.valueOf(s)));
+                } catch (IllegalArgumentException ignored) {
+                    // not a file id
+                }
+            }
         }
-        var links = new ArrayList<KbEvalDtos.Link>();
+        var found = new HashMap<UUID, org.ceitba.api.web.kb.dto.KbSourceResponse>();
+        views.staffSources(ids).forEach(s -> found.put(s.id(), s));
+        Map<String, JsonNode> frozen = new HashMap<>();
+        set.getFrozenInputs().path(subjectId).forEach(f -> frozen.put(f.path("fileId").asText(), f));
+        var sources = new ArrayList<org.ceitba.api.web.kb.dto.KbSourceResponse>();
+        for (var id : ids) {
+            var s = found.get(id);
+            if (s == null) {
+                var f = frozen.get(id.toString());
+                s = new org.ceitba.api.web.kb.dto.KbSourceResponse(id, f == null ? null : f.path("name").asText(null),
+                    null, null, f == null || !f.path("academicYear").canConvertToInt() ? null : f.path("academicYear").asInt(),
+                    null);
+            }
+            sources.add(s);
+        }
+        // Links: resolved against the pages this configuration wrote for the
+        // subject, else against live visible pages.
+        var written = eval.getResults().path("configs").path(configKey).path("subjects").path(subjectId).path("pages");
+        var links = new ArrayList<org.ceitba.api.web.kb.dto.KbLinkResponse>();
         for (var l : KbWikilinks.parse(parts.body(), subjectId).links()) {
-            links.add(new KbEvalDtos.Link(l.raw(), l.subjectId(), l.slug(), l.anchor()));
+            String title = null;
+            if (l.subjectId().equals(subjectId) && written.path(l.slug()).hasNonNull("key")) {
+                title = written.path(l.slug()).path("title").asText(l.slug());
+            } else {
+                var live = pages.findBySubjectIdAndSlug(l.subjectId(), l.slug()).orElse(null);
+                if (KbViews.visible(live, true)) title = live.getTitle();
+            }
+            links.add(new org.ceitba.api.web.kb.dto.KbLinkResponse(l.raw(), l.subjectId(), l.slug(), l.anchor(),
+                title != null, title));
         }
         return new KbEvalDtos.ReviewPage(fm == null ? null : String.valueOf(fm.get("title")), parts.body(), sources, links);
     }

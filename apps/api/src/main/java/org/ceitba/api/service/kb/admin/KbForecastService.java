@@ -131,9 +131,11 @@ public class KbForecastService {
                 high = blend(hist[2], corpus.multiply(new BigDecimal("1.5")), w);
             }
         }
-        var weekly = new KbForecastResponse.Weekly(usd(expected), usd(low), usd(high), basis, history.size());
-        var monthly = new KbForecastResponse.Range(usd(expected.multiply(WEEKS_PER_MONTH)),
-            usd(low.multiply(WEEKS_PER_MONTH)), usd(high.multiply(WEEKS_PER_MONTH)));
+        int dirty = (int) inputs.diffs(s::paused).stream().filter(KbInputs.Diff::dirty).count();
+        var floor = dirty > 0 ? nextTotal : BigDecimal.ZERO;
+        var monthly = new KbForecastResponse.Range(usd(expected.multiply(WEEKS_PER_MONTH).max(floor)),
+            usd(low.multiply(WEEKS_PER_MONTH).max(floor)), usd(high.multiply(WEEKS_PER_MONTH).max(floor)));
+        var weekly = weekly(expected, low, high, floor, basis, history.size());
 
         var rebuild = rebuildLines(s, ratios, cacheRatios);
         long rebuildIn = rebuild.stream().mapToLong(Line::input).sum();
@@ -154,13 +156,12 @@ public class KbForecastService {
             usd(noCache.subtract(actual).max(BigDecimal.ZERO)));
 
         var limit = s.weeklyCostLimitUsd();
-        boolean exceeds = limit != null && (nextTotal.compareTo(limit) > 0 || expected.compareTo(limit) > 0);
+        boolean exceeds = limit != null && (nextTotal.compareTo(limit) > 0 || weekly.expectedUsd().compareTo(limit) > 0);
         boolean discountIsEstimate = STAGES.stream().anyMatch(st -> {
             var model = stageModel(s, st, null);
             var m = catalog.get(model);
             return "BATCH".equals(router.modeFor(model, s.executionMode())) && (m == null || !m.isBatchDiscountVerified());
         });
-        int dirty = (int) inputs.diffs(s::paused).stream().filter(KbInputs.Diff::dirty).count();
         return new KbForecastResponse(settingsHash(s),
             new KbForecastResponse.NextRun(dirty, nextStages, usd(nextTotal)), weekly, monthly, fullRebuild, savings,
             new KbForecastResponse.Limits(limit, exceeds), discountIsEstimate);
@@ -180,6 +181,16 @@ public class KbForecastService {
     @Transactional(readOnly = true)
     public BigDecimal nextRunTotal(KbEffectiveSettings s) {
         return usd(total(nextRunLines(s, outputRatios(), cacheRatios()), catalog()));
+    }
+
+    // A week can't cost less than the pending backlog (`floor`, the next
+    // run's total when there are dirty subjects): the range is raised to it
+    // and includesBacklog set; basis stays the estimate's.
+    static KbForecastResponse.Weekly weekly(BigDecimal expected, BigDecimal low, BigDecimal high, BigDecimal floor,
+                                            String basis, int runs) {
+        boolean backlog = floor.signum() > 0 && expected.compareTo(floor) < 0;
+        return new KbForecastResponse.Weekly(usd(expected.max(floor)), usd(low.max(floor)), usd(high.max(floor)), basis,
+            runs, backlog);
     }
 
     // ---- basis ----------------------------------------------------------------------

@@ -294,5 +294,8 @@ abstract class KbPipelineAcceptanceIT {
         var summary = call(get("/v1/staff/kb/costs/summary"), null, 200);
         assertThat(summary.path("simulated").asBoolean()).isTrue();
         assertThat(summary.path("accuracy").path("lastRuns")).isNotEmpty();
+        var last = summary.path("accuracy").path("lastRuns").get(0);
+        assertThat(last.path("trigger").asText()).isEqualTo("MANUAL");
+        assertThat(last.hasNonNull("startedAt") && last.has("expectedUsd") && last.has("actualUsd")).isTrue();
     }
 }

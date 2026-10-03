@@ -50,10 +50,13 @@ public class KbSettingsService {
     private final KbForecastService forecast;
     private final ObjectMapper json;
     private final Clock clock;
+    private final org.ceitba.api.repository.UserRepository users;
 
     public KbSettingsService(KbPipelineSettingsRowRepository rows, KbPipelineSettingsHistoryRepository history,
                              KbModelRepository models, KbPipelineProperties env, KbLlmProperties llmEnv,
-                             KbForecastService forecast, ObjectMapper json, Clock clock) {
+                             KbForecastService forecast, ObjectMapper json, Clock clock,
+                             org.ceitba.api.repository.UserRepository users) {
+        this.users = users;
         this.rows = rows;
         this.history = history;
         this.models = models;
@@ -86,6 +89,7 @@ public class KbSettingsService {
             if (body.get(f).isNull()) next.remove(f);
             else next.set(f, body.get(f));
         }
+        normalizeCron(next);
         validate(next, body, before);
         var note = body.path("note").isTextual() ? body.path("note").asText() : null;
         var row = save(next, userId, note);
@@ -103,6 +107,7 @@ public class KbSettingsService {
             if (body.get(f).isNull()) next.remove(f);
             else next.set(f, body.get(f));
         }
+        normalizeCron(next);
         var errors = new ArrayList<String>();
         try {
             validate(next, body, before);
@@ -125,6 +130,7 @@ public class KbSettingsService {
                 if (body.get(f).isNull()) next.remove(f);
                 else next.set(f, body.get(f));
             }
+            normalizeCron(next);
         }
         return merge(next);
     }
@@ -132,14 +138,14 @@ public class KbSettingsService {
     private KbSettingsResponse.CostImpact impact(KbEffectiveSettings before, KbEffectiveSettings after) {
         var previous = forecast.forecast(before).weekly();
         var projected = forecast.forecast(after).weekly();
-        return new KbSettingsResponse.CostImpact(previous.expectedUsd(), projected.expectedUsd(), previous, projected);
+        return new KbSettingsResponse.CostImpact(previous, projected);
     }
 
     @Transactional(readOnly = true)
     public List<KbSettingsHistoryResponse> history(int limit) {
         return history.findAllByOrderByChangedAtDesc(PageRequest.of(0, Math.max(1, Math.min(limit, 200)))).stream()
-            .map(h -> new KbSettingsHistoryResponse(h.getId(), h.getSettings(), h.getChangedBy(), h.getChangedAt(),
-                h.getNote()))
+            .map(h -> new KbSettingsHistoryResponse(h.getId(), h.getSettings(), h.getChangedBy(),
+                userName(h.getChangedBy()), h.getChangedAt(), h.getNote()))
             .toList();
     }
 
@@ -155,6 +161,18 @@ public class KbSettingsService {
     }
 
     // ---- internals ---------------------------------------------------------------
+
+    // Cron is Spring's 6 fields (seconds first); a standard 5-field
+    // expression is accepted and stored with "0 " in front.
+    static String cron6(String cron) {
+        if (cron == null) return null;
+        var parts = cron.trim().split("\\s+");
+        return parts.length == 5 ? "0 " + String.join(" ", parts) : String.join(" ", parts);
+    }
+
+    private static void normalizeCron(ObjectNode settings) {
+        if (settings.path("cron").isTextual()) settings.put("cron", cron6(settings.get("cron").asText()));
+    }
 
     private ObjectNode stored() {
         return rows.findById(KbPipelineSettingsRow.ID).map(r -> (ObjectNode) r.getSettings().deepCopy())
@@ -180,7 +198,7 @@ public class KbSettingsService {
             text(s, "modelRetry", s.has("modelWrite") && !s.has("modelRetry") ? write : env.modelRetry()),
             text(s, "executionMode", llmEnv.executionMode()),
             s.has("enabled") ? s.get("enabled").asBoolean() : env.enabled(),
-            text(s, "cron", env.cron()),
+            cron6(text(s, "cron", env.cron())),
             s.has("runTokenBudget") ? s.get("runTokenBudget").asLong() : env.runTokenBudget(),
             s.hasNonNull("weeklyCostLimitUsd") ? s.get("weeklyCostLimitUsd").decimalValue() : null,
             s.has("retryRejected") ? s.get("retryRejected").asBoolean() : env.retryRejected(),
@@ -262,7 +280,7 @@ public class KbSettingsService {
             }
         }
         if (!CronExpression.isValidExpression(merged.cron())) {
-            throw new ValidationException("cron", merged.cron(), "not a valid cron expression (6 fields)");
+            throw new ValidationException("cron", merged.cron(), "not a valid cron expression (Spring 6 fields with seconds, or standard 5 fields)");
         }
         if (merged.runTokenBudget() <= 0) {
             throw new ValidationException("runTokenBudget", merged.runTokenBudget(), "must be positive");
@@ -302,6 +320,10 @@ public class KbSettingsService {
             source.put(f, db ? "db" : "env");
         }
         return new KbSettingsResponse(values, source, row == null ? null : row.getUpdatedAt(),
-            row == null ? null : row.getUpdatedBy(), impact);
+            row == null ? null : row.getUpdatedBy(), row == null ? null : userName(row.getUpdatedBy()), impact);
+    }
+
+    private String userName(UUID id) {
+        return id == null ? null : users.findById(id).map(org.ceitba.api.domain.User::getName).orElse(null);
     }
 }

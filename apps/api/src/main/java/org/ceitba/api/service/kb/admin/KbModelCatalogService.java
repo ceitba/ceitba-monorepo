@@ -182,9 +182,9 @@ public class KbModelCatalogService {
                 probe.put("ok", false);
                 probe.put("error", "batch rejected: " + e.getMessage());
                 noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-                // Only a rejection of this request (400/404/422) says the model
-                // has no batch; 401/402/403 are about the account or the key.
-                batchRejected = e.status() == 400 || e.status() == 404 || e.status() == 422;
+                // Only an explicit "model/provider doesn't support batch" decides
+                // batchSupported; any other error is a failed probe.
+                batchRejected = batchUnsupported(e.status(), e.getMessage());
             }
         } else {
             var res = sync.runOne(line);
@@ -233,7 +233,11 @@ public class KbModelCatalogService {
                     mm.setLastProbe(probe);
                     updateToolCalling(mm, probe);
                     if (worked) mm.setBatchFromProbe(true, OffsetDateTime.now(clock));
-                    else if (info.status().equals("failed")) mm.setBatchFromProbe(false, OffsetDateTime.now(clock));
+                    else if (info.status().equals("failed") && batchUnsupported(400, info.raw()
+                        + (collected.errors() == null ? "" : new String(collected.errors(),
+                            java.nio.charset.StandardCharsets.UTF_8)))) {
+                        mm.setBatchFromProbe(false, OffsetDateTime.now(clock));
+                    }
                 });
                 // The exact output line, so the provider's shape can be checked.
                 if (collected.output() != null) {
@@ -245,6 +249,21 @@ public class KbModelCatalogService {
                 log.warn("KB catalog: probe of {} not refreshed: {}", id, e.getMessage());
             }
         }
+    }
+
+    private static final java.util.regex.Pattern UNSUPPORTED = java.util.regex.Pattern.compile(
+        "(model|provider)[_ -]?not[_ -]?supported"
+            + "|(not|isn't|is not|un)[_ -]?(supported|available)[^.\\n]{0,40}\\bbatch"
+            + "|\\bbatch(es|ing)?\\b[^.\\n]{0,60}(not|isn't|is not|un)[_ -]?(supported|available)"
+            + "|does not support[^.\\n]{0,40}\\bbatch|doesn't support[^.\\n]{0,40}\\bbatch",
+        java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    // A batch probe error that says the model or provider has no batch
+    // support (a 4xx whose code or message says so). Everything else (bad
+    // file name, account blocked, rate limit, 5xx) is just a failed probe.
+    public static boolean batchUnsupported(int status, String message) {
+        if (status < 400 || status >= 500 || message == null) return false;
+        return UNSUPPORTED.matcher(message).find();
     }
 
     // lastProbe always carries the ADMIN doc §6 fields: without an answer,

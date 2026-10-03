@@ -6,5 +6,5 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 // settings: the stored overrides of that version (not the merged values).
-public record KbSettingsHistoryResponse(UUID id, JsonNode settings, UUID changedBy, OffsetDateTime changedAt,
-                                        String note) {}
+public record KbSettingsHistoryResponse(UUID id, JsonNode settings, UUID changedBy, String changedByName,
+                                        OffsetDateTime changedAt, String note) {}

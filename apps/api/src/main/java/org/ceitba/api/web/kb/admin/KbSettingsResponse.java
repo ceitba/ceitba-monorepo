@@ -10,10 +10,9 @@ import java.util.UUID;
 // field; costImpact only on PUT/restore/preview: the weekly forecast with the
 // previous vs the new settings.
 public record KbSettingsResponse(JsonNode settings, JsonNode source, OffsetDateTime updatedAt, UUID updatedBy,
-                                 CostImpact costImpact) {
+                                 String updatedByName, CostImpact costImpact) {
 
     // previous/projected: the forecast's weekly expectation (ADMIN doc §7)
     // with the current and the new settings; *WeeklyAvgUsd: their expectedUsd.
-    public record CostImpact(BigDecimal previousWeeklyAvgUsd, BigDecimal projectedWeeklyAvgUsd,
-                             KbForecastResponse.Weekly previous, KbForecastResponse.Weekly projected) {}
+    public record CostImpact(KbForecastResponse.Weekly previous, KbForecastResponse.Weekly projected) {}
 }

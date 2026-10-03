@@ -21,7 +21,10 @@ public record KbForecastResponse(
     public record NextRun(int dirtySubjects, Map<String, Stage> perStage, BigDecimal totalUsd) {}
 
     // basis: history | corpus | blend; runsUsed: completed scheduled runs used.
-    public record Weekly(BigDecimal expectedUsd, BigDecimal low, BigDecimal high, String basis, int runsUsed) {}
+    // includesBacklog: the estimate was raised to the pending backlog
+    // (nextRun.totalUsd), which a week can't cost less than.
+    public record Weekly(BigDecimal expectedUsd, BigDecimal low, BigDecimal high, String basis, int runsUsed,
+                         boolean includesBacklog) {}
 
     public record Range(BigDecimal expectedUsd, BigDecimal low, BigDecimal high) {}
 

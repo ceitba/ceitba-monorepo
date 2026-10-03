@@ -45,7 +45,14 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
             "{\"modelPlan\": \"anthropic-claude-haiku-4.5\", \"reasoningEffort\": {\"digest\": \"low\", \"plan\": null, "
                 + "\"write\": \"high\", \"retry\": \"high\"}}", 200);
         assertThat(updated.path("costImpact").path("previous").path("basis").asText()).isEqualTo("corpus");
-        assertThat(updated.path("costImpact").has("projectedWeeklyAvgUsd")).isTrue();
+        assertThat(updated.path("costImpact").path("projected").has("includesBacklog")).isTrue();
+        assertThat(updated.path("costImpact").has("projectedWeeklyAvgUsd")).isFalse();
+        assertThat(updated.path("updatedByName").asText()).isEqualTo("Staff");
+        assertThat(call(get("/v1/staff/kb/settings"), null, 200).path("costImpact").isNull()).isTrue();
+        // Standard 5-field cron is accepted and returned as Spring's 6 fields.
+        var cron = call(put("/v1/staff/kb/settings"), "{\"cron\": \"0 3 * * SUN\"}", 200);
+        assertThat(cron.path("settings").path("cron").asText()).isEqualTo("0 0 3 * * SUN");
+        call(put("/v1/staff/kb/settings"), "{\"cron\": \"every sunday\"}", 400);
         var settings = call(get("/v1/staff/kb/settings"), null, 200);
         assertThat(settings.toString()).contains("anthropic-claude-haiku-4.5");
 
@@ -58,12 +65,13 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
         assertThat(call(get("/v1/staff/kb/settings"), null, 200).path("settings").path("modelPlan").asText())
             .isEqualTo("glm-5.3");
         var history = call(get("/v1/staff/kb/settings/history"), null, 200);
-        assertThat(history).hasSize(2);
+        assertThat(history).hasSize(3);
+        assertThat(history.get(0).path("changedByName").asText()).isEqualTo("Staff");
         var oldest = history.get(history.size() - 1).path("id").asText();
         call(post("/v1/staff/kb/settings/history/" + oldest + "/restore"), null, 200);
         assertThat(call(get("/v1/staff/kb/settings"), null, 200).path("settings").path("modelPlan").asText())
             .isEqualTo("anthropic-claude-haiku-4.5");
-        assertThat(call(get("/v1/staff/kb/settings/history"), null, 200)).hasSize(3);
+        assertThat(call(get("/v1/staff/kb/settings/history"), null, 200)).hasSize(4);
     }
 
     @Test
@@ -115,6 +123,12 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
         assertThat(forecast.path("nextRun").path("dirtySubjects").asInt()).isEqualTo(2);
         assertThat(forecast.path("nextRun").path("perStage").path("WRITE").path("mode").asText()).isEqualTo("sync");
         assertThat(forecast.path("weekly").path("basis").asText()).isEqualTo("corpus");
+        // Nothing changed in Drive recently, but two subjects are pending: the week includes them.
+        assertThat(forecast.path("weekly").path("includesBacklog").asBoolean()).isTrue();
+        assertThat(forecast.path("weekly").path("expectedUsd").decimalValue())
+            .isEqualByComparingTo(forecast.path("nextRun").path("totalUsd").decimalValue());
+        assertThat(forecast.path("monthly").path("expectedUsd").decimalValue())
+            .isGreaterThanOrEqualTo(forecast.path("nextRun").path("totalUsd").decimalValue());
         assertThat(forecast.path("monthly").has("expectedUsd")).isTrue();
         assertThat(forecast.path("settingsHash").asText()).isNotBlank();
 
@@ -122,7 +136,7 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
         assertThat(proposed.path("nextRun").path("perStage").path("WRITE").path("mode").asText()).isEqualTo("batch");
         assertThat(proposed.path("discountIsEstimate").asBoolean()).isTrue();
 
-        var stage = call(get("/v1/staff/kb/models/anthropic-claude-haiku-4.5/stage-cost?stage=write"), null, 200);
+        var stage = call(get("/v1/staff/kb/models/anthropic-claude-haiku-4.5/stage-cost?stage=WRITE"), null, 200);
         assertThat(stage.path("stage").asText()).isEqualTo("write");
         assertThat(stage.path("mode").asText()).isEqualTo("batch");
         assertThat(stage.has("expectedWeeklyUsd") && stage.has("low") && stage.has("high") && stage.has("basis")).isTrue();
@@ -179,6 +193,9 @@ class KbAdminEvalIT extends KbPipelineAcceptanceIT {
             if (res.getResponse().getStatus() == 204) break;
             var pair = json.readTree(res.getResponse().getContentAsString());
             assertThat(pair.path("a").path("markdown").asText()).contains("[[file:");
+            var src = pair.path("a").path("sources").get(0);
+            assertThat(src.path("kind").asText()).isEqualTo("PDF");
+            assertThat(src.has("academicYear") && src.has("academicYearSource") && src.has("author")).isTrue();
             assertThat(pair.toString()).doesNotContain("glm-5.3", "haiku");
             var rated = call(post("/v1/staff/kb/evals/" + evalId + "/review"), "{\"subjectId\": \""
                 + pair.path("subjectId").asText() + "\", \"slug\": \"" + pair.path("slug").asText()
