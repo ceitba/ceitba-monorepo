@@ -584,7 +584,9 @@
         "confirmTitle": "Save settings",
         "confirmBody": "Changes apply from the next stage submitted; anything already running keeps its model.",
         "autoRefreshPrices": "Refresh DigitalOcean prices weekly",
-        "autoRefreshHint": "Syncs prices from DO's catalog once a week. Costs already recorded don't change."
+        "autoRefreshHint": "Syncs prices from DO's catalog once a week. Costs already recorded don't change.",
+        "restoreFailed": "Could not restore the settings.",
+        "budgetRequired": "Enter a token budget (0 or more)."
       },
       "models": {
         "intro": "Prices per million tokens. A model can only be picked once it's enabled and has passed the probe.",
@@ -827,7 +829,10 @@
         "notify": "Notify me when it finishes",
         "notifyOn": "You'll be notified",
         "denied": "The browser blocks notifications for this site.",
-        "unseen": "New results"
+        "unseen": "New results",
+        "evalPartial": "Evaluation “{{name}}” finished with failures ({{status}}).",
+        "runPartial": "The pipeline run finished with failures: {{subjects}} subjects.",
+        "runBlocked": "The pipeline run is blocked by the cost limit. Approve or cancel it in Runs."
       },
       "reviewProgress": {
         "summary": "Review: {{done}}/{{total}} pages",

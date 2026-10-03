@@ -584,7 +584,9 @@
         "confirmTitle": "Guardar configuración",
         "confirmBody": "Los cambios se aplican desde la próxima etapa que se envíe; lo que ya está corriendo sigue con su modelo.",
         "autoRefreshPrices": "Actualizar precios de DigitalOcean semanalmente",
-        "autoRefreshHint": "Sincroniza los precios del catálogo de DO una vez por semana. Los costos ya registrados no cambian."
+        "autoRefreshHint": "Sincroniza los precios del catálogo de DO una vez por semana. Los costos ya registrados no cambian.",
+        "restoreFailed": "No se pudo restaurar la configuración.",
+        "budgetRequired": "Ingresá un presupuesto de tokens (0 o más)."
       },
       "models": {
         "intro": "Precios por millón de tokens. Un modelo solo se puede elegir cuando está habilitado y pasó la prueba.",
@@ -827,7 +829,10 @@
         "notify": "Avisarme cuando termine",
         "notifyOn": "Te vamos a avisar",
         "denied": "El navegador tiene bloqueadas las notificaciones de este sitio.",
-        "unseen": "Hay resultados nuevos"
+        "unseen": "Hay resultados nuevos",
+        "evalPartial": "La evaluación «{{name}}» terminó con fallas ({{status}}).",
+        "runPartial": "La ejecución del pipeline terminó con fallas: {{subjects}} materias.",
+        "runBlocked": "La ejecución del pipeline quedó frenada por el límite de costo. Aprobala o cancelala desde Ejecuciones."
       },
       "reviewProgress": {
         "summary": "Revisión: {{done}}/{{total}} páginas",

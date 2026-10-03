@@ -126,6 +126,9 @@ export function normalizeImpact(raw: unknown): CostImpact | null {
 }
 
 export type SettingsBody = Omit<KbSettings, 'source'> & { note?: string }
+// PUT /settings: only the fields that changed (plus the note). Sending an
+// unchanged field would store it as a DB override and freeze its env default.
+export type SettingsPatch = Partial<Omit<KbSettings, 'source'>> & { note?: string }
 
 export interface SettingsHistoryEntry {
   id: string
@@ -158,7 +161,7 @@ function unwrapSettings(res: SettingsEnvelope | KbSettings): KbSettings & { cost
 
 export const fetchSettings = () => apiGet<SettingsEnvelope>(`${BASE}/settings`).then(unwrapSettings)
 
-export function saveSettings(body: SettingsBody): Promise<KbSettings & { costImpact?: unknown }> {
+export function saveSettings(body: SettingsPatch): Promise<KbSettings & { costImpact?: unknown }> {
   return apiSend<SettingsEnvelope>('PUT', `${BASE}/settings`, body).then(unwrapSettings)
 }
 
@@ -551,9 +554,20 @@ export interface EvalRun {
   reviewSummary?: ReviewProgress | null
 }
 
-// RUNNING / WAITING / PENDING… are "still going"; anything else is final.
+// RUNNING / WAITING / PENDING… are "still going"; anything else is final
+// for polling. BLOCKED* (e.g. BLOCKED_BY_COST_LIMIT) waits on an admin, not
+// on the pipeline, so it isn't polled or watched.
 export const isActiveStatus = (s: string | null | undefined) =>
-  /RUNNING|WAITING|PENDING|SUBMITTED|IN_PROGRESS|QUEUED|VALIDATING|BLOCKED/i.test(s ?? '')
+  /RUNNING|WAITING|PENDING|SUBMITTED|IN_PROGRESS|QUEUED|VALIDATING/i.test(s ?? '') && !isBlockedStatus(s)
+
+export const isBlockedStatus = (s: string | null | undefined) => /BLOCKED/i.test(s ?? '')
+
+// Final status → toast tone: PARTIAL finished with failures (warning).
+export function finalTone(s: string | null | undefined): 'success' | 'warning' | 'error' {
+  if (/FAIL|CANCEL/i.test(s ?? '') && !/PARTIAL/i.test(s ?? '')) return 'error'
+  if (/PARTIAL/i.test(s ?? '') || isBlockedStatus(s)) return 'warning'
+  return 'success'
+}
 
 export interface ReviewPage {
   label: 'A' | 'B'
