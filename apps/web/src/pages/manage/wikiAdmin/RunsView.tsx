@@ -11,6 +11,8 @@ import Modal from '../../../components/Modal'
 import Notice from '../../../components/Notice'
 import ProgressPanel, { ProgressBar, RUN_STAGES } from './ProgressPanel'
 import { useLiveProgress } from './useLiveProgress'
+import NotifyButton from './NotifyButton'
+import { markActive } from './jobWatchStore'
 import { BTN, BTN_DANGER, BTN_PRI, Panel, StatusPill, TD, TH, ViewState, duration, tokens, usd, useLoad } from './shared'
 
 const PIPELINE: string[] = ['DETECT', 'DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE', 'PUBLISH']
@@ -24,6 +26,9 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
   // Keep RUNNING rows moving: refresh the list every 10 s while any run is
   // active and the browser tab is visible.
   const anyActive = (runs.data ?? []).some((r) => ACTIVE.test(r.status))
+  useEffect(() => {
+    (runs.data ?? []).forEach((r) => { if (ACTIVE.test(r.status)) markActive('run', r.id, r.startedAt ?? r.id) })
+  }, [runs.data])
   useEffect(() => {
     if (!anyActive) return
     const id = window.setInterval(() => { if (document.visibilityState === 'visible') runs.reload() }, 10000)
@@ -173,6 +178,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const run = useLoad(() => fetchRun(id), [id])
   const live = useLiveProgress({ active: ACTIVE.test(run.data?.status ?? ''), fetchProgress: () => fetchRunProgress(id), refreshDetail: run.reload })
   const progress = live.progress ?? run.data?.progress ?? null
+  useEffect(() => { if (run.data && ACTIVE.test(run.data.status)) markActive('run', id, run.data.startedAt ?? id) }, [run.data, id])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -211,6 +217,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                     {/BLOCKED_BY_COST_LIMIT/i.test(r.status) && (
                       <button type="button" onClick={() => act('approve')} disabled={!!busy} className={BTN_PRI}>{busy === 'approve' ? '…' : t('manage.wikiAi.runs.approveCost')}</button>
                     )}
+                    {!finished && <NotifyButton kind="run" id={id} />}
                     {!finished && <button type="button" onClick={() => setConfirmCancel(true)} disabled={!!busy} className={BTN_DANGER}>{t('manage.wikiAi.runs.cancel')}</button>}
                     <button type="button" onClick={run.reload} className={BTN}>{t('manage.wikiAi.refresh')}</button>
                   </div>

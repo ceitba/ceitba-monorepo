@@ -518,6 +518,7 @@ export interface EvalRun {
   error?: string | null
   configs: EvalConfigResult[]
   progress?: Progress | null
+  reviewSummary?: ReviewProgress | null
 }
 
 // RUNNING / WAITING / PENDING… are "still going"; anything else is final.
@@ -540,6 +541,20 @@ export interface ReviewPair {
   a: ReviewPage
   b: ReviewPage
   remaining?: number
+  reviewedByMe?: number
+  totalPairs?: number
+}
+
+// GET /evals/{id}/review/progress (also embedded as eval.reviewSummary).
+export interface ReviewProgress {
+  totalPairs: number
+  reviewedByMe?: number
+  reviewedByAnyone?: number
+  remainingForMe?: number
+  perSubject?: { subjectId: string; subjectName?: string | null; totalPairs: number; reviewedByMe?: number; reviewedByAnyone?: number }[]
+  ratingsPerConfig?: { configKey: string; plan?: string; write?: string; ratings: number }[]
+  minRatingsForConfidence?: number
+  confident?: boolean
 }
 
 export interface ReviewResult {
@@ -661,6 +676,8 @@ export function submitReview(evalId: string, body: {
 }): Promise<ReviewResult | undefined> {
   return apiSend('POST', `${EVALS}/${enc(evalId)}/review`, body)
 }
+
+export const fetchReviewProgress = (evalId: string) => apiGet<ReviewProgress>(`${EVALS}/${enc(evalId)}/review/progress`)
 
 export async function fetchLeaderboard(setId: string): Promise<LeaderboardRow[]> {
   const r = await apiGet<{ entries?: LeaderboardEntryApi[] } | LeaderboardEntryApi[]>(`${EVALS}/leaderboard?setId=${enc(setId)}`)

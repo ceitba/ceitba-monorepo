@@ -1,12 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchNextReview, submitReview, type ModelConfig, type ReviewPage, type ReviewPair, type ReviewResult, type ReviewScores } from '../../../api/kbAdmin'
+import { fetchNextReview, fetchReviewProgress, submitReview, type ReviewProgress, type ModelConfig, type ReviewPage, type ReviewPair, type ReviewResult, type ReviewScores } from '../../../api/kbAdmin'
 import type { KbPage } from '../../../api/kb'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import { CitationContext } from '../../../components/apuntes/wiki/citationContext'
 import { citationOrder } from '../../../components/apuntes/wiki/wikilinks'
 import { BTN, BTN_PRI, FIELD } from './shared'
 import { isUnavailable } from './shared'
+import ReviewProgressHeader, { ReviewSummaryLine } from './ReviewProgressView'
 
 const WikiMarkdown = lazy(() => import('../../../components/apuntes/wiki/WikiMarkdown'))
 
@@ -16,7 +17,7 @@ const NEUTRAL: ReviewScores = { accuracy: 3, clarity: 3, usefulness: 3 }
 
 // Blind A/B review of one eval: the same page from two configurations,
 // model names hidden until the rating is submitted.
-export default function BlindReview({ evalId, onDone }: { evalId: string; onDone: () => void }) {
+export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId: string; onDone: () => void; onLeaderboard?: () => void }) {
   const { t } = useTranslation()
   const [pair, setPair] = useState<ReviewPair | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +29,13 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<ReviewResult['revealed'] | null>(null)
+
+  // Review progress (GET …/review/progress); null when not available yet.
+  const [rp, setRp] = useState<ReviewProgress | null>(null)
+  const loadProgress = useCallback(() => {
+    fetchReviewProgress(evalId).then(setRp).catch(() => setRp(null))
+  }, [evalId])
+  useEffect(() => { loadProgress() }, [loadProgress])
 
   const next = useCallback(() => {
     setPair(undefined); setError(null); setWinner(null); setRevealed(null); setComment('')
@@ -45,6 +53,7 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
     try {
       const r = await submitReview(evalId, { subjectId: pair.subjectId, slug: pair.slug, winner, scoresA, scoresB, comment: comment.trim() })
       setRevealed(r?.revealed ?? {})
+      loadProgress()
     } catch (e) {
       setError(apuntesErrorMessage(e, t))
     } finally {
@@ -54,17 +63,28 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
 
   if (unavailable) return <p className="py-6 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.unavailable')}</p>
   if (pair === undefined && !error) return <div className="h-96 rounded-card skeleton" aria-busy="true" />
-  if (pair === null) {
+  if (pair === null || (rp?.remainingForMe === 0 && !revealed)) {
     return (
-      <div className="py-10 flex flex-col items-center gap-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">
-        <p>{t('manage.wikiAi.review.noMore')}</p>
-        <button type="button" onClick={onDone} className={BTN}>{t('manage.wikiAi.review.back')}</button>
+      <div className="flex flex-col gap-4">
+        <ReviewProgressHeader progress={rp} />
+        <div className="py-10 flex flex-col items-center gap-3 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          {/* "All done" only when we know there were pairs and none is left for me. */}
+          <p className="font-display font-bold text-h4 text-ink-primary dark:text-night-text">
+            {(rp?.totalPairs ?? 0) > 0 && rp?.remainingForMe === 0 ? t('manage.wikiAi.reviewProgress.allDone') : t('manage.wikiAi.review.noMore')}
+          </p>
+          <ReviewSummaryLine summary={rp} />
+          <div className="flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={onDone} className={BTN}>{t('manage.wikiAi.review.back')}</button>
+            {onLeaderboard && <button type="button" onClick={onLeaderboard} className={BTN_PRI}>{t('manage.wikiAi.reviewProgress.toLeaderboard')}</button>}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
+      <ReviewProgressHeader progress={rp} fallback={pair ? { reviewedByMe: pair.reviewedByMe, totalPairs: pair.totalPairs, remaining: pair.remaining } : null} />
       {error && <p role="alert" className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>}
       {pair && (
         <>
@@ -72,7 +92,7 @@ export default function BlindReview({ evalId, onDone }: { evalId: string; onDone
             <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
               <span className="font-mono text-label mr-1.5">{pair.subjectId}</span>{pair.subjectName} · <code className="font-mono">{pair.slug}</code>
             </p>
-            {pair.remaining != null && <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.remaining', { count: pair.remaining })}</p>}
+
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {[pair.a, pair.b].map((p, i) => (

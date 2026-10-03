@@ -817,6 +817,27 @@
           "done": "done",
           "failed": "failed"
         }
+      },
+      "watch": {
+        "evalDone": "The “{{name}}” evaluation finished: {{configs}} configurations, {{pages}} pages.",
+        "evalFailed": "The “{{name}}” evaluation ended with status {{status}}.",
+        "runDone": "The pipeline run finished: {{subjects}} subjects.",
+        "runFailed": "The pipeline run ended with status {{status}}.",
+        "view": "View results",
+        "notify": "Notify me when it finishes",
+        "notifyOn": "You'll be notified",
+        "denied": "The browser blocks notifications for this site.",
+        "unseen": "New results"
+      },
+      "reviewProgress": {
+        "summary": "Review: {{done}}/{{total}} pages",
+        "confident": "result is reliable",
+        "notConfident": "result not reliable yet",
+        "mine": "{{done}} of {{total}} pages reviewed",
+        "anyone": "{{n}} reviewed by anyone",
+        "confidence": "{{n}}/{{min}} ratings for a reliable result",
+        "allDone": "Done! You've reviewed every page",
+        "toLeaderboard": "See leaderboard"
       }
     }
   },

@@ -817,6 +817,27 @@
           "done": "listo",
           "failed": "falló"
         }
+      },
+      "watch": {
+        "evalDone": "La evaluación «{{name}}» terminó: {{configs}} configuraciones, {{pages}} páginas.",
+        "evalFailed": "La evaluación «{{name}}» terminó con estado {{status}}.",
+        "runDone": "La ejecución del pipeline terminó: {{subjects}} materias.",
+        "runFailed": "La ejecución del pipeline terminó con estado {{status}}.",
+        "view": "Ver resultados",
+        "notify": "Avisarme cuando termine",
+        "notifyOn": "Te vamos a avisar",
+        "denied": "El navegador tiene bloqueadas las notificaciones de este sitio.",
+        "unseen": "Hay resultados nuevos"
+      },
+      "reviewProgress": {
+        "summary": "Revisión: {{done}}/{{total}} páginas",
+        "confident": "resultado confiable",
+        "notConfident": "resultado todavía no confiable",
+        "mine": "{{done}} de {{total}} páginas evaluadas",
+        "anyone": "{{n}} evaluadas por alguien",
+        "confidence": "{{n}}/{{min}} valoraciones para un resultado confiable",
+        "allDone": "¡Listo! Ya evaluaste todas las páginas",
+        "toLeaderboard": "Ver ranking"
       }
     }
   },

@@ -32,7 +32,8 @@
       "organizations": "Organizations",
       "corrections": "Schedule corrections",
       "drive": "Notes",
-      "wikiAi": "Wiki AI"
+      "wikiAi": "Wiki AI",
+      "wikiAiUnseen": "{{count}} updates in Wiki AI"
     },
     "staff": {
       "year": "Year",

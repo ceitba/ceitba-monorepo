@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  configKey, createEval, fetchEvalProgress, isActiveStatus, modelWithEffort, normalizeImpact, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
+  configKey, createEval, fetchEvalProgress, fetchReviewProgress, isActiveStatus, type ReviewProgress, modelWithEffort, normalizeImpact, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
   type EvalConfigResult, type EvalMetrics, type EvalRun, type KbModel, type LeaderboardRow, type ModelConfig,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
@@ -14,6 +14,9 @@ import BlindReview from './BlindReview'
 import ReasoningSelect from './ReasoningSelect'
 import ProgressPanel, { EVAL_STAGES, ProgressBar } from './ProgressPanel'
 import { useLiveProgress } from './useLiveProgress'
+import NotifyButton from './NotifyButton'
+import { ReviewSummaryLine } from './ReviewProgressView'
+import { markActive } from './jobWatchStore'
 import { ModelSelect } from './SettingsView'
 import { BTN, BTN_PRI, CostImpactDialog, FIELD, Panel, StatusPill, TD, TH, ViewState, isUnavailable, pct, secs, tokens, usd, useLoad } from './shared'
 
@@ -49,12 +52,19 @@ function best(values: (number | null | undefined)[], dir: Dir): number | null {
   return dir === 'high' ? Math.max(...nums) : Math.min(...nums)
 }
 
-export default function EvalsView() {
+export default function EvalsView({ requestedId, onRequestHandled }: { requestedId?: string | null; onRequestHandled?: () => void } = {}) {
   const { t } = useTranslation()
   const [openEval, setOpenEval] = useState<string | null>(null)
+  useEffect(() => {
+    if (requestedId) { setOpenEval(requestedId); onRequestHandled?.() }
+  }, [requestedId, onRequestHandled])
   const sets = useLoad(fetchEvalSets)
   const evals = useLoad(fetchEvals)
   const anyActive = (evals.data ?? []).some((e) => isActiveStatus(e.status))
+  // Watch running evals so the admin hears when they finish.
+  useEffect(() => {
+    (evals.data ?? []).forEach((e) => { if (isActiveStatus(e.status)) markActive('eval', e.id, e.setName ?? e.setId) })
+  }, [evals.data])
   useEffect(() => {
     if (!anyActive) return
     const id = window.setInterval(() => { if (document.visibilityState === 'visible') evals.reload() }, 10000)
@@ -71,6 +81,12 @@ export default function EvalsView() {
         id={openEval}
         setName={(sid) => sets.data?.find((s) => s.id === sid)?.name}
         onBack={() => { setOpenEval(null); evals.reload() }}
+        onLeaderboard={() => {
+          const setId = evals.data?.find((e) => e.id === openEval)?.setId
+          if (setId) setLbSet(setId)
+          setOpenEval(null)
+          window.setTimeout(() => document.getElementById('wikiai-leaderboard')?.scrollIntoView({ behavior: 'smooth' }), 100)
+        }}
       />
     )
   }
@@ -111,6 +127,7 @@ export default function EvalsView() {
         </ViewState>
       </Panel>
 
+      <div id="wikiai-leaderboard" />
       <Panel
         title={t('manage.wikiAi.evals.leaderboard')}
         actions={sets.data && sets.data.length > 0 ? (
@@ -119,7 +136,7 @@ export default function EvalsView() {
           </select>
         ) : undefined}
       >
-        {lbSet ? <Leaderboard setId={lbSet} /> : (
+        {lbSet ? <Leaderboard setId={lbSet} latestEvalId={(evals.data ?? []).find((e) => e.setId === lbSet && !isActiveStatus(e.status))?.id ?? null} /> : (
           <p className="py-4 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {sets.unavailable ? t('manage.wikiAi.unavailable') : t('manage.wikiAi.evals.noSets')}
           </p>
@@ -364,13 +381,22 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
   )
 }
 
-function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: string) => string | undefined; onBack: () => void }) {
+function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setName: (setId: string) => string | undefined; onBack: () => void; onLeaderboard: () => void }) {
   const { t } = useTranslation()
   const ev = useLoad(() => fetchEval(id), [id])
   const active = isActiveStatus(ev.data?.status)
+  const [reviewing, setReviewing] = useState(false)
   const live = useLiveProgress({ active, fetchProgress: () => fetchEvalProgress(id), refreshDetail: ev.reload })
   const progress = live.progress ?? ev.data?.progress ?? null
-  const [reviewing, setReviewing] = useState(false)
+  useEffect(() => { if (active && ev.data) markActive('eval', id, ev.data.setName ?? ev.data.setId) }, [active, ev.data, id])
+  // Review progress for the summary line (when the detail doesn't embed it).
+  const [reviewSummary, setReviewSummary] = useState<ReviewProgress | null>(null)
+  useEffect(() => {
+    if (active || ev.data?.reviewSummary) return
+    let cancelled = false
+    fetchReviewProgress(id).then((r) => { if (!cancelled) setReviewSummary(r) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [id, active, ev.data?.reviewSummary, reviewing])
   const [promoting, setPromoting] = useState<EvalConfigResult | null>(null)
 
   if (reviewing) {
@@ -379,7 +405,7 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
         <button type="button" onClick={() => setReviewing(false)} className="self-start font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary">← {t('manage.wikiAi.review.back')}</button>
         <h3 className="font-display font-bold text-h4">{t('manage.wikiAi.review.title')}</h3>
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.intro')}</p>
-        <BlindReview evalId={id} onDone={() => { setReviewing(false); ev.reload() }} />
+        <BlindReview evalId={id} onDone={() => { setReviewing(false); ev.reload() }} onLeaderboard={onLeaderboard} />
       </div>
     )
   }
@@ -394,7 +420,7 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
           return (
             <>
               {(active || (progress && isActiveStatus(e.status))) && (
-                <Panel title={t('manage.wikiAi.progress.title')}>
+                <Panel title={t('manage.wikiAi.progress.title')} actions={<NotifyButton kind="eval" id={id} />}>
                   <ProgressPanel
                     progress={progress}
                     stages={EVAL_STAGES}
@@ -408,6 +434,7 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
                 actions={<button type="button" onClick={() => setReviewing(true)} disabled={cfgs.length < 2 || isActiveStatus(e.status)} title={isActiveStatus(e.status) ? t('manage.wikiAi.review.afterFinish') : undefined} className={BTN_PRI}>{t('manage.wikiAi.review.start')}</button>}
               >
                 {e.note && <p className="mb-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">“{e.note}”</p>}
+                <ReviewSummaryLine summary={e.reviewSummary ?? reviewSummary} className="mb-3" />
                 {cfgs.length === 0 ? (
                   <p className="py-4 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.noResults')}</p>
                 ) : (
@@ -508,11 +535,22 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
   )
 }
 
-function Leaderboard({ setId }: { setId: string }) {
+function Leaderboard({ setId, latestEvalId }: { setId: string; latestEvalId: string | null }) {
   const { t } = useTranslation()
   const lb = useLoad(() => fetchLeaderboard(setId), [setId])
+  // How far the blind review of the latest finished eval of this set got.
+  const [summary, setSummary] = useState<ReviewProgress | null>(null)
+  useEffect(() => {
+    setSummary(null)
+    if (!latestEvalId) return
+    let cancelled = false
+    fetchReviewProgress(latestEvalId).then((r) => { if (!cancelled) setSummary(r) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [latestEvalId])
   const sorted = useMemo(() => [...(lb.data ?? [])].sort((a, b) => (b.winRate ?? -1) - (a.winRate ?? -1)), [lb.data])
   return (
+    <>
+    <ReviewSummaryLine summary={summary} className="mb-2" />
     <ViewState state={lb} skeleton="rows" empty={(r) => r.length === 0} emptyText={t('manage.wikiAi.evals.noLeaderboard')}>
       {() => (
         <div className="overflow-x-auto">
@@ -552,6 +590,7 @@ function Leaderboard({ setId }: { setId: string }) {
         </div>
       )}
     </ViewState>
+    </>
   )
 }
 
