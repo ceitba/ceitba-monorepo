@@ -6,7 +6,8 @@
     "langToggleLabel": "EN",
     "langToggleAria": "Cambiar a inglés",
     "themeToggleLight": "Cambiar a modo claro",
-    "themeToggleDark": "Cambiar a modo oscuro"
+    "themeToggleDark": "Cambiar a modo oscuro",
+    "apuntes": "Apuntes"
   },
   "tabs": {
     "home": "Inicio",
@@ -29,7 +30,11 @@
       "benefits": "Beneficios",
       "users": "Usuarios",
       "organizations": "Organizaciones",
-      "corrections": "Correcciones de horario"
+      "corrections": "Correcciones de horario",
+      "drive": "Apuntes",
+      "wikiAi": "Wiki IA",
+      "wikiAiUnseen": "{{count}} novedades en Wiki IA",
+      "capabilities": "Capacidades"
     },
     "staff": {
       "year": "Año",
@@ -250,6 +255,44 @@
       },
       "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
       "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+    },
+    "capabilities": {
+      "intro": "Habilitá funciones en prueba para todos, para personas puntuales (por email, aunque nunca hayan entrado) o para organizaciones enteras. El staff siempre tiene todas.",
+      "empty": "No hay capacidades definidas.",
+      "enabledForAll": "Habilitado para todos",
+      "everyone": "Habilitado para todos",
+      "everyoneNote": "Esta capacidad está habilitada para todos: los accesos de abajo se conservan para cuando la vuelvas a restringir.",
+      "counts": "{{users}} · {{orgs}}",
+      "userCount_one": "{{count}} persona",
+      "userCount_other": "{{count}} personas",
+      "orgCount_one": "{{count}} organización",
+      "orgCount_other": "{{count}} organizaciones",
+      "manageGrants": "Gestionar accesos",
+      "hideGrants": "Ocultar accesos",
+      "confirmTitle": "¿Habilitar {{label}} para todos?",
+      "confirmBody": "Cualquier persona que inicie sesión va a poder usar {{label}}. Podés volver a restringirlo cuando quieras.",
+      "confirmCta": "Habilitar para todos",
+      "grantedOn": "Otorgado el {{date}}",
+      "grantedBy": "Otorgado el {{date}} por {{name}}",
+      "remove": "Quitar",
+      "removeAria": "Quitar acceso a {{name}}",
+      "users": {
+        "title": "Personas",
+        "help": "Pegá uno o más emails, separados por coma o salto de línea.",
+        "placeholder": "nombre@itba.edu.ar, otra@itba.edu.ar",
+        "invalid": "Estos emails no son válidos: {{emails}}",
+        "grant": "Otorgar acceso",
+        "empty": "Nadie tiene acceso individual todavía.",
+        "neverLoggedIn": "Sin ingresar"
+      },
+      "orgs": {
+        "title": "Organizaciones",
+        "pick": "Elegí una organización…",
+        "add": "Agregar",
+        "empty": "Ninguna organización tiene acceso todavía.",
+        "members_one": "{{count}} miembro",
+        "members_other": "{{count}} miembros"
+      }
     }
   },
   "profile": {
@@ -279,7 +322,9 @@
       "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo.",
       "invalid_state": "La sesión de inicio expiró o no es válida. Probá iniciar sesión de nuevo.",
       "access_denied": "Cancelaste el inicio de sesión con Google."
-    }
+    },
+    "apuntes": "Apuntes",
+    "myApuntes": "Mis apuntes"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
@@ -320,6 +365,11 @@
     "newsletter": {
       "label": "Newsletter ITBA",
       "description": "Enterate de todo lo que pasa en ITBA: eventos, novedades académicas, oportunidades laborales y actividades del CEITBA.",
+      "cta": "Abrir"
+    },
+    "apuntes": {
+      "label": "Apuntes",
+      "description": "Apuntes, resúmenes y finales que comparten otros estudiantes desde su Google Drive, ordenados por materia.",
       "cta": "Abrir"
     }
   },
@@ -398,5 +448,19 @@
     "somethingWrong": "Algo salió mal",
     "retry": "Reintentar",
     "dismiss": "Cerrar"
+  },
+  "authGuard": {
+    "title": "Iniciá sesión para seguir",
+    "body": "Los apuntes son para la comunidad ITBA. Entrá con tu cuenta @itba.edu.ar para verlos y compartir los tuyos.",
+    "signIn": "Iniciar sesión con Google"
+  },
+  "capabilityGuard": {
+    "title": "Apuntes todavía no está habilitado para tu cuenta",
+    "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú.",
+    "home": "Volver al inicio",
+    "apuntes": {
+      "title": "Apuntes todavía no está habilitado para tu cuenta",
+      "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
+    }
   }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useCapability } from '../hooks/useCapability'
 import { signOut, startGoogleSignIn } from '../store/authStore'
 import { safeHttpUrl } from '../utils/url'
 
@@ -12,6 +13,7 @@ import { safeHttpUrl } from '../utils/url'
 export default function AuthMenu() {
   const { t } = useTranslation()
   const { profile, loading, isStaff } = useAuth()
+  const { enabled: apuntesEnabled } = useCapability('apuntes')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -34,13 +36,23 @@ export default function AuthMenu() {
 
   if (!profile) {
     return (
-      <button
-        type="button"
-        onClick={startGoogleSignIn}
-        className="min-h-[36px] px-3 font-mono text-label uppercase tracking-widest text-primary border border-primary rounded-sm hover:bg-primary hover:text-white transition-colors duration-150"
-      >
-        {t('auth.signIn')}
-      </button>
+      <div className="flex items-center gap-2">
+        {import.meta.env.DEV && import.meta.env.VITE_DEV_LOGIN === 'true' && (
+          <Link
+            to="/dev-login"
+            className="min-h-[36px] inline-flex items-center px-2 font-mono text-label uppercase tracking-widest text-accent-600 dark:text-accent-300 border border-dashed border-accent-400 rounded-sm hover:bg-accent-50 dark:hover:bg-accent-900/30"
+          >
+            {t('devLogin.link', { defaultValue: 'Dev login' })}
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={() => startGoogleSignIn()}
+          className="min-h-[36px] px-3 font-mono text-label uppercase tracking-widest text-primary border border-primary rounded-sm hover:bg-primary hover:text-white transition-colors duration-150"
+        >
+          {t('auth.signIn')}
+        </button>
+      </div>
     )
   }
 
@@ -90,6 +102,26 @@ export default function AuthMenu() {
           >
             {t('auth.profile')}
           </button>
+          {apuntesEnabled && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => { setOpen(false); navigate('/apuntes') }}
+                className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+              >
+                {t('auth.apuntes')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => { setOpen(false); navigate('/apuntes/mis-apuntes') }}
+                className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+              >
+                {t('auth.myApuntes')}
+              </button>
+            </>
+          )}
           {isStaff && (
             <button
               type="button"

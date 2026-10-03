@@ -1,0 +1,644 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { KbPageType } from '../../../api/kb'
+import { forceLayout, type LayoutNode } from '../../../utils/forceLayout'
+
+// Interactive wiki graph (subject graph, global map and their previews).
+//
+// Rendering: SVG; the layout is computed once per data set (after first
+// paint), then pan/zoom only rewrites the transform of one <g> inside a
+// requestAnimationFrame and sets --k on the <svg>, so labels keep a constant
+// on-screen size via CSS and nothing re-renders while zooming. React
+// re-renders only on selection, search and filter changes.
+
+export interface GraphNode {
+  id: string
+  subjectId: string
+  slug: string
+  title: string
+  type: KbPageType
+  // Drawn grey and small (pages of other subjects in a subject graph).
+  muted?: boolean
+}
+
+export interface GraphEdge {
+  from: string
+  to: string
+  emphasized?: boolean
+}
+
+type Mode = 'full' | 'preview' | 'thumb'
+
+interface Props {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  // Fill for a node (CSS colour or var()).
+  colorOf: (node: GraphNode) => string
+  mode?: Mode
+  className?: string
+  onOpen?: (node: GraphNode) => void
+  // Summary for the focus card, fetched lazily.
+  loadSummary?: (node: GraphNode) => Promise<string | null>
+  // Subject label for the focus card.
+  subjectLabel?: (node: GraphNode) => string
+  // Label for the muted-nodes filter ("Otras materias").
+  mutedLabel?: string
+}
+
+const MIN_K = 0.2
+// Below this zoom only index/topic labels show (a little under 1× so a
+// graph fitted at ~1× still shows its concept labels).
+const LABEL_K = 0.85
+const MAX_K = 4
+const RADIUS: Record<KbPageType, number> = { index: 14, topic: 10, concept: 7 }
+const TYPES: KbPageType[] = ['index', 'topic', 'concept']
+
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+function truncate(s: string, n: number): string {
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s
+}
+
+function radiusOf(n: GraphNode): number {
+  return n.muted ? 6 : RADIUS[n.type] ?? 7
+}
+
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
+
+export default function GraphView({
+  nodes, edges, colorOf, mode = 'full', className = '', onOpen, loadSummary, subjectLabel, mutedLabel,
+}: Props) {
+  const { t } = useTranslation()
+  const interactive = mode === 'full'
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const gRef = useRef<SVGGElement>(null)
+  const view = useRef({ k: 1, x: 0, y: 0 })
+  const raf = useRef(0)
+  const size = useRef({ w: 0, h: 0 })
+  const tween = useRef(0)
+  // Zoom floor: the interactive minimum, lowered when a fit needs to go
+  // further out (big graph in a small box), so fit never overflows.
+  const minK = useRef(MIN_K)
+  const [layout, setLayout] = useState<Map<string, LayoutNode> | null>(null)
+
+  const [selected, setSelected] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [hiddenTypes, setHiddenTypes] = useState<Set<KbPageType>>(new Set())
+  const [hideMuted, setHideMuted] = useState(false)
+  const [summaries, setSummaries] = useState<Map<string, string | null>>(new Map())
+
+  // ── Layout (after first paint) ──────────────────────────────────────────
+  useEffect(() => {
+    setLayout(null)
+    let cancelled = false
+    const run = () => {
+      if (cancelled) return
+      const meta = new Map(nodes.map((n) => [n.id, n]))
+      const pos = forceLayout(nodes.map((n) => n.id), edges, {
+        isPeripheral: (id) => !!meta.get(id)?.muted,
+        radiusOf: (id) => { const n = meta.get(id); return n ? radiusOf(n) : 8 },
+      })
+      if (!cancelled) setLayout(pos)
+    }
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+    const handle = w.requestIdleCallback ? w.requestIdleCallback(run, { timeout: 600 }) : window.setTimeout(run, 30)
+    return () => {
+      cancelled = true
+      if (!w.requestIdleCallback) window.clearTimeout(handle)
+    }
+  }, [nodes, edges])
+
+  const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
+
+  const visible = useMemo(() => nodes.filter((n) =>
+    !hiddenTypes.has(n.type) &&
+    !(n.muted && hideMuted)), [nodes, hiddenTypes, hideMuted])
+  const visibleIds = useMemo(() => new Set(visible.map((n) => n.id)), [visible])
+  const visibleEdges = useMemo(() => edges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to)), [edges, visibleIds])
+
+  const neighbours = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    for (const e of edges) {
+      if (!m.has(e.from)) m.set(e.from, new Set())
+      if (!m.has(e.to)) m.set(e.to, new Set())
+      m.get(e.from)!.add(e.to)
+      m.get(e.to)!.add(e.from)
+    }
+    return m
+  }, [edges])
+
+  const matches = useMemo(() => {
+    const q = normalize(query.trim())
+    if (!q) return null
+    return new Set(visible.filter((n) => normalize(n.title).includes(q) || normalize(n.subjectId).includes(q)).map((n) => n.id))
+  }, [query, visible])
+
+  // Active set for dimming: search matches win, else selection + neighbours.
+  const active = useMemo(() => {
+    if (matches) return matches
+    if (selected) return new Set([selected, ...(neighbours.get(selected) ?? [])])
+    return null
+  }, [matches, selected, neighbours])
+
+  // ── Label collision culling ─────────────────────────────────────────────
+  // Greedy: selected/focused labels first, then index, topic, concept and
+  // other-subject labels; a label whose screen box overlaps one already
+  // placed is hidden. Runs once the view settles, not every frame.
+  const cullTimer = useRef(0)
+  const scheduleCull = useCallback(() => {
+    window.clearTimeout(cullTimer.current)
+    cullTimer.current = window.setTimeout(() => {
+      const svgEl = svgRef.current
+      if (!svgEl) return
+      const rank = (el: Element) => {
+        const g = el.parentElement
+        if (!g) return 9
+        if (g.classList.contains('is-selected') || g.classList.contains('is-match')) return 0
+        const focus = svgEl.classList.contains('has-focus')
+        const base = g.classList.contains('kbg-index') ? 2 : g.classList.contains('kbg-topic') ? 3 : 4
+        const muted = g.classList.contains('is-muted') ? 2 : 0
+        return (focus && !g.classList.contains('is-active') ? 10 : 0) + (focus && g.classList.contains('is-active') ? 1 : base) + muted
+      }
+      const labels = [...svgEl.querySelectorAll<SVGTextElement>('text.kbg-label')]
+        .map((el) => ({ el, rank: rank(el) }))
+        .sort((a, b) => a.rank - b.rank)
+      const placed: DOMRect[] = []
+      // A node only blocks labels of equal or lower priority than its own.
+      const rankById = new Map(labels.map(({ el, rank }) => [el.parentElement?.getAttribute('data-id') ?? '', rank]))
+      // Other nodes' circles are obstacles too: a label never covers a node.
+      const circles = [...svgEl.querySelectorAll<SVGCircleElement>('g.kbg-node:not(.kbg-label-host) > circle')]
+        .map((c) => ({ id: (c.parentElement as Element | null)?.getAttribute('data-id'), r: c.getBoundingClientRect() }))
+      const overlaps = (r: DOMRect, p: DOMRect) => r.left < p.right + 2 && r.right > p.left - 2 && r.top < p.bottom + 1 && r.bottom > p.top - 1
+      for (const { el, rank: labelRank } of labels) {
+        const r = el.getBoundingClientRect()
+        if (r.width === 0 && r.height === 0) { el.classList.remove('is-culled'); continue } // hidden by zoom rules
+        const own = el.parentElement?.getAttribute('data-id')
+        const hit = placed.some((p) => overlaps(r, p)) || (labelRank > 1 && circles.some((c) => c.id !== own && (rankById.get(c.id ?? '') ?? 9) <= labelRank && overlaps(r, c.r)))
+        el.classList.toggle('is-culled', hit)
+        if (!hit) placed.push(r)
+      }
+    }, 140)
+  }, [])
+  useEffect(() => () => window.clearTimeout(cullTimer.current), [])
+
+  // ── View transform ──────────────────────────────────────────────────────
+  const apply = useCallback(() => {
+    if (raf.current) return
+    raf.current = requestAnimationFrame(() => {
+      raf.current = 0
+      const { k, x, y } = view.current
+      gRef.current?.setAttribute('transform', `translate(${x},${y}) scale(${k})`)
+      const svg = svgRef.current
+      if (svg) {
+        svg.style.setProperty('--k', String(k))
+        svg.classList.toggle('zoom-low', k < LABEL_K)
+      }
+      scheduleCull()
+    })
+  }, [scheduleCull])
+
+  const animateTo = useCallback((target: { k: number; x: number; y: number }, ms = 260) => {
+    cancelAnimationFrame(tween.current)
+    const from = { ...view.current }
+    const start = performance.now()
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const step = (now: number) => {
+      const p = reduce ? 1 : Math.min(1, (now - start) / ms)
+      const e = 1 - Math.pow(1 - p, 3)
+      view.current = {
+        k: from.k + (target.k - from.k) * e,
+        x: from.x + (target.x - from.x) * e,
+        y: from.y + (target.y - from.y) * e,
+      }
+      apply()
+      if (p < 1) tween.current = requestAnimationFrame(step)
+    }
+    tween.current = requestAnimationFrame(step)
+  }, [apply])
+
+  const zoomAt = useCallback((factor: number, cx: number, cy: number) => {
+    cancelAnimationFrame(tween.current)
+    const v = view.current
+    const k = clamp(v.k * factor, minK.current, MAX_K)
+    const f = k / v.k
+    view.current = { k, x: cx - (cx - v.x) * f, y: cy - (cy - v.y) * f }
+    apply()
+  }, [apply])
+
+  // Fits `ids`, or by default the visible core nodes (pages of other
+  // subjects only count when nothing else is visible). Returns false when
+  // the box isn't measured yet.
+  const fitTo = useCallback((ids: Iterable<string> | null, animate = true, maxK = 1.6): boolean => {
+    if (!layout) return false
+    const { w, h } = size.current
+    if (!w || !h) return false
+    let target = ids
+    if (!target) {
+      const core = visible.filter((n) => !n.muted).map((n) => n.id)
+      target = core.length ? core : visibleIds
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const id of target) {
+      const p = layout.get(id)
+      if (!p) continue
+      const node = byId.get(id)
+      const r = node ? radiusOf(node) : 8
+      minX = Math.min(minX, p.x - r); maxX = Math.max(maxX, p.x + r)
+      minY = Math.min(minY, p.y - r); maxY = Math.max(maxY, p.y + r)
+    }
+    if (!Number.isFinite(minX)) return false
+    // Margins in screen pixels; labels sit to the right of their node, so
+    // leave more room on that side and centre the circles+labels block.
+    const padL = mode === 'thumb' ? 10 : 30
+    const padR = mode === 'thumb' ? 10 : 170
+    const padY = mode === 'thumb' ? 10 : 36
+    const fitK = Math.min((w - padL - padR) / Math.max(maxX - minX, 1), (h - padY * 2) / Math.max(maxY - minY, 1))
+    minK.current = Math.min(MIN_K, Math.max(0.01, fitK * 0.8))
+    const k = clamp(fitK, minK.current, maxK)
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+    const next = { k, x: (w + padL - padR) / 2 - cx * k, y: h / 2 - cy * k }
+    if (animate) animateTo(next)
+    else { view.current = next; apply() }
+    return true
+  }, [layout, visible, visibleIds, byId, mode, animateTo, apply])
+
+  const reset = useCallback(() => {
+    if (!layout) return
+    const { w, h } = size.current
+    let sx = 0, sy = 0, c = 0
+    for (const id of visibleIds) { const p = layout.get(id); if (p) { sx += p.x; sy += p.y; c++ } }
+    const cx = c ? sx / c : 0, cy = c ? sy / c : 0
+    animateTo({ k: 1, x: w / 2 - cx, y: h / 2 - cy })
+  }, [layout, visibleIds, animateTo])
+
+  // Track the container size; fit on first layout.
+  const fitted = useRef(false)
+  const firstFit = useRef<() => void>(() => {})
+  useLayoutEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      size.current = { w: el.clientWidth, h: el.clientHeight }
+      // The first fit waits for a measured box (lazy/suspended mounts).
+      if (!fitted.current) firstFit.current()
+    })
+    size.current = { w: el.clientWidth, h: el.clientHeight }
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  useEffect(() => { fitted.current = false }, [nodes])
+  firstFit.current = () => {
+    if (layout && !fitted.current && fitTo(null, false, mode === 'full' ? 1.4 : 1)) fitted.current = true
+  }
+  useEffect(() => { firstFit.current() }, [layout, fitTo, mode])
+
+  // ── Pointer: drag to pan, pinch to zoom; wheel zoom around the cursor ──
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const gesture = useRef<{ moved: boolean; dist?: number; startX: number; startY: number }>({ moved: false, startX: 0, startY: 0 })
+  const suppressClick = useRef(false)
+
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg || !interactive) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const r = svg.getBoundingClientRect()
+      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018))
+      zoomAt(factor, e.clientX - r.left, e.clientY - r.top)
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+  }, [interactive, zoomAt])
+
+  function local(e: { clientX: number; clientY: number }) {
+    const r = svgRef.current!.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+
+  function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (!interactive) return
+    pointers.current.set(e.pointerId, local(e))
+    if (pointers.current.size === 1) {
+      gesture.current = { moved: false, startX: e.clientX, startY: e.clientY }
+    } else if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()]
+      gesture.current = { ...gesture.current, moved: true, dist: Math.hypot(a.x - b.x, a.y - b.y) }
+    }
+  }
+
+  function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (!interactive || !pointers.current.has(e.pointerId)) return
+    const prev = pointers.current.get(e.pointerId)!
+    const cur = local(e)
+    pointers.current.set(e.pointerId, cur)
+    if (pointers.current.size === 1) {
+      if (!gesture.current.moved && Math.hypot(e.clientX - gesture.current.startX, e.clientY - gesture.current.startY) < 4) return
+      if (!gesture.current.moved) {
+        gesture.current.moved = true
+        svgRef.current?.setPointerCapture(e.pointerId)
+      }
+      cancelAnimationFrame(tween.current)
+      view.current = { ...view.current, x: view.current.x + cur.x - prev.x, y: view.current.y + cur.y - prev.y }
+      apply()
+    } else if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()]
+      const dist = Math.hypot(a.x - b.x, a.y - b.y)
+      if (gesture.current.dist) zoomAt(dist / gesture.current.dist, (a.x + b.x) / 2, (a.y + b.y) / 2)
+      gesture.current.dist = dist
+    }
+  }
+
+  function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
+    if (!interactive) return
+    pointers.current.delete(e.pointerId)
+    if (gesture.current.moved) {
+      suppressClick.current = true
+      window.setTimeout(() => { suppressClick.current = false }, 0)
+    }
+    if (pointers.current.size < 2) gesture.current.dist = undefined
+    if (pointers.current.size === 0) gesture.current.moved = false
+  }
+
+  // ── Selection, keyboard ─────────────────────────────────────────────────
+  const selectedNode = selected ? byId.get(selected) ?? null : null
+
+  useEffect(() => {
+    if (!selectedNode || !loadSummary || summaries.has(selectedNode.id)) return
+    let cancelled = false
+    loadSummary(selectedNode)
+      .then((s) => { if (!cancelled) setSummaries((m) => new Map(m).set(selectedNode.id, s)) })
+      .catch(() => { if (!cancelled) setSummaries((m) => new Map(m).set(selectedNode.id, null)) })
+    return () => { cancelled = true }
+  }, [selectedNode, loadSummary, summaries])
+
+  function clickNode(node: GraphNode) {
+    if (suppressClick.current) return
+    if (mode === 'preview') { onOpen?.(node); return }
+    if (mode !== 'full') return
+    if (selected === node.id) onOpen?.(node)
+    else setSelected(node.id)
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!interactive || (e.target as HTMLElement).tagName === 'INPUT') return
+    const { w, h } = size.current
+    const pan = 60
+    switch (e.key) {
+      case '+': case '=': zoomAt(1.25, w / 2, h / 2); break
+      case '-': case '_': zoomAt(0.8, w / 2, h / 2); break
+      case '0': fitTo(null); break
+      case 'ArrowLeft': view.current.x += pan; apply(); break
+      case 'ArrowRight': view.current.x -= pan; apply(); break
+      case 'ArrowUp': view.current.y += pan; apply(); break
+      case 'ArrowDown': view.current.y -= pan; apply(); break
+      case 'Escape': setSelected(null); setQuery(''); break
+      case 'Enter': if (selectedNode) onOpen?.(selectedNode); break
+      default: return
+    }
+    e.preventDefault()
+  }
+
+  // Zoom to search results shortly after typing stops.
+  useEffect(() => {
+    if (!matches || matches.size === 0) return
+    const id = window.setTimeout(() => fitTo(matches, true, 2), 350)
+    return () => window.clearTimeout(id)
+  }, [matches, fitTo])
+
+  const hasMuted = useMemo(() => nodes.some((n) => n.muted), [nodes])
+
+  function nodeClass(node: GraphNode, isActive: boolean): string {
+    return `kbg-node kbg-${node.type}${node.muted ? ' is-muted' : ''}${isActive && active ? ' is-active' : ''}${selected === node.id ? ' is-selected' : ''}${matches?.has(node.id) ? ' is-match' : ''}`
+  }
+
+  // Classes changed (focus, search, filters): re-cull after the commit.
+  useEffect(() => { if (layout) scheduleCull() }, [layout, active, visible, selected, scheduleCull])
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  const svg = (
+    <svg
+      ref={svgRef}
+      // Absolutely positioned: the wrappers only have a min-height, and a percentage height
+      // doesn't resolve against min-height (the svg would fall back to 150px and fit wrong).
+      className={`kbg absolute inset-0 block ${active ? 'has-focus' : ''} ${interactive ? 'is-interactive' : ''}`}
+      style={{ touchAction: interactive ? 'none' : 'auto' }}
+      width="100%"
+      height="100%"
+      role="img"
+      aria-label={t('wiki.graphTitle')}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onClick={(e) => { if (e.target === svgRef.current && !suppressClick.current && mode === 'full') setSelected(null) }}
+    >
+      <g ref={gRef}>
+        {layout && (
+          <>
+            <g>
+              {visibleEdges.map((e, i) => {
+                const a = layout.get(e.from), b = layout.get(e.to)
+                if (!a || !b) return null
+                const lit = !!active && active.has(e.from) && active.has(e.to)
+                return (
+                  <line
+                    key={i}
+                    x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                    className={`kbg-edge${e.emphasized ? ' is-strong' : ''}${lit ? ' is-active' : ''}`}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )
+              })}
+            </g>
+            <g>
+              {visible.map((node) => {
+                const p = layout.get(node.id)
+                if (!p) return null
+                const r = radiusOf(node)
+                const isActive = !active || active.has(node.id)
+                return (
+                  <g
+                    key={node.id}
+                    transform={`translate(${p.x},${p.y})`}
+                    data-id={node.id}
+                    className={nodeClass(node, isActive)}
+                    onClick={(e) => { e.stopPropagation(); clickNode(node) }}
+                    role={mode === 'thumb' ? undefined : 'button'}
+                    tabIndex={mode === 'full' ? 0 : undefined}
+                    aria-label={mode === 'thumb' ? undefined : `${node.subjectId} · ${node.title}`}
+                    onKeyDown={mode === 'full' ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); clickNode(node) }
+                    } : undefined}
+                  >
+                    {mode !== 'thumb' && <title>{`${node.subjectId} · ${node.title}`}</title>}
+                    <circle r={r} style={{ fill: node.muted ? undefined : colorOf(node) }} vectorEffect="non-scaling-stroke" />
+                  </g>
+                )
+              })}
+            </g>
+            {/* Labels in their own layer above every circle, so no node
+                ever covers a label; overlaps are culled (scheduleCull). */}
+            {mode !== 'thumb' && (
+              <g aria-hidden="true">
+                {visible.map((node) => {
+                  const p = layout.get(node.id)
+                  if (!p) return null
+                  const r = radiusOf(node)
+                  const isActive = !active || active.has(node.id)
+                  const label = node.muted ? `${node.subjectId} · ${truncate(node.title, 22)}` : truncate(node.title, 30)
+                  return (
+                    <g key={node.id} data-id={node.id} transform={`translate(${p.x},${p.y})`} className={`${nodeClass(node, isActive)} kbg-label-host`}>
+                      <text x={r + 3} y={0} dy="0.35em" className={`kbg-label lbl-${node.muted ? 'muted' : node.type}`}>
+                        {label}
+                      </text>
+                    </g>
+                  )
+                })}
+              </g>
+            )}
+          </>
+        )}
+      </g>
+    </svg>
+  )
+
+  if (mode !== 'full') {
+    return (
+      <div ref={wrapRef} className={`relative ${className}`}>
+        {!layout && <div className="absolute inset-0 skeleton rounded-card" aria-hidden="true" />}
+        {svg}
+      </div>
+    )
+  }
+
+  return (
+    <div className={`flex flex-col gap-3 ${className}`}>
+      {/* Toolbar: search + filters */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="relative lg:w-72">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && matches?.size) { e.preventDefault(); fitTo(matches, true, 2) }
+              if (e.key === 'Escape') setQuery('')
+            }}
+            placeholder={t('wiki.graphUi.search')}
+            aria-label={t('wiki.graphUi.search')}
+            className="w-full px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm focus:outline-none focus:border-primary"
+          />
+          {matches && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-label text-ink-secondary dark:text-night-muted" aria-live="polite">
+              {t('wiki.graphUi.matches', { count: matches.size })}
+            </span>
+          )}
+        </div>
+        <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <legend className="sr-only">{t('wiki.graphUi.typeFilter')}</legend>
+          {TYPES.map((type) => (
+            <label key={type} className="inline-flex items-center gap-1.5 cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-primary"
+                checked={!hiddenTypes.has(type)}
+                onChange={() => setHiddenTypes((s) => { const n = new Set(s); if (n.has(type)) n.delete(type); else n.add(type); return n })}
+              />
+              <svg width="10" height="10" aria-hidden="true">
+                <circle cx="5" cy="5" r={type === 'index' ? 5 : type === 'topic' ? 4 : 3} className={`kbg-swatch-${type}`} />
+              </svg>
+              {t(`wiki.types.${type}`)}
+            </label>
+          ))}
+          {hasMuted && (
+            <label className="inline-flex items-center gap-1.5 cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+              <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={!hideMuted} onChange={() => setHideMuted((v) => !v)} />
+              <svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="4" className="kbg-swatch-muted" /></svg>
+              {mutedLabel ?? t('wiki.otherSubjects')}
+            </label>
+          )}
+        </fieldset>
+      </div>
+
+      <div
+        ref={wrapRef}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        aria-label={t('wiki.graphUi.canvasAria')}
+        className="relative flex-1 min-h-[60vh] rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        {!layout && <div className="absolute inset-0 skeleton" aria-hidden="true" />}
+        {svg}
+
+        <div className="absolute bottom-3 right-3 flex flex-col rounded-sm border border-border dark:border-night-border bg-white/95 dark:bg-night-surface/95 shadow-card overflow-hidden">
+          {[
+            { label: t('wiki.graphUi.zoomIn'), icon: '+', on: () => zoomAt(1.3, size.current.w / 2, size.current.h / 2) },
+            { label: t('wiki.graphUi.zoomOut'), icon: '−', on: () => zoomAt(1 / 1.3, size.current.w / 2, size.current.h / 2) },
+            { label: t('wiki.graphUi.fit'), icon: '⤢', on: () => fitTo(null) },
+            { label: t('wiki.graphUi.reset'), icon: '1:1', on: reset },
+          ].map((b) => (
+            <button
+              key={b.label}
+              type="button"
+              onClick={b.on}
+              title={b.label}
+              aria-label={b.label}
+              className="w-10 h-10 flex items-center justify-center font-mono text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900 border-b last:border-b-0 border-border dark:border-night-border"
+            >
+              {b.icon}
+            </button>
+          ))}
+        </div>
+
+        <p className="hidden sm:block absolute bottom-3 left-3 font-mono text-label text-ink-secondary dark:text-night-muted pointer-events-none">
+          {t('wiki.graphUi.keysHint')}
+        </p>
+
+        {selectedNode && (
+          <div
+            className="absolute top-3 right-3 left-3 sm:left-auto sm:w-72 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card-hover p-4 flex flex-col gap-2 animate-fade-in"
+            role="dialog"
+            aria-label={selectedNode.title}
+          >
+            <div className="flex items-start gap-2">
+              <span className="w-3 h-3 mt-1.5 rounded-full flex-shrink-0" style={{ background: selectedNode.muted ? 'var(--kbg-muted)' : colorOf(selectedNode) }} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text break-words">{selectedNode.title}</p>
+                <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+                  {subjectLabel ? subjectLabel(selectedNode) : selectedNode.subjectId} · {t(`wiki.typeOne.${selectedNode.type}`)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label={t('errors.dismiss')}
+                className="leading-none text-h5 text-ink-secondary dark:text-night-muted hover:text-primary"
+              >
+                ×
+              </button>
+            </div>
+            {loadSummary && (
+              summaries.has(selectedNode.id) ? (
+                summaries.get(selectedNode.id) && (
+                  <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{summaries.get(selectedNode.id)}</p>
+                )
+              ) : (
+                <div className="h-8 rounded-sm skeleton" aria-hidden="true" />
+              )
+            )}
+            <button
+              type="button"
+              onClick={() => onOpen?.(selectedNode)}
+              className="self-start mt-1 inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600"
+            >
+              {t('wiki.graphUi.open')} →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

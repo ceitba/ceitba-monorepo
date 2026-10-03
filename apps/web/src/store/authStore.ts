@@ -1,4 +1,4 @@
-import { apiRequest, BASE_URL } from '../api/client'
+import { apiRequest, BASE_URL, onCapabilityRequired } from '../api/client'
 
 export interface UserMembership {
   slug: string
@@ -18,6 +18,9 @@ export interface UserProfile {
   fileNumber: number | null
   organizations: UserMembership[]
   follows: string[]
+  // Feature flags granted to this user (GET /auth/me), e.g. ["apuntes"].
+  // STAFF users always have every capability.
+  capabilities?: string[]
 }
 
 let _profile: UserProfile | null = null
@@ -25,7 +28,26 @@ let _hydrated = false
 let _hydratePromise: Promise<UserProfile | null> | null = null
 const _listeners = new Set<(p: UserProfile | null) => void>()
 
+// Capabilities the API refused with 403 CAPABILITY_REQUIRED during this
+// session (revoked mid-session). A key is cleared when a later /me refresh
+// lists it again, and all are cleared when the signed-in user changes.
+const _denied = new Set<string>()
+
 function notify() { _listeners.forEach((fn) => fn(_profile)) }
+
+onCapabilityRequired((capability) => {
+  // The only gated feature today is Apuntes; older API builds may omit the key.
+  const key = capability ?? 'apuntes'
+  if (_denied.has(key)) return
+  _denied.add(key)
+  notify()
+})
+
+export function hasCapability(profile: UserProfile | null, key: string): boolean {
+  if (!profile || _denied.has(key)) return false
+  if (profile.role === 'staff') return true
+  return profile.capabilities?.includes(key) ?? false
+}
 
 // Subscribe to profile changes (login, logout, refresh). Returns an unsubscribe.
 export function subscribe(fn: (p: UserProfile | null) => void): () => void {
@@ -33,12 +55,29 @@ export function subscribe(fn: (p: UserProfile | null) => void): () => void {
   return () => { _listeners.delete(fn) }
 }
 
-export function startGoogleSignIn(): void {
+const RETURN_TO_KEY = 'auth.returnTo'
+
+// `returnTo` is an in-app path (e.g. "/apuntes") to land on after the OAuth
+// round-trip; AuthCallback reads it back with takeReturnTo().
+export function startGoogleSignIn(returnTo?: string): void {
+  if (returnTo) {
+    try { sessionStorage.setItem(RETURN_TO_KEY, returnTo) } catch { /* storage blocked */ }
+  }
   const redirectUri =
     (import.meta.env.VITE_GOOGLE_REDIRECT_URI as string | undefined) ??
     `${window.location.origin}${window.location.pathname}`
   window.location.href =
     `${BASE_URL}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
+}
+
+export function takeReturnTo(): string | null {
+  try {
+    const value = sessionStorage.getItem(RETURN_TO_KEY)
+    sessionStorage.removeItem(RETURN_TO_KEY)
+    return value
+  } catch {
+    return null
+  }
 }
 
 export async function getSession(opts: { force?: boolean } = {}): Promise<UserProfile | null> {
@@ -47,7 +86,11 @@ export async function getSession(opts: { force?: boolean } = {}): Promise<UserPr
   _hydratePromise = (async () => {
     try {
       const res = await apiRequest('GET', '/auth/me')
+      const prevId = _profile?.id
       _profile = res.ok ? ((await res.json()) as UserProfile) : null
+      if (_profile?.id !== prevId) _denied.clear()
+      // A fresh /me that lists a capability means it was granted (again).
+      _profile?.capabilities?.forEach((key) => _denied.delete(key))
     } catch {
       _profile = null
     } finally {
@@ -80,5 +123,6 @@ export async function signOut(): Promise<void> {
   }
   _profile = null
   _hydrated = true
+  _denied.clear()
   notify()
 }

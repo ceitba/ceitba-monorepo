@@ -6,7 +6,8 @@
     "langToggleLabel": "ES",
     "langToggleAria": "Switch to Spanish",
     "themeToggleLight": "Switch to light mode",
-    "themeToggleDark": "Switch to dark mode"
+    "themeToggleDark": "Switch to dark mode",
+    "apuntes": "Notes"
   },
   "tabs": {
     "home": "Home",
@@ -29,7 +30,11 @@
       "benefits": "Benefits",
       "users": "Users",
       "organizations": "Organizations",
-      "corrections": "Schedule corrections"
+      "corrections": "Schedule corrections",
+      "drive": "Notes",
+      "wikiAi": "Wiki AI",
+      "wikiAiUnseen": "{{count}} updates in Wiki AI",
+      "capabilities": "Capabilities"
     },
     "staff": {
       "year": "Year",
@@ -250,6 +255,44 @@
       },
       "emptyHint": "This is where schedules that students propose to fix from the Schedule Builder will show up. Normally you don't need to do anything: each correction applies on its own once enough other students confirm it.",
       "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections"
+    },
+    "capabilities": {
+      "intro": "Enable features in testing for everyone, for specific people (by email, even if they've never signed in) or for whole organizations. Staff always have all of them.",
+      "empty": "No capabilities defined.",
+      "enabledForAll": "Enabled for everyone",
+      "everyone": "Enabled for everyone",
+      "everyoneNote": "This capability is enabled for everyone: the grants below are kept for when you restrict it again.",
+      "counts": "{{users}} · {{orgs}}",
+      "userCount_one": "{{count}} person",
+      "userCount_other": "{{count}} people",
+      "orgCount_one": "{{count}} organization",
+      "orgCount_other": "{{count}} organizations",
+      "manageGrants": "Manage access",
+      "hideGrants": "Hide access",
+      "confirmTitle": "Enable {{label}} for everyone?",
+      "confirmBody": "Anyone who signs in will be able to use {{label}}. You can restrict it again at any time.",
+      "confirmCta": "Enable for everyone",
+      "grantedOn": "Granted on {{date}}",
+      "grantedBy": "Granted on {{date}} by {{name}}",
+      "remove": "Remove",
+      "removeAria": "Remove access for {{name}}",
+      "users": {
+        "title": "People",
+        "help": "Paste one or more emails, separated by commas or new lines.",
+        "placeholder": "name@itba.edu.ar, other@itba.edu.ar",
+        "invalid": "These emails aren't valid: {{emails}}",
+        "grant": "Grant access",
+        "empty": "No one has individual access yet.",
+        "neverLoggedIn": "Not signed in yet"
+      },
+      "orgs": {
+        "title": "Organizations",
+        "pick": "Pick an organization…",
+        "add": "Add",
+        "empty": "No organization has access yet.",
+        "members_one": "{{count}} member",
+        "members_other": "{{count}} members"
+      }
     }
   },
   "profile": {
@@ -279,7 +322,9 @@
       "auth_failed": "We couldn't complete sign-in. Please try again.",
       "invalid_state": "Your sign-in session expired or was invalid. Please try signing in again.",
       "access_denied": "You cancelled the Google sign-in."
-    }
+    },
+    "apuntes": "Notes",
+    "myApuntes": "My notes"
   },
   "hero": {
     "eyebrow": "Student Center",
@@ -320,6 +365,11 @@
     "newsletter": {
       "label": "ITBA Newsletter",
       "description": "Stay up to date with everything happening at ITBA: events, academic news, job opportunities and CEITBA activities.",
+      "cta": "Open"
+    },
+    "apuntes": {
+      "label": "Notes",
+      "description": "Notes, summaries and past exams other students share from their Google Drive, organized by subject.",
       "cta": "Open"
     }
   },
@@ -398,5 +448,19 @@
     "somethingWrong": "Something went wrong",
     "retry": "Retry",
     "dismiss": "Dismiss"
+  },
+  "authGuard": {
+    "title": "Sign in to continue",
+    "body": "Notes are for the ITBA community. Sign in with your @itba.edu.ar account to read them and share yours.",
+    "signIn": "Sign in with Google"
+  },
+  "capabilityGuard": {
+    "title": "Notes isn't enabled for your account yet",
+    "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu.",
+    "home": "Back to home",
+    "apuntes": {
+      "title": "Notes isn't enabled for your account yet",
+      "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu."
+    }
   }
 }
