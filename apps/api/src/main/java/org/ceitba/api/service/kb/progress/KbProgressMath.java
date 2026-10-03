@@ -30,21 +30,22 @@ public final class KbProgressMath {
 
     private KbProgressMath() {}
 
-    // failedAnswer: answered with an error, awaiting resubmission (still SUBMITTED).
+    // failedAnswer: answered with an error, awaiting resubmission (still SUBMITTED):
+    // counted as in flight, not failed, since the engine resends it once.
     public record Row(String stage, String status, boolean failedAnswer, int estTokens, String model,
                       OffsetDateTime createdAt, OffsetDateTime completedAt, Integer latencyMs, String target,
                       String subjectId) {
 
         boolean finished() {
-            return status.equals("DONE") || status.equals("FAILED") || failedAnswer;
+            return status.equals("DONE") || status.equals("FAILED");
         }
 
         boolean failed() {
-            return status.equals("FAILED") || failedAnswer;
+            return status.equals("FAILED");
         }
 
         boolean inFlight() {
-            return status.equals("SUBMITTED") && !failedAnswer;
+            return status.equals("SUBMITTED");
         }
     }
 
