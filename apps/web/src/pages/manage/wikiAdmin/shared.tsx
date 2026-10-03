@@ -202,7 +202,9 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
     }
   }
 
-  const shown = after ?? impact
+  // After saving, the server's numbers win; forecast-only fields (monthly,
+  // full rebuild) are kept from the preview.
+  const shown = after ? { ...(impact ?? {}), ...stripNulls(after) } as CostImpact : impact
   const done = after !== undefined
   return (
     <Modal
@@ -228,6 +230,30 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
           delta={shown?.previousWeeklyAvgUsd != null && shown?.projectedWeeklyAvgUsd != null ? shown.projectedWeeklyAvgUsd - shown.previousWeeklyAvgUsd : null}
         />
       </div>
+      {shown && (shown.projectedRange?.low != null || shown.projectedMonthly || shown.fullRebuildUsd != null) && (
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 font-body text-body-sm">
+          {shown.projectedRange?.low != null && shown.projectedRange.high != null && (
+            <div className="flex justify-between gap-2"><dt className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.forecast.weeklyRange')}</dt><dd className="tabular-nums">{range(shown.projectedRange.low, shown.projectedRange.high)}</dd></div>
+          )}
+          {shown.projectedMonthly?.expectedUsd != null && (
+            <div className="flex justify-between gap-2">
+              <dt className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.forecast.monthly')}</dt>
+              <dd className="tabular-nums">
+                {usd(shown.projectedMonthly.expectedUsd, 2)}
+                {shown.projectedMonthly.low != null && shown.projectedMonthly.high != null && (
+                  <span className="text-ink-secondary dark:text-night-muted"> ({range(shown.projectedMonthly.low, shown.projectedMonthly.high)})</span>
+                )}
+              </dd>
+            </div>
+          )}
+          {shown.fullRebuildUsd != null && (
+            <p className="sm:col-span-2 mt-1 px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg">{t('manage.wikiAi.forecast.fullRebuild', { cost: usd(shown.fullRebuildUsd, 2) })}</p>
+          )}
+          {shown.basis && (
+            <p className="sm:col-span-2 font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{basisText(shown.basis, shown.runsUsed, t)}</p>
+          )}
+        </dl>
+      )}
       {shown === null && !done && (
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.impact.afterSave')}</p>
       )}
@@ -262,4 +288,21 @@ function ImpactCard({ label, value, delta }: { label: string; value: number | nu
       )}
     </div>
   )
+}
+
+function stripNulls<T extends object>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v != null)) as Partial<T>
+}
+
+export function range(low: number | null | undefined, high: number | null | undefined): string {
+  if (low == null || high == null) return '—'
+  return `${usd(low, 2)} – ${usd(high, 2)}`
+}
+
+// "según las últimas N ejecuciones" / "estimado por el volumen de apuntes".
+export function basisText(basis: string | null | undefined, runs: number | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): string {
+  if (basis === 'history') return t('manage.wikiAi.forecast.basis.history', { count: runs ?? 0 })
+  if (basis === 'corpus') return t('manage.wikiAi.forecast.basis.corpus')
+  if (basis === 'blend') return t('manage.wikiAi.forecast.basis.blend', { count: runs ?? 0 })
+  return ''
 }

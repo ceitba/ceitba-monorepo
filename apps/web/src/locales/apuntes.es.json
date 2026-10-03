@@ -729,6 +729,43 @@
           "medium": "Medio",
           "high": "Alto"
         }
+      },
+      "prices": {
+        "per1M": "por 1M",
+        "upTo": "Descuento batch de hasta −{{pct}}% (estimado, todavía sin calibrar con la facturación)",
+        "verified": "Descuento batch de −{{pct}}% verificado con la facturación",
+        "perWeek": "~{{cost}}/sem",
+        "list": "Precio de lista",
+        "inOutCache": "entrada / salida / caché por 1M",
+        "batch": "Batch",
+        "effective": "precio efectivo",
+        "discount": "descuento batch",
+        "sourceRule": "Según la regla por proveedor",
+        "sourceProbe": "Verificado por prueba ({{date}})",
+        "effectiveNote": "con precios efectivos, batch cuando aplica"
+      },
+      "forecast": {
+        "title": "Gasto esperado",
+        "nextRun": "Próxima ejecución",
+        "weekly": "Por semana",
+        "monthly": "Por mes",
+        "weeklyRange": "Rango semanal",
+        "savings": "Ahorro esperado esta semana",
+        "savingsBatch": "Por batch",
+        "savingsCache": "Por caché",
+        "fullRebuild": "Si regenerás todas las wikis con esta configuración: ~{{cost}}",
+        "overLimit": "El pronóstico semanal (~{{expected}}) supera el límite de {{limit}}: la ejecución se va a frenar hasta que apruebes el costo.",
+        "accuracy": "Esperado vs. real",
+        "expected": "Esperado",
+        "actual": "Real",
+        "expectedShort": "esperado {{cost}}",
+        "basis": {
+          "history_one": "Según la última ejecución (re-preciada con esta configuración).",
+          "history_other": "Según las últimas {{count}} ejecuciones (re-preciadas con esta configuración).",
+          "corpus": "Estimado por el volumen de apuntes que cambian cada semana.",
+          "blend_one": "Combina el volumen de apuntes con {{count}} ejecución.",
+          "blend_other": "Combina el volumen de apuntes con {{count}} ejecuciones."
+        }
       }
     }
   },

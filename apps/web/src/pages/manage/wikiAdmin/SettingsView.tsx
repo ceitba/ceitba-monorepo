@@ -1,39 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  MODEL_STAGES, fetchModels, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
+  MODEL_STAGES, fetchForecast, fetchStageCost, fetchModels, forecastFor, impactFrom, normalizeImpact, fetchSettings, fetchSettingsHistory, previewSettingsImpact, probeOk, restoreSettings, saveSettings,
   type CostImpact, type ExecutionMode, type KbModel, type KbSettings, type ModelStage, type SettingsBody, type SubjectOverride,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
 import ReasoningSelect from './ReasoningSelect'
+import PriceTag, { priceText } from './PriceTag'
 import ConfirmDialog from '../../../components/ConfirmDialog'
-import { BTN, BTN_DANGER, BTN_PRI, CostImpactDialog, FIELD, Panel, TD, TH, ViewState, isUnavailable, useLoad } from './shared'
+import { BTN, BTN_DANGER, BTN_PRI, CostImpactDialog, FIELD, Panel, TD, TH, ViewState, isUnavailable, usd, useLoad } from './shared'
 
 const STAGE_FIELD: Record<ModelStage, 'modelDigest' | 'modelPlan' | 'modelWrite' | 'modelRetry'> = {
   digest: 'modelDigest', plan: 'modelPlan', write: 'modelWrite', retry: 'modelRetry',
 }
 const DAYS = [0, 1, 2, 3, 4, 5, 6] // cron day-of-week, 0 = Sunday
 
-// "batch −50%" from the model's own batch discount.
-function batchLabel(m: KbModel, t: (k: string, o?: Record<string, unknown>) => string): string {
-  return m.batchDiscount ? t('manage.wikiAi.models.batchBadge', { pct: Math.round(m.batchDiscount * 100) }) : t('manage.wikiAi.models.batchPlain')
-}
-
-function priceLabel(m: KbModel): string {
-  const p = m.inputPerM != null && m.outputPerM != null ? `$${m.inputPerM}/$${m.outputPerM}` : '$?'
-  return p
-}
-
 // Pick from the catalog: enabled + successfully probed models only (the
 // current value stays selectable so nothing silently changes).
-export function ModelSelect({ value, models, onChange, allowDefault, label, mode }: {
+export function ModelSelect({ value, models, onChange, allowDefault, label, mode, stageCost, estimate }: {
   value: string | null | undefined
   models: KbModel[]
   onChange: (id: string | null) => void
   allowDefault?: boolean
   label: string
   mode?: ExecutionMode
+  // Expected weekly cost of this stage per model id (Configuración).
+  stageCost?: (id: string) => number | null | undefined
+  estimate?: boolean
 }) {
   const { t } = useTranslation()
   const current = models.find((m) => m.id === value)
@@ -51,26 +45,24 @@ export function ModelSelect({ value, models, onChange, allowDefault, label, mode
           const usable = m.enabled && probeOk(m) && !(mode === 'batch' && !m.batchSupported)
           return (
             <option key={m.id} value={m.id} disabled={!usable && m.id !== value}>
-              {m.displayName || m.id} · {priceLabel(m)} · {m.batchSupported ? batchLabel(m, t) : t('manage.wikiAi.models.syncBadge')}
+              {m.displayName || m.id} · {priceText(m, mode)}
+              {stageCost?.(m.id) != null ? ` · ${t('manage.wikiAi.prices.perWeek', { cost: usd(stageCost(m.id), 2) })}` : ''}
               {!m.enabled ? ` · ${t('manage.wikiAi.models.disabled')}` : !probeOk(m) ? ` · ${t('manage.wikiAi.models.notProbed')}` : ''}
             </option>
           )
         })}
       </select>
-      {current && <ModelBadges m={current} />}
+      {current && <ModelBadges m={current} mode={mode} estimate={estimate} />}
     </div>
   )
 }
 
-export function ModelBadges({ m }: { m: KbModel }) {
+export function ModelBadges({ m, mode, estimate }: { m: KbModel; mode?: ExecutionMode; estimate?: boolean }) {
   const { t } = useTranslation()
   const ok = probeOk(m)
   return (
     <span className="flex flex-wrap items-center gap-1.5 font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">
-      <span>{t('manage.wikiAi.models.pricePer', { input: m.inputPerM ?? '?', output: m.outputPerM ?? '?' })}</span>
-      <span className={`px-1 rounded-sm ${m.batchSupported ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-border dark:bg-night-border'}`}>
-        {m.batchSupported ? batchLabel(m, t) : t('manage.wikiAi.models.syncBadge')}
-      </span>
+      <PriceTag m={m} mode={mode} estimate={estimate} />
       <span className={ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
         {ok ? `✓ ${t('manage.wikiAi.models.probed')}` : `! ${t('manage.wikiAi.models.notProbed')}`}
       </span>
@@ -102,6 +94,32 @@ export default function SettingsView() {
 
   useEffect(() => { if (settings.data) { setDraft(settings.data); setRawCron(!parseCron(settings.data.cron)) } }, [settings.data])
 
+  // Expected weekly cost per stage × usable model (GET /models/{id}/
+  // stage-cost), shown next to each option. Stops at the first 404.
+  const [stageCosts, setStageCosts] = useState<Map<string, number | null>>(new Map())
+  const forecast = useLoad(fetchForecast)
+  useEffect(() => {
+    const list = (models.data ?? []).filter((m) => m.enabled && probeOk(m))
+    if (!list.length) return
+    let cancelled = false
+    ;(async () => {
+      for (const st of MODEL_STAGES) {
+        const results = await Promise.all(list.map((m) => fetchStageCost(m.id, st).then(
+          (v) => [m.id, v] as const,
+          (e) => { if (isUnavailable(e)) throw e; return [m.id, null] as const },
+        ))).catch(() => null)
+        if (cancelled || !results) return
+        setStageCosts((prev) => {
+          const next = new Map(prev)
+          results.forEach(([id, v]) => next.set(`${st}:${id}`, v))
+          return next
+        })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [models.data])
+  const discountIsEstimate = forecast.data?.discountIsEstimate ?? false
+
   const dirty = useMemo(() => {
     if (!draft || !settings.data) return false
     const strip = (s: KbSettings) => JSON.stringify({ ...s, source: undefined })
@@ -114,23 +132,29 @@ export default function SettingsView() {
     return rest
   }, [draft])
 
+  // Current vs proposed forecast (ADMIN doc §7): weekly and monthly with
+  // ranges plus the full-rebuild cost. Falls back to /settings/preview.
   const loadImpact = useCallback(async (): Promise<CostImpact | null> => {
-    try {
-      const r = await previewSettingsImpact(body())
-      // Validation problems found by the preview are shown in the dialog.
-      if (r.errors?.length) throw new Error(r.errors.join(' · '))
-      return r.costImpact ?? null
-    } catch (e) {
+    const preview = previewSettingsImpact(body()).catch((e) => {
       if (isUnavailable(e)) return null
       throw e
-    }
+    })
+    const [current, proposed] = await Promise.all([
+      fetchForecast().catch(() => null),
+      forecastFor(body()).catch(() => null),
+    ])
+    const p = await preview
+    // Validation problems found by the preview are shown in the dialog.
+    if (p?.errors?.length) throw new Error(p.errors.join(' · '))
+    if (proposed) return impactFrom(current, proposed)
+    return normalizeImpact(p?.costImpact)
   }, [body])
 
   async function save(note: string) {
     const saved = await saveSettings({ ...body(), note: note || undefined })
     settings.setData(() => saved)
     history.reload()
-    return saved.costImpact ?? null
+    return normalizeImpact(saved.costImpact)
   }
 
   async function restore(id: string) {
@@ -163,6 +187,8 @@ export default function SettingsView() {
                         value={draft[STAGE_FIELD[st]]}
                         models={catalog}
                         mode={draft.executionMode}
+                        stageCost={(id) => stageCosts.get(`${st}:${id}`)}
+                        estimate={discountIsEstimate}
                         onChange={(id) => id && set(STAGE_FIELD[st], id)}
                       />
                       <ReasoningSelect

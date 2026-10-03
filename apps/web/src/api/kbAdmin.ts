@@ -44,9 +44,78 @@ export interface KbSettings {
   source?: Partial<Record<keyof KbSettings, 'env' | 'db'>>
 }
 
+// Normalised cost impact for the confirmation dialogs. Built from the
+// forecast (ADMIN doc §7) or the older { previousWeeklyAvgUsd, ... }.
 export interface CostImpact {
   previousWeeklyAvgUsd: number | null
   projectedWeeklyAvgUsd: number | null
+  projectedRange?: { low: number | null; high: number | null } | null
+  projectedMonthly?: { expectedUsd: number | null; low: number | null; high: number | null } | null
+  fullRebuildUsd?: number | null
+  basis?: ForecastBasis | null
+  runsUsed?: number | null
+}
+
+export type ForecastBasis = 'history' | 'corpus' | 'blend'
+
+export interface ForecastRange { expectedUsd: number | null; low: number | null; high: number | null }
+
+export interface StageForecast {
+  model: string | null
+  mode: 'batch' | 'sync' | string | null
+  inputTokens: number
+  cachedInputTokens: number
+  outputTokens: number
+  costUsd: number
+}
+
+export interface CostForecast {
+  settingsHash?: string
+  nextRun: { dirtySubjects: number | string[]; perStage: Partial<Record<'DIGEST' | 'PLAN' | 'WRITE' | 'RETRY', StageForecast>>; totalUsd: number } | null
+  weekly: ForecastRange & { basis: ForecastBasis; runsUsed: number }
+  monthly: ForecastRange
+  fullRebuild: { inputTokens: number; outputTokens: number; costUsd: number } | null
+  savings: { batchUsd: number; cacheUsd: number } | null
+  limits: { weeklyCostLimitUsd: number | null; exceedsLimit: boolean } | null
+  discountIsEstimate: boolean
+}
+
+export const fetchForecast = () => apiGet<CostForecast>(`${BASE}/costs/forecast`)
+// Forecast for proposed (unsaved) settings.
+export const forecastFor = (settings: SettingsBody) => apiSend<CostForecast>('POST', `${BASE}/costs/forecast`, settings)
+
+export function impactFrom(prev: CostForecast | null, next: CostForecast | null): CostImpact {
+  return {
+    previousWeeklyAvgUsd: prev?.weekly?.expectedUsd ?? null,
+    projectedWeeklyAvgUsd: next?.weekly?.expectedUsd ?? null,
+    projectedRange: next?.weekly ? { low: next.weekly.low, high: next.weekly.high } : null,
+    projectedMonthly: next?.monthly ?? null,
+    fullRebuildUsd: next?.fullRebuild?.costUsd ?? null,
+    basis: next?.weekly?.basis ?? null,
+    runsUsed: next?.weekly?.runsUsed ?? null,
+  }
+}
+
+// costImpact as returned by PUT /settings or POST /settings/preview: either
+// { previous: weekly, projected: weekly } (§7) or the older flat shape.
+export function normalizeImpact(raw: unknown): CostImpact | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if ('previous' in r || 'projected' in r) {
+    const p = r.previous as ForecastRange | undefined
+    const q = r.projected as (ForecastRange & { basis?: ForecastBasis; runsUsed?: number }) | undefined
+    return {
+      previousWeeklyAvgUsd: p?.expectedUsd ?? null,
+      projectedWeeklyAvgUsd: q?.expectedUsd ?? null,
+      projectedRange: q ? { low: q.low ?? null, high: q.high ?? null } : null,
+      basis: q?.basis ?? null,
+      runsUsed: q?.runsUsed ?? null,
+    }
+  }
+  return {
+    previousWeeklyAvgUsd: (r.previousWeeklyAvgUsd as number) ?? null,
+    projectedWeeklyAvgUsd: (r.projectedWeeklyAvgUsd as number) ?? null,
+  }
 }
 
 export type SettingsBody = Omit<KbSettings, 'source'> & { note?: string }
@@ -62,13 +131,13 @@ export interface SettingsHistoryEntry {
 
 export const fetchSettings = () => apiGet<KbSettings>(`${BASE}/settings`)
 
-export function saveSettings(body: SettingsBody): Promise<KbSettings & { costImpact?: CostImpact }> {
+export function saveSettings(body: SettingsBody): Promise<KbSettings & { costImpact?: unknown }> {
   return apiSend('PUT', `${BASE}/settings`, body)
 }
 
 // Not in the contract yet: cost impact of a settings change without saving
 // it. Callers treat a 404 as "only known after saving".
-export function previewSettingsImpact(body: SettingsBody): Promise<{ costImpact?: CostImpact; errors?: string[] }> {
+export function previewSettingsImpact(body: SettingsBody): Promise<{ costImpact?: unknown; errors?: string[] }> {
   return apiSend('POST', `${BASE}/settings/preview`, body)
 }
 
@@ -98,6 +167,13 @@ export interface KbModel {
   provider: string | null
   batchSupported: boolean
   supportsReasoningEffort?: boolean
+  // Effective prices (ADMIN doc §7): batch is null when the model can't
+  // batch. batchSource tells whether support comes from the default rule
+  // or a probe.
+  effectivePrices?: { batch: Prices | null; sync: Prices } | null
+  batchSource?: 'rule' | 'probe' | null
+  batchVerifiedAt?: string | null
+  batchDiscountVerified?: boolean
   // Share of requests whose structured (tool) output came back failed or
   // empty, over recorded usage.
   emptyToolCallRate?: number | null
@@ -118,6 +194,32 @@ export const updateModel = (id: string, body: Partial<KbModel>) => apiSend<KbMod
 export const createModel = (body: Partial<KbModel> & { id: string }) => apiSend<KbModel>('POST', `${BASE}/models`, body)
 export const syncModels = () => apiSend<KbModel[] | { added?: string[] }>('POST', `${BASE}/models/sync`)
 export const probeModel = (id: string) => apiSend<KbModel | ModelProbe>('POST', `${BASE}/models/${enc(id)}/probe`)
+
+export interface Prices { inputPerM: number | null; outputPerM: number | null; cacheReadPerM: number | null }
+
+// Expected weekly cost if `id` ran `stage` with everything else unchanged.
+export async function fetchStageCost(id: string, stage: ModelStage): Promise<number | null> {
+  const r = await apiGet<number | Record<string, number | null>>(`${BASE}/models/${enc(id)}/stage-cost?stage=${stage.toUpperCase()}`)
+  if (typeof r === 'number') return r
+  return r?.expectedWeeklyUsd ?? r?.weeklyUsd ?? r?.expectedUsd ?? r?.costUsd ?? null
+}
+
+// Whether a stage would run in batch for this model under `mode`.
+export function runsBatch(m: KbModel | undefined | null, mode: ExecutionMode | undefined): boolean {
+  if (!m?.batchSupported) return false
+  return mode !== 'sync'
+}
+
+// Effective prices for a model under an execution mode: the batch prices
+// when the stage would be batched, else the list (sync) prices.
+export function effectivePrices(m: KbModel, mode: ExecutionMode | undefined): { prices: Prices; list: Prices; batched: boolean } {
+  const list: Prices = m.effectivePrices?.sync ?? { inputPerM: m.inputPerM, outputPerM: m.outputPerM, cacheReadPerM: m.cacheReadPerM }
+  if (!runsBatch(m, mode)) return { prices: list, list, batched: false }
+  const d = m.batchDiscount ?? 0.5
+  const cut = (v: number | null) => (v == null ? null : +(v * (1 - d)).toFixed(4))
+  const fallback: Prices = { inputPerM: cut(list.inputPerM), outputPerM: cut(list.outputPerM), cacheReadPerM: cut(list.cacheReadPerM) }
+  return { prices: m.effectivePrices?.batch ?? fallback, list, batched: true }
+}
 
 // A model can be picked once a probe succeeded.
 export function probeOk(m: KbModel | undefined | null): boolean {
@@ -153,6 +255,7 @@ export interface CostSummary {
   byStage: CostRow[] | Record<string, number>
   byModel: CostRow[] | Record<string, number>
   topSubjects: (CostRow & { subjectName?: string })[]
+  accuracy?: { lastRuns: { runId: string; expectedUsd: number | null; actualUsd: number | null; startedAt?: string | null }[] } | null
 }
 
 export const fetchCostSummary = () => apiGet<CostSummary>(`${BASE}/costs/summary`)
@@ -229,6 +332,8 @@ export interface KbRun {
   tokensOut: number
   costEstimate: number | null
   costUsd?: number | null
+  // Forecast at submission (ADMIN doc §7).
+  expectedCostUsd?: number | null
   // ADMIN doc §6: { DIGEST, PLAN, WRITE, RETRY }.
   costByStage?: Record<string, number> | null
   error: string | null
@@ -397,4 +502,4 @@ export function submitReview(evalId: string, body: {
 }
 
 export const fetchLeaderboard = (setId: string) => apiGet<LeaderboardRow[]>(`${EVALS}/leaderboard?setId=${enc(setId)}`)
-export const promoteEval = (id: string, key: string) => apiSend<KbSettings & { costImpact?: CostImpact }>('POST', `${EVALS}/${enc(id)}/promote`, { configKey: key })
+export const promoteEval = (id: string, key: string) => apiSend<KbSettings & { costImpact?: unknown }>('POST', `${EVALS}/${enc(id)}/promote`, { configKey: key })

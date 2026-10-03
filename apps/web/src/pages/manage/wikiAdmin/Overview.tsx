@@ -5,6 +5,7 @@ import {
   type KbSettings,
 } from '../../../api/kbAdmin'
 import CostChart from './CostChart'
+import Forecast from './Forecast'
 import { Panel, StatusPill, ViewState, duration, pct, tokens, usd, useLoad } from './shared'
 
 const WEEKS = 12
@@ -36,6 +37,8 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
           </div>
         )}
       </ViewState>
+
+      <Forecast summary={summary} />
 
       <Panel
         title={t('manage.wikiAi.overview.weekly')}

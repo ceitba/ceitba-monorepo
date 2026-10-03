@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  configKey, createEval, modelWithEffort, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
+  configKey, createEval, modelWithEffort, normalizeImpact, createEvalSet, refreezeEvalSet, estimateEval, fetchEval, fetchEvalSets, fetchEvals, fetchLeaderboard, fetchModels, promoteEval,
   type EvalConfigResult, type EvalMetrics, type EvalRun, type KbModel, type LeaderboardRow, type ModelConfig,
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
@@ -325,7 +325,7 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
               {!valid ? <span className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.pickConfigs')}</span>
                 : estimate === undefined ? <span className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.estimating')}</span>
                   : estimate === null || estimate.total == null ? <span className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.noEstimate')}</span>
-                    : <>{t('manage.wikiAi.evals.estimate')}: <strong>{usd(estimate.total, 2)}</strong>{estimate.tokens ? ` · ${tokens(estimate.tokens)} tokens` : ''}</>}
+                    : <>{t('manage.wikiAi.evals.estimate')}: <strong>{usd(estimate.total, 2)}</strong>{estimate.tokens ? ` · ${tokens(estimate.tokens)} tokens` : ''} <span className="text-ink-secondary dark:text-night-muted">({t('manage.wikiAi.prices.effectiveNote')})</span></>}
             </p>
             <button type="button" onClick={launch} disabled={!valid || busy} className={BTN_PRI}>{busy ? '…' : t('manage.wikiAi.evals.launch')}</button>
           </div>
@@ -456,7 +456,7 @@ function EvalDetail({ id, setName, onBack }: { id: string; setName: (setId: stri
                 <CostImpactDialog
                   title={t('manage.wikiAi.evals.promoteTitle')}
                   body={t('manage.wikiAi.evals.promoteBody', { plan: modelWithEffort(promoting.plan, promoting.reasoningEffort?.plan), write: modelWithEffort(promoting.write, promoting.reasoningEffort?.write) })}
-                  onConfirm={async () => (await promoteEval(id, promoting.configKey))?.costImpact ?? null}
+                  onConfirm={async () => normalizeImpact((await promoteEval(id, promoting.configKey))?.costImpact)}
                   onCancel={() => setPromoting(null)}
                 />
               )}

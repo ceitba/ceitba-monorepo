@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchModels, probeModel, probeOk, syncModels, updateModel, type KbModel } from '../../../api/kbAdmin'
+import { effectivePrices, fetchForecast, fetchModels, probeModel, probeOk, syncModels, updateModel, type KbModel } from '../../../api/kbAdmin'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
@@ -11,6 +11,8 @@ import { BTN, FIELD, TD, TH, ViewState, pct, useLoad } from './shared'
 export default function ModelsView() {
   const { t, i18n } = useTranslation()
   const models = useLoad(fetchModels)
+  const forecast = useLoad(fetchForecast)
+  const estimateFlag = forecast.data?.discountIsEstimate ?? false
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -76,10 +78,8 @@ export default function ModelsView() {
             <table className="w-full font-body text-body-sm">
               <thead className="bg-page-bg dark:bg-night-bg"><tr>
                 <th className={TH}>{t('manage.wikiAi.models.model')}</th>
-                <th className={TH}>{t('manage.wikiAi.models.input')}</th>
-                <th className={TH}>{t('manage.wikiAi.models.output')}</th>
-                <th className={TH}>{t('manage.wikiAi.models.cache')}</th>
-                <th className={TH}>{t('manage.wikiAi.models.batch')}</th>
+                <th className={TH} colSpan={3}>{t('manage.wikiAi.prices.list')}<span className="block normal-case tracking-normal font-body text-[0.7rem]">{t('manage.wikiAi.prices.inOutCache')}</span></th>
+                <th className={TH}>{t('manage.wikiAi.prices.batch')}<span className="block normal-case tracking-normal font-body text-[0.7rem]">{t('manage.wikiAi.prices.effective')}</span></th>
                 <th className={TH}>{t('manage.wikiAi.models.enabled')}</th>
                 <th className={TH}>{t('manage.wikiAi.models.probe')}</th>
               </tr></thead>
@@ -97,11 +97,8 @@ export default function ModelsView() {
                         <PriceInput value={m[f]} label={`${m.id} ${f}`} onCommit={(v) => patch(m, { [f]: v })} />
                       </td>
                     ))}
-                    <td className={TD}>
-                      <label className="inline-flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={m.batchSupported} onChange={(e) => patch(m, { batchSupported: e.target.checked })} className="h-4 w-4 accent-primary" />
-                        {m.batchSupported && m.batchDiscount ? <span className="font-mono text-label">−{Math.round(m.batchDiscount * 100)}%</span> : null}
-                      </label>
+                    <td className={`${TD} min-w-[11rem]`}>
+                      <BatchCell m={m} estimate={estimateFlag} onToggle={(v) => patch(m, { batchSupported: v })} onDiscount={(d) => patch(m, { batchDiscount: d })} />
                     </td>
                     <td className={TD}>
                       <input type="checkbox" aria-label={`${m.id} ${t('manage.wikiAi.models.enabled')}`} checked={m.enabled} onChange={(e) => patch(m, { enabled: e.target.checked })} className="h-4 w-4 accent-primary" />
@@ -169,6 +166,56 @@ function ProbeResult({ m }: { m: KbModel }) {
       </p>
       {p.error && <p className="text-red-600 dark:text-red-400 break-words">{p.error}</p>}
       {p.at && <p className="font-mono text-label">{new Date(p.at).toLocaleString(i18n.language)}</p>}
+    </div>
+  )
+}
+
+// Batch column: support toggle, editable discount, the effective batch
+// prices and where support came from (default rule or verified by probe).
+function BatchCell({ m, estimate, onToggle, onDiscount }: {
+  m: KbModel
+  estimate: boolean
+  onToggle: (v: boolean) => void
+  onDiscount: (d: number | null) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const { prices } = effectivePrices(m, 'batch')
+  const pctNow = Math.round((m.batchDiscount ?? 0.5) * 100)
+  const [text, setText] = useState(String(pctNow))
+  const isEstimate = m.batchDiscountVerified === true ? false : m.batchDiscountVerified === false || estimate
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="inline-flex items-center gap-1.5 cursor-pointer">
+        <input type="checkbox" aria-label={`${m.id} batch`} checked={m.batchSupported} onChange={(e) => onToggle(e.target.checked)} className="h-4 w-4 accent-primary" />
+        {m.batchSupported ? (
+          <span className="inline-flex items-center gap-1 font-mono text-label">
+            −
+            <input
+              type="number"
+              min={0}
+              max={90}
+              aria-label={`${m.id} ${t('manage.wikiAi.prices.discount')}`}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onBlur={() => { const v = Number(text); if (Number.isFinite(v) && v !== pctNow) onDiscount(v / 100) }}
+              className="w-12 px-1 py-0.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface tabular-nums"
+            />
+            %{isEstimate && <span title={t('manage.wikiAi.prices.upTo', { pct: pctNow })}>*</span>}
+          </span>
+        ) : <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.syncBadge')}</span>}
+      </label>
+      {m.batchSupported && (
+        <span className="font-mono text-[0.7rem] text-ink-primary dark:text-night-text tabular-nums">
+          US$ {prices.inputPerM ?? '?'} / {prices.outputPerM ?? '?'}{prices.cacheReadPerM != null ? ` / ${prices.cacheReadPerM}` : ''}
+        </span>
+      )}
+      {m.batchSource && (
+        <span className="font-body text-[0.7rem] text-ink-secondary dark:text-night-muted">
+          {m.batchSource === 'probe'
+            ? t('manage.wikiAi.prices.sourceProbe', { date: m.batchVerifiedAt ? new Date(m.batchVerifiedAt).toLocaleDateString(i18n.language) : '—' })
+            : t('manage.wikiAi.prices.sourceRule')}
+        </span>
+      )}
     </div>
   )
 }

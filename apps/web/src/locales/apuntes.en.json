@@ -729,6 +729,43 @@
           "medium": "Medium",
           "high": "High"
         }
+      },
+      "prices": {
+        "per1M": "per 1M",
+        "upTo": "Batch discount of up to −{{pct}}% (estimated, not yet calibrated against billing)",
+        "verified": "Batch discount of −{{pct}}% verified against billing",
+        "perWeek": "~{{cost}}/wk",
+        "list": "List price",
+        "inOutCache": "input / output / cache per 1M",
+        "batch": "Batch",
+        "effective": "effective price",
+        "discount": "batch discount",
+        "sourceRule": "From the per-provider rule",
+        "sourceProbe": "Verified by probe ({{date}})",
+        "effectiveNote": "at effective prices, batch where it applies"
+      },
+      "forecast": {
+        "title": "Expected spend",
+        "nextRun": "Next run",
+        "weekly": "Per week",
+        "monthly": "Per month",
+        "weeklyRange": "Weekly range",
+        "savings": "Expected savings this week",
+        "savingsBatch": "From batch",
+        "savingsCache": "From cache",
+        "fullRebuild": "Regenerating every wiki with this configuration: ~{{cost}}",
+        "overLimit": "The weekly forecast (~{{expected}}) exceeds the {{limit}} limit: the run will stop until you approve the cost.",
+        "accuracy": "Expected vs. actual",
+        "expected": "Expected",
+        "actual": "Actual",
+        "expectedShort": "expected {{cost}}",
+        "basis": {
+          "history_one": "Based on the last run (re-priced with this configuration).",
+          "history_other": "Based on the last {{count}} runs (re-priced with this configuration).",
+          "corpus": "Estimated from how much material changes each week.",
+          "blend_one": "Blends material volume with {{count}} run.",
+          "blend_other": "Blends material volume with {{count}} runs."
+        }
       }
     }
   },

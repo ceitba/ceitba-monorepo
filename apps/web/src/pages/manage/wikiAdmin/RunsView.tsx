@@ -82,7 +82,12 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
                     <td className={`${TD} font-mono text-label`}>{r.trigger}</td>
                     <td className={`${TD} text-right tabular-nums`}>{r.subjects?.length ?? 0}</td>
                     <td className={`${TD} text-right tabular-nums`}>{tokens((r.tokensIn ?? 0) + (r.tokensOut ?? 0))}</td>
-                    <td className={`${TD} text-right tabular-nums`}>{usd(r.costUsd ?? r.costEstimate, 2)}</td>
+                    <td className={`${TD} text-right tabular-nums`}>
+                      {usd(r.costUsd ?? r.costEstimate, 2)}
+                      {r.expectedCostUsd != null && (
+                        <span className="block font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.forecast.expectedShort', { cost: usd(r.expectedCostUsd, 2) })}</span>
+                      )}
+                    </td>
                     <td className={`${TD} text-right tabular-nums`}>{duration(r.startedAt, r.finishedAt)}</td>
                   </tr>
                 ))}
@@ -200,6 +205,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <Info label={t('manage.wikiAi.runs.started_')} value={r.startedAt ? new Date(r.startedAt).toLocaleString(i18n.language) : '—'} />
                   <Info label={t('manage.wikiAi.runs.duration')} value={duration(r.startedAt, r.finishedAt)} />
                   <Info label={t('manage.wikiAi.runs.cost')} value={usd(r.costUsd ?? r.costEstimate, 2)} />
+                  <Info label={t('manage.wikiAi.forecast.expected')} value={usd(r.expectedCostUsd ?? r.costEstimate, 2)} />
                   <Info label={t('manage.wikiAi.runs.tokensIn')} value={tokens(r.tokensIn)} />
                   <Info label={t('manage.wikiAi.runs.tokensOut')} value={tokens(r.tokensOut)} />
                   <Info label={t('manage.wikiAi.runs.estimated')} value={tokens(r.estimatedTokens)} />
