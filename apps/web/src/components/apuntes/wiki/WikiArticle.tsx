@@ -6,6 +6,7 @@ import { formatDate } from '../../../utils/apuntes'
 import Notice from '../../Notice'
 import ReportDialog from '../ReportDialog'
 import KindIcon from '../KindIcon'
+import YearBadge from '../YearBadge'
 import { CitationContext, type CitationContextValue } from './citationContext'
 import { citationOrder } from './wikilinks'
 
@@ -27,6 +28,15 @@ export default function WikiArticle({
   // null: closed; otherwise the comment to prefill ('' for the header button).
   const [reporting, setReporting] = useState<{ comment: string; partial: boolean } | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
+  // "Basada en apuntes de 2020–2021": the API range, else the sources'.
+  const yearsLabel = useMemo(() => {
+    const years = (page.sources ?? []).map((x) => x.academicYear).filter((y): y is number => y != null)
+    const min = page.sourceYears?.min ?? (years.length ? Math.min(...years) : null)
+    const max = page.sourceYears?.max ?? (years.length ? Math.max(...years) : null)
+    if (min == null && max == null) return null
+    const range = min != null && max != null && min !== max ? `${min}–${max}` : String(max ?? min)
+    return t('wiki.years.basedOn', { range })
+  }, [page.sources, page.sourceYears, t])
   const order = useMemo(() => citationOrder(page.markdown ?? '', page.sources ?? []), [page.markdown, page.sources])
   const citations = useMemo<CitationContextValue>(() => ({
     order,
@@ -49,6 +59,9 @@ export default function WikiArticle({
           {page.summary && (
             <p className="font-body text-body-lg text-ink-secondary dark:text-night-muted mt-2 max-w-[70ch]">{page.summary}</p>
           )}
+          {yearsLabel && (
+            <p className="font-mono text-label text-ink-secondary dark:text-night-muted mt-2">{yearsLabel}</p>
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm bg-accent-50 dark:bg-accent-900/30 text-accent-800 dark:text-accent-200 font-body text-body-sm">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -69,6 +82,12 @@ export default function WikiArticle({
             </button>
           </div>
         </header>
+
+        {page.stale && (
+          <p className="mb-6 max-w-[70ch] px-3 py-2 rounded-sm border border-border dark:border-night-border bg-page-bg dark:bg-night-bg font-body text-body-sm text-ink-secondary dark:text-night-muted">
+            {t('wiki.years.stale')}
+          </p>
+        )}
 
         {notice && <Notice className="mb-6" onDismiss={() => setNotice(null)}>{notice}</Notice>}
 
@@ -147,7 +166,12 @@ function SourcesPanel({ page, order, onHighlight }: {
                   <KindIcon kind={s!.kind} size={14} className="mt-1" />
                   <span>{s!.name}</span>
                 </Link>
-                <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{author}</p>
+                <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
+                  {s!.academicYear != null && (
+                    <><YearBadge variant="text" year={s!.academicYear} source={s!.academicYearSource} /> · </>
+                  )}
+                  {author}
+                </p>
               </div>
             </li>
           )

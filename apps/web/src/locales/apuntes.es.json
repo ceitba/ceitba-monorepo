@@ -238,6 +238,24 @@
       "hint": "Fijá materias con el botón del pin para tenerlas a mano acá.",
       "limit": "Llegaste al máximo de {{limit}} materias fijadas. Desfijá alguna para sumar otra.",
       "failed": "No pudimos actualizar tus materias fijadas. Probá de nuevo."
+    },
+    "year": {
+      "source": {
+        "USER": "Elegido por quien compartió el apunte",
+        "NAME": "Detectado en el nombre del archivo",
+        "DRIVE": "Estimado según la fecha del archivo en Drive"
+      },
+      "unknown": "Sin año detectado",
+      "label": "Año",
+      "auto": "Automático",
+      "autoWith": "Automático · {{year}}",
+      "forItem": "Año de {{name}}",
+      "filterAria": "Filtrar por año",
+      "all": "Todos",
+      "none": "Sin año",
+      "sortLabel": "Orden",
+      "sortRecent": "Más recientes primero",
+      "sortFolder": "Por carpeta"
     }
   },
   "wiki": {
@@ -318,6 +336,10 @@
       "empty": "Todavía no hay wikis para mostrar",
       "emptyMine": "No hay wikis de tus materias todavía",
       "emptyMineBody": "Fijá materias o elegí tu plan en el perfil; también podés ver el mapa completo."
+    },
+    "years": {
+      "basedOn": "Basada en apuntes de {{range}}",
+      "stale": "Estos apuntes son de hace más de 3 años; el programa de la materia pudo haber cambiado."
     }
   },
   "manage": {

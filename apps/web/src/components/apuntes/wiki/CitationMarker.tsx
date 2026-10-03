@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import type { KbSource } from '../../../api/kb'
 import KindIcon from '../KindIcon'
+import YearBadge from '../YearBadge'
 import { useCitations } from './citationContext'
 
 const POPOVER_WIDTH = 288 // 18rem
@@ -141,7 +142,12 @@ export default function CitationMarker({ fileId, n, label, section, source }: Pr
               {label && source?.name && label !== source.name && (
                 <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted break-words">{source.name}</p>
               )}
-              <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{author}</p>
+              <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
+                {source?.academicYear != null && (
+                  <><YearBadge variant="text" year={source.academicYear} source={source.academicYearSource} /> · </>
+                )}
+                {author}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 border-t border-border dark:border-night-border">

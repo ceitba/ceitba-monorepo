@@ -1,5 +1,5 @@
 import { apiGet, apiSend } from './client'
-import type { FileKind } from './drive'
+import type { AcademicYearSource, FileKind } from './drive'
 
 // Subject wikis: AI-written Markdown pages per subject, built from the
 // published Apuntes and cross-linked between subjects.
@@ -25,6 +25,8 @@ export interface KbSource {
   name: string
   kind: FileKind
   author: { name: string | null; anonymous: boolean }
+  academicYear?: number | null
+  academicYearSource?: AcademicYearSource | null
 }
 
 // One entry per wikilink target in the body. `raw` is the text inside
@@ -59,6 +61,10 @@ export interface KbPage extends KbPageSummary {
   generatedAt: string
   revision: number
   reportedByMe: boolean
+  // Range of the sources' academic years, and whether they're old enough
+  // (3+ years) that the syllabus may have changed.
+  sourceYears?: { min: number | null; max: number | null } | null
+  stale?: boolean
 }
 
 // PREREQUISITE: this subject needs it (correlativa); DEPENDENT: it needs

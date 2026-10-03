@@ -24,6 +24,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import ErrorBanner from '../../components/ErrorBanner'
 import Notice from '../../components/Notice'
 import KindIcon from '../../components/apuntes/KindIcon'
+import YearBadge from '../../components/apuntes/YearBadge'
 import { PublicationBadge, SourceStatusBadge } from '../../components/apuntes/Badges'
 import { apuntesErrorMessage, formatDate, formatDateTime } from '../../utils/apuntes'
 
@@ -431,7 +432,10 @@ function FilesView() {
                         <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
                           {f.sourceRootName}{f.driveModifiedAt && ` · ${formatDate(f.driveModifiedAt, i18n.language)}`}
                         </p>
-                        <div className="mt-1"><PublicationBadge publication={f.publication} /></div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <PublicationBadge publication={f.publication} />
+                          <YearBadge year={f.academicYear} source={f.academicYearSource} />
+                        </div>
                       </div>
                     </div>
                   </td>

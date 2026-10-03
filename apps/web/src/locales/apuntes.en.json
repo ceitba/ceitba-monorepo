@@ -238,6 +238,24 @@
       "hint": "Pin subjects with the pin button to keep them handy here.",
       "limit": "You've reached the maximum of {{limit}} pinned subjects. Unpin one to add another.",
       "failed": "We couldn't update your pinned subjects. Please try again."
+    },
+    "year": {
+      "source": {
+        "USER": "Set by whoever shared the notes",
+        "NAME": "Detected in the file name",
+        "DRIVE": "Estimated from the file's date in Drive"
+      },
+      "unknown": "No year detected",
+      "label": "Year",
+      "auto": "Automatic",
+      "autoWith": "Automatic · {{year}}",
+      "forItem": "Year of {{name}}",
+      "filterAria": "Filter by year",
+      "all": "All",
+      "none": "No year",
+      "sortLabel": "Order",
+      "sortRecent": "Newest first",
+      "sortFolder": "By folder"
     }
   },
   "wiki": {
@@ -318,6 +336,10 @@
       "empty": "No wikis to show yet",
       "emptyMine": "No wikis for your subjects yet",
       "emptyMineBody": "Pin subjects or set your plan in your profile; you can also view the full map."
+    },
+    "years": {
+      "basedOn": "Based on notes from {{range}}",
+      "stale": "These notes are more than 3 years old; the subject's syllabus may have changed."
     }
   },
   "manage": {
