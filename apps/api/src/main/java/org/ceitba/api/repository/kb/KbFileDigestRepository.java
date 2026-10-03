@@ -12,4 +12,8 @@ public interface KbFileDigestRepository extends JpaRepository<KbFileDigest, UUID
     List<KbFileDigest> findByContentFingerprintInAndPromptVersion(Collection<String> fingerprints, String promptVersion);
 
     boolean existsByFileIdAndContentFingerprintAndPromptVersion(UUID fileId, String fingerprint, String promptVersion);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("delete from KbFileDigest d where d.fileId in :fileIds")
+    int deleteByFileIds(@org.springframework.data.repository.query.Param("fileIds") Collection<UUID> fileIds);
 }

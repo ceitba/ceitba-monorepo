@@ -13,6 +13,7 @@ import org.ceitba.api.repository.SubjectRepository;
 import org.ceitba.api.repository.drive.DriveFileRepository;
 import org.ceitba.api.repository.drive.DriveSourceRepository;
 import org.ceitba.api.repository.drive.DriveUnclaimedShareRepository;
+import org.ceitba.api.service.kb.KbModerationService;
 import org.ceitba.api.web.drive.dto.AcceptSuggestionsResponse;
 import org.ceitba.api.web.drive.dto.DriveInfoResponse;
 import org.ceitba.api.web.drive.dto.RegisterSourceRequest;
@@ -54,13 +55,14 @@ public class DriveSourceService {
     private final DriveStorageJanitor janitor;
     private final DriveBlobs blobs;
     private final ApplicationEventPublisher events;
+    private final KbModerationService kb;
     private final Clock clock;
 
     public DriveSourceService(DriveSourceRepository sources, DriveFileRepository files,
                               DriveUnclaimedShareRepository unclaimed, SubjectRepository subjects,
                               DriveClient drive, DriveAccess access, DriveRecalculator recalculator,
                               DriveViews views, DriveStorageJanitor janitor, DriveBlobs blobs,
-                              ApplicationEventPublisher events, Clock clock) {
+                              ApplicationEventPublisher events, KbModerationService kb, Clock clock) {
         this.sources = sources;
         this.files = files;
         this.unclaimed = unclaimed;
@@ -72,6 +74,7 @@ public class DriveSourceService {
         this.janitor = janitor;
         this.blobs = blobs;
         this.events = events;
+        this.kb = kb;
         this.clock = clock;
     }
 
@@ -83,7 +86,8 @@ public class DriveSourceService {
     // Validates the folder (shared with the bot, owned by the caller), stores
     // the consent and queues an immediate sync. A student with an ACTIVE
     // source is trusted: new sources start ACTIVE. Re-registering a REVOKED
-    // source reactivates it.
+    // source reactivates it. A folder staff blocked (in any source) cannot be
+    // registered again (409 DRIVE_SOURCE_BLOCKED).
     @Transactional
     public SourceResponse register(User user, RegisterSourceRequest req) {
         access.requireDriveAvailable();
@@ -96,6 +100,9 @@ public class DriveSourceService {
         }
         var existing = sources.findFirstByUserIdAndRootFolderIdAndStatusNot(
             user.getId(), folderId, DriveSourceStatus.DISCONNECTED);
+        if (sources.existsByRootFolderIdAndStatus(folderId, DriveSourceStatus.BLOCKED)) {
+            throw new DriveException(DriveException.Reason.SOURCE_BLOCKED, "This folder was blocked by staff");
+        }
         if (existing.isPresent() && existing.get().getStatus() != DriveSourceStatus.REVOKED) {
             throw new DriveException(DriveException.Reason.SOURCE_EXISTS, "This folder is already connected");
         }
@@ -182,15 +189,25 @@ public class DriveSourceService {
     }
 
     // Unpublishes and deletes every copied file (rows now, objects after
-    // commit); the source row stays as DISCONNECTED.
+    // commit); the source row stays as DISCONNECTED. Wiki pages citing its
+    // files go hidden and the files' digests/LLM payloads are dropped. A
+    // BLOCKED source cannot be disconnected (409 DRIVE_SOURCE_BLOCKED): the
+    // block must stay on record so the folder is not republished unreviewed.
     @Transactional
     public void disconnect(User user, UUID sourceId) {
         access.requireDriveAvailable();
-        var source = owned(user, sourceId);
+        owned(user, sourceId);
+        // Locked: a sync running now stops writing into it (DriveSyncStore).
+        var source = sources.findByIdForUpdate(sourceId).orElseThrow(() -> DriveAccess.sourceNotFound(sourceId));
+        if (source.getStatus() == DriveSourceStatus.BLOCKED) {
+            throw new DriveException(DriveException.Reason.SOURCE_BLOCKED,
+                "A folder blocked by staff cannot be disconnected");
+        }
         source.setStatus(DriveSourceStatus.DISCONNECTED);
         var all = files.findBySourceId(sourceId);
         var refs = all.stream().map(DriveBlobs.Ref::of).toList();
         var ids = all.stream().map(DriveFile::getId).toList();
+        kb.forgetFiles(ids);
         files.deleteAll(all);
         janitor.deleteAfterCommit(blobs.releasable(refs, ids));
     }

@@ -127,9 +127,7 @@ public class CapabilityAdminService {
         }
         OffsetDateTime at = now();
         for (String email : normalized) {
-            if (!userGrants.existsById(new CapabilityUserGrant.Id(capability.key(), email))) {
-                userGrants.save(new CapabilityUserGrant(capability.key(), email, by, at));
-            }
+            userGrants.insertIfAbsent(capability.key(), email, at, by);
         }
         return grants(key);
     }
@@ -145,9 +143,7 @@ public class CapabilityAdminService {
     public CapabilityGrantsResponse grantOrg(String key, String slug, UUID by) {
         Capability capability = resolve(key);
         if (!organizations.existsById(slug)) throw new ResourceNotFoundException("Organization", slug);
-        if (!orgGrants.existsById(new CapabilityOrgGrant.Id(capability.key(), slug))) {
-            orgGrants.save(new CapabilityOrgGrant(capability.key(), slug, by, now()));
-        }
+        orgGrants.insertIfAbsent(capability.key(), slug, now(), by);
         return grants(key);
     }
 

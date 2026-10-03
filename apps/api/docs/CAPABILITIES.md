@@ -24,7 +24,9 @@ A user has a capability when any of these holds:
 3. their lowercased email has a row in `capability_user_grants`;
 4. they belong (`user_organizations`) to an org with a row in `capability_org_grants`.
 
-Grants are keyed by email so staff can pre-grant people who never logged in.
+Grants are keyed by email so staff can pre-grant people who never logged in. Account deletion removes the
+grants of the user's email (otherwise a new account with that email would inherit them). Granting is idempotent,
+also under concurrent identical requests (`INSERT … ON CONFLICT DO NOTHING`).
 The email allowlist still governs login; granting does not bypass it.
 
 `CapabilityService.require(user, key)` throws `CapabilityRequiredException`

@@ -97,8 +97,9 @@ Staff (`/v1/staff/**`, STAFF):
 | `POST /v1/staff/kb/pages/{pageId}/hide` · `/restore` | `Page` |
 | `GET /v1/staff/kb/pages?status=HIDDEN&page=0&limit=20` | `{ items: [PageSummary + { subjectId, status, reportCount }], total }` |
 
-Takedown hook: when a file becomes `REMOVED_BY_STAFF` (or the source is blocked), every page whose `sources` contains it
-is set to `HIDDEN` immediately.
+Takedown hook: whenever a file stops being `PUBLISHED` (removed or blocked by staff, hidden by 3 reports, hidden by the
+student, moved to another subject, source revoked or disconnected, account deleted, file deleted), every page whose
+`sources` contains it is set to `HIDDEN` (`TAKEDOWN`) immediately; the pipeline rewrites the subject on its next run.
 
 ## Local import
 
@@ -129,7 +130,8 @@ endpoint using a dev-login staff session cookie, and prints accepted/rejected pa
 - Reports: one per user and page, re-reporting replaces it; only `PUBLISHED` pages can be reported (or re-reported by
   an existing reporter). At 3 the page becomes `HIDDEN`. Staff `restore` sets `PUBLISHED` and dismisses the reports.
   `GET /v1/staff/kb/pages` defaults to `status=HIDDEN`.
-- Takedown hook also runs when staff block a source (every page citing any of its files).
+- Takedown hook: `DriveRecalculator` calls it for every file leaving `PUBLISHED` (or changing subject); disconnect,
+  account deletion and the 30-day purge call it (via `KbModerationService.forgetFiles`) before deleting rows.
 - Account deletion removes the user's `kb_page_report` rows (page counters adjusted).
 - `scripts/kb-import.sh <dir> [baseUrl]`: `baseUrl` includes `/api/v1` (default `${BASE:-http://localhost:8081}/api/v1`);
   `KB_STAFF_EMAIL` (default `kb-import@itba.edu.ar`) and `KB_REPLACE` (default `true`) are optional. Exit status is

@@ -60,7 +60,7 @@ services:
   #     except under drive/ (Apuntes, signed URLs only);
   #   - creates/updates the API's service user (STORAGE_ACCESS_KEY_ID/SECRET)
   #     with a policy limited to s3:PutObject/s3:GetObject on that bucket
-  #     (plus s3:DeleteObject under drive/), so the API never holds the root
+  #     (plus s3:DeleteObject under drive/ and kb/), so the API never holds the root
   #     credentials.
   # Re-running with a new STORAGE_SECRET_ACCESS_KEY rotates the user's secret.
   # MinioPresignedUploadIT runs this exact script against a real MinIO.
@@ -120,7 +120,7 @@ services:
           }, {
             "Effect": "Allow",
             "Action": ["s3:DeleteObject"],
-            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*", "arn:aws:s3:::$$STORAGE_BUCKET/kb/*"]
           }]
         }
         EOF

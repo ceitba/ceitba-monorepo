@@ -102,7 +102,7 @@ services:
           }, {
             "Effect": "Allow",
             "Action": ["s3:DeleteObject"],
-            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*", "arn:aws:s3:::$$STORAGE_BUCKET/kb/*"]
           }]
         }
         EOF

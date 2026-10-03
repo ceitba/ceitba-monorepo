@@ -30,7 +30,20 @@ public interface DriveFileRepository extends JpaRepository<DriveFile, UUID> {
 
     List<DriveFile> findByPurgeAfterBefore(OffsetDateTime now);
 
-    List<DriveFile> findByKindAndRemovedAtIsNull(DriveFileKind kind);
+    // Staff reprocess (DriveModerationService.reprocess): the live, stored,
+    // exportable files of a kind, without loading their content.
+    @Query("""
+        select distinct f.sourceId from DriveFile f
+        where f.kind = :kind and f.removedAt is null and f.contentFingerprint is not null and f.exportBlocked = false
+        """)
+    List<UUID> findReprocessableSourceIds(@Param("kind") DriveFileKind kind);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("""
+        update DriveFile f set f.contentModifiedAt = null
+        where f.kind = :kind and f.removedAt is null and f.contentFingerprint is not null and f.exportBlocked = false
+        """)
+    int clearContentModifiedAtForReprocess(@Param("kind") DriveFileKind kind);
 
     // Published files with text whose Drive modifiedTime is after `since`
     // (the forecast's weekly change rate).

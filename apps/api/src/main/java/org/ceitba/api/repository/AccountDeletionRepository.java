@@ -148,6 +148,15 @@ public class AccountDeletionRepository {
         exec("DELETE FROM wiki.drive_source WHERE user_id = :u", userId);
     }
 
+    // Capability grants keyed by the user's email (docs/CAPABILITIES.md):
+    // otherwise they would apply again to a new account with that email.
+    public void deleteCapabilityGrants(UUID userId) {
+        exec("""
+            DELETE FROM public.capability_user_grants
+            WHERE email = (SELECT lower(u.email) FROM public."user" u WHERE u.id = :u)
+            """, userId);
+    }
+
     // Subject-wiki reports by the user (page counters adjusted first).
     public void deleteKbReports(UUID userId) {
         exec("""

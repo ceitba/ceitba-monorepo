@@ -167,14 +167,11 @@ public class DriveModerationService {
         if (!REPROCESSABLE.contains(k)) {
             throw new ValidationException("kind", kind, "must be one of " + REPROCESSABLE);
         }
-        var rows = files.findByKindAndRemovedAtIsNull(k).stream()
-            .filter(f -> f.hasContent() && !f.isExportBlocked())
-            .toList();
-        rows.forEach(f -> f.setContentModifiedAt(null));
-        var sourceIds = new java.util.LinkedHashSet<UUID>();
-        rows.forEach(f -> sourceIds.add(f.getSourceId()));
+        // Bulk, without loading rows (and their html/text content).
+        var sourceIds = files.findReprocessableSourceIds(k);
+        int rows = files.clearContentModifiedAtForReprocess(k);
         sourceIds.forEach(id -> events.publishEvent(new DriveSyncRequested(id)));
-        return new ReprocessResponse(rows.size(), sourceIds.size());
+        return new ReprocessResponse(rows, sourceIds.size());
     }
 
     @Transactional(readOnly = true)
@@ -202,16 +199,20 @@ public class DriveModerationService {
     }
 
     // Account deletion, before AccountDeletionRepository.deleteDriveSources:
-    // withdraws the user's reports and schedules the stored copies of their
-    // sources for deletion once the deletion commits (best effort).
+    // withdraws the user's reports, takes down wiki pages citing their files
+    // and drops the files' digests/LLM payloads (KbModerationService), and
+    // schedules the stored copies of their sources for deletion once the
+    // deletion commits (best effort). The sources are locked first, so a
+    // sync running now cannot add rows or objects behind this.
     @Transactional
     public void prepareAccountDeletion(UUID userId) {
         withdrawReportsOf(userId);
-        var ids = sources.findByUserId(userId).stream().map(DriveSource::getId).toList();
+        var ids = sources.findByUserIdForUpdate(userId).stream().map(DriveSource::getId).toList();
         if (ids.isEmpty()) return;
         var rows = files.findBySourceIdIn(ids);
-        janitor.deleteAfterCommit(blobs.releasable(rows.stream().map(DriveBlobs.Ref::of).toList(),
-            rows.stream().map(DriveFile::getId).toList()));
+        var rowIds = rows.stream().map(DriveFile::getId).toList();
+        kb.forgetFiles(rowIds);
+        janitor.deleteAfterCommit(blobs.releasable(rows.stream().map(DriveBlobs.Ref::of).toList(), rowIds));
     }
 
     private List<StaffFileResponse> staffFiles(List<DriveFile> page) {
