@@ -71,7 +71,8 @@ public class KbViews {
 
     public static KbStaffPageResponse staff(KbPage p) {
         return new KbStaffPageResponse(p.getId(), p.getSlug(), p.getTitle(), p.getType().wire(), p.getSummary(),
-            p.getAliases(), p.getSubjectId(), p.getStatus().name(), p.getReportCount());
+            p.getAliases(), p.getSubjectId(), p.getStatus().name(), p.getReportCount(),
+            p.getHiddenReason() == null ? null : p.getHiddenReason().name());
     }
 
     public KbPageResponse page(KbPage p, UUID viewerId, boolean staff) {
@@ -117,6 +118,11 @@ public class KbViews {
             sourceDtos, new KbPageResponse.SourceYears(min, max), stale, linkDtos, backlinks, p.getGenerator(), p.getGeneratedAt(),
             p.getRevision(), viewerId != null && reports.existsByPageIdAndUserId(p.getId(), viewerId),
             p.getStatus().name());
+    }
+
+    // Cited files as STAFF see them (eval review pages).
+    public List<KbSourceResponse> staffSources(List<UUID> ids) {
+        return sources(ids, true);
     }
 
     // The cited files, in frontmatter order; readers only get PUBLISHED ones.

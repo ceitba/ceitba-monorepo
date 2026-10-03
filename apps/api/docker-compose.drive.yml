@@ -87,7 +87,7 @@ services:
             "Effect": "Deny",
             "Principal": {"AWS": ["*"]},
             "Action": ["s3:GetObject"],
-            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*"]
+            "Resource": ["arn:aws:s3:::$$STORAGE_BUCKET/drive/*", "arn:aws:s3:::$$STORAGE_BUCKET/kb/*"]
           }]
         }
         EOF
@@ -153,6 +153,23 @@ services:
       DRIVE_SYNC_USE_FAKE: ${DRIVE_SYNC_USE_FAKE:-false}
       DRIVE_SYNC_FAKE_DEMO_OWNERS: ${DRIVE_SYNC_FAKE_DEMO_OWNERS:-}
       DRIVE_SYNC_MAX_FILE_BYTES: ${DRIVE_SYNC_MAX_FILE_BYTES:-52428800}
+      # Subject wiki pipeline (docs/SUBJECT-WIKI-PIPELINE.md, SUBJECT-WIKI-ADMIN.md).
+      # No KB_LLM_API_KEY = dry runs only (503 KB_LLM_UNCONFIGURED); the weekly
+      # run stays off until KB_PIPELINE_ENABLED=true (or the runtime settings).
+      KB_LLM_API_KEY: ${KB_LLM_API_KEY:-}
+      KB_LLM_BASE_URL: ${KB_LLM_BASE_URL:-https://inference.do-ai.run}
+      KB_LLM_USE_FAKE: ${KB_LLM_USE_FAKE:-false}
+      KB_EXECUTION_MODE: ${KB_EXECUTION_MODE:-auto}
+      KB_SYNC_CONCURRENCY: ${KB_SYNC_CONCURRENCY:-4}
+      KB_PIPELINE_ENABLED: ${KB_PIPELINE_ENABLED:-false}
+      KB_PIPELINE_CRON: ${KB_PIPELINE_CRON:-0 0 3 * * SUN}
+      KB_POLL_INTERVAL: ${KB_POLL_INTERVAL:-PT10M}
+      KB_BATCH_POLL_INTERVAL: ${KB_BATCH_POLL_INTERVAL:-PT1M}
+      KB_MODEL_DIGEST: ${KB_MODEL_DIGEST:-glm-5.3-flash}
+      KB_MODEL_PLAN: ${KB_MODEL_PLAN:-glm-5.3}
+      KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
+      KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
+      KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
     depends_on:
       postgres:
         condition: service_healthy

@@ -107,6 +107,16 @@ public class S3ObjectStorage implements ObjectStorage {
     }
 
     @Override
+    public byte[] get(String key) {
+        try {
+            return requireClient().getObjectAsBytes(GetObjectRequest.builder().bucket(props.bucket()).key(key).build())
+                .asByteArray();
+        } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
+            return null;
+        }
+    }
+
+    @Override
     public void delete(String key) {
         requireClient().deleteObject(DeleteObjectRequest.builder().bucket(props.bucket()).key(key).build());
     }

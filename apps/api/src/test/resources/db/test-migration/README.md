@@ -39,3 +39,7 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.24 drive_file_flags | V32 |
 | V4.25 subject_wiki | V33 |
 | V4.26 drive_academic_year | V34 |
+| V4.27 wiki_pipeline | V35 |
+| V4.28 kb_progress | V36 |
+| V4.29 kb_run_lease | V37 |
+| V4.30 kb_batch_submission | V38 |

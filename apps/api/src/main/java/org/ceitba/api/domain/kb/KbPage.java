@@ -69,6 +69,10 @@ public class KbPage {
     @Column(nullable = false, length = 16)
     private KbPageStatus status = KbPageStatus.PUBLISHED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hidden_reason", length = 16)
+    private KbHiddenReason hiddenReason;
+
     @Column(name = "report_count", nullable = false)
     private int reportCount;
 
@@ -125,6 +129,17 @@ public class KbPage {
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
     public void setRevision(int revision) { this.revision = revision; }
-    public void setStatus(KbPageStatus status) { this.status = status; }
+    // Any status but HIDDEN clears the hidden reason.
+    public void setStatus(KbPageStatus status) {
+        this.status = status;
+        if (status != KbPageStatus.HIDDEN) this.hiddenReason = null;
+    }
+
+    public void hide(KbHiddenReason reason) {
+        this.status = KbPageStatus.HIDDEN;
+        this.hiddenReason = reason;
+    }
+
+    public KbHiddenReason getHiddenReason() { return hiddenReason; }
     public void setReportCount(int reportCount) { this.reportCount = reportCount; }
 }
