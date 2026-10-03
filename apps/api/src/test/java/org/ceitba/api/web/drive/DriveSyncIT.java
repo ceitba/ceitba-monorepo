@@ -101,7 +101,7 @@ class DriveSyncIT {
 
     @BeforeEach
     void seed() {
-        jdbc.execute("TRUNCATE wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file, "
+        jdbc.execute("TRUNCATE wiki.kb_page, wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file, "
             + "wiki.drive_source, public.\"user\", public.plan_subject, public.subject, public.plan, "
             + "public.careers CASCADE");
         drive.reset();
@@ -323,14 +323,20 @@ class DriveSyncIT {
         syncNow(sourceId);
         assertThat(item(tree(sourceId), "Guia catedra.pdf").get("publication").asText()).isEqualTo("PUBLISHED");
 
-        // Subject listings.
+        // Subject listings; hasWiki once the subject has a published wiki page.
         call(get("/v1/wiki/apuntes/subjects"), reader(1), null)
             .andExpect(jsonPath("$[0].subjectId").value("93.41"))
-            .andExpect(jsonPath("$[0].fileCount").value(3));
+            .andExpect(jsonPath("$[0].fileCount").value(3))
+            .andExpect(jsonPath("$[0].hasWiki").value(false));
+        jdbc.update("INSERT INTO wiki.kb_page (subject_id, slug, type, title, summary, markdown, generator, "
+            + "generated_at) VALUES ('93.42', 'index', 'INDEX', 'Física II', 's', 'm', 'manual', now())");
+        call(get("/v1/wiki/apuntes/subjects"), reader(1), null).andExpect(jsonPath("$[0].hasWiki").value(false));
         var search = read(call(get("/v1/wiki/apuntes/subjects?q=fisica"), reader(1), null).andExpect(status().isOk()));
         assertThat(search).hasSize(2);
         assertThat(search.get(0).get("subjectId").asText()).isEqualTo("93.41");
+        assertThat(search.get(0).get("hasWiki").asBoolean()).isFalse();
         assertThat(search.get(1).get("fileCount").asLong()).isZero();
+        assertThat(search.get(1).get("hasWiki").asBoolean()).isTrue();
 
         // Hiding a folder hides what is in it.
         call(patch("/v1/me/drive/files/" + fileId(FIS)), student(), "{\"hidden\":true}")
@@ -537,6 +543,13 @@ class DriveSyncIT {
         assertThat(mine.get(0).get("fileCount").asLong()).isEqualTo(1);
         assertThat(mine.get(1).get("subjectId").asText()).isEqualTo("93.16");
         assertThat(mine.get(2).get("fileCount").asLong()).isEqualTo(1);
+        assertThat(mine.get(0).get("hasWiki").asBoolean()).isFalse();
+        jdbc.update("INSERT INTO wiki.kb_page (subject_id, slug, type, title, summary, markdown, generator, "
+            + "generated_at, status) VALUES ('93.16', 'index', 'INDEX', 'Discreta', 's', 'm', 'manual', now(), 'PUBLISHED'), "
+            + "('82.15', 'index', 'INDEX', 'Aplicada', 's', 'm', 'manual', now(), 'HIDDEN')");
+        mine = read(call(get("/v1/wiki/apuntes/subjects?mine=true"), student(), null));
+        assertThat(mine.get(0).get("hasWiki").asBoolean()).isFalse();   // only a HIDDEN page
+        assertThat(mine.get(1).get("hasWiki").asBoolean()).isTrue();
         call(get("/v1/wiki/apuntes/subjects"), reader(1), null).andExpect(jsonPath("$[0].year").doesNotExist());
     }
 
