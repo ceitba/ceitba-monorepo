@@ -261,3 +261,25 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
   estimated 50% discount. Progress shows `waiting_batch` with DO's request counts and no ETA.
 - **Progress:** `GET /v1/staff/kb/pipeline/runs/{id}/progress` (see the admin doc, "Progress").
 
+
+## Memory
+
+The Drive corpus (community archive included) is far larger than the heap: ~18k files, ~90 MB of `text_content` in
+Postgres, more as Java strings. Nothing in the pipeline may load every file's text at once (two dry runs died in DIGEST
+with `OutOfMemoryError` when it did).
+
+- **Inputs, diffs, preview and forecast** read ids, fingerprints, names and `length(text_content)` in SQL
+  (`DriveFileRepository.pipelineInputs`); token estimates come from those lengths, never from the texts.
+- **DIGEST build:** per subject, the files to digest are first sized in SQL; a subject that cannot fit the remaining
+  `KB_RUN_TOKEN_BUDGET` is deferred without reading any text. Otherwise texts are read 20 files at a time
+  (`DriveFileRepository.textsOf`, a projection, not entities) and each page's requests are saved, flushed and detached
+  before the next; if the exact estimate ends up over budget, the subject's saved requests are deleted and it is
+  deferred. A stage therefore holds at most one page of raw text plus the run's budget worth of requests.
+- **PLAN/WRITE/RETRY** read file names via a projection; WRITE reads raw text only for the changed files the
+  subject's operations cite. Built requests are detached after each subject.
+- **Submit:** the stage JSONL is streamed to a temp file 50 requests per transaction, then uploaded.
+- **Dry runs** go through the same chunked build (their JSONL is what staff inspect), so their memory is bounded the
+  same way; the preview/forecast estimates never touch the texts.
+- **PDF extraction** loads PDFs with a temp-file-only stream cache and keeps at most `MAX_TEXT_CHARS` (1M) of text.
+- **Heap:** the API container is limited to 2G and runs with `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError`
+  (`JAVA_TOOL_OPTIONS` in `docker-compose.yml`): ~1.5 GB of heap, and an OOM restarts the container.

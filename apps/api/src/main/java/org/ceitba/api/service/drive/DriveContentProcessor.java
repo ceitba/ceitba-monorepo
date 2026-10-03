@@ -1,6 +1,7 @@
 package org.ceitba.api.service.drive;
 
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.ceitba.api.config.DriveSyncProperties;
 import org.ceitba.api.domain.drive.DriveFileKind;
@@ -426,12 +427,33 @@ public class DriveContentProcessor {
     private record PdfInfo(String text, int pages) {}
 
     private static PdfInfo pdfInfo(Path pdf) {
-        try (var doc = Loader.loadPDF(pdf.toFile())) {
-            return new PdfInfo(new PDFTextStripper().getText(doc), doc.getNumberOfPages());
+        // Temp-file stream cache (not the heap); at most MAX_TEXT_CHARS kept.
+        try (var doc = Loader.loadPDF(pdf.toFile(), IOUtils.createTempFileOnlyStreamCache())) {
+            var text = new CappedWriter(MAX_TEXT_CHARS + 1);
+            new PDFTextStripper().writeText(doc, text);
+            return new PdfInfo(text.toString(), doc.getNumberOfPages());
         } catch (IOException | RuntimeException e) {
             log.debug("Drive sync: PDF text extraction failed: {}", e.getMessage());
             return null;
         }
+    }
+
+    // Keeps the first `max` chars written and drops the rest.
+    private static final class CappedWriter extends java.io.Writer {
+        private final StringBuilder sb = new StringBuilder();
+        private final int max;
+
+        CappedWriter(int max) { this.max = max; }
+
+        @Override
+        public void write(char[] buf, int off, int len) {
+            int room = max - sb.length();
+            if (room > 0) sb.append(buf, off, Math.min(room, len));
+        }
+
+        @Override public void flush() { }
+        @Override public void close() { }
+        @Override public String toString() { return sb.toString(); }
     }
 
     private static String readText(Path file) {

@@ -107,6 +107,14 @@ public class KbPipelineService implements KbRunHandler {
     private final Clock clock;
     private volatile ZonedDateTime lastScheduleCheck;
 
+    // DIGEST reads the raw text of this many files at a time; id lists for
+    // IN queries are split into pages of ID_PAGE.
+    static final int DIGEST_PAGE = 20;
+    private static final int ID_PAGE = 1000;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     public KbPipelineService(KbRunRepository runs, KbBatchJobRepository jobs, KbRunSubjectRepository runSubjects,
                              KbRunRequestRepository requests, KbFileDigestRepository digests,
                              KbSubjectStateRepository states, KbPageRepository pages, KbRelationRepository relations,
@@ -349,9 +357,11 @@ public class KbPipelineService implements KbRunHandler {
         int built = 0;
         Set<String> plannedFingerprints = new HashSet<>();
         for (var rs : active) {
-            var before = new HashSet<>(plannedFingerprints);
+            if (stage.equals("DIGEST")) {
+                built += buildDigest(run, rs, plannedFingerprints, seq, s);
+                continue;
+            }
             List<KbRunRequest> mine = switch (stage) {
-                case "DIGEST" -> digestRequests(run, rs, plannedFingerprints, seq, s);
                 case "PLAN" -> planRequests(run, rs, seq, s);
                 case "WRITE" -> writeRequests(run, rs, seq, s);
                 case "RETRY" -> retryRequests(run, rs, seq, s);
@@ -360,16 +370,25 @@ public class KbPipelineService implements KbRunHandler {
             long est = mine.stream().mapToLong(KbRunRequest::getEstTokens).sum();
             if (!mine.isEmpty() && run.getEstimatedTokens() + est > s.runTokenBudget()) {
                 rs.setStatus("DEFERRED");
-                plannedFingerprints.retainAll(before);
                 log.info("KB pipeline: run {}: {} deferred (token budget)", run.getId(), rs.getSubjectId());
                 continue;
             }
             run.addEstimated(est);
-            requests.saveAll(mine);
+            persist(mine);
             built += mine.size();
         }
         refreshSummary(run);
         return built;
+    }
+
+    // Saves requests and drops them from the persistence context: the whole
+    // stage is built in one transaction, and their params (raw text, plus
+    // Hibernate's JSON snapshot) must not pile up across subjects.
+    private void persist(List<KbRunRequest> batch) {
+        if (batch.isEmpty()) return;
+        var saved = requests.saveAll(batch);
+        requests.flush();
+        saved.forEach(entityManager::detach);
     }
 
     @Override
@@ -487,8 +506,64 @@ public class KbPipelineService implements KbRunHandler {
 
     // DIGEST: chunks of added/changed files whose content has no digest yet
     // (by fingerprint, so the same content elsewhere is not digested again).
-    private List<KbRunRequest> digestRequests(KbRun run, KbRunSubject rs, Set<String> planned, KbRunEngine.Seq seq,
-                                             KbEffectiveSettings s) {
+    // Memory stays bounded however large the corpus: a subject that clearly
+    // does not fit the budget (by its texts' lengths, read in SQL) is
+    // deferred without loading any text; otherwise its texts are read
+    // DIGEST_PAGE files at a time and each page's requests are saved and
+    // detached before the next. A subject whose exact estimate turns out
+    // over budget has its saved requests deleted and is deferred.
+    private int buildDigest(KbRun run, KbRunSubject rs, Set<String> planned, KbRunEngine.Seq seq,
+                            KbEffectiveSettings s) {
+        var before = new HashSet<>(planned);
+        var need = digestTargets(rs, planned);
+        if (need.isEmpty()) return 0;
+        long budget = s.runTokenBudget() - run.getEstimatedTokens();
+        long chars = 0;
+        for (var page : pages(need, ID_PAGE)) {
+            for (Object[] r : files.textLengths(page)) chars += ((Number) r[1]).longValue();
+        }
+        if ((long) (chars * 0.9 / 3.5) > budget) return defer(run, rs, planned, before);
+        long est = 0;
+        var saved = new ArrayList<String>();
+        for (var page : pages(need, DIGEST_PAGE)) {
+            var mine = new ArrayList<KbRunRequest>();
+            var rows = new ArrayList<>(files.textsOf(page));
+            rows.sort(Comparator.comparing(r -> r[0].toString()));
+            for (Object[] f : rows) {
+                var id = (UUID) f[0];
+                var sentFingerprint = fingerprintOf(id, (String) f[2]);
+                var chunks = KbPayloads.chunks((String) f[3]);
+                for (int i = 0; i < chunks.size(); i++) {
+                    var text = "Archivo: " + f[1] + " (parte " + (i + 1) + "/" + chunks.size() + ")\n\n" + chunks.get(i);
+                    var params = payloads.tuned(s.modelDigest(), "DIGEST", s, null, text);
+                    var r = engine.request(run, rs.getSubjectId(), "DIGEST", id.toString(), i, s.modelDigest(), params, seq);
+                    r.setContentFingerprint(sentFingerprint);
+                    mine.add(r);
+                }
+            }
+            est += mine.stream().mapToLong(KbRunRequest::getEstTokens).sum();
+            if (est > budget) {
+                if (!saved.isEmpty()) {
+                    for (var ids : pages(saved, ID_PAGE)) requests.deleteByCustomIds(ids);
+                }
+                return defer(run, rs, planned, before);
+            }
+            persist(mine);
+            mine.forEach(r -> saved.add(r.getCustomId()));
+        }
+        run.addEstimated(est);
+        return saved.size();
+    }
+
+    private int defer(KbRun run, KbRunSubject rs, Set<String> planned, Set<String> before) {
+        rs.setStatus("DEFERRED");
+        planned.retainAll(before);
+        log.info("KB pipeline: run {}: {} deferred (token budget)", run.getId(), rs.getSubjectId());
+        return 0;
+    }
+
+    // Files to digest (sorted by id), adding their fingerprints to `planned`.
+    private List<UUID> digestTargets(KbRunSubject rs, Set<String> planned) {
         var candidates = new ArrayList<JsonNode>();
         rs.getAdded().forEach(candidates::add);
         rs.getChanged().forEach(candidates::add);
@@ -505,19 +580,13 @@ public class KbPipelineService implements KbRunHandler {
             planned.add(fp);
             need.add(UUID.fromString(c.path("fileId").asText()));
         }
-        var out = new ArrayList<KbRunRequest>();
-        for (DriveFile f : files.findAllById(need)) {
-            var sentFingerprint = fingerprintOf(f.getId(), f.getContentFingerprint());
-            var chunks = KbPayloads.chunks(f.getTextContent());
-            for (int i = 0; i < chunks.size(); i++) {
-                var text = "Archivo: " + f.getName() + " (parte " + (i + 1) + "/" + chunks.size() + ")\n\n" + chunks.get(i);
-                var params = payloads.tuned(s.modelDigest(), "DIGEST", s, null, text);
-                var r = engine.request(run, rs.getSubjectId(), "DIGEST", f.getId().toString(), i, s.modelDigest(), params, seq);
-                r.setContentFingerprint(sentFingerprint);
-                out.add(r);
-            }
-        }
-        out.sort(Comparator.comparing(KbRunRequest::getItemKey));
+        need.sort(Comparator.comparing(UUID::toString));
+        return need;
+    }
+
+    private static <T> List<List<T>> pages(List<T> all, int size) {
+        var out = new ArrayList<List<T>>();
+        for (int i = 0; i < all.size(); i += size) out.add(all.subList(i, Math.min(all.size(), i + size)));
         return out;
     }
 
@@ -607,6 +676,7 @@ public class KbPipelineService implements KbRunHandler {
         var fileById = fileMap(rs);
         var community = communityIds(fileById.keySet());
         var digestByFp = digestsFor(rs);
+        var textById = sourceTexts(rs.getOperations(), changedIds);
         Map<String, JsonNode> inputById = new HashMap<>();
         rs.getInputs().forEach(i -> inputById.put(i.path("fileId").asText(), i));
         // Stable first (subject and its page index: the same for every page of
@@ -646,8 +716,8 @@ public class KbPipelineService implements KbRunHandler {
                     if (d != null) {
                         for (var t : d.getDigest().path("topics")) keywords.add(t.path("name").asText());
                     }
-                    if (f != null && f.getTextContent() != null) {
-                        sourceTexts.add(new KbPayloads.SourceText(id, name, f.getTextContent()));
+                    if (textById.containsKey(id)) {
+                        sourceTexts.add(new KbPayloads.SourceText(id, name, textById.get(id)));
                     }
                 } else {
                     keptSources.addObject().put("fileId", id).put("name", name)
@@ -1052,11 +1122,31 @@ public class KbPipelineService implements KbRunHandler {
         return ids.isEmpty() ? java.util.Set.of() : new HashSet<>(files.findCommunityFileIds(ids));
     }
 
-    private Map<UUID, DriveFile> fileMap(KbRunSubject rs) {
+    // A subject input's id and name (never its text: see sourceTexts).
+    private record FileRef(UUID getId, String getName) {}
+
+    private Map<UUID, FileRef> fileMap(KbRunSubject rs) {
         var ids = new ArrayList<UUID>();
         rs.getInputs().forEach(i -> ids.add(UUID.fromString(i.path("fileId").asText())));
-        Map<UUID, DriveFile> out = new HashMap<>();
-        files.findAllById(ids).forEach(f -> out.put(f.getId(), f));
+        Map<UUID, FileRef> out = new HashMap<>();
+        for (var page : pages(ids, ID_PAGE)) {
+            for (Object[] r : files.namesOf(page)) out.put((UUID) r[0], new FileRef((UUID) r[0], (String) r[1]));
+        }
+        return out;
+    }
+
+    // Raw text of the changed files the subject's operations draw on (WRITE),
+    // read for this subject only.
+    private Map<String, String> sourceTexts(JsonNode operations, Set<String> changedIds) {
+        var ids = new java.util.TreeSet<String>();
+        for (var op : operations) {
+            for (var src : op.path("sources")) if (changedIds.contains(src.asText())) ids.add(src.asText());
+        }
+        Map<String, String> out = new HashMap<>();
+        var uuids = ids.stream().map(UUID::fromString).toList();
+        for (var page : pages(uuids, DIGEST_PAGE)) {
+            for (Object[] r : files.textsOf(page)) if (r[3] != null) out.put(r[0].toString(), (String) r[3]);
+        }
         return out;
     }
 

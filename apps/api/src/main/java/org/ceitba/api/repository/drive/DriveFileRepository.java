@@ -84,6 +84,19 @@ public interface DriveFileRepository extends JpaRepository<DriveFile, UUID> {
         """)
     List<Object[]> pipelineInputs(@Param("minChars") int minChars);
 
+    // Wiki pipeline, without loading entities (text_content is large):
+    // [id, textLength] (0 without text).
+    @Query("select f.id, coalesce(length(f.textContent), 0) from DriveFile f where f.id in :ids")
+    List<Object[]> textLengths(@Param("ids") Collection<UUID> ids);
+
+    // [id, name].
+    @Query("select f.id, f.name from DriveFile f where f.id in :ids")
+    List<Object[]> namesOf(@Param("ids") Collection<UUID> ids);
+
+    // [id, name, contentFingerprint, textContent]: callers pass a bounded page of ids.
+    @Query("select f.id, f.name, f.contentFingerprint, f.textContent from DriveFile f where f.id in :ids")
+    List<Object[]> textsOf(@Param("ids") Collection<UUID> ids);
+
     // Which of these files come from a community archive (wiki pipeline).
     @Query("""
         select f.id from DriveFile f, DriveSource s

@@ -176,6 +176,14 @@ services:
       KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
       KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
       KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
+      # Same heap setup as prod (docker-compose.yml): 75% of the 2G limit.
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
     depends_on:
       postgres:
         condition: service_healthy
