@@ -43,8 +43,9 @@ import java.util.UUID;
 //               input = chars / 3.5 plus prompt overhead; output = the median
 //               output tokens per request learned per (model, stage), else
 //               600 / 1500 / 2500 / 2500 (DIGEST / PLAN / WRITE / RETRY)
-//   weekly      basis history (>= 3 completed scheduled runs: median re-priced,
-//               p25-p75), corpus (no run: weekly changed files x tokens per
+//   weekly      basis history (>= 3 completed scheduled runs: median run
+//               re-priced, p25-p75, times the scheduled runs per week from
+//               the cron), corpus (no run: weekly changed files x tokens per
 //               file, range x0.5-x1.5) or blend (1-2 runs, weighted runs/3)
 //   monthly     weekly x 4.345
 //   fullRebuild every wiki regenerated from its digests (PLAN + WRITE)
@@ -94,22 +95,72 @@ public class KbForecastService {
     // One priced line of a token profile.
     record Line(String stage, String model, String mode, long input, long cached, long output) {}
 
+    // What a forecast reads from the database, read once per forecast (no
+    // page bodies): inputs, their diffs (every subject; paused ones are
+    // filtered per settings), live page sources per subject, the catalog
+    // and the learned ratios.
+    record Snapshot(Map<String, List<KbInputs.Input>> current, List<KbInputs.Diff> diffs,
+                    Map<String, List<UUID[]>> liveSources, Map<String, KbModel> catalog,
+                    Map<String, Integer> ratios, Map<String, Double> cacheRatios) {
+
+        int pageCount(String subjectId) {
+            return liveSources.getOrDefault(subjectId, List.of()).size();
+        }
+
+        List<KbInputs.Diff> dirty(KbEffectiveSettings s) {
+            return diffs.stream().filter(d -> d.dirty() && !s.paused(d.subjectId())).toList();
+        }
+    }
+
+    // stage-cost is asked for every (model, stage) of the admin table at
+    // once: those calls share one snapshot for a few seconds.
+    static final java.time.Duration SNAPSHOT_TTL = java.time.Duration.ofSeconds(30);
+    private volatile Snapshot memo;
+    private volatile long memoAt;
+
+    private Snapshot snapshot() {
+        var current = inputs.current();
+        Map<String, List<UUID[]>> sources = new HashMap<>();
+        for (Object[] r : pages.findSubjectSources(List.of(KbPageStatus.PUBLISHED, KbPageStatus.HIDDEN))) {
+            sources.computeIfAbsent((String) r[0], k -> new ArrayList<>()).add(r[1] == null ? new UUID[0] : (UUID[]) r[1]);
+        }
+        return new Snapshot(current, inputs.diffs(id -> false, current), sources, catalog(), outputRatios(),
+            cacheRatios());
+    }
+
+    private Snapshot memoSnapshot() {
+        var m = memo;
+        long now = System.nanoTime();
+        if (m != null && now - memoAt < SNAPSHOT_TTL.toNanos()) return m;
+        m = snapshot();
+        memo = m;
+        memoAt = now;
+        return m;
+    }
+
     @Transactional(readOnly = true)
     public KbForecastResponse forecast(KbEffectiveSettings s) {
-        var catalog = catalog();
-        var ratios = outputRatios();
-        var cacheRatios = cacheRatios();
+        return forecast(s, snapshot());
+    }
 
-        var next = nextRunLines(s, ratios, cacheRatios);
+    private KbForecastResponse forecast(KbEffectiveSettings s, Snapshot snap) {
+        var catalog = snap.catalog();
+        var ratios = snap.ratios();
+        var cacheRatios = snap.cacheRatios();
+
+        var next = nextRunLines(s, snap, ratios, cacheRatios);
         var nextStages = perStage(next, s, catalog);
         var nextTotal = total(next, catalog);
 
         // weekly
         var history = historyCosts(s, catalog);
-        var corpusLines = corpusLines(s, ratios, cacheRatios);
+        var corpusLines = corpusLines(s, snap, ratios, cacheRatios);
         var corpus = total(corpusLines, catalog);
         var basis = basis(history.size());
         var hist = quantiles(history);
+        // History is per run: a week has as many runs as the cron fires.
+        var perWeek = BigDecimal.valueOf(runsPerWeek(s.cron(), OffsetDateTime.now(clock)));
+        for (int i = 0; i < hist.length; i++) hist[i] = hist[i].multiply(perWeek);
         BigDecimal expected;
         BigDecimal low;
         BigDecimal high;
@@ -131,19 +182,19 @@ public class KbForecastService {
                 high = blend(hist[2], corpus.multiply(new BigDecimal("1.5")), w);
             }
         }
-        int dirty = (int) inputs.diffs(s::paused).stream().filter(KbInputs.Diff::dirty).count();
+        int dirty = snap.dirty(s).size();
         var floor = dirty > 0 ? nextTotal : BigDecimal.ZERO;
         var monthly = new KbForecastResponse.Range(usd(expected.multiply(WEEKS_PER_MONTH).max(floor)),
             usd(low.multiply(WEEKS_PER_MONTH).max(floor)), usd(high.multiply(WEEKS_PER_MONTH).max(floor)));
         var weekly = weekly(expected, low, high, floor, basis, history.size());
 
-        var rebuild = rebuildLines(s, ratios, cacheRatios);
+        var rebuild = rebuildLines(s, snap, ratios, cacheRatios);
         long rebuildIn = rebuild.stream().mapToLong(Line::input).sum();
         long rebuildOut = rebuild.stream().mapToLong(Line::output).sum();
         var fullRebuild = new KbForecastResponse.Tokens(rebuildIn, rebuildOut, usd(total(rebuild, catalog)));
 
         // Savings on the typical week's profile (history if any, else corpus).
-        var profile = history.isEmpty() ? corpusLines : historyProfile(s);
+        var profile = history.isEmpty() ? corpusLines : historyProfile(s, catalog);
         var actual = total(profile, catalog);
         var noBatch = BigDecimal.ZERO;
         var noCache = BigDecimal.ZERO;
@@ -171,7 +222,7 @@ public class KbForecastService {
     // `model` in `stage`, every other setting as `s`.
     @Transactional(readOnly = true)
     public org.ceitba.api.web.kb.admin.KbStageCostResponse stageCost(KbEffectiveSettings s, String model, String stage) {
-        var weekly = forecast(s).weekly();
+        var weekly = forecast(s, memoSnapshot()).weekly();
         var mode = router.modeFor(model, s.executionMode()).toLowerCase(java.util.Locale.ROOT);
         return new org.ceitba.api.web.kb.admin.KbStageCostResponse(stage.toLowerCase(java.util.Locale.ROOT), model, mode,
             weekly.expectedUsd(), weekly.low(), weekly.high(), weekly.basis());
@@ -180,7 +231,24 @@ public class KbForecastService {
     // The forecast's next-run total (stored on a run when it is detected).
     @Transactional(readOnly = true)
     public BigDecimal nextRunTotal(KbEffectiveSettings s) {
-        return usd(total(nextRunLines(s, outputRatios(), cacheRatios()), catalog()));
+        var snap = snapshot();
+        return usd(total(nextRunLines(s, snap, snap.ratios(), snap.cacheRatios()), snap.catalog()));
+    }
+
+    // Scheduled runs in the 7 days from `from` (at least 1; an invalid cron
+    // counts as one run).
+    static int runsPerWeek(String cron, OffsetDateTime from) {
+        if (cron == null || !org.springframework.scheduling.support.CronExpression.isValidExpression(cron)) return 1;
+        var expr = org.springframework.scheduling.support.CronExpression.parse(cron);
+        var t = from.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE);
+        var end = t.plusDays(7);
+        int n = 0;
+        while (n < 7 * 24 * 60) {
+            t = expr.next(t);
+            if (t == null || !t.isBefore(end)) break;
+            n++;
+        }
+        return Math.max(1, n);
     }
 
     // A week can't cost less than the pending backlog (`floor`, the next
@@ -224,9 +292,10 @@ public class KbForecastService {
 
     // ---- token profiles -------------------------------------------------------------
 
-    private List<Line> nextRunLines(KbEffectiveSettings s, Map<String, Integer> ratios, Map<String, Double> cache) {
+    private List<Line> nextRunLines(KbEffectiveSettings s, Snapshot snap, Map<String, Integer> ratios,
+                                    Map<String, Double> cache) {
         var lines = new ArrayList<Line>();
-        var dirty = inputs.diffs(s::paused).stream().filter(KbInputs.Diff::dirty).toList();
+        var dirty = snap.dirty(s);
         var fps = new HashSet<String>();
         dirty.forEach(d -> {
             d.added().forEach(i -> fps.add(fp(i)));
@@ -253,14 +322,14 @@ public class KbForecastService {
                         ratios, cache));
                 }
             }
-            var live = pages.findBySubjectIdAndStatusIn(subject, List.of(KbPageStatus.PUBLISHED, KbPageStatus.HIDDEN));
+            var live = snap.liveSources().getOrDefault(subject, List.of());
             int pageCount = live.size();
             lines.add(line(s, "PLAN", subject, 1,
                 OVERHEAD + 150L * pageCount + (long) DIGEST_TOKENS_PER_FILE * changedFiles + 1500, ratios, cache));
             var touchedIds = new HashSet<UUID>();
             d.changed().forEach(i -> touchedIds.add(i.fileId()));
             touchedIds.addAll(d.removed());
-            long citing = live.stream().filter(p -> p.getSources().stream().anyMatch(touchedIds::contains)).count();
+            long citing = live.stream().filter(src -> java.util.Arrays.stream(src).anyMatch(touchedIds::contains)).count();
             int writes = (int) (citing + (d.added().isEmpty() ? 0 : Math.max(1, d.added().size() / 2))
                 + (pageCount == 0 ? 1 : 0));
             if (writes == 0) continue;
@@ -275,8 +344,9 @@ public class KbForecastService {
 
     // Weekly change rate of published files (drive modifiedTime in the last 28
     // days / 4) x the average tokens per file, as one week of runs.
-    private List<Line> corpusLines(KbEffectiveSettings s, Map<String, Integer> ratios, Map<String, Double> cache) {
-        var current = inputs.current();
+    private List<Line> corpusLines(KbEffectiveSettings s, Snapshot snap, Map<String, Integer> ratios,
+                                   Map<String, Double> cache) {
+        var current = snap.current();
         long fileCount = 0;
         long chars = 0;
         for (var list : current.values()) {
@@ -302,13 +372,13 @@ public class KbForecastService {
     }
 
     // Every wiki regenerated from its digests.
-    private List<Line> rebuildLines(KbEffectiveSettings s, Map<String, Integer> ratios, Map<String, Double> cache) {
+    private List<Line> rebuildLines(KbEffectiveSettings s, Snapshot snap, Map<String, Integer> ratios,
+                                    Map<String, Double> cache) {
         var lines = new ArrayList<Line>();
-        for (var e : inputs.current().entrySet()) {
+        for (var e : snap.current().entrySet()) {
             int fileCount = e.getValue().size();
             long chars = e.getValue().stream().mapToLong(KbInputs.Input::chars).sum();
-            int pageCount = Math.max(fileCount + 1, pages.findBySubjectIdAndStatusIn(e.getKey(),
-                List.of(KbPageStatus.PUBLISHED, KbPageStatus.HIDDEN)).size());
+            int pageCount = Math.max(fileCount + 1, snap.pageCount(e.getKey()));
             lines.add(line(s, "PLAN", e.getKey(), 1, OVERHEAD + 1500 + (long) DIGEST_TOKENS_PER_FILE * fileCount,
                 ratios, cache));
             long perWrite = OVERHEAD + 1500 + 100L * pageCount + Math.min(12_000, (long) (chars / 3.5 / pageCount))
@@ -388,10 +458,9 @@ public class KbForecastService {
     }
 
     // The token profile of the median recent scheduled run, re-priced with `s`.
-    private List<Line> historyProfile(KbEffectiveSettings s) {
+    private List<Line> historyProfile(KbEffectiveSettings s, Map<String, KbModel> catalog) {
         var recent = recentScheduled();
         if (recent.isEmpty()) return List.of();
-        var catalog = catalog();
         Map<UUID, List<Line>> byRun = new HashMap<>();
         for (var u : usage.findByRunIdIn(recent.stream().map(KbRun::getId).toList())) {
             byRun.computeIfAbsent(u.getRunId(), k -> new ArrayList<>()).add(reprice(u, s));
