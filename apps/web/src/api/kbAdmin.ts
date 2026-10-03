@@ -129,10 +129,25 @@ export interface SettingsHistoryEntry {
   note?: string | null
 }
 
-export const fetchSettings = () => apiGet<KbSettings>(`${BASE}/settings`)
+// The API wraps settings as { settings, source, updatedAt, updatedBy, costImpact };
+// the admin UI works on a flat KbSettings with `source` alongside.
+type SettingsEnvelope = {
+  settings?: KbSettings
+  source?: KbSettings['source']
+  costImpact?: unknown
+}
+
+function unwrapSettings(res: SettingsEnvelope | KbSettings): KbSettings & { costImpact?: unknown } {
+  if (res && typeof res === 'object' && 'settings' in res && res.settings) {
+    return { ...res.settings, source: res.source, costImpact: res.costImpact }
+  }
+  return res as KbSettings
+}
+
+export const fetchSettings = () => apiGet<SettingsEnvelope>(`${BASE}/settings`).then(unwrapSettings)
 
 export function saveSettings(body: SettingsBody): Promise<KbSettings & { costImpact?: unknown }> {
-  return apiSend('PUT', `${BASE}/settings`, body)
+  return apiSend<SettingsEnvelope>('PUT', `${BASE}/settings`, body).then(unwrapSettings)
 }
 
 // Not in the contract yet: cost impact of a settings change without saving
@@ -144,7 +159,7 @@ export function previewSettingsImpact(body: SettingsBody): Promise<{ costImpact?
 export const fetchSettingsHistory = () => apiGet<SettingsHistoryEntry[]>(`${BASE}/settings/history`)
 
 export function restoreSettings(id: string): Promise<KbSettings> {
-  return apiSend('POST', `${BASE}/settings/history/${enc(id)}/restore`)
+  return apiSend<SettingsEnvelope>('POST', `${BASE}/settings/history/${enc(id)}/restore`).then(unwrapSettings)
 }
 
 // ── Model catalog ────────────────────────────────────────────────────────
