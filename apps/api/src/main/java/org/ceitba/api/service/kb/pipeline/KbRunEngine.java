@@ -88,7 +88,7 @@ public class KbRunEngine {
     // Per run: "advance again" requests that arrived while it was advancing.
     private final java.util.concurrent.ConcurrentHashMap<UUID, AtomicBoolean> again =
         new java.util.concurrent.ConcurrentHashMap<>();
-    static final java.time.Duration LEASE = java.time.Duration.ofMinutes(3);
+    public static final java.time.Duration LEASE = java.time.Duration.ofMinutes(3);
     static final java.time.Duration LEASE_RENEW = java.time.Duration.ofSeconds(60);
     private final Object recordLock = new Object();
 
