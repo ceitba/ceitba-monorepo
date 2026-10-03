@@ -380,9 +380,9 @@ public class KbPipelineService implements KbRunHandler {
                     }
                 }
                 if (run.isDryRun()) {
-                    active.forEach(rs -> rs.setStatus("DRY"));
+                    active.forEach(rs -> { if (rs.isActive()) rs.setStatus("DRY"); });
                     run.setStage("DONE");
-                    run.finish("SUCCEEDED", now());
+                    run.finish(outcome(run.getId()), now());
                 } else {
                     run.setStage("WRITE");
                 }
@@ -440,11 +440,20 @@ public class KbPipelineService implements KbRunHandler {
         engine.inTxVoid(() -> {
             var run = runs.findById(runId).orElseThrow();
             run.setStage("DONE");
-            run.finish("SUCCEEDED", now());
+            run.finish(outcome(runId), now());
             refreshSummary(run);
             log.info("KB pipeline: run {} done ({} in / {} out tokens, US${})", runId, run.getTokensIn(),
                 run.getTokensOut(), run.getCostEstimate());
         });
+    }
+
+    // FAILED when every subject the run worked on failed, PARTIAL when some
+    // did, else SUCCEEDED (deferred and cancelled subjects don't count).
+    private String outcome(UUID runId) {
+        var worked = runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(runId).stream()
+            .filter(rs -> !List.of("DEFERRED", "CANCELLED").contains(rs.getStatus())).toList();
+        long failed = worked.stream().filter(rs -> rs.getStatus().equals("FAILED")).count();
+        return KbRunOutcome.status(worked.size(), failed);
     }
 
     // ==== building requests ==========================================================
@@ -1070,7 +1079,7 @@ public class KbPipelineService implements KbRunHandler {
                 j.getStatus(), j.getRequestCount(), j.getDoBatchId(), j.getPayloadKey(), j.getOutputKey(),
                 j.getTokensIn(), j.getTokensOut(), j.getTokensCached(), j.getCostEstimate(), usd(j.getCostEstimate()),
                 j.getSubmittedAt(),
-                j.getCompletedAt(), j.getError()))
+                j.getCompletedAt(), j.getError(), j.getNextAttemptAt()))
             .toList();
     }
 

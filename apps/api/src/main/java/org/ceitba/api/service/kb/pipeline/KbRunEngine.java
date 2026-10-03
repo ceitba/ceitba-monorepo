@@ -9,6 +9,7 @@ import org.ceitba.api.domain.kb.KbBatchJob;
 import org.ceitba.api.domain.kb.KbRun;
 import org.ceitba.api.domain.kb.KbRunRequest;
 import org.ceitba.api.domain.kb.KbRunSubjectId;
+import org.ceitba.api.external.llm.DoBatchErrors;
 import org.ceitba.api.external.llm.LlmApiException;
 import org.ceitba.api.external.llm.LlmBatchClient;
 import org.ceitba.api.external.llm.LlmOutputParser;
@@ -72,6 +73,7 @@ public class KbRunEngine {
     private final List<KbRunHandler> handlers;
     private final KbLlmRouter router;
     private final BatchLlmExecutor batch;
+    private final KbBatchSubmitter submitter;
     private final SyncLlmExecutor sync;
     private final KbUsageRecorder usage;
     private final KbSettingsService settings;
@@ -89,7 +91,7 @@ public class KbRunEngine {
 
     public KbRunEngine(KbRunRepository runs, KbBatchJobRepository jobs, KbRunRequestRepository requests,
                        KbRunSubjectRepository runSubjects, @Lazy List<KbRunHandler> handlers, KbLlmRouter router,
-                       BatchLlmExecutor batch, SyncLlmExecutor sync, KbUsageRecorder usage,
+                       BatchLlmExecutor batch, KbBatchSubmitter submitter, SyncLlmExecutor sync, KbUsageRecorder usage,
                        KbSettingsService settings, KbCostService costs, ObjectStorage storage,
                        TransactionTemplate tx, ObjectMapper json, Clock clock) {
         this.runs = runs;
@@ -99,6 +101,7 @@ public class KbRunEngine {
         this.handlers = handlers;
         this.router = router;
         this.batch = batch;
+        this.submitter = submitter;
         this.sync = sync;
         this.usage = usage;
         this.settings = settings;
@@ -253,7 +256,7 @@ public class KbRunEngine {
         return inTx(() -> {
             var r = runs.findById(runId).orElseThrow();
             for (var j : jobs.findByRunIdOrderByCreatedAtAsc(runId)) {
-                if (j.getStatus().equals("SUBMITTED")) j.setStatus("CANCELLED");
+                if (j.getStatus().equals("SUBMITTED") || j.getStatus().equals("QUEUED")) j.setStatus("CANCELLED");
             }
             for (var s : runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(runId)) {
                 if (s.isActive()) s.setStatus("CANCELLED");
@@ -298,14 +301,22 @@ public class KbRunEngine {
             submit(runId, stage, 1, dry);
             return true;
         }
-        var open = stageJobs.stream().filter(j -> j.getStatus().equals("SUBMITTED")).toList();
+        var open = stageJobs.stream().filter(j -> j.getStatus().equals("SUBMITTED") || j.getStatus().equals("QUEUED"))
+            .toList();
         if (!open.isEmpty()) {
             boolean allDone = true;
             // Sync jobs (one per model) resume together, sharing the concurrency.
-            var openSync = open.stream().filter(j -> j.getMode().equals("SYNC")).map(KbBatchJob::getId).toList();
+            var openSync = open.stream().filter(j -> j.getMode().equals("SYNC") && j.getStatus().equals("SUBMITTED"))
+                .map(KbBatchJob::getId).toList();
             if (!openSync.isEmpty()) runSyncJobs(openSync);
             for (var job : open) {
                 if (job.getMode().equals("SYNC")) continue;
+                if (job.getStatus().equals("QUEUED")) {
+                    // Created before DO was called; a refused creation waits for nextAttemptAt.
+                    var outcome = submitter.submitQueued(job.getId());
+                    if (outcome != KbBatchSubmitter.Outcome.FAILED) allDone = false;
+                    continue;
+                }
                 var info = batch.poll(job.getDoBatchId());
                 observe(job.getId(), info);
                 if (info.finished()) collectBatch(job.getId(), info);
@@ -402,25 +413,20 @@ public class KbRunEngine {
             var key = "kb/runs/" + runId + "/" + stage.toLowerCase(Locale.ROOT)
                 + (attempt > 1 ? "-" + attempt : "") + (byModel.size() > 1 ? "-" + n : "") + ".jsonl";
             storage.put(key, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
+            var ids = lines.stream().map(LlmLine::customId).toList();
+            if (!dry && mode.equals("BATCH")) {
+                // The row first (own transaction, unique per stage/attempt/model), then DO.
+                var queued = submitter.queue(runId, stage, attempt, model, ids, key);
+                if (queued != null) submitter.submitQueued(queued.getId());
+                continue;
+            }
             var job = inTx(() -> jobs.save(new KbBatchJob(runId, stage, attempt, model, mode, lines.size(), key)));
             if (dry) continue;
-            var ids = lines.stream().map(LlmLine::customId).toList();
-            if (mode.equals("BATCH")) {
-                var submitted = batch.submit(key.replace('/', '_'), model, lines, job.getId().toString());
-                inTxVoid(() -> {
-                    jobs.findById(job.getId()).orElseThrow().submitted(submitted.fileId(), submitted.batchId(), now());
-                    requests.findAllById(ids).forEach(r -> r.submitted(job.getId()));
-                    runs.findById(runId).ifPresent(r -> r.setStatus("RUNNING"));
-                });
-                log.info("KB run {} {} batch {} submitted ({} requests, {})", runId, stage, submitted.batchId(),
-                    lines.size(), model);
-            } else {
-                inTxVoid(() -> {
-                    jobs.findById(job.getId()).orElseThrow().submitted(null, null, now());
-                    requests.findAllById(ids).forEach(r -> r.submitted(job.getId()));
-                });
-                syncJobs.add(job.getId());
-            }
+            inTxVoid(() -> {
+                jobs.findById(job.getId()).orElseThrow().submitted(null, null, now());
+                requests.findAllById(ids).forEach(r -> r.submitted(job.getId()));
+            });
+            syncJobs.add(job.getId());
         }
         // Every model's sync job of the stage runs at once (one shared pool).
         if (!syncJobs.isEmpty()) runSyncJobs(syncJobs);
@@ -510,20 +516,42 @@ public class KbRunEngine {
                 new ByteArrayInputStream(errors), errors.length);
         }
         var key = outKey;
+        var status = switch (info.status()) {
+            case "completed" -> "COMPLETED";
+            case "cancelled" -> "CANCELLED";
+            default -> "FAILED";
+        };
+        var error = status.equals("COMPLETED") ? null : batchError(info);
+        // A batch refused as a whole (e.g. DO's JSONL model validation) is not
+        // resubmitted: the same file would fail the same way.
+        boolean permanent = status.equals("FAILED") && info.errorMessage() != null
+            && DoBatchErrors.classifyFailure(info.errorMessage()) != DoBatchErrors.Kind.RATE_LIMITED
+            && collected.results().isEmpty();
         inTxVoid(() -> {
             for (var r : requests.findByBatchJobId(jobId)) {
                 var res = collected.results().get(r.getCustomId());
                 if (res != null) record(job.getRunId(), jobId, "BATCH", res, null);
+                else if (error != null && r.getStatus().equals("SUBMITTED")) {
+                    if (permanent) r.failed(error);
+                    else r.setError(error);
+                }
             }
-            var status = switch (info.status()) {
-                case "completed" -> "COMPLETED";
-                case "cancelled" -> "CANCELLED";
-                default -> "FAILED";
-            };
-            jobs.findById(jobId).orElseThrow().finish(status, key, now(), status.equals("COMPLETED") ? null : info.status());
-            runs.findById(job.getRunId()).ifPresent(r -> r.setStatus("RUNNING"));
+            jobs.findById(jobId).orElseThrow().finish(status, key, now(), error);
+            runs.findById(job.getRunId()).ifPresent(r -> {
+                r.setStatus("RUNNING");
+                if (permanent) r.setError(error + " (" + job.getStage() + ", " + job.getModel() + ")");
+            });
         });
-        log.info("KB run {} {} batch {} {}", job.getRunId(), job.getStage(), info.id(), info.status());
+        log.info("KB run {} {} batch {} {}{}", job.getRunId(), job.getStage(), info.id(), info.status(),
+            error == null ? "" : ": " + error);
+    }
+
+    // DO's error_message of a batch that did not complete (else its status).
+    static String batchError(LlmBatchClient.BatchInfo info) {
+        if (info.errorMessage() != null && !info.errorMessage().isBlank()) {
+            return "DigitalOcean batch " + info.status() + ": " + info.errorMessage();
+        }
+        return "DigitalOcean batch " + info.status();
     }
 
     // Keeps DO's status and request_counts of a polled batch (progress).

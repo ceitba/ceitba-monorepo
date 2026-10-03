@@ -17,7 +17,8 @@ import java.util.UUID;
 
 // One pipeline run or eval (V33 + V35; trigger SCHEDULED | MANUAL | EVAL).
 // status: RUNNING (working), WAITING (a DO batch is out),
-// BLOCKED_BY_COST_LIMIT (waits for approve-cost), SUCCEEDED, FAILED,
+// BLOCKED_BY_COST_LIMIT (waits for approve-cost), SUCCEEDED, PARTIAL (some
+// subjects/configs failed; V38), FAILED (all failed),
 // CANCELLED. stage: DETECT, DIGEST, PLAN, WRITE, RETRY, PUBLISH|REPORT, DONE.
 @Entity
 @Table(schema = "wiki", name = "kb_run")

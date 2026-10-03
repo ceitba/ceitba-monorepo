@@ -32,7 +32,7 @@ public final class KbEvalDtos {
 
     public record PageResult(String slug, String title, boolean valid, boolean firstPassValid, List<String> errors) {}
 
-    // status: RUNNING | WAITING | SUCCEEDED | FAILED | CANCELLED; stage of the
+    // status: RUNNING | WAITING | SUCCEEDED | PARTIAL (some configs failed) | FAILED (all) | CANCELLED; stage of the
     // underlying run. sharedDigest: digests computed for the set (not per config).
     // progress (detail only): the run's progress, DIGEST shared by all
     // configurations. reviewSummary: once the eval succeeded, the review

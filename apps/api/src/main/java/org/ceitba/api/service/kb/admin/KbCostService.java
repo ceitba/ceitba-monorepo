@@ -148,7 +148,7 @@ public class KbCostService {
         byModel.replaceAll((k, v) -> usd(v));
         double ratio = input == 0 ? 0 : (double) cached / input;
         var accuracy = runs.findByTriggerNotOrderByStartedAtDesc("EVAL", PageRequest.of(0, 30)).stream()
-            .filter(r -> r.getStatus().equals("SUCCEEDED") && r.getExpectedCostUsd() != null)
+            .filter(r -> org.ceitba.api.service.kb.pipeline.KbRunOutcome.completed(r.getStatus()) && r.getExpectedCostUsd() != null)
             .limit(8)
             .map(r -> new KbCostSummaryResponse.RunAccuracy(r.getId(), r.getStartedAt(), r.getTrigger(),
                 usd(r.getExpectedCostUsd()), usd(r.getCostEstimate())))

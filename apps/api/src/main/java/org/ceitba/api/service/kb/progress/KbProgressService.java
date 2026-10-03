@@ -102,7 +102,8 @@ public class KbProgressService {
             boolean has = c != null && c.has("total");
             return new KbProgressMath.Job(j.getStage(), j.getMode(), j.getStatus(), j.getDoStatus(),
                 has ? c.path("total").asInt() : null, has ? c.path("completed").asInt() : null,
-                has ? c.path("failed").asInt() : null, j.getSubmittedAt(), j.getStatusChangedAt(), j.getCompletedAt());
+                has ? c.path("failed").asInt() : null, j.getSubmittedAt(), j.getStatusChangedAt(), j.getCompletedAt(),
+                j.getNextAttemptAt(), j.getError());
         }).toList();
     }
 

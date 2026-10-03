@@ -23,7 +23,8 @@ import java.util.UUID;
 //     the task executor, one task per run (a long sync stage of one run
 //     never delays another); sync stages flow straight into the next stage
 //   - batch poller, every KB_BATCH_POLL_INTERVAL (PT1M): only runs with a
-//     SUBMITTED DO batch (and pending batch probes)
+//     SUBMITTED DO batch or a QUEUED one whose rate-limited creation is due
+//     (nextAttemptAt), and pending batch probes (likewise)
 //   - safety sweep, every KB_POLL_INTERVAL (PT10M) and at startup: kicks
 //     every active run, resuming whatever a restart interrupted
 //   - every minute: the weekly cron (only when enabled in the settings)
@@ -41,10 +42,12 @@ public class KbPipelineJob {
     private final KbEvalService evals;
     private final KbBatchJobRepository jobs;
     private final TaskExecutor executor;
+    private final java.time.Clock clock;
 
     public KbPipelineJob(KbRunEngine engine, KbPipelineService pipeline, KbModelCatalogService catalog,
                          KbEvalService evals, KbBatchJobRepository jobs,
-                         @Qualifier("applicationTaskExecutor") TaskExecutor executor) {
+                         @Qualifier("applicationTaskExecutor") TaskExecutor executor, java.time.Clock clock) {
+        this.clock = clock;
         this.engine = engine;
         this.pipeline = pipeline;
         this.catalog = catalog;
@@ -72,7 +75,7 @@ public class KbPipelineJob {
     @Scheduled(fixedDelayString = "${kb.pipeline.batch-poll-interval:PT1M}", initialDelayString = "PT30S")
     public void pollBatches() {
         try {
-            jobs.runsWithOpenBatches().forEach(this::kick);
+            jobs.runsWithOpenBatches(java.time.OffsetDateTime.now(clock)).forEach(this::kick);
         } catch (RuntimeException e) {
             log.warn("KB batch poll failed: {}", e.getMessage());
         }

@@ -99,10 +99,44 @@ public class DoBatchClient implements LlmBatchClient {
         call("POST", "/v1/batches/" + batchId + "/cancel", Map.of());
     }
 
-    private BatchInfo info(JsonNode node) {
+    @Override
+    public java.util.Optional<BatchInfo> findByRequestId(String requestId) {
+        if (requestId == null) return java.util.Optional.empty();
+        var node = call("GET", "/v1/batches", null);
+        for (var item : batchList(node)) {
+            if (requestId.equals(text(item, "request_id"))) return java.util.Optional.of(info(item));
+        }
+        return java.util.Optional.empty();
+    }
+
+    // GET /v1/batches: {edges: [{node: {...}}], page_info} (also data[] / batches[]).
+    static java.util.List<JsonNode> batchList(JsonNode node) {
+        var out = new java.util.ArrayList<JsonNode>();
+        for (var e : node.path("edges")) out.add(e.has("node") ? e.path("node") : e);
+        for (var key : java.util.List.of("data", "batches")) {
+            if (node.path(key).isArray()) node.path(key).forEach(out::add);
+        }
+        return out;
+    }
+
+    static BatchInfo info(JsonNode node) {
         var id = text(node, "id", "batch_id");
         var status = text(node, "status");
-        return new BatchInfo(id, status == null ? null : status.toLowerCase(java.util.Locale.ROOT), node.toString());
+        return new BatchInfo(id, status == null ? null : status.toLowerCase(java.util.Locale.ROOT), node.toString(),
+            errorMessage(node));
+    }
+
+    // error_message, else errors.data[0].message / error.message / error.
+    static String errorMessage(JsonNode node) {
+        var m = text(node, "error_message");
+        if (m != null) return m;
+        var first = node.path("errors").path("data").path(0);
+        if (first.hasNonNull("message")) return first.path("message").asText();
+        var err = node.path("error");
+        if (err.hasNonNull("message")) return err.path("message").asText();
+        if (err.isTextual() && !err.asText().isBlank()) return err.asText();
+        var data = node.path("data");
+        return data.isObject() ? errorMessage(data) : null;
     }
 
     private JsonNode call(String method, String path, Object body) {

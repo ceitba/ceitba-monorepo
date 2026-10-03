@@ -22,6 +22,25 @@ public final class KbChatPayloads {
         return null;
     }
 
+    // The model id batch JSONL lines use when the catalog has none: DO's
+    // batch API takes native provider ids (gpt-6-luna, claude-haiku-4.5)
+    // where serverless chat takes the catalog id (openai-gpt-6-luna).
+    public static String defaultBatchModelId(String model) {
+        if (model == null) return null;
+        for (var prefix : new String[]{"openai-", "anthropic-"}) {
+            if (model.startsWith(prefix) && model.length() > prefix.length()) return model.substring(prefix.length());
+        }
+        return model;
+    }
+
+    // The other form of a batch model id (native <-> prefixed catalog id),
+    // or null when the catalog id has no provider prefix.
+    public static String otherBatchModelId(String catalogId, String tried) {
+        var nativeId = defaultBatchModelId(catalogId);
+        if (nativeId == null || nativeId.equals(catalogId)) return null;
+        return catalogId.equals(tried) ? nativeId : catalogId;
+    }
+
     // Default batch rule (ADMIN doc §7): commercial OpenAI/Anthropic models
     // only; DO-hosted open-weight models (GLM, DeepSeek, Qwen, Kimi, gpt-oss,
     // Llama...) have none. A batch probe overrides it in the catalog.
@@ -31,20 +50,31 @@ public final class KbChatPayloads {
         return model.startsWith("openai-") && !model.contains("gpt-oss") && !model.contains("llama");
     }
 
-    // One batch JSONL line in the provider's format.
-    public static ObjectNode batchLine(String customId, JsonNode params, String provider, ObjectMapper json) {
+    // One batch JSONL line in the provider's format; batchModelId replaces
+    // the catalog id of params.model (null keeps it).
+    public static ObjectNode batchLine(String customId, JsonNode params, String provider, String batchModelId,
+                                       ObjectMapper json) {
         var line = json.createObjectNode();
         line.put("custom_id", customId);
         if ("openai".equals(provider)) {
             line.put("method", "POST");
             line.put("url", CHAT_ENDPOINT);
-            line.set("body", chatBody(params, false, json));
+            var body = chatBody(params, false, json);
+            if (batchModelId != null) body.put("model", batchModelId);
+            line.set("body", body);
         } else {
             var p = params.deepCopy();
-            if (p instanceof ObjectNode o) o.remove("reasoning_effort");   // not an Anthropic Messages field
+            if (p instanceof ObjectNode o) {
+                o.remove("reasoning_effort");   // not an Anthropic Messages field
+                if (batchModelId != null) o.put("model", batchModelId);
+            }
             line.set("params", p);
         }
         return line;
+    }
+
+    public static ObjectNode batchLine(String customId, JsonNode params, String provider, ObjectMapper json) {
+        return batchLine(customId, params, provider, null, json);
     }
 
     // OpenAI-compatible chat completion body. jsonObjectFallback: no tools,

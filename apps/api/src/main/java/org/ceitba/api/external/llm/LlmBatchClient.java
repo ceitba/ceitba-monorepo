@@ -31,11 +31,24 @@ public interface LlmBatchClient {
     // POST /v1/batches/{id}/cancel.
     void cancel(String batchId);
 
+    // The batch created with this request_id, if DO lists one (GET
+    // /v1/batches: {edges: [{node: {...}}], page_info}); used before
+    // re-creating a batch whose creation got no clear answer.
+    default java.util.Optional<BatchInfo> findByRequestId(String requestId) {
+        return java.util.Optional.empty();
+    }
+
     record FileUpload(String fileId, String uploadUrl) {}
 
     // status: validating | queued | in_progress | completed | failed |
     // cancelling | cancelled | expired (lowercase, as DO reports it).
-    record BatchInfo(String id, String status, String raw) {
+    // errorMessage: DO's error_message (e.g. 'JSONL model validation failed:
+    // ...'), null when none.
+    record BatchInfo(String id, String status, String raw, String errorMessage) {
+
+        public BatchInfo(String id, String status, String raw) {
+            this(id, status, raw, null);
+        }
 
         public boolean finished() {
             return switch (status == null ? "" : status) {

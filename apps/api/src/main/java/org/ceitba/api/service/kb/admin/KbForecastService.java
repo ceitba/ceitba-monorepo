@@ -368,7 +368,7 @@ public class KbForecastService {
 
     private List<KbRun> recentScheduled() {
         return runs.findByTriggerNotOrderByStartedAtDesc("EVAL", PageRequest.of(0, 50)).stream()
-            .filter(r -> r.getTrigger().equals("SCHEDULED") && r.getStatus().equals("SUCCEEDED"))
+            .filter(r -> r.getTrigger().equals("SCHEDULED") && org.ceitba.api.service.kb.pipeline.KbRunOutcome.completed(r.getStatus()))
             .limit(8)
             .toList();
     }

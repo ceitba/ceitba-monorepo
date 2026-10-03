@@ -41,6 +41,14 @@ public class KbLlmRouter {
             .orElseGet(() -> KbChatPayloads.batchByRule(model));
     }
 
+    // The model id batch JSONL lines carry: the catalog's batchModelId, else
+    // the catalog id without its openai-/anthropic- prefix. Sync requests
+    // keep the catalog id.
+    public String batchModelId(String model) {
+        return models.findById(model).map(org.ceitba.api.domain.kb.KbModel::getBatchModelId)
+            .orElseGet(() -> KbChatPayloads.defaultBatchModelId(model));
+    }
+
     public String modeFor(String model, String executionMode) {
         var mode = executionMode == null ? props.executionMode() : executionMode.toLowerCase(Locale.ROOT);
         boolean batchCapable = batchSupported(model);

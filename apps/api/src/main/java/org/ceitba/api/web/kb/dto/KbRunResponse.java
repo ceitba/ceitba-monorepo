@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 // A pipeline run. status: RUNNING | WAITING (a DO batch is out) |
-// BLOCKED_BY_COST_LIMIT (approve-cost) | SUCCEEDED | FAILED | CANCELLED;
+// BLOCKED_BY_COST_LIMIT (approve-cost) | SUCCEEDED | PARTIAL (some subjects failed) | FAILED (all
+// failed) | CANCELLED;
 // costUsd (= costEstimate): recorded usage at the catalog prices of the run;
 // expectedCostUsd: the forecast when the run was detected;
 // costByStage: {DIGEST, PLAN, WRITE, RETRY} (detail only);

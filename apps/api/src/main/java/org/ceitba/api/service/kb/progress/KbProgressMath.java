@@ -48,9 +48,28 @@ public final class KbProgressMath {
         }
     }
 
+    // status QUEUED: created before DO was called; nextAttemptAt/error when
+    // its creation was refused (error RATE_LIMITED: ... for a 429).
     public record Job(String stage, String mode, String status, String doStatus, Integer countTotal,
                       Integer countCompleted, Integer countFailed, OffsetDateTime submittedAt,
-                      OffsetDateTime statusChangedAt, OffsetDateTime completedAt) {}
+                      OffsetDateTime statusChangedAt, OffsetDateTime completedAt, OffsetDateTime nextAttemptAt,
+                      String error) {
+
+        public Job(String stage, String mode, String status, String doStatus, Integer countTotal,
+                   Integer countCompleted, Integer countFailed, OffsetDateTime submittedAt,
+                   OffsetDateTime statusChangedAt, OffsetDateTime completedAt) {
+            this(stage, mode, status, doStatus, countTotal, countCompleted, countFailed, submittedAt, statusChangedAt,
+                completedAt, null, null);
+        }
+
+        boolean open() {
+            return mode.equals("BATCH") && (status.equals("SUBMITTED") || status.equals("QUEUED"));
+        }
+
+        boolean rateLimited() {
+            return status.equals("QUEUED") && nextAttemptAt != null && error != null;
+        }
+    }
 
     // stage: the run's stage (DETECT, DIGEST..RETRY, PUBLISH, REPORT, DONE).
     // expectedPlan: PLAN requests known up front (subjects, x configs for
@@ -85,7 +104,7 @@ public final class KbProgressMath {
         // Where the run is (failed/cancelled runs: the stage they stopped at).
         int cur = index(run.stage());
         boolean ended = !run.active();
-        boolean succeeded = run.status().equals("SUCCEEDED");
+        boolean succeeded = run.status().equals("SUCCEEDED") || run.status().equals("PARTIAL");
         if (succeeded) cur = 7;
 
         var stages = new ArrayList<KbProgressResponse.Stage>();
@@ -97,10 +116,10 @@ public final class KbProgressMath {
             var list = byStage.getOrDefault(s, List.of());
             var stageJobs = jobs.stream().filter(j -> j.stage().equals(s)).toList();
             var batchJob = stageJobs.stream().filter(j -> j.mode().equals("BATCH"))
-                .max(Comparator.comparing(j -> j.submittedAt() == null ? OffsetDateTime.MIN : j.submittedAt()))
+                .max(Comparator.comparing(j -> j.submittedAt() == null ? OffsetDateTime.MAX : j.submittedAt()))
                 .orElse(null);
             String mode = stageJobs.isEmpty() ? null : stageJobs.get(stageJobs.size() - 1).mode().toLowerCase();
-            boolean openBatch = stageJobs.stream().anyMatch(j -> j.mode().equals("BATCH") && j.status().equals("SUBMITTED"));
+            boolean openBatch = stageJobs.stream().anyMatch(Job::open);
 
             Integer total;
             int done;
@@ -175,7 +194,8 @@ public final class KbProgressMath {
             }
             var batch = batchJob == null ? null : new KbProgressResponse.Batch(batchJob.doStatus(),
                 batchJob.countTotal() == null ? null : new KbProgressResponse.RequestCounts(batchJob.countTotal(),
-                    nz(batchJob.countCompleted()), nz(batchJob.countFailed())), batchJob.submittedAt());
+                    nz(batchJob.countCompleted()), nz(batchJob.countFailed())), batchJob.submittedAt(),
+                batchJob.status(), batchJob.error(), batchJob.nextAttemptAt());
             stages.add(new KbProgressResponse.Stage(s, status, total, done, failed, inFlight,
                 LLM.contains(s) ? mode : null, batch, startedAt, finishedAt));
 
@@ -198,7 +218,8 @@ public final class KbProgressMath {
             && Duration.between(lastActivity, now).compareTo(batchWait ? BATCH_STALL : SYNC_STALL) > 0;
         Long eta = run.active() && !batchWait && !run.status().equals("BLOCKED_BY_COST_LIMIT")
             ? eta(rows, stages, run, byStage, concurrency) : null;
-        return new KbProgressResponse(stages, overall, current(run, currentStage, byStage), eta, lastActivity, stalled);
+        return new KbProgressResponse(stages, overall, current(run, currentStage, byStage, jobs), eta, lastActivity,
+            stalled);
     }
 
     // {done, total} in estimated tokens for one LLM stage.
@@ -287,9 +308,16 @@ public final class KbProgressMath {
         return times.stream().filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
     }
 
+    static final java.time.format.DateTimeFormatter HH_MM = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+
     static String current(Run run, KbProgressResponse.Stage st, Map<String, List<Row>> byStage) {
+        return current(run, st, byStage, List.of());
+    }
+
+    static String current(Run run, KbProgressResponse.Stage st, Map<String, List<Row>> byStage, List<Job> jobs) {
         switch (run.status()) {
             case "SUCCEEDED" -> { return "Terminado"; }
+            case "PARTIAL" -> { return "Terminado con fallas" + (run.error() == null ? "" : ": " + run.error()); }
             case "CANCELLED" -> { return "Cancelado"; }
             case "FAILED" -> { return "Falló en " + stageName(run.stage()) + (run.error() == null ? "" : ": " + run.error()); }
             case "BLOCKED_BY_COST_LIMIT" -> { return "Bloqueado por el límite de costo semanal: requiere aprobación"; }
@@ -304,7 +332,19 @@ public final class KbProgressMath {
             .append(st.total() == null ? "por determinar" : st.total()).append(')');
         var models = models(byStage.getOrDefault(st.stage(), List.of()), r -> true);
         if (!models.isEmpty()) line.append(" con ").append(models);
-        if (st.status().equals("waiting_batch")) line.append(": esperando el lote de DigitalOcean");
+        if (st.status().equals("waiting_batch")) {
+            var limited = jobs.stream().filter(j -> j.stage().equals(st.stage()) && j.rateLimited())
+                .map(Job::nextAttemptAt).min(Comparator.naturalOrder()).orElse(null);
+            if (limited != null) {
+                var at = limited.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE).format(HH_MM);
+                boolean rate = jobs.stream().anyMatch(j -> j.stage().equals(st.stage()) && j.rateLimited()
+                    && j.error().startsWith("RATE_LIMITED"));
+                line.append(rate ? ": DigitalOcean limitó la creación de lotes; reintento a las "
+                    : ": DigitalOcean no respondió al crear el lote; reintento a las ").append(at);
+            } else {
+                line.append(": esperando el lote de DigitalOcean");
+            }
+        }
         return line.toString();
     }
 
@@ -341,7 +381,8 @@ public final class KbProgressMath {
         var byStage = rows.stream().collect(Collectors.groupingBy(Row::stage));
         var cfgRun = new Run(run.eval(), run.stage(), run.status(), run.dryRun(), run.startedAt(), run.finishedAt(),
             run.stageLog(), expectedPlan, 0, 0, 0, run.error());
-        int cur = run.status().equals("SUCCEEDED") ? 7 : index(run.stage());
+        boolean completed = run.status().equals("SUCCEEDED") || run.status().equals("PARTIAL");
+        int cur = completed ? 7 : index(run.stage());
         for (var s : List.of("PLAN", "WRITE", "RETRY")) {
             var list = byStage.getOrDefault(s, List.of());
             if (list.isEmpty() && (index(s) < cur || !run.active())) continue;   // passed with nothing
@@ -350,8 +391,8 @@ public final class KbProgressMath {
             done += w[0];
             total += w[1];
         }
-        if (run.status().equals("SUCCEEDED")) done = total;
-        double percent = total == 0 ? (run.status().equals("SUCCEEDED") ? 100 : 0)
+        if (completed) done = total;
+        double percent = total == 0 ? (completed ? 100 : 0)
             : Math.min(100, Math.round(done * 1000.0 / total) / 10.0);
         return new KbProgressResponse.Overall(done, total, percent);
     }

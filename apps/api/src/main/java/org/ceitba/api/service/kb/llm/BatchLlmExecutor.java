@@ -27,17 +27,26 @@ public class BatchLlmExecutor {
 
     public record Collected(Map<String, LlmOutputParser.LlmResult> results, byte[] output, byte[] errors) {}
 
-    public Submitted submit(String name, String model, List<LlmLine> lines, String requestId) {
+    // model: the catalog id (decides the provider); batchModelId: the id the
+    // JSONL lines carry (KbLlmRouter.batchModelId).
+    public Submitted submit(String name, String model, String batchModelId, List<LlmLine> lines, String requestId) {
         var provider = KbChatPayloads.batchProvider(model);
         if (provider == null) throw new LlmApiException(0, model + " has no batch support");
         var sb = new StringBuilder();
-        for (var l : lines) sb.append(KbChatPayloads.batchLine(l.customId(), l.params(), provider, json)).append('\n');
+        for (var l : lines) {
+            sb.append(KbChatPayloads.batchLine(l.customId(), l.params(), provider, batchModelId, json)).append('\n');
+        }
         var bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
         var file = client.createFile(name);
         client.upload(file.uploadUrl(), bytes);
         var info = client.createBatch(file.fileId(), requestId, provider,
             "openai".equals(provider) ? KbChatPayloads.CHAT_ENDPOINT : null);
         return new Submitted(file.fileId(), info.id());
+    }
+
+    // The batch DO created for this request_id earlier, if it lists one.
+    public java.util.Optional<LlmBatchClient.BatchInfo> findByRequestId(String requestId) {
+        return client.findByRequestId(requestId);
     }
 
     public LlmBatchClient.BatchInfo poll(String batchId) {

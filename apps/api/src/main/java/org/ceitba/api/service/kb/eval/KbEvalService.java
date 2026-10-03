@@ -471,7 +471,8 @@ public class KbEvalService implements KbRunHandler {
         }
         Long duration = e.getFinishedAt() == null ? null : Duration.between(e.getCreatedAt(), e.getFinishedAt()).toSeconds();
         var runProgress = full ? progress.progress(e.getId()) : null;
-        var review = full && run.getStatus().equals("SUCCEEDED") ? reviewProgress(e, viewer) : null;
+        var review = full && org.ceitba.api.service.kb.pipeline.KbRunOutcome.completed(run.getStatus())
+            ? reviewProgress(e, viewer) : null;
         return new KbEvalDtos.Eval(e.getId(), e.getSetId(), set == null ? null : set.getName(), run.getStatus(),
             run.getStage(), e.getNote(), e.getCreatedAt(), e.getFinishedAt(), duration, run.getTokensIn(),
             run.getTokensOut(), usd(run.getCostEstimate()), run.isSimulated(), run.getError(),
@@ -487,7 +488,7 @@ public class KbEvalService implements KbRunHandler {
         switch (run.getStatus()) {
             case "CANCELLED" -> { return "cancelled"; }
             case "FAILED" -> { return "failed"; }
-            case "SUCCEEDED" -> { return "done"; }
+            case "SUCCEEDED", "PARTIAL" -> { return "done"; }
             default -> { }
         }
         return switch (run.getStage()) {
@@ -954,7 +955,18 @@ public class KbEvalService implements KbRunHandler {
             eval.setResults(results);
             eval.finish(OffsetDateTime.now(clock));
             run.setStage("DONE");
-            run.finish("SUCCEEDED", OffsetDateTime.now(clock));
+            // FAILED when every configuration failed, PARTIAL when some did.
+            int total = 0;
+            int failed = 0;
+            for (var c : configsOf(eval)) {
+                total++;
+                if (results.path("configs").path(c.key()).path("status").asText().equals("FAILED")) failed++;
+            }
+            var outcome = org.ceitba.api.service.kb.pipeline.KbRunOutcome.status(total, failed);
+            if (!outcome.equals("SUCCEEDED") && run.getError() == null) {
+                run.setError(failed + " of " + total + " configurations failed");
+            }
+            run.finish(outcome, OffsetDateTime.now(clock));
             log.info("KB eval {} done", runId);
         });
     }
@@ -1259,7 +1271,7 @@ public class KbEvalService implements KbRunHandler {
                 : sets.findByName(DEFAULT_SET).orElse(null);
             if (set == null) return new KbEvalDtos.Leaderboard(null, null, List.of());
             var done = evals.findBySetIdOrderByCreatedAtAsc(set.getId()).stream()
-                .filter(e -> runs.findById(e.getId()).map(r -> r.getStatus().equals("SUCCEEDED")).orElse(false))
+                .filter(e -> runs.findById(e.getId()).map(r -> org.ceitba.api.service.kb.pipeline.KbRunOutcome.completed(r.getStatus())).orElse(false))
                 .toList();
             Map<String, Config> configs = new LinkedHashMap<>();
             Map<String, List<JsonNode>> metrics = new HashMap<>();

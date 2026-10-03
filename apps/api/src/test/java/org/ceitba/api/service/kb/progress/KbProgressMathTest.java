@@ -70,6 +70,30 @@ class KbProgressMathTest {
     }
 
     @Test
+    void rateLimitedBatchCreationWaitsWithRetryTime() {
+        var rows = new ArrayList<KbProgressMath.Row>();
+        for (int i = 0; i < 3; i++) rows.add(submitted("DIGEST", i));
+        var retryAt = OffsetDateTime.parse("2026-10-03T06:41:00Z");   // 03:41 in Buenos Aires
+        var jobs = List.of(new KbProgressMath.Job("DIGEST", "BATCH", "QUEUED", null, null, null, null, null, null,
+            null, retryAt, "RATE_LIMITED: POST /v1/batches -> 429: Rate limit exceeded"));
+        var p = KbProgressMath.compute(run(true, "DIGEST", "WAITING", 1), rows, jobs, 4, T0.plusSeconds(60));
+        var digest = stage(p, "DIGEST");
+        assertThat(digest.status()).isEqualTo("waiting_batch");
+        assertThat(digest.batch().status()).isEqualTo("QUEUED");
+        assertThat(digest.batch().nextAttemptAt()).isEqualTo(retryAt);
+        assertThat(p.current()).endsWith("DigitalOcean limitó la creación de lotes; reintento a las 03:41");
+    }
+
+    @Test
+    void partialRunIsFinished() {
+        var p = KbProgressMath.compute(new KbProgressMath.Run(true, "DONE", "PARTIAL", false, T0, T0.plusSeconds(60),
+            new ObjectMapper().createObjectNode(), 2, 0, 0, 0, "1 of 2 configurations failed"), List.of(), List.of(), 4,
+            T0.plusSeconds(120));
+        assertThat(p.current()).isEqualTo("Terminado con fallas: 1 of 2 configurations failed");
+        assertThat(p.overall().percent()).isEqualTo(100);
+    }
+
+    @Test
     void batchStageUsesDoRequestCounts() {
         var rows = new ArrayList<KbProgressMath.Row>();
         for (int i = 0; i < 10; i++) rows.add(submitted("WRITE", i));

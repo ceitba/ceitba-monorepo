@@ -5,7 +5,8 @@ import java.util.List;
 
 // Progress of a pipeline run or an eval (docs/SUBJECT-WIKI-ADMIN.md, "Progress").
 //   stages   DIGEST, PLAN, WRITE, RETRY, LINK, VALIDATE, PUBLISH; status
-//            pending | running | waiting_batch | done | failed | skipped;
+//            pending | running | waiting_batch | done | failed | skipped
+//            (waiting_batch includes a batch whose creation DO rate-limited);
 //            counts are requests (LINK/VALIDATE: pages, PUBLISH: subjects);
 //            total is null while unknown (WRITE until PLAN is done, RETRY
 //            until WRITE is done)
@@ -20,7 +21,12 @@ public record KbProgressResponse(List<Stage> stages, Overall overall, String cur
     public record Stage(String stage, String status, Integer total, int done, int failed, int inFlight, String mode,
                         Batch batch, OffsetDateTime startedAt, OffsetDateTime finishedAt) {}
 
-    public record Batch(String doStatus, RequestCounts requestCounts, OffsetDateTime submittedAt) {}
+    // status: the job's (QUEUED until DO accepts it, SUBMITTED, COMPLETED,
+    // FAILED, CANCELLED); error: DO's error_message of a failed batch, or why
+    // creation is being retried (RATE_LIMITED: ... / UNAVAILABLE: ...) with
+    // nextAttemptAt.
+    public record Batch(String doStatus, RequestCounts requestCounts, OffsetDateTime submittedAt, String status,
+                        String error, OffsetDateTime nextAttemptAt) {}
 
     public record RequestCounts(int total, int completed, int failed) {}
 

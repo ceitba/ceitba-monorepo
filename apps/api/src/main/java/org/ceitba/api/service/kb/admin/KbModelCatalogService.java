@@ -7,6 +7,7 @@ import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.domain.kb.KbModel;
+import org.ceitba.api.external.llm.DoBatchErrors;
 import org.ceitba.api.external.llm.SyncChatClient;
 import org.ceitba.api.repository.kb.KbModelRepository;
 import org.ceitba.api.service.kb.llm.BatchLlmExecutor;
@@ -16,6 +17,7 @@ import org.ceitba.api.service.kb.llm.KbPricing;
 import org.ceitba.api.service.kb.llm.KbUsageRecorder;
 import org.ceitba.api.service.kb.llm.LlmLine;
 import org.ceitba.api.service.kb.llm.SyncLlmExecutor;
+import org.ceitba.api.service.kb.pipeline.KbBatchSubmitter;
 import org.ceitba.api.service.kb.pipeline.KbPayloads;
 import org.ceitba.api.service.kb.pipeline.KbPipelineException;
 import org.ceitba.api.external.llm.LlmOutputParser;
@@ -267,9 +269,17 @@ public class KbModelCatalogService {
     }
 
     // One tiny structured-output request through the model's mode (or the
-    // given one: batch | sync). A batch probe decides batchSupported: a
-    // successful one sets it true, a submission rejected as a bad request
-    // (400/404/422) false (batchSource probe); account errors change nothing.
+    // given one: batch | sync).
+    // Batch probes (ADMIN doc §6) send the JSONL with the model's batch id
+    // (batchModelId, else the catalog id without its provider prefix). DO
+    // answers asynchronously, so the probe stays pending until the poller
+    // sees the batch finished; at most one pending batch probe per model (a
+    // second call returns the pending one). If DO says the model id is
+    // unsupported, the probe retries once with the other form (native <->
+    // prefixed) and stores whichever works in batchModelId; batchSupported
+    // turns false only when both forms are unsupported. A rate-limited (429)
+    // or unanswered creation is retried on the poller (1, 5, 15, 60 min).
+    // Any other error is a failed probe that leaves batchSupported alone.
     public KbModelResponse probe(String id, String modeOverride) {
         var model = tx.execute(s -> models.findById(id).orElseThrow(() -> new ResourceNotFoundException("KbModel", id)));
         String mode;
@@ -286,109 +296,204 @@ public class KbModelCatalogService {
             throw new KbPipelineException(KbPipelineException.Reason.LLM_UNCONFIGURED,
                 "Inference is not configured (KB_LLM_API_KEY)");
         }
-        var params = payloads.tuned(id, "DIGEST", 4000, "low", null,
-            "Archivo: prueba.txt (parte 1/1)\n\nEl interés compuesto capitaliza los intereses de cada período: "
-                + "M = C (1 + i)^n.");
-        var line = new LlmLine("probe-" + Math.abs(id.hashCode()), params);
         var started = OffsetDateTime.now(clock);
-        ObjectNode probe = json.createObjectNode();
-        probe.put("mode", mode.toLowerCase(Locale.ROOT));
-        probe.put("at", started.toString());
-        boolean batchRejected = false;
         if (mode.equals("BATCH")) {
-            try {
-                var submitted = batch.submit("kb-probe-" + id, id, List.of(line), "kb-probe-" + started.toEpochSecond());
-                probe.put("ok", false);
-                probe.put("pending", true);
-                probe.put("batchId", submitted.batchId());
-                noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-            } catch (org.ceitba.api.external.llm.LlmApiException e) {
-                if (e.status() == 0 || e.status() >= 500 || e.status() == 429) throw e;
-                probe.put("ok", false);
-                probe.put("error", "batch rejected: " + e.getMessage());
-                noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-                // Only an explicit "model/provider doesn't support batch" decides
-                // batchSupported; any other error is a failed probe.
-                batchRejected = batchUnsupported(e.status(), e.getMessage());
+            var current = model.probeIn("batch");
+            if (current != null && current.path("pending").asBoolean(false)) {
+                log.info("KB catalog: batch probe of {} already pending; not submitting another", id);
+                return tx.execute(s -> view(models.findById(id).orElseThrow()));
             }
-        } else {
-            var res = sync.runOne(line);
-            fill(probe, res, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-            recordUsage(id, mode, res);
+            var first = model.getBatchModelId() != null ? model.getBatchModelId()
+                : KbChatPayloads.defaultBatchModelId(id);
+            return saveBatchProbe(id, submitBatchProbe(id, first, List.of(), started, 0), null);
         }
-        var rejected = batchRejected;
+        var line = probeLine(id);
+        ObjectNode probe = json.createObjectNode();
+        probe.put("mode", "sync");
+        probe.put("at", started.toString());
+        var res = sync.runOne(line);
+        fill(probe, res, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
+        recordUsage(id, mode, res);
         return tx.execute(s -> {
             var m = models.findById(model.getId()).orElseThrow();
             m.setLastProbe(mergeProbe(m.getLastProbe(), probe));
             updateToolCalling(m, probe);
-            if (rejected) m.setBatchFromProbe(false, OffsetDateTime.now(clock));
             return view(m);
         });
     }
 
-    // Finishes BATCH probes whose batch is done (called by KbPipelineJob).
+    private LlmLine probeLine(String id) {
+        var params = payloads.tuned(id, "DIGEST", 4000, "low", null,
+            "Archivo: prueba.txt (parte 1/1)\n\nEl interés compuesto capitaliza los intereses de cada período: "
+                + "M = C (1 + i)^n.");
+        return new LlmLine("probe-" + Math.abs(id.hashCode()), params);
+    }
+
+    // Submits one batch probe of `id` with `batchModelId` in the JSONL.
+    // tried: the forms DO already refused as unsupported; retries: refused
+    // creations so far (back-off). The result is the probe entry to store:
+    // pending {batchId} or {retryAt}, or finished (ok false).
+    ObjectNode submitBatchProbe(String id, String batchModelId, List<String> tried, OffsetDateTime started,
+                                int retries) {
+        var probe = json.createObjectNode();
+        probe.put("mode", "batch");
+        probe.put("at", started.toString());
+        probe.put("batchModelId", batchModelId);
+        var triedNode = probe.putArray("tried");
+        tried.forEach(triedNode::add);
+        var now = OffsetDateTime.now(clock);
+        try {
+            var submitted = batch.submit("kb-probe-" + id, id, batchModelId, List.of(probeLine(id)),
+                "kb-probe-" + id + "-" + now.toEpochSecond());
+            probe.put("ok", false);
+            probe.put("pending", true);
+            probe.put("batchId", submitted.batchId());
+            noAnswer(probe, Duration.between(started, now).toMillis());
+            return probe;
+        } catch (org.ceitba.api.external.llm.LlmApiException e) {
+            var kind = DoBatchErrors.classify(e.status(), e.getMessage());
+            probe.put("ok", false);
+            noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
+            switch (kind) {
+                case RATE_LIMITED, TRANSIENT -> {
+                    var at = now.plus(KbBatchSubmitter.backoff(retries + 1));
+                    probe.put("pending", true);
+                    probe.put("retryAt", at.toString());
+                    probe.put("retries", retries + 1);
+                    probe.put("error", (kind == DoBatchErrors.Kind.RATE_LIMITED
+                        ? "DigitalOcean limitó la creación de lotes; reintento a las "
+                        : "DigitalOcean no respondió al crear el lote; reintento a las ")
+                        + at.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE).toLocalTime()
+                            .truncatedTo(java.time.temporal.ChronoUnit.MINUTES) + " (" + e.getMessage() + ")");
+                    log.warn("KB catalog: batch probe of {} refused ({}); retry at {}", id, e.getMessage(), at);
+                    return probe;
+                }
+                case UNSUPPORTED_MODEL -> {
+                    return unsupported(id, batchModelId, tried, started, "batch rejected: " + e.getMessage(), probe);
+                }
+                default -> {
+                    probe.put("error", "batch rejected: " + e.getMessage());
+                    return probe;
+                }
+            }
+        }
+    }
+
+    // DO refused `batchModelId` as unsupported: the other form if untried,
+    // else a finished probe marked unsupportedModel (batchSupported false).
+    private ObjectNode unsupported(String id, String batchModelId, List<String> tried, OffsetDateTime started,
+                                   String error, ObjectNode probe) {
+        var triedNow = new ArrayList<>(tried);
+        if (!triedNow.contains(batchModelId)) triedNow.add(batchModelId);
+        var other = KbChatPayloads.otherBatchModelId(id, batchModelId);
+        if (other != null && !triedNow.contains(other)) {
+            log.info("KB catalog: batch probe of {}: {} unsupported, retrying with {}", id, batchModelId, other);
+            return submitBatchProbe(id, other, triedNow, started, 0);
+        }
+        var triedNode = probe.putArray("tried");
+        triedNow.forEach(triedNode::add);
+        probe.remove("pending");
+        probe.put("ok", false);
+        probe.put("unsupportedModel", true);
+        probe.put("error", error);
+        return probe;
+    }
+
+    // Stores a batch probe entry: unsupportedModel (every id form refused)
+    // sets batchSupported false; a successful one sets it true and keeps the
+    // id that worked in batchModelId.
+    private KbModelResponse saveBatchProbe(String id, ObjectNode probe, Boolean worked) {
+        return tx.execute(s -> {
+            var m = models.findById(id).orElseThrow();
+            m.setLastProbe(mergeProbe(m.getLastProbe(), probe));
+            updateToolCalling(m, probe);
+            var now = OffsetDateTime.now(clock);
+            if (Boolean.TRUE.equals(worked)) {
+                m.setBatchFromProbe(true, now);
+                var used = probe.path("batchModelId").asText(null);
+                if (used != null) m.setBatchModelId(used);
+            } else if (probe.path("unsupportedModel").asBoolean(false)) {
+                m.setBatchFromProbe(false, now);
+            }
+            return view(m);
+        });
+    }
+
+    // Finishes BATCH probes whose batch is done, and resubmits the ones whose
+    // creation was refused once their retryAt is due (called by KbPipelineJob).
     public void refreshPendingProbes() {
         var pending = tx.execute(s -> models.findAll().stream()
-            .filter(m -> m.getLastProbe() != null && m.getLastProbe().path("pending").asBoolean(false))
+            .filter(m -> m.probeIn("batch") != null && m.probeIn("batch").path("pending").asBoolean(false))
             .map(KbModel::getId).toList());
         for (var id : pending) {
             try {
-                var m = tx.execute(s -> models.findById(id).orElseThrow());
-                var batchId = m.getLastProbe().path("batchId").asText();
-                var info = batch.poll(batchId);
-                if (!info.finished()) continue;
-                var collected = batch.collect(batchId, info.status().equals("completed"));
-                var res = collected.results().values().stream().findFirst().orElse(null);
-                var started = OffsetDateTime.parse(m.getLastProbe().path("at").asText());
-                var probe = json.createObjectNode();
-                probe.put("mode", "batch");
-                probe.put("at", started.toString());
-                probe.put("batchId", batchId);
-                if (res == null) {
-                    probe.put("ok", false);
-                    probe.put("error", "batch " + info.status() + " without results");
-                    noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-                } else {
-                    fill(probe, res, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
-                    recordUsage(id, "BATCH", res);
-                }
-                boolean worked = res != null && res.ok();
-                tx.executeWithoutResult(s -> {
-                    var mm = models.findById(id).orElseThrow();
-                    mm.setLastProbe(mergeProbe(mm.getLastProbe(), probe));
-                    updateToolCalling(mm, probe);
-                    if (worked) mm.setBatchFromProbe(true, OffsetDateTime.now(clock));
-                    else if (info.status().equals("failed") && batchUnsupported(400, info.raw()
-                        + (collected.errors() == null ? "" : new String(collected.errors(),
-                            java.nio.charset.StandardCharsets.UTF_8)))) {
-                        mm.setBatchFromProbe(false, OffsetDateTime.now(clock));
-                    }
-                });
-                // The exact output line, so the provider's shape can be checked.
-                if (collected.output() != null) {
-                    var raw = new String(collected.output(), java.nio.charset.StandardCharsets.UTF_8);
-                    log.info("KB catalog: batch probe of {} output ({} bytes) first line: {}", id, raw.length(),
-                        raw.lines().findFirst().map(l -> l.length() > 2000 ? l.substring(0, 2000) : l).orElse(""));
-                }
+                refreshProbe(id);
             } catch (RuntimeException e) {
                 log.warn("KB catalog: probe of {} not refreshed: {}", id, e.getMessage());
             }
         }
     }
 
-    private static final java.util.regex.Pattern UNSUPPORTED = java.util.regex.Pattern.compile(
-        "(model|provider)[_ -]?not[_ -]?supported"
-            + "|(not|isn't|is not|un)[_ -]?(supported|available)[^.\\n]{0,40}\\bbatch"
-            + "|\\bbatch(es|ing)?\\b[^.\\n]{0,60}(not|isn't|is not|un)[_ -]?(supported|available)"
-            + "|does not support[^.\\n]{0,40}\\bbatch|doesn't support[^.\\n]{0,40}\\bbatch",
-        java.util.regex.Pattern.CASE_INSENSITIVE);
+    private void refreshProbe(String id) {
+        var m = tx.execute(s -> models.findById(id).orElseThrow());
+        var p = m.probeIn("batch");
+        var started = OffsetDateTime.parse(p.path("at").asText());
+        var batchModelId = p.path("batchModelId").asText(null);
+        if (batchModelId == null) batchModelId = KbChatPayloads.defaultBatchModelId(id);
+        var tried = new ArrayList<String>();
+        p.path("tried").forEach(t -> tried.add(t.asText()));
+        if (!p.hasNonNull("batchId")) {
+            // A refused creation, retried when due.
+            var retryAt = p.hasNonNull("retryAt") ? OffsetDateTime.parse(p.path("retryAt").asText()) : null;
+            if (retryAt != null && OffsetDateTime.now(clock).isBefore(retryAt)) return;
+            saveBatchProbe(id, submitBatchProbe(id, batchModelId, tried, started, p.path("retries").asInt(0)), null);
+            return;
+        }
+        var batchId = p.path("batchId").asText();
+        var info = batch.poll(batchId);
+        if (!info.finished()) return;
+        var probe = json.createObjectNode();
+        probe.put("mode", "batch");
+        probe.put("at", started.toString());
+        probe.put("batchId", batchId);
+        probe.put("batchModelId", batchModelId);
+        var triedNode = probe.putArray("tried");
+        tried.forEach(triedNode::add);
+        if (info.status().equals("failed") && info.errorMessage() != null
+            && DoBatchErrors.classifyFailure(info.errorMessage()) == DoBatchErrors.Kind.UNSUPPORTED_MODEL) {
+            noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
+            saveBatchProbe(id, unsupported(id, batchModelId, tried, started,
+                "batch failed: " + info.errorMessage(), probe), null);
+            return;
+        }
+        var collected = batch.collect(batchId, info.status().equals("completed"));
+        var res = collected.results().values().stream().findFirst().orElse(null);
+        if (res == null) {
+            probe.put("ok", false);
+            probe.put("error", "batch " + info.status() + (info.errorMessage() == null ? " without results"
+                : ": " + info.errorMessage()));
+            noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
+        } else {
+            fill(probe, res, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
+            recordUsage(id, "BATCH", res);
+        }
+        saveBatchProbe(id, probe, res != null && res.ok());
+        log.info("KB catalog: batch probe of {} with {}: {}", id, batchModelId,
+            res != null && res.ok() ? "ok" : probe.path("error").asText());
+        // The exact output line, so the provider's shape can be checked.
+        if (collected.output() != null) {
+            var raw = new String(collected.output(), java.nio.charset.StandardCharsets.UTF_8);
+            log.info("KB catalog: batch probe of {} output ({} bytes) first line: {}", id, raw.length(),
+                raw.lines().findFirst().map(l -> l.length() > 2000 ? l.substring(0, 2000) : l).orElse(""));
+        }
+    }
 
     // A batch probe error that says the model or provider has no batch
     // support (a 4xx whose code or message says so). Everything else (bad
     // file name, account blocked, rate limit, 5xx) is just a failed probe.
     public static boolean batchUnsupported(int status, String message) {
-        if (status < 400 || status >= 500 || message == null) return false;
-        return UNSUPPORTED.matcher(message).find();
+        if (status < 400 || status >= 500 || status == 429) return false;
+        return DoBatchErrors.unsupportedModel(message);
     }
 
     // lastProbe keeps one entry per mode (sync, batch); its top level is the
@@ -462,6 +567,11 @@ public class KbModelCatalogService {
         }
         if (b.hasNonNull("provider")) m.setProvider(b.get("provider").asText());
         if (b.hasNonNull("batchSupported")) m.setBatchSupported(b.get("batchSupported").asBoolean());
+        if (b.has("batchModelId")) {
+            var v = b.get("batchModelId").isNull() ? null : b.get("batchModelId").asText().trim();
+            if (v != null && v.length() > 128) throw new ValidationException("batchModelId", v, "max 128 chars");
+            m.setBatchModelId(v);   // null/blank = the default (catalog id without its provider prefix)
+        }
         if (b.hasNonNull("batchDiscountVerified")) m.setBatchDiscountVerified(b.get("batchDiscountVerified").asBoolean());
         if (b.hasNonNull("enabled")) m.setEnabled(b.get("enabled").asBoolean());
         if (b.hasNonNull("supportsReasoningEffort")) m.setSupportsReasoningEffort(b.get("supportsReasoningEffort").asBoolean());
@@ -529,6 +639,8 @@ public class KbModelCatalogService {
             m.isSupportsReasoningEffort(), m.isEnabled(), m.getInputPerM(), m.getOutputPerM(), m.getCacheReadPerM(),
             m.getBatchDiscount(), effective, m.getContextWindow(), m.getMaxOutputTokens(), m.getNotes(),
             m.getPricesUpdatedAt(), m.getPriceSource(),
-            m.getLastProbe(), m.selectableIn(m.modeFor(settings.effective().executionMode())), emptyToolCallRate);
+            m.getLastProbe(), m.selectableIn(m.modeFor(settings.effective().executionMode())), emptyToolCallRate,
+            m.getBatchModelId(), KbChatPayloads.batchProvider(m.getId()) == null ? null
+                : m.getBatchModelId() != null ? m.getBatchModelId() : KbChatPayloads.defaultBatchModelId(m.getId()));
     }
 }

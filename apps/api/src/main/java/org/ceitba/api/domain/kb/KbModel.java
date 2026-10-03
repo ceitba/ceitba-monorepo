@@ -87,6 +87,11 @@ public class KbModel {
     @Column(name = "display_name_manual", nullable = false)
     private boolean displayNameManual;
 
+    // The id batch JSONL lines use (V38); null = the catalog id without its
+    // openai-/anthropic- prefix (KbChatPayloads.defaultBatchModelId).
+    @Column(name = "batch_model_id", length = 128)
+    private String batchModelId;
+
     protected KbModel() {}
 
     public KbModel(String id, String displayName, String provider, boolean batchSupported, boolean enabled) {
@@ -192,4 +197,6 @@ public class KbModel {
     public void setPriceSource(String v) { this.priceSource = v; }
     public boolean isDisplayNameManual() { return displayNameManual; }
     public void setDisplayNameManual(boolean v) { this.displayNameManual = v; }
+    public String getBatchModelId() { return batchModelId; }
+    public void setBatchModelId(String v) { this.batchModelId = v == null || v.isBlank() ? null : v.trim(); }
 }

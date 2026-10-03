@@ -47,6 +47,29 @@ class KbChatPayloadsTest {
     }
 
     @Test
+    void batchModelIdDefaultsToTheNativeProviderId() {
+        assertThat(KbChatPayloads.defaultBatchModelId("openai-gpt-6-luna")).isEqualTo("gpt-6-luna");
+        assertThat(KbChatPayloads.defaultBatchModelId("anthropic-claude-haiku-4.5")).isEqualTo("claude-haiku-4.5");
+        assertThat(KbChatPayloads.defaultBatchModelId("glm-5.3")).isEqualTo("glm-5.3");
+        // The probe's fallback: the other form of what was tried.
+        assertThat(KbChatPayloads.otherBatchModelId("openai-gpt-6-luna", "gpt-6-luna")).isEqualTo("openai-gpt-6-luna");
+        assertThat(KbChatPayloads.otherBatchModelId("openai-gpt-6-luna", "openai-gpt-6-luna")).isEqualTo("gpt-6-luna");
+        assertThat(KbChatPayloads.otherBatchModelId("glm-5.3", "glm-5.3")).isNull();
+    }
+
+    @Test
+    void batchLinesCarryTheBatchModelIdAndSyncKeepsTheCatalogId() throws Exception {
+        var p = params().put("model", "openai-gpt-6-luna");
+        var openai = KbChatPayloads.batchLine("abc-P-000001", p, "openai", "gpt-6-luna", json);
+        assertThat(openai.path("body").path("model").asText()).isEqualTo("gpt-6-luna");
+        var anthropic = KbChatPayloads.batchLine("abc-P-000001", params().put("model", "anthropic-claude-haiku-4.5"),
+            "anthropic", "claude-haiku-4.5", json);
+        assertThat(anthropic.path("params").path("model").asText()).isEqualTo("claude-haiku-4.5");
+        assertThat(KbChatPayloads.chatBody(p, false, json).path("model").asText()).isEqualTo("openai-gpt-6-luna");
+        assertThat(p.path("model").asText()).isEqualTo("openai-gpt-6-luna");   // canonical params untouched
+    }
+
+    @Test
     void parserHandlesToolCallsContentJsonEmptyAndTruncated() throws Exception {
         var ok = LlmOutputParser.fromChatCompletion("x", json.readTree("""
             {"choices":[{"finish_reason":"tool_calls","message":{"reasoning_content":"pienso",

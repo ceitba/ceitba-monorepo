@@ -28,6 +28,11 @@ public class FakeLlmBatchClient implements LlmBatchClient {
     private volatile Function<FakeLlmRequest, JsonNode> responder = r -> null;
     private volatile boolean hold;
     private final List<String> cancelled = java.util.Collections.synchronizedList(new ArrayList<>());
+    private final Map<String, String> requestIds = new ConcurrentHashMap<>();
+    private final Map<String, String> errors = new ConcurrentHashMap<>();
+    private final java.util.Deque<LlmApiException> createFailures = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    private volatile java.util.function.Predicate<String> unsupportedModel = m -> false;
+    private final AtomicInteger createCalls = new AtomicInteger();
 
     public FakeLlmBatchClient(ObjectMapper json) {
         this.json = json;
@@ -41,6 +46,27 @@ public class FakeLlmBatchClient implements LlmBatchClient {
         cancelled.clear();
         responder = r -> null;
         hold = false;
+        requestIds.clear();
+        errors.clear();
+        createFailures.clear();
+        unsupportedModel = m -> false;
+        createCalls.set(0);
+    }
+
+    // The next createBatch calls throw these, in order (e.g. a 429).
+    public void failNextCreate(LlmApiException... failures) {
+        createFailures.addAll(List.of(failures));
+    }
+
+    // Batches whose JSONL uses a model id matching this fail at validation,
+    // like DO: status failed, error_message, request_counts.total 0.
+    public void unsupportedModels(java.util.function.Predicate<String> batchModelId) {
+        this.unsupportedModel = batchModelId;
+    }
+
+    // createBatch calls (including the ones that failed).
+    public int createCalls() {
+        return createCalls.get();
     }
 
     public void respond(Function<FakeLlmRequest, JsonNode> responder) {
@@ -83,9 +109,21 @@ public class FakeLlmBatchClient implements LlmBatchClient {
 
     @Override
     public BatchInfo createBatch(String fileId, String requestId, String provider, String endpoint) {
+        createCalls.incrementAndGet();
+        var failure = createFailures.poll();
+        if (failure != null) throw failure;
         if (!files.containsKey(fileId)) throw new LlmApiException(404, "No uploaded file " + fileId);
         var id = "batch-" + ids.incrementAndGet();
         batchFile.put(id, fileId);
+        if (requestId != null) requestIds.put(requestId, id);
+        var unsupported = lines(fileId).stream().map(FakeLlmBatchClient::modelOf).filter(unsupportedModel)
+            .findFirst().orElse(null);
+        if (unsupported != null) {
+            status.put(id, "failed");
+            errors.put(id, "JSONL model validation failed: 1 unsupported model(s), e.g. unsupported model \""
+                + unsupported + "\": not available on DigitalOcean");
+            return get(id);
+        }
         status.put(id, hold ? "in_progress" : "completed");
         for (var line : lines(fileId)) submitted.add(request(line));
         return get(id);
@@ -95,12 +133,30 @@ public class FakeLlmBatchClient implements LlmBatchClient {
     public BatchInfo get(String batchId) {
         var s = status.get(batchId);
         if (s == null) throw new LlmApiException(404, "No batch " + batchId);
-        return new BatchInfo(batchId, s, "{\"id\":\"" + batchId + "\",\"status\":\"" + s + "\"}");
+        var node = json.createObjectNode().put("id", batchId).put("status", s);
+        var error = errors.get(batchId);
+        if (error != null) {
+            node.put("error_message", error);
+            node.putObject("request_counts").put("total", 0).put("completed", 0).put("failed", 0);
+        }
+        return new BatchInfo(batchId, s, node.toString(), error);
+    }
+
+    @Override
+    public java.util.Optional<BatchInfo> findByRequestId(String requestId) {
+        var id = requestId == null ? null : requestIds.get(requestId);
+        return id == null ? java.util.Optional.empty() : java.util.Optional.of(get(id));
+    }
+
+    // The model id of a batch line (OpenAI body.model / Anthropic params.model).
+    private static String modelOf(JsonNode line) {
+        return line.has("body") ? line.path("body").path("model").asText() : line.path("params").path("model").asText();
     }
 
     @Override
     public BatchResults results(String batchId) {
         var s = get(batchId).status();
+        if (errors.containsKey(batchId)) return new BatchResults(false, null, null);
         if (!s.equals("completed")) return new BatchResults(false, null, null);
         return new BatchResults(true, "fake://output/" + batchId, null);
     }

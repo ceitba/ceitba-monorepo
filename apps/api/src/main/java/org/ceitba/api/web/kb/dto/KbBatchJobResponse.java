@@ -4,8 +4,10 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 // One stage execution. mode: BATCH (a DO batch, doBatchId) | SYNC (chat
-// completions). status: DRY (built, not submitted) | SUBMITTED | COMPLETED |
-// FAILED | CANCELLED.
+// completions). status: DRY (built, not submitted) | QUEUED (created before
+// DO was called; while DO rate-limits creation, retried at nextAttemptAt) |
+// SUBMITTED | COMPLETED | FAILED | CANCELLED. error: DO's error_message of a
+// failed batch, or why a QUEUED creation is being retried.
 // payloadKey/outputKey: the JSONL in object storage (kb/runs/<runId>/...).
 public record KbBatchJobResponse(
     UUID id,
@@ -25,5 +27,6 @@ public record KbBatchJobResponse(
     java.math.BigDecimal costUsd,
     OffsetDateTime submittedAt,
     OffsetDateTime completedAt,
-    String error
+    String error,
+    OffsetDateTime nextAttemptAt
 ) {}

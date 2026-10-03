@@ -12,7 +12,9 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 // One DO batch of a run stage (V35). status: DRY (built, not submitted),
-// SUBMITTED, COMPLETED, FAILED, CANCELLED.
+// QUEUED (row created, DO not called yet or creation rate-limited: retried at
+// nextAttemptAt; V38), SUBMITTED, COMPLETED, FAILED, CANCELLED. One row per
+// (run, stage, attempt, model): the unique index makes submission idempotent.
 @Entity
 @Table(schema = "wiki", name = "kb_batch_job")
 public class KbBatchJob {
@@ -89,6 +91,15 @@ public class KbBatchJob {
     @Column(name = "status_changed_at")
     private OffsetDateTime statusChangedAt;
 
+    @Column(name = "next_attempt_at")
+    private OffsetDateTime nextAttemptAt;
+
+    @Column(name = "submit_failures", nullable = false)
+    private int submitFailures;
+
+    @Column(name = "do_request_id", length = 255)
+    private String doRequestId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -146,6 +157,8 @@ public class KbBatchJob {
         this.doBatchId = batchId;
         this.submittedAt = at;
         this.status = "SUBMITTED";
+        this.nextAttemptAt = null;
+        this.error = null;
     }
 
     public void completed(String status, String outputKey, long in, long out, OffsetDateTime at, String error) {
@@ -169,6 +182,23 @@ public class KbBatchJob {
             this.doRequestCounts = requestCounts;
         }
     }
+
+    // A queued batch DO has not accepted yet (created before calling DO).
+    public void queued(String requestId) {
+        this.status = "QUEUED";
+        this.doRequestId = requestId;
+    }
+
+    // Batch creation refused for now (429, 5xx, no response): retry at `at`.
+    public void retryAt(OffsetDateTime at, String error) {
+        this.submitFailures++;
+        this.nextAttemptAt = at;
+        this.error = error;
+    }
+
+    public OffsetDateTime getNextAttemptAt() { return nextAttemptAt; }
+    public int getSubmitFailures() { return submitFailures; }
+    public String getDoRequestId() { return doRequestId; }
 
     public String getDoStatus() { return doStatus; }
     public com.fasterxml.jackson.databind.JsonNode getDoRequestCounts() { return doRequestCounts; }
