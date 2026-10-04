@@ -66,7 +66,15 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
      - the list of removed file ids with the pages citing them;
      - the page index (titles/aliases/summaries) of up to 8 related subjects (`kb_subject_relation`).
    - Output (tool use):
-     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason }] }`.
+     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason, mustCover: [string] }] }`.
+   - `mustCover` (required; may be empty for `delete` and `index`): 2-8 items naming each definition, method, theorem or
+     formula the page must present, taken from the digests' `formulas`/`keyPoints` (LaTeX for quantitative topics).
+     Validation keeps it as an array of trimmed strings (max 10, 300 chars each); missing or invalid becomes `[]`, the op
+     is never dropped for it. It is copied into the WRITE and RETRY request bodies (pipeline and eval).
+   - Reject reason `missing_formula`: if a `mustCover` item contains LaTeX (a backslash command, or `^`/`_` followed by
+     a brace) and the written page has no `$` math at all, the page is rejected with `missing_formula: the plan
+     required formulas (...) but the page has none` (checked with the op in hand, in the pipeline and in evals; counted
+     in the eval's `rejectReasons`; the retry prompt tells the writer to add the formulas).
    - Rules given to the model:
      - update only pages whose sources changed or were removed, or that a new file clearly extends;
      - create pages for new key concepts the new material explains;

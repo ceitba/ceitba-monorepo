@@ -170,7 +170,7 @@ public final class KbEvalMetrics {
     public static String category(String error) {
         if (error == null) return "other";
         if (error.startsWith("no answer")) return "no_answer";
-        for (var r : List.of("latex_format", "meta_section", "self_link")) if (error.startsWith(r + ":")) return r;
+        for (var r : List.of("latex_format", "meta_section", "self_link", "missing_formula")) if (error.startsWith(r + ":")) return r;
         if (error.contains("has no [[file:")) return "uncited_section";
         if (error.startsWith("copies")) return "copy";
         if (error.startsWith("unlinked mention")) return "unlinked_mention";
