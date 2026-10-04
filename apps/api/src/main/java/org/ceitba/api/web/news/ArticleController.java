@@ -9,6 +9,7 @@ import org.ceitba.api.web.news.dto.ArticleInput;
 import org.ceitba.api.web.news.dto.ArticlePatchInput;
 import org.ceitba.api.web.news.dto.ArticleResponse;
 import org.ceitba.api.web.news.dto.PageResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/v1/articles")
@@ -46,9 +48,23 @@ public class ArticleController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String organization,
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "false") boolean mine,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
             Authentication auth) {
+
+        var paging = NewsPaging.of(page, limit);
+        if (mine) {
+            // The caller's own independent (org-less) articles, any status
+            // unless one is named (missing or `all` = every status).
+            // `organization` is ignored: org articles are listed per org.
+            // Anonymous -> empty page.
+            UUID me = orgAccess.currentUserId(auth);
+            Page<Article> own = me == null
+                ? Page.empty(paging)
+                : service.findOwnIndependent(category, mineStatusFilter(status), me, paging);
+            return toPage(own);
+        }
 
         // Staff, and members of the requested organization, may pick a status
         // (`all` = no filter); a missing status still means published. Anyone
@@ -57,8 +73,10 @@ public class ArticleController {
             || (organization != null && orgAccess.canReadDraftsOf(organization, auth));
         String effectiveStatus = seesDrafts ? statusFilter(status) : "published";
 
-        var result = service.findAll(category, organization, effectiveStatus,
-                                     NewsPaging.of(page, limit));
+        return toPage(service.findAll(category, organization, effectiveStatus, null, paging));
+    }
+
+    private static PageResponse<ArticleResponse> toPage(Page<Article> result) {
         return new PageResponse<>(
             result.getContent().stream().map(ArticleResponse::from).toList(),
             PageResponse.Meta.of(result)
@@ -72,19 +90,46 @@ public class ArticleController {
         return ArticleResponse.from(service.findById(id, includesDrafts));
     }
 
+    // Besides STAFF and members of `organization`, any signed-in user may
+    // create an independent (org-less) article; a non-staff author may only
+    // leave it as draft or submit it for review (default pending_review).
     @PostMapping
-    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#req.organization(), authentication)")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#req.organization(), authentication)"
+        + " or (hasRole('USER') and @orgAccess.isIndependent(#req.organization()))")
     public ResponseEntity<ArticleResponse> create(@RequestBody @Valid ArticleInput req,
-                                                   @CurrentUser User user) {
-        var article = toEntity(req);
+                                                   @CurrentUser User user,
+                                                   Authentication auth) {
+        boolean independentAuthor = !hasRole(auth, "ROLE_STAFF") && orgAccess.isIndependent(req.organization());
+        // Independent authors never choose the id (a UUID is generated);
+        // staff and org members may, subject to ArticleService's id format.
+        var article = toEntity(req, independentAuthor ? null : req.id());
+        if (independentAuthor) {
+            article.setStatus(ArticleService.requireAuthorStatus(req.status(), true));
+            article.setFeatured(false);
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ArticleResponse.from(service.create(article, req.organization(), user)));
     }
 
+    // The author of an independent article may also edit it until STAFF
+    // publish it, keeping it draft/pending_review — unless the patch moves
+    // it into an org they belong to, where the member rules apply.
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForArticle(#id, #req.organization(), authentication)")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForArticle(#id, #req.organization(), authentication)"
+        + " or @orgAccess.canEditOwnIndependentArticle(#id, #req.organization(), authentication)")
     public ArticleResponse patch(@PathVariable String id,
-                                  @RequestBody @Valid ArticlePatchInput req) {
+                                  @RequestBody @Valid ArticlePatchInput req,
+                                  Authentication auth) {
+        // Non-staff callers that aren't members of the article's org got in
+        // as the independent article's author; ArticleService re-checks that
+        // under a row lock. authorOnly additionally excludes moves into an org
+        // the author belongs to (member rules apply to status/featured).
+        boolean staff = hasRole(auth, "ROLE_STAFF");
+        boolean viaAuthorship = !staff && !orgAccess.canWriteForArticle(id, req.organization(), auth);
+        UUID independentAuthor = viaAuthorship ? orgAccess.currentUserId(auth) : null;
+        boolean authorOnly = viaAuthorship && !orgAccess.canWriteForOrg(req.organization(), auth);
+        if (authorOnly) ArticleService.requireAuthorStatus(req.status(), false);
+        Boolean featured = authorOnly ? null : req.featured();
         var patch = new Article(
             id,
             req.title(),
@@ -95,19 +140,22 @@ public class ArticleController {
         if (req.readingTime() != null) patch.setReadingTime(req.readingTime());
         if (req.colorScheme() != null) patch.setColorScheme(req.colorScheme());
         if (req.coverImage()  != null) patch.setCoverImage(req.coverImage());
-        if (req.status()      != null) patch.setStatus(req.status());
-        return ArticleResponse.from(service.update(id, patch, req.featured(), req.organization()));
+        // Always copied, even when null: Article.status defaults to
+        // "published", so leaving it would publish on any PATCH that omits it.
+        patch.setStatus(req.status());
+        return ArticleResponse.from(service.update(id, patch, featured, req.organization(), independentAuthor));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF')")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        service.delete(id);
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteOwnIndependentArticle(#id, authentication)")
+    public ResponseEntity<Void> delete(@PathVariable String id, Authentication auth) {
+        UUID independentAuthor = hasRole(auth, "ROLE_STAFF") ? null : orgAccess.currentUserId(auth);
+        service.delete(id, independentAuthor);
         return ResponseEntity.noContent().build();
     }
 
-    private Article toEntity(ArticleInput req) {
-        var a = new Article(req.id(), req.title(), req.excerpt(), req.body(),
+    private Article toEntity(ArticleInput req, String id) {
+        var a = new Article(id, req.title(), req.excerpt(), req.body(),
                             req.category(), req.authors());
         if (req.publishedAt() != null) a.setPublishedAt(req.publishedAt());
         if (req.readingTime() != null) a.setReadingTime(req.readingTime());
@@ -122,6 +170,12 @@ public class ArticleController {
     private static String statusFilter(String status) {
         if (status == null || status.isBlank()) return "published";
         return ALL_STATUSES.equals(status) ? null : status;
+    }
+
+    // ?mine=true: missing or `all` = every status.
+    private static String mineStatusFilter(String status) {
+        if (status == null || status.isBlank() || ALL_STATUSES.equals(status)) return null;
+        return status;
     }
 
     private boolean hasRole(Authentication auth, String role) {
