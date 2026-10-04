@@ -49,9 +49,11 @@ public class OrgAccess {
         return orgSlug != null && belongsTo(auth, orgSlug);
     }
 
+    // The article's author (createdBy) also sees it while unpublished.
     public boolean canReadArticleDraft(String articleId, Authentication auth) {
         UUID userId = userIdOf(auth);
         if (userId == null) return false;
+        if (articleRepo.existsByIdAndCreatedById(articleId, userId)) return true;
         return articleRepo.findById(articleId)
             .map(a -> a.getOrganization() != null
                 && membership.userBelongsTo(userId, a.getOrganization().getSlug()))
@@ -75,6 +77,36 @@ public class OrgAccess {
         return articleRepo.findById(articleId)
             .map(a -> canMove(userId, a.getOrganization() != null ? a.getOrganization().getSlug() : null, patchOrg))
             .orElse(false);
+    }
+
+    // Independent (org-less) articles: any signed-in user may create one;
+    // STAFF moderates (publishes) it. See ArticleController for the status
+    // limits applied to non-staff authors.
+    public boolean isIndependent(String orgSlug) {
+        return orgSlug == null || orgSlug.isBlank();
+    }
+
+    // PATCH by the author of an independent article: allowed while it isn't
+    // published, and only if the patch keeps it org-less or moves it into an
+    // org the author belongs to (never someone else's org).
+    public boolean canEditOwnIndependentArticle(String articleId, String patchOrg, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        if (userId == null) return false;
+        boolean editable = articleRepo.findIndependentStatusOwnedBy(articleId, userId)
+            .map(status -> !"published".equals(status))
+            .orElse(false);
+        return editable && (isIndependent(patchOrg) || membership.userBelongsTo(userId, patchOrg));
+    }
+
+    // DELETE by the author of an independent, not-yet-published article.
+    public boolean canDeleteOwnIndependentArticle(String articleId, Authentication auth) {
+        return canEditOwnIndependentArticle(articleId, null, auth);
+    }
+
+    // Current user's id (email from the JWT -> users row), or null for
+    // anonymous callers and not-yet-provisioned users.
+    public UUID currentUserId(Authentication auth) {
+        return userIdOf(auth);
     }
 
     public boolean canWriteForEvent(String eventId, String patchOrg, Authentication auth) {

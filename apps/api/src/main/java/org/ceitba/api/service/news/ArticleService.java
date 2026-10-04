@@ -2,6 +2,7 @@ package org.ceitba.api.service.news;
 
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
+import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
 import org.ceitba.api.repository.news.ArticleRepository;
@@ -14,10 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ArticleService {
+
+    // Statuses a non-staff author may give an independent (org-less)
+    // article; publishing it is left to STAFF (moderation).
+    public static final String PENDING_REVIEW = "pending_review";
+    private static final Set<String> AUTHOR_STATUSES = Set.of("draft", PENDING_REVIEW);
 
     private final ArticleRepository articleRepo;
     private final OrganizationRepository orgRepo;
@@ -33,10 +40,23 @@ public class ArticleService {
     }
 
     // status=null lists every status; the controller decides who may pass
-    // anything other than "published" (staff, and members of `organization`).
+    // anything other than "published" (staff, members of `organization`, and
+    // authors listing their own articles). createdBy=null = any author.
     @Transactional(readOnly = true)
-    public Page<Article> findAll(String category, String organization, String status, Pageable pageable) {
-        return articleRepo.findFiltered(category, organization, status, pageable);
+    public Page<Article> findAll(String category, String organization, String status,
+                                 UUID createdBy, Pageable pageable) {
+        return articleRepo.findFiltered(category, organization, status, createdBy, pageable);
+    }
+
+    // For a non-staff author's independent article: only draft or
+    // pending_review; a missing status on create means pending_review.
+    public static String requireAuthorStatus(String status, boolean defaultWhenMissing) {
+        if (status == null) return defaultWhenMissing ? PENDING_REVIEW : null;
+        if (!AUTHOR_STATUSES.contains(status)) {
+            throw new ValidationException("status", status,
+                "independent articles can only be 'draft' or 'pending_review' until staff publish them");
+        }
+        return status;
     }
 
     @Transactional(readOnly = true)

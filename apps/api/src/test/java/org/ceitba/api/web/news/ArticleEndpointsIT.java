@@ -219,12 +219,112 @@ class ArticleEndpointsIT {
             .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    void regularUserCannotCreate() throws Exception {
+    // -- Independent (org-less) articles by plain users -------------------------
+
+    private static RequestPostProcessor otherUser() {
+        return jwt().jwt(t -> t.claim("email", "other@itba.edu.ar").claim("name", "Other"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    private static final String INDEPENDENT =
+        "{\"id\":\"ind\",\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]%s}";
+
+    private void createIndependent() throws Exception {
         mvc.perform(post("/v1/articles").with(user())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]}"))
+                .content(INDEPENDENT.formatted("")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("pending_review"));
+    }
+
+    @Test
+    void regularUserCannotCreatePublishedIndependentArticle() throws Exception {
+        mvc.perform(post("/v1/articles").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(INDEPENDENT.formatted(",\"status\":\"published\"")))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void regularUserCannotCreateForOrgTheyDontBelongTo() throws Exception {
+        mvc.perform(post("/v1/articles").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(INDEPENDENT.formatted(",\"organization\":\"it\"")))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void authorEditsOwnPendingArticleUntilStaffPublishIt() throws Exception {
+        createIndependent();
+
+        // Author reads and edits it, but can't publish it.
+        mvc.perform(get("/v1/articles/ind").with(user()))
+            .andExpect(status().isOk());
+        mvc.perform(patch("/v1/articles/ind").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Edited\",\"status\":\"draft\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("draft"));
+        mvc.perform(patch("/v1/articles/ind").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\"}"))
+            .andExpect(status().isBadRequest());
+        // Nor move it into an org they don't belong to.
+        mvc.perform(patch("/v1/articles/ind").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"organization\":\"it\"}"))
+            .andExpect(status().isForbidden());
+
+        // Other users neither see nor edit it.
+        mvc.perform(get("/v1/articles/ind").with(otherUser()))
+            .andExpect(status().isNotFound());
+        mvc.perform(patch("/v1/articles/ind").with(otherUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Hijacked\"}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(delete("/v1/articles/ind").with(otherUser()))
+            .andExpect(status().isForbidden());
+
+        // Staff publish it; from then on the author can't edit or delete it.
+        mvc.perform(patch("/v1/articles/ind").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("published"));
+        mvc.perform(patch("/v1/articles/ind").with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Too late\"}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(delete("/v1/articles/ind").with(user()))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void authorCanDeleteOwnPendingArticle() throws Exception {
+        createIndependent();
+        mvc.perform(delete("/v1/articles/ind").with(user()))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void mineListsOwnArticlesOfEveryStatus() throws Exception {
+        createIndependent();
+
+        mvc.perform(get("/v1/articles?mine=true").with(user()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].id").value("ind"))
+            .andExpect(jsonPath("$.data[0].status").value("pending_review"));
+        mvc.perform(get("/v1/articles?mine=true&status=draft").with(user()))
+            .andExpect(jsonPath("$.data.length()").value(0));
+        mvc.perform(get("/v1/articles?mine=true").with(staff()))
+            .andExpect(jsonPath("$.data.length()").value(0));
+        mvc.perform(get("/v1/articles?mine=true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(0));
+        // The public list doesn't show it.
+        mvc.perform(get("/v1/articles"))
+            .andExpect(jsonPath("$.data.length()").value(1));
     }
 
     // -- Staff CRUD ------------------------------------------------------------

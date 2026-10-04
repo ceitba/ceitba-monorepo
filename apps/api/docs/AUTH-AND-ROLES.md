@@ -69,6 +69,10 @@ DELETE /api/v1/users/{userId}/organizations/{slug}                              
 
 `POST` returns `409` if the membership already exists (use `PATCH` to change its role); `PATCH` returns `404` if it doesn't; both return `400` for a role other than `member`/`admin`. `GET /v1/users` lists each user's memberships as `organizations: [{slug, role}]`.
 
+### Independent articles (no organization)
+
+Any `ROLE_USER` may `POST /v1/articles` with no `organization`. For non-staff authors the status may only be `draft` or `pending_review` (missing = `pending_review`; anything else → 400 `ValidationError`), and `featured` is ignored. The author (`createdBy`) can `GET`, `PATCH` and `DELETE` it while it is not `published`; a `PATCH` keeps the same status limit unless it moves the article into an org the author belongs to (then member rules apply). STAFF moderates by publishing it, after which only STAFF can edit or delete it. `GET /v1/articles?mine=true` lists the caller's own articles of every status (`status` filters; anonymous → empty page). Org-less articles never trigger pushes. Checks live in `web/news/OrgAccess` + `ArticleController`.
+
 ### SYNC — `X-Api-Key` (static key) only
 
 Cron jobs and ops scripts authenticate with a static header against `AUTH_SYNC_API_KEY`. The [`ApiKeyFilter`](../src/main/java/org/ceitba/api/web/auth/ApiKeyFilter.java) translates a matching key into a `ROLE_SYNC` principal. This skips the JWT path entirely. Bug bias: if `AUTH_SYNC_API_KEY` is empty/unset, every `/sync` request returns 401. Fail-closed by design.
