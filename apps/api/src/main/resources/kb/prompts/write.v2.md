@@ -34,6 +34,7 @@ Short introduction.
   when the concept really is the same: words with the same name often mean different things in different courses
   (false friends), so if unsure, don't link.
 - Math in KaTeX: `$…$` inline, `$$…$$` on their own lines.
+- Every formula, even a short `\bar{X}`, goes inside `$…$` on one line (single backslashes, none at the end of a line). No notes to the editor ("Qué falta", TODO, "Por completar"), and no link from a page to itself.
 
 ## How to write
 

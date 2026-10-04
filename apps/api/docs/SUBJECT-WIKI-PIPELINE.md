@@ -81,6 +81,10 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
    - If the model proposed ops but **none** survived, that PLAN request is sent once more (as the stage's second
      attempt, `KbRunHandler.redo`) with a corrective note listing the valid file ids. Still empty → the subject fails
      with `PLAN: plan returned no operations with valid sources`.
+   - Index-only plans: a subject compiled for the first time (no live pages) with at least 2 usable sources whose kept
+     ops are only the `index` page is **insufficient**, handled exactly like an empty plan (one retry with a note asking
+     for topic and concept pages; still insufficient → the subject fails with `PLAN: plan_insufficient: …`). An index
+     page planned as `indice`/`índice` with `type: index` is normalised to the slug `index`.
 4. **WRITE** (batch): one request per create/update op.
    - Input:
      - the current page Markdown (for updates);

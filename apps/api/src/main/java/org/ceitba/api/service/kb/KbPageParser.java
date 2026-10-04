@@ -216,6 +216,9 @@ public final class KbPageParser {
             }
         }
         errors.addAll(unsafeMarkdownErrors(body));
+        errors.addAll(KbStyleChecks.latexErrors(body));
+        errors.addAll(KbStyleChecks.metaSectionErrors(body));
+        errors.addAll(KbStyleChecks.selfLinkErrors(links, folderSubjectId, slug));
 
         if (!errors.isEmpty()) return new Result(null, errors);
         return new Result(new Draft(slug, type, title, subject, summary, List.copyOf(aliases), List.copyOf(sources),
@@ -234,7 +237,10 @@ public final class KbPageParser {
             if (at < 0) break;
             int end = text.indexOf("]]", at);
             var seg = text.substring(at, end < 0 ? text.length() : end);
-            if (end < 0 || seg.contains("\n")) {
+            if (seg.length() > 7 && Character.isWhitespace(seg.charAt(7))) {
+                out.add("citation format: no space allowed after 'file:'; write [[file:<id>|short name]], with the "
+                    + "id of one of the page's sources right after the colon: " + preview(seg));
+            } else if (end < 0 || seg.contains("\n")) {
                 out.add("citation not closed on the same line: " + preview(seg) + "...");
             } else {
                 int bar = seg.indexOf('|');
