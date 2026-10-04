@@ -13,4 +13,26 @@ class DoBatchClientTest {
         assertThat(DoBatchClient.jsonlFileName(" ")).isEqualTo("batch.jsonl");
         assertThat(DoBatchClient.jsonlFileName(null)).isEqualTo("batch.jsonl");
     }
+
+    @Test
+    void completedWithoutResultsYetIsStillFinalizing() throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var early = DoBatchClient.info(json.readTree("{\"batch_id\":\"b\",\"status\":\"completed\",\"result_available\":false}"));
+        assertThat(early.status()).isEqualTo("finalizing");
+        assertThat(early.finished()).isFalse();
+        var ready = DoBatchClient.info(json.readTree("{\"batch_id\":\"b\",\"status\":\"completed\",\"result_available\":true}"));
+        assertThat(ready.finished()).isTrue();
+    }
+
+    @Test
+    void resultsReadDosDownloadShape() throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var r = DoBatchClient.resultsOf(json.readTree(
+            "{\"result_available\":true,\"download\":{\"presigned_url\":\"https://x/out.jsonl\",\"expires_at\":\"t\"}}"));
+        assertThat(r.available()).isTrue();
+        assertThat(r.outputFileUrl()).isEqualTo("https://x/out.jsonl");
+        var openai = DoBatchClient.resultsOf(json.readTree("{\"output_file_url\":\"https://y/o\",\"error_file_url\":\"https://y/e\"}"));
+        assertThat(openai.outputFileUrl()).isEqualTo("https://y/o");
+        assertThat(openai.errorFileUrl()).isEqualTo("https://y/e");
+    }
 }
