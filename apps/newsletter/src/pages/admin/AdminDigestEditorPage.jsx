@@ -10,6 +10,7 @@ import LoadErrorState from '../../components/admin/LoadErrorState'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import DigestCounts from '../../components/admin/DigestCounts'
+import DigestStatsPanel from '../../components/admin/DigestStatsPanel'
 import { formatDate } from '../../utils/dates'
 import {
   SENDING_POLL_MS, artInputToInstant, defaultAutoSendInput, digestErrorMessage, formatArtDateTime,
@@ -185,7 +186,8 @@ export default function AdminDigestEditorPage() {
       const { sentTo } = await sendDigestTest(id)
       setToast(t('admin.digests.editor.testSent', { email: sentTo }))
     } catch (err) {
-      setError(digestErrorMessage(err, t, 'admin.digests.errors.test'))
+      // 429 MAIL_QUOTA_EXHAUSTED: says when the quota frees up.
+      setError(digestErrorMessage(err, t, 'admin.digests.errors.test', i18n.language))
     } finally {
       setBusyAction(null)
     }
@@ -245,6 +247,16 @@ export default function AdminDigestEditorPage() {
             ? t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })
             : t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate ?? 0 })}
         </p>
+        {sending && digest.resumeAt && (
+          <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm self-start">
+            {t('admin.digests.resumesAt', { when: formatArtDateTime(digest.resumeAt, i18n.language) })}
+          </p>
+        )}
+        {sending && digest.estimatedFinishAt && (
+          <p className="font-body text-body-sm text-ink-secondary">
+            {t('admin.digests.finishesAt', { when: formatArtDateTime(digest.estimatedFinishAt, i18n.language) })}
+          </p>
+        )}
       </div>
 
       {error && (
@@ -258,6 +270,10 @@ export default function AdminDigestEditorPage() {
           </p>
           <DigestCounts counts={digest.counts} />
         </div>
+      )}
+
+      {(digest.status === 'sent' || sending || (digest.status === 'cancelled' && digest.counts?.sent > 0)) && (
+        <DigestStatsPanel id={id} refreshKey={digest.status} />
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start">

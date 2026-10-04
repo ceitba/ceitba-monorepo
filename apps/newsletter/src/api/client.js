@@ -2,11 +2,14 @@
 export const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
 export class ApiError extends Error {
-  constructor(message, status = 500, code = 'UNKNOWN_ERROR') {
+  // `data`: the whole error body, for errors that carry extra fields
+  // (e.g. 429 MAIL_QUOTA_EXHAUSTED's `resumeAt`).
+  constructor(message, status = 500, code = 'UNKNOWN_ERROR', data = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.data = data
   }
 }
 
@@ -58,5 +61,6 @@ export async function toError(res) {
     body?.message ?? `Request failed (${res.status})`,
     res.status,
     body?.error ?? body?.code ?? 'HTTP_' + res.status,
+    body && typeof body === 'object' ? body : null,
   )
 }

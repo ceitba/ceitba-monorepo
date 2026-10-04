@@ -69,11 +69,37 @@ const KNOWN_ERRORS = new Set([
   'DIGEST_EXISTS', 'INVALID_WEEK_START', 'DIGEST_NOT_EDITABLE', 'DIGEST_EMPTY', 'EMAIL_NOT_ALLOWED', 'NETWORK_ERROR',
 ])
 
-// ApiError → translated message for the digest admin.
-export function digestErrorMessage(err, t, fallbackKey = 'admin.digests.errors.generic') {
+// ApiError → translated message for the digest admin. `lang` formats the
+// resume time of 429 MAIL_QUOTA_EXHAUSTED.
+export function digestErrorMessage(err, t, fallbackKey = 'admin.digests.errors.generic', lang) {
   const code = err?.code
+  if (code === 'MAIL_QUOTA_EXHAUSTED') {
+    const when = err?.data?.resumeAt
+    return when
+      ? t('admin.digests.errors.MAIL_QUOTA_EXHAUSTED', { when: formatArtDateTime(when, lang) })
+      : t('admin.digests.errors.MAIL_QUOTA_EXHAUSTED_noWhen')
+  }
   if (KNOWN_ERRORS.has(code)) return t(`admin.digests.errors.${code}`)
   return t(fallbackKey)
+}
+
+// 0..1 → "42 %" (null → "—").
+export function formatRate(rate, lang) {
+  if (rate == null || Number.isNaN(rate)) return '—'
+  return new Intl.NumberFormat(localeFor(lang), { style: 'percent', maximumFractionDigits: 1 }).format(rate)
+}
+
+// [{ hour: ISO, count }] (only hours with opens) → a continuous hourly
+// series from the first to the last bucket, at most `maxHours` long.
+export function hourlySeries(opensByHour, maxHours = 168) {
+  if (!opensByHour?.length) return []
+  const HOUR = 60 * 60 * 1000
+  const byMs = new Map(opensByHour.map((h) => [Date.parse(h.hour), h.count]))
+  const start = Math.min(...byMs.keys())
+  const end = Math.min(Math.max(...byMs.keys()), start + (maxHours - 1) * HOUR)
+  const out = []
+  for (let ms = start; ms <= end; ms += HOUR) out.push({ hour: new Date(ms).toISOString(), count: byMs.get(ms) ?? 0 })
+  return out
 }
 
 // How often the admin re-fetches while an issue is being sent.

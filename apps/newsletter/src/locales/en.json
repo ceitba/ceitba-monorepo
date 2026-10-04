@@ -419,7 +419,9 @@
         "test": "We couldn't send the test.",
         "send": "We couldn't start sending.",
         "cancel": "We couldn't cancel the digest.",
-        "DIGEST_EMPTY": "A digest with no articles or events can't be sent."
+        "DIGEST_EMPTY": "A digest with no articles or events can't be sent.",
+        "MAIL_QUOTA_EXHAUSTED": "The account's daily sending quota is used up (test sends count too). You can try again ~{{when}} (Argentina time).",
+        "MAIL_QUOTA_EXHAUSTED_noWhen": "The account's daily sending quota is used up (test sends count too). Try again later."
       },
       "editor": {
         "recipientEstimate_one": "{{count}} person who follows CEITBA with the email on would receive it",
@@ -483,6 +485,43 @@
         "stale": "You have unsaved changes: the preview shows the last saved version.",
         "loading": "Loading…",
         "error": "We couldn't load the preview."
+      },
+      "resumesAt": "Sending paused: resumes ~{{when}} (Argentina time)",
+      "finishesAt": "Should finish ~{{when}} (Argentina time), given the daily quota",
+      "quota": {
+        "title": "Sending quota",
+        "label": "Today: {{used}} / {{limit}} used",
+        "hint": "Emails sent from this account in the last 24 hours (digests and tests). Gmail allows about 2000 a day; once the quota is used up, sending continues by itself as it frees up.",
+        "loadError": "We couldn't load the sending quota.",
+        "pausedQuota": "Sending paused until ~{{when}} (Argentina time): Gmail reported the account's daily limit was reached.",
+        "pausedTransport": "Sending paused until ~{{when}} (Argentina time) because of a connection problem with Gmail. It retries by itself.",
+        "full": "The quota for the last 24 hours is used up: the next email goes out ~{{when}} (Argentina time)."
+      },
+      "rates": {
+        "opens": "Opens",
+        "clicks": "Clicks"
+      },
+      "stats": {
+        "title": "Opens and clicks",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing…",
+        "loading": "Loading stats…",
+        "error": "We couldn't load the stats.",
+        "delivered": "Delivered",
+        "uniqueOpens": "Unique opens",
+        "uniqueClicks": "Unique clicks",
+        "rate": "{{rate}} of delivered",
+        "byLink": "Clicks by link",
+        "link": "Link",
+        "unique": "Unique",
+        "total": "Total",
+        "noClicks": "No clicks yet.",
+        "byHour": "First opens per hour",
+        "byHourAria": "Bar chart of first opens per hour: {{hours}} hours, at most {{max}} per hour",
+        "opensCount_one": "{{count}} open",
+        "opensCount_other": "{{count}} opens",
+        "noOpens": "No opens yet.",
+        "note": "Aggregate data only, never per person. Opens are approximate: Gmail caches images (repeat opens are invisible), Apple Mail downloads them on its own when the email arrives and some clients block them. Clicks are the reliable signal. Security scanners, bots and anything in the first seconds after sending are not counted."
       }
     }
   },
