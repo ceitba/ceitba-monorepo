@@ -44,6 +44,9 @@ class KbChatPayloadsTest {
         var openai = KbChatPayloads.batchLine("abc-P-000001", params(), "openai", json);
         assertThat(openai.path("url").asText()).isEqualTo("/v1/chat/completions");
         assertThat(openai.path("body").path("model").asText()).isEqualTo("glm-5.3");
+        // GPT-5 models reject max_tokens in batch: the limit goes as max_completion_tokens.
+        assertThat(openai.path("body").has("max_tokens")).isFalse();
+        assertThat(openai.path("body").path("max_completion_tokens").asInt()).isEqualTo(6000);
     }
 
     @Test
