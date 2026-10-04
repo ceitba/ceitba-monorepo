@@ -18,7 +18,7 @@ class KbPlanSchemaTest {
         var op = tool.path("input_schema").path("properties").path("operations").path("items");
         var required = new ArrayList<String>();
         op.path("required").forEach(n -> required.add(n.asText()));
-        assertThat(required).containsExactlyInAnyOrder("op", "slug", "type", "title", "sources", "reason");
+        assertThat(required).containsExactlyInAnyOrder("op", "slug", "type", "title", "sources", "reason", "mustCover");
         assertThat(op.path("properties").path("sources").path("description").asText()).contains("exactly as given");
     }
 

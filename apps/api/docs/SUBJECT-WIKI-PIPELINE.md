@@ -66,7 +66,15 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
      - the list of removed file ids with the pages citing them;
      - the page index (titles/aliases/summaries) of up to 8 related subjects (`kb_subject_relation`).
    - Output (tool use):
-     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason }] }`.
+     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason, mustCover: [string] }] }`.
+   - `mustCover` (required; may be empty for `delete` and `index`): 2-8 items naming each definition, method, theorem or
+     formula the page must present, taken from the digests' `formulas`/`keyPoints` (LaTeX for quantitative topics).
+     Validation keeps it as an array of trimmed strings (max 10, 300 chars each); missing or invalid becomes `[]`, the op
+     is never dropped for it. It is copied into the WRITE and RETRY request bodies (pipeline and eval).
+   - Reject reason `missing_formula`: if a `mustCover` item contains LaTeX (a backslash command, or `^`/`_` followed by
+     a brace) and the written page has no `$` math at all, the page is rejected with `missing_formula: the plan
+     required formulas (...) but the page has none` (checked with the op in hand, in the pipeline and in evals; counted
+     in the eval's `rejectReasons`; the retry prompt tells the writer to add the formulas).
    - Rules given to the model:
      - update only pages whose sources changed or were removed, or that a new file clearly extends;
      - create pages for new key concepts the new material explains;
@@ -81,6 +89,10 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
    - If the model proposed ops but **none** survived, that PLAN request is sent once more (as the stage's second
      attempt, `KbRunHandler.redo`) with a corrective note listing the valid file ids. Still empty → the subject fails
      with `PLAN: plan returned no operations with valid sources`.
+   - Index-only plans: a subject compiled for the first time (no live pages) with at least 2 usable sources whose kept
+     ops are only the `index` page is **insufficient**, handled exactly like an empty plan (one retry with a note asking
+     for topic and concept pages; still insufficient → the subject fails with `PLAN: plan_insufficient: …`). An index
+     page planned as `indice`/`índice` with `type: index` is normalised to the slug `index`.
 4. **WRITE** (batch): one request per create/update op.
    - Input:
      - the current page Markdown (for updates);

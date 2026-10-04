@@ -11,6 +11,7 @@ import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.domain.drive.DriveFile;
 import org.ceitba.api.domain.kb.KbEval;
+import org.ceitba.api.service.kb.KbMustCover;
 import org.ceitba.api.domain.kb.KbEvalRating;
 import org.ceitba.api.domain.kb.KbEvalSet;
 import org.ceitba.api.domain.kb.KbFileDigest;
@@ -736,6 +737,7 @@ public class KbEvalService implements KbRunHandler {
                             body.put("type", op.path("type").asText());
                             body.put("title", op.path("title").asText());
                             body.put("reason", op.path("reason").asText(""));
+                            body.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
                             var changed = body.putArray("changedSources");
                             body.putArray("keptSources");
                             var texts = new ArrayList<KbPayloads.SourceText>();
@@ -788,6 +790,11 @@ public class KbEvalService implements KbRunHandler {
                             var body = json.createObjectNode();
                             body.put("slug", p.getKey());
                             body.set("errors", page.path("firstErrors"));
+                            r.path("operations").forEach(op -> {
+                                if (op.path("slug").asText().equals(p.getKey())) {
+                                    body.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
+                                }
+                            });
                             body.put("page", page.path("first").asText());
                             body.set("allowedSources", allowed);
                             var params = payloads.tuned(c.write(), "RETRY", s.maxTokens("retry"), c.writeEffort(),
@@ -856,6 +863,8 @@ public class KbEvalService implements KbRunHandler {
                     if (check.emptyAfterFiltering()) {
                         subj.put("error", "PLAN: " + KbPlanCheck.EMPTY_PLAN_ERROR + " (dropped "
                             + check.droppedByReason() + ")");
+                    } else if (check.indexOnly()) {
+                        subj.put("error", "PLAN: " + KbPlanCheck.INDEX_ONLY_ERROR);
                     }
                     subj.set("operations", ops);
                 }
@@ -911,13 +920,13 @@ public class KbEvalService implements KbRunHandler {
             var check = new KbPlanCheck(proposed);
             var files = frozen.path(r.getSubjectId());
             validateOps(proposed, files, check);
-            if (!check.emptyAfterFiltering()) continue;
+            if (!check.insufficient()) continue;
             var ids = new ArrayList<String>();
             files.forEach(f -> ids.add(f.path("fileId").asText()));
             log.warn("KB eval {}: PLAN of {} ({}, config {}) had no usable operation ({} proposed, dropped {}); "
                 + "asking once more", run.getId(), r.getSubjectId(), r.getModel(), configOfTarget(r.getTarget()),
                 check.proposed(), check.droppedByReason());
-            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids)));
+            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids, check.indexOnly())));
             out.add(r.getCustomId());
         }
         return out;
@@ -1090,6 +1099,11 @@ public class KbEvalService implements KbRunHandler {
             for (var m : KbLinker.unlinked(d.body(), d.slug(), targets)) {
                 errs.add("unlinked mention of '" + m.text() + "': link it as [[" + m.slug() + "|" + m.text() + "]]");
             }
+            for (var op : subj.path("operations")) {
+                if (op.path("slug").asText().equals(d.slug())) {
+                    errs.addAll(KbMustCover.missingFormulaErrors(op.path("mustCover"), d.body()));
+                }
+            }
             errors.put(d.slug(), errs);
         }
         for (var e : linked.entrySet()) {
@@ -1112,9 +1126,10 @@ public class KbEvalService implements KbRunHandler {
         frozenFiles.forEach(f -> valid.add(f.path("fileId").asText()));
         var out = json.createArrayNode();
         var seen = new HashSet<String>();
+        check.firstCompile(valid.size());   // evals rebuild from scratch
         for (var op : proposed) {
             var kind = op.path("op").asText("create").toLowerCase(Locale.ROOT);
-            var slug = op.path("slug").asText("").trim();
+            var slug = KbPlanCheck.normalizeIndexSlug(op.path("slug").asText("").trim(), op.path("type").asText(""));
             if (kind.equals("delete")) {
                 check.dropped(KbPlanCheck.DELETE_IGNORED);
                 continue;
@@ -1135,7 +1150,7 @@ public class KbEvalService implements KbRunHandler {
                 check.droppedForSources(op.path("sources"));
                 continue;
             }
-            check.kept();
+            check.keptPage(slug);
             var o = out.addObject();
             o.put("op", "create");
             o.put("slug", slug);
@@ -1143,6 +1158,7 @@ public class KbEvalService implements KbRunHandler {
             o.put("title", op.path("title").asText(slug.replace('-', ' ')));
             o.set("sources", sources);
             o.put("reason", op.path("reason").asText(""));
+            o.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
         }
         return out;
     }

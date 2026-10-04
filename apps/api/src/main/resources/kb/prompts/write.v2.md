@@ -34,6 +34,8 @@ Short introduction.
   when the concept really is the same: words with the same name often mean different things in different courses
   (false friends), so if unsure, don't link.
 - Math in KaTeX: `$…$` inline, `$$…$$` on their own lines.
+- Cover every item in `mustCover`. When the page is about a quantitative method or result, include its formula(s) in KaTeX (`$…$` / `$$…$$`), explain each variable, and add a short worked example under `## Ejemplo` when the material has one.
+- Every formula, even a short `\bar{X}`, goes inside `$…$` on one line (single backslashes, none at the end of a line). No notes to the editor ("Qué falta", TODO, "Por completar"), and no link from a page to itself.
 
 ## How to write
 
@@ -42,7 +44,7 @@ Short introduction.
   (humanities: `## Idea central`, `## Argumentos`, `## Autores y textos`, `## Para discutir`).
 - topic: overview, its concepts in order with links, typical exam questions.
 - index: what the course covers according to the notes, the topics in order, a list of all pages with links,
-  and `## Qué falta` (gaps in the notes). The index sections need citations too.
+  and `## Temas con poco material` (topics the notes cover thinly). The index sections need citations too.
 - Synthesize in your own words: never copy 40 or more consecutive words from a source.
 - Don't invent facts the material doesn't support. Never name students.
 - Sources' age: each source has its `academicYear` and `community` (true = an older community archive). When

@@ -46,4 +46,47 @@ class KbValidatorTest {
         assertThat(KbValidator.validate(d, Map.of(F1, new KbValidator.SourceInfo(F1, true, "61.12", text))))
             .singleElement().asString().startsWith("copies 40+ consecutive words");
     }
+
+    static java.util.List<String> parseErrors(String body) {
+        var content = "---\ntitle: T\nsubject: \"61.12\"\ntype: concept\nsummary: S\nsources: [" + F1
+            + "]\ngenerator: manual\ngenerated_at: 2026-10-02\n---\n" + body;
+        return KbPageParser.parse("t.md", content, "61.12").errors();
+    }
+
+    static final String CITE = " [[file:" + F1 + "|a.pdf]]";
+
+    @Test
+    void goodMathAndProseAreAccepted() {
+        assertThat(parseErrors("## A\nLa media $\\bar{X}$ y $$\\frac{a}{b} \\\\ c$$ cuestan \\$5. Usa `\\bar` en código."
+            + CITE + "\n\n```\n\\\\bar $\n```\n\n## Pendiente de la curva\nLa pendiente es negativa." + CITE
+            + "\n\nVer [[t#a]] y [[#a]]. Todo el mercado compite." + CITE)).isEmpty();
+    }
+
+    @Test
+    void brokenLatexIsRejected() {
+        for (var bad : new String[] {
+            "## A\nLa media \\bar{X} es.",
+            "## A\nLa media \\\\bar{X} es.",
+            "## A\n$\\bar{X} \\\n\\pm z$ es.",
+            "## A\nUn precio de $5 y nada más.",
+            "## A\nSe ve $\\\\pm z$ aquí."}) {
+            assertThat(parseErrors(bad + CITE)).as(bad).anyMatch(e -> e.startsWith("latex_format:"));
+        }
+    }
+
+    @Test
+    void editorNotesAreRejected() {
+        for (var bad : new String[] {
+            "## Qué falta\n- Algo" + CITE, "## Contenido\nTexto" + CITE + "\n\n## TODO\nx",
+            "## A\nTexto" + CITE + "\n- Agregar enlaces a páginas de cada tema cuando existan",
+            "## A\nTexto" + CITE + "\n- TODO: ampliar", "## A\nTexto" + CITE + "\n- Por completar"}) {
+            assertThat(parseErrors(bad)).as(bad).anyMatch(e -> e.startsWith("meta_section:"));
+        }
+    }
+
+    @Test
+    void selfLinksAndSpacedCitationsAreRejected() {
+        assertThat(parseErrors("## A\nVer [[t|Esta]]" + CITE)).anyMatch(e -> e.startsWith("self_link:"));
+        assertThat(parseErrors("## A\nTexto [[file: " + F1 + "|a.pdf]]")).anyMatch(e -> e.startsWith("citation "));
+    }
 }

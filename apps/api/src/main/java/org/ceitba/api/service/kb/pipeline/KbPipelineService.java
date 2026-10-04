@@ -29,6 +29,7 @@ import org.ceitba.api.repository.kb.KbRunRequestRepository;
 import org.ceitba.api.repository.kb.KbRunSubjectRepository;
 import org.ceitba.api.repository.kb.KbSubjectStateRepository;
 import org.ceitba.api.service.kb.KbImportService;
+import org.ceitba.api.service.kb.KbMustCover;
 import org.ceitba.api.service.kb.KbLinker;
 import org.ceitba.api.service.kb.KbWikilinks;
 import org.ceitba.api.service.kb.admin.KbEffectiveSettings;
@@ -423,6 +424,10 @@ public class KbPipelineService implements KbRunHandler {
                         rs.fail("PLAN: " + KbPlanCheck.EMPTY_PLAN_ERROR + " (dropped " + check.droppedByReason() + ")");
                         continue;
                     }
+                    if (check.indexOnly()) {
+                        rs.fail("PLAN: " + KbPlanCheck.INDEX_ONLY_ERROR);
+                        continue;
+                    }
                     rs.setOperations(ops);
                 }
                 if (!dropped.isEmpty()) {
@@ -490,12 +495,13 @@ public class KbPipelineService implements KbRunHandler {
             var proposed = r.getResult().path("operations");
             var check = new KbPlanCheck(proposed);
             validateOps(rs, proposed, livePages(rs.getSubjectId()), check);
-            if (!check.emptyAfterFiltering()) continue;
+            if (!check.insufficient()) continue;
             var ids = new ArrayList<String>();
             rs.getInputs().forEach(i -> ids.add(i.path("fileId").asText()));
-            log.warn("KB run {}: PLAN of {} ({}) had no usable operation ({} proposed, dropped {}); asking once more",
-                run.getId(), rs.getSubjectId(), r.getModel(), check.proposed(), check.droppedByReason());
-            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids)));
+            log.warn("KB run {}: PLAN of {} ({}) had no usable operation ({} proposed, dropped {}, index only: {}); "
+                + "asking once more", run.getId(), rs.getSubjectId(), r.getModel(), check.proposed(),
+                check.droppedByReason(), check.indexOnly());
+            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids, check.indexOnly())));
             out.add(r.getCustomId());
         }
         return out;
@@ -741,6 +747,7 @@ public class KbPipelineService implements KbRunHandler {
             body.put("type", op.path("type").asText());
             body.put("title", op.path("title").asText());
             body.put("reason", op.path("reason").asText(""));
+            body.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
             var changedSources = body.putArray("changedSources");
             var keptSources = body.putArray("keptSources");
             var sourceTexts = new ArrayList<KbPayloads.SourceText>();
@@ -807,6 +814,8 @@ public class KbPipelineService implements KbRunHandler {
             var body = json.createObjectNode();
             body.put("slug", e.getKey());
             body.set("errors", d.path("errors"));
+            var retryOp = operation(rs, e.getKey());
+            if (retryOp != null) body.set("mustCover", KbMustCover.normalize(retryOp.path("mustCover")));
             body.put("page", d.path("content").asText());
             body.set("allowedSources", allowed);
             var model = s.retryModelFor(rs.getSubjectId());
@@ -883,9 +892,10 @@ public class KbPipelineService implements KbRunHandler {
         existing.forEach(p -> bySlug.put(p.getSlug(), p));
         var out = json.createArrayNode();
         var seen = new HashSet<String>();
+        if (existing.isEmpty()) check.firstCompile(valid.size());
         for (var op : proposed) {
             var kind = op.path("op").asText("").toLowerCase(Locale.ROOT);
-            var slug = op.path("slug").asText("").trim();
+            var slug = KbPlanCheck.normalizeIndexSlug(op.path("slug").asText("").trim(), op.path("type").asText(""));
             if (!KbWikilinks.SLUG.matcher(slug).matches() || slug.equals("graph")) {
                 check.dropped(KbPlanCheck.INVALID_SLUG);
                 continue;
@@ -909,6 +919,7 @@ public class KbPipelineService implements KbRunHandler {
             o.put("slug", slug);
             if (kind.equals("delete")) {
                 o.put("reason", op.path("reason").asText(""));
+                o.set("mustCover", json.createArrayNode());
                 out.add(o);
                 check.kept();
                 continue;
@@ -933,8 +944,9 @@ public class KbPipelineService implements KbRunHandler {
             o.put("title", title);
             o.set("sources", sources);
             o.put("reason", op.path("reason").asText(""));
+            o.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
             out.add(o);
-            check.kept();
+            check.keptPage(slug);
         }
         var removed = new HashSet<String>();
         rs.getRemoved().forEach(n -> removed.add(n.asText()));
@@ -1006,7 +1018,14 @@ public class KbPipelineService implements KbRunHandler {
 
         var drafts = json.createObjectNode();
         var errorsBySlug = new HashMap<String, List<String>>();
-        v.rejected().forEach(r -> errorsBySlug.put(r.slug(), r.errors()));
+        v.rejected().forEach(r -> errorsBySlug.put(r.slug(), new ArrayList<>(r.errors())));
+        for (var e : linked.entrySet()) {
+            if (!origin.get(e.getKey()).equals("write")) continue;
+            var op = operation(rs, e.getKey());
+            if (op == null) continue;
+            var missing = KbMustCover.missingFormulaErrors(op.path("mustCover"), KbPageFiles.split(e.getValue()).body());
+            if (!missing.isEmpty()) errorsBySlug.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).addAll(missing);
+        }
         for (var e : linked.entrySet()) {
             var d = drafts.putObject(e.getKey());
             d.put("content", e.getValue());
