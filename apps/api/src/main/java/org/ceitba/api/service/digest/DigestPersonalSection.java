@@ -14,9 +14,9 @@ public interface DigestPersonalSection {
 
     record Section(String html, String text) {}
 
-    // The sections of many readers at once (the sending worker asks per page
-    // of deliveries, so the data is batch-loaded). A reader without a section
-    // is simply missing from the map.
+    // The sections of many readers at once (batch-loaded). The sending worker
+    // claims one delivery at a time and asks for that single reader. A reader
+    // without a section is simply missing from the map.
     Map<UUID, Section> forReaders(Collection<UUID> readerIds, DigestComposer.Issue issue);
 
     // readerId is null for previews without a reader.

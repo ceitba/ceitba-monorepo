@@ -26,6 +26,20 @@ spring:
         # absolute instant and never used this setting. See LocalTemporalZoneIT.
         format_sql: false
     open-in-view: false
+  lifecycle:
+    # Upper bound for the graceful phase of shutdown (requests in flight).
+    timeout-per-shutdown-phase: 60s
+  task:
+    execution:
+      shutdown:
+        # The digest worker runs on this executor: wait for the email being
+        # sent instead of killing it mid-SMTP (DigestSender stops taking new ones).
+        await-termination: true
+        await-termination-period: 60s
+    scheduling:
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
   # SMTP for service/mail (used only with MAIL_ENABLED=true).
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
@@ -52,6 +66,10 @@ spring:
 
 server:
   port: ${PORT:8080}
+  # A deploy (SIGTERM) lets in-flight requests finish. The digest worker
+  # (task executor) also gets to finish the email in flight; see
+  # spring.task.execution.shutdown below.
+  shutdown: graceful
   servlet:
     context-path: /api
 
@@ -220,11 +238,14 @@ drive-sync:
   # Dev only: comma list of subject codes; expansion is limited to them.
   community-only-codes: ${DRIVE_SYNC_COMMUNITY_ONLY_CODES:}
 
-# Outgoing email (service/mail). MAIL_ENABLED=false (default) only logs, so
-# dev and tests never send. Prod: the ceitba@itba.edu.ar Workspace account
+# Outgoing email (service/mail). MAIL_ENABLED=false (default) cannot send at
+# all (digest send answers 409 MAIL_DISABLED), so dev and tests never email. Prod: the ceitba@itba.edu.ar Workspace account
 # over Gmail SMTP with an app password (docs/WEEKLY-DIGEST.md).
 mail:
   enabled: ${MAIL_ENABLED:false}
+  # DEV ONLY: with MAIL_ENABLED=false, log sends (masked addresses) and report
+  # them as successful instead of refusing (409 MAIL_DISABLED). Never in prod.
+  log-sends: ${MAIL_LOG_SENDS:false}
   from: ${MAIL_FROM:CEITBA <ceitba@itba.edu.ar>}
 
 # Weekly digest "La semana en ITBA" (docs/WEEKLY-DIGEST.md).

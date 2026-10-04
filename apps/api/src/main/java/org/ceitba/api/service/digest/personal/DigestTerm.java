@@ -31,7 +31,7 @@ import java.util.Map;
 //      whose names aren't offered this term, or a subject with no current
 //      commission, is dropped.
 //   3. The schedule is current when at least one entry survives AND it was
-//      saved (updated_at, ART) no earlier than PLANNING_LEAD_DAYS before the
+//      saved (payload_updated_at, ART) no earlier than PLANNING_LEAD_DAYS before the
 //      latest course_start among the picked commissions. Students build next
 //      term's schedule in the weeks before it starts; consecutive terms start
 //      ~4-5 months apart, so a schedule saved for the previous term is older

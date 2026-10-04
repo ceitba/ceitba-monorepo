@@ -5,12 +5,17 @@ import org.ceitba.api.common.exception.DomainException;
 public class EmailSendException extends DomainException {
 
     public enum Kind {
-        // This recipient/message was rejected (bad address, malformed message):
-        // record it as failed and go on with the next one.
+        // This recipient/message was rejected for good (bad address, mailbox
+        // full, malformed message): record it as failed, go on with the next.
         RECIPIENT,
-        // The transport is unusable right now (authentication, sending quota,
-        // connection, 4xx): stop the batch and retry later.
-        TRANSIENT
+        // Temporary and scoped to this delivery (a 4.x.x reply that is not the
+        // account's fault): retry it later, give up after a few attempts, and
+        // never hold up the other recipients.
+        TRANSIENT,
+        // The account/connection is unusable right now (authentication,
+        // sending quota, throttling, connection, unknown errors): stop the
+        // batch and retry later; no delivery is blamed.
+        TRANSPORT
     }
 
     private final Kind kind;

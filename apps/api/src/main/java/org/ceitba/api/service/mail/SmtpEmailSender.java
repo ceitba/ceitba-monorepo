@@ -12,6 +12,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // SMTP via Spring Mail (spring.mail.*: smtp.gmail.com:587 STARTTLS with the
@@ -53,30 +54,57 @@ public class SmtpEmailSender implements EmailSender {
         }
     }
 
-    // SMTP replies that mean "not now" rather than "not this recipient":
-    // 4xx, and 5.4.5 (Gmail daily sending limit) / 534-535 (authentication).
-    private static final Pattern TRANSIENT_REPLY =
-        Pattern.compile("\\b(4\\d\\d[ -]4\\.\\d+\\.\\d+|5\\.4\\.5|53[45][ -]5\\.7\\.\\d+)\\b");
+    // "550 5.4.5 ...", "452 4.2.2 ...": the reply code and its enhanced status.
+    private static final Pattern REPLY = Pattern.compile("\\b([245]\\d\\d)[ -]([245])\\.(\\d{1,3})\\.(\\d{1,3})\\b");
 
     static EmailSendException classify(MailException e) {
         if (e instanceof MailAuthenticationException) {
-            return new EmailSendException(EmailSendException.Kind.TRANSIENT, "SMTP authentication failed", e);
+            return new EmailSendException(EmailSendException.Kind.TRANSPORT, "SMTP authentication failed", e);
         }
         if (e instanceof MailParseException || e instanceof MailPreparationException) {
             return new EmailSendException(EmailSendException.Kind.RECIPIENT, e.getMessage(), e);
         }
-        String text = messages(e).toLowerCase(Locale.ROOT);
-        // Gmail: "550 5.4.5 Daily user sending limit exceeded", "421 4.7.0 Try
-        // again later", "454 4.7.0 Too many login attempts": back off.
-        if (text.contains("limit exceeded") || text.contains("rate limit")
-                || text.contains("try again later") || TRANSIENT_REPLY.matcher(text).find()) {
-            return new EmailSendException(EmailSendException.Kind.TRANSIENT, e.getMessage(), e);
+        var kind = classifyReply(messages(e));
+        if (kind == null) {
+            // No usable reply code: a rejected address still blames the
+            // recipient; connection refused, timeouts and the rest are the
+            // transport's.
+            kind = hasInvalidRecipient(e) ? EmailSendException.Kind.RECIPIENT : EmailSendException.Kind.TRANSPORT;
         }
-        if (hasInvalidRecipient(e)) {
-            return new EmailSendException(EmailSendException.Kind.RECIPIENT, e.getMessage(), e);
+        return new EmailSendException(kind, e.getMessage(), e);
+    }
+
+    // Who an SMTP reply blames, from its first "<code> <class.subject.detail>"
+    // pair (null = no such pair in the text):
+    //   RECIPIENT  4.1.x, 4.2.x (mailbox over quota, ...), 5.1.x, 5.2.x
+    //   TRANSPORT  421, 5.4.5 (Gmail daily sending limit), 4.7.x (throttling,
+    //              "try again later"), 534/535 5.7.x (authentication), and the
+    //              "limit exceeded" / "rate limit" / "try again later" wordings
+    //   TRANSIENT  any other 4.x.x: temporary, but not the account's fault
+    //   (other 5.x.x: null, the caller decides)
+    static EmailSendException.Kind classifyReply(String text) {
+        String t = text.toLowerCase(Locale.ROOT);
+        Matcher m = REPLY.matcher(t);
+        if (m.find()) {
+            int code = Integer.parseInt(m.group(1));
+            int cls = Integer.parseInt(m.group(2));
+            int subject = Integer.parseInt(m.group(3));
+            int detail = Integer.parseInt(m.group(4));
+            if (code == 421 || (cls == 5 && subject == 4 && detail == 5)
+                    || (cls == 5 && subject == 7 && (code == 534 || code == 535))
+                    || (cls == 4 && subject == 7)) {
+                return EmailSendException.Kind.TRANSPORT;
+            }
+            if (subject == 1 || subject == 2) {
+                if (cls == 4 || cls == 5) return EmailSendException.Kind.RECIPIENT;
+            }
+            if (cls == 4) return EmailSendException.Kind.TRANSIENT;
+            // Other permanent replies: fall through to the wording check.
         }
-        // Connection refused, timeouts, unknown: assume the transport.
-        return new EmailSendException(EmailSendException.Kind.TRANSIENT, e.getMessage(), e);
+        if (t.contains("limit exceeded") || t.contains("rate limit") || t.contains("try again later")) {
+            return EmailSendException.Kind.TRANSPORT;
+        }
+        return null;
     }
 
     private static boolean hasInvalidRecipient(Throwable e) {

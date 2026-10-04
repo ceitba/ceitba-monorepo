@@ -97,6 +97,12 @@ public class DigestComposer {
             .toList();
     }
 
+    // Size of recipients() without loading the users (the draft's estimate).
+    @Transactional(readOnly = true)
+    public long recipientCount() {
+        return users.countDigestAudience(AUDIENCE_ORG, props.allowedDomains());
+    }
+
     // Re-checked right before sending to a snapshotted recipient.
     @Transactional(readOnly = true)
     public boolean stillEligible(UUID userId, String email) {

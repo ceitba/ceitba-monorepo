@@ -1,5 +1,6 @@
 package org.ceitba.api.config;
 
+import org.ceitba.api.service.mail.DisabledEmailSender;
 import org.ceitba.api.service.mail.EmailSender;
 import org.ceitba.api.service.mail.LoggingEmailSender;
 import org.ceitba.api.service.mail.SmtpEmailSender;
@@ -13,7 +14,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 // MAIL_ENABLED=true: SMTP through Spring Boot's JavaMailSender (spring.mail.*).
-// Otherwise (the default) a logging no-op, so dev and tests never send.
+// Otherwise (the default) a sender that refuses (DisabledEmailSender), or, only
+// with the dev flag MAIL_LOG_SENDS=true, one that just logs.
 @Configuration
 @EnableConfigurationProperties({EmailProperties.class, DigestProperties.class, DigestPersonalProperties.class})
 public class MailConfig {
@@ -23,8 +25,12 @@ public class MailConfig {
     @Bean
     public EmailSender emailSender(EmailProperties props, ObjectProvider<JavaMailSender> javaMailSender) {
         if (!props.enabled()) {
-            log.info("Mail: disabled (MAIL_ENABLED=false); emails are only logged");
-            return new LoggingEmailSender();
+            if (props.logSends()) {
+                log.warn("Mail: DEV log-only mode (MAIL_LOG_SENDS=true); emails are logged, never sent");
+                return new LoggingEmailSender();
+            }
+            log.info("Mail: disabled (MAIL_ENABLED=false); sending is refused");
+            return new DisabledEmailSender();
         }
         JavaMailSender sender = javaMailSender.getIfAvailable();
         if (sender == null) {
