@@ -45,6 +45,29 @@ public final class LlmOutputParser {
         return out;
     }
 
+    // Streams a JSONL file: each parsed result goes to `sink` as its line is
+    // read, so a big output never sits in memory. Unparseable lines are skipped.
+    public static void parse(java.nio.file.Path jsonl, ObjectMapper json,
+                             java.util.function.Consumer<LlmResult> sink) {
+        if (jsonl == null) return;
+        try (var in = java.nio.file.Files.newBufferedReader(jsonl, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = in.readLine()) != null) {
+                if (line.isBlank()) continue;
+                JsonNode node;
+                try {
+                    node = json.readTree(line);
+                } catch (Exception e) {
+                    continue;
+                }
+                var r = parseLine(node, json);
+                if (r != null) sink.accept(r);
+            }
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
     static LlmResult parseLine(JsonNode line, ObjectMapper json) {
         var id = textOf(line, "custom_id");
         if (id == null) id = textOf(line.path("request"), "custom_id");

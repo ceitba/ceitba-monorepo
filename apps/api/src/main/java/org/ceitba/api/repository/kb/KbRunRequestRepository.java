@@ -26,6 +26,79 @@ public interface KbRunRequestRepository extends JpaRepository<KbRunRequest, Stri
     List<Object[]> pendingIdsAndModels(@org.springframework.data.repository.query.Param("runId") UUID runId,
                                        @org.springframework.data.repository.query.Param("stage") String stage);
 
+    // ---- paging helpers: ids first (no params), rows in pages, counts in SQL ----
+
+    List<KbRunRequest> findByRunIdAndStageAndSubjectId(UUID runId, String stage, String subjectId);
+
+    long countByRunIdAndStageAndStatusIn(UUID runId, String stage, Collection<String> statuses);
+
+    @org.springframework.data.jpa.repository.Query("""
+        select r.customId from KbRunRequest r where r.runId = :runId and r.stage = :stage order by r.customId
+        """)
+    List<String> idsByRunAndStage(@org.springframework.data.repository.query.Param("runId") UUID runId,
+                                  @org.springframework.data.repository.query.Param("stage") String stage);
+
+    @org.springframework.data.jpa.repository.Query("""
+        select r.customId from KbRunRequest r
+        where r.runId = :runId and r.stage = :stage and r.status in :statuses order by r.customId
+        """)
+    List<String> idsByRunStageStatus(@org.springframework.data.repository.query.Param("runId") UUID runId,
+                                     @org.springframework.data.repository.query.Param("stage") String stage,
+                                     @org.springframework.data.repository.query.Param("statuses") Collection<String> statuses);
+
+    // SUBMITTED requests of a job (what a batch file carries).
+    @org.springframework.data.jpa.repository.Query("""
+        select r.customId from KbRunRequest r where r.batchJobId = :jobId and r.status = 'SUBMITTED' order by r.customId
+        """)
+    List<String> submittedIdsOfJob(@org.springframework.data.repository.query.Param("jobId") UUID jobId);
+
+    // SUBMITTED requests of a job that got no answer yet (what a restart resumes).
+    @org.springframework.data.jpa.repository.Query("""
+        select r.customId from KbRunRequest r
+        where r.batchJobId = :jobId and r.status = 'SUBMITTED' and r.completedAt is null order by r.customId
+        """)
+    List<String> unansweredIdsOfJob(@org.springframework.data.repository.query.Param("jobId") UUID jobId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        select count(r) from KbRunRequest r
+        where r.batchJobId = :jobId and r.status = 'SUBMITTED' and r.completedAt is null
+        """)
+    long countUnansweredOfJob(@org.springframework.data.repository.query.Param("jobId") UUID jobId);
+
+    // Bulk: requests sent with a job (no entity loaded).
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("""
+        update KbRunRequest r set r.status = 'SUBMITTED', r.batchJobId = :jobId, r.completedAt = null, r.latencyMs = null
+        where r.customId in :ids
+        """)
+    int markSubmitted(@org.springframework.data.repository.query.Param("jobId") UUID jobId,
+                      @org.springframework.data.repository.query.Param("ids") Collection<String> ids);
+
+    // Bulk: a refused batch fails its requests that are still SUBMITTED.
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("""
+        update KbRunRequest r set r.status = 'FAILED', r.error = :error
+        where r.batchJobId = :jobId and r.status = 'SUBMITTED'
+        """)
+    int failSubmittedOfJob(@org.springframework.data.repository.query.Param("jobId") UUID jobId,
+                           @org.springframework.data.repository.query.Param("error") String error);
+
+    // [model, sum(est_tokens), sum(max_tokens)] of a stage's PENDING requests
+    // (cost check without loading params).
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT model, COALESCE(SUM(est_tokens), 0), COALESCE(SUM(COALESCE(CAST(params ->> 'max_tokens' AS bigint), 4096)), 0)
+        FROM wiki.kb_run_request WHERE run_id = :runId AND stage = :stage AND status = 'PENDING' GROUP BY model
+        """, nativeQuery = true)
+    List<Object[]> pendingEstimate(@org.springframework.data.repository.query.Param("runId") UUID runId,
+                                   @org.springframework.data.repository.query.Param("stage") String stage);
+
+    // The same for these custom ids (a resubmission).
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT model, COALESCE(SUM(est_tokens), 0), COALESCE(SUM(COALESCE(CAST(params ->> 'max_tokens' AS bigint), 4096)), 0)
+        FROM wiki.kb_run_request WHERE custom_id IN (:ids) GROUP BY model
+        """, nativeQuery = true)
+    List<Object[]> estimateOf(@org.springframework.data.repository.query.Param("ids") Collection<String> ids);
+
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("delete from KbRunRequest r where r.customId in :ids")
     int deleteByCustomIds(@org.springframework.data.repository.query.Param("ids") Collection<String> ids);

@@ -50,19 +50,83 @@ public class BatchLlmExecutor {
     // model: the catalog id (decides the provider); batchModelId: the id the
     // JSONL lines carry (KbLlmRouter.batchModelId).
     public Submitted submit(String name, String model, String batchModelId, List<LlmLine> lines, String requestId) {
+        return submit(name, model, batchModelId, lines.iterator(), requestId);
+    }
+
+    // The lines are written to a temp file as the iterator yields them (the
+    // caller pages them from the database) and the file is uploaded from
+    // disk: a batch never sits in the heap.
+    public Submitted submit(String name, String model, String batchModelId, java.util.Iterator<LlmLine> lines,
+                            String requestId) {
         var provider = KbChatPayloads.batchProvider(model);
         if (provider == null) throw new LlmApiException(0, model + " has no batch support");
         checkSlot();
-        var sb = new StringBuilder();
-        for (var l : lines) {
-            sb.append(KbChatPayloads.batchLine(l.customId(), l.params(), provider, batchModelId, json)).append('\n');
+        java.nio.file.Path tmp = null;
+        try {
+            tmp = java.nio.file.Files.createTempFile("kb-batch-", ".jsonl");
+            try (var out = new java.io.BufferedWriter(new java.io.OutputStreamWriter(
+                    java.nio.file.Files.newOutputStream(tmp), StandardCharsets.UTF_8))) {
+                while (lines.hasNext()) {
+                    var l = lines.next();
+                    out.write(KbChatPayloads.batchLine(l.customId(), l.params(), provider, batchModelId, json).toString());
+                    out.write('\n');
+                }
+            }
+            var file = client.createFile(name);
+            client.upload(file.uploadUrl(), tmp);
+            var info = client.createBatch(file.fileId(), requestId, provider,
+                "openai".equals(provider) ? KbChatPayloads.CHAT_ENDPOINT : null);
+            return new Submitted(file.fileId(), info.id());
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        } finally {
+            deleteQuietly(tmp);
         }
-        var bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
-        var file = client.createFile(name);
-        client.upload(file.uploadUrl(), bytes);
-        var info = client.createBatch(file.fileId(), requestId, provider,
-            "openai".equals(provider) ? KbChatPayloads.CHAT_ENDPOINT : null);
-        return new Submitted(file.fileId(), info.id());
+    }
+
+    // Output and error files of a finished batch, downloaded to temp files
+    // (null when absent; the caller deletes them). Partial for failed/expired.
+    public record CollectedFiles(java.nio.file.Path output, java.nio.file.Path errors) {
+        public void delete() {
+            deleteQuietly(output);
+            deleteQuietly(errors);
+        }
+    }
+
+    public CollectedFiles collectToFiles(String batchId, boolean completed) {
+        java.nio.file.Path out = null;
+        java.nio.file.Path err = null;
+        try {
+            var res = client.results(batchId);
+            if (res.outputFileUrl() != null) {
+                out = java.nio.file.Files.createTempFile("kb-batch-out-", ".jsonl");
+                client.downloadTo(res.outputFileUrl(), out);
+            }
+            if (res.errorFileUrl() != null) {
+                err = java.nio.file.Files.createTempFile("kb-batch-err-", ".jsonl");
+                client.downloadTo(res.errorFileUrl(), err);
+            }
+        } catch (LlmApiException e) {
+            if (completed) {
+                deleteQuietly(out);
+                deleteQuietly(err);
+                throw e;
+            }
+        } catch (java.io.IOException e) {
+            deleteQuietly(out);
+            deleteQuietly(err);
+            throw new java.io.UncheckedIOException(e);
+        }
+        return new CollectedFiles(out, err);
+    }
+
+    static void deleteQuietly(java.nio.file.Path p) {
+        if (p == null) return;
+        try {
+            java.nio.file.Files.deleteIfExists(p);
+        } catch (java.io.IOException ignored) {
+            // best effort
+        }
     }
 
     // The batch DO created for this request_id earlier, if it lists one.
