@@ -111,7 +111,8 @@
       "invalid_state": "The sign-in session expired or is invalid. Please try again.",
       "auth_failed": "We couldn't complete the sign-in. Please try again.",
       "access_denied": "You cancelled the Google sign-in."
-    }
+    },
+    "myArticles": "My articles"
   },
   "calendar": {
     "prevMonth": "Previous month",
@@ -130,7 +131,7 @@
     "status": {
       "published": "Published",
       "draft": "Draft",
-      "pending_review": "Pending review",
+      "pending_review": "En revisión",
       "changes_requested": "Changes requested",
       "rejected": "Rejected"
     },
@@ -152,7 +153,10 @@
         "organization": "Organization",
         "date": "Date",
         "votes": "Votes"
-      }
+      },
+      "independent": "Independent",
+      "pendingReview_one": "{{count}} independent article is waiting for review: open it and publish it if it's fine.",
+      "pendingReview_other": "{{count}} independent articles are waiting for review: open them and publish them if they're fine."
     },
     "events": {
       "title": "Events",
@@ -245,7 +249,11 @@
       "statusHelp": {
         "new": "Save it as a draft to keep working later (only editors see it) or publish it to the newsletter.",
         "draft": "This is a draft: only the organization's editors can see it. Publish it when it's ready.",
-        "published": "It's published and visible in the newsletter. “Move to drafts” hides it."
+        "published": "It's published and visible in the newsletter. “Move to drafts” hides it.",
+        "independent": "Save it as a draft to keep working later. When it's ready, submit it for review: staff publish it.",
+        "independentPending": "It's in review: staff will publish it. You can keep editing it or move it back to draft.",
+        "reviewByStaff": "An author submitted this for review. If it's fine, publish it; if not, save it as a draft.",
+        "lockedForAuthor": "Staff already published it, so it can't be edited here. For changes, email newsletter@ceitba.org.ar."
       },
       "date": "Publication date",
       "placement": "Placement",
@@ -259,7 +267,15 @@
         "body": "This article has unsaved changes. If you leave now, they'll be lost.",
         "discard": "Leave without saving",
         "stay": "Keep editing"
-      }
+      },
+      "independent": "Independent (no organization)",
+      "independentHint": "As an independent author, CEITBA staff review the article before publishing it.",
+      "submitForReview": "Submit for review",
+      "updateSubmission": "Update submission",
+      "backToDraft": "Back to draft",
+      "editPendingTitle": "Editing article in review",
+      "submittedDone": "Submitted for review",
+      "submittedHint": "CEITBA staff will review and publish it. Meanwhile you can keep editing it from Articles."
     },
     "eventForm": {
       "loading": "Loading event…",
@@ -448,12 +464,9 @@
   "write": {
     "cta": "Write for the newsletter",
     "title": "Publish in the newsletter",
-    "intro": "ITBA's student groups, centers and teams publish their own stories here: news, coverage, calls and anything they want to share.",
-    "signedOut": "If you're part of one, sign in with your @itba.edu.ar account and you'll be able to write in a visual editor.",
-    "notMember": "Your account isn't linked to any organization yet. Ask your group's admin to add you as a member, or write to us and we'll help.",
+    "intro": "Any student can write for the newsletter. Student groups publish directly; independent articles are reviewed by CEITBA staff before they go out.",
+    "signedOut": "Sign in with your @itba.edu.ar account and you'll be able to write in a visual editor.",
     "signIn": "Sign in with Google",
-    "contact": "Email CEITBA",
-    "emailSubject": "I'd like to publish in the newsletter",
     "organizations": "See organizations",
     "close": "Close"
   }

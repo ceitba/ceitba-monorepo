@@ -10,11 +10,10 @@ import { useDialogFocus } from '../hooks/useDialogFocus'
 // who signed in from it lands back here (or in the editor, if they turn out
 // to be a member) instead of on a page that just bounces them.
 const WRITE_PARAM = 'write'
-const CONTACT_EMAIL = 'newsletter@ceitba.org.ar'
 
-// "Escribir en el newsletter" on the home page. Organization members and
-// staff go straight to the editor; everyone else learns who can publish and
-// how to get access.
+// "Escribir en el newsletter" on the home page. Anyone signed in goes
+// straight to the editor (independent authors' articles go through staff
+// review); signed-out visitors learn how it works and sign in.
 export default function WriteForNewsletter() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -52,12 +51,12 @@ export default function WriteForNewsletter() {
           <IconPen /> {t('write.cta')}
         </button>
       )}
-      {open && <WriteDialog signedIn={Boolean(profile)} onClose={() => setOpen(false)} />}
+      {open && <WriteDialog onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-function WriteDialog({ signedIn, onClose }) {
+function WriteDialog({ onClose }) {
   const { t } = useTranslation()
   const closeRef = useRef(null)
   useDialogFocus(closeRef, onClose)
@@ -84,23 +83,17 @@ function WriteDialog({ signedIn, onClose }) {
           <h2 id="write-dialog-title" className="font-display text-h4 font-bold text-ink-primary">{t('write.title')}</h2>
           <p className="font-body text-body text-ink-secondary leading-relaxed">{t('write.intro')}</p>
           <p className="font-body text-body-sm text-ink-primary leading-relaxed bg-surface border border-border rounded-sm px-4 py-3">
-            {signedIn ? t('write.notMember') : t('write.signedOut')}
+            {t('write.signedOut')}
           </p>
 
           <div className="flex flex-col gap-2 pt-1">
-            {signedIn ? (
-              <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t('write.emailSubject'))}`} className="inline-flex items-center justify-center min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
-                {t('write.contact')}
-              </a>
-            ) : (
-              <button
-                type="button"
-                onClick={() => startGoogleSignIn({ returnTo: `/?${WRITE_PARAM}=1` })}
-                className="inline-flex items-center justify-center gap-3 min-h-[44px] px-5 bg-white border border-border rounded-sm shadow-sm hover:shadow-card font-body text-body-sm font-semibold text-ink-primary transition-shadow duration-150"
-              >
-                <GoogleIcon /> {t('write.signIn')}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => startGoogleSignIn({ returnTo: `/?${WRITE_PARAM}=1` })}
+              className="inline-flex items-center justify-center gap-3 min-h-[44px] px-5 bg-white border border-border rounded-sm shadow-sm hover:shadow-card font-body text-body-sm font-semibold text-ink-primary transition-shadow duration-150"
+            >
+              <GoogleIcon /> {t('write.signIn')}
+            </button>
             <Link to="/organizations" onClick={onClose} className="inline-flex items-center justify-center min-h-[44px] px-5 font-body text-body-sm font-semibold text-primary hover:underline underline-offset-2">
               {t('write.organizations')}
             </Link>
