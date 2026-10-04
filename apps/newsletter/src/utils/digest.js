@@ -66,7 +66,7 @@ export function shortTime(value) {
 }
 
 const KNOWN_ERRORS = new Set([
-  'DIGEST_EXISTS', 'INVALID_WEEK_START', 'DIGEST_NOT_EDITABLE', 'EMAIL_NOT_ALLOWED', 'NETWORK_ERROR',
+  'DIGEST_EXISTS', 'INVALID_WEEK_START', 'DIGEST_NOT_EDITABLE', 'DIGEST_EMPTY', 'EMAIL_NOT_ALLOWED', 'NETWORK_ERROR',
 ])
 
 // ApiError → translated message for the digest admin.

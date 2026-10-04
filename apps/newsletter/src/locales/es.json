@@ -380,7 +380,7 @@
     },
     "digests": {
       "title": "La semana en ITBA",
-      "subtitle": "El resumen semanal por mail: artículos de la semana pasada y eventos de la próxima, personalizado según las organizaciones que sigue cada persona. Cada lunes a las 00:05 se crea el borrador de la semana anterior, que se envía solo a las 12:00 (hora de Argentina) salvo que lo canceles o desactives el envío automático.",
+      "subtitle": "El resumen semanal de CEITBA por mail: los artículos de la semana pasada y los eventos de la próxima, de todas las organizaciones. Es el mismo mail para todos y lo reciben quienes siguen a CEITBA con el mail activado. Cada lunes a las 00:05 se crea el borrador de la semana anterior, que se envía solo a las 12:00 (hora de Argentina) salvo que lo canceles o desactives el envío automático.",
       "loading": "Cargando resúmenes…",
       "loadError": "No pudimos cargar los resúmenes.",
       "back": "← Resúmenes",
@@ -418,11 +418,12 @@
         "save": "No pudimos guardar los cambios.",
         "test": "No pudimos enviar la prueba.",
         "send": "No pudimos iniciar el envío.",
-        "cancel": "No pudimos cancelar el resumen."
+        "cancel": "No pudimos cancelar el resumen.",
+        "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos."
       },
       "editor": {
-        "recipientEstimate_one": "Lo recibiría {{count}} persona",
-        "recipientEstimate_other": "Lo recibirían {{count}} personas",
+        "recipientEstimate_one": "Lo recibiría {{count}} persona que sigue a CEITBA con el mail activado",
+        "recipientEstimate_other": "Lo recibirían {{count}} personas que siguen a CEITBA con el mail activado",
         "contentLegend": "Contenido del mail",
         "subject": "Asunto",
         "intro": "Introducción",
@@ -458,8 +459,8 @@
         },
         "sendDialog": {
           "title": "¿Enviar el resumen ahora?",
-          "body_one": "Se le va a enviar a {{count}} persona. No se puede deshacer.",
-          "body_other": "Se les va a enviar a {{count}} personas. No se puede deshacer.",
+          "body_one": "Se le va a enviar a {{count}} persona (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
+          "body_other": "Se les va a enviar a {{count}} personas (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
           "confirm": "Enviar ahora"
         },
         "cancelDialog": {
@@ -468,13 +469,17 @@
           "bodySending": "Se frena el envío: quienes ya lo recibieron no se ven afectados y el resto no lo va a recibir.",
           "confirm": "Sí, cancelar",
           "keep": "Volver"
+        },
+        "emptyWarning": "No hay ningún artículo ni evento incluido: incluí al menos uno para poder enviarlo.",
+        "leaveDialog": {
+          "title": "¿Salir sin guardar?",
+          "body": "Tenés cambios sin guardar en el resumen. Si salís ahora, se pierden.",
+          "confirm": "Salir sin guardar",
+          "stay": "Seguir editando"
         }
       },
       "preview": {
         "title": "Vista previa",
-        "modeLabel": "Versión de la vista previa",
-        "all": "Todos",
-        "me": "Como yo",
         "stale": "Hay cambios sin guardar: la vista previa muestra la última versión guardada.",
         "loading": "Cargando…",
         "error": "No pudimos cargar la vista previa."

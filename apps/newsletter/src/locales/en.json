@@ -380,7 +380,7 @@
     },
     "digests": {
       "title": "La semana en ITBA",
-      "subtitle": "The weekly email digest: last week's articles and next week's events, personalised to the organizations each person follows. Every Monday at 00:05 a draft for the previous week is created, and it goes out automatically at 12:00 (Argentina time) unless you cancel it or turn auto-send off.",
+      "subtitle": "CEITBA's weekly email digest: last week's articles and next week's events from every organization. Everyone gets the same email; it goes to people who follow CEITBA with the email turned on. Every Monday at 00:05 a draft for the previous week is created, and it goes out automatically at 12:00 (Argentina time) unless you cancel it or turn auto-send off.",
       "loading": "Loading digests…",
       "loadError": "We couldn't load the digests.",
       "back": "← Digests",
@@ -418,11 +418,12 @@
         "save": "We couldn't save your changes.",
         "test": "We couldn't send the test.",
         "send": "We couldn't start sending.",
-        "cancel": "We couldn't cancel the digest."
+        "cancel": "We couldn't cancel the digest.",
+        "DIGEST_EMPTY": "A digest with no articles or events can't be sent."
       },
       "editor": {
-        "recipientEstimate_one": "{{count}} person would receive it",
-        "recipientEstimate_other": "{{count}} people would receive it",
+        "recipientEstimate_one": "{{count}} person who follows CEITBA with the email on would receive it",
+        "recipientEstimate_other": "{{count}} people who follow CEITBA with the email on would receive it",
         "contentLegend": "Email content",
         "subject": "Subject",
         "intro": "Intro",
@@ -458,8 +459,8 @@
         },
         "sendDialog": {
           "title": "Send the digest now?",
-          "body_one": "It will be sent to {{count}} person. This cannot be undone.",
-          "body_other": "It will be sent to {{count}} people. This cannot be undone.",
+          "body_one": "It will be sent to {{count}} person (followers of CEITBA with the email on). This cannot be undone.",
+          "body_other": "It will be sent to {{count}} people (followers of CEITBA with the email on). This cannot be undone.",
           "confirm": "Send now"
         },
         "cancelDialog": {
@@ -468,13 +469,17 @@
           "bodySending": "Sending stops: people who already got it aren't affected, and the rest won't receive it.",
           "confirm": "Yes, cancel",
           "keep": "Go back"
+        },
+        "emptyWarning": "No article or event is included: include at least one to be able to send it.",
+        "leaveDialog": {
+          "title": "Leave without saving?",
+          "body": "You have unsaved changes to this digest. If you leave now, they will be lost.",
+          "confirm": "Leave without saving",
+          "stay": "Keep editing"
         }
       },
       "preview": {
         "title": "Preview",
-        "modeLabel": "Preview version",
-        "all": "Everyone",
-        "me": "As me",
         "stale": "You have unsaved changes: the preview shows the last saved version.",
         "loading": "Loading…",
         "error": "We couldn't load the preview."

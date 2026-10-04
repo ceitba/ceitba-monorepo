@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useBlocker, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   cancelDigest, fetchDigest, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
 } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
+import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import LoadErrorState from '../../components/admin/LoadErrorState'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -91,6 +92,24 @@ export default function AdminDigestEditorPage() {
 
   const base = useMemo(() => (digest ? formFrom(digest) : null), [digest])
   const dirty = form && base ? isDirty(form, base) : false
+
+  // Same guard as the article editor: in-app navigation with unsaved edits
+  // asks first (sign-out reads the store too); closing the tab warns via
+  // beforeunload.
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    currentLocation.pathname !== nextLocation.pathname && shouldBlockNavigation())
+
+  useEffect(() => {
+    setUnsavedChanges(dirty)
+    return () => setUnsavedChanges(false)
+  }, [dirty])
+
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   if (!staff) return <Navigate to="/admin/articles" replace />
 
@@ -205,6 +224,8 @@ export default function AdminDigestEditorPage() {
   const includedArticles = digest.articles.filter((a) => !form.excludedArticleIds.includes(a.id)).length
   const includedEvents = digest.events.filter((e) => !form.excludedEventIds.includes(e.id)).length
   const actionsLocked = saving || busyAction != null
+  // The API refuses to send an issue with nothing in it (409 DIGEST_EMPTY).
+  const empty = includedArticles + includedEvents === 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -336,13 +357,18 @@ export default function AdminDigestEditorPage() {
                 <button type="button" onClick={handleTest} disabled={dirty || actionsLocked} className={secondaryBtn}>
                   {busyAction === 'test' ? t('admin.digests.editor.testing') : t('admin.digests.editor.test')}
                 </button>
-                <button type="button" onClick={() => setDialog('send')} disabled={dirty || actionsLocked} className={accentBtn}>
+                <button type="button" onClick={() => setDialog('send')} disabled={dirty || empty || actionsLocked} className={accentBtn}>
                   {t('admin.digests.editor.sendNow')}
                 </button>
                 <button type="button" onClick={() => setDialog('cancel')} disabled={actionsLocked} className={dangerBtn}>
                   {t('admin.digests.editor.cancel')}
                 </button>
               </div>
+              {empty && (
+                <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm">
+                  {t('admin.digests.editor.emptyWarning')}
+                </p>
+              )}
               {dirty && (
                 <p className="font-body text-body-sm text-ink-secondary">{t('admin.digests.editor.saveFirst')}</p>
               )}
@@ -385,6 +411,19 @@ export default function AdminDigestEditorPage() {
           onClose={() => setDialog(null)}
         >
           {sending ? t('admin.digests.editor.cancelDialog.bodySending') : t('admin.digests.editor.cancelDialog.body')}
+        </ConfirmDialog>
+      )}
+
+      {blocker.state === 'blocked' && (
+        <ConfirmDialog
+          tone="danger"
+          title={t('admin.digests.editor.leaveDialog.title')}
+          confirmLabel={t('admin.digests.editor.leaveDialog.confirm')}
+          cancelLabel={t('admin.digests.editor.leaveDialog.stay')}
+          onConfirm={() => blocker.proceed()}
+          onClose={() => blocker.reset()}
+        >
+          {t('admin.digests.editor.leaveDialog.body')}
         </ConfirmDialog>
       )}
 
@@ -441,7 +480,6 @@ function Checklist({ title, empty, items, disabled, onToggle }) {
 // HTML gets a <base target="_blank">); scripts never run.
 function DigestPreview({ id, version, stale }) {
   const { t } = useTranslation()
-  const [mode, setMode] = useState('all')
   const [html, setHtml] = useState('')
   const [state, setState] = useState('loading')
   const [retry, setRetry] = useState(0)
@@ -450,33 +488,15 @@ function DigestPreview({ id, version, stale }) {
   useEffect(() => {
     const req = ++reqRef.current
     setState('loading')
-    fetchDigestPreview(id, mode)
+    fetchDigestPreview(id)
       .then((text) => { if (req === reqRef.current) { setHtml(withBlankTargets(text)); setState('ready') } })
       .catch(() => { if (req === reqRef.current) setState('error') })
-  }, [id, mode, version, retry])
-
-  const modes = [['all', t('admin.digests.preview.all')], ['me', t('admin.digests.preview.me')]]
+  }, [id, version, retry])
 
   return (
     <section className="bg-white rounded-card border border-border shadow-card flex flex-col min-w-0 xl:sticky xl:top-20">
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border flex-wrap">
         <h2 className="font-mono text-label uppercase tracking-widest text-ink-secondary">{t('admin.digests.preview.title')}</h2>
-        <div role="group" aria-label={t('admin.digests.preview.modeLabel')} className="inline-flex border border-border rounded-sm overflow-hidden">
-          {modes.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={mode === value}
-              onClick={() => setMode(value)}
-              className={[
-                'min-h-[36px] px-3 font-body text-body-sm font-semibold transition-colors duration-150',
-                mode === value ? 'bg-primary text-surface' : 'bg-white text-ink-secondary hover:text-primary',
-              ].join(' ')}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
       {stale && (
         <p className="px-4 py-2 bg-accent-50 font-body text-body-sm text-accent-700 border-b border-border">

@@ -27,12 +27,12 @@ export async function updateDigest(id, patch) {
 }
 
 // The preview is the rendered email (text/html), not JSON, so it can't go
-// through apiGet. mode 'all' = generic version, 'me' = as the current user
-// would receive it (only the orgs they follow).
-export async function fetchDigestPreview(id, mode = 'all') {
+// through apiGet. Every recipient gets the same email, so there is one
+// version to preview.
+export async function fetchDigestPreview(id) {
   let res
   try {
-    res = await apiRequest('GET', `${path(id)}/preview?mode=${encodeURIComponent(mode)}`, undefined, {
+    res = await apiRequest('GET', `${path(id)}/preview`, undefined, {
       headers: { Accept: 'text/html' },
     })
   } catch {
@@ -47,7 +47,8 @@ export async function sendDigestTest(id) {
   return apiSend('POST', `${path(id)}/test`)
 }
 
-// 202 → detail with status 'sending'; 409 if not a draft.
+// 202 → detail with status 'sending'; 409 if not a draft, 409 DIGEST_EMPTY
+// if every article and event is excluded.
 export async function sendDigestNow(id) {
   return apiSend('POST', `${path(id)}/send`)
 }
