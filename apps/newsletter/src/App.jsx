@@ -21,6 +21,8 @@ import AdminAnalyticsPage         from './pages/admin/AdminAnalyticsPage'
 import AdminOrganizationProfilePage   from './pages/admin/AdminOrganizationProfilePage'
 import AdminOrganizationFollowersPage from './pages/admin/AdminOrganizationFollowersPage'
 import AdminOrganizationsListPage     from './pages/admin/AdminOrganizationsListPage'
+import UnsubscribePage                from './pages/UnsubscribePage'
+import CorrectionVotePage             from './pages/CorrectionVotePage'
 
 // Contributor workflow — still backed by localStorage mocks, so it is hidden
 // behind CONTRIBUTIONS_ENABLED (see config/features.js). Lazy so the mock
@@ -29,6 +31,9 @@ const ContributorLayout             = lazy(() => import('./layouts/ContributorLa
 const ContributorAuthGuard          = lazy(() => import('./admin/ContributorAuthGuard'))
 // The article editor bundles TipTap; keep it out of the public chunk.
 const AdminArticleFormPage          = lazy(() => import('./pages/admin/AdminArticleFormPage'))
+// Weekly digest admin (STAFF only) — rarely visited, keep it lazy.
+const AdminDigestsPage              = lazy(() => import('./pages/admin/AdminDigestsPage'))
+const AdminDigestEditorPage         = lazy(() => import('./pages/admin/AdminDigestEditorPage'))
 const AdminSuggestionsPage          = lazy(() => import('./pages/admin/AdminSuggestionsPage'))
 const AdminSuggestionReviewPage     = lazy(() => import('./pages/admin/AdminSuggestionReviewPage'))
 const ContributorSuggestionsPage    = lazy(() => import('./pages/contributor/ContributorSuggestionsPage'))
@@ -63,6 +68,8 @@ export default function App() {
         <Route path="events/new"                     element={<AdminEventFormPage />} />
         <Route path="events/:id/edit"                element={<AdminEventFormPage />} />
         <Route path="analytics"                      element={<AdminAnalyticsPage />} />
+        <Route path="digests"                        element={<Suspense fallback={null}><AdminDigestsPage /></Suspense>} />
+        <Route path="digests/:id"                    element={<Suspense fallback={null}><AdminDigestEditorPage /></Suspense>} />
         {CONTRIBUTIONS_ENABLED ? (
           <>
             <Route path="suggestions"                element={<Suspense fallback={null}><AdminSuggestionsPage /></Suspense>} />
@@ -106,6 +113,10 @@ export default function App() {
         <Route path="/events"              element={<EventsPage />} />
         <Route path="/organizations"       element={<OrganizationsPage />} />
         <Route path="/organizations/:slug" element={<OrgPortalPage />} />
+        {/* One-click unsubscribe link from the weekly digest email. */}
+        <Route path="/unsubscribe"         element={<UnsubscribePage />} />
+        {/* "Sí, es así" / "No" schedule-correction links of the digest. */}
+        <Route path="/correction"          element={<CorrectionVotePage />} />
         <Route path="*"                    element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

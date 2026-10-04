@@ -148,6 +148,11 @@ export function isOrgMember(profile = _profile) {
   return getOrganizations(profile).length > 0
 }
 
+// Feature gates (API docs/CAPABILITIES.md): /auth/me lists the effective keys.
+export function hasCapability(key, profile = _profile) {
+  return Array.isArray(profile?.capabilities) && profile.capabilities.includes(key)
+}
+
 export function isStaff(profile = _profile) {
   return profile?.role === 'staff'
 }

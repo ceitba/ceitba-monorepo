@@ -375,7 +375,211 @@
       "new": "New",
       "edit": "Edit",
       "review": "Review",
-      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?"
+      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?",
+      "digests": "Weekly digest"
+    },
+    "digests": {
+      "title": "La semana en ITBA",
+      "subtitle": "CEITBA's weekly email digest: last week's articles and next week's events from every organization. Everyone gets the same email; it goes to people who follow CEITBA with the email turned on. Every Monday at 00:05 a draft for the previous week is created, and it goes out automatically at 12:00 (Argentina time) unless you cancel it or turn auto-send off.",
+      "loading": "Loading digests…",
+      "loadError": "We couldn't load the digests.",
+      "back": "← Digests",
+      "noSubject": "No subject",
+      "emptyTitle": "No digests yet",
+      "emptyMessage": "The first one is created automatically on Monday; you can also create one by hand by picking a week.",
+      "sentAt": "Sent {{when}} (Argentina time)",
+      "autoSendAt": "Auto-send: {{when}} (Argentina time)",
+      "autoSendOff": "Auto-send off",
+      "status": {
+        "draft": "Draft",
+        "sending": "Sending",
+        "sent": "Sent",
+        "cancelled": "Cancelled"
+      },
+      "counts": {
+        "sent": "Sent",
+        "failed": "Failed",
+        "pending": "Pending"
+      },
+      "new": {
+        "weekLabel": "New digest · pick any day of the week",
+        "submit": "New digest",
+        "creating": "Creating…",
+        "covers": "Covers the week of {{range}}",
+        "alreadyExists": "Already exists: open it"
+      },
+      "errors": {
+        "DIGEST_EXISTS": "There is already a digest for that week.",
+        "INVALID_WEEK_START": "The week has to start on a Monday.",
+        "DIGEST_NOT_EDITABLE": "This digest is no longer a draft, so it can't be changed.",
+        "EMAIL_NOT_ALLOWED": "Your email address can't receive the digest.",
+        "NETWORK_ERROR": "We couldn't reach the server. Check your connection.",
+        "generic": "Something went wrong. Please try again.",
+        "save": "We couldn't save your changes.",
+        "test": "We couldn't send the test.",
+        "send": "We couldn't start sending.",
+        "cancel": "We couldn't cancel the digest.",
+        "DIGEST_EMPTY": "A digest with no articles or events can't be sent.",
+        "MAIL_QUOTA_EXHAUSTED": "The account's daily sending quota is used up (test sends count too). You can try again ~{{when}} (Argentina time).",
+        "MAIL_QUOTA_EXHAUSTED_noWhen": "The account's daily sending quota is used up (test sends count too). Try again later.",
+        "AUTO_SEND_IN_PAST": "The auto-send time must be in the future.",
+        "MAIL_DISABLED": "Sending email is disabled in this environment.",
+        "MAIL_SENDER_NOT_CONNECTED": "The sending account is not connected. Connect it from the digest list and try again."
+      },
+      "editor": {
+        "recipientEstimate_one": "{{count}} person who follows CEITBA with the email on would receive it",
+        "recipientEstimate_other": "{{count}} people who follow CEITBA with the email on would receive it",
+        "contentLegend": "Email content",
+        "subject": "Subject",
+        "intro": "Intro",
+        "introHint": "Optional · shown before the articles",
+        "articles": "This week's articles · {{included}} of {{total}}",
+        "events": "Next week's events · {{included}} of {{total}}",
+        "noArticles": "No articles were published that week.",
+        "noEvents": "No events for the following week.",
+        "autoSend": "Auto-send",
+        "autoSendHint": "If you turn it off, the digest stays a draft until you send it by hand.",
+        "autoSendAt": "Send date and time",
+        "timezone": "Argentina time",
+        "save": "Save",
+        "saved": "Changes saved.",
+        "saveFirst": "Save your changes before sending a test or the digest.",
+        "test": "Send me a test",
+        "testing": "Sending test…",
+        "testSent": "We sent a test to {{email}}.",
+        "sendNow": "Send now",
+        "sending": "Sending…",
+        "sendStarted": "Sending has started. Progress updates automatically.",
+        "cancel": "Cancel digest",
+        "stopSending": "Stop sending",
+        "cancelled": "Digest cancelled.",
+        "errors": {
+          "subject": "The subject can't be empty.",
+          "autoSendAt": "Pick the auto-send date and time.",
+          "autoSendPast": "The auto-send time must be in the future."
+        },
+        "readOnly": {
+          "sending": "Sending in progress. The numbers update automatically.",
+          "sent": "This digest has been sent and can't be changed.",
+          "cancelled": "This digest was cancelled and will not be sent."
+        },
+        "sendDialog": {
+          "title": "Send the digest now?",
+          "body_one": "It will be sent to {{count}} person (followers of CEITBA with the email on). This cannot be undone.",
+          "body_other": "It will be sent to {{count}} people (followers of CEITBA with the email on). This cannot be undone.",
+          "confirm": "Send now",
+          "senderWarning": {
+            "missing": "No sending account is connected yet: the send will wait and only start once someone connects one.",
+            "broken": "The sending account needs to be reconnected: the send will wait and only continue once someone reconnects it."
+          }
+        },
+        "cancelDialog": {
+          "title": "Cancel this digest?",
+          "body": "It won't be sent, automatically or by hand. You'd have to create a new one for that week.",
+          "bodySending": "Sending stops: people who already got it aren't affected, and the rest won't receive it.",
+          "confirm": "Yes, cancel",
+          "keep": "Go back"
+        },
+        "emptyWarning": "No article or event is included: include at least one to be able to send it.",
+        "leaveDialog": {
+          "title": "Leave without saving?",
+          "body": "You have unsaved changes to this digest. If you leave now, they will be lost.",
+          "confirm": "Leave without saving",
+          "stay": "Keep editing"
+        },
+        "charCount": "{{count}}/{{max}}",
+        "senderNotice": {
+          "missing": "No sending account is connected yet, so the email can't go out.",
+          "broken": "The sending account has a problem and must be reconnected before the email can go out.",
+          "link": "Go to the digest list to connect it"
+        }
+      },
+      "preview": {
+        "title": "Preview",
+        "stale": "You have unsaved changes: the preview shows the last saved version.",
+        "loading": "Loading…",
+        "error": "We couldn't load the preview."
+      },
+      "resumesAt": "Sending paused: resumes ~{{when}} (Argentina time)",
+      "finishesAt": "Should finish ~{{when}} (Argentina time), given the daily quota",
+      "quota": {
+        "title": "Sending quota",
+        "label": "Today: {{used}} / {{limit}} used",
+        "hint": "Emails sent from this account in the last 24 hours (digests and tests). Gmail allows about 2000 a day; once the quota is used up, sending continues by itself as it frees up.",
+        "loadError": "We couldn't load the sending quota.",
+        "pausedQuota": "Sending paused until ~{{when}} (Argentina time): Gmail reported the account's daily limit was reached.",
+        "pausedTransport": "Sending paused until ~{{when}} (Argentina time) because of a connection problem with Gmail. It retries by itself.",
+        "full": "The quota for the last 24 hours is used up: the next email goes out ~{{when}} (Argentina time)."
+      },
+      "rates": {
+        "opens": "Opens",
+        "clicks": "Clicks"
+      },
+      "stats": {
+        "title": "Opens and clicks",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing…",
+        "loading": "Loading stats…",
+        "error": "We couldn't load the stats.",
+        "delivered": "Delivered",
+        "uniqueOpens": "Unique opens",
+        "uniqueClicks": "Unique clicks",
+        "rate": "{{rate}} of delivered",
+        "byLink": "Clicks by link",
+        "link": "Link",
+        "unique": "Unique",
+        "total": "Total",
+        "noClicks": "No clicks yet.",
+        "byHour": "First opens per hour",
+        "byHourAria": "Bar chart of first opens per hour: {{hours}} hours, at most {{max}} per hour",
+        "opensCount_one": "{{count}} open",
+        "opensCount_other": "{{count}} opens",
+        "noOpens": "No opens yet.",
+        "note": "Aggregate data only, never per person. Opens are approximate: Gmail caches images (repeat opens are invisible), Apple Mail downloads them on its own when the email arrives and some clients block them. Clicks are the reliable signal. Security scanners, bots and anything in the first seconds after sending are not counted.",
+        "laterBucket": "+7 days",
+        "laterFrom": "From {{when}}"
+      },
+      "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself.",
+      "sender": {
+        "title": "Sending account",
+        "loadError": "We couldn't load the sending account.",
+        "status": {
+          "connected": "Connected",
+          "broken": "Has a problem"
+        },
+        "connectedAt": "Connected on {{when}} (Argentina time)",
+        "lastUsedAt": "Last send: {{when}} (Argentina time)",
+        "neverUsed": "No email has been sent from this account yet.",
+        "missingTitle": "Digests can't be sent yet",
+        "missingBody": "No Gmail account is connected to send emails, so no digest will go out (not even test sends) until someone connects one.",
+        "help": "Sign in with ceitba@itba.edu.ar and keep the \"send email\" permission ticked when Google asks.",
+        "connect": "Connect sending account",
+        "reconnect": "Reconnect",
+        "connecting": "Redirecting to Google…",
+        "disconnect": "Disconnect",
+        "disconnecting": "Disconnecting…",
+        "brokenBody": "Google rejected the sending account (for example, the password changed or access was removed). No email goes out until it is reconnected.",
+        "lastError": "Last error: {{error}}",
+        "connectError": "We couldn't start the connection with Google. Try again.",
+        "disconnectError": "We couldn't disconnect the account. Try again.",
+        "disconnectDialog": {
+          "title": "Disconnect the sending account?",
+          "body": "Access for {{email}} will be revoked at Google. Until someone connects an account again, no digest will be sent: sends in progress or scheduled will wait.",
+          "confirm": "Disconnect"
+        },
+        "result": {
+          "dismiss": "Dismiss notice",
+          "connected": "Sending account connected. Digests can be sent now.",
+          "access_denied": "The account was not connected: you cancelled the permission at Google. Try again whenever you like.",
+          "invalid_state": "The connection link expired (it lasts 10 minutes). Tap \"Connect sending account\" again.",
+          "not_staff": "Only CEITBA staff can connect the sending account.",
+          "wrong_account": "You signed in with a different account. It must be ceitba@itba.edu.ar.",
+          "missing_scope": "The \"send email\" permission is missing. Connect again and keep it ticked.",
+          "no_refresh_token": "Google didn't grant long-lived access. Connect again and accept all permissions.",
+          "exchange_failed": "We couldn't complete the connection with Google. Try again in a few minutes.",
+          "unknown": "We couldn't connect the sending account. Try again."
+        }
+      }
     }
   },
   "imageUploader": {
@@ -470,5 +674,57 @@
     "signIn": "Sign in with Google",
     "organizations": "See organizations",
     "close": "Close"
+  },
+  "digest": {
+    "name": "La semana en ITBA",
+    "toggle": "Get 'La semana en ITBA' by email",
+    "toggleError": "We couldn't save that change.",
+    "unsubscribe": {
+      "loading": "Unsubscribing…",
+      "doneTitle": "Done, you won't get the weekly digest anymore",
+      "doneHint": "If you change your mind, you can turn it back on from your account menu, top right (you'll need to sign in).",
+      "invalidTitle": "This link is not valid",
+      "invalidHint": "It may be incomplete or expired. You can turn the digest off from your account menu after signing in.",
+      "errorTitle": "We couldn't process your request",
+      "backHome": "Go to the newsletter",
+      "confirmTitle": "Stop receiving the weekly digest?",
+      "confirmHint": "You'll stop getting 'La semana en ITBA' by email. Confirm to unsubscribe.",
+      "confirm": "Confirm unsubscribe",
+      "confirming": "Unsubscribing…"
+    },
+    "correction": {
+      "kicker": "Schedule to confirm",
+      "loading": "Loading the correction…",
+      "title": "Is {{subject}} (com. {{commission}}) taught like this?",
+      "lead": "Someone reported that the SGA schedule is not the real one. Your answer is anonymous: with 3 confirmations, the corrected schedule is used in the schedule builder.",
+      "proposed": "What was reported",
+      "sga": "What the SGA says",
+      "noSlots": "No times",
+      "confirm": "Yes, that's right",
+      "reject": "No",
+      "hint": "Pick an option to vote.",
+      "sending": "Sending…",
+      "counts": "{{confirms}} confirmed · {{rejects}} said no",
+      "currentVote_CONFIRM": "You already confirmed this schedule. You can change your answer.",
+      "currentVote_REJECT": "You already said this schedule is wrong. You can change your answer.",
+      "doneTitle": "Thanks! We recorded your answer",
+      "doneUnchanged": "Your answer was already recorded.",
+      "doneChanged": "We changed your answer.",
+      "applied": "With the confirmations, the corrected schedule is now used in the schedule builder.",
+      "changeVote": "Change my answer",
+      "closedTitle": "This correction no longer takes votes",
+      "closedHint": "It was already resolved or the course has ended. Thanks anyway!",
+      "expiredTitle": "This link has expired",
+      "expiredHint": "Digest links last two weeks. You can vote on corrections from the schedule builder.",
+      "invalidTitle": "This link is not valid",
+      "invalidHint": "It may be incomplete. Try opening it again from the email.",
+      "notFoundTitle": "We couldn't find this correction",
+      "notAllowedTitle": "This link is no longer available for your account",
+      "errorTitle": "We couldn't load the correction",
+      "voteError": "We couldn't record your vote. Please try again.",
+      "openScheduler": "Go to the schedule builder",
+      "backHome": "Go to the newsletter"
+    },
+    "toggleHint": "Turning it on also follows CEITBA."
   }
 }
