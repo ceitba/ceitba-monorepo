@@ -1,12 +1,6 @@
 spring:
   application:
     name: ceitba-api
-  # One thread per scheduled job (8 >= the @Scheduled methods): with Spring's default single thread a
-  # long Drive sync run delayed the wiki pipeline's sweep and batch polling.
-  task:
-    scheduling:
-      pool:
-        size: 8
   profiles:
     active: dev
   datasource:
@@ -49,6 +43,10 @@ spring:
         await-termination: true
         await-termination-period: 60s
     scheduling:
+      # One thread per scheduled job (8 >= the @Scheduled methods): with Spring's default single thread a
+      # long Drive sync run delayed the wiki pipeline's sweep and batch polling.
+      pool:
+        size: 8
       shutdown:
         await-termination: true
         await-termination-period: 30s
