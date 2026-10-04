@@ -12,6 +12,8 @@ import java.util.Map;
 // Outgoing email (service/mail). The SMTP connection itself is spring.mail.*
 // (MAIL_HOST/PORT/USERNAME/PASSWORD). enabled=false (MAIL_ENABLED, the
 // default) wires a logging no-op transport: nothing is ever sent.
+// transport (MAIL_TRANSPORT, default gmail-api): gmail-api (OAuth, a connected
+// sender account, MailOAuthProperties) | smtp | log. enabled=false = log.
 //
 // Sending quota (MailSendService, docs/WEEKLY-DIGEST.md):
 //   dailyLimit:     recipients per rolling 24h per sending account
@@ -25,6 +27,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "mail")
 public record EmailProperties(
     boolean enabled,
+    String transport,
     String from,
     Integer dailyLimit,
     Map<String, Integer> dailyLimits,
@@ -36,7 +39,16 @@ public record EmailProperties(
     public static final String DEFAULT_FROM = "CEITBA <ceitba@itba.edu.ar>";
     public static final int DEFAULT_DAILY_LIMIT = 1500;
 
+    public static final String TRANSPORT_GMAIL_API = "gmail-api";
+    public static final String TRANSPORT_SMTP = "smtp";
+    public static final String TRANSPORT_LOG = "log";
+
     public EmailProperties {
+        transport = transport == null || transport.isBlank() ? TRANSPORT_GMAIL_API
+            : transport.trim().toLowerCase(Locale.ROOT);
+        if (!java.util.List.of(TRANSPORT_GMAIL_API, TRANSPORT_SMTP, TRANSPORT_LOG).contains(transport)) {
+            throw new IllegalStateException("MAIL_TRANSPORT must be gmail-api, smtp or log, not: " + transport);
+        }
         if (from == null || from.isBlank()) from = DEFAULT_FROM;
         if (dailyLimit == null || dailyLimit < 0) dailyLimit = DEFAULT_DAILY_LIMIT;
         var limits = new LinkedHashMap<String, Integer>();

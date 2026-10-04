@@ -12,6 +12,7 @@ import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.digest.DigestDeliveryRepository;
 import org.ceitba.api.repository.digest.DigestIssueRepository;
 import org.ceitba.api.service.mail.EmailSendException;
+import org.ceitba.api.service.mail.MailSenderNotConnectedException;
 import org.ceitba.api.service.mail.MailQuotaExhaustedException;
 import org.ceitba.api.service.mail.MailSendService;
 import org.ceitba.api.web.digest.dto.DigestDtos;
@@ -105,7 +106,7 @@ public class DigestService {
     public DigestDtos.Quota quota() {
         var q = sender.status();
         return new DigestDtos.Quota(q.account(), q.limit(), q.usedLast24h(), q.remaining(),
-            odt(q.pausedUntil()), q.pauseReason(), odt(q.nextCapacityAt()));
+            odt(q.pausedUntil()), q.pauseReason(), odt(q.nextCapacityAt()), null);
     }
 
     // Aggregate open/click stats of an issue (never per person).
@@ -188,6 +189,8 @@ public class DigestService {
         String to = user.getEmail().trim();
         try {
             sender.send(composer.email(issue, template, userId, to, true));
+        } catch (MailSenderNotConnectedException e) {
+            throw e;   // 409 MAIL_SENDER_NOT_CONNECTED (GlobalExceptionHandler)
         } catch (EmailSendException e) {
             // Gmail's own daily limit: the account is now paused, same 429.
             if (e.kind() == EmailSendException.Kind.QUOTA) {

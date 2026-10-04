@@ -194,6 +194,9 @@ public class SecurityConfig {
                 // they always answer: a GIF or a redirect to a stored URL).
                 .requestMatchers(HttpMethod.GET, "/v1/mail/o/*", "/v1/mail/c/*/*").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/v1/mail/o/*", "/v1/mail/c/*/*").permitAll()
+                // Google redirects the browser here after the sender-account
+                // consent; authenticated by its signed state (a staff user id).
+                .requestMatchers(HttpMethod.GET, "/v1/mail/accounts/oauth/callback").permitAll()
                 // Logout must be reachable even with an expired/invalid cookie.
                 // The mobile token endpoints authenticate via their body
                 // (Google ID token / refresh token / review credentials), not a bearer JWT.

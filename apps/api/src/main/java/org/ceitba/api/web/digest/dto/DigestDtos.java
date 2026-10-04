@@ -46,8 +46,15 @@ public final class DigestDtos {
     // GET /v1/digests/quota: the sending account's rolling 24h quota.
     // pausedUntil/pauseReason (quota | transport): an active pause.
     // nextCapacityAt: with nothing remaining, when the next email can go.
+    // senderStatus: connected | broken | missing (the Gmail API sender
+    // account of the sending address).
     public record Quota(String account, int limit, long usedLast24h, long remaining,
-                        OffsetDateTime pausedUntil, String pauseReason, OffsetDateTime nextCapacityAt) {}
+                        OffsetDateTime pausedUntil, String pauseReason, OffsetDateTime nextCapacityAt,
+                        String senderStatus) {
+        public Quota withSenderStatus(String status) {
+            return new Quota(account, limit, usedLast24h, remaining, pausedUntil, pauseReason, nextCapacityAt, status);
+        }
+    }
 
     // GET /v1/digests/{id}/stats: aggregate engagement only, never per person.
     // Rates are over delivered emails (null with none); flagged events

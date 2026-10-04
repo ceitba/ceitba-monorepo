@@ -49,3 +49,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.34 drive_community_sources | V42 |
 | V4.35 weekly_digest | V43 |
 | V4.36 mail_quota_tracking | V44 |
+| V4.37 mail_sender_accounts | V45 |

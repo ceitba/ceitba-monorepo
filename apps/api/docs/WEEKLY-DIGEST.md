@@ -9,11 +9,12 @@ confirm). Staff review, edit and send it from the ItbaNews admin area.
 
 Code: `service/digest/*` (selection, rendering, lifecycle, sending worker,
 `DigestTrackingService`), `service/digest/personal/*` ("Tu cuatrimestre"),
-`service/mail/*` (transport, `MailSendService` = sending-quota ledger,
+`service/mail/*` (transports, `MailSendService` = sending-quota ledger, Gmail API sender + OAuth accounts,
 `MailLinkRewriter`, `MailClientClass`), `scheduling/DigestJob`,
-`web/digest/DigestController`, `web/mail/MailTrackingController`.
+`web/digest/DigestController`, `web/mail/MailTrackingController`, `web/mail/MailAccountController`.
 Schema: `V43__weekly_digest.sql` ("Tu cuatrimestre" adds no tables),
-`V44__mail_quota_tracking.sql` (quota ledger + open/click tracking).
+`V44__mail_quota_tracking.sql` (quota ledger + open/click tracking),
+`V45__mail_sender_accounts.sql` (connected Gmail sender accounts).
 
 ## How it works
 
@@ -303,19 +304,23 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/v1/digests` | Newest week first, with `counts {pending,sent,failed}`, `openRate`, `clickRate`, and while sending `resumeAt` / `estimatedFinishAt` |
-| GET | `/v1/digests/quota` | Sending quota of the account (see "Sending quota") |
+| GET | `/v1/digests/quota` | Sending quota of the account (see "Sending quota") plus `senderStatus`: `connected` \| `broken` \| `missing` (Gmail API sender account) |
 | GET | `/v1/digests/{id}/stats` | Aggregate opens/clicks (see "Open and click tracking"); 404 unknown id |
 | POST | `/v1/digests` | `{weekStart}` (Monday, else `400 INVALID_WEEK_START`) → 201; `409 DIGEST_EXISTS` |
 | GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients), `resumeAt` / `estimatedFinishAt` while sending |
 | PATCH | `/v1/digests/{id}` | Any of `subject, intro, excludedArticleIds, excludedEventIds, autoSendAt` (`null` intro clears, `null` autoSendAt disables); draft only (`409 DIGEST_NOT_EDITABLE`) |
 | GET | `/v1/digests/{id}/preview` | `text/html`, as the caller would receive it (their own "Tu cuatrimestre"); `mode` is accepted and ignored |
-| POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status; `429 MAIL_QUOTA_EXHAUSTED` `{…, resumeAt}` + `Retry-After` |
+| POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status; `429 MAIL_QUOTA_EXHAUSTED` `{…, resumeAt}` + `Retry-After`; `409 MAIL_SENDER_NOT_CONNECTED` when the Gmail sender is missing or broken |
 | POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send |
 | POST | `/v1/digests/{id}/cancel` | From `draft` or `sending` |
 | GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` |
 | POST | `/v1/digests/unsubscribe?token=` | Public; 204; `400 INVALID_TOKEN`; accepts the RFC 8058 form body |
 | GET | `/v1/digests/correction-vote?token=` | Public; the correction (subject, commission, `proposed`/`sga` slots, `status`, `open`, counts, `myVote`, `expiresAt`); never writes |
 | POST | `/v1/digests/correction-vote` | Public; `{token, vote: confirm\|reject}` → `{correction, previousVote}`; errors in the table above |
+| GET | `/v1/mail/accounts` | Connected sender accounts: `[{id, email, ownerType, ownerRef, status, connectedAt, lastError, lastUsedAt}]`; never any token |
+| POST | `/v1/mail/accounts/ceitba/connect` | → `{authorizationUrl}`: send the browser there (Google consent for `ceitba@itba.edu.ar`) |
+| GET | `/v1/mail/accounts/oauth/callback` | Google redirects here (no session needed; authenticated by the signed `state`); 302 to `DIGEST_PUBLIC_BASE_URL/admin/digests?mail=connected` or `?mail=error&reason=<code>` |
+| DELETE | `/v1/mail/accounts/{id}` | Revokes the token at Google (best effort), deletes the row; 204 |
 | GET | `/v1/mail/o/{trackingId}.gif` | Public open pixel; always a 1×1 GIF |
 | GET | `/v1/mail/c/{trackingId}/{linkId}` | Public click redirect; 302 to the stored URL, else to `DIGEST_PUBLIC_BASE_URL` |
 
@@ -324,9 +329,13 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAIL_ENABLED` | `false` | `false` = a logging no-op sender: nothing is ever sent (dev, tests) |
-| `MAIL_HOST` / `MAIL_PORT` | `smtp.gmail.com` / `587` | SMTP, STARTTLS required |
-| `MAIL_USERNAME` / `MAIL_PASSWORD` | _(empty)_ | `ceitba@itba.edu.ar` and its **app password**; required when enabled (startup fails otherwise) |
-| `MAIL_FROM` | `CEITBA <ceitba@itba.edu.ar>` | From header (must be the account or an alias of it) |
+| `MAIL_TRANSPORT` | `gmail-api` | `gmail-api` (OAuth, the connected sender account) \| `smtp` \| `log`. `MAIL_ENABLED=false` always behaves as `log` |
+| `MAIL_TOKEN_ENCRYPTION_KEY` | _(empty)_ | 32 bytes, base64 (`openssl rand -base64 32`); encrypts the stored refresh tokens (AES-GCM). Required to connect an account or send through the Gmail API. Losing it means reconnecting |
+| `GOOGLE_MAIL_REDIRECT_URI` | `http://localhost:8080/api/v1/mail/accounts/oauth/callback` | OAuth callback of the connect flow; in production `https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback`. Must be registered on the Google OAuth client |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | The same OAuth client as the login |
+| `MAIL_FROM` | `CEITBA <ceitba@itba.edu.ar>` | From header **and the one account allowed to connect** (the id_token email must equal this address) |
+| `MAIL_HOST` / `MAIL_PORT` | `smtp.gmail.com` / `587` | `smtp` transport only: STARTTLS required |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | _(empty)_ | `smtp` transport only: the account and its app password (startup fails when missing) |
 | `DIGEST_PUBLIC_BASE_URL` | `https://ceitba.org.ar/newsletter` | Article, events, organizations and unsubscribe-page links |
 | `DIGEST_API_BASE_URL` | `https://ceitba.org.ar/api` | `List-Unsubscribe` one-click target; open pixel and click redirect base |
 | `DIGEST_ALLOWED_DOMAINS` | `itba.edu.ar` | **Hard guard**: digest emails (test sends included) only go to these domains |
@@ -342,31 +351,95 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | `DIGEST_VOTE_TOKEN_TTL` | `P14D` | Lifetime of the correction vote links |
 | `DIGEST_MAX_WIKI_LINKS` / `DIGEST_MAX_CORRECTIONS` | `5` / `3` | Caps per email (`0` hides that part) |
 
-The transport is behind `service/mail/EmailSender`; switching to another
-provider (e.g. the Gmail API with OAuth) later means one new implementation
-in `MailConfig`. Sending as other identities (each org's own account) would
-add a sender identity to `OutgoingEmail`; callers stay the same.
+The transport is behind `service/mail/EmailSender` (`GmailApiEmailSender`,
+`SmtpEmailSender`, `LoggingEmailSender`), selected in `MailConfig`. Sending as
+other identities (each org's own account) would add a sender identity to
+`OutgoingEmail`; `mail_sender_account` already has `owner_type` /
+`owner_ref` for that, but only the CEITBA account is built.
 Spring Boot's mail health check is disabled so SMTP trouble never marks the
 API down.
 
-## Gmail / Workspace setup (one-time)
+## Sending through the Gmail API (OAuth)
 
-We have no DNS access for itba.edu.ar, so the digest goes out through the
-`ceitba@itba.edu.ar` Google Workspace account itself (SPF/DKIM are ITBA's).
+The default transport. No app password and no SMTP: the API sends with
+`POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send` (scope
+`gmail.send` only) using the refresh token of the connected
+`ceitba@itba.edu.ar` account. The message is the same
+`multipart/alternative` HTML + text MIME with `List-Unsubscribe`,
+`List-Unsubscribe-Post`, `List-Id` and `Precedence`, sent as base64url `raw`.
+There are no google-api-client libraries: plain `RestClient`.
 
-1. Sign in as `ceitba@itba.edu.ar` → <https://myaccount.google.com/security>
-   → turn on **2-Step Verification** (app passwords require it).
-2. **The ITBA Workspace admin must allow app passwords / "less secure" SMTP
-   AUTH** for the account's org unit. If the "App passwords" page says the
-   setting is not available for the account, ask ITBA IT to enable it (Admin
-   console → Security → Authentication → 2-Step Verification, and Security →
-   Less secure apps / app passwords).
-3. <https://myaccount.google.com/apppasswords> → create one named
-   "CEITBA API" → copy the 16 characters (no spaces) into `MAIL_PASSWORD` on
-   the VPS `.env`, with `MAIL_USERNAME=ceitba@itba.edu.ar`.
-4. Set `MAIL_ENABLED=true`, `docker compose up -d ceitba-api`, then use
-   "Enviar prueba" in the admin to check delivery before the first Monday.
-5. Changing the account password revokes app passwords: create a new one.
+- **Connect (STAFF).** The admin page calls
+  `POST /v1/mail/accounts/ceitba/connect` and navigates to the returned
+  `authorizationUrl` (`access_type=offline`, `prompt=consent`,
+  `login_hint=ceitba@itba.edu.ar`, `hd=itba.edu.ar`, a signed 10-minute
+  `state` that binds the staff user). Google redirects to
+  `GOOGLE_MAIL_REDIRECT_URI`; the API exchanges the code, checks the id_token
+  (issuer, audience = our client id, expiry, verified email) and that its
+  email is **exactly** the `MAIL_FROM` address, that `gmail.send` was
+  granted and a refresh token came back, stores the token AES-GCM encrypted,
+  clears any transport backoff, and redirects the browser to
+  `DIGEST_PUBLIC_BASE_URL/admin/digests?mail=connected`, or
+  `?mail=error&reason=` with one of `access_denied`, `invalid_state`
+  (bad/expired state), `not_staff`, `wrong_account`, `missing_scope`,
+  `no_refresh_token`, `exchange_failed`.
+- **Status.** `GET /v1/digests/quota` carries `senderStatus`: `connected`,
+  `broken` (Google rejected the token: revoked, password change,
+  consent expired; reconnect) or `missing`. With a missing or broken sender
+  the digest worker pauses as a transport problem (backoff, nothing dropped,
+  nothing marked failed) and resumes after a reconnect; a test send answers
+  `409 MAIL_SENDER_NOT_CONNECTED`.
+- **Disconnect.** `DELETE /v1/mail/accounts/{id}` revokes the token at Google
+  (best effort) and deletes the row.
+- **Errors.** `429`, `rateLimitExceeded`, `dailyLimitExceeded`,
+  `userRateLimitExceeded` = quota (the account is paused 24h, see "Sending
+  quota"); `401`, `403` (not quota) and `invalid_grant` = transport problem
+  and the account is marked `broken` (a single 401 first retries with a fresh
+  access token); `5xx` and network errors = transport (backoff); `400` =
+  that recipient is rejected. Access tokens are cached in memory until two
+  minutes before they expire. Tokens are never logged.
+
+## Google Cloud setup (one-time, for the project's administrator)
+
+1. **Enable the Gmail API** in the Google Cloud project that owns
+   `GOOGLE_CLIENT_ID` (APIs & Services → Library → Gmail API → Enable).
+2. **OAuth consent screen.** Prefer **Internal** when the project belongs to
+   the itba.edu.ar Workspace organization (no verification, no refresh-token
+   expiry, only itba.edu.ar accounts). If the project is outside the
+   organization it has to be **External** and **must be published ("In
+   production"), not "Testing"**: refresh tokens of apps in Testing expire
+   after 7 days. An unverified External app works for up to 100 users behind
+   an "unverified app" warning screen, enough for one sender account.
+3. **Scopes.** Add `https://www.googleapis.com/auth/gmail.send` (a
+   sensitive scope; `openid` and `email` are non-sensitive). Nothing broader.
+4. **Authorized redirect URI.** On the OAuth 2.0 Web client add
+   `https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback` (exactly
+   `GOOGLE_MAIL_REDIRECT_URI`; for local dev
+   `http://localhost:8080/api/v1/mail/accounts/oauth/callback`). The login
+   redirect URI stays as is.
+5. **Secrets on the VPS `.env`**: `MAIL_TOKEN_ENCRYPTION_KEY=$(openssl rand
+   -base64 32)`, `GOOGLE_MAIL_REDIRECT_URI`, `MAIL_ENABLED=true`
+   (`MAIL_TRANSPORT` defaults to `gmail-api`); `docker compose up -d
+   ceitba-api`.
+6. **Who clicks "Conectar".** A STAFF member who can sign in as
+   `ceitba@itba.edu.ar` (they will pick that Google account on the consent
+   screen; any other account is refused with `wrong_account`). Then use
+   "Enviar prueba" before the first Monday. If the Workspace admin blocks
+   third-party apps, allow this OAuth client (Admin console → Security →
+   API controls → App access control).
+
+## SMTP alternative (`MAIL_TRANSPORT=smtp`)
+
+Still supported, not recommended: Gmail SMTP with an **app password** of
+`ceitba@itba.edu.ar` (2-Step Verification on, and app passwords allowed by
+the ITBA Workspace admin). Create one at
+<https://myaccount.google.com/apppasswords>, set `MAIL_USERNAME`,
+`MAIL_PASSWORD`, `MAIL_ENABLED=true`, `MAIL_TRANSPORT=smtp`. Changing the
+account password revokes it.
+
+We have no DNS access for itba.edu.ar, so either way the digest goes out
+through the `ceitba@itba.edu.ar` Workspace account itself (SPF/DKIM are
+ITBA's).
 
 **Limits.** Workspace allows about **2000 recipients per day** per user
 (rolling 24h, the exact cap depends on the plan) and fewer for new or

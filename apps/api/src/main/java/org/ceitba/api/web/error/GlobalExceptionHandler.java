@@ -19,6 +19,7 @@ import org.ceitba.api.service.capability.CapabilityRequiredException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
 import org.ceitba.api.service.digest.DigestException;
 import org.ceitba.api.service.mail.MailQuotaExhaustedException;
+import org.ceitba.api.service.mail.MailSenderNotConnectedException;
 import org.ceitba.api.service.drive.DriveException;
 import org.ceitba.api.service.kb.pipeline.KbPipelineException;
 import org.ceitba.api.service.wiki.BookmarkLimitException;
@@ -122,6 +123,14 @@ public class GlobalExceptionHandler {
             .header("Retry-After", Long.toString(retryAfter))
             .body(new MailQuotaErrorResponse(MailQuotaExhaustedException.CODE, ex.getMessage(), req.getRequestURI(),
                 Instant.now(), ex.resumeAt().atZone(ClockConfig.ZONE).toOffsetDateTime()));
+    }
+
+    // The Gmail sender account is not connected (or broken): 409.
+    @ExceptionHandler(MailSenderNotConnectedException.class)
+    public ResponseEntity<ErrorResponse> handleMailSenderNotConnected(MailSenderNotConnectedException ex,
+                                                                      HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ErrorResponse.of(MailSenderNotConnectedException.CODE, ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(KbPipelineException.class)

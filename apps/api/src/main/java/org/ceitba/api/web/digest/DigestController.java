@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.service.digest.DigestCorrectionVoteService;
 import org.ceitba.api.service.digest.DigestService;
+import org.ceitba.api.service.mail.MailSenderAccountService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.digest.dto.DigestDtos;
 import org.springframework.http.HttpStatus;
@@ -36,9 +37,12 @@ public class DigestController {
 
     private final DigestService service;
     private final DigestCorrectionVoteService correctionVotes;
+    private final MailSenderAccountService senderAccounts;
 
-    public DigestController(DigestService service, DigestCorrectionVoteService correctionVotes) {
+    public DigestController(DigestService service, DigestCorrectionVoteService correctionVotes,
+                            MailSenderAccountService senderAccounts) {
         this.service = service;
+        this.senderAccounts = senderAccounts;
         this.correctionVotes = correctionVotes;
     }
 
@@ -52,7 +56,7 @@ public class DigestController {
     @GetMapping("/quota")
     @PreAuthorize("hasRole('STAFF')")
     public DigestDtos.Quota quota() {
-        return service.quota();
+        return service.quota().withSenderStatus(senderAccounts.senderStatus());
     }
 
     @PostMapping
@@ -92,7 +96,8 @@ public class DigestController {
             .body(service.previewHtml(id, user.getId()));
     }
 
-    // Consumes sending quota: 429 MAIL_QUOTA_EXHAUSTED (with resumeAt) when none is left.
+    // Consumes sending quota: 429 MAIL_QUOTA_EXHAUSTED (with resumeAt) when none is left;
+    // 409 MAIL_SENDER_NOT_CONNECTED when the Gmail sender account is missing or broken.
     @PostMapping(ID + "/test")
     @PreAuthorize("hasRole('STAFF')")
     public DigestDtos.TestSendResponse test(@PathVariable UUID id, @CurrentUser User user) {

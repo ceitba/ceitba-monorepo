@@ -225,6 +225,13 @@ drive-sync:
 # over Gmail SMTP with an app password (docs/WEEKLY-DIGEST.md).
 mail:
   enabled: ${MAIL_ENABLED:false}
+  # gmail-api (default; OAuth-connected sender account) | smtp | log
+  transport: ${MAIL_TRANSPORT:gmail-api}
+  oauth:
+    # Registered on the Google OAuth client (same one as the login).
+    redirect-uri: ${GOOGLE_MAIL_REDIRECT_URI:http://localhost:8080/api/v1/mail/accounts/oauth/callback}
+    # 32 bytes, base64 (openssl rand -base64 32): encrypts the refresh tokens.
+    token-encryption-key: ${MAIL_TOKEN_ENCRYPTION_KEY:}
   from: ${MAIL_FROM:CEITBA <ceitba@itba.edu.ar>}
   # Sending quota (service/mail/MailSendService): recipients per rolling 24h
   # per sending account (the From address). Workspace caps ~2000/day.
