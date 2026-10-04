@@ -2,6 +2,7 @@ package org.ceitba.api.service.kb.pipeline;
 
 import org.ceitba.api.domain.kb.KbBatchJob;
 import org.ceitba.api.external.llm.DoBatchErrors;
+import org.ceitba.api.external.llm.DoBatchSlotException;
 import org.ceitba.api.external.llm.LlmApiException;
 import org.ceitba.api.repository.kb.KbBatchJobRepository;
 import org.ceitba.api.repository.kb.KbRunRepository;
@@ -41,6 +42,9 @@ public class KbBatchSubmitter {
 
     static final List<Duration> BACKOFF = List.of(Duration.ofMinutes(1), Duration.ofMinutes(5),
         Duration.ofMinutes(15), Duration.ofMinutes(60));
+
+    // Prefix of the job error while waiting for a batch slot (progress shows it).
+    public static final String QUOTA_WAIT = "QUOTA_WAIT: ";
 
     public enum Outcome { SUBMITTED, WAITING, FAILED }
 
@@ -131,9 +135,12 @@ public class KbBatchSubmitter {
         } catch (LlmApiException e) {
             var kind = DoBatchErrors.classify(e.status(), e.getMessage());
             if (kind == DoBatchErrors.Kind.RATE_LIMITED || kind == DoBatchErrors.Kind.TRANSIENT) {
-                var at = now().plus(backoff(job.getSubmitFailures() + 1));
+                // A snapshot-based wait (no DO call made) has its own time and message.
+                var slot = e instanceof DoBatchSlotException x ? x : null;
+                var at = slot != null ? slot.retryAt() : now().plus(backoff(job.getSubmitFailures() + 1));
                 tx.executeWithoutResult(s -> {
-                    jobs.findById(jobId).orElseThrow().retryAt(at, (kind == DoBatchErrors.Kind.RATE_LIMITED
+                    jobs.findById(jobId).orElseThrow().retryAt(at, slot != null ? QUOTA_WAIT + slot.getMessage()
+                        .replace(" (rate_limit_exceeded)", "") : (kind == DoBatchErrors.Kind.RATE_LIMITED
                         ? "RATE_LIMITED: " : "UNAVAILABLE: ") + e.getMessage());
                     runs.setStatusIf(job.getRunId(), "WAITING", KbRunEngine.MOVING);
                 });

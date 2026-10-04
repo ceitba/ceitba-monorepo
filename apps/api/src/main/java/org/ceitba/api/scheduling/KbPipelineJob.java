@@ -85,6 +85,7 @@ public class KbPipelineJob {
     public void pollBatches() {
         try {
             jobs.runsWithOpenBatches(java.time.OffsetDateTime.now(clock)).forEach(this::kick);
+            engine.quotaResumeDue().forEach(this::kick);   // sync runs paused on the daily token quota
         } catch (RuntimeException e) {
             log.warn("KB batch poll failed: {}", e.getMessage());
         }
