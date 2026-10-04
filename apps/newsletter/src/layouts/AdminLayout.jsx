@@ -167,7 +167,9 @@ export default function AdminLayout() {
       <div className="px-5 py-4 border-t border-primary-700">
         <p className="font-body text-body-sm text-primary-200 truncate">{session?.name}</p>
         <p className="font-mono text-label text-primary-500 uppercase tracking-widest mt-0.5">
-          {session?.role ? t(`admin.roles.${session.role}`, { defaultValue: session.role }) : ''}
+          {session?.role === 'user' && getOrganizations(session).length > 0
+            ? t('admin.roles.member')
+            : session?.role ? t(`admin.roles.${session.role}`, { defaultValue: session.role }) : ''}
         </p>
         <button
           type="button"
