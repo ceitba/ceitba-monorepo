@@ -22,9 +22,9 @@ public class KbQuotaService {
         this.clock = clock;
     }
 
-    // refresh: runs the free batch probe first (at most once a minute).
+    // refresh is accepted but no longer probes DO: the "free" probe spent one
+    // of the 5 hourly batch creations. The snapshot comes from real calls.
     public KbQuotaResponse get(boolean refresh) {
-        if (refresh) tracker.refreshBatchQuota();
         var at = tracker.lastObservedAt().orElse(null);
         boolean stale = at == null || OffsetDateTime.now(clock).isAfter(at.plus(STALE_AFTER));
         return new KbQuotaResponse(at,
