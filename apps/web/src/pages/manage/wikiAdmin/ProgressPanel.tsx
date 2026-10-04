@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Progress, StageProgress } from '../../../api/kbAdmin'
 import { ago, elapsed, tokens, usd } from './format'
+import QuotaCard from './QuotaCard'
+import { mentionsQuota } from './quota'
 
 function useNow(ms = 1000): number {
   const [now, setNow] = useState(Date.now())
@@ -97,6 +99,8 @@ export default function ProgressPanel({ progress, stages, fallback }: {
           {fallback.costUsd != null && <span>{usd(fallback.costUsd)}</span>}
         </p>
       </div>
+
+      {mentionsQuota(progress?.current) && <QuotaCard />}
 
       <ol className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2" aria-label={t('manage.wikiAi.runs.timeline')}>
         {order.map((st, i) => {

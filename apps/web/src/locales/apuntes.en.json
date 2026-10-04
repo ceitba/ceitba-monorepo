@@ -782,6 +782,18 @@
       "crashed": "This view failed to render the data the API returned.",
       "simulated": "Simulated costs (fake LLM client), not real billing.",
       "simulatedShort": "simulated",
+      "quota": {
+        "title": "DigitalOcean · quota",
+        "batchesHour": "Batches this hour",
+        "batchRequestsDay": "Batch requests today",
+        "tokensDay": "Tokens today (sync)",
+        "tokensMinute": "Tokens per minute",
+        "updated": "Updated {{ago}} ago",
+        "never": "No readings yet",
+        "approx": "approx.",
+        "staleHint": "Stale data: the real value may differ.",
+        "refresh": "Refresh DigitalOcean quota"
+      },
       "progress": {
         "title": "Progress",
         "starting": "Starting…",

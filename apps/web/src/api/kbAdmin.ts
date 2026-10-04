@@ -729,3 +729,27 @@ export async function fetchLeaderboard(setId: string): Promise<LeaderboardRow[]>
   return entries.map(toLeaderboardRow)
 }
 export const promoteEval = (id: string, key: string) => apiSend<KbSettings & { costImpact?: unknown }>('POST', `${EVALS}/${enc(id)}/promote`, { configKey: key })
+
+// ── DigitalOcean quota ───────────────────────────────────────────────────
+// GET /staff/kb/quota[?refresh=true]. Any meter is null when never observed;
+// the endpoint 404s on API builds without it (the widget hides then).
+
+export interface QuotaMeter { limit: number; remaining: number }
+
+export interface KbQuota {
+  observedAt: string | null
+  stale: boolean
+  batch: {
+    creationsPerHour: QuotaMeter | null
+    createPerMinute: QuotaMeter | null
+    requestsPerDay: QuotaMeter | null
+    statusChecksPerMinute: QuotaMeter | null
+  }
+  sync: {
+    tokensPerDay: QuotaMeter | null
+    tokensPerMinute: QuotaMeter | null
+    requestsPerMinute: QuotaMeter | null
+  }
+}
+
+export const fetchQuota = (refresh = false) => apiGet<KbQuota>(`${BASE}/quota${refresh ? '?refresh=true' : ''}`)
