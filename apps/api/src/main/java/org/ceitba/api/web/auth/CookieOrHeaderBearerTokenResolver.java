@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Set;
 
 // Resolves the bearer token from either:
@@ -40,8 +41,11 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
     static final Set<String> TOKEN_PATHS_ANY_METHOD = Set.of("/v1/digests/correction-vote");
 
     // Public, never authenticated: the digest's open pixel and click
-    // redirects (a stale cookie of the reader must not turn them into 401s).
-    static final String MAIL_TRACKING_PREFIX = "/v1/mail/";
+    // redirects (a stale cookie of the reader must not turn them into 401s),
+    // and the Gmail OAuth callback (authenticated by its signed state). Only
+    // these: the rest of /v1/mail/accounts is STAFF and needs the cookie.
+    static final List<String> PUBLIC_MAIL_PREFIXES = List.of("/v1/mail/o/", "/v1/mail/c/");
+    static final String MAIL_OAUTH_CALLBACK = "/v1/mail/accounts/oauth/callback";
 
     @Override
     public String resolve(HttpServletRequest request) {
@@ -65,7 +69,8 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
         String uri = request.getRequestURI();
         String ctx = request.getContextPath();
         String path = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) ? uri.substring(ctx.length()) : uri;
-        if (TOKEN_PATHS_ANY_METHOD.contains(path) || path.startsWith(MAIL_TRACKING_PREFIX)) return true;
+        if (TOKEN_PATHS_ANY_METHOD.contains(path) || MAIL_OAUTH_CALLBACK.equals(path)) return true;
+        if (PUBLIC_MAIL_PREFIXES.stream().anyMatch(path::startsWith)) return true;
         if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
         return TOKEN_ENDPOINTS.contains(path);
     }
