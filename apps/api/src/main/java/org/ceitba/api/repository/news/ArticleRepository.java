@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+import java.util.UUID;
+
 public interface ArticleRepository extends JpaRepository<Article, String> {
 
     // Offset-paginated: the ORDER BY must be a strict total order, or rows
@@ -17,12 +20,24 @@ public interface ArticleRepository extends JpaRepository<Article, String> {
         WHERE (:category IS NULL OR a.category = :category)
           AND (:organization IS NULL OR a.organization.slug = :organization)
           AND (:status IS NULL OR a.status = :status)
+          AND (:createdBy IS NULL OR a.createdBy.id = :createdBy)
         ORDER BY a.createdAt DESC, a.id DESC
         """)
     Page<Article> findFiltered(
         @Param("category")     String category,
         @Param("organization") String organization,
         @Param("status")       String status,
+        @Param("createdBy")    UUID createdBy,
         Pageable pageable
     );
+
+    boolean existsByIdAndCreatedById(String id, UUID createdBy);
+
+    // Status of an independent (org-less) article written by `userId`; empty
+    // when the article is missing, belongs to an org, or has another author.
+    @Query("""
+        SELECT a.status FROM Article a
+        WHERE a.id = :id AND a.organization IS NULL AND a.createdBy.id = :userId
+        """)
+    Optional<String> findIndependentStatusOwnedBy(@Param("id") String id, @Param("userId") UUID userId);
 }
