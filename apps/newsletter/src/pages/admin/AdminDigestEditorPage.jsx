@@ -294,8 +294,9 @@ export default function AdminDigestEditorPage() {
         </div>
       )}
 
+      {/* Stats re-fetch on status changes and, while sending, as the sent count moves. */}
       {(digest.status === 'sent' || sending || (digest.status === 'cancelled' && digest.counts?.sent > 0)) && (
-        <DigestStatsPanel id={id} refreshKey={digest.status} />
+        <DigestStatsPanel id={id} refreshKey={`${digest.status}:${sending ? digest.counts?.sent ?? 0 : ''}`} />
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start">

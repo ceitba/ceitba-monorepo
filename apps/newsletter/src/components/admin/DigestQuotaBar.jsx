@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchDigestQuota } from '../../api/digests'
 import { formatArtDateTime } from '../../utils/digest'
@@ -11,10 +11,14 @@ export default function DigestQuotaBar({ refreshKey = 0 }) {
   const [quota, setQuota] = useState(null)
   const [failed, setFailed] = useState(false)
 
+  // Ignore responses of requests that a newer one has superseded.
+  const reqRef = useRef(0)
+
   const load = useCallback(() => {
+    const req = ++reqRef.current
     fetchDigestQuota()
-      .then((q) => { setQuota(q); setFailed(false) })
-      .catch(() => setFailed(true))
+      .then((q) => { if (req === reqRef.current) { setQuota(q); setFailed(false) } })
+      .catch(() => { if (req === reqRef.current) setFailed(true) })
   }, [])
 
   useEffect(() => { load() }, [load, refreshKey])

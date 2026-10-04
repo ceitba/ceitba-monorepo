@@ -525,7 +525,9 @@
         "opensCount_one": "{{count}} open",
         "opensCount_other": "{{count}} opens",
         "noOpens": "No opens yet.",
-        "note": "Aggregate data only, never per person. Opens are approximate: Gmail caches images (repeat opens are invisible), Apple Mail downloads them on its own when the email arrives and some clients block them. Clicks are the reliable signal. Security scanners, bots and anything in the first seconds after sending are not counted."
+        "note": "Aggregate data only, never per person. Opens are approximate: Gmail caches images (repeat opens are invisible), Apple Mail downloads them on its own when the email arrives and some clients block them. Clicks are the reliable signal. Security scanners, bots and anything in the first seconds after sending are not counted.",
+        "laterBucket": "+7 days",
+        "laterFrom": "From {{when}}"
       },
       "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself."
     }

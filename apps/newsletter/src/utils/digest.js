@@ -107,15 +107,25 @@ export function formatRate(rate, lang) {
 }
 
 // [{ hour: ISO, count }] (only hours with opens) → a continuous hourly
-// series from the first to the last bucket, at most `maxHours` long.
+// series from the first to the last bucket, at most `maxHours` long. Opens
+// after that window are folded into the last bar (flagged `folded`) rather
+// than dropped.
 export function hourlySeries(opensByHour, maxHours = 168) {
   if (!opensByHour?.length) return []
   const HOUR = 60 * 60 * 1000
   const byMs = new Map(opensByHour.map((h) => [Date.parse(h.hour), h.count]))
   const start = Math.min(...byMs.keys())
-  const end = Math.min(Math.max(...byMs.keys()), start + (maxHours - 1) * HOUR)
+  const last = Math.max(...byMs.keys())
+  const end = Math.min(last, start + (maxHours - 1) * HOUR)
   const out = []
   for (let ms = start; ms <= end; ms += HOUR) out.push({ hour: new Date(ms).toISOString(), count: byMs.get(ms) ?? 0 })
+  if (last > end) {
+    let tail = 0
+    for (const [ms, count] of byMs) if (ms > end) tail += count
+    const lastBar = out[out.length - 1]
+    lastBar.count += tail
+    lastBar.folded = true
+  }
   return out
 }
 

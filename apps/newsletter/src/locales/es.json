@@ -525,7 +525,9 @@
         "opensCount_one": "{{count}} apertura",
         "opensCount_other": "{{count}} aperturas",
         "noOpens": "Todavía no hay aperturas.",
-        "note": "Solo datos agregados, nunca por persona. Las aperturas son aproximadas: Gmail guarda las imágenes en caché (no se ven las aperturas repetidas), Apple Mail las descarga sola al recibir el mail y algunos clientes las bloquean. Los clics son la señal confiable. No se cuentan escáneres de seguridad, bots ni lo que pasa en los primeros segundos después del envío."
+        "note": "Solo datos agregados, nunca por persona. Las aperturas son aproximadas: Gmail guarda las imágenes en caché (no se ven las aperturas repetidas), Apple Mail las descarga sola al recibir el mail y algunos clientes las bloquean. Los clics son la señal confiable. No se cuentan escáneres de seguridad, bots ni lo que pasa en los primeros segundos después del envío.",
+        "laterBucket": "+7 días",
+        "laterFrom": "Desde {{when}}"
       },
       "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo."
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchDigestStats } from '../../api/digests'
 import { formatArtDateTime, formatRate, hourlySeries } from '../../utils/digest'
@@ -10,11 +10,16 @@ export default function DigestStatsPanel({ id, refreshKey = 0 }) {
   const [stats, setStats] = useState(null)
   const [state, setState] = useState('loading')
 
+  // Only the latest request's response is applied (a slow earlier one must
+  // not overwrite newer numbers).
+  const reqRef = useRef(0)
+
   const load = useCallback(() => {
-    setState((s) => (s === 'ready' ? 'refreshing' : 'loading'))
+    const req = ++reqRef.current
+    setState((s) => (s === 'ready' || s === 'refreshing' ? 'refreshing' : 'loading'))
     fetchDigestStats(id)
-      .then((s) => { setStats(s); setState('ready') })
-      .catch(() => setState((s) => (s === 'refreshing' ? 'ready' : 'error')))
+      .then((s) => { if (req === reqRef.current) { setStats(s); setState('ready') } })
+      .catch(() => { if (req === reqRef.current) setState((s) => (s === 'refreshing' ? 'ready' : 'error')) })
   }, [id])
 
   useEffect(() => { load() }, [load, refreshKey])
@@ -131,13 +136,19 @@ function OpensByHour({ opensByHour }) {
                 key={h.hour}
                 className="flex-1 min-w-[2px] bg-primary/80 hover:bg-accent rounded-t-[1px]"
                 style={{ height: `${h.count === 0 ? 0 : Math.max(4, Math.round((h.count / max) * 100))}%` }}
-                title={`${formatArtDateTime(h.hour, i18n.language)} · ${t('admin.digests.stats.opensCount', { count: h.count })}`}
+                title={`${h.folded ? t('admin.digests.stats.laterFrom', { when: formatArtDateTime(h.hour, i18n.language) }) : formatArtDateTime(h.hour, i18n.language)} · ${t('admin.digests.stats.opensCount', { count: h.count })}`}
               />
             ))}
           </div>
           <div className="flex justify-between gap-3 font-mono text-label text-ink-secondary">
             <span>{formatArtDateTime(series[0].hour, i18n.language)}</span>
-            {series.length > 1 && <span>{formatArtDateTime(series[series.length - 1].hour, i18n.language)}</span>}
+            {series.length > 1 && (
+              <span>
+                {series[series.length - 1].folded
+                  ? t('admin.digests.stats.laterBucket')
+                  : formatArtDateTime(series[series.length - 1].hour, i18n.language)}
+              </span>
+            )}
           </div>
         </>
       )}
