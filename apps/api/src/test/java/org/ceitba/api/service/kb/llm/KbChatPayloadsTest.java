@@ -114,4 +114,15 @@ class KbChatPayloadsTest {
         assertThat(out.get("a").cachedTokens()).isEqualTo(3);
         assertThat(out.get("b").ok()).isFalse();
     }
+
+    @Test
+    void parserDropsNulCharactersPostgresCannotStore() throws Exception {
+        var line = json.readTree("{\"custom_id\":\"x\",\"response\":{\"status_code\":200,\"body\":{\"choices\":[{\"message\":"
+            + "{\"tool_calls\":[{\"function\":{\"name\":\"submit_page\",\"arguments\":\"{\\\"markdown\\\":\\\"distribuci\\\\u0000n\\\"}\"}}]},"
+            + "\"finish_reason\":\"tool_calls\"}]}}}");
+        var r = org.ceitba.api.external.llm.LlmOutputParser.parse(
+            (json.writeValueAsString(line) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8), json).get("x");
+        assertThat(r.ok()).isTrue();
+        assertThat(r.toolInput().path("markdown").asText()).isEqualTo("distribucin");
+    }
 }
