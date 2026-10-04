@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useBlocker, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  cancelDigest, fetchDigest, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
+  cancelDigest, fetchDigest, fetchDigestQuota, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
 } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
 import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
@@ -57,6 +57,9 @@ export default function AdminDigestEditorPage() {
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
   const [previewVersion, setPreviewVersion] = useState(0)
+  // 'connected' | 'broken' | 'missing' | null (unknown yet / request failed).
+  // Only warns; a send simply waits until a sender is connected.
+  const [senderStatus, setSenderStatus] = useState(null)
   // Sequence guard: every fetch/mutation takes a number, and a response is
   // applied only if nothing newer started (or finished) since. Stops a slow
   // poll from overwriting the result of a save/send/cancel.
@@ -93,6 +96,15 @@ export default function AdminDigestEditorPage() {
     }, SENDING_POLL_MS)
     return () => clearInterval(timer)
   }, [sending, id, applyDigest])
+
+  useEffect(() => {
+    if (!staff) return
+    let cancelled = false
+    fetchDigestQuota()
+      .then((q) => { if (!cancelled) setSenderStatus(q?.senderStatus ?? null) })
+      .catch(() => { /* the notice is a nicety; ignore */ })
+    return () => { cancelled = true }
+  }, [staff, id])
 
   useEffect(() => {
     if (!toast) return
@@ -203,6 +215,8 @@ export default function AdminDigestEditorPage() {
       setToast(t('admin.digests.editor.testSent', { email: sentTo }))
     } catch (err) {
       // 429 MAIL_QUOTA_EXHAUSTED: says when the quota frees up.
+      // 409 MAIL_SENDER_NOT_CONNECTED / MAIL_DISABLED have their own messages.
+      if (err?.code === 'MAIL_SENDER_NOT_CONNECTED') setSenderStatus((s) => (s === 'broken' ? s : 'missing'))
       setError(digestErrorMessage(err, t, 'admin.digests.errors.test', i18n.language))
     } finally {
       setBusyAction(null)
@@ -250,6 +264,8 @@ export default function AdminDigestEditorPage() {
   const actionsLocked = saving || busyAction != null
   // The API refuses to send an issue with nothing in it (409 DIGEST_EMPTY).
   const empty = includedArticles + includedEvents === 0
+  // Only relevant while mail can still go out for this issue.
+  const senderNotConnected = (editable || sending) && (senderStatus === 'missing' || senderStatus === 'broken')
 
   return (
     <div className="flex flex-col gap-6">
@@ -264,11 +280,16 @@ export default function AdminDigestEditorPage() {
           </h1>
           <DigestStatusBadge status={digest.status} />
         </div>
-        <p className="font-body text-body-sm text-ink-secondary">
-          {digest.status === 'sent' && digest.sentAt
-            ? t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })
-            : t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate ?? 0 })}
-        </p>
+        {digest.status === 'sent' && digest.sentAt ? (
+          <p className="font-body text-body-sm text-ink-secondary">
+            {t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })}
+          </p>
+        ) : digest.recipientEstimate != null && (
+          // The API only estimates recipients for drafts.
+          <p className="font-body text-body-sm text-ink-secondary">
+            {t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate })}
+          </p>
+        )}
         {sending && digest.resumeAt && (
           <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm self-start">
             {t('admin.digests.resumesAt', { when: formatArtDateTime(digest.resumeAt, i18n.language) })}
@@ -283,6 +304,15 @@ export default function AdminDigestEditorPage() {
 
       {error && (
         <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{error}</p>
+      )}
+
+      {senderNotConnected && (
+        <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 border border-accent px-3 py-2 rounded-sm">
+          {t(`admin.digests.editor.senderNotice.${senderStatus}`)}{' '}
+          <Link to="/admin/digests" className="font-semibold underline underline-offset-2">
+            {t('admin.digests.editor.senderNotice.link')}
+          </Link>
+        </p>
       )}
 
       {!editable && (
@@ -442,6 +472,11 @@ export default function AdminDigestEditorPage() {
           onClose={() => setDialog(null)}
         >
           {t('admin.digests.editor.sendDialog.body', { count: digest.recipientEstimate ?? 0 })}
+          {senderNotConnected && (
+            <span className="block mt-3 text-accent-700 bg-accent-50 px-3 py-2 rounded-sm text-body-sm">
+              {t(`admin.digests.editor.sendDialog.senderWarning.${senderStatus}`)}
+            </span>
+          )}
         </ConfirmDialog>
       )}
       {dialog === 'cancel' && (

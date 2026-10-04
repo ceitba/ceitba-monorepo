@@ -423,7 +423,8 @@
         "MAIL_QUOTA_EXHAUSTED": "The account's daily sending quota is used up (test sends count too). You can try again ~{{when}} (Argentina time).",
         "MAIL_QUOTA_EXHAUSTED_noWhen": "The account's daily sending quota is used up (test sends count too). Try again later.",
         "AUTO_SEND_IN_PAST": "The auto-send time must be in the future.",
-        "MAIL_DISABLED": "Sending email is disabled in this environment."
+        "MAIL_DISABLED": "Sending email is disabled in this environment.",
+        "MAIL_SENDER_NOT_CONNECTED": "The sending account is not connected. Connect it from the digest list and try again."
       },
       "editor": {
         "recipientEstimate_one": "{{count}} person who follows CEITBA with the email on would receive it",
@@ -466,7 +467,11 @@
           "title": "Send the digest now?",
           "body_one": "It will be sent to {{count}} person (followers of CEITBA with the email on). This cannot be undone.",
           "body_other": "It will be sent to {{count}} people (followers of CEITBA with the email on). This cannot be undone.",
-          "confirm": "Send now"
+          "confirm": "Send now",
+          "senderWarning": {
+            "missing": "No sending account is connected yet: the send will wait and only start once someone connects one.",
+            "broken": "The sending account needs to be reconnected: the send will wait and only continue once someone reconnects it."
+          }
         },
         "cancelDialog": {
           "title": "Cancel this digest?",
@@ -482,7 +487,12 @@
           "confirm": "Leave without saving",
           "stay": "Keep editing"
         },
-        "charCount": "{{count}}/{{max}}"
+        "charCount": "{{count}}/{{max}}",
+        "senderNotice": {
+          "missing": "No sending account is connected yet, so the email can't go out.",
+          "broken": "The sending account has a problem and must be reconnected before the email can go out.",
+          "link": "Go to the digest list to connect it"
+        }
       },
       "preview": {
         "title": "Preview",
@@ -529,7 +539,47 @@
         "laterBucket": "+7 days",
         "laterFrom": "From {{when}}"
       },
-      "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself."
+      "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself.",
+      "sender": {
+        "title": "Sending account",
+        "loadError": "We couldn't load the sending account.",
+        "status": {
+          "connected": "Connected",
+          "broken": "Has a problem"
+        },
+        "connectedAt": "Connected on {{when}} (Argentina time)",
+        "lastUsedAt": "Last send: {{when}} (Argentina time)",
+        "neverUsed": "No email has been sent from this account yet.",
+        "missingTitle": "Digests can't be sent yet",
+        "missingBody": "No Gmail account is connected to send emails, so no digest will go out (not even test sends) until someone connects one.",
+        "help": "Sign in with ceitba@itba.edu.ar and keep the \"send email\" permission ticked when Google asks.",
+        "connect": "Connect sending account",
+        "reconnect": "Reconnect",
+        "connecting": "Redirecting to Google…",
+        "disconnect": "Disconnect",
+        "disconnecting": "Disconnecting…",
+        "brokenBody": "Google rejected the sending account (for example, the password changed or access was removed). No email goes out until it is reconnected.",
+        "lastError": "Last error: {{error}}",
+        "connectError": "We couldn't start the connection with Google. Try again.",
+        "disconnectError": "We couldn't disconnect the account. Try again.",
+        "disconnectDialog": {
+          "title": "Disconnect the sending account?",
+          "body": "Access for {{email}} will be revoked at Google. Until someone connects an account again, no digest will be sent: sends in progress or scheduled will wait.",
+          "confirm": "Disconnect"
+        },
+        "result": {
+          "dismiss": "Dismiss notice",
+          "connected": "Sending account connected. Digests can be sent now.",
+          "access_denied": "The account was not connected: you cancelled the permission at Google. Try again whenever you like.",
+          "invalid_state": "The connection link expired (it lasts 10 minutes). Tap \"Connect sending account\" again.",
+          "not_staff": "Only CEITBA staff can connect the sending account.",
+          "wrong_account": "You signed in with a different account. It must be ceitba@itba.edu.ar.",
+          "missing_scope": "The \"send email\" permission is missing. Connect again and keep it ticked.",
+          "no_refresh_token": "Google didn't grant long-lived access. Connect again and accept all permissions.",
+          "exchange_failed": "We couldn't complete the connection with Google. Try again in a few minutes.",
+          "unknown": "We couldn't connect the sending account. Try again."
+        }
+      }
     }
   },
   "imageUploader": {
