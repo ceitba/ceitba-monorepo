@@ -21,12 +21,18 @@ public class DoBatchClient implements LlmBatchClient {
     private final String baseUrl;
     private final String apiKey;
     private final ObjectMapper json;
+    private final DoQuotaTracker quota;
     private final HttpClient http = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(20))
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build();
 
     public DoBatchClient(String baseUrl, String apiKey, ObjectMapper json) {
+        this(baseUrl, apiKey, json, null);
+    }
+
+    public DoBatchClient(String baseUrl, String apiKey, ObjectMapper json, DoQuotaTracker quota) {
+        this.quota = quota;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.apiKey = apiKey;
         this.json = json;
@@ -75,6 +81,18 @@ public class DoBatchClient implements LlmBatchClient {
         return info(call("POST", "/v1/batches", body));
     }
 
+    // Free quota probe: a creation with a nonexistent file_id answers 404 with
+    // the batch rate-limit headers and consumes nothing. Never throws.
+    @Override
+    public void probeQuota() {
+        try {
+            createBatch("00000000-0000-0000-0000-000000000000", "quota-probe", "openai",
+                "/v1/chat/completions");
+        } catch (LlmApiException expected) {
+            // 404 (headers already observed by call())
+        }
+    }
+
     @Override
     public BatchInfo get(String batchId) {
         return info(call("GET", "/v1/batches/" + batchId, null));
@@ -82,9 +100,19 @@ public class DoBatchClient implements LlmBatchClient {
 
     @Override
     public BatchResults results(String batchId) {
-        var node = call("GET", "/v1/batches/" + batchId + "/results", null);
-        boolean available = node.path("result_available").asBoolean(node.hasNonNull("output_file_url"));
-        return new BatchResults(available, text(node, "output_file_url"), text(node, "error_file_url"));
+        return resultsOf(call("GET", "/v1/batches/" + batchId + "/results", null));
+    }
+
+    // DO answers {result_available, download: {presigned_url, expires_at}}
+    // (the output JSONL; failed lines come back in it with their own status),
+    // not OpenAI's output_file_url/error_file_url: both shapes are read.
+    static BatchResults resultsOf(JsonNode node) {
+        var output = text(node, "output_file_url");
+        if (output == null) output = text(node.path("download"), "presigned_url", "url");
+        var errors = text(node, "error_file_url");
+        if (errors == null) errors = text(node.path("error_download"), "presigned_url", "url");
+        boolean available = node.path("result_available").asBoolean(output != null);
+        return new BatchResults(available, output, errors);
     }
 
     @Override
@@ -122,6 +150,14 @@ public class DoBatchClient implements LlmBatchClient {
     static BatchInfo info(JsonNode node) {
         var id = text(node, "id", "batch_id");
         var status = text(node, "status");
+        // DO reports "completed" a little before the output/error files exist
+        // (result_available false): reading results then found none and the
+        // batch was taken as answerless. Until they exist it is "finalizing".
+        var available = node.has("result_available") ? node.path("result_available")
+            : node.path("data").path("result_available");
+        if ("completed".equalsIgnoreCase(status) && available.isBoolean() && !available.asBoolean()) {
+            status = "finalizing";
+        }
         return new BatchInfo(id, status == null ? null : status.toLowerCase(java.util.Locale.ROOT), node.toString(),
             errorMessage(node));
     }
@@ -152,6 +188,7 @@ public class DoBatchClient implements LlmBatchClient {
                     .method(method, HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body)));
             }
             var res = send(b.build());
+            if (quota != null) quota.observe(res.headers());
             var text = new String(res.body(), java.nio.charset.StandardCharsets.UTF_8);
             if (res.statusCode() / 100 != 2) {
                 throw new LlmApiException(res.statusCode(), method + " " + path + " -> " + res.statusCode() + ": "

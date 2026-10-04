@@ -1,10 +1,8 @@
 package org.ceitba.api;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -15,11 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 // V29 folds legacy category spellings onto the canonical list. Runs the real
 // prod chain up to V28, seeds legacy rows, applies V29 and checks the result.
-@Testcontainers
 class NewsCategoryMigrationIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @Test
     void v29MapsCaseAndAccentVariantsAndLeavesUnknownValues() throws Exception {

@@ -1,5 +1,6 @@
 package org.ceitba.api.web.auth;
 
+import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.repository.RefreshTokenRepository;
@@ -17,9 +18,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 import java.util.Date;
@@ -37,7 +35,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // GoogleLoginService gate, provisioning, and the issued token pair.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(TestGoogleIdTokens.LocalKeyVerifier.class)
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
@@ -47,8 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class AuthMobileIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

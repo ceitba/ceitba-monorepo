@@ -34,6 +34,9 @@ public interface LlmBatchClient {
     // The batch created with this request_id, if DO lists one (GET
     // /v1/batches: {edges: [{node: {...}}], page_info}); used before
     // re-creating a batch whose creation got no clear answer.
+    // Refreshes the quota snapshot for free (DoBatchClient); a no-op elsewhere.
+    default void probeQuota() {}
+
     default java.util.Optional<BatchInfo> findByRequestId(String requestId) {
         return java.util.Optional.empty();
     }

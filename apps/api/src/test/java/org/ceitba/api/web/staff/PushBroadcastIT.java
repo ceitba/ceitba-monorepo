@@ -1,5 +1,6 @@
 package org.ceitba.api.web.staff;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
@@ -18,9 +19,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -34,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // POST /v1/staff/push/broadcast: STAFF only, reaches every registered device.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(FakePushGatewayConfig.class)
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
@@ -42,8 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class PushBroadcastIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

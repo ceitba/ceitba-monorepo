@@ -1,5 +1,6 @@
 package org.ceitba.api.domain;
 
+import org.ceitba.api.support.SharedPostgres;
 import jakarta.persistence.Entity;
 import org.ceitba.api.domain.news.Article;
 import org.flywaydb.core.Flyway;
@@ -13,9 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,11 +38,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * order we cannot control) against the real production migration chain, once
  * per entity ordering, with schema validation on.
  */
-@Testcontainers
 class ListStringMappingOrderIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     enum Order { ARTICLE_FIRST, ARTICLE_LAST, ALPHABETICAL, REVERSE_ALPHABETICAL }
 
