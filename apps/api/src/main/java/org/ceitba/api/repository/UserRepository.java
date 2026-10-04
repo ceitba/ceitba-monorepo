@@ -70,4 +70,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
         @Param("organization") String organization,
         Pageable pageable
     );
+
+    // Weekly digest audience (service/digest): users who did not opt out.
+    List<User> findByDigestEmailEnabledTrue();
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.digestEmailEnabled = :enabled WHERE u.id = :id")
+    int setDigestEmailEnabled(@Param("id") UUID id, @Param("enabled") boolean enabled);
 }

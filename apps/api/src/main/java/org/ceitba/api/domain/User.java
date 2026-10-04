@@ -80,6 +80,11 @@ public class User {
     @Column(name = "firebase_uid", length = 128, unique = true)
     private String firebaseUid;
 
+    // Weekly digest email opt-out (docs/WEEKLY-DIGEST.md); separate from
+    // following, which also drives push notifications.
+    @Column(name = "digest_email_enabled", nullable = false)
+    private boolean digestEmailEnabled = true;
+
     protected User() {}
 
     public User(UUID id, String email, String name) {
@@ -120,5 +125,8 @@ public class User {
 
     public String getFirebaseUid() { return firebaseUid; }
     public void setFirebaseUid(String firebaseUid) { this.firebaseUid = firebaseUid; }
+
+    public boolean isDigestEmailEnabled() { return digestEmailEnabled; }
+    public void setDigestEmailEnabled(boolean enabled) { this.digestEmailEnabled = enabled; }
 
 }
