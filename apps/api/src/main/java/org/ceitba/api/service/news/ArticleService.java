@@ -1,5 +1,6 @@
 package org.ceitba.api.service.news;
 
+import org.ceitba.api.common.exception.InvalidStateException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.UUID;
 
 @Service
@@ -25,6 +27,10 @@ public class ArticleService {
     // article; publishing it is left to STAFF (moderation).
     public static final String PENDING_REVIEW = "pending_review";
     private static final Set<String> AUTHOR_STATUSES = Set.of("draft", PENDING_REVIEW);
+
+    // Client-chosen ids (staff and org members only; independent authors
+    // always get a generated UUID) must be URL-safe slugs.
+    private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9-]{0,99}$");
 
     private final ArticleRepository articleRepo;
     private final OrganizationRepository orgRepo;
@@ -46,6 +52,13 @@ public class ArticleService {
     public Page<Article> findAll(String category, String organization, String status,
                                  UUID createdBy, Pageable pageable) {
         return articleRepo.findFiltered(category, organization, status, createdBy, pageable);
+    }
+
+    // ?mine=true: the caller's own independent (org-less) articles.
+    @Transactional(readOnly = true)
+    public Page<Article> findOwnIndependent(String category, String status, UUID createdBy,
+                                            Pageable pageable) {
+        return articleRepo.findIndependentByCreatedBy(category, status, createdBy, pageable);
     }
 
     // For a non-staff author's independent article: only draft or
@@ -73,6 +86,9 @@ public class ArticleService {
     public Article create(Article article, String organizationSlug, User createdBy) {
         if (article.getId() == null || article.getId().isBlank()) {
             article = rebuildWithId(article, UUID.randomUUID().toString());
+        } else if (!ID_PATTERN.matcher(article.getId()).matches()) {
+            throw new ValidationException("id", article.getId(),
+                "must be 1-100 lowercase letters, digits or '-', starting with a letter or digit");
         } else if (articleRepo.existsById(article.getId())) {
             // Ids are assigned, so save() would merge over the existing row
             // (possibly another org's) instead of inserting.
@@ -86,10 +102,12 @@ public class ArticleService {
 
     // `featured` is separate from `patch` because Article.featured is a
     // primitive: null means the request omitted it and it stays unchanged.
+    // `independentAuthor` is the caller's id when they act only as the author
+    // of an independent article (not STAFF, not an org member), else null.
     @Transactional
-    public Article update(String id, Article patch, Boolean featured, String organizationSlug) {
-        var article = articleRepo.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Article", id));
+    public Article update(String id, Article patch, Boolean featured, String organizationSlug,
+                          UUID independentAuthor) {
+        var article = lockedForWrite(id, independentAuthor);
         if (patch.getTitle()      != null) article.setTitle(patch.getTitle());
         if (patch.getExcerpt()    != null) article.setExcerpt(patch.getExcerpt());
         if (patch.getBody()       != null) article.setBody(patch.getBody());
@@ -106,12 +124,31 @@ public class ArticleService {
         return articleRepo.save(article);
     }
 
+    // `independentAuthor`: as in update().
     @Transactional
-    public void delete(String id) {
-        if (!articleRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Article", id);
+    public void delete(String id, UUID independentAuthor) {
+        articleRepo.delete(lockedForWrite(id, independentAuthor));
+    }
+
+    // Loads the article under a row lock so writes to it (an author's edit
+    // vs a staff publish) serialize. The controller's @PreAuthorize check ran
+    // before the lock, so an independent author is re-checked here: if the
+    // article was published (or claimed by an org) in between, the write is
+    // refused with 409 InvalidState rather than silently undoing moderation.
+    private Article lockedForWrite(String id, UUID independentAuthor) {
+        var article = articleRepo.findByIdForUpdate(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Article", id));
+        if (independentAuthor != null) {
+            boolean stillEditable = article.getOrganization() == null
+                && article.getCreatedBy() != null
+                && independentAuthor.equals(article.getCreatedBy().getId())
+                && !isPublished(article);
+            if (!stillEditable) {
+                throw new InvalidStateException(
+                    "Article " + id + " is no longer an unpublished independent article of yours");
+            }
         }
-        articleRepo.deleteById(id);
+        return article;
     }
 
     // Followers of the article's organization get one push per article, the
