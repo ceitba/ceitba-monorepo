@@ -1,8 +1,11 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
 import org.ceitba.api.domain.news.Organization;
+import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
+import org.ceitba.api.service.auth.ApiKeyService;
 import org.ceitba.api.repository.news.OrganizationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,6 +60,8 @@ class ArticleEndpointsIT {
     @Autowired ArticleRepository articleRepo;
     @Autowired OrganizationRepository orgRepo;
     @Autowired JdbcTemplate jdbc;
+    @Autowired UserRepository users;
+    @Autowired ApiKeyService apiKeys;
 
     @BeforeEach
     void seed() {
@@ -229,12 +235,57 @@ class ArticleEndpointsIT {
     private static final String INDEPENDENT =
         "{\"id\":\"ind\",\"title\":\"T\",\"excerpt\":\"E\",\"body\":[],\"category\":\"Tecnología\",\"authors\":[\"A\"]%s}";
 
-    private void createIndependent() throws Exception {
-        mvc.perform(post("/v1/articles").with(user())
+    // Returns the generated id: a non-staff author's "id" is ignored.
+    private String createIndependent() throws Exception {
+        return createIndependent(user());
+    }
+
+    private String createIndependent(RequestPostProcessor as) throws Exception {
+        String json = mvc.perform(post("/v1/articles").with(as)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(INDEPENDENT.formatted("")))
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("pending_review"))
+            .andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(json, "$.id");
+        assertThat(id).isNotEqualTo("ind");
+        return id;
+    }
+
+    @Test
+    void apiKeyUserManagesOwnIndependentArticle() throws Exception {
+        User keyUser = users.findByEmail("keyuser@itba.edu.ar")
+            .orElseGet(() -> users.save(new User(UUID.randomUUID(), "keyuser@itba.edu.ar", "Key User")));
+        String key = apiKeys.create(keyUser, "script", 1).key();
+        RequestPostProcessor viaKey = r -> { r.addHeader("X-Api-Key", key); return r; };
+
+        String id = createIndependent(viaKey);
+        mvc.perform(get("/v1/articles/" + id).with(viaKey))
+            .andExpect(status().isOk());
+        mvc.perform(get("/v1/articles?mine=true").with(viaKey))
+            .andExpect(jsonPath("$.data.length()").value(1));
+        mvc.perform(patch("/v1/articles/" + id).with(viaKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Edited\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Edited"))
+            // Omitting status keeps it (Article's "published" default must not leak).
             .andExpect(jsonPath("$.status").value("pending_review"));
+        mvc.perform(delete("/v1/articles/" + id).with(viaKey))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void staffSuppliedIdMustBeASlug() throws Exception {
+        mvc.perform(post("/v1/articles").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(INDEPENDENT.formatted("").replace("\"ind\"", "\"Bad Id!\"")))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/v1/articles").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(INDEPENDENT.formatted("")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value("ind"));
     }
 
     @Test
@@ -255,66 +306,79 @@ class ArticleEndpointsIT {
 
     @Test
     void authorEditsOwnPendingArticleUntilStaffPublishIt() throws Exception {
-        createIndependent();
+        String ind = createIndependent();
 
         // Author reads and edits it, but can't publish it.
-        mvc.perform(get("/v1/articles/ind").with(user()))
+        mvc.perform(get("/v1/articles/" + ind).with(user()))
             .andExpect(status().isOk());
-        mvc.perform(patch("/v1/articles/ind").with(user())
+        mvc.perform(patch("/v1/articles/" + ind).with(user())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Edited\",\"status\":\"draft\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("draft"));
-        mvc.perform(patch("/v1/articles/ind").with(user())
+        mvc.perform(patch("/v1/articles/" + ind).with(user())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"published\"}"))
             .andExpect(status().isBadRequest());
         // Nor move it into an org they don't belong to.
-        mvc.perform(patch("/v1/articles/ind").with(user())
+        mvc.perform(patch("/v1/articles/" + ind).with(user())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"organization\":\"it\"}"))
             .andExpect(status().isForbidden());
 
         // Other users neither see nor edit it.
-        mvc.perform(get("/v1/articles/ind").with(otherUser()))
+        mvc.perform(get("/v1/articles/" + ind).with(otherUser()))
             .andExpect(status().isNotFound());
-        mvc.perform(patch("/v1/articles/ind").with(otherUser())
+        mvc.perform(patch("/v1/articles/" + ind).with(otherUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Hijacked\"}"))
             .andExpect(status().isForbidden());
-        mvc.perform(delete("/v1/articles/ind").with(otherUser()))
+        mvc.perform(delete("/v1/articles/" + ind).with(otherUser()))
             .andExpect(status().isForbidden());
 
         // Staff publish it; from then on the author can't edit or delete it.
-        mvc.perform(patch("/v1/articles/ind").with(staff())
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"published\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("published"));
-        mvc.perform(patch("/v1/articles/ind").with(user())
+        mvc.perform(patch("/v1/articles/" + ind).with(user())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Too late\"}"))
             .andExpect(status().isForbidden());
-        mvc.perform(delete("/v1/articles/ind").with(user()))
+        mvc.perform(delete("/v1/articles/" + ind).with(user()))
             .andExpect(status().isForbidden());
     }
 
     @Test
     void authorCanDeleteOwnPendingArticle() throws Exception {
-        createIndependent();
-        mvc.perform(delete("/v1/articles/ind").with(user()))
+        String ind = createIndependent();
+        mvc.perform(delete("/v1/articles/" + ind).with(user()))
             .andExpect(status().isNoContent());
     }
 
     @Test
     void mineListsOwnArticlesOfEveryStatus() throws Exception {
-        createIndependent();
+        String ind = createIndependent();
+        // An org article the user wrote (e.g. before leaving the org) is not
+        // part of ?mine, even when ?organization names the org.
+        var orgArticle = new Article("org-art", "Org", "E", List.of(), "tech", List.of("A"));
+        orgArticle.setStatus("draft");
+        orgArticle.setOrganization(orgRepo.findById("it").orElseThrow());
+        orgArticle.setCreatedBy(users.findByEmail("user@itba.edu.ar").orElseThrow());
+        articleRepo.save(orgArticle);
+        // ...nor readable by them through the author shortcut.
+        mvc.perform(get("/v1/articles/org-art").with(user()))
+            .andExpect(status().isNotFound());
 
         mvc.perform(get("/v1/articles?mine=true").with(user()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.length()").value(1))
-            .andExpect(jsonPath("$.data[0].id").value("ind"))
+            .andExpect(jsonPath("$.data[0].id").value(ind))
             .andExpect(jsonPath("$.data[0].status").value("pending_review"));
+        mvc.perform(get("/v1/articles?mine=true&organization=it").with(user()))
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].id").value(ind));
         mvc.perform(get("/v1/articles?mine=true&status=draft").with(user()))
             .andExpect(jsonPath("$.data.length()").value(0));
         mvc.perform(get("/v1/articles?mine=true").with(staff()))

@@ -55,12 +55,14 @@ public class ArticleController {
 
         var paging = NewsPaging.of(page, limit);
         if (mine) {
-            // The caller's own articles, any status unless one is named
-            // (missing or `all` = every status). Anonymous -> empty page.
+            // The caller's own independent (org-less) articles, any status
+            // unless one is named (missing or `all` = every status).
+            // `organization` is ignored: org articles are listed per org.
+            // Anonymous -> empty page.
             UUID me = orgAccess.currentUserId(auth);
             Page<Article> own = me == null
                 ? Page.empty(paging)
-                : service.findAll(category, organization, mineStatusFilter(status), me, paging);
+                : service.findOwnIndependent(category, mineStatusFilter(status), me, paging);
             return toPage(own);
         }
 
@@ -97,8 +99,11 @@ public class ArticleController {
     public ResponseEntity<ArticleResponse> create(@RequestBody @Valid ArticleInput req,
                                                    @CurrentUser User user,
                                                    Authentication auth) {
-        var article = toEntity(req);
-        if (!hasRole(auth, "ROLE_STAFF") && orgAccess.isIndependent(req.organization())) {
+        boolean independentAuthor = !hasRole(auth, "ROLE_STAFF") && orgAccess.isIndependent(req.organization());
+        // Independent authors never choose the id (a UUID is generated);
+        // staff and org members may, subject to ArticleService's id format.
+        var article = toEntity(req, independentAuthor ? null : req.id());
+        if (independentAuthor) {
             article.setStatus(ArticleService.requireAuthorStatus(req.status(), true));
             article.setFeatured(false);
         }
@@ -115,9 +120,14 @@ public class ArticleController {
     public ArticleResponse patch(@PathVariable String id,
                                   @RequestBody @Valid ArticlePatchInput req,
                                   Authentication auth) {
-        boolean authorOnly = !hasRole(auth, "ROLE_STAFF")
-            && !orgAccess.canWriteForArticle(id, req.organization(), auth)
-            && !orgAccess.canWriteForOrg(req.organization(), auth);
+        // Non-staff callers that aren't members of the article's org got in
+        // as the independent article's author; ArticleService re-checks that
+        // under a row lock. authorOnly additionally excludes moves into an org
+        // the author belongs to (member rules apply to status/featured).
+        boolean staff = hasRole(auth, "ROLE_STAFF");
+        boolean viaAuthorship = !staff && !orgAccess.canWriteForArticle(id, req.organization(), auth);
+        UUID independentAuthor = viaAuthorship ? orgAccess.currentUserId(auth) : null;
+        boolean authorOnly = viaAuthorship && !orgAccess.canWriteForOrg(req.organization(), auth);
         if (authorOnly) ArticleService.requireAuthorStatus(req.status(), false);
         Boolean featured = authorOnly ? null : req.featured();
         var patch = new Article(
@@ -130,19 +140,22 @@ public class ArticleController {
         if (req.readingTime() != null) patch.setReadingTime(req.readingTime());
         if (req.colorScheme() != null) patch.setColorScheme(req.colorScheme());
         if (req.coverImage()  != null) patch.setCoverImage(req.coverImage());
-        if (req.status()      != null) patch.setStatus(req.status());
-        return ArticleResponse.from(service.update(id, patch, featured, req.organization()));
+        // Always copied, even when null: Article.status defaults to
+        // "published", so leaving it would publish on any PATCH that omits it.
+        patch.setStatus(req.status());
+        return ArticleResponse.from(service.update(id, patch, featured, req.organization(), independentAuthor));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteOwnIndependentArticle(#id, authentication)")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable String id, Authentication auth) {
+        UUID independentAuthor = hasRole(auth, "ROLE_STAFF") ? null : orgAccess.currentUserId(auth);
+        service.delete(id, independentAuthor);
         return ResponseEntity.noContent().build();
     }
 
-    private Article toEntity(ArticleInput req) {
-        var a = new Article(req.id(), req.title(), req.excerpt(), req.body(),
+    private Article toEntity(ArticleInput req, String id) {
+        var a = new Article(id, req.title(), req.excerpt(), req.body(),
                             req.category(), req.authors());
         if (req.publishedAt() != null) a.setPublishedAt(req.publishedAt());
         if (req.readingTime() != null) a.setReadingTime(req.readingTime());
