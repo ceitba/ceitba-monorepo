@@ -6,6 +6,7 @@ import {
 } from '../../../api/kbAdmin'
 import CostChart from './CostChart'
 import Forecast from './Forecast'
+import QuotaCard from './QuotaCard'
 import { Panel, StatusPill, ViewState } from './shared'
 import { duration, pct, tokens, usd } from './format'
 import { useLoad } from './useLoad'
@@ -31,6 +32,8 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
 
   return (
     <div className="flex flex-col gap-4">
+      <QuotaCard />
+
       <ViewState state={summary} skeleton="cards">
         {(s) => (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
