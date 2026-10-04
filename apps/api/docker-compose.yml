@@ -243,6 +243,22 @@ services:
       KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
       KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
       KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
+      # Email + weekly digest (docs/WEEKLY-DIGEST.md). MAIL_ENABLED=false = log only.
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-CEITBA <ceitba@itba.edu.ar>}
+      DIGEST_PUBLIC_BASE_URL: ${DIGEST_PUBLIC_BASE_URL:-https://ceitba.org.ar/newsletter}
+      DIGEST_API_BASE_URL: ${DIGEST_API_BASE_URL:-https://ceitba.org.ar/api}
+      DIGEST_ALLOWED_DOMAINS: ${DIGEST_ALLOWED_DOMAINS:-itba.edu.ar}
+      DIGEST_DAILY_LIMIT: ${DIGEST_DAILY_LIMIT:-1500}
+      DIGEST_SEND_INTERVAL: ${DIGEST_SEND_INTERVAL:-PT1S}
+      DIGEST_TICK_INTERVAL: ${DIGEST_TICK_INTERVAL:-PT5M}
+      DIGEST_JOBS_ENABLED: ${DIGEST_JOBS_ENABLED:-true}
+      RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:-60}
+      RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:-1m}
       # Heap = 75% of the container limit (~1.5 GB of 2G; the JVM default of
       # 25% gave ~256 MB). A real OOM exits so restart: unless-stopped brings
       # the API back instead of leaving it half-broken.

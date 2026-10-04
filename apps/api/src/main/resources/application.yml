@@ -26,6 +26,20 @@ spring:
         # absolute instant and never used this setting. See LocalTemporalZoneIT.
         format_sql: false
     open-in-view: false
+  # SMTP for service/mail (used only with MAIL_ENABLED=true).
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 20000
+      mail.smtp.writetimeout: 20000
   flyway:
     enabled: true
     schemas: public,wiki
@@ -46,6 +60,11 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    # Boot's mail health check would open an SMTP connection (and log in) on
+    # every /actuator/health hit; a Gmail hiccup must not mark the API down.
+    mail:
+      enabled: false
 
 springdoc:
   swagger-ui:
@@ -201,6 +220,29 @@ drive-sync:
   # Dev only: comma list of subject codes; expansion is limited to them.
   community-only-codes: ${DRIVE_SYNC_COMMUNITY_ONLY_CODES:}
 
+# Outgoing email (service/mail). MAIL_ENABLED=false (default) only logs, so
+# dev and tests never send. Prod: the ceitba@itba.edu.ar Workspace account
+# over Gmail SMTP with an app password (docs/WEEKLY-DIGEST.md).
+mail:
+  enabled: ${MAIL_ENABLED:false}
+  from: ${MAIL_FROM:CEITBA <ceitba@itba.edu.ar>}
+
+# Weekly digest "La semana en ITBA" (docs/WEEKLY-DIGEST.md).
+digest:
+  # ItbaNews public URL (article links, the unsubscribe page).
+  public-base-url: ${DIGEST_PUBLIC_BASE_URL:https://ceitba.org.ar/newsletter}
+  # Public API base incl. /api (List-Unsubscribe one-click target).
+  api-base-url: ${DIGEST_API_BASE_URL:https://ceitba.org.ar/api}
+  # HARD guard: no digest email (test sends included) leaves for any other domain.
+  allowed-domains: ${DIGEST_ALLOWED_DOMAINS:itba.edu.ar}
+  # Send attempts per rolling 24h (Workspace caps ~2000 recipients/day).
+  daily-limit: ${DIGEST_DAILY_LIMIT:1500}
+  # Pause between two emails.
+  send-interval: ${DIGEST_SEND_INTERVAL:PT1S}
+  # Auto-send check / resume of stalled sends.
+  tick-interval: ${DIGEST_TICK_INTERVAL:PT5M}
+  jobs-enabled: ${DIGEST_JOBS_ENABLED:true}
+
 # Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
 # instance. Paths are relative to the /api context path.
 rate-limit:
@@ -269,6 +311,14 @@ rate-limit:
       methods: [PUT, DELETE]
       capacity: ${RATE_LIMIT_VOTES_CAPACITY:60}
       period: ${RATE_LIMIT_VOTES_PERIOD:1m}
+    # Public one-click unsubscribe of the weekly digest. Gmail/Outlook POST
+    # it from their own servers, so many users can share one address.
+    digest-unsubscribe:
+      paths:
+        - /v1/digests/unsubscribe
+      methods: [POST]
+      capacity: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:60}
+      period: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:1m}
     # ItbaNews flushes one batch (<= 50 events) per tab every 10 s.
     analytics:
       paths:

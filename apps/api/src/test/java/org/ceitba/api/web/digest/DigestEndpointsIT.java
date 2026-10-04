@@ -1,0 +1,307 @@
+package org.ceitba.api.web.digest;
+
+import com.jayway.jsonpath.JsonPath;
+import org.ceitba.api.domain.User;
+import org.ceitba.api.domain.news.Article;
+import org.ceitba.api.domain.news.NewsEvent;
+import org.ceitba.api.domain.news.Organization;
+import org.ceitba.api.domain.news.UserFollow;
+import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.repository.digest.DigestDeliveryRepository;
+import org.ceitba.api.repository.news.ArticleRepository;
+import org.ceitba.api.repository.news.NewsEventRepository;
+import org.ceitba.api.repository.news.OrganizationRepository;
+import org.ceitba.api.repository.news.UserFollowRepository;
+import org.ceitba.api.service.digest.DigestSender;
+import org.ceitba.api.service.digest.DigestUnsubscribeTokens;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Testcontainers
+@TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "auth.allowed-emails=boss@gmail.com"})
+class DigestEndpointsIT {
+
+    @Container
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    @DynamicPropertySource
+    static void datasourceProps(DynamicPropertyRegistry r) {
+        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        r.add("spring.datasource.username", POSTGRES::getUsername);
+        r.add("spring.datasource.password", POSTGRES::getPassword);
+    }
+
+    // Monday 2026-09-28: articles of 28/9..4/10, events of 5/10..11/10.
+    static final String WEEK = "2026-09-28";
+
+    @Autowired MockMvc mvc;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired UserRepository users;
+    @Autowired OrganizationRepository orgs;
+    @Autowired UserFollowRepository follows;
+    @Autowired ArticleRepository articles;
+    @Autowired NewsEventRepository events;
+    @Autowired DigestDeliveryRepository deliveries;
+    @Autowired DigestUnsubscribeTokens tokens;
+    @Autowired DigestSender sender;
+
+    User alice;
+    User bob;
+
+    @BeforeEach
+    void seed() {
+        jdbc.execute("""
+            TRUNCATE public.digest_deliveries, public.digest_issues, public.user_follows,
+                     public.articles, public.news_events, public.organizations, public."user" CASCADE
+            """);
+        var ceitba = orgs.save(new Organization("ceitba", "CEITBA", "Centro de Estudiantes"));
+        var sabf = orgs.save(new Organization("sabf", "SABF", "South American Business Forum"));
+
+        alice = users.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));   // follows ceitba
+        bob = users.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));         // follows sabf
+        var carol = users.save(new User(UUID.randomUUID(), "carol@gmail.com", "Carol")); // not allowed
+        follows.save(new UserFollow(alice.getId(), "ceitba"));
+        follows.save(new UserFollow(bob.getId(), "sabf"));
+        follows.save(new UserFollow(carol.getId(), "ceitba"));
+
+        article("a-ceitba", ceitba, LocalDate.of(2026, 9, 30), "published");
+        article("a-sabf", sabf, LocalDate.of(2026, 10, 2), "published");
+        article("a-draft", ceitba, LocalDate.of(2026, 10, 1), "draft");
+        article("a-old", ceitba, LocalDate.of(2026, 9, 27), "published");
+        event("e-ceitba", ceitba, LocalDate.of(2026, 10, 6));
+        event("e-late", ceitba, LocalDate.of(2026, 10, 12));
+    }
+
+    void article(String id, Organization org, LocalDate publishedAt, String status) {
+        var a = new Article(id, "Título " + id, "Resumen", List.of("p"), "general", List.of("Autor"));
+        a.setOrganization(org);
+        a.setPublishedAt(publishedAt);
+        a.setStatus(status);
+        articles.save(a);
+    }
+
+    void event(String id, Organization org, LocalDate date) {
+        var e = new NewsEvent(id, "Evento " + id, date, LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", "general");
+        e.setOrganization(org);
+        events.save(e);
+    }
+
+    static RequestPostProcessor staff(String email) {
+        return jwt().jwt(t -> t.claim("email", email).claim("name", "Staff"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_STAFF"));
+    }
+
+    static RequestPostProcessor staff() {
+        return staff("alice@itba.edu.ar");
+    }
+
+    static RequestPostProcessor user() {
+        return jwt().jwt(t -> t.claim("email", "bob@itba.edu.ar").claim("name", "Bob"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    String create() throws Exception {
+        String body = mvc.perform(post("/v1/digests").with(staff())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"weekStart\":\"" + WEEK + "\"}"))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
+    @Test
+    void issueEndpointsAreStaffOnly() throws Exception {
+        mvc.perform(get("/v1/digests")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/digests").with(user())).andExpect(status().isForbidden());
+        mvc.perform(post("/v1/digests").with(user())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"weekStart\":\"" + WEEK + "\"}"))
+            .andExpect(status().isForbidden());
+        String id = create();
+        mvc.perform(get("/v1/digests/" + id).with(user())).andExpect(status().isForbidden());
+        mvc.perform(post("/v1/digests/" + id + "/send").with(user())).andExpect(status().isForbidden());
+        mvc.perform(get("/v1/digests/" + id + "/preview")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/digests").with(staff())).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(id))
+            .andExpect(jsonPath("$[0].weekEnd").value("2026-10-04"))
+            .andExpect(jsonPath("$[0].counts.pending").value(0));
+    }
+
+    @Test
+    void createValidatesWeekAndUniqueness() throws Exception {
+        mvc.perform(post("/v1/digests").with(staff())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"weekStart\":\"2026-09-29\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("INVALID_WEEK_START"));
+        create();
+        mvc.perform(post("/v1/digests").with(staff())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"weekStart\":\"" + WEEK + "\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("DIGEST_EXISTS"));
+    }
+
+    @Test
+    void detailListsCandidatesAndPatchAcceptsTheFullBody() throws Exception {
+        String id = create();
+        mvc.perform(get("/v1/digests/" + id).with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.subject").value("La semana en ITBA · 28 de septiembre al 4 de octubre"))
+            .andExpect(jsonPath("$.status").value("draft"))
+            .andExpect(jsonPath("$.articles.length()").value(2))
+            .andExpect(jsonPath("$.articles[0].id").value("a-sabf"))
+            .andExpect(jsonPath("$.articles[0].organization.name").value("SABF"))
+            .andExpect(jsonPath("$.events.length()").value(1))
+            .andExpect(jsonPath("$.events[0].id").value("e-ceitba"))
+            .andExpect(jsonPath("$.events[0].startTime").value("18:00:00"))
+            // alice and bob; carol's domain is not allowed
+            .andExpect(jsonPath("$.recipientEstimate").value(2));
+
+        // What the frontend sends on every save: all five fields.
+        mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"subject":"Edición especial","intro":"Hola\\n<b>todos</b>",
+                 "excludedArticleIds":["a-sabf"],"excludedEventIds":[],
+                 "autoSendAt":"2026-10-05T15:00:00.000Z"}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.subject").value("Edición especial"))
+            .andExpect(jsonPath("$.intro").value("Hola\n<b>todos</b>"))
+            .andExpect(jsonPath("$.autoSendAt").value(containsString("2026-10-05T15:00")))
+            .andExpect(jsonPath("$.articles[0].excluded").value(true))
+            .andExpect(jsonPath("$.articles[1].excluded").value(false))
+            .andExpect(jsonPath("$.recipientEstimate").value(1));
+
+        mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"subject":"Edición especial","intro":null,"excludedArticleIds":["a-sabf"],
+                 "excludedEventIds":[],"autoSendAt":null}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.autoSendAt").doesNotExist())
+            .andExpect(jsonPath("$.intro").doesNotExist());
+
+        mvc.perform(get("/v1/digests/" + id + "/preview?mode=all").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+            .andExpect(content().string(containsString("Título a-ceitba")))
+            .andExpect(content().string(containsString("Evento e-ceitba")));
+        mvc.perform(get("/v1/digests/" + id + "/preview?mode=me").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("seguís a 1 organización: CEITBA")));
+        mvc.perform(get("/v1/digests/" + id + "/preview?mode=nope").with(staff()))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testSendHonoursTheDomainGuard() throws Exception {
+        String id = create();
+        mvc.perform(post("/v1/digests/" + id + "/test").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sentTo").value("alice@itba.edu.ar"));
+        // Allowlisted to sign in, but not a digest domain.
+        mvc.perform(post("/v1/digests/" + id + "/test").with(staff("boss@gmail.com")))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.error").value("EMAIL_NOT_ALLOWED"));
+    }
+
+    @Test
+    void sendSnapshotsRecipientsThenLocksTheIssue() throws Exception {
+        String id = create();
+        mvc.perform(post("/v1/digests/" + id + "/send").with(staff()))
+            .andExpect(status().isAccepted())
+            .andExpect(jsonPath("$.status").value("sending"))
+            .andExpect(jsonPath("$.counts.pending").value(2));
+
+        mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"subject\":\"x\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("DIGEST_NOT_EDITABLE"));
+        mvc.perform(post("/v1/digests/" + id + "/send").with(staff()))
+            .andExpect(status().isConflict());
+
+        sender.runPending();   // logging sender: nothing leaves the process
+
+        mvc.perform(get("/v1/digests/" + id).with(staff()))
+            .andExpect(jsonPath("$.status").value("sent"))
+            .andExpect(jsonPath("$.sentAt").exists())
+            .andExpect(jsonPath("$.counts.sent").value(2))
+            .andExpect(jsonPath("$.counts.pending").value(0));
+        mvc.perform(post("/v1/digests/" + id + "/cancel").with(staff()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("DIGEST_NOT_EDITABLE"));
+    }
+
+    @Test
+    void cancelWhileSendingDropsWhatIsLeft() throws Exception {
+        String id = create();
+        mvc.perform(post("/v1/digests/" + id + "/send").with(staff())).andExpect(status().isAccepted());
+        // One email already went out when staff press "Detener envío".
+        deliveries.markSent(UUID.fromString(id), alice.getId(), OffsetDateTime.now());
+
+        mvc.perform(post("/v1/digests/" + id + "/cancel").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("cancelled"))
+            .andExpect(jsonPath("$.counts.sent").value(1))
+            .andExpect(jsonPath("$.counts.pending").value(0));
+
+        sender.runPending();
+        assertThat(deliveries.findAll()).hasSize(1).allMatch(d -> d.getStatus().equals("sent"));
+
+        mvc.perform(post("/v1/digests/" + id + "/cancel").with(staff()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("DIGEST_NOT_EDITABLE"));
+    }
+
+    @Test
+    void subscriptionAndOneClickUnsubscribe() throws Exception {
+        mvc.perform(get("/v1/digests/subscription")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/digests/subscription").with(user()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
+        mvc.perform(put("/v1/digests/subscription").with(user())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        assertThat(users.findById(bob.getId()).orElseThrow().isDigestEmailEnabled()).isFalse();
+
+        // Public, RFC 8058 one-click POST (form body), no session.
+        mvc.perform(post("/v1/digests/unsubscribe").param("token", tokens.issue(alice.getId()))
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED).content("List-Unsubscribe=One-Click"))
+            .andExpect(status().isNoContent());
+        assertThat(users.findById(alice.getId()).orElseThrow().isDigestEmailEnabled()).isFalse();
+
+        mvc.perform(post("/v1/digests/unsubscribe?token=" + UUID.randomUUID() + ".AAAA"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("INVALID_TOKEN"));
+        mvc.perform(post("/v1/digests/unsubscribe"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("INVALID_TOKEN"));
+    }
+}

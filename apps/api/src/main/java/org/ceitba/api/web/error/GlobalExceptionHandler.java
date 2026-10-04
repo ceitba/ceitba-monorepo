@@ -16,6 +16,7 @@ import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.capability.CapabilityRequiredException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
+import org.ceitba.api.service.digest.DigestException;
 import org.ceitba.api.service.drive.DriveException;
 import org.ceitba.api.service.kb.pipeline.KbPipelineException;
 import org.ceitba.api.service.wiki.BookmarkLimitException;
@@ -97,6 +98,14 @@ public class GlobalExceptionHandler {
             builder.header("Retry-After", Long.toString(ex.retryAfterSeconds()));
         }
         return builder.body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
+    }
+
+    // Weekly digest (docs/WEEKLY-DIGEST.md): INVALID_WEEK_START, DIGEST_EXISTS,
+    // DIGEST_NOT_EDITABLE, EMAIL_NOT_ALLOWED, INVALID_TOKEN.
+    @ExceptionHandler(DigestException.class)
+    public ResponseEntity<ErrorResponse> handleDigest(DigestException ex, HttpServletRequest req) {
+        return ResponseEntity.status(ex.reason().status())
+            .body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(KbPipelineException.class)
