@@ -1,5 +1,8 @@
 package org.ceitba.api.service.user;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.SavedSchedule;
@@ -9,7 +12,9 @@ import org.ceitba.api.web.user.dto.SavedScheduleResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -19,6 +24,9 @@ public class SavedScheduleService {
     // the error code is precise; the SPA renders X/MAX and disables Save at
     // the limit, but the server is still the authority.
     public static final int MAX_PER_USER = 5;
+
+    private static final ObjectMapper CANONICAL = new ObjectMapper()
+        .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
 
     private final SavedScheduleRepository repository;
 
@@ -82,6 +90,11 @@ public class SavedScheduleService {
         s.setName(req.name());
         s.setCareerId(req.careerId());
         s.setPlan(req.plan());
+        // Only a real payload change moves payload_updated_at (renames and
+        // toggles must not make an old term's schedule look current).
+        if (payloadChanged(s.getPayload(), req.payload())) {
+            s.setPayloadUpdatedAt(OffsetDateTime.now());
+        }
         s.setPayload(req.payload());
         return toResponse(repository.save(s));
     }
@@ -91,6 +104,21 @@ public class SavedScheduleService {
         var s = repository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new ResourceNotFoundException("SavedSchedule", id.toString()));
         repository.delete(s);
+    }
+
+    // Compared as canonical JSON (sorted keys), so Integer/Long and key order
+    // differences between the stored and the incoming map are not changes.
+    static boolean payloadChanged(Map<String, Object> stored, Map<String, Object> incoming) {
+        return !canonical(stored).equals(canonical(incoming));
+    }
+
+    private static String canonical(Map<String, Object> payload) {
+        try {
+            return CANONICAL.writeValueAsString(payload == null ? Map.of() : payload);
+        } catch (JsonProcessingException e) {
+            // Not serializable (cannot happen for a JSON payload): count it as changed.
+            return "?" + System.identityHashCode(payload);
+        }
     }
 
     private SavedScheduleResponse toResponse(SavedSchedule s) {

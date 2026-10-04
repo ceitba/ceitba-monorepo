@@ -23,10 +23,12 @@ import org.ceitba.api.service.mail.MutableClock;
 import org.ceitba.api.service.mail.OutgoingEmail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,12 +44,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 // The batch: throttling, the sending quota (MailSendService over an
-// in-memory ledger, fake clock), failure handling and pauses, resume,
-// stop-on-cancel and link tracking, with in-memory stand-ins for the
+// in-memory ledger, fake clock), failure handling and pauses, at-most-once
+// claiming, resume, stop-on-cancel and link tracking, with in-memory
+// stand-ins for the
 // delivery table.
 class DigestSenderTest {
 
@@ -62,8 +66,10 @@ class DigestSenderTest {
     final ArticleRepository articles = mock(ArticleRepository.class);
     final UserFollowRepository follows = mock(UserFollowRepository.class);
 
-    // userId -> status ("pending" | "sent" | "failed"); removed = dropped.
+    // userId -> status ("pending" | "sending" | "sent" | "failed"); removed = dropped.
     final Map<UUID, String> rows = new java.util.LinkedHashMap<>();
+    final Map<UUID, Integer> attempts = new HashMap<>();
+    final Map<UUID, String> errors = new HashMap<>();
     final Map<UUID, String> emails = new HashMap<>();
     final List<String> sentTo = new ArrayList<>();
     final List<OutgoingEmail> sentEmails = new ArrayList<>();
@@ -76,17 +82,26 @@ class DigestSenderTest {
     final DigestIssueLinkRepository issueLinks = mock(DigestIssueLinkRepository.class);
     final DigestDeliveryLinkRepository deliveryLinks = mock(DigestDeliveryLinkRepository.class);
     boolean tracking = false;
+    String senderUnavailable = null;   // MailSendService/transport.unavailableReason()
 
     DigestSender sender(int dailyLimit) {
         var props = new DigestProperties(null, null, null, tracking, Duration.ofMillis(1), null, false);
         var tokens = new DigestUnsubscribeTokens(HMAC);
         var composer = new DigestComposer(articles, mock(NewsEventRepository.class), follows, users, tokens,
             (readers, issue) -> personalSection.forReaders(readers, issue), props);
-        EmailSender transport = (OutgoingEmail e) -> {
-            var ex = failure.apply(e.to());
-            if (ex != null) throw ex;
-            sentTo.add(e.to());
-            sentEmails.add(e);
+        EmailSender transport = new EmailSender() {
+            @Override
+            public void send(OutgoingEmail e) {
+                var ex = failure.apply(e.to());
+                if (ex != null) throw ex;
+                sentTo.add(e.to());
+                sentEmails.add(e);
+            }
+
+            @Override
+            public Optional<String> unavailableReason() {
+                return Optional.ofNullable(senderUnavailable);
+            }
         };
         var mail = new MailSendService(transport, ledger, ACCOUNT, dailyLimit,
             Duration.ofMinutes(5), Duration.ofHours(1), Duration.ofHours(24), clock);
@@ -103,7 +118,8 @@ class DigestSenderTest {
         when(issues.findById(ISSUE)).thenReturn(Optional.of(issue));
         when(issues.findSendingIds()).thenAnswer(i -> DigestIssue.SENDING.equals(issueStatus) ? List.of(ISSUE) : List.of());
         when(issues.findStatusForShare(ISSUE)).thenAnswer(i -> Optional.of(issueStatus));
-        when(issues.markSentIfDone(eq(ISSUE), any())).thenAnswer(i -> rows.containsValue("pending") ? 0 : 1);
+        when(issues.markSentIfDone(eq(ISSUE), any())).thenAnswer(i ->
+            rows.containsValue("pending") || rows.containsValue("sending") ? 0 : 1);
 
         when(follows.existsByUserIdAndOrganization(any(), eq("ceitba"))).thenReturn(true);
         // One article: the issue is not empty.
@@ -111,18 +127,33 @@ class DigestSenderTest {
         a.setPublishedAt(LocalDate.of(2026, 9, 30));
         when(articles.findPublishedBetween(any(), any())).thenReturn(List.of(a));
 
-        when(deliveries.findPending(eq(ISSUE), any())).thenAnswer(i -> rows.entrySet().stream()
+        // Like the claim query: fresh rows first (attempts, then insertion order).
+        when(deliveries.lockNextPending(eq(ISSUE), any())).thenAnswer(i -> rows.entrySet().stream()
             .filter(e -> e.getValue().equals("pending"))
-            .map(e -> new DigestDelivery(ISSUE, e.getKey(), emails.get(e.getKey())))
-            .toList());
-        when(deliveries.markSent(eq(ISSUE), any(), any())).thenAnswer(i -> mark(i.getArgument(1), "sent"));
-        when(deliveries.markFailed(eq(ISSUE), any(), any(), any())).thenAnswer(i -> mark(i.getArgument(1), "failed"));
-        when(deliveries.deletePending(eq(ISSUE), any())).thenAnswer(i -> rows.remove((UUID) i.getArgument(1)) != null ? 1 : 0);
+            .min(java.util.Comparator.comparingInt(e -> attempts.getOrDefault(e.getKey(), 0)))
+            .map(e -> {
+                var d = new DigestDelivery(ISSUE, e.getKey(), emails.get(e.getKey()));
+                ReflectionTestUtils.setField(d, "attempts", attempts.getOrDefault(e.getKey(), 0));
+                return d;
+            }));
+        when(deliveries.markSending(eq(ISSUE), any(), any())).thenAnswer(i -> move(i.getArgument(1), "pending", "sending"));
+        when(deliveries.markSent(eq(ISSUE), any(), any())).thenAnswer(i -> move(i.getArgument(1), "sending", "sent"));
+        when(deliveries.markFailed(eq(ISSUE), any(), any(), any())).thenAnswer(i -> {
+            errors.put(i.getArgument(1), i.getArgument(3));
+            return move(i.getArgument(1), "sending", "failed");
+        });
+        when(deliveries.retryLater(eq(ISSUE), any(), any())).thenAnswer(i -> {
+            attempts.merge(i.getArgument(1), 1, Integer::sum);
+            return move(i.getArgument(1), "sending", "pending");
+        });
+        when(deliveries.release(eq(ISSUE), any(), any())).thenAnswer(i -> move(i.getArgument(1), "sending", "pending"));
+        when(deliveries.deleteClaimed(eq(ISSUE), any())).thenAnswer(i ->
+            "sending".equals(rows.get((UUID) i.getArgument(1))) && rows.remove((UUID) i.getArgument(1)) != null ? 1 : 0);
     }
 
-    int mark(UUID userId, String status) {
-        if (!"pending".equals(rows.get(userId))) return 0;
-        rows.put(userId, status);
+    int move(UUID userId, String from, String to) {
+        if (!from.equals(rows.get(userId))) return 0;
+        rows.put(userId, to);
         return 1;
     }
 
@@ -154,7 +185,7 @@ class DigestSenderTest {
     }
 
     @Test
-    void personalSectionsAreLoadedOncePerPageAndSplicedPerReader() {
+    void personalSectionIsLoadedForTheClaimedReaderAndSplicedPerReader() {
         var a = recipient("a@itba.edu.ar");
         var b = recipient("b@itba.edu.ar");
         var calls = new ArrayList<java.util.Collection<UUID>>();
@@ -165,8 +196,8 @@ class DigestSenderTest {
 
         sender(1500).runPending();
 
-        assertThat(calls).hasSize(1);
-        assertThat(calls.get(0)).containsExactlyInAnyOrder(a, b);
+        // One delivery is claimed at a time: one lookup per reader.
+        assertThat(calls).containsExactly(List.of(a), List.of(b));
         assertThat(sentEmails.get(0).html()).contains("SOLO-A");
         assertThat(sentEmails.get(1).html()).doesNotContain("SOLO-A");
     }
@@ -192,7 +223,6 @@ class DigestSenderTest {
         s.runPending();
         assertThat(sentTo).hasSize(3);
         assertThat(rows.values()).filteredOn("pending"::equals).hasSize(2);
-        verify(issues, never()).markSentIfDone(any(), any());
         // Each digest email is in the ledger (7 seeded + 3).
         assertThat(ledger.rows).hasSize(10);
 
@@ -247,15 +277,37 @@ class DigestSenderTest {
     }
 
     @Test
-    void transportFailureStopsWithoutTouchingTheRow() {
+    void anUnusableSenderSkipsTheTickBeforeClaimingAnythingAndResumesWhenFixed() {
         var a = recipient("a@itba.edu.ar");
         recipient("b@itba.edu.ar");
-        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSIENT, "535 5.7.8 bad credentials", null);
+        senderUnavailable = "Gmail sender account ceitba@itba.edu.ar is broken: reconnect it";
+        var worker = sender(1500);
+
+        worker.runPending();
+        worker.runPending();
+
+        verify(deliveries, never()).lockNextPending(any(), any());
+        verify(deliveries, never()).markSending(any(), any(), any());
+        assertThat(rows.get(a)).isEqualTo("pending");
+        assertThat(attempts).isEmpty();
+        assertThat(ledger.rows).isEmpty();   // nothing in mail_send_log
+
+        senderUnavailable = null;   // reconnected
+        worker.runPending();
+        assertThat(sentTo).hasSize(2);
+    }
+
+    @Test
+    void transportFailureStopsWithoutBlamingTheRow() {
+        var a = recipient("a@itba.edu.ar");
+        recipient("b@itba.edu.ar");
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "535 5.7.8 bad credentials", null);
 
         sender(1500).runPending();
 
         assertThat(sentTo).isEmpty();
         assertThat(rows.get(a)).isEqualTo("pending");
+        assertThat(attempts).doesNotContainKey(a);
         verify(deliveries, never()).markFailed(any(), any(), any(), any());
 
         failure = to -> null;   // SMTP back, but the account backs off 5 min
@@ -264,6 +316,44 @@ class DigestSenderTest {
         clock.advance(Duration.ofMinutes(5));
         sender(1500).runPending();
         assertThat(sentTo).hasSize(2);
+    }
+
+    @Test
+    void temporaryFailureOfOneRecipientNeverStallsTheIssueAndFailsAfterThreeAttempts() {
+        var bad = recipient("bad@itba.edu.ar");
+        recipient("b@itba.edu.ar");
+        recipient("c@itba.edu.ar");
+        failure = to -> to.startsWith("bad")
+            ? new EmailSendException(EmailSendException.Kind.TRANSIENT, "451 4.3.0 try later", null) : null;
+
+        sender(1500).runPending();
+
+        // Everyone else was served; the bad one was tried 3 times, then given up.
+        assertThat(sentTo).containsExactly("b@itba.edu.ar", "c@itba.edu.ar");
+        assertThat(rows.get(bad)).isEqualTo("failed");
+        assertThat(attempts.get(bad)).isEqualTo(2);   // two retries, the third failure is final
+        assertThat(errors.get(bad)).startsWith("gave up after 3 attempts").contains("451 4.3.0");
+        verify(deliveries, times(2)).retryLater(eq(ISSUE), eq(bad), any());
+        verify(issues).markSentIfDone(eq(ISSUE), any());
+    }
+
+    @Test
+    void rowsLeftSendingByACrashAreFailedNeverResent() {
+        var interrupted = recipient("lost@itba.edu.ar");
+        rows.put(interrupted, "sending");   // claimed before the crash, outcome unknown
+        recipient("ok@itba.edu.ar");
+        when(deliveries.failStale(any(), any())).thenAnswer(i -> {
+            rows.replaceAll((k, v) -> v.equals("sending") ? "failed" : v);
+            return 1;
+        });
+
+        sender(1500).runPending();
+
+        // Cutoff is 5 minutes before "now" (15:00Z), reason is recorded as unknown.
+        verify(deliveries).failStale(Instant.parse("2026-10-05T14:55:00Z").atOffset(ZoneOffset.UTC),
+            "unknown outcome (interrupted)");
+        assertThat(rows.get(interrupted)).isEqualTo("failed");
+        assertThat(sentTo).containsExactly("ok@itba.edu.ar");   // lost@ is not resent
     }
 
     @Test
@@ -330,21 +420,37 @@ class DigestSenderTest {
         String token = new DigestUnsubscribeTokens(HMAC).issue(a);
         assertThat(mail.headers().get("List-Unsubscribe"))
             .isEqualTo("<https://ceitba.org.ar/api/v1/digests/unsubscribe?token=" + token + ">");
-        // Every href / text URL points at the redirect endpoint.
+        // Every href / text URL points at the redirect endpoint, except the
+        // unsubscribe link of the body, which is left alone (it must always work).
+        String unsubscribe = "https://ceitba.org.ar/newsletter/unsubscribe?token=" + token;
         var href = java.util.regex.Pattern.compile("href=\"([^\"]*)\"").matcher(mail.html());
         int links = 0;
+        int untouched = 0;
         while (href.find()) {
+            if (href.group(1).equals(unsubscribe)) {
+                untouched++;
+                continue;
+            }
             links++;
             assertThat(href.group(1)).startsWith("https://ceitba.org.ar/api/v1/mail/c/");
         }
-        assertThat(links).isGreaterThan(3);
+        assertThat(links).isGreaterThanOrEqualTo(3);
+        assertThat(untouched).isEqualTo(1);
         var url = java.util.regex.Pattern.compile("https?://\\S+").matcher(mail.text());
-        while (url.find()) assertThat(url.group()).startsWith("https://ceitba.org.ar/api/v1/mail/c/");
+        int textUntouched = 0;
+        while (url.find()) {
+            if (url.group().equals(unsubscribe)) {
+                textUntouched++;
+                continue;
+            }
+            assertThat(url.group()).startsWith("https://ceitba.org.ar/api/v1/mail/c/");
+        }
+        assertThat(textUntouched).isEqualTo(1);
         assertThat(mail.html()).contains("/v1/mail/o/").contains("Medimos aperturas y clics");
-        assertThat(mail.text()).doesNotContain("token=").contains("Medimos aperturas y clics");
+        assertThat(mail.text()).contains("Medimos aperturas y clics");
 
         // The tracking id is opaque (not the user id) and stored before sending,
-        // with the per-reader links (vote + unsubscribe) of this delivery.
+        // with the per-reader links (the vote link; not the unsubscribe one) of this delivery.
         var trackingId = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(deliveries).setTrackingId(eq(ISSUE), eq(a), trackingId.capture());
         assertThat(trackingId.getValue()).hasSize(22).doesNotContain(a.toString());
@@ -353,8 +459,7 @@ class DigestSenderTest {
             org.mockito.ArgumentCaptor.forClass(List.class);
         verify(deliveryLinks).saveAll(saved.capture());
         assertThat(saved.getValue()).extracting(org.ceitba.api.domain.digest.DigestDeliveryLink::getUrlKey)
-            .containsExactlyInAnyOrder("https://ceitba.org.ar/newsletter/correction?vote=confirm",
-                "https://ceitba.org.ar/newsletter/unsubscribe");
+            .containsExactly("https://ceitba.org.ar/newsletter/correction?vote=confirm");
         assertThat(saved.getValue()).allMatch(l -> l.getLinkId() >= 1000);
         // The shared article link is an issue link (id < 1000).
         verify(issueLinks).save(org.mockito.ArgumentMatchers.argThat(l ->

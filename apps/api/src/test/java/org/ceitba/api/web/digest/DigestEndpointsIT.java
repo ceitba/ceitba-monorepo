@@ -134,7 +134,11 @@ class DigestEndpointsIT {
     }
 
     static RequestPostProcessor user() {
-        return jwt().jwt(t -> t.claim("email", "bob@itba.edu.ar").claim("name", "Bob"))
+        return userAs("bob@itba.edu.ar");
+    }
+
+    static RequestPostProcessor userAs(String email) {
+        return jwt().jwt(t -> t.claim("email", email).claim("name", "Bob"))
             .authorities(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
@@ -196,15 +200,17 @@ class DigestEndpointsIT {
             .andExpect(jsonPath("$.recipientEstimate").value(2));
 
         // What the frontend sends on every save: all five fields.
+        String autoSendAt = java.time.Instant.now().plus(java.time.Duration.ofDays(2))
+            .truncatedTo(java.time.temporal.ChronoUnit.MINUTES).toString();
         mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON).content("""
                 {"subject":"Edición especial","intro":"Hola\\n<b>todos</b>",
                  "excludedArticleIds":["a-sabf"],"excludedEventIds":[],
-                 "autoSendAt":"2026-10-05T15:00:00.000Z"}
-                """))
+                 "autoSendAt":"%s"}
+                """.formatted(autoSendAt)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.subject").value("Edición especial"))
             .andExpect(jsonPath("$.intro").value("Hola\n<b>todos</b>"))
-            .andExpect(jsonPath("$.autoSendAt").value(containsString("2026-10-05T15:00")))
+            .andExpect(jsonPath("$.autoSendAt").value(containsString(autoSendAt.substring(0, 16))))
             .andExpect(jsonPath("$.articles[0].excluded").value(true))
             .andExpect(jsonPath("$.articles[1].excluded").value(false))
             .andExpect(jsonPath("$.recipientEstimate").value(2));
@@ -259,7 +265,8 @@ class DigestEndpointsIT {
         mvc.perform(post("/v1/digests/" + id + "/send").with(staff()))
             .andExpect(status().isAccepted())
             .andExpect(jsonPath("$.status").value("sending"))
-            .andExpect(jsonPath("$.counts.pending").value(2));
+            .andExpect(jsonPath("$.counts.pending").value(2))
+            .andExpect(jsonPath("$.recipientEstimate").doesNotExist());
 
         mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"subject\":\"x\"}"))
@@ -285,6 +292,7 @@ class DigestEndpointsIT {
         String id = create();
         mvc.perform(post("/v1/digests/" + id + "/send").with(staff())).andExpect(status().isAccepted());
         // One email already went out when staff press "Detener envío".
+        deliveries.markSending(UUID.fromString(id), alice.getId(), OffsetDateTime.now());
         deliveries.markSent(UUID.fromString(id), alice.getId(), OffsetDateTime.now());
 
         mvc.perform(post("/v1/digests/" + id + "/cancel").with(staff()))
@@ -310,6 +318,21 @@ class DigestEndpointsIT {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
         assertThat(users.findById(bob.getId()).orElseThrow().isDigestEmailEnabled()).isFalse();
+        // Only the flag is cleared: bob still follows CEITBA and SABF.
+        assertThat(follows.existsByUserIdAndOrganization(bob.getId(), "ceitba")).isTrue();
+
+        // The flag alone is not "subscribed": dave only follows SABF.
+        var dave = users.findByEmail("dave@itba.edu.ar").orElseThrow();
+        assertThat(follows.existsByUserIdAndOrganization(dave.getId(), "ceitba")).isFalse();
+        mvc.perform(get("/v1/digests/subscription").with(userAs("dave@itba.edu.ar")))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        // Opting in also follows CEITBA (idempotent).
+        for (int i = 0; i < 2; i++) {
+            mvc.perform(put("/v1/digests/subscription").with(userAs("dave@itba.edu.ar"))
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
+        }
+        assertThat(follows.existsByUserIdAndOrganization(dave.getId(), "ceitba")).isTrue();
 
         // Public, RFC 8058 one-click POST (form body), no session.
         mvc.perform(post("/v1/digests/unsubscribe").param("token", tokens.issue(alice.getId()))

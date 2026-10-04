@@ -2,7 +2,8 @@ package org.ceitba.api.service.mail;
 
 // Transport-agnostic email sending (docs/WEEKLY-DIGEST.md). The SMTP
 // implementation (SmtpEmailSender) can be swapped for an HTTP API provider
-// without touching the callers. MAIL_ENABLED=false wires LoggingEmailSender.
+// without touching the callers. MAIL_ENABLED=false wires DisabledEmailSender
+// (or LoggingEmailSender with the dev-only MAIL_LOG_SENDS=true).
 // The only EmailSender bean is MailSendService, which wraps the transport
 // with the sending-quota ledger, so every caller is counted.
 // Every email currently goes out as the one configured account (MAIL_FROM).
@@ -12,8 +13,22 @@ package org.ceitba.api.service.mail;
 public interface EmailSender {
 
     // Throws EmailSendException; its kind() tells the caller whether the
-    // problem is this recipient's (skip it) or the transport's / the
-    // account's quota (stop, retry later). MailSendService also throws
-    // MailQuotaExhaustedException without sending when no quota is left.
+    // problem is this recipient's (skip it), temporary for this delivery
+    // (retry a few times), the transport's / the account's quota (stop, retry
+    // later). MailSendService also throws MailQuotaExhaustedException without
+    // sending when no quota is left.
     void send(OutgoingEmail email);
+
+    // False when nothing can really be sent (MAIL_ENABLED=false): callers
+    // refuse to start sending instead of pretending.
+    default boolean enabled() {
+        return true;
+    }
+
+    // Why the transport cannot send right now regardless of the recipient (the
+    // Gmail API sender account is missing, broken or undecryptable), or empty.
+    // Checked before any delivery is claimed or any send is logged.
+    default java.util.Optional<String> unavailableReason() {
+        return java.util.Optional.empty();
+    }
 }

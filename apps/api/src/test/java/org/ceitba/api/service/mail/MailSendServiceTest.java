@@ -167,7 +167,7 @@ class MailSendServiceTest {
     @Test
     void transportErrorsBackOffExponentiallyAndASuccessClearsIt() {
         var s = service(1500);
-        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSIENT, "421 4.7.0 Try again later", null);
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "421 4.7.0 Try again later", null);
 
         var expected = List.of(5L, 10L, 20L, 40L, 60L, 60L);
         for (long minutes : expected) {
@@ -183,7 +183,7 @@ class MailSendServiceTest {
         // A manual send still tries during the backoff (to check SMTP is back).
         failure = to -> null;
         assertThatThrownBy(() -> {
-            failure = to -> new EmailSendException(EmailSendException.Kind.TRANSIENT, "timeout", null);
+            failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "timeout", null);
             s.send(mail("a@itba.edu.ar"));
         }).isInstanceOf(EmailSendException.class);
         failure = to -> null;
@@ -193,9 +193,50 @@ class MailSendServiceTest {
         assertThat(ledger.states.get(ACCOUNT).isClear()).isTrue();
 
         // The count starts over: the next error is 5 min again.
-        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSIENT, "timeout", null);
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "timeout", null);
         assertThatThrownBy(() -> s.send(mail("a@itba.edu.ar"))).isInstanceOf(EmailSendException.class);
         assertThat(s.readyAt()).contains(clock.instant().plus(Duration.ofMinutes(5)));
+    }
+
+    @Test
+    void aThrottleWithRetryAfterBacksOffShortlyNotTheExponentialStepNorTheDailyPause() {
+        var s = service(1500);
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "429", null, Duration.ofSeconds(30));
+        assertThatThrownBy(() -> s.send(mail("a@itba.edu.ar"))).isInstanceOf(EmailSendException.class);
+        assertThat(s.readyAt()).contains(clock.instant().plusSeconds(30));
+        // A hint beyond the cap is capped at backoffMax.
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "429", null, Duration.ofDays(1));
+        assertThatThrownBy(() -> s.send(mail("a@itba.edu.ar"))).isInstanceOf(EmailSendException.class);
+        assertThat(s.readyAt()).contains(clock.instant().plus(Duration.ofHours(1)));
+    }
+
+    @Test
+    void aDeliveryScopedTemporaryErrorDoesNotPauseTheAccount() {
+        var s = service(1500);
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSIENT, "451 4.3.0 try later", null);
+        assertThatThrownBy(() -> s.send(mail("a@itba.edu.ar"))).isInstanceOf(EmailSendException.class);
+
+        assertThat(s.readyAt()).isEmpty();
+        assertThat(ledger.states.getOrDefault(ACCOUNT, MailLedger.State.CLEAR).isClear()).isTrue();
+        assertThat(s.status().usedLast24h()).isZero();   // not counted
+    }
+
+    @Test
+    void digestAndTestEmailsOutsideTheAllowedDomainsAreRefusedBeforeSending() {
+        var s = new MailSendService(email -> sent.add(email.to()), ledger, ACCOUNT, 10,
+            Duration.ofMinutes(5), Duration.ofHours(1), Duration.ofHours(24), clock,
+            to -> to.endsWith("@itba.edu.ar"));
+
+        for (String kind : List.of("digest", "test")) {
+            assertThatThrownBy(() -> s.send(new OutgoingEmail("x@gmail.com", "s", "h", "t", null, kind)))
+                .isInstanceOfSatisfying(EmailSendException.class,
+                    e -> assertThat(e.kind()).isEqualTo(EmailSendException.Kind.RECIPIENT));
+        }
+        assertThat(sent).isEmpty();
+        assertThat(ledger.rows).isEmpty();   // nothing sent, nothing counted
+
+        s.send(new OutgoingEmail("ok@itba.edu.ar", "s", "h", "t", null, "digest"));
+        assertThat(sent).containsExactly("ok@itba.edu.ar");
     }
 
     @Test

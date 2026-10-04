@@ -165,13 +165,48 @@ public class MailSenderAccountService {
             .orElse(STATUS_MISSING);
     }
 
+    public static final String ERR_UNDECRYPTABLE = "token cannot be decrypted — reconnect";
+
     // The connected account for `senderEmail`, decrypted; empty when missing,
-    // broken or revoked.
+    // broken or revoked. A stored token that cannot be decrypted (the key was
+    // lost or rotated, or the tag does not match) marks the account broken:
+    // the status then reports `broken` and the UI offers a reconnect.
     public Optional<Credentials> credentialsFor(String senderEmail) {
-        return accounts.findByEmailIgnoreCase(senderEmail)
-            .filter(a -> MailSenderAccount.CONNECTED.equals(a.getStatus()))
-            .map(a -> new Credentials(a.getId(), a.getEmail(),
-                cipher().decrypt(a.getRefreshTokenEnc(), a.getEmail()), a.getRefreshTokenEnc()));
+        var row = accounts.findByEmailIgnoreCase(senderEmail)
+            .filter(a -> MailSenderAccount.CONNECTED.equals(a.getStatus()));
+        if (row.isEmpty()) return Optional.empty();
+        var a = row.get();
+        String token;
+        try {
+            token = cipher().decrypt(a.getRefreshTokenEnc(), a.getEmail());
+        } catch (MailTokenCipher.TokenDecryptionException e) {
+            accounts.markBroken(a.getId(), a.getRefreshTokenEnc(), ERR_UNDECRYPTABLE);
+            log.warn("Mail: sender account {} is broken, reconnect it ({})", a.getEmail(), ERR_UNDECRYPTABLE);
+            return Optional.empty();
+        }
+        return Optional.of(new Credentials(a.getId(), a.getEmail(), token, a.getRefreshTokenEnc()));
+    }
+
+    // Why `senderEmail` cannot send right now (missing, broken, undecryptable
+    // token, no encryption key), or empty when it is usable. Decrypts, so an
+    // undecryptable token is detected (and marked broken) before any delivery
+    // is claimed.
+    public Optional<String> unavailableReason(String senderEmail) {
+        var row = accounts.findByEmailIgnoreCase(senderEmail);
+        if (row.isEmpty()) return Optional.of("no connected Gmail sender account for " + senderEmail);
+        var a = row.get();
+        if (!MailSenderAccount.CONNECTED.equals(a.getStatus())) {
+            return Optional.of("Gmail sender account " + senderEmail + " is broken"
+                + (a.getLastError() == null ? "" : " (" + a.getLastError() + ")") + ": reconnect it");
+        }
+        try {
+            if (credentialsFor(senderEmail).isEmpty()) {
+                return Optional.of("Gmail sender account " + senderEmail + " is broken (" + ERR_UNDECRYPTABLE + ")");
+            }
+        } catch (FeatureNotConfiguredException e) {
+            return Optional.of(e.getMessage());
+        }
+        return Optional.empty();
     }
 
     // Google rejected this token: reconnect needed. No-op if it was replaced meanwhile.

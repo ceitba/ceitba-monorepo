@@ -61,6 +61,12 @@ public class SavedSchedule {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    // When the payload last changed (V46). Unlike updated_at it does not move
+    // on renames or primary toggles; SavedScheduleService maintains it. The
+    // digest's "is this schedule about the current term" check reads it.
+    @Column(name = "payload_updated_at", nullable = false)
+    private OffsetDateTime payloadUpdatedAt = OffsetDateTime.now();
+
     protected SavedSchedule() {}
 
     public SavedSchedule(UUID userId, String name, Map<String, Object> payload) {
@@ -78,11 +84,13 @@ public class SavedSchedule {
     public boolean isPrimary() { return primary; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getPayloadUpdatedAt() { return payloadUpdatedAt; }
 
     public void setName(String name) { this.name = name; }
     public void setCareerId(String careerId) { this.careerId = careerId; }
     public void setPlan(String plan) { this.plan = plan; }
     public void setPrimary(boolean primary) { this.primary = primary; }
+    public void setPayloadUpdatedAt(OffsetDateTime payloadUpdatedAt) { this.payloadUpdatedAt = payloadUpdatedAt; }
     public void setPayload(Map<String, Object> payload) {
         this.payload = payload != null ? payload : new HashMap<>();
     }

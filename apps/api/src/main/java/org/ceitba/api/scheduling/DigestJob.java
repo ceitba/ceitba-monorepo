@@ -9,14 +9,18 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 // Weekly digest background work (docs/WEEKLY-DIGEST.md):
 //   - Monday 00:05 ART: draft for the week that just ended (auto-send 12:00)
-//   - every digest.tick-interval (PT5M): start drafts whose auto-send time
-//     has come, and resume issues still sending (quota hit, SMTP down, restart)
+//   - every digest.tick-interval (PT5M) and at startup: the same draft as a
+//     catch-up if it is missing (only Monday 00:05 until Tuesday 00:00, so a
+//     draft staff deleted is not recreated later in the week); start drafts
+//     whose auto-send time has come; resume issues still sending (quota hit,
+//     SMTP down, restart)
 //   - right after a send starts, and at startup: run the worker
 // The worker runs on the task executor (it can take ~25 min for 1500
 // recipients at 1/s) so it never blocks the shared scheduler thread.
@@ -39,7 +43,11 @@ public class DigestJob {
     }
 
     void kick() {
-        executor.execute(sender::runPending);
+        try {
+            executor.execute(sender::runPending);
+        } catch (TaskRejectedException e) {
+            log.debug("Digest worker not started: executor is shutting down");
+        }
     }
 
     @TransactionalEventListener(fallbackExecution = true)
@@ -58,6 +66,7 @@ public class DigestJob {
 
     @Scheduled(fixedDelayString = "${digest.tick-interval:PT5M}", initialDelayString = "PT1M")
     public void tick() {
+        createWeeklyDraft();
         try {
             service.startDueAutoSends();
         } catch (RuntimeException e) {
@@ -68,6 +77,7 @@ public class DigestJob {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
+        createWeeklyDraft();
         kick();
     }
 }

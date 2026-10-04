@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -32,17 +33,24 @@ import static org.ceitba.api.service.mail.GoogleMailOAuthClient.GoogleOAuthExcep
 // the same multipart/alternative RFC 822 one SmtpEmailSender builds, sent as
 // base64url `raw`.
 //
-// Errors (classify): 429 / rateLimitExceeded / dailyLimitExceeded /
-// userRateLimitExceeded = QUOTA (MailSendService pauses the account 24h);
-// 401, 403 and invalid_grant = TRANSIENT and the account is marked broken
-// (reconnect needed); 5xx and network errors = TRANSIENT (backoff); 400 =
-// RECIPIENT (rejected message/address). Everything else is TRANSIENT: never
-// drop a delivery on an error we do not understand.
+// Errors (classify), onto EmailSendException.Kind:
+//   daily limit (reason dailyLimitExceeded, or a RESOURCE_EXHAUSTED / 429 whose
+//     message says "daily")                              = QUOTA (24h pause)
+//   rateLimitExceeded / userRateLimitExceeded / plain 429 = TRANSPORT with a
+//     short backoff (Retry-After, else 30 s): per-second throttling, never
+//     the 24h pause
+//   401, non-quota 403, invalid_grant                     = TRANSPORT and the
+//     account is marked broken (reconnect needed)
+//   5xx, network errors, anything unexpected              = TRANSPORT
+//   400 invalid recipient/address                         = RECIPIENT
+//   other per-message 4xx                                 = TRANSIENT (retried,
+//     given up after a few attempts, the account is not paused)
 public class GmailApiEmailSender implements EmailSender {
 
     static final String SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
-    private static final Set<String> QUOTA_REASONS =
-        Set.of("ratelimitexceeded", "dailylimitexceeded", "userratelimitexceeded");
+    private static final Set<String> RATE_REASONS = Set.of("ratelimitexceeded", "userratelimitexceeded");
+    static final Duration DEFAULT_RATE_BACKOFF = Duration.ofSeconds(30);
+    private static final Duration MAX_RETRY_AFTER = Duration.ofMinutes(10);
 
     record Classified(EmailSendException exception, boolean authProblem) {}
 
@@ -77,10 +85,16 @@ public class GmailApiEmailSender implements EmailSender {
     }
 
     @Override
+    public java.util.Optional<String> unavailableReason() {
+        return accounts.unavailableReason(from.getAddress());
+    }
+
+    @Override
     public void send(OutgoingEmail email) {
         var creds = accounts.credentialsFor(from.getAddress()).orElseThrow(() ->
-            new MailSenderNotConnectedException("No connected Gmail sender account for " + from.getAddress()
-                + " (connect it from the digests admin page)"));
+            new MailSenderNotConnectedException(unavailableReason().orElse(
+                "No usable Gmail sender account for " + from.getAddress()
+                + " (connect it from the digests admin page)")));
         String body = "{\"raw\":\"" + raw(email) + "\"}";
         // One retry on 401: the cached access token may have been revoked early.
         for (int attempt = 0; ; attempt++) {
@@ -94,7 +108,8 @@ public class GmailApiEmailSender implements EmailSender {
                 accounts.markUsed(creds);
                 return;
             } catch (RestClientResponseException e) {
-                var c = classify(e.getStatusCode().value(), e.getResponseBodyAsString());
+                var c = classify(e.getStatusCode().value(), e.getResponseBodyAsString(),
+                    e.getResponseHeaders() == null ? null : e.getResponseHeaders().getFirst("Retry-After"));
                 if (e.getStatusCode().value() == 401 && attempt == 0) {
                     tokens.invalidate(creds);
                     continue;
@@ -102,7 +117,7 @@ public class GmailApiEmailSender implements EmailSender {
                 if (c.authProblem()) accounts.markBroken(creds, c.exception().getMessage());
                 throw c.exception();
             } catch (RestClientException e) {
-                throw new EmailSendException(Kind.TRANSIENT, "Gmail API unreachable: " + e.getClass().getSimpleName(), e);
+                throw new EmailSendException(Kind.TRANSPORT, "Gmail API unreachable: " + e.getClass().getSimpleName(), e);
             }
         }
     }
@@ -113,10 +128,10 @@ public class GmailApiEmailSender implements EmailSender {
         } catch (GoogleOAuthException e) {
             if (e.kind() == GoogleOAuthException.Kind.INVALID_GRANT) {
                 accounts.markBroken(creds, "Google rejected the stored token (invalid_grant): reconnect the account");
-                throw new EmailSendException(Kind.TRANSIENT,
+                throw new EmailSendException(Kind.TRANSPORT,
                     "Gmail authorization was revoked or expired (invalid_grant); reconnect the sender account", e);
             }
-            throw new EmailSendException(Kind.TRANSIENT, "Could not get a Gmail access token: " + e.getMessage(), e);
+            throw new EmailSendException(Kind.TRANSPORT, "Could not get a Gmail access token: " + e.getMessage(), e);
         }
     }
 
@@ -156,19 +171,73 @@ public class GmailApiEmailSender implements EmailSender {
     // ------------------------------------------------------ error mapping
 
     static Classified classify(int status, String body) {
+        return classify(status, body, null);
+    }
+
+    static Classified classify(int status, String body, String retryAfterHeader) {
         var reasons = reasons(body);
-        boolean quota = status == 429 || reasons.stream().anyMatch(r -> QUOTA_REASONS.contains(r.toLowerCase()))
-            || reasons.contains("RESOURCE_EXHAUSTED");
+        var lower = reasons.stream().map(r -> r.toLowerCase(Locale.ROOT)).toList();
+        String message = message(body).toLowerCase(Locale.ROOT);
         String detail = "Gmail API HTTP " + status + (reasons.isEmpty() ? "" : " " + String.join(",", reasons));
-        if (quota) return new Classified(new EmailSendException(Kind.QUOTA, detail, null), false);
-        if (status == 401 || status == 403) {
-            return new Classified(new EmailSendException(Kind.TRANSIENT, detail + " (authorization problem)", null), true);
+
+        boolean daily = lower.contains("dailylimitexceeded")
+            || ((lower.contains("resource_exhausted") || status == 429) && message.contains("daily"));
+        if (daily) return new Classified(new EmailSendException(Kind.QUOTA, detail, null), false);
+
+        boolean rate = status == 429 || lower.stream().anyMatch(RATE_REASONS::contains)
+            || lower.contains("resource_exhausted");
+        if (rate) {
+            Duration wait = retryAfter(retryAfterHeader);
+            return new Classified(new EmailSendException(Kind.TRANSPORT, detail + " (throttled, short backoff)", null,
+                wait != null ? wait : DEFAULT_RATE_BACKOFF), false);
         }
-        if (status == 400) return new Classified(new EmailSendException(Kind.RECIPIENT, detail, null), false);
+        if (status == 401 || status == 403) {
+            return new Classified(new EmailSendException(Kind.TRANSPORT, detail + " (authorization problem)", null), true);
+        }
+        if (status >= 500 || status < 400) {
+            return new Classified(new EmailSendException(Kind.TRANSPORT, detail, null), false);
+        }
+        if (status == 400 && (message.contains("recipient") || message.contains("invalid to")
+                || message.contains("invalid cc") || message.contains("invalid bcc")
+                || message.contains("address"))) {
+            return new Classified(new EmailSendException(Kind.RECIPIENT, detail, null), false);
+        }
+        // Any other per-message 4xx: never drop a delivery on an error we do
+        // not understand, never pause the account for it.
         return new Classified(new EmailSendException(Kind.TRANSIENT, detail, null), false);
     }
 
+    // Retry-After: delay-seconds or an HTTP date; null when absent/unusable.
+    static Duration retryAfter(String header) {
+        if (header == null || header.isBlank()) return null;
+        try {
+            Duration d = Duration.ofSeconds(Long.parseLong(header.trim()));
+            return clampRetryAfter(d);
+        } catch (NumberFormatException e) {
+            try {
+                var at = java.time.ZonedDateTime.parse(header.trim(),
+                    java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
+                return clampRetryAfter(Duration.between(java.time.Instant.now(), at));
+            } catch (java.time.format.DateTimeParseException ignored) {
+                return null;
+            }
+        }
+    }
+
+    private static Duration clampRetryAfter(Duration d) {
+        if (d.compareTo(Duration.ofSeconds(1)) < 0) return Duration.ofSeconds(1);
+        return d.compareTo(MAX_RETRY_AFTER) > 0 ? MAX_RETRY_AFTER : d;
+    }
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static String message(String body) {
+        try {
+            return MAPPER.readTree(body == null ? "" : body).path("error").path("message").asText("");
+        } catch (IOException | RuntimeException ignored) {
+            return "";
+        }
+    }
 
     // error.errors[].reason and error.status of Google's error body.
     private static java.util.List<String> reasons(String body) {

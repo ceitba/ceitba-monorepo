@@ -12,8 +12,9 @@ Code: `service/digest/*` (selection, rendering, lifecycle, sending worker,
 `service/mail/*` (transports, `MailSendService` = sending-quota ledger, Gmail API sender + OAuth accounts,
 `MailLinkRewriter`, `MailClientClass`), `scheduling/DigestJob`,
 `web/digest/DigestController`, `web/mail/MailTrackingController`, `web/mail/MailAccountController`.
-Schema: `V43__weekly_digest.sql` ("Tu cuatrimestre" adds no tables),
-`V44__mail_quota_tracking.sql` (quota ledger + open/click tracking),
+Schema: `V45__weekly_digest.sql`; "Tu cuatrimestre" adds only
+`V46__saved_schedules_payload_updated_at.sql`;
+`V47__mail_quota_tracking.sql` (quota ledger + open/click tracking),
 `V48__mail_sender_accounts.sql` (connected Gmail sender accounts).
 
 ## How it works
@@ -23,10 +24,16 @@ week's Monday, unique). Status: `draft` → `sending` → `sent`, or `draft` /
 `sending` → `cancelled`.
 
 - **Monday 00:05 ART** the job creates the draft for the week that just ended
-  (idempotent), with `auto_send_at` = that Monday 12:00 ART.
+  (idempotent), with `auto_send_at` = that Monday 12:00 ART. The 5-minute
+  tick and the startup run the same creation as a catch-up for downtime, but
+  only from Monday 00:05 until Tuesday 00:00 ART, so a draft staff deleted or
+  cancelled is not recreated later in the week. A draft created after 12:00
+  gets no auto-send time (staff review and send it).
 - Staff can edit the subject, a plain-text intro (escaped; newlines become
   line breaks), exclude articles/events, preview, send themselves a test,
-  send now, or cancel. `autoSendAt: null` disables auto-send for that issue.
+  send now, or cancel. `autoSendAt: null` disables auto-send for that issue;
+  a changed `autoSendAt` (PATCH, or on create) must be in the future, else
+  `400 AUTO_SEND_IN_PAST` (re-sending the stored value is fine).
 - **Every 5 min** (`DIGEST_TICK_INTERVAL`) drafts whose `auto_send_at` has
   passed start sending. A draft whose auto-send time is more than 24h in the
   past (the API was down for days) is left for staff instead of sending stale
@@ -45,16 +52,17 @@ week's Monday, unique). Status: `draft` → `sending` → `sent`, or `draft` /
 
 **Recipients.** Users who follow `ceitba` (every user does by default), have
 `digest_email_enabled = true` and an email on a `DIGEST_ALLOWED_DOMAINS`
-domain. `recipientEstimate` in the detail is that count.
+domain. `recipientEstimate` in the detail is that count, computed with a
+count query and only for drafts (`null` once sending started).
 
 **Rendering.** The shared content is rendered once per issue
 (`DigestRenderer.template`); per recipient only the unsubscribe link and the
 "Tu cuatrimestre" block are spliced in (between the content and the footer).
 The block comes from the `DigestPersonalSection` extension point, which is
-asked for a whole page of recipients at once (`forReaders`): the sending
-worker loads it per page of 50 deliveries in a fixed number of queries
-(about ten, whatever the page size). If loading it fails, that page goes out
-without the block instead of not at all. Previews and test sends show the
+asked for several recipients at once (`forReaders`; a fixed number of
+queries, about ten, whatever the number of readers). The sending worker
+claims one delivery at a time, so it asks for that one reader. If loading it
+fails, that email goes out without the block instead of not at all. Previews and test sends show the
 caller's own block.
 
 ## "Tu cuatrimestre" (per reader)
@@ -106,12 +114,13 @@ commission ids. Most subjects reuse the same names every term, so:
 - Each schedule entry keeps the current-term commissions whose name it lists
   (no name or "any" = all of them); entries with no match are dropped.
 - The schedule is current when at least one entry survives **and** its
-  `updated_at` (ART date) is no earlier than **60 days before the latest
+  `payload_updated_at` (ART date) is no earlier than **60 days before the latest
   `course_start`** among the kept commissions. Students build next term's
   schedule in the weeks before it starts, and consecutive terms start ~4-5
-  months apart, so last term's schedule (same names) is stale. Caveat: any
-  update of the schedule row (renaming it, making it primary) refreshes
-  `updated_at`.
+  months apart, so last term's schedule (same names) is stale.
+  `saved_schedules.payload_updated_at` (V46, backfilled from `updated_at`) only
+  moves when the payload really changes, so renaming a schedule or making it
+  primary does not make an old term's schedule look current.
 
 **Voting from the email.** Each button links to the ItbaNews page
 `${DIGEST_PUBLIC_BASE_URL}/correction?token=…&vote=confirm|reject`. The token
@@ -142,41 +151,69 @@ Both endpoints are public, ignore the session cookie/Authorization header
 (`RATE_LIMIT_DIGEST_CORRECTION_VOTE_*`, 60/min).
 
 **Sending.** "Send" (manual or auto) locks the issue, snapshots the
-recipients into `digest_deliveries` (`pending`) and sets the issue to
-`sending`. A background worker (on the task executor, never the scheduler
-thread) then takes the pending rows one by one:
+recipients into `digest_deliveries` (`pending`, one batch insert) and sets the
+issue to `sending`. A background worker (on the task executor, never the
+scheduler thread) then walks the pending rows. Delivery is **at-most-once**:
 
-- Each email is sent inside its own DB transaction that holds a share lock
-  on the issue row, re-checks the issue is still `sending` and marks the
-  delivery `sent` (or `failed` + `error`) before committing. A restart
-  resumes the rows still pending; a sent row is never sent again (the only
-  window is a crash between the SMTP accept and the commit).
+- *Claim, then send.* Before each SMTP call the row is claimed in its own
+  committed transaction (`SELECT … FOR UPDATE SKIP LOCKED`, `status =
+  'sending'`, `claimed_at`), so two workers never take the same row. The send
+  then runs in a second transaction that holds a share lock on the issue row,
+  re-checks the issue is still `sending`, calls SMTP and marks the row `sent`
+  or `failed` (the update count is checked).
+- *Crash = unknown outcome.* A row still `sending` after 5 minutes means the
+  process died around the SMTP call and nobody knows whether the email left.
+  At the start of each run it is marked `failed` with the error `unknown
+  outcome (interrupted)` and is **never resent**.
+- *Graceful shutdown.* `server.shutdown=graceful`, the task executor waits for
+  termination and the worker stops taking new rows on context close, so a
+  deploy finishes the email in flight (`stop_grace_period: 90s` in compose).
 - Throttled: `DIGEST_SEND_INTERVAL` (1 s) between emails.
 - Sending quota (see "Sending quota" below): every email goes through
   `MailSendService`. While the account is paused or out of quota the worker
   does not start at all (no SMTP until `resumeAt`); when the quota runs out
   mid-run it stops and a later tick resumes once capacity frees, so an
   issue with more recipients than the limit just finishes the next day(s).
-- A recipient problem (rejected address, malformed message) marks that row
-  `failed` and goes on. A transport problem (authentication, 4xx,
-  connection) or Gmail's "daily sending limit exceeded" stops the run
-  without touching the row, and the account is paused (backoff / 24h).
+- *Who a failure blames* (`EmailSendException.Kind`, from the SMTP reply):
+  - `RECIPIENT` (4.1.x, 4.2.x such as `452 4.2.2 mailbox over quota`, 5.1.x,
+    5.2.x, rejected addresses, malformed message): that row is `failed` and
+    the run goes on.
+  - `TRANSIENT` (any other 4.x.x): temporary and scoped to that delivery. It
+    goes back to `pending` (`attempts` + 1, `last_error`), is tried again
+    after at least 2 minutes and after 3 attempts becomes `failed`. It never
+    stops the run or pauses the account, and fresh rows are taken first
+    (`ORDER BY attempts, user_id`).
+  - `TRANSPORT` (authentication, connection, timeouts, `421`, `4.7.x`
+    throttling, unknown errors): the account is the problem. The run stops,
+    the row goes back to `pending` without counting an attempt, and
+    `MailSendService` pauses the account with exponential backoff.
+  - `QUOTA` (`5.4.5`, Gmail's "daily sending limit exceeded"): like
+    TRANSPORT, but the account is paused for 24h.
 - Each delivery gets a random tracking id and its links rewritten right
   before sending (see "Open and click tracking").
-- A pending recipient who meanwhile unsubscribed, unfollowed CEITBA or is
+- A claimed recipient who meanwhile unsubscribed, unfollowed CEITBA or is
   outside the allowed domains is dropped (row deleted).
-- No pending rows left → the issue is `sent` with `sent_at`.
+- No pending row left → the issue is `sent` with `sent_at`.
+
+**Mail disabled.** With `MAIL_ENABLED=false` nothing can be sent: `send` and
+the test send answer `409 MAIL_DISABLED`, the auto-send tick logs and skips,
+and the worker does nothing (issues stay as they are). The logging transport
+exists only for local development with `MAIL_LOG_SENDS=true` (it reports
+success without sending and logs masked addresses).
 
 **Stopping a send ("Detener envío").** `POST /v1/digests/{id}/cancel` also
 works while `sending`: it takes the issue row lock (so it waits for the email
 in flight, if any), deletes the remaining `pending` deliveries and sets
-`cancelled`. Already `sent`/`failed` rows stay, so counts show what went out.
+`cancelled` (a row claimed but not yet sent is dropped by the worker). Already `sent`/`failed` rows stay, so counts show what went out.
 The worker sees the new status before its next email and stops. Cancelling a
 `sent` or `cancelled` issue is `409 DIGEST_NOT_EDITABLE`.
 
 **Unsubscribe.** `user.digest_email_enabled` (default true) is separate from
 following (follows also drive push notifications). Users toggle it with
-`GET/PUT /v1/digests/subscription`. Every email has:
+`GET/PUT /v1/digests/subscription`: `enabled` is the real audience, i.e.
+`digest_email_enabled` AND following `ceitba`; `PUT {enabled:true}` sets the
+flag and follows CEITBA (idempotent), `PUT {enabled:false}` only clears the
+flag. Every email has:
 - a body link to `${DIGEST_PUBLIC_BASE_URL}/unsubscribe?token=…` (an
   ItbaNews page that calls the API), and
 - `List-Unsubscribe: <${DIGEST_API_BASE_URL}/v1/digests/unsubscribe?token=…>`
@@ -231,11 +268,19 @@ or logging transport is wrapped inside it, so no caller can bypass it),
   the rolling-window estimate if that is later. The pause is persisted in
   `mail_account_state`, so it survives restarts; test sends get 429 during
   it.
-- **Other transport errors** (auth, connection, 4xx) pause the background
+- **Other transport errors** (`TRANSPORT`: auth, connection, timeouts, `421`,
+  `4.7.x`) pause the background
   worker with exponential backoff, 5 min → 10 → 20 → 40 → 1 h cap
   (`MAIL_BACKOFF_INITIAL` / `MAIL_BACKOFF_MAX`), instead of retrying every
   tick. Also persisted. A manual test send still tries (to check whether SMTP
   is back); any successful send clears the backoff.
+- **Recipient-scoped errors don't pause anything.** `RECIPIENT` (rejected
+  address, mailbox over quota `4.2.2`) counts against the quota (it reached
+  Gmail) and fails that delivery; `TRANSIENT` (other 4.x.x) is logged,
+  not counted, and retried for that delivery only (3 attempts).
+- **Domain guard.** `MailSendService` refuses `digest` and `test` emails to
+  any address outside `DIGEST_ALLOWED_DOMAINS` (`RECIPIENT`, nothing sent or
+  logged), whatever the caller checked.
 - **Admin.** `GET /v1/digests/quota` → `{account, limit, usedLast24h,
   remaining, pausedUntil, pauseReason, nextCapacityAt}`. A `sending` issue
   in the list and detail carries `resumeAt` (while the account is paused or
@@ -258,13 +303,17 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
   and last open plus an open count.
 - **Click redirects.** Every http(s) link of the HTML and plain-text parts —
   articles, events, wiki and correction-vote links of "Tu cuatrimestre", the
-  scheduler call to action, the unsubscribe link in the body — becomes
-  `${DIGEST_API_BASE_URL}/v1/mail/c/{trackingId}/{linkId}`. The
-  `List-Unsubscribe` **header** is never wrapped. `GET` answers a 302 to the
+  scheduler call to action — becomes
+  `${DIGEST_API_BASE_URL}/v1/mail/c/{trackingId}/{linkId}`. Two things are
+  never wrapped: the `List-Unsubscribe` **header** and the unsubscribe link
+  in the body (`${DIGEST_PUBLIC_BASE_URL}/unsubscribe…`), which must work
+  even if tracking rows are missing, expired or the endpoint is limiting. In
+  the plain-text part a URL ends before trailing `. , ; : ! ?` and an
+  unbalanced `)`, which stay outside the link. `GET` answers a 302 to the
   original URL, resolved **only** from server-side data: the issue's shared
   links (`digest_issue_links`, ids < 1000, collected from the shared template)
   or the delivery's own links (`digest_delivery_links`, ids ≥ 1000:
-  unsubscribe and "Tu cuatrimestre", which carry per-reader tokens). Nothing
+  "Tu cuatrimestre", which carries per-reader tokens). Nothing
   is ever taken from the request, so it is not an open redirect; unknown
   ids go to `${DIGEST_PUBLIC_BASE_URL}`. A click implies an open.
 - **Scanners and bots.** Events from known scanner/bot user agents (and
@@ -274,10 +323,13 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
   coarse client class (`gmail_proxy`, `yahoo_proxy`, `outlook`, `browser`,
   `scanner`, `unknown`).
 - **Cheap and rate limited.** One indexed lookup, an insert and an update.
-  Both endpoints always answer; what gets *recorded* is limited in memory
-  per client address (600/min, keyed by an HMAC of the IP, never stored:
-  Gmail's image proxy fetches for many readers from few addresses) and per
-  tracking id (30/h). They ignore the session cookie, like unsubscribe.
+  Both endpoints always answer. The in-memory rate limiter runs **before any
+  DB read**: per client address (600/min, keyed by an HMAC of the IP, never
+  stored: Gmail's image proxy fetches for many readers from few addresses)
+  and per tracking id (30/h). A refused request still gets its answer without
+  touching the DB: the GIF for the pixel, and a redirect to
+  `${DIGEST_PUBLIC_BASE_URL}` (the home, since the stored target is not
+  looked up) for a click. They ignore the session cookie, like unsubscribe.
 - **Opens are approximate; clicks are the reliable signal.** Gmail fetches
   images through its proxy and caches them, so repeat opens are mostly
   invisible (the first open is seen). Apple Mail Privacy Protection
@@ -294,8 +346,7 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
   openRate, uniqueClicks, clickRate, clicksByLink: [{label, url,
   uniqueClicks, totalClicks}], opensByHour: [{hour, count}]}`. Rates are over
   delivered (`sent`) emails, 0..1 (null with none). `clicksByLink` groups by
-  the URL without its `token` parameter (so every "Sí, es así" or
-  unsubscribe link is one row) and `label` is the link text.
+  the URL without its `token` parameter (so every "Sí, es así" link is one row) and `label` is the link text.
   `opensByHour` counts first (unique) opens per hour (ART). The issue list
   has `openRate`/`clickRate` per issue.
 
@@ -306,14 +357,14 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | GET | `/v1/digests` | Newest week first, with `counts {pending,sent,failed}`, `openRate`, `clickRate`, and while sending `resumeAt` / `estimatedFinishAt` |
 | GET | `/v1/digests/quota` | Sending quota of the account (see "Sending quota") plus `senderStatus`: `connected` \| `broken` \| `missing` (Gmail API sender account) |
 | GET | `/v1/digests/{id}/stats` | Aggregate opens/clicks (see "Open and click tracking"); 404 unknown id |
-| POST | `/v1/digests` | `{weekStart}` (Monday, else `400 INVALID_WEEK_START`) → 201; `409 DIGEST_EXISTS` |
-| GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients), `resumeAt` / `estimatedFinishAt` while sending |
-| PATCH | `/v1/digests/{id}` | Any of `subject, intro, excludedArticleIds, excludedEventIds, autoSendAt` (`null` intro clears, `null` autoSendAt disables); draft only (`409 DIGEST_NOT_EDITABLE`) |
+| POST | `/v1/digests` | `{weekStart, autoSendAt?}` (Monday, else `400 INVALID_WEEK_START`; a past `autoSendAt` is `400 AUTO_SEND_IN_PAST`) → 201; `409 DIGEST_EXISTS` |
+| GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients; draft only, else `null`), `resumeAt` / `estimatedFinishAt` while sending |
+| PATCH | `/v1/digests/{id}` | Any of `subject, intro, excludedArticleIds, excludedEventIds, autoSendAt` (`null` intro clears, `null` autoSendAt disables, a changed one must be in the future: `400 AUTO_SEND_IN_PAST`); draft only (`409 DIGEST_NOT_EDITABLE`) |
 | GET | `/v1/digests/{id}/preview` | `text/html`, as the caller would receive it (their own "Tu cuatrimestre"); `mode` is accepted and ignored |
-| POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status; `429 MAIL_QUOTA_EXHAUSTED` `{…, resumeAt}` + `Retry-After`; `409 MAIL_SENDER_NOT_CONNECTED` when the Gmail sender is missing or broken |
-| POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send |
+| POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status; `409 MAIL_DISABLED`; `429 MAIL_QUOTA_EXHAUSTED` `{…, resumeAt}` + `Retry-After`; `409 MAIL_SENDER_NOT_CONNECTED` when the Gmail sender is missing or broken |
+| POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send; `409 MAIL_DISABLED` |
 | POST | `/v1/digests/{id}/cancel` | From `draft` or `sending` |
-| GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` |
+| GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` = flag AND follows `ceitba`; PUT true also follows CEITBA |
 | POST | `/v1/digests/unsubscribe?token=` | Public; 204; `400 INVALID_TOKEN`; accepts the RFC 8058 form body |
 | GET | `/v1/digests/correction-vote?token=` | Public; the correction (subject, commission, `proposed`/`sga` slots, `status`, `open`, counts, `myVote`, `expiresAt`); never writes |
 | POST | `/v1/digests/correction-vote` | Public; `{token, vote: confirm\|reject}` → `{correction, previousVote}`; errors in the table above |
@@ -324,18 +375,44 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | GET | `/v1/mail/o/{trackingId}.gif` | Public open pixel; always a 1×1 GIF |
 | GET | `/v1/mail/c/{trackingId}/{linkId}` | Public click redirect; 302 to the stored URL, else to `DIGEST_PUBLIC_BASE_URL` |
 
+## Retention
+
+A nightly job (03:40 ART, `MailRetentionJob`, off with `DIGEST_JOBS_ENABLED=
+false`) keeps the bookkeeping bounded:
+
+- `mail_tracking_event` rows older than `MAIL_RETENTION_TRACKING` (180 days)
+  and the `digest_delivery_links` of deliveries sent that long ago (clicks on
+  such old emails then land on the newsletter home; the shared issue links
+  and the per-delivery counters `open_count`/`click_count`/... stay, so
+  open and click rates survive, per-link click stats of old issues do not).
+- `mail_send_log` rows older than `MAIL_RETENTION_SEND_LOG` (30 days). The
+  sending quota only ever reads the last 24h (`MailSendService.WINDOW`), and
+  the smallest accepted value is 2 days, so nothing that is deleted is read.
+
 ## Configuration
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAIL_ENABLED` | `false` | `false` = a logging no-op sender: nothing is ever sent (dev, tests) |
-| `MAIL_TRANSPORT` | `gmail-api` | `gmail-api` (OAuth, the connected sender account) \| `smtp` \| `log`. `MAIL_ENABLED=false` always behaves as `log` |
-| `MAIL_TOKEN_ENCRYPTION_KEY` | _(empty)_ | 32 bytes, base64 (`openssl rand -base64 32`); encrypts the stored refresh tokens (AES-GCM). Required to connect an account or send through the Gmail API. Losing it means reconnecting |
+| `MAIL_ENABLED` | `false` | `false` = nothing can be sent: send and test send answer `409 MAIL_DISABLED`, the auto-send tick skips (logged). Wins over every other mail variable |
+| `MAIL_LOG_SENDS` | `false` | **Dev only.** With `MAIL_ENABLED=false`, log sends (masked addresses) and report success, so the flow can be tried locally. Also required by `MAIL_TRANSPORT=log` |
+| `MAIL_TRANSPORT` | `gmail-api` | With `MAIL_ENABLED=true`: `gmail-api` (OAuth, the connected sender account) \| `smtp` \| `log` (dev-only: startup fails unless `MAIL_LOG_SENDS=true`) |
+| `MAIL_TOKEN_ENCRYPTION_KEY` | _(empty)_ | 32 bytes, base64 (`openssl rand -base64 32`); encrypts the stored refresh tokens (AES-GCM). Required to connect an account or send through the Gmail API. Losing or rotating it marks the account `broken` ("token cannot be decrypted — reconnect"): reconnect it |
 | `GOOGLE_MAIL_REDIRECT_URI` | `http://localhost:8080/api/v1/mail/accounts/oauth/callback` | OAuth callback of the connect flow; in production `https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback`. Must be registered on the Google OAuth client |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | The same OAuth client as the login |
 | `MAIL_FROM` | `CEITBA <ceitba@itba.edu.ar>` | From header **and the one account allowed to connect** (the id_token email must equal this address) |
 | `MAIL_HOST` / `MAIL_PORT` | `smtp.gmail.com` / `587` | `smtp` transport only: STARTTLS required |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | _(empty)_ | `smtp` transport only: the account and its app password (startup fails when missing) |
+
+Transport matrix:
+
+| `MAIL_ENABLED` | `MAIL_LOG_SENDS` | `MAIL_TRANSPORT` | Result |
+|---|---|---|---|
+| `false` | `false` | any | disabled: `409 MAIL_DISABLED` on send and test |
+| `false` | `true` | any | dev log-only sender (masked, reported as sent) |
+| `true` | any | `gmail-api` (default) | Gmail API via the connected sender account |
+| `true` | any | `smtp` | SMTP with `MAIL_USERNAME`/`MAIL_PASSWORD` |
+| `true` | `true` | `log` | log-only (dev) |
+| `true` | `false` | `log` | startup fails |
 | `DIGEST_PUBLIC_BASE_URL` | `https://ceitba.org.ar/newsletter` | Article, events, organizations and unsubscribe-page links |
 | `DIGEST_API_BASE_URL` | `https://ceitba.org.ar/api` | `List-Unsubscribe` one-click target; open pixel and click redirect base |
 | `DIGEST_ALLOWED_DOMAINS` | `itba.edu.ar` | **Hard guard**: digest emails (test sends included) only go to these domains |
@@ -343,6 +420,8 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | `MAIL_BACKOFF_INITIAL` / `MAIL_BACKOFF_MAX` | `PT5M` / `PT1H` | Backoff after transport errors (doubled per consecutive error) |
 | `MAIL_QUOTA_PAUSE` | `PT24H` | Pause after Gmail's `5.4.5` daily-limit error |
 | `DIGEST_TRACKING_ENABLED` | `true` | Open pixel + click redirects in sent issues |
+| `MAIL_RETENTION_SEND_LOG` | `P30D` | Age after which `mail_send_log` rows are deleted (min `P2D`) |
+| `MAIL_RETENTION_TRACKING` | `P180D` | Age after which tracking events and per-delivery link rows are deleted |
 | `DIGEST_SEND_INTERVAL` | `PT1S` | Pause between emails |
 | `DIGEST_TICK_INTERVAL` | `PT5M` | Auto-send check and resume of stalled sends |
 | `DIGEST_JOBS_ENABLED` | `true` | Weekly draft + auto-send + worker (tests set `false`) |
@@ -385,19 +464,28 @@ There are no google-api-client libraries: plain `RestClient`.
   `no_refresh_token`, `exchange_failed`.
 - **Status.** `GET /v1/digests/quota` carries `senderStatus`: `connected`,
   `broken` (Google rejected the token: revoked, password change,
-  consent expired; reconnect) or `missing`. With a missing or broken sender
-  the digest worker pauses as a transport problem (backoff, nothing dropped,
-  nothing marked failed) and resumes after a reconnect; a test send answers
+  consent expired; or the stored token cannot be decrypted because
+  `MAIL_TOKEN_ENCRYPTION_KEY` was lost or rotated, `last_error` "token cannot
+  be decrypted — reconnect"; reconnect) or `missing`. With a missing or broken
+  sender the digest worker skips the tick **before claiming any delivery**:
+  no `mail_send_log` row, no attempt consumed, nothing marked failed; it logs
+  once per state change and resumes after a reconnect. A test send answers
   `409 MAIL_SENDER_NOT_CONNECTED`.
 - **Disconnect.** `DELETE /v1/mail/accounts/{id}` revokes the token at Google
   (best effort) and deletes the row.
-- **Errors.** `429`, `rateLimitExceeded`, `dailyLimitExceeded`,
-  `userRateLimitExceeded` = quota (the account is paused 24h, see "Sending
-  quota"); `401`, `403` (not quota) and `invalid_grant` = transport problem
-  and the account is marked `broken` (a single 401 first retries with a fresh
-  access token); `5xx` and network errors = transport (backoff); `400` =
-  that recipient is rejected. Access tokens are cached in memory until two
-  minutes before they expire. Tokens are never logged.
+- **Errors.** Mapped onto the four `EmailSendException` kinds:
+  `dailyLimitExceeded` (or a `RESOURCE_EXHAUSTED`/429 saying "daily") =
+  `QUOTA` (account paused 24h, see "Sending quota");
+  `rateLimitExceeded` / `userRateLimitExceeded` / plain `429` = `TRANSPORT`
+  with a **short** backoff (`Retry-After` if sent, else 30 s; capped by
+  `MAIL_BACKOFF_MAX`), never the 24h pause; `401`, `403` (not quota) and
+  `invalid_grant` = `TRANSPORT` and the account is marked `broken` (a single
+  401 first retries with a fresh access token); `5xx` and network errors =
+  `TRANSPORT` (exponential backoff); `400` invalid recipient/address =
+  `RECIPIENT` (that delivery fails); any other per-message `4xx` =
+  `TRANSIENT` (retried, failed after 3 attempts, account not paused). Access
+  tokens are cached in memory until two minutes before they expire. Tokens
+  are never logged.
 
 ## Google Cloud setup (one-time, for the project's administrator)
 

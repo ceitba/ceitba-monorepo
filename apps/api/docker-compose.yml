@@ -141,6 +141,9 @@ services:
       context: .
       dockerfile: infrastructure/docker/Dockerfile
     container_name: ceitba-api
+    # Graceful shutdown (server.shutdown=graceful): a deploy lets the digest
+    # email in flight finish; Docker's default 10s would SIGKILL it first.
+    stop_grace_period: 90s
     # Loopback only: Caddy reaches the API over the ceitba-proxy network. A
     # public port would let clients skip Caddy and forge X-Forwarded-For.
     ports:
@@ -243,8 +246,9 @@ services:
       KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
       KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
       KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
-      # Email + weekly digest (docs/WEEKLY-DIGEST.md). MAIL_ENABLED=false = log only.
+      # Email + weekly digest (docs/WEEKLY-DIGEST.md). MAIL_ENABLED=false = sending refused.
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_LOG_SENDS: ${MAIL_LOG_SENDS:-false}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -259,6 +263,8 @@ services:
       MAIL_BACKOFF_MAX: ${MAIL_BACKOFF_MAX:-PT1H}
       MAIL_QUOTA_PAUSE: ${MAIL_QUOTA_PAUSE:-PT24H}
       DIGEST_TRACKING_ENABLED: ${DIGEST_TRACKING_ENABLED:-true}
+      MAIL_RETENTION_SEND_LOG: ${MAIL_RETENTION_SEND_LOG:-P30D}
+      MAIL_RETENTION_TRACKING: ${MAIL_RETENTION_TRACKING:-P180D}
       DIGEST_SEND_INTERVAL: ${DIGEST_SEND_INTERVAL:-PT1S}
       DIGEST_TICK_INTERVAL: ${DIGEST_TICK_INTERVAL:-PT5M}
       DIGEST_JOBS_ENABLED: ${DIGEST_JOBS_ENABLED:-true}

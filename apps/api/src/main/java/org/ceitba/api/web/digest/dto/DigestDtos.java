@@ -38,9 +38,11 @@ public final class DigestDtos {
     public record EventItem(String id, String title, LocalDate eventDate, LocalTime startTime, LocalTime endTime,
                             String location, OrgRef organization, boolean excluded) {}
 
+    // recipientEstimate: eligible recipients, only for a draft (null otherwise;
+    // counts holds the real numbers once sending started).
     public record Detail(UUID id, LocalDate weekStart, LocalDate weekEnd, String subject, String intro,
                          String status, OffsetDateTime autoSendAt, OffsetDateTime sentAt, Counts counts,
-                         long recipientEstimate, List<ArticleItem> articles, List<EventItem> events,
+                         Long recipientEstimate, List<ArticleItem> articles, List<EventItem> events,
                          OffsetDateTime resumeAt, OffsetDateTime estimatedFinishAt) {}
 
     // GET /v1/digests/quota: the sending account's rolling 24h quota.
@@ -68,7 +70,8 @@ public final class DigestDtos {
     // hour = start of the hour (ART offset); count = first opens in it.
     public record HourCount(OffsetDateTime hour, long count) {}
 
-    public record CreateRequest(@NotNull LocalDate weekStart) {}
+    // autoSendAt (optional, ISO-8601 instant): must not be in the past.
+    public record CreateRequest(@NotNull LocalDate weekStart, String autoSendAt) {}
 
     // Absent (or null) subject / excluded*Ids = unchanged. intro and
     // autoSendAt are JsonNodes so absent (unchanged) and explicit null (clear;

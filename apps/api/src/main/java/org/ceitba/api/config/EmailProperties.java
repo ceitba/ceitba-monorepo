@@ -10,10 +10,14 @@ import java.util.Locale;
 import java.util.Map;
 
 // Outgoing email (service/mail). The SMTP connection itself is spring.mail.*
-// (MAIL_HOST/PORT/USERNAME/PASSWORD). enabled=false (MAIL_ENABLED, the
-// default) wires a logging no-op transport: nothing is ever sent.
-// transport (MAIL_TRANSPORT, default gmail-api): gmail-api (OAuth, a connected
-// sender account, MailOAuthProperties) | smtp | log. enabled=false = log.
+// (MAIL_HOST/PORT/USERNAME/PASSWORD).
+//   enabled:   MAIL_ENABLED. false (the default) = nothing can be sent.
+//   logSends:  MAIL_LOG_SENDS, DEV ONLY. With enabled=false, sends are only
+//              logged (masked addresses) and reported as successful, so the
+//              digest flow can be exercised locally. Ignored when enabled.
+//   transport: MAIL_TRANSPORT (default gmail-api; OAuth, a connected sender
+//              account, MailOAuthProperties) | smtp | log. Only used when
+//              enabled; "log" additionally requires logSends.
 //
 // Sending quota (MailSendService, docs/WEEKLY-DIGEST.md):
 //   dailyLimit:     recipients per rolling 24h per sending account
@@ -29,6 +33,7 @@ public record EmailProperties(
     boolean enabled,
     String transport,
     String from,
+    boolean logSends,
     Integer dailyLimit,
     Map<String, Integer> dailyLimits,
     Duration backoffInitial,

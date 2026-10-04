@@ -9,6 +9,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface DigestDeliveryLinkRepository extends JpaRepository<DigestDeliveryLink, DigestDeliveryLink.Key> {
 
+    // Retention (MailRetentionService): the links of deliveries sent before `cutoff`.
+    @Modifying
+    @Transactional
+    @Query("""
+        DELETE FROM DigestDeliveryLink l WHERE l.trackingId IN
+            (SELECT d.trackingId FROM DigestDelivery d WHERE d.sentAt < :cutoff)
+        """)
+    int deleteOfDeliveriesSentBefore(@Param("cutoff") java.time.OffsetDateTime cutoff);
+
     // Before (re)writing a delivery's links (a retried send re-renders them).
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional

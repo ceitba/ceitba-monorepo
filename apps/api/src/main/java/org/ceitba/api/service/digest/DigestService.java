@@ -6,6 +6,7 @@ import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.config.DigestProperties;
+import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.digest.DigestDelivery;
 import org.ceitba.api.domain.digest.DigestIssue;
 import org.ceitba.api.repository.UserRepository;
@@ -15,6 +16,7 @@ import org.ceitba.api.service.mail.EmailSendException;
 import org.ceitba.api.service.mail.MailSenderNotConnectedException;
 import org.ceitba.api.service.mail.MailQuotaExhaustedException;
 import org.ceitba.api.service.mail.MailSendService;
+import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.web.digest.dto.DigestDtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,10 @@ public class DigestService {
     static final Duration AUTO_SEND_GRACE = Duration.ofHours(24);
     // Auto-send of the scheduled draft: Monday 12:00 ART.
     static final LocalTime AUTO_SEND_TIME = LocalTime.NOON;
+    // The weekly draft is created from Monday 00:05 ART (the cron, or the
+    // catch-up after downtime) until Tuesday 00:00: later in the week a
+    // missing draft was deleted/cancelled on purpose and must stay that way.
+    static final LocalTime DRAFT_FROM = LocalTime.of(0, 5);
 
     // Published after the send has been snapshotted and committed: the
     // sending worker picks it up (scheduling/DigestJob).
@@ -61,13 +67,15 @@ public class DigestService {
     private final DigestUnsubscribeTokens tokens;
     private final MailSendService sender;
     private final DigestTrackingService tracking;
+    private final FollowService follows;
     private final DigestProperties props;
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public DigestService(DigestIssueRepository issues, DigestDeliveryRepository deliveries, UserRepository users,
                          DigestComposer composer, DigestUnsubscribeTokens tokens, MailSendService sender,
-                         DigestTrackingService tracking, DigestProperties props, ApplicationEventPublisher events,
+                         DigestTrackingService tracking, FollowService follows, DigestProperties props,
+                         ApplicationEventPublisher events,
                          Clock clock) {
         this.issues = issues;
         this.deliveries = deliveries;
@@ -76,6 +84,7 @@ public class DigestService {
         this.tokens = tokens;
         this.sender = sender;
         this.tracking = tracking;
+        this.follows = follows;
         this.props = props;
         this.events = events;
         this.clock = clock;
@@ -132,13 +141,16 @@ public class DigestService {
     // ------------------------------------------------------------ writes
 
     @Transactional
-    public DigestDtos.Detail create(java.time.LocalDate weekStart) {
+    public DigestDtos.Detail create(java.time.LocalDate weekStart, String autoSendAt) {
         var week = new DigestWeek(weekStart);
+        OffsetDateTime auto = autoSendAt == null ? null : parseInstant(autoSendAt);
+        if (auto != null) requireFuture(auto);
         if (issues.existsByWeekStart(weekStart)) {
             throw new DigestException(DigestException.Reason.DIGEST_EXISTS,
                 "A digest for the week of " + weekStart + " already exists");
         }
         var issue = new DigestIssue(UUID.randomUUID(), weekStart, week.defaultSubject());
+        issue.setAutoSendAt(auto);
         try {
             issues.saveAndFlush(issue);
         } catch (DataIntegrityViolationException race) {
@@ -169,7 +181,16 @@ public class DigestService {
         }
         if (req.excludedArticleIds() != null) issue.setExcludedArticleIds(cleanIds(req.excludedArticleIds()));
         if (req.excludedEventIds() != null) issue.setExcludedEventIds(cleanIds(req.excludedEventIds()));
-        if (req.autoSendAt() != null) issue.setAutoSendAt(parseInstant(req.autoSendAt()));
+        if (req.autoSendAt() != null) {
+            var at = parseInstant(req.autoSendAt());
+            // Saving the form resends the stored value: only a changed time
+            // has to be in the future.
+            if (at != null && !at.toInstant().equals(
+                    issue.getAutoSendAt() == null ? null : issue.getAutoSendAt().toInstant())) {
+                requireFuture(at);
+            }
+            issue.setAutoSendAt(at);
+        }
         issues.flush();
         return detail(issue);
     }
@@ -179,6 +200,7 @@ public class DigestService {
     // MAIL_QUOTA_EXHAUSTED when there is none) and is not tracked.
     @Transactional(readOnly = true)
     public String sendTest(UUID id, UUID userId) {
+        requireMailEnabled();
         var user = users.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
         if (!props.isAllowedRecipient(user.getEmail())) {
             throw new DigestException(DigestException.Reason.EMAIL_NOT_ALLOWED,
@@ -207,6 +229,7 @@ public class DigestService {
     // refused (409 DIGEST_EMPTY).
     @Transactional
     public DigestDtos.Detail send(UUID id, UUID byUserId) {
+        requireMailEnabled();
         var issue = loadForUpdate(id);
         requireDraft(issue);
         if (composer.content(DigestComposer.Issue.of(issue)).isEmpty()) {
@@ -238,29 +261,42 @@ public class DigestService {
 
     // ------------------------------------------------------------ jobs
 
-    // Monday 00:05 ART: draft for the week that just ended, auto-sent at
-    // Monday 12:00 ART. Idempotent (week_start is unique).
+    // The draft for the week that just ended, auto-sent Monday 12:00 ART.
+    // Called by the Monday 00:05 cron and, as a catch-up for downtime, by the
+    // tick and at startup: it only acts from Monday 00:05 ART until Tuesday
+    // 00:00 ART, and is idempotent (week_start is unique). A draft created
+    // after 12:00 gets no auto-send time (staff review and send it), instead
+    // of going out unreviewed the moment it appears.
     @Transactional
     public Optional<UUID> createScheduledDraft() {
-        var now = OffsetDateTime.now(clock);
-        var today = now.atZoneSameInstant(ClockConfig.ZONE).toLocalDate();
-        var week = DigestWeek.previousWeek(today);
+        var now = OffsetDateTime.now(clock).atZoneSameInstant(ClockConfig.ZONE);
+        if (now.getDayOfWeek() != java.time.DayOfWeek.MONDAY || now.toLocalTime().isBefore(DRAFT_FROM)) {
+            return Optional.empty();
+        }
+        var week = DigestWeek.previousWeek(now.toLocalDate());
         if (issues.existsByWeekStart(week.weekStart())) return Optional.empty();
         var issue = new DigestIssue(UUID.randomUUID(), week.weekStart(), week.defaultSubject());
-        var monday = week.eventsFrom();
-        issue.setAutoSendAt(monday.atTime(AUTO_SEND_TIME).atZone(ClockConfig.ZONE).toOffsetDateTime());
+        var autoSend = week.eventsFrom().atTime(AUTO_SEND_TIME).atZone(ClockConfig.ZONE).toOffsetDateTime();
+        issue.setAutoSendAt(autoSend.isAfter(now.toOffsetDateTime()) ? autoSend : null);
         issues.saveAndFlush(issue);
         log.info("Digest draft created for the week of {} (auto-send {})", week.weekStart(), issue.getAutoSendAt());
         return Optional.of(issue.getId());
     }
 
     // Drafts whose auto-send time has come. Returns the ids that started. A
-    // due draft with nothing to send is cancelled (and logged) instead.
+    // due draft with nothing to send is cancelled (and logged) instead. With
+    // mail disabled nothing starts (logged): the draft stays for later.
     @Transactional
     public List<UUID> startDueAutoSends() {
         var now = OffsetDateTime.now(clock);
+        var due = issues.findDueForAutoSend(now, now.minus(AUTO_SEND_GRACE));
+        if (due.isEmpty()) return List.of();
+        if (!sender.enabled()) {
+            log.warn("Digest auto-send skipped: mail is disabled (MAIL_ENABLED=false), {} draft(s) due", due.size());
+            return List.of();
+        }
         var started = new java.util.ArrayList<UUID>();
-        for (UUID id : issues.findDueForAutoSend(now, now.minus(AUTO_SEND_GRACE))) {
+        for (UUID id : due) {
             var issue = issues.findByIdForUpdate(id).orElse(null);
             if (issue == null || !issue.isDraft() || issue.getAutoSendAt() == null
                     || issue.getAutoSendAt().isAfter(now)) continue;
@@ -277,15 +313,21 @@ public class DigestService {
 
     // ------------------------------------------------------------ subscription
 
+    // What the digest does for this user: the flag AND following CEITBA (the
+    // audience is CEITBA's followers who did not opt out).
     @Transactional(readOnly = true)
     public boolean isSubscribed(UUID userId) {
-        return users.findById(userId).map(u -> u.isDigestEmailEnabled()).orElse(true);
+        return users.findById(userId).map(User::isDigestEmailEnabled).orElse(false)
+            && follows.isFollowing(userId, DigestComposer.AUDIENCE_ORG);
     }
 
+    // true: sets the flag and follows CEITBA (idempotent). false: only clears
+    // the flag; other follows (and push) are untouched.
     @Transactional
     public boolean setSubscribed(UUID userId, boolean enabled) {
         users.setDigestEmailEnabled(userId, enabled);
-        return enabled;
+        if (enabled) follows.followIfMissing(userId, DigestComposer.AUDIENCE_ORG);
+        return isSubscribed(userId);
     }
 
     // Public one-click unsubscribe. Idempotent; a valid token of a deleted
@@ -320,7 +362,7 @@ public class DigestService {
             a.excerpt(), a.coverImage(), a.publishedAt(), ref(a.organization()), exA.contains(a.id()))).toList();
         var evts = candidates.events().stream().map(e -> new DigestDtos.EventItem(e.id(), e.title(), e.eventDate(),
             e.startTime(), e.endTime(), e.location(), ref(e.organization()), exE.contains(e.id()))).toList();
-        long estimate = composer.recipients().size();
+        Long estimate = i.isDraft() ? composer.recipientCount() : null;
         var p = DigestIssue.SENDING.equals(i.getStatus()) ? sendingProgress().get(i.getId()) : null;
         return new DigestDtos.Detail(i.getId(), i.getWeekStart(), i.getWeekStart().plusDays(6), i.getSubject(),
             i.getIntro(), i.getStatus(), i.getAutoSendAt(), i.getSentAt(),
@@ -360,7 +402,8 @@ public class DigestService {
             long[] c = acc.computeIfAbsent((UUID) row[0], k -> new long[3]);
             long n = ((Number) row[2]).longValue();
             switch ((String) row[1]) {
-                case DigestDelivery.PENDING -> c[0] += n;
+                // `sending` (claimed, not finished) still counts as not done.
+                case DigestDelivery.PENDING, DigestDelivery.SENDING -> c[0] += n;
                 case DigestDelivery.SENT -> c[1] += n;
                 case DigestDelivery.FAILED -> c[2] += n;
                 default -> { }
@@ -373,6 +416,20 @@ public class DigestService {
 
     private static DigestDtos.OrgRef ref(DigestContent.Org o) {
         return o == null ? null : new DigestDtos.OrgRef(o.slug(), o.name());
+    }
+
+    private void requireMailEnabled() {
+        if (!sender.enabled()) {
+            throw new DigestException(DigestException.Reason.MAIL_DISABLED,
+                "Email sending is disabled on this server (MAIL_ENABLED=false)");
+        }
+    }
+
+    private void requireFuture(OffsetDateTime at) {
+        if (at.isBefore(OffsetDateTime.now(clock))) {
+            throw new DigestException(DigestException.Reason.AUTO_SEND_IN_PAST,
+                "autoSendAt must be in the future");
+        }
     }
 
     private DigestIssue load(UUID id) {
@@ -403,10 +460,14 @@ public class DigestService {
     static OffsetDateTime parseInstant(JsonNode node) {
         if (node.isNull()) return null;
         if (!node.isTextual()) throw new ValidationException("autoSendAt", node, "must be an ISO-8601 instant or null");
+        return parseInstant(node.asText());
+    }
+
+    static OffsetDateTime parseInstant(String text) {
         try {
-            return OffsetDateTime.parse(node.asText());
+            return OffsetDateTime.parse(text);
         } catch (DateTimeParseException e) {
-            throw new ValidationException("autoSendAt", node.asText(), "must be an ISO-8601 instant or null");
+            throw new ValidationException("autoSendAt", text, "must be an ISO-8601 instant or null");
         }
     }
 }

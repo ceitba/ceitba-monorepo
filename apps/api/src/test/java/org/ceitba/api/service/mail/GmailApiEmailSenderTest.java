@@ -54,34 +54,60 @@ class GmailApiEmailSenderTest {
     }
 
     @Test
-    void quotaErrorsPauseTheAccount() {
-        assertThat(kind(429, "{}")).isEqualTo(EmailSendException.Kind.QUOTA);
-        for (String reason : new String[] {"rateLimitExceeded", "dailyLimitExceeded", "userRateLimitExceeded"}) {
-            assertThat(kind(403, "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"" + reason + "\"}]}}"))
-                .as(reason).isEqualTo(EmailSendException.Kind.QUOTA);
-        }
-        assertThat(kind(403, "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}")).isEqualTo(EmailSendException.Kind.QUOTA);
+    void onlyTheDailyLimitIsQuotaAndPausesTheAccount() {
+        assertThat(kind(403, err("dailyLimitExceeded", "Daily Limit Exceeded", "")))
+            .isEqualTo(EmailSendException.Kind.QUOTA);
+        assertThat(kind(429, err("", "Daily user sending quota exceeded", "RESOURCE_EXHAUSTED")))
+            .isEqualTo(EmailSendException.Kind.QUOTA);
     }
 
     @Test
-    void authErrorsAreTransientAndFlagTheConnectionAsBroken() {
+    void perSecondThrottlingIsTransportWithAShortBackoffHonouringRetryAfter() {
+        for (var c : new Object[][] {{429, "{}"}, {403, err("rateLimitExceeded", "Rate Limit Exceeded", "")},
+                {403, err("userRateLimitExceeded", "User-rate limit exceeded", "")},
+                {429, err("", "Too many requests", "RESOURCE_EXHAUSTED")}}) {
+            var e = GmailApiEmailSender.classify((int) c[0], (String) c[1]).exception();
+            assertThat(e.kind()).as(c[1].toString()).isEqualTo(EmailSendException.Kind.TRANSPORT);
+            assertThat(e.retryAfter()).isEqualTo(GmailApiEmailSender.DEFAULT_RATE_BACKOFF);
+        }
+        var hinted = GmailApiEmailSender.classify(429, "{}", "7").exception();
+        assertThat(hinted.retryAfter()).isEqualTo(java.time.Duration.ofSeconds(7));
+        // Absurd hints are capped; the pause itself is capped again by MailSendService.
+        assertThat(GmailApiEmailSender.classify(429, "{}", "86400").exception().retryAfter())
+            .isEqualTo(java.time.Duration.ofMinutes(10));
+    }
+
+    @Test
+    void authErrorsAreTransportAndFlagTheConnectionAsBroken() {
         var unauthorized = GmailApiEmailSender.classify(401, "{\"error\":{\"status\":\"UNAUTHENTICATED\"}}");
-        assertThat(unauthorized.exception().kind()).isEqualTo(EmailSendException.Kind.TRANSIENT);
+        assertThat(unauthorized.exception().kind()).isEqualTo(EmailSendException.Kind.TRANSPORT);
         assertThat(unauthorized.authProblem()).isTrue();
-        var forbidden = GmailApiEmailSender.classify(403, "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}");
-        assertThat(forbidden.exception().kind()).isEqualTo(EmailSendException.Kind.TRANSIENT);
+        var forbidden = GmailApiEmailSender.classify(403, err("insufficientPermissions", "Insufficient Permission", ""));
+        assertThat(forbidden.exception().kind()).isEqualTo(EmailSendException.Kind.TRANSPORT);
+        assertThat(forbidden.exception().retryAfter()).isNull();
         assertThat(forbidden.authProblem()).isTrue();
     }
 
     @Test
-    void serverErrorsAreTransientAndBadRecipientIsRecipient() {
-        assertThat(kind(500, "")).isEqualTo(EmailSendException.Kind.TRANSIENT);
-        assertThat(kind(503, "not json")).isEqualTo(EmailSendException.Kind.TRANSIENT);
+    void serverErrorsAreTransportBadRecipientIsRecipientOtherClientErrorsAreTransient() {
+        assertThat(kind(500, "")).isEqualTo(EmailSendException.Kind.TRANSPORT);
+        assertThat(kind(503, "not json")).isEqualTo(EmailSendException.Kind.TRANSPORT);
         assertThat(GmailApiEmailSender.classify(503, "").authProblem()).isFalse();
-        assertThat(kind(400, "{\"error\":{\"errors\":[{\"reason\":\"invalidArgument\"}],\"message\":\"Invalid To header\"}}"))
+        assertThat(kind(400, err("invalidArgument", "Invalid To header", "")))
             .isEqualTo(EmailSendException.Kind.RECIPIENT);
-        // Unknown 4xx: never drop a delivery on an error we do not understand.
+        assertThat(kind(400, err("invalidArgument", "Recipient address required", "")))
+            .isEqualTo(EmailSendException.Kind.RECIPIENT);
+        // Other per-message 4xx: retried a few times, the account is not paused.
+        assertThat(kind(400, err("invalidArgument", "Invalid value for ByteString", "")))
+            .isEqualTo(EmailSendException.Kind.TRANSIENT);
         assertThat(kind(404, "")).isEqualTo(EmailSendException.Kind.TRANSIENT);
+        assertThat(kind(413, "")).isEqualTo(EmailSendException.Kind.TRANSIENT);
+    }
+
+    private static String err(String reason, String message, String status) {
+        return "{\"error\":{\"message\":\"" + message + "\""
+            + (reason.isEmpty() ? "" : ",\"errors\":[{\"reason\":\"" + reason + "\"}]")
+            + (status.isEmpty() ? "" : ",\"status\":\"" + status + "\"") + "}}";
     }
 
     private static EmailSendException.Kind kind(int status, String body) {

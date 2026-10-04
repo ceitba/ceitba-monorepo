@@ -1,5 +1,6 @@
 package org.ceitba.api.config;
 
+import org.ceitba.api.service.mail.DisabledEmailSender;
 import org.ceitba.api.service.mail.EmailSender;
 import org.ceitba.api.service.mail.GmailApiEmailSender;
 import org.ceitba.api.service.mail.GoogleMailOAuthClient;
@@ -22,40 +23,50 @@ import java.time.Clock;
 
 // The only EmailSender bean is MailSendService (sending-quota ledger, see
 // its class comment), wrapping the transport:
+// MAIL_ENABLED=false (the default): DisabledEmailSender, send and test send
+//   answer 409 MAIL_DISABLED; with the dev-only MAIL_LOG_SENDS=true a logging
+//   sender instead. MAIL_TRANSPORT is ignored.
 // MAIL_ENABLED=true, MAIL_TRANSPORT (default gmail-api):
 //   gmail-api: Gmail API with the OAuth-connected sender account.
 //   smtp:      SMTP through Spring Boot's JavaMailSender (spring.mail.*).
-//   log:       a logging no-op.
-// MAIL_ENABLED=false (the default) = log, so dev and tests never send.
+//   log:       a logging no-op; startup fails unless MAIL_LOG_SENDS=true.
 // The transport itself is deliberately not a bean, so no caller can bypass
 // the quota.
 @Configuration
 @EnableConfigurationProperties({EmailProperties.class, DigestProperties.class, DigestPersonalProperties.class,
-    MailOAuthProperties.class})
+    MailOAuthProperties.class, MailRetentionProperties.class})
 public class MailConfig {
 
     private static final Logger log = LoggerFactory.getLogger(MailConfig.class);
 
     @Bean
-    public MailSendService emailSender(EmailProperties props, ObjectProvider<JavaMailSender> javaMailSender,
+    public MailSendService emailSender(EmailProperties props, DigestProperties digest,
+                                       ObjectProvider<JavaMailSender> javaMailSender,
                                        MailLedger ledger, Clock clock, MailSenderAccountService senderAccounts,
                                        GoogleMailOAuthClient googleMail) {
         String account = props.account();
         int limit = props.limitFor(account);
         log.info("Mail: sending account {}, {} recipients per rolling 24h", account, limit);
         return new MailSendService(transport(props, javaMailSender, senderAccounts, googleMail, clock), ledger, account, limit,
-            props.backoffInitial(), props.backoffMax(), props.quotaPause(), clock);
+            props.backoffInitial(), props.backoffMax(), props.quotaPause(), clock, digest::isAllowedRecipient);
     }
 
     private static EmailSender transport(EmailProperties props, ObjectProvider<JavaMailSender> javaMailSender,
                                          MailSenderAccountService senderAccounts, GoogleMailOAuthClient googleMail,
                                          Clock clock) {
         if (!props.enabled()) {
-            log.info("Mail: disabled (MAIL_ENABLED=false); emails are only logged");
-            return new LoggingEmailSender();
+            if (props.logSends()) {
+                log.warn("Mail: DEV log-only mode (MAIL_LOG_SENDS=true); emails are logged, never sent");
+                return new LoggingEmailSender();
+            }
+            log.info("Mail: disabled (MAIL_ENABLED=false); sending is refused");
+            return new DisabledEmailSender();
         }
         if (EmailProperties.TRANSPORT_LOG.equals(props.transport())) {
-            log.info("Mail: MAIL_TRANSPORT=log; emails are only logged");
+            if (!props.logSends()) {
+                throw new IllegalStateException("MAIL_TRANSPORT=log is dev-only and needs MAIL_LOG_SENDS=true");
+            }
+            log.warn("Mail: MAIL_TRANSPORT=log; emails are only logged, never sent");
             return new LoggingEmailSender();
         }
         if (EmailProperties.TRANSPORT_GMAIL_API.equals(props.transport())) {

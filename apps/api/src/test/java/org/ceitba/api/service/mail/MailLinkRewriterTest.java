@@ -33,11 +33,15 @@ class MailLinkRewriterTest {
     void everyHttpLinkOfBothPartsIsWrappedAndThePixelAppended() {
         var shared = Map.of("https://ceitba.org.ar/newsletter/articles/a1", 1);
         var r = MailLinkRewriter.rewrite(HTML, TEXT, shared, MailLinkRewriterTest::trackingUrl,
-            BASE + "/o/" + TID + ".gif");
+            BASE + "/o/" + TID + ".gif", MailLinkRewriterTest::isUnsubscribe);
 
-        // No original http(s) link left in an href or in the text.
-        assertThat(Pattern.compile("href=\"https?://(?!ceitba\\.org\\.ar/api/v1/mail/c/)").matcher(r.html()).find()).isFalse();
-        assertThat(r.text()).doesNotContain("newsletter/");
+        // No original http(s) link left in an href or in the text, except the
+        // unsubscribe link, which is never wrapped (it must always work).
+        assertThat(Pattern.compile("href=\"https?://(?!ceitba\\.org\\.ar/api/v1/mail/c/|ceitba\\.org\\.ar/newsletter/unsubscribe)")
+            .matcher(r.html()).find()).isFalse();
+        assertThat(r.html()).contains("href=\"https://ceitba.org.ar/newsletter/unsubscribe?token=u1.SIG%3D\"");
+        assertThat(r.text()).contains("Dejar de recibir: https://ceitba.org.ar/newsletter/unsubscribe?token=u1.SIG%3D\n");
+        assertThat(r.text()).doesNotContain("newsletter/articles").doesNotContain("newsletter/correction");
         // The shared article link keeps its id (three anchors + text: one id).
         assertThat(r.html()).contains("href=\"" + trackingUrl(1) + "\"");
         assertThat(r.text()).contains(trackingUrl(1));
@@ -45,17 +49,14 @@ class MailLinkRewriterTest {
         assertThat(r.html()).contains("src=\"https://cdn.example/cover.png\"");
         assertThat(r.html()).contains("href=\"mailto:ceitba@itba.edu.ar\"");
         // Per-reader links numbered from 1000, same id in HTML and text.
-        assertThat(r.personalLinks()).hasSize(2);
+        assertThat(r.personalLinks()).hasSize(1);
         var vote = r.personalLinks().get(0);
         assertThat(vote.id()).isEqualTo(1000);
         // The HTML-escaped href (&amp;) is stored as the real URL.
         assertThat(vote.url()).isEqualTo("https://ceitba.org.ar/newsletter/correction?token=u1.c1.99.SIG&vote=confirm");
         assertThat(vote.urlKey()).isEqualTo("https://ceitba.org.ar/newsletter/correction?vote=confirm");
         assertThat(vote.label()).isEqualTo("Sí, es así");
-        var unsub = r.personalLinks().get(1);
-        assertThat(unsub.id()).isEqualTo(1001);
-        assertThat(unsub.urlKey()).isEqualTo("https://ceitba.org.ar/newsletter/unsubscribe");
-        assertThat(r.text()).contains("Sí: " + trackingUrl(1000)).contains("Dejar de recibir: " + trackingUrl(1001));
+        assertThat(r.text()).contains("Sí: " + trackingUrl(1000));
         // Pixel right before </body>, after everything else.
         assertThat(r.html()).endsWith("<img src=\"" + BASE + "/o/" + TID + ".gif\" width=\"1\" height=\"1\" alt=\"\" "
             + "style=\"display:block;width:1px;height:1px;border:0;\"></body></html>");
@@ -63,11 +64,37 @@ class MailLinkRewriterTest {
 
     @Test
     void collectGivesDistinctLinksWithTheirFirstRealLabel() {
-        var links = MailLinkRewriter.collect(HTML, TEXT);
-        assertThat(links).extracting(MailLinkRewriter.Link::id).containsExactly(1, 2, 3);
+        var links = MailLinkRewriter.collect(HTML, TEXT, MailLinkRewriterTest::isUnsubscribe);
+        assertThat(links).extracting(MailLinkRewriter.Link::id).containsExactly(1, 2);
         // The image link has no text: the title anchor's label is used.
         assertThat(links.get(0).label()).isEqualTo("Título & más");
         assertThat(links.get(0).url()).isEqualTo("https://ceitba.org.ar/newsletter/articles/a1");
+    }
+
+    static boolean isUnsubscribe(String url) {
+        return url.startsWith("https://ceitba.org.ar/newsletter/unsubscribe");
+    }
+
+    @Test
+    void textUrlsDoNotSwallowTrailingPunctuation() {
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a.")).isEqualTo("https://x.org/a");
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a?q=1,")).isEqualTo("https://x.org/a?q=1");
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a!?;:")).isEqualTo("https://x.org/a");
+        // "(see https://x.org/a)": the ")" closes the sentence's parenthesis.
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a)")).isEqualTo("https://x.org/a");
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a).")).isEqualTo("https://x.org/a");
+        // A balanced one belongs to the URL.
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a_(b)")).isEqualTo("https://x.org/a_(b)");
+        assertThat(MailLinkRewriter.trimTrailingPunctuation("https://x.org/a_(b))")).isEqualTo("https://x.org/a_(b)");
+
+        // Collected and rewritten alike: the punctuation stays outside the link.
+        String text = "Mirá (https://x.org/a), o https://x.org/b_(c). Fin: https://x.org/d!";
+        var links = MailLinkRewriter.collect(null, text);
+        assertThat(links).extracting(MailLinkRewriter.Link::url)
+            .containsExactly("https://x.org/a", "https://x.org/b_(c)", "https://x.org/d");
+        var r = MailLinkRewriter.rewrite(null, text, Map.of(), MailLinkRewriterTest::trackingUrl, null);
+        assertThat(r.text()).isEqualTo("Mirá (" + trackingUrl(1000) + "), o " + trackingUrl(1001) + ". Fin: "
+            + trackingUrl(1002) + "!");
     }
 
     @Test
