@@ -108,7 +108,8 @@ public class PersonalDigestLoader {
         Set<String> currentCodes = new LinkedHashSet<>();
         Set<String> ownCommissionIds = new HashSet<>();
         picks.forEach((userId, p) -> {
-            var saved = primary.get(userId).getUpdatedAt();
+            // payload_updated_at: renames/toggles (updated_at) must not freshen it.
+            var saved = primary.get(userId).getPayloadUpdatedAt();
             LocalDate savedOn = saved == null ? null : saved.atZoneSameInstant(ClockConfig.ZONE).toLocalDate();
             var r = DigestTerm.resolve(p, savedOn, currentBySubject);
             if (!r.current()) return;

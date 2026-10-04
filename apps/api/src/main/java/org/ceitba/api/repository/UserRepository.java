@@ -81,6 +81,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
         """)
     List<User> findDigestAudience(@Param("orgSlug") String orgSlug);
 
+    // Size of the digest audience without loading it: same filter as
+    // findDigestAudience plus the allowed-domain guard (DigestProperties.
+    // isAllowedRecipient) done in SQL on the address's domain part.
+    @Query("""
+        SELECT COUNT(u) FROM User u
+        WHERE u.digestEmailEnabled = true
+          AND EXISTS (SELECT 1 FROM UserFollow f WHERE f.userId = u.id AND f.organization = :orgSlug)
+          AND SUBSTRING(LOWER(TRIM(u.email)), LOCATE('@', TRIM(u.email)) + 1) IN :domains
+        """)
+    long countDigestAudience(@Param("orgSlug") String orgSlug, @Param("domains") java.util.Collection<String> domains);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE User u SET u.digestEmailEnabled = :enabled WHERE u.id = :id")
     int setDigestEmailEnabled(@Param("id") UUID id, @Param("enabled") boolean enabled);

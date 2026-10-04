@@ -36,8 +36,8 @@ public class DigestComposer {
     public static final String AUDIENCE_ORG = "ceitba";
 
     // Kinds of the sending-quota ledger (mail_send_log.kind).
-    public static final String KIND_DIGEST = "digest";
-    public static final String KIND_TEST = "test";
+    public static final String KIND_DIGEST = OutgoingEmail.KIND_DIGEST;
+    public static final String KIND_TEST = OutgoingEmail.KIND_TEST;
 
     // Entity-free copy of an issue's editable fields.
     public record Issue(UUID id, DigestWeek week, String subject, String intro,
@@ -99,6 +99,12 @@ public class DigestComposer {
             .filter(u -> props.isAllowedRecipient(u.getEmail()))
             .map(u -> new Recipient(u.getId(), u.getEmail().trim()))
             .toList();
+    }
+
+    // Size of recipients() without loading the users (the draft's estimate).
+    @Transactional(readOnly = true)
+    public long recipientCount() {
+        return users.countDigestAudience(AUDIENCE_ORG, props.allowedDomains());
     }
 
     // Re-checked right before sending to a snapshotted recipient.

@@ -1,5 +1,6 @@
 package org.ceitba.api.config;
 
+import org.ceitba.api.service.mail.DisabledEmailSender;
 import org.ceitba.api.service.mail.EmailSender;
 import org.ceitba.api.service.mail.LoggingEmailSender;
 import org.ceitba.api.service.mail.MailLedger;
@@ -19,7 +20,8 @@ import java.time.Clock;
 // The only EmailSender bean is MailSendService (sending-quota ledger, see
 // its class comment), wrapping the transport:
 // MAIL_ENABLED=true: SMTP through Spring Boot's JavaMailSender (spring.mail.*).
-// Otherwise (the default) a logging no-op, so dev and tests never send.
+// Otherwise (the default) a sender that refuses (DisabledEmailSender), or, only
+// with the dev flag MAIL_LOG_SENDS=true, one that just logs.
 // The transport itself is deliberately not a bean, so no caller can bypass
 // the quota.
 @Configuration
@@ -29,19 +31,24 @@ public class MailConfig {
     private static final Logger log = LoggerFactory.getLogger(MailConfig.class);
 
     @Bean
-    public MailSendService emailSender(EmailProperties props, ObjectProvider<JavaMailSender> javaMailSender,
+    public MailSendService emailSender(EmailProperties props, DigestProperties digest,
+                                       ObjectProvider<JavaMailSender> javaMailSender,
                                        MailLedger ledger, Clock clock) {
         String account = props.account();
         int limit = props.limitFor(account);
         log.info("Mail: sending account {}, {} recipients per rolling 24h", account, limit);
         return new MailSendService(transport(props, javaMailSender), ledger, account, limit,
-            props.backoffInitial(), props.backoffMax(), props.quotaPause(), clock);
+            props.backoffInitial(), props.backoffMax(), props.quotaPause(), clock, digest::isAllowedRecipient);
     }
 
     private static EmailSender transport(EmailProperties props, ObjectProvider<JavaMailSender> javaMailSender) {
         if (!props.enabled()) {
-            log.info("Mail: disabled (MAIL_ENABLED=false); emails are only logged");
-            return new LoggingEmailSender();
+            if (props.logSends()) {
+                log.warn("Mail: DEV log-only mode (MAIL_LOG_SENDS=true); emails are logged, never sent");
+                return new LoggingEmailSender();
+            }
+            log.info("Mail: disabled (MAIL_ENABLED=false); sending is refused");
+            return new DisabledEmailSender();
         }
         JavaMailSender sender = javaMailSender.getIfAvailable();
         if (sender == null) {

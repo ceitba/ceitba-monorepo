@@ -9,6 +9,8 @@ public record OutgoingEmail(String to, String subject, String html, String text,
                             String kind) {
 
     public static final String KIND_OTHER = "other";
+    public static final String KIND_DIGEST = "digest";
+    public static final String KIND_TEST = "test";
 
     public OutgoingEmail {
         headers = headers == null ? Map.of() : Map.copyOf(headers);

@@ -58,7 +58,7 @@ public class DigestController {
     @PostMapping
     @PreAuthorize("hasRole('STAFF')")
     public ResponseEntity<DigestDtos.Detail> create(@RequestBody @Valid DigestDtos.CreateRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req.weekStart()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req.weekStart(), req.autoSendAt()));
     }
 
     @GetMapping(ID)

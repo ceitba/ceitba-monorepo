@@ -8,10 +8,13 @@
 -- some (excluded_*_ids hold article/event ids, which are TEXT).
 -- status: draft -> sending -> sent, or draft -> cancelled.
 -- auto_send_at: when a draft is sent automatically (NULL = only by hand).
--- digest_deliveries: the recipient snapshot taken when sending starts; each
--- row goes pending -> sent | failed in its own transaction, so a restart
--- resumes without sending twice. sent_at is the time of the (last) attempt,
--- also for failed rows: it backs the rolling 24h sending quota.
+-- digest_deliveries: the recipient snapshot taken when sending starts. Sending
+-- is at-most-once: before the SMTP call a row is claimed (pending -> sending,
+-- claimed_at, its own committed transaction), then it becomes sent | failed.
+-- A row still `sending` after a crash has an unknown outcome and is marked
+-- failed, never resent. attempts counts the TRANSIENT (recipient-scoped
+-- temporary) failures; last_error is the latest one. sent_at is the time of
+-- the (last) attempt, also for failed rows: it backs the rolling 24h quota.
 
 ALTER TABLE "public"."user"
     ADD COLUMN "digest_email_enabled" BOOLEAN NOT NULL DEFAULT true;
@@ -47,8 +50,11 @@ CREATE TABLE "public"."digest_deliveries" (
     "status"   TEXT        NOT NULL DEFAULT 'pending',
     "error"    TEXT,
     "sent_at"  TIMESTAMPTZ,
+    "claimed_at" TIMESTAMPTZ,
+    "attempts" INT         NOT NULL DEFAULT 0,
+    "last_error" TEXT,
     CONSTRAINT "digest_deliveries_pkey" PRIMARY KEY ("issue_id", "user_id"),
-    CONSTRAINT "digest_deliveries_status_check" CHECK ("status" IN ('pending', 'sent', 'failed')),
+    CONSTRAINT "digest_deliveries_status_check" CHECK ("status" IN ('pending', 'sending', 'sent', 'failed')),
     CONSTRAINT "digest_deliveries_issue_fkey"
         FOREIGN KEY ("issue_id") REFERENCES "public"."digest_issues" ("id") ON DELETE CASCADE,
     CONSTRAINT "digest_deliveries_user_fkey"
@@ -59,3 +65,7 @@ CREATE INDEX "digest_deliveries_issue_status_idx"
     ON "public"."digest_deliveries" ("issue_id", "status");
 CREATE INDEX "digest_deliveries_sent_at_idx"
     ON "public"."digest_deliveries" ("sent_at") WHERE "sent_at" IS NOT NULL;
+CREATE INDEX "digest_deliveries_user_idx"
+    ON "public"."digest_deliveries" ("user_id");
+CREATE INDEX "digest_deliveries_claimed_idx"
+    ON "public"."digest_deliveries" ("claimed_at") WHERE "status" = 'sending';

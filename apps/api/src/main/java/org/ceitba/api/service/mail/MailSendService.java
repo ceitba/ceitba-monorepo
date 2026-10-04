@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 // THE EmailSender of the app (MailConfig wires the SMTP/logging transport
 // inside it and exposes only this): every email, whoever sends it (digest,
@@ -27,6 +28,11 @@ import java.util.Optional;
 //     (5 min, 10, 20, 40, then 1 h). Persisted. Only background senders
 //     honour the backoff (readyAt()); a manual send still tries, so staff
 //     can check whether SMTP is back. Any successful send clears it.
+//     (EmailSendException TRANSPORT; a TRANSIENT error is a 4.x.x reply
+//     scoped to one delivery and does not pause the account.)
+//   - Defense in depth: digest and test emails to an address outside the
+//     allowed domains (digest.allowed-domains) are refused here, whatever the
+//     caller checked (EmailSendException RECIPIENT, nothing sent or logged).
 // One process sends at a time per account (single API instance): the quota
 // check, the SMTP call and the ledger row are serialized.
 public class MailSendService implements EmailSender {
@@ -48,10 +54,18 @@ public class MailSendService implements EmailSender {
     private final Duration backoffMax;
     private final Duration quotaPause;
     private final Clock clock;
+    private final Predicate<String> allowedRecipient;
     private final Object lock = new Object();
 
     public MailSendService(EmailSender transport, MailLedger ledger, String account, int limit,
                            Duration backoffInitial, Duration backoffMax, Duration quotaPause, Clock clock) {
+        this(transport, ledger, account, limit, backoffInitial, backoffMax, quotaPause, clock, to -> true);
+    }
+
+    // allowedRecipient: the domain guard applied to the digest and test kinds.
+    public MailSendService(EmailSender transport, MailLedger ledger, String account, int limit,
+                           Duration backoffInitial, Duration backoffMax, Duration quotaPause, Clock clock,
+                           Predicate<String> allowedRecipient) {
         this.transport = transport;
         this.ledger = ledger;
         this.account = account;
@@ -60,6 +74,13 @@ public class MailSendService implements EmailSender {
         this.backoffMax = backoffMax;
         this.quotaPause = quotaPause;
         this.clock = clock;
+        this.allowedRecipient = allowedRecipient;
+    }
+
+    // False when the transport cannot really send (MAIL_ENABLED=false).
+    @Override
+    public boolean enabled() {
+        return transport.enabled();
     }
 
     public String account() { return account; }
@@ -72,6 +93,10 @@ public class MailSendService implements EmailSender {
     @Override
     public void send(OutgoingEmail email) {
         final int recipients = 1;
+        if (guarded(email.kind()) && !allowedRecipient.test(email.to())) {
+            throw new EmailSendException(EmailSendException.Kind.RECIPIENT,
+                "Recipient is outside the allowed domains", null);
+        }
         synchronized (lock) {
             Instant now = clock.instant();
             Instant blocked = quotaBlockedUntil(now, recipients);
@@ -96,6 +121,10 @@ public class MailSendService implements EmailSender {
     // When the account may send again, if not now: the quota pause or an
     // exhausted rolling window, and the transport backoff. What background
     // senders check before touching SMTP.
+    private static boolean guarded(String kind) {
+        return OutgoingEmail.KIND_DIGEST.equals(kind) || OutgoingEmail.KIND_TEST.equals(kind);
+    }
+
     public Optional<Instant> readyAt() {
         Instant now = clock.instant();
         Instant blocked = quotaBlockedUntil(now, 1);
@@ -188,6 +217,11 @@ public class MailSendService implements EmailSender {
                 log.warn("Mail: {} hit the provider's daily sending limit; paused until {}", account, until);
             }
             case TRANSIENT -> {
+                // Temporary and scoped to one delivery: logged, but the
+                // account is not paused (the caller retries that delivery).
+                ledger.record(account, kind, recipients, MailLedger.Outcome.TRANSIENT, e.getMessage(), now);
+            }
+            case TRANSPORT -> {
                 ledger.record(account, kind, recipients, MailLedger.Outcome.TRANSIENT, e.getMessage(), now);
                 int failures = state.consecutiveFailures() + 1;
                 Instant until = now.plus(backoff(failures));
