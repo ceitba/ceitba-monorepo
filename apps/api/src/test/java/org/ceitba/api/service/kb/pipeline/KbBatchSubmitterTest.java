@@ -56,14 +56,24 @@ class KbBatchSubmitterTest {
             if (j.getId() != null) return j;
             boolean dup = jobs.rows.values().stream().anyMatch(o -> o.getRunId().equals(j.getRunId())
                 && o.getStage().equals(j.getStage()) && o.getAttempt() == j.getAttempt()
-                && o.getModel().equals(j.getModel()));
+                && o.getModel().equals(j.getModel()) && o.getPart() == j.getPart());
             if (dup) throw new DataIntegrityViolationException("kb_batch_job_once_idx");
             ReflectionTestUtils.setField(j, "id", UUID.randomUUID());
             return j;
         });
         requests = new InMemoryRepo<>(KbRunRequest::getCustomId);
-        requests.on("findByBatchJobId", a -> requests.all().stream()
-            .filter(r -> a[0].equals(r.getBatchJobId())).toList());
+        requests.on("submittedIdsOfJob", a -> requests.all().stream()
+            .filter(r -> a[0].equals(r.getBatchJobId()) && r.getStatus().equals("SUBMITTED"))
+            .map(KbRunRequest::getCustomId).sorted().toList());
+        requests.on("markSubmitted", a -> {
+            for (var id : (java.util.Collection<String>) a[1]) requests.rows.get(id).submitted((UUID) a[0]);
+            return 0;
+        });
+        requests.on("failSubmittedOfJob", a -> {
+            requests.all().stream().filter(r -> a[0].equals(r.getBatchJobId()) && r.getStatus().equals("SUBMITTED"))
+                .forEach(r -> r.failed((String) a[1]));
+            return 0;
+        });
         models = new InMemoryRepo<>(KbModel::getId);
         var runs = new InMemoryRepo<KbRun, UUID>(KbRun::getId).on("setStatusIf", a -> 0);
         var router = new KbLlmRouter(fake, new FakeSyncChatClient(json),
@@ -127,6 +137,21 @@ class KbBatchSubmitterTest {
         assertThat(j.getNextAttemptAt()).isNull();
         assertThat(j.getError()).isNull();
         assertThat(fake.createCalls()).isEqualTo(7);
+    }
+
+    @Test
+    void aStageOverTheBatchCapIsSplitIntoPartsWithOwnJobsAndRequestIds() {
+        var ids = java.util.stream.IntStream.rangeClosed(1, 12).mapToObj(i -> "id" + i).toList();
+        var parts = KbBatchSubmitter.split(ids, 5);
+        assertThat(parts).extracting(List::size).containsExactly(5, 5, 2);
+        // Part 1 keeps the pre-split request id; later parts are distinct (unique per part).
+        assertThat(KbBatchSubmitter.requestId(runId, "DIGEST", 1, MODEL, 1))
+            .isEqualTo(KbBatchSubmitter.requestId(runId, "DIGEST", 1, MODEL));
+        var first = submitter.queue(runId, "DIGEST", 1, MODEL, 1, List.of("abcd1234-D-000001"), "kb/runs/x/digest-p1.jsonl");
+        var second = submitter.queue(runId, "DIGEST", 1, MODEL, 2, List.of("abcd1234-D-000002"), "kb/runs/x/digest-p2.jsonl");
+        assertThat(second).isNotNull();
+        assertThat(second.getDoRequestId()).isEqualTo(first.getDoRequestId() + ":p2");
+        assertThat(jobs.rows).hasSize(2);
     }
 
     @Test

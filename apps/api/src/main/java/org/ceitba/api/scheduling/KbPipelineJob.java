@@ -25,8 +25,10 @@ import java.util.UUID;
 //   - batch poller, every KB_BATCH_POLL_INTERVAL (PT1M): only runs with a
 //     SUBMITTED DO batch or a QUEUED one whose rate-limited creation is due
 //     (nextAttemptAt), and pending batch probes (likewise)
-//   - safety sweep, every KB_POLL_INTERVAL (PT10M) and at startup: kicks
-//     every active run, resuming whatever a restart interrupted
+//   - safety sweep, every KB_POLL_INTERVAL (PT10M): kicks every active run
+//   - at startup: resumes every active run a restart interrupted, counting
+//     the resumes of RUNNING ones (KbRunEngine.registerResume): a run resumed
+//     more than 3 times in 30 minutes without finishing a stage is FAILED
 //   - every minute: the weekly cron (only when enabled in the settings)
 // Each run has one advancer at a time (KbRunEngine.advance, DB lease).
 // Off with kb.pipeline.background=false (tests drive the engine directly).
@@ -117,6 +119,15 @@ public class KbPipelineJob {
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         evals.ensureDefaultSet();
-        sweep();   // resume runs a restart interrupted
+        // Resume runs a restart interrupted, but never one that keeps taking the
+        // process down: after KbRunEngine.MAX_RESUMES startups inside the window
+        // without finishing a stage the run is failed instead (e.g. out of memory).
+        try {
+            for (var id : engine.activeRunIds()) {
+                if (engine.registerResume(id)) kick(id);
+            }
+        } catch (RuntimeException e) {
+            log.warn("KB startup resume failed: {}", e.getMessage());
+        }
     }
 }

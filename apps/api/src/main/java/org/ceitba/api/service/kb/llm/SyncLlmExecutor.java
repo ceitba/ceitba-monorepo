@@ -70,13 +70,27 @@ public class SyncLlmExecutor {
     // stop: checked before each request starts; once true, the remaining
     // requests are abandoned (in-flight ones still report their answers).
     public boolean run(List<LlmLine> lines, Consumer<Outcome> onResult, java.util.function.BooleanSupplier stop) {
+        return run(lines.iterator(), onResult, stop);
+    }
+
+    // The lines are pulled one at a time, each only once a worker slot is
+    // free, so at most KB_SYNC_CONCURRENCY requests are in flight and the
+    // source (a paged DB iterator) never needs to hold the whole stage.
+    public boolean run(java.util.Iterator<LlmLine> lines, Consumer<Outcome> onResult,
+                       java.util.function.BooleanSupplier stop) {
         var quotaPaused = new java.util.concurrent.atomic.AtomicBoolean(false);
         var permits = new Semaphore(props.syncConcurrency());
         var stopped = new java.util.concurrent.atomic.AtomicBoolean(false);
         try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
-            for (var line : lines) {
+            while (lines.hasNext()) {
+                permits.acquireUninterruptibly();
+                if (stopped.get() || stop.getAsBoolean()) {
+                    stopped.set(true);
+                    permits.release();
+                    break;
+                }
+                var line = lines.next();
                 pool.submit(() -> {
-                    permits.acquireUninterruptibly();
                     try {
                         if (stopped.get() || stop.getAsBoolean()) {
                             stopped.set(true);

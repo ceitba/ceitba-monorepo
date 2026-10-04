@@ -10,7 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
     "kb.llm.execution-mode=batch",
     "kb.pipeline.model-digest=anthropic-claude-haiku-4.5",
     "kb.pipeline.model-plan=anthropic-claude-haiku-4.5",
-    "kb.pipeline.model-write=anthropic-claude-haiku-4.5"
+    "kb.pipeline.model-write=anthropic-claude-haiku-4.5",
+    // Two requests per batch file: the 3 DIGEST requests become two batch jobs
+    "kb.pipeline.batch-max-requests=2"
 })
 class BatchPipelineIT extends KbPipelineAcceptanceIT {
 
@@ -36,5 +38,21 @@ class BatchPipelineIT extends KbPipelineAcceptanceIT {
             .get("/v1/staff/kb/pipeline/runs/" + run.path("id").asText()), null, 200);
         assertThat(done.path("status").asText()).as(done.toString()).isEqualTo("SUCCEEDED");
         assertThat(publishedSlugs(FIN)).containsExactly("conceptos-centrales");
+    }
+
+    // A stage over KB_BATCH_MAX_REQUESTS is split into several batch jobs
+    // (one DO batch each, distinct request ids) and the run still completes.
+    @Test
+    void stageOverTheBatchCapIsSplitIntoSeveralBatches() throws Exception {
+        var run = run();
+        var id = run.path("id").asText();
+        assertThat(run.path("status").asText()).as(run.toString()).isEqualTo("SUCCEEDED");
+        var parts = jdbc.queryForList("SELECT part FROM wiki.kb_batch_job WHERE run_id = ?::uuid AND stage = 'DIGEST' "
+            + "ORDER BY part", Integer.class, id);
+        assertThat(parts).containsExactly(1, 2);
+        assertThat(jdbc.queryForList("SELECT request_count FROM wiki.kb_batch_job WHERE run_id = ?::uuid "
+            + "AND stage = 'DIGEST' ORDER BY part", Integer.class, id)).containsExactly(2, 1);
+        assertThat(jdbc.queryForList("SELECT DISTINCT do_request_id FROM wiki.kb_batch_job WHERE run_id = ?::uuid "
+            + "AND stage = 'DIGEST'", String.class, id)).hasSize(2);
     }
 }
