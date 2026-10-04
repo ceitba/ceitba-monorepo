@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createDigest, fetchDigests } from '../../api/digests'
@@ -9,7 +9,7 @@ import DigestQuotaBar from '../../components/admin/DigestQuotaBar'
 import DigestRates from '../../components/admin/DigestRates'
 import { addDaysISO, todayISO } from '../../utils/dates'
 import {
-  SENDING_POLL_MS, digestErrorMessage, formatArtDateTime, formatWeekRange, mondayOf,
+  SENDING_POLL_MS, digestErrorMessage, formatArtDateTime, formatWeekRange, isPastInstant, mondayOf,
 } from '../../utils/digest'
 
 // STAFF-only list of weekly digest issues ("La semana en ITBA").
@@ -20,11 +20,15 @@ export default function AdminDigestsPage() {
   const [status, setStatus] = useState('loading')
   const [quotaKey, setQuotaKey] = useState(0)
 
+  // Only the response of the latest request is applied, so a slow poll can't
+  // overwrite newer data.
+  const reqRef = useRef(0)
   const load = useCallback(({ quiet = false } = {}) => {
+    const req = ++reqRef.current
     if (!quiet) setStatus('loading')
     return fetchDigests()
-      .then((data) => { setDigests(data ?? []); setStatus('success') })
-      .catch(() => { if (!quiet) setStatus('error') })
+      .then((data) => { if (req === reqRef.current) { setDigests(data ?? []); setStatus('success') } })
+      .catch(() => { if (!quiet && req === reqRef.current) setStatus('error') })
   }, [])
 
   useEffect(() => { if (staff) load() }, [staff, load])
@@ -100,11 +104,13 @@ export default function AdminDigestsPage() {
                     <p className="font-display text-h5 font-bold text-ink-primary group-hover:text-primary transition-colors duration-150 line-clamp-2">
                       {d.subject || t('admin.digests.noSubject')}
                     </p>
-                    <p className="font-body text-body-sm text-ink-secondary">
+                    <p className={`font-body text-body-sm ${d.status === 'draft' && d.autoSendAt && isPastInstant(d.autoSendAt) ? 'text-accent-700' : 'text-ink-secondary'}`}>
                       {d.status === 'sent' && d.sentAt
                         ? t('admin.digests.sentAt', { when: formatArtDateTime(d.sentAt, i18n.language) })
                         : d.status === 'draft'
-                          ? d.autoSendAt
+                          ? d.autoSendAt && isPastInstant(d.autoSendAt)
+                            ? t('admin.digests.autoSendPast')
+                            : d.autoSendAt
                             ? t('admin.digests.autoSendAt', { when: formatArtDateTime(d.autoSendAt, i18n.language) })
                             : t('admin.digests.autoSendOff')
                           : null}
