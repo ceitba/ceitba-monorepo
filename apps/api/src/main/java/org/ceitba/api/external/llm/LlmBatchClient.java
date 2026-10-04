@@ -15,6 +15,15 @@ public interface LlmBatchClient {
     // PUT of the raw bytes to the upload URL (no extra headers).
     void upload(String uploadUrl, byte[] bytes);
 
+    // The same from a file, streamed (a batch file can be large). Default: reads it.
+    default void upload(String uploadUrl, java.nio.file.Path file) {
+        try {
+            upload(uploadUrl, java.nio.file.Files.readAllBytes(file));
+        } catch (java.io.IOException e) {
+            throw new LlmApiException(0, "Reading " + file + ": " + e.getMessage(), e);
+        }
+    }
+
     // POST /v1/batches {file_id, provider, completion_window: 24h, request_id[, endpoint]}.
     // provider: anthropic (no endpoint) or openai (endpoint /v1/chat/completions).
     BatchInfo createBatch(String fileId, String requestId, String provider, String endpoint);
@@ -27,6 +36,15 @@ public interface LlmBatchClient {
 
     // Downloads an output/error file URL (signed; no auth header).
     byte[] download(String url);
+
+    // The same into a file, streamed. Default: downloads into memory first.
+    default void downloadTo(String url, java.nio.file.Path file) {
+        try {
+            java.nio.file.Files.write(file, download(url));
+        } catch (java.io.IOException e) {
+            throw new LlmApiException(0, "Writing " + file + ": " + e.getMessage(), e);
+        }
+    }
 
     // POST /v1/batches/{id}/cancel.
     void cancel(String batchId);

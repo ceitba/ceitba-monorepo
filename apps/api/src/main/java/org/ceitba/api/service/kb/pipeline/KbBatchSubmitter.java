@@ -89,17 +89,41 @@ public class KbBatchSubmitter {
         return runId + ":" + stage + ":" + attempt + ":" + model;
     }
 
+    // Part 1 keeps the unsplit id (batches created before the split existed).
+    public static String requestId(UUID runId, String stage, int attempt, String model, int part) {
+        return part <= 1 ? requestId(runId, stage, attempt, model) : requestId(runId, stage, attempt, model) + ":p" + part;
+    }
+
+    // `ids` cut into consecutive parts of at most `max` (one batch job each).
+    public static <T> List<List<T>> split(List<T> ids, int max) {
+        var out = new java.util.ArrayList<List<T>>();
+        int size = Math.max(1, max);
+        for (int i = 0; i < ids.size(); i += size) out.add(ids.subList(i, Math.min(ids.size(), i + size)));
+        return out;
+    }
+
+    static final int PAGE = 100;
+    private static final int ID_PAGE = 1000;
+
     // The QUEUED job of (run, stage, attempt, model) with its requests
     // attached; null when that row already exists (queued by someone else:
     // nothing to submit).
     public KbBatchJob queue(UUID runId, String stage, int attempt, String model, List<String> customIds,
                             String payloadKey) {
+        return queue(runId, stage, attempt, model, 1, customIds, payloadKey);
+    }
+
+    public KbBatchJob queue(UUID runId, String stage, int attempt, String model, int part, List<String> customIds,
+                            String payloadKey) {
         try {
             return tx.execute(s -> {
-                var job = new KbBatchJob(runId, stage, attempt, model, "BATCH", customIds.size(), payloadKey);
-                job.queued(requestId(runId, stage, attempt, model));
+                var job = new KbBatchJob(runId, stage, attempt, model, "BATCH", customIds.size(), payloadKey).part(part);
+                job.queued(requestId(runId, stage, attempt, model, part));
                 var saved = jobs.saveAndFlush(job);
-                requests.findAllById(customIds).forEach(r -> r.submitted(saved.getId()));
+                // Bulk updates: no request (with its params) is loaded.
+                for (int i = 0; i < customIds.size(); i += ID_PAGE) {
+                    requests.markSubmitted(saved.getId(), customIds.subList(i, Math.min(customIds.size(), i + ID_PAGE)));
+                }
                 return saved;
             });
         } catch (DataIntegrityViolationException e) {
@@ -117,7 +141,7 @@ public class KbBatchSubmitter {
         var now = now();
         if (job.getNextAttemptAt() != null && now.isBefore(job.getNextAttemptAt())) return Outcome.WAITING;
         var requestId = job.getDoRequestId() != null ? job.getDoRequestId()
-            : requestId(job.getRunId(), job.getStage(), job.getAttempt(), job.getModel());
+            : requestId(job.getRunId(), job.getStage(), job.getAttempt(), job.getModel(), job.getPart());
         if (job.getSubmitFailures() > 0) {
             // A creation that got no clear answer may have gone through.
             try {
@@ -130,20 +154,18 @@ public class KbBatchSubmitter {
                 log.debug("KB batch list unavailable: {}", e.getMessage());
             }
         }
-        var lines = tx.execute(s -> requests.findByBatchJobId(jobId).stream()
-            .filter(r -> r.getStatus().equals("SUBMITTED"))
-            .map(r -> new LlmLine(r.getCustomId(), r.getParams())).toList());
-        if (lines.isEmpty()) {
+        var ids = tx.execute(s -> requests.submittedIdsOfJob(jobId));
+        if (ids.isEmpty()) {
             tx.executeWithoutResult(s -> jobs.findById(jobId).orElseThrow().finish("FAILED", null, now(),
                 "no requests to submit"));
             return Outcome.FAILED;
         }
         try {
             var submitted = batch.submit(job.getPayloadKey().replace('/', '_'), job.getModel(),
-                router.batchModelId(job.getModel()), lines, requestId);
+                router.batchModelId(job.getModel()), KbPagedLines.of(ids, PAGE, tx, requests), requestId);
             markSubmitted(job, submitted.fileId(), submitted.batchId());
             log.info("KB run {} {} batch {} submitted ({} requests, {})", job.getRunId(), job.getStage(),
-                submitted.batchId(), lines.size(), job.getModel());
+                submitted.batchId(), ids.size(), job.getModel());
             return Outcome.SUBMITTED;
         } catch (LlmApiException e) {
             var kind = DoBatchErrors.classify(e.status(), e.getMessage());
@@ -164,8 +186,7 @@ public class KbBatchSubmitter {
             var error = "DigitalOcean rejected the batch: " + e.getMessage();
             tx.executeWithoutResult(s -> {
                 jobs.findById(jobId).orElseThrow().finish("FAILED", null, now(), error);
-                requests.findByBatchJobId(jobId).stream().filter(r -> r.getStatus().equals("SUBMITTED"))
-                    .forEach(r -> r.failed(error));
+                requests.failSubmittedOfJob(jobId, error);
             });
             log.warn("KB run {} {} batch rejected: {}", job.getRunId(), job.getStage(), e.getMessage());
             return Outcome.FAILED;

@@ -17,7 +17,7 @@ class KbSettingsValidationTest {
 
     final ObjectMapper json = new ObjectMapper();
     final KbSettingsService service = new KbSettingsService(null, null, null,
-        new KbPipelineProperties(false, null, null, null, null, null, null, null, null, null),
+        new KbPipelineProperties(false, null, null, null, null, null, null, null, null, null, null, null, null),
         new KbLlmProperties(null, null, "sync", null, false), null, json, Clock.systemUTC(), null);
 
     @Test
@@ -36,5 +36,13 @@ class KbSettingsValidationTest {
              "weeklyCostLimitUsd":25,"costImpact":{"previous":null},"source":{},"updatedAt":"2026-10-01T00:00:00Z"}""");
         var next = service.applied(json.createObjectNode(), body);
         assertThat(next.toString()).isEqualTo("{\"weeklyCostLimitUsd\":25}");
+    }
+
+    // A stored (or env) budget of 5 trillion is used as at most the ceiling.
+    @Test
+    void runTokenBudgetIsClampedWhenUsed() throws Exception {
+        assertThat(service.merge(json.readTree("{\"runTokenBudget\":5000000000000}")).runTokenBudget())
+            .isEqualTo(KbPipelineProperties.DEFAULT_TOKEN_BUDGET_MAX);
+        assertThat(service.merge(json.readTree("{\"runTokenBudget\":1000}")).runTokenBudget()).isEqualTo(1000);
     }
 }

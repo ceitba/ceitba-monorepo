@@ -32,7 +32,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -69,6 +68,14 @@ public class KbRunEngine {
     static final List<String> LLM_STAGES = List.of("DIGEST", "PLAN", "WRITE", "RETRY");
     static final int MAX_STEPS = 200;
     static final int JSONL_PAGE = 50;
+    // Requests loaded per page wherever a stage's requests are walked (ids
+    // first, then rows in pages that are detached once handled).
+    static final int PAGE = 200;
+    // Restart-loop guard: a RUNNING run resumed by more than MAX_RESUMES
+    // startups inside RESUME_WINDOW, without finishing a stage, is failed.
+    public static final int MAX_RESUMES = 3;
+    public static final java.time.Duration RESUME_WINDOW = java.time.Duration.ofMinutes(30);
+    public static final String RESUME_LOOP_ERROR = "detenida tras reinicios repetidos (posible falta de memoria)";
 
     private final KbRunRepository runs;
     private final KbBatchJobRepository jobs;
@@ -102,6 +109,9 @@ public class KbRunEngine {
     // its carrier, and with the sync workers queued here every carrier was
     // pinned while other workers sat mid-transaction: the pool ran dry.
     private final java.util.concurrent.locks.ReentrantLock recordLock = new java.util.concurrent.locks.ReentrantLock();
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
 
     public KbRunEngine(KbRunRepository runs, KbBatchJobRepository jobs, KbRunRequestRepository requests,
                        KbRunSubjectRepository runSubjects, @Lazy List<KbRunHandler> handlers, KbLlmRouter router,
@@ -146,6 +156,36 @@ public class KbRunEngine {
     // through advance(runId) on the task executor (KbPipelineJob).
     public void advanceActive() {
         for (var id : activeRunIds()) advance(id);
+    }
+
+    // Startup resume of an active run (KbPipelineJob.onStartup). A RUNNING run
+    // (one that was advancing a stage when the process stopped) counts one
+    // resume; more than MAX_RESUMES inside RESUME_WINDOW without a stage
+    // finishing means the stage takes the process down (e.g. out of memory),
+    // so the run is FAILED instead of resumed into another crash. Runs that
+    // wait (WAITING on a batch or the daily quota, BLOCKED) are not counted.
+    // False when the run must not be resumed.
+    public boolean registerResume(UUID runId) {
+        return inTx(() -> {
+            var run = runs.lockById(runId).orElse(null);
+            if (run == null || !run.isActive()) return false;
+            if (!run.getStatus().equals("RUNNING")) return true;
+            runs.countResume(runId, now(), now().minus(RESUME_WINDOW));
+            int n = runs.resumeCount(runId);
+            if (n <= MAX_RESUMES) {
+                log.warn("KB run {} resumed after a restart ({} of {} allowed within {})", runId, n, MAX_RESUMES,
+                    RESUME_WINDOW);
+                return true;
+            }
+            log.error("KB run {} failed: {} startups in {} without finishing {} stage", runId, n, RESUME_WINDOW,
+                run.getStage());
+            run.setError(RESUME_LOOP_ERROR + " (" + run.getStage() + ")");
+            for (var s : runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(runId)) {
+                if (s.isActive()) s.fail(RESUME_LOOP_ERROR);
+            }
+            run.finish("FAILED", now());
+            return false;
+        });
     }
 
     public List<UUID> activeRunIds() {
@@ -208,6 +248,7 @@ public class KbRunEngine {
             boolean stageChanged = !r.getStage().equals(stageBefore);
             boolean ended = !r.isActive() && !statusBefore.equals(r.getStatus());
             if (!stageChanged && !ended) return;
+            if (stageChanged) runs.resetResumes(runId);   // progress: earlier restarts no longer count
             var at = now().toString();
             var logNode = r.getStageLog() == null ? json.createObjectNode() : (ObjectNode) r.getStageLog().deepCopy();
             var prev = logNode.with(stageBefore);
@@ -302,7 +343,7 @@ public class KbRunEngine {
     private boolean llmStage(UUID runId, String stage, boolean dry, KbRunHandler handler) {
         var stageJobs = inTx(() -> jobs.findByRunIdAndStage(runId, stage));
         if (stageJobs.isEmpty()) {
-            int pending = inTx(() -> requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING")).size());
+            long pending = inTx(() -> requests.countByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING")));
             if (pending == 0) {
                 int built = inTx(() -> {
                     var r = runs.lockById(runId).orElseThrow();
@@ -347,14 +388,16 @@ public class KbRunEngine {
         var syncJobs = stageJobs.stream().filter(j -> j.getMode().equals("SYNC")).map(KbBatchJob::getId).toList();
         var leftover = inTx(() -> {
             var ids = new ArrayList<String>();
-            for (var r : requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("SUBMITTED", "PENDING"))) {
-                // Sync already retried empty/truncated answers with double max_tokens.
-                if (syncJobs.contains(r.getBatchJobId()) && emptyOrTruncated(r.getError())) {
-                    r.failed(r.getError());
-                    continue;
+            forPages(requests.idsByRunStageStatus(runId, stage, List.of("SUBMITTED", "PENDING")), rows -> {
+                for (var r : rows) {
+                    // Sync already retried empty/truncated answers with double max_tokens.
+                    if (syncJobs.contains(r.getBatchJobId()) && emptyOrTruncated(r.getError())) {
+                        r.failed(r.getError());
+                        continue;
+                    }
+                    ids.add(r.getCustomId());
                 }
-                ids.add(r.getCustomId());
-            }
+            });
             // Answered but unusable (e.g. a PLAN whose operations were all
             // dropped): sent once more with the second attempt.
             if (maxAttempt < 2) {
@@ -364,18 +407,30 @@ public class KbRunEngine {
         });
         if (!leftover.isEmpty() && maxAttempt < 2) {
             if (handler.costLimited() && blockedByCost(runId, stage, leftover)) return false;
-            inTxVoid(() -> requests.findAllById(leftover).forEach(r -> {
+            inTxVoid(() -> forPages(leftover, rows -> rows.forEach(r -> {
                 if (emptyOrTruncated(r.getError())) r.doubleMaxTokens(SyncLlmExecutor.MAX_TOKENS_CAP);
                 r.setStatus("PENDING");
-            }));
+            })));
             submit(runId, stage, maxAttempt + 1, false);
             return true;
         }
         return whileActive(runId, r -> {
-            requests.findAllById(leftover).forEach(q -> q.failed(q.getError() == null
-                ? "no answer after resubmission" : q.getError()));
+            forPages(leftover, rows -> rows.forEach(q -> q.failed(q.getError() == null
+                ? "no answer after resubmission" : q.getError())));
             handler.after(r, stage);
         });
+    }
+
+    // Walks requests by custom id, PAGE rows at a time: each page is loaded,
+    // handled, flushed and detached before the next, so a stage of any size
+    // costs one page of params in memory. Inside a transaction.
+    void forPages(List<String> ids, java.util.function.Consumer<List<KbRunRequest>> work) {
+        for (int i = 0; i < ids.size(); i += PAGE) {
+            var rows = requests.findAllById(ids.subList(i, Math.min(ids.size(), i + PAGE)));
+            work.accept(rows);
+            em.flush();
+            rows.forEach(em::detach);
+        }
     }
 
     // Runs `work` on the row-locked run if it is still active (a cancel
@@ -407,11 +462,16 @@ public class KbRunEngine {
             var mode = settings.effective().executionMode();
             var spent = costs.spentSince(now().minusDays(7));
             var estimate = BigDecimal.ZERO;
-            var pending = only == null ? requests.findByRunIdAndStageAndStatusIn(runId, stage, List.of("PENDING"))
-                : requests.findAllById(only);
-            for (var r : pending) {
-                estimate = estimate.add(costs.estimate(r.getModel(), router.modeFor(r.getModel(), mode),
-                    r.getEstTokens(), r.getParams().path("max_tokens").asLong(4096)));
+            // Per model, summed in SQL: no request (or its params) is loaded.
+            var perModel = new ArrayList<Object[]>();
+            if (only == null) perModel.addAll(requests.pendingEstimate(runId, stage));
+            else for (int i = 0; i < only.size(); i += 1000) {
+                perModel.addAll(requests.estimateOf(only.subList(i, Math.min(only.size(), i + 1000))));
+            }
+            for (var row : perModel) {
+                var model = (String) row[0];
+                estimate = estimate.add(costs.estimate(model, router.modeFor(model, mode),
+                    ((Number) row[1]).longValue(), ((Number) row[2]).longValue()));
             }
             var total = spent.add(estimate);
             if (total.compareTo(limit) <= 0) return false;
@@ -445,21 +505,34 @@ public class KbRunEngine {
             var model = e.getKey();
             var mode = router.modeFor(model, executionMode);
             var ids = e.getValue();
-            var key = "kb/runs/" + runId + "/" + stage.toLowerCase(Locale.ROOT)
-                + (attempt > 1 ? "-" + attempt : "") + (byModel.size() > 1 ? "-" + n : "") + ".jsonl";
-            storeJsonl(key, ids);
+            var base = "kb/runs/" + runId + "/" + stage.toLowerCase(Locale.ROOT)
+                + (attempt > 1 ? "-" + attempt : "") + (byModel.size() > 1 ? "-" + n : "");
             if (!dry && mode.equals("BATCH")) {
-                // The row first (own transaction, unique per stage/attempt/model), then DO.
-                var queued = submitter.queue(runId, stage, attempt, model, ids, key);
-                if (queued != null) submitter.submitQueued(queued.getId());
+                // At most KB_BATCH_MAX_REQUESTS per batch file: a bigger stage is
+                // several jobs (parts), all queued now; each creation goes through
+                // the quota gate (DO allows few creations per hour) and the ones
+                // refused wait QUEUED for the poller.
+                var parts = KbBatchSubmitter.split(ids, settings.batchMaxRequests());
+                int part = 0;
+                for (var chunk : parts) {
+                    part++;
+                    var key = base + (parts.size() > 1 ? "-p" + part : "") + ".jsonl";
+                    storeJsonl(key, chunk);
+                    // The row first (own transaction, unique per stage/attempt/model/part), then DO.
+                    var queued = submitter.queue(runId, stage, attempt, model, part, chunk, key);
+                    if (queued != null) submitter.submitQueued(queued.getId());
+                }
                 continue;
             }
+            var key = base + ".jsonl";
+            storeJsonl(key, ids);
             var job = inTx(() -> jobs.save(new KbBatchJob(runId, stage, attempt, model, mode, ids.size(), key)));
             if (dry) continue;
-            inTxVoid(() -> {
-                jobs.findById(job.getId()).orElseThrow().submitted(null, null, now());
-                requests.findAllById(ids).forEach(r -> r.submitted(job.getId()));
-            });
+            inTxVoid(() -> jobs.findById(job.getId()).orElseThrow().submitted(null, null, now()));
+            for (int i = 0; i < ids.size(); i += PAGE) {
+                var page = ids.subList(i, Math.min(ids.size(), i + PAGE));
+                inTxVoid(() -> requests.markSubmitted(job.getId(), page));
+            }
             syncJobs.add(job.getId());
         }
         // Every model's sync job of the stage runs at once (one shared pool).
@@ -517,65 +590,119 @@ public class KbRunEngine {
     // runs go WAITING with the reason until pausedUntil.
     private boolean runSyncJobs(List<UUID> jobIds) {
         Map<UUID, KbBatchJob> byId = new LinkedHashMap<>();
-        Map<String, UUID> jobOf = new java.util.HashMap<>();
-        var lines = new ArrayList<LlmLine>();
+        Map<String, UUID> jobOf = new java.util.concurrent.ConcurrentHashMap<>();
+        var todo = new ArrayList<String>();   // ids only; params are paged in as workers free up
         Map<UUID, Integer> pendingCount = new java.util.HashMap<>();
         inTxVoid(() -> {
             for (var id : jobIds) {
-                var job = jobs.findById(id).orElseThrow();
-                byId.put(id, job);
-                int c = 0;
-                for (var r : requests.findByBatchJobId(id)) {
-                    if (!r.getStatus().equals("SUBMITTED") || r.getCompletedAt() != null) continue;
-                    lines.add(new LlmLine(r.getCustomId(), r.getParams()));
-                    jobOf.put(r.getCustomId(), id);
-                    c++;
-                }
-                pendingCount.put(id, c);
+                byId.put(id, jobs.findById(id).orElseThrow());
+                var ids = requests.unansweredIdsOfJob(id);
+                ids.forEach(c -> jobOf.put(c, id));
+                todo.addAll(ids);
+                pendingCount.put(id, ids.size());
             }
         });
-        Map<UUID, StringBuffer> outputs = new java.util.concurrent.ConcurrentHashMap<>();
-        var runIds = byId.values().stream().map(KbBatchJob::getRunId).distinct().toList();
-        boolean paused = sync.run(lines, (SyncLlmExecutor.Outcome outcome) -> {
-            var result = outcome.result();
-            var job = byId.get(jobOf.get(result.customId()));
-            recordLock.lock();
+        Map<UUID, OutFile> outputs = new java.util.concurrent.ConcurrentHashMap<>();
+        try {
+            var runIds = byId.values().stream().map(KbBatchJob::getRunId).distinct().toList();
+            // At most ~2x the concurrency of requests (with their params) in memory.
+            var lines = KbPagedLines.of(todo, Math.max(10, sync.concurrency() * 2), tx, requests);
+            boolean paused = sync.run(lines, (SyncLlmExecutor.Outcome outcome) -> {
+                var result = outcome.result();
+                var job = byId.get(jobOf.get(result.customId()));
+                recordLock.lock();
+                try {
+                    inTxVoid(() -> record(job.getRunId(), job.getId(), "SYNC", result, outcome));
+                    // The audit copy is streamed to a temp file, not kept in memory.
+                    outputs.computeIfAbsent(job.getId(), k -> OutFile.open()).write(outputLine(result));
+                } finally {
+                    recordLock.unlock();
+                }
+            }, cancelCheck(runIds));
+            var pausedRuns = new java.util.HashSet<UUID>();
+            for (var job : byId.values()) {
+                var out = outputs.get(job.getId());
+                boolean unanswered = paused && inTx(() -> requests.countUnansweredOfJob(job.getId()) > 0);
+                String outKey = null;
+                if (out != null && out.count > 0) {
+                    out.close();
+                    outKey = job.getPayloadKey().replace(".jsonl", "-out"
+                        + (unanswered ? "-partial-" + now().toEpochSecond()
+                            : pendingCount.get(job.getId()) < job.getRequestCount() ? "-resumed" : "") + ".jsonl");
+                    putAuditFile(outKey, out.path);
+                }
+                if (unanswered) {
+                    pausedRuns.add(job.getRunId());
+                    continue;
+                }
+                var key = outKey;
+                inTxVoid(() -> {
+                    var j = jobs.findById(job.getId()).orElseThrow();
+                    if (j.getStatus().equals("SUBMITTED")) j.finish("COMPLETED", key, now(), null);
+                });
+                log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(),
+                    pendingCount.get(job.getId()), job.getModel());
+            }
+            for (var runId : runIds) {
+                if (!pausedRuns.contains(runId)) inTxVoid(() -> runs.setStatusIf(runId, "RUNNING", MOVING));
+            }
+            for (var runId : pausedRuns) pauseForQuota(runId);
+            return !pausedRuns.isEmpty();
+        } finally {
+            outputs.values().forEach(OutFile::discard);
+        }
+    }
+
+    // Output lines of a sync job, appended to a temp file (callers hold recordLock).
+    private static final class OutFile {
+        final java.nio.file.Path path;
+        final java.io.BufferedWriter writer;
+        long count;
+
+        private OutFile(java.nio.file.Path path, java.io.BufferedWriter writer) {
+            this.path = path;
+            this.writer = writer;
+        }
+
+        static OutFile open() {
             try {
-                inTxVoid(() -> record(job.getRunId(), job.getId(), "SYNC", result, outcome));
-            } finally {
-                recordLock.unlock();
+                var p = java.nio.file.Files.createTempFile("kb-sync-out-", ".jsonl");
+                return new OutFile(p, java.nio.file.Files.newBufferedWriter(p, StandardCharsets.UTF_8));
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
             }
-            outputs.computeIfAbsent(job.getId(), k -> new StringBuffer()).append(outputLine(result)).append('\n');
-        }, cancelCheck(runIds));
-        var pausedRuns = new java.util.HashSet<UUID>();
-        for (var job : byId.values()) {
-            var out = outputs.get(job.getId());
-            boolean unanswered = paused && inTx(() -> requests.findByBatchJobId(job.getId()).stream()
-                .anyMatch(r -> r.getStatus().equals("SUBMITTED") && r.getCompletedAt() == null));
-            String outKey = null;
-            if (out != null && out.length() > 0) {
-                outKey = job.getPayloadKey().replace(".jsonl", "-out"
-                    + (unanswered ? "-partial-" + now().toEpochSecond()
-                        : pendingCount.get(job.getId()) < job.getRequestCount() ? "-resumed" : "") + ".jsonl");
-                putAudit(outKey, out.toString().getBytes(StandardCharsets.UTF_8));
-            }
-            if (unanswered) {
-                pausedRuns.add(job.getRunId());
-                continue;
-            }
-            var key = outKey;
-            inTxVoid(() -> {
-                var j = jobs.findById(job.getId()).orElseThrow();
-                if (j.getStatus().equals("SUBMITTED")) j.finish("COMPLETED", key, now(), null);
-            });
-            log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(),
-                pendingCount.get(job.getId()), job.getModel());
         }
-        for (var runId : runIds) {
-            if (!pausedRuns.contains(runId)) inTxVoid(() -> runs.setStatusIf(runId, "RUNNING", MOVING));
+
+        void write(ObjectNode line) {
+            try {
+                writer.write(line.toString());
+                writer.write('\n');
+                count++;
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
         }
-        for (var runId : pausedRuns) pauseForQuota(runId);
-        return !pausedRuns.isEmpty();
+
+        void close() {
+            try {
+                writer.close();
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }
+
+        void discard() {
+            try {
+                writer.close();
+            } catch (java.io.IOException ignored) {
+                // closing a discarded file
+            }
+            try {
+                java.nio.file.Files.deleteIfExists(path);
+            } catch (java.io.IOException ignored) {
+                // best effort
+            }
+        }
     }
 
     // Daily token quota spent: no reply until pausedUntil (every 30 min the
@@ -645,50 +772,115 @@ public class KbRunEngine {
 
     // BATCH: a finished batch, recorded, then its audit copy stored (best
     // effort: a storage hiccup must not lose results that were paid for).
+    // The output and error files go to temp files and are read line by line:
+    // results are recorded RECORD_PAGE at a time, each page in its own
+    // transaction (idempotent: an answered request is skipped on a retry).
+    static final int RECORD_PAGE = 100;
+
     private void collectBatch(UUID jobId, LlmBatchClient.BatchInfo info) {
         var job = inTx(() -> jobs.findById(jobId).orElseThrow());
-        var collected = batch.collect(job.getDoBatchId(), info.status().equals("completed"));
-        var output = withoutReasoning(collected.output());
-        var errors = withoutReasoning(collected.errors());
-        var key = output == null ? null : job.getPayloadKey().replace(".jsonl", "-out.jsonl");
-        var status = switch (info.status()) {
-            case "completed" -> "COMPLETED";
-            case "cancelled" -> "CANCELLED";
-            default -> "FAILED";
-        };
-        var error = status.equals("COMPLETED") ? null : batchError(info);
-        // A batch refused as a whole (e.g. DO's JSONL model validation) is not
-        // resubmitted: the same file would fail the same way.
-        boolean permanent = status.equals("FAILED") && info.errorMessage() != null
-            && DoBatchErrors.classifyFailure(info.errorMessage()) != DoBatchErrors.Kind.RATE_LIMITED
-            && collected.results().isEmpty();
-        inTxVoid(() -> {
-            var run = runs.lockById(job.getRunId()).orElseThrow();   // first: same lock order as cancel
-            for (var r : requests.findByBatchJobId(jobId)) {
-                var res = collected.results().get(r.getCustomId());
-                if (res != null) record(job.getRunId(), jobId, "BATCH", res, null);
-                else if (error != null && r.getStatus().equals("SUBMITTED")) {
-                    if (permanent) r.failed(error);
-                    else r.setError(error);
+        var files = batch.collectToFiles(job.getDoBatchId(), info.status().equals("completed"));
+        try {
+            var key = files.output() == null ? null : job.getPayloadKey().replace(".jsonl", "-out.jsonl");
+            var status = switch (info.status()) {
+                case "completed" -> "COMPLETED";
+                case "cancelled" -> "CANCELLED";
+                default -> "FAILED";
+            };
+            var error = status.equals("COMPLETED") ? null : batchError(info);
+            // A batch refused as a whole (e.g. DO's JSONL model validation) is not
+            // resubmitted: the same file would fail the same way.
+            boolean permanent = status.equals("FAILED") && info.errorMessage() != null
+                && DoBatchErrors.classifyFailure(info.errorMessage()) != DoBatchErrors.Kind.RATE_LIMITED
+                && !hasResults(files);
+            recordResults(job, files.errors());
+            recordResults(job, files.output());   // the output wins over the error file
+            inTxVoid(() -> {
+                var run = runs.lockById(job.getRunId()).orElseThrow();   // first: same lock order as cancel
+                if (error != null) {
+                    forPages(requests.unansweredIdsOfJob(jobId), rows -> rows.forEach(r -> {
+                        if (permanent) r.failed(error);
+                        else r.setError(error);
+                    }));
                 }
-            }
-            jobs.findById(jobId).orElseThrow().finish(status, key, now(), error);
-            if (run.isActive()) {
-                run.setStatus("RUNNING");
-                if (permanent) run.setError(error + " (" + job.getStage() + ", " + job.getModel() + ")");
-            }
-        });
-        if (key != null) putAudit(key, output);
-        if (errors != null) putAudit(job.getPayloadKey().replace(".jsonl", "-err.jsonl"), errors);
-        log.info("KB run {} {} batch {} {}{}", job.getRunId(), job.getStage(), info.id(), info.status(),
-            error == null ? "" : ": " + error);
+                jobs.findById(jobId).orElseThrow().finish(status, key, now(), error);
+                if (run.isActive()) {
+                    run.setStatus("RUNNING");
+                    if (permanent) run.setError(error + " (" + job.getStage() + ", " + job.getModel() + ")");
+                }
+            });
+            if (key != null) putAuditFile(key, files.output());
+            if (files.errors() != null) putAuditFile(job.getPayloadKey().replace(".jsonl", "-err.jsonl"), files.errors());
+            log.info("KB run {} {} batch {} {}{}", job.getRunId(), job.getStage(), info.id(), info.status(),
+                error == null ? "" : ": " + error);
+        } finally {
+            files.delete();
+        }
     }
 
-    private void putAudit(String key, byte[] bytes) {
+    private boolean hasResults(BatchLlmExecutor.CollectedFiles files) {
+        var any = new boolean[1];
+        for (var f : new java.nio.file.Path[] {files.errors(), files.output()}) {
+            if (f != null && !any[0]) LlmOutputParser.parse(f, json, r -> any[0] = true);
+        }
+        return any[0];
+    }
+
+    private void recordResults(KbBatchJob job, java.nio.file.Path file) {
+        if (file == null) return;
+        var page = new ArrayList<LlmOutputParser.LlmResult>(RECORD_PAGE);
+        LlmOutputParser.parse(file, json, r -> {
+            page.add(r);
+            if (page.size() >= RECORD_PAGE) recordPage(job, page);
+        });
+        recordPage(job, page);
+    }
+
+    private void recordPage(KbBatchJob job, List<LlmOutputParser.LlmResult> page) {
+        if (page.isEmpty()) return;
+        var results = List.copyOf(page);
+        page.clear();
+        inTxVoid(() -> {
+            runs.lockById(job.getRunId()).orElseThrow();   // first: same lock order as cancel
+            for (var res : results) record(job.getRunId(), job.getId(), "BATCH", res, null);
+        });
+    }
+
+    // Stores a file as an audit copy with the reasoning_content of reasoning
+    // models removed, streamed line by line (never raises: results are already recorded).
+    private void putAuditFile(String key, java.nio.file.Path file) {
+        java.nio.file.Path clean = null;
         try {
-            storage.put(key, "application/x-ndjson", new ByteArrayInputStream(bytes), bytes.length);
-        } catch (RuntimeException e) {
+            clean = java.nio.file.Files.createTempFile("kb-audit-", ".jsonl");
+            try (var in = java.nio.file.Files.newBufferedReader(file, StandardCharsets.UTF_8);
+                 var out = java.nio.file.Files.newBufferedWriter(clean, StandardCharsets.UTF_8)) {
+                String line;
+                while ((line = in.readLine()) != null) {
+                    if (line.isBlank()) continue;
+                    if (line.contains("reasoning_content")) {
+                        try {
+                            var node = json.readTree(line);
+                            stripReasoning(node);
+                            line = node.toString();
+                        } catch (Exception e) {
+                            // keep the line as it came
+                        }
+                    }
+                    out.write(line);
+                    out.write('\n');
+                }
+            }
+            storage.putFile(key, "application/x-ndjson", clean);
+        } catch (java.io.IOException | RuntimeException e) {
             log.warn("KB: storing the audit copy {} failed (results are recorded): {}", key, e.getMessage());
+        } finally {
+            if (clean != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(clean);
+                } catch (java.io.IOException ignored) {
+                    // best effort
+                }
+            }
         }
     }
 
@@ -716,28 +908,6 @@ public class KbRunEngine {
         return error != null && (error.startsWith("EMPTY_TOOL") || error.startsWith("TRUNCATED"));
     }
 
-    // Removes reasoning_content (reasoning models' thoughts) from output
-    // lines before they are stored.
-    private byte[] withoutReasoning(byte[] jsonl) {
-        if (jsonl == null) return null;
-        var sb = new StringBuilder();
-        for (var line : new String(jsonl, StandardCharsets.UTF_8).split("\n")) {
-            if (line.isBlank()) continue;
-            if (!line.contains("reasoning_content")) {
-                sb.append(line).append('\n');
-                continue;
-            }
-            try {
-                var node = json.readTree(line);
-                stripReasoning(node);
-                sb.append(node).append('\n');
-            } catch (Exception e) {
-                sb.append(line).append('\n');
-            }
-        }
-        return sb.toString().getBytes(StandardCharsets.UTF_8);
-    }
-
     private static void stripReasoning(JsonNode node) {
         if (node instanceof ObjectNode o) {
             o.remove("reasoning_content");
@@ -756,6 +926,7 @@ public class KbRunEngine {
         var run = runs.lockById(runId).orElseThrow();
         var r = requests.findById(res.customId()).orElse(null);
         if (r == null || r.getStatus().equals("DONE")) return;
+        if (r.getBatchJobId() != null && !r.getBatchJobId().equals(jobId)) return;   // an older job's late answer
         r.answered(now(), outcome == null ? null : outcome.latencyMs());
         var handler = handler(run);
         if (res.ok()) {

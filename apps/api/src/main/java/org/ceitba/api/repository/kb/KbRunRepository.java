@@ -54,4 +54,27 @@ public interface KbRunRepository extends JpaRepository<KbRun, UUID> {
     List<KbRun> findByStatusInAndTriggerNot(Collection<String> statuses, String trigger);
 
     List<KbRun> findByStatusInAndTrigger(Collection<String> statuses, String trigger);
+
+    // Restart-loop guard (V49): counts one startup resume. A new window starts
+    // when none is open or the last one began before `cutoff`.
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(value = """
+        UPDATE wiki.kb_run SET
+          resume_count = CASE WHEN resume_window_start IS NULL OR resume_window_start < :cutoff THEN 1 ELSE resume_count + 1 END,
+          resume_window_start = CASE WHEN resume_window_start IS NULL OR resume_window_start < :cutoff THEN :now ELSE resume_window_start END
+        WHERE id = :id
+        """, nativeQuery = true)
+    int countResume(@org.springframework.data.repository.query.Param("id") UUID id,
+                    @org.springframework.data.repository.query.Param("now") java.time.OffsetDateTime now,
+                    @org.springframework.data.repository.query.Param("cutoff") java.time.OffsetDateTime cutoff);
+
+    @org.springframework.data.jpa.repository.Query(value = "SELECT resume_count FROM wiki.kb_run WHERE id = :id", nativeQuery = true)
+    int resumeCount(@org.springframework.data.repository.query.Param("id") UUID id);
+
+    // A stage finished: the run is making progress, forget earlier resumes.
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(value = """
+        UPDATE wiki.kb_run SET resume_count = 0, resume_window_start = NULL WHERE id = :id AND resume_count <> 0
+        """, nativeQuery = true)
+    int resetResumes(@org.springframework.data.repository.query.Param("id") UUID id);
 }

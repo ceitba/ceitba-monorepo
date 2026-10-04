@@ -67,6 +67,16 @@ public class KbSettingsService {
         this.clock = clock;
     }
 
+    // Hard caps from the environment (never STAFF-settable): a stage builds
+    // at most this many requests; a batch file carries at most this many.
+    public int maxRequestsPerStage() {
+        return env.maxRequestsPerStage();
+    }
+
+    public int batchMaxRequests() {
+        return env.batchMaxRequests();
+    }
+
     @Transactional(readOnly = true)
     public KbEffectiveSettings effective() {
         return merge(stored());
@@ -230,7 +240,10 @@ public class KbSettingsService {
             text(s, "executionMode", llmEnv.executionMode()),
             s.has("enabled") ? s.get("enabled").asBoolean() : env.enabled(),
             cron6(text(s, "cron", env.cron())),
-            s.has("runTokenBudget") ? s.get("runTokenBudget").asLong() : env.runTokenBudget(),
+            // Clamped on use too: a value saved before the ceiling existed
+            // (a run once started with 5 trillion) can never exceed it.
+            Math.min(env.runTokenBudgetMax(),
+                s.has("runTokenBudget") ? s.get("runTokenBudget").asLong() : env.runTokenBudget()),
             s.hasNonNull("weeklyCostLimitUsd") ? s.get("weeklyCostLimitUsd").decimalValue() : null,
             s.has("retryRejected") ? s.get("retryRejected").asBoolean() : env.retryRejected(),
             s.has("subjectOverrides") ? s.get("subjectOverrides") : json.createObjectNode(),
@@ -317,6 +330,10 @@ public class KbSettingsService {
         }
         if (merged.runTokenBudget() <= 0) {
             throw new ValidationException("runTokenBudget", merged.runTokenBudget(), "must be positive");
+        }
+        if (body != null && body.hasNonNull("runTokenBudget") && body.get("runTokenBudget").asLong() > env.runTokenBudgetMax()) {
+            throw new ValidationException("runTokenBudget", body.get("runTokenBudget"),
+                "must be at most " + env.runTokenBudgetMax() + " (KB_RUN_TOKEN_BUDGET_MAX)");
         }
         if (merged.weeklyCostLimitUsd() != null && merged.weeklyCostLimitUsd().compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidationException("weeklyCostLimitUsd", merged.weeklyCostLimitUsd(), "must be >= 0");

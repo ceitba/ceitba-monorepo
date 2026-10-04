@@ -14,7 +14,7 @@ import java.util.UUID;
 // One DO batch of a run stage (V35). status: DRY (built, not submitted),
 // QUEUED (row created, DO not called yet or creation rate-limited: retried at
 // nextAttemptAt; V38), SUBMITTED, COMPLETED, FAILED, CANCELLED. One row per
-// (run, stage, attempt, model): the unique index makes submission idempotent.
+// (run, stage, attempt, model, part): the unique index makes submission idempotent.
 @Entity
 @Table(schema = "wiki", name = "kb_batch_job")
 public class KbBatchJob {
@@ -100,6 +100,10 @@ public class KbBatchJob {
     @Column(name = "do_request_id", length = 255)
     private String doRequestId;
 
+    // 1..n: a stage bigger than KB_BATCH_MAX_REQUESTS is split into parts (V49).
+    @Column(nullable = false)
+    private int part = 1;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -116,6 +120,12 @@ public class KbBatchJob {
         this.requestCount = requestCount;
         this.payloadKey = payloadKey;
         this.status = "DRY";
+    }
+
+    public int getPart() { return part; }
+    public KbBatchJob part(int part) {
+        this.part = part;
+        return this;
     }
 
     public UUID getId() { return id; }

@@ -177,6 +177,17 @@ Before submitting each stage, estimate input tokens (chars/3.5) and enforce `KB_
 prioritized by change size (added + changed chars, then removed count), and the ones that don't fit are deferred, staying
 dirty for next week. Actual usage from the results is recorded per run, per stage and per subject.
 
+Hard caps, independent of the budget (a staff run once saved `runTokenBudget` = 5e12 and built 23,586 DIGEST requests,
+which took the API down):
+- `KB_RUN_TOKEN_BUDGET_MAX` (50,000,000): ceiling of `runTokenBudget`; PUT /settings refuses more and the value in use
+  is clamped to it (a larger one already stored too).
+- `KB_RUN_MAX_REQUESTS_PER_STAGE` (5,000): a stage never builds more requests; a subject that does not fit is deferred
+  (like a budget deferral) and stays dirty for the next run. A single subject needing more than the cap is never built:
+  raise the cap or split its corpus.
+- `KB_BATCH_MAX_REQUESTS` (5,000; DO allows 50k): a stage with more requests for one model becomes several batch jobs
+  (`kb_batch_job.part` 1..n, request id `<run>:<stage>:<attempt>:<model>[:pN]`, payload `...-pN.jsonl`). All parts are
+  queued at once and each creation goes through the quota gate (DO: 5 creations/hour), waiting QUEUED when refused.
+
 ## Prompts
 
 Versioned resources in `src/main/resources/kb/prompts/` (`digest.v1.md`, `plan.v1.md`, `write.v1.md`, `retry.v1.md`),
@@ -312,9 +323,28 @@ with `OutOfMemoryError` when it did).
   deferred. A stage therefore holds at most one page of raw text plus the run's budget worth of requests.
 - **PLAN/WRITE/RETRY** read file names via a projection; WRITE reads raw text only for the changed files the
   subject's operations cite. Built requests are detached after each subject.
-- **Submit:** the stage JSONL is streamed to a temp file 50 requests per transaction, then uploaded.
+- **Submit:** the stage JSONL is streamed to a temp file 50 requests per transaction, then uploaded. The batch file is
+  written to a temp file from a paged iterator (100 requests per transaction) and uploaded from disk; requests are
+  marked SUBMITTED with bulk updates (no entity loaded).
+- **Executing a stage never loads it whole.** Ids first (`KbRunRequestRepository.idsBy...`), then rows in pages of 200
+  that are flushed and detached (`KbRunEngine.forPages`), or count/aggregate queries:
+  - SYNC (`runSyncJobs`): `SyncLlmExecutor.run(Iterator)` pulls the next request (a page of `2 x concurrency` params is
+    read from the DB at a time) only when a worker slot is free; the output audit copy is streamed to a temp file.
+  - BATCH (`collectBatch`): output and error files are downloaded to temp files and parsed line by line; results are
+    recorded 100 per transaction (idempotent: answered requests are skipped on a retry); the audit copy is stripped of
+    `reasoning_content` line by line and stored from a temp file.
+  - the cost check sums `est_tokens` and `max_tokens` per model in SQL (`pendingEstimate`); leftover/retry handling and
+    `after()` page by id (DIGEST stored in id order, a file's chunks being consecutive; PLAN/WRITE/RETRY one subject's
+    rows at a time).
+  - Still per run (not per request): the run's subjects with their inputs/drafts. Bounded by the subject count.
 - **Dry runs** go through the same chunked build (their JSONL is what staff inspect), so their memory is bounded the
   same way; the preview/forecast estimates never touch the texts.
 - **PDF extraction** loads PDFs with a temp-file-only stream cache and keeps at most `MAX_TEXT_CHARS` (1M) of text.
+- **Restart-loop guard:** at startup `KbPipelineJob.onStartup` resumes each active run through
+  `KbRunEngine.registerResume`. A RUNNING run (one that was advancing a stage when the process stopped; WAITING and
+  BLOCKED runs are not counted) increments `kb_run.resume_count` inside a 30-minute window
+  (`resume_window_start`, V49); the counter resets when the run finishes a stage. After `MAX_RESUMES` (3) resumes in
+  the window the next startup marks the run FAILED ("detenida tras reinicios repetidos (posible falta de memoria)")
+  and its subjects failed, instead of resuming into another crash. The periodic sweep does not count.
 - **Heap:** the API container is limited to 2G and runs with `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError`
   (`JAVA_TOOL_OPTIONS` in `docker-compose.yml`): ~1.5 GB of heap, and an OOM restarts the container.

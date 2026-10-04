@@ -178,6 +178,9 @@ services:
       KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
       KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
       KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
+      KB_RUN_TOKEN_BUDGET_MAX: ${KB_RUN_TOKEN_BUDGET_MAX:-50000000}
+      KB_RUN_MAX_REQUESTS_PER_STAGE: ${KB_RUN_MAX_REQUESTS_PER_STAGE:-5000}
+      KB_BATCH_MAX_REQUESTS: ${KB_BATCH_MAX_REQUESTS:-5000}
       # Same heap setup as prod (docker-compose.yml): 75% of the 2G limit.
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
     deploy:

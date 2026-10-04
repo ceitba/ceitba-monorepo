@@ -18,7 +18,7 @@ and require the STAFF role.
 | `executionMode` | `auto` | `auto`, `batch` or `sync`; `batch` is rejected for models without batch support |
 | `enabled` | `KB_PIPELINE_ENABLED` | weekly schedule on or off |
 | `cron` | `KB_PIPELINE_CRON` (`0 0 3 * * SUN`) | Spring cron, **6 fields with seconds first**, America/Argentina/Buenos_Aires. A standard 5-field expression is accepted on PUT and stored/returned with `0 ` prepended (`0 3 * * SUN` → `0 0 3 * * SUN`) |
-| `runTokenBudget` | `KB_RUN_TOKEN_BUDGET` | |
+| `runTokenBudget` | `KB_RUN_TOKEN_BUDGET` | at most `KB_RUN_TOKEN_BUDGET_MAX` (50M): PUT refuses more, a larger stored value is clamped when used |
 | `weeklyCostLimitUsd` | null | hard stop: no stage is submitted while the pipeline's recorded cost of the last 7 days plus that stage's estimate exceeds this |
 | `retryRejected` | `KB_RETRY_REJECTED` | |
 | `subjectOverrides` | `{}` | `{ "<subjectId>": { modelWrite?, modelPlan?, paused?: bool } }` |

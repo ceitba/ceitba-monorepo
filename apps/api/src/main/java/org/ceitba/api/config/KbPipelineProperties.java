@@ -14,6 +14,11 @@ import java.time.Duration;
 //   KB_MODEL_DIGEST=glm-5.3-flash, KB_MODEL_PLAN=glm-5.3, KB_MODEL_WRITE=glm-5.3,
 //   KB_MODEL_RETRY=(write model)
 //   KB_RUN_TOKEN_BUDGET=3000000      estimated input tokens per run
+//   KB_RUN_TOKEN_BUDGET_MAX=50000000 hard ceiling of runTokenBudget (env and STAFF setting)
+//   KB_RUN_MAX_REQUESTS_PER_STAGE=5000 requests a stage builds at most; the
+//                                    remaining subjects are deferred to the next run
+//   KB_BATCH_MAX_REQUESTS=5000       requests per DO batch file; a bigger stage
+//                                    becomes several batch jobs (DO allows 50k)
 //   KB_RETRY_REJECTED=true           one RETRY round for rejected pages
 //   KB_PIPELINE_BACKGROUND=true      poller, minute tick and async advance
 //                                    (tests turn it off and drive the engine)
@@ -28,8 +33,14 @@ public record KbPipelineProperties(
     String modelRetry,
     Long runTokenBudget,
     Boolean retryRejected,
-    Boolean background
+    Boolean background,
+    Long runTokenBudgetMax,
+    Integer maxRequestsPerStage,
+    Integer batchMaxRequests
 ) {
+    public static final long DEFAULT_TOKEN_BUDGET_MAX = 50_000_000L;
+    public static final int DEFAULT_MAX_REQUESTS = 5000;
+
     public KbPipelineProperties {
         cron = blank(cron) ? "0 0 3 * * SUN" : cron.trim();
         pollInterval = pollInterval == null || pollInterval.isZero() ? Duration.ofMinutes(10) : pollInterval;
@@ -37,7 +48,10 @@ public record KbPipelineProperties(
         modelPlan = blank(modelPlan) ? "glm-5.3" : modelPlan.trim();
         modelWrite = blank(modelWrite) ? "glm-5.3" : modelWrite.trim();
         modelRetry = blank(modelRetry) ? modelWrite : modelRetry.trim();
-        runTokenBudget = runTokenBudget == null || runTokenBudget <= 0 ? 3_000_000L : runTokenBudget;
+        runTokenBudgetMax = runTokenBudgetMax == null || runTokenBudgetMax <= 0 ? DEFAULT_TOKEN_BUDGET_MAX : runTokenBudgetMax;
+        runTokenBudget = Math.min(runTokenBudgetMax, runTokenBudget == null || runTokenBudget <= 0 ? 3_000_000L : runTokenBudget);
+        maxRequestsPerStage = maxRequestsPerStage == null || maxRequestsPerStage <= 0 ? DEFAULT_MAX_REQUESTS : maxRequestsPerStage;
+        batchMaxRequests = batchMaxRequests == null || batchMaxRequests <= 0 ? DEFAULT_MAX_REQUESTS : batchMaxRequests;
         retryRejected = retryRejected == null || retryRejected;
         background = background == null || background;
     }

@@ -71,6 +71,22 @@ public class DoBatchClient implements LlmBatchClient {
     }
 
     @Override
+    public void upload(String uploadUrl, java.nio.file.Path file) {
+        try {
+            var req = HttpRequest.newBuilder(URI.create(uploadUrl))
+                .timeout(Duration.ofMinutes(5))
+                .PUT(HttpRequest.BodyPublishers.ofFile(file))
+                .build();
+            var res = send(req);
+            if (res.statusCode() / 100 != 2) {
+                throw new LlmApiException(res.statusCode(), "Upload failed: " + abbreviate(new String(res.body())));
+            }
+        } catch (java.io.FileNotFoundException e) {
+            throw new LlmApiException(0, "Reading " + file + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public BatchInfo createBatch(String fileId, String requestId, String provider, String endpoint) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("file_id", fileId);
@@ -120,6 +136,20 @@ public class DoBatchClient implements LlmBatchClient {
         var res = send(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofMinutes(5)).GET().build());
         if (res.statusCode() / 100 != 2) throw new LlmApiException(res.statusCode(), "Download failed");
         return res.body();
+    }
+
+    @Override
+    public void downloadTo(String url, java.nio.file.Path file) {
+        try {
+            var res = http.send(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofMinutes(5)).GET().build(),
+                HttpResponse.BodyHandlers.ofFile(file));
+            if (res.statusCode() / 100 != 2) throw new LlmApiException(res.statusCode(), "Download failed");
+        } catch (IOException e) {
+            throw new LlmApiException(0, "GET download: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new LlmApiException(0, "Interrupted");
+        }
     }
 
     @Override
