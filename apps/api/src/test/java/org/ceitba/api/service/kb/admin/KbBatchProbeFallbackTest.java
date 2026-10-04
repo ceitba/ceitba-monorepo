@@ -129,15 +129,16 @@ class KbBatchProbeFallbackTest {
         catalog.probe(LUNA, "batch");
         var p = luna().probeIn("batch");
         assertThat(p.path("pending").asBoolean()).isTrue();
-        assertThat(p.path("retryAt").asText()).isEqualTo("2026-10-03T06:31Z");
-        assertThat(p.path("error").asText()).startsWith("DigitalOcean limitó la creación de lotes; reintento a las 03:31");
+        // batch_creations_per_hour: a refused attempt counts too, so a full hour.
+        assertThat(p.path("retryAt").asText()).isEqualTo("2026-10-03T07:30Z");
+        assertThat(p.path("error").asText()).startsWith("DigitalOcean limitó la creación de lotes; reintento a las 04:30");
         assertThat(luna().isBatchSupported()).isTrue();
 
         catalog.probe(LUNA, "batch");          // already pending: not submitted again
         catalog.refreshPendingProbes();        // not due yet
         assertThat(fake.createCalls()).isEqualTo(1);
 
-        now = now.plusSeconds(60);
+        now = now.plusSeconds(3600);
         catalog.refreshPendingProbes();        // due: submitted
         assertThat(fake.createCalls()).isEqualTo(2);
         assertThat(luna().probeIn("batch").hasNonNull("batchId")).isTrue();

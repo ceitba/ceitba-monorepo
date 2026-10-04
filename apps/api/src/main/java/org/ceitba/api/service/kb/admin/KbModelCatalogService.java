@@ -365,7 +365,9 @@ public class KbModelCatalogService {
             switch (kind) {
                 case RATE_LIMITED, TRANSIENT -> {
                     var slot = e instanceof org.ceitba.api.external.llm.DoBatchSlotException x ? x : null;
-                    var at = slot != null ? slot.retryAt() : now.plus(KbBatchSubmitter.backoff(retries + 1));
+                    var hourly = String.valueOf(e.getMessage()).contains("batch_creations_per_hour");
+                    var at = slot != null ? slot.retryAt()
+                        : now.plus(hourly ? java.time.Duration.ofMinutes(60) : KbBatchSubmitter.backoff(retries + 1));
                     probe.put("pending", true);
                     probe.put("retryAt", at.toString());
                     probe.put("retries", retries + 1);
