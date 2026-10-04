@@ -45,6 +45,8 @@ public class KbRunSubject {
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "jsonb", nullable = false) private JsonNode accepted;
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "jsonb", nullable = false) private JsonNode rejected;
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "jsonb", nullable = false) private JsonNode deleted;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "jsonb", nullable = false)
+    private JsonNode skipped = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode();
 
     @Column(name = "tokens_in", nullable = false)
     private long tokensIn;
@@ -106,6 +108,14 @@ public class KbRunSubject {
         this.error = error;
     }
     public void setError(String error) { this.error = error; }
+    public JsonNode getSkipped() { return skipped; }
+    // Files without a digest, dropped from this run's inputs (they stay pending).
+    public void skip(JsonNode skipped, JsonNode inputs, JsonNode added, JsonNode changed) {
+        this.skipped = skipped;
+        this.inputs = inputs;
+        this.added = added;
+        this.changed = changed;
+    }
     public void setOperations(JsonNode operations) { this.operations = operations; }
     public void setDrafts(JsonNode drafts) { this.drafts = drafts; }
     public void setOutcome(JsonNode accepted, JsonNode rejected, JsonNode deleted) {

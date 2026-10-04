@@ -19,6 +19,8 @@ import java.time.Duration;
 //                                    remaining subjects are deferred to the next run
 //   KB_BATCH_MAX_REQUESTS=5000       requests per DO batch file; a bigger stage
 //                                    becomes several batch jobs (DO allows 50k)
+//   KB_DIGEST_MAX_MISSING_RATIO=0.2  a subject fails when more than this share of its
+//                                    added/changed files has no digest (else they are skipped)
 //   KB_RETRY_REJECTED=true           one RETRY round for rejected pages
 //   KB_PIPELINE_BACKGROUND=true      poller, minute tick and async advance
 //                                    (tests turn it off and drive the engine)
@@ -36,7 +38,8 @@ public record KbPipelineProperties(
     Boolean background,
     Long runTokenBudgetMax,
     Integer maxRequestsPerStage,
-    Integer batchMaxRequests
+    Integer batchMaxRequests,
+    Double digestMaxMissingRatio
 ) {
     public static final long DEFAULT_TOKEN_BUDGET_MAX = 50_000_000L;
     public static final int DEFAULT_MAX_REQUESTS = 5000;
@@ -52,6 +55,8 @@ public record KbPipelineProperties(
         runTokenBudget = Math.min(runTokenBudgetMax, runTokenBudget == null || runTokenBudget <= 0 ? 3_000_000L : runTokenBudget);
         maxRequestsPerStage = maxRequestsPerStage == null || maxRequestsPerStage <= 0 ? DEFAULT_MAX_REQUESTS : maxRequestsPerStage;
         batchMaxRequests = batchMaxRequests == null || batchMaxRequests <= 0 ? DEFAULT_MAX_REQUESTS : batchMaxRequests;
+        digestMaxMissingRatio = digestMaxMissingRatio == null || digestMaxMissingRatio < 0 || digestMaxMissingRatio > 1
+            ? 0.2 : digestMaxMissingRatio;
         retryRejected = retryRejected == null || retryRejected;
         background = background == null || background;
     }

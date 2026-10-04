@@ -219,6 +219,7 @@ kb:
     run-token-budget-max: ${KB_RUN_TOKEN_BUDGET_MAX:50000000}
     max-requests-per-stage: ${KB_RUN_MAX_REQUESTS_PER_STAGE:5000}
     batch-max-requests: ${KB_BATCH_MAX_REQUESTS:5000}
+    digest-max-missing-ratio: ${KB_DIGEST_MAX_MISSING_RATIO:0.2}
     retry-rejected: ${KB_RETRY_REJECTED:true}
     background: ${KB_PIPELINE_BACKGROUND:true}
 
