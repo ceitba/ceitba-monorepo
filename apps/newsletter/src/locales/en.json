@@ -375,7 +375,120 @@
       "new": "New",
       "edit": "Edit",
       "review": "Review",
-      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?"
+      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?",
+      "digests": "Weekly digest"
+    },
+    "digests": {
+      "title": "La semana en ITBA",
+      "subtitle": "CEITBA's weekly email digest: last week's articles and next week's events from every organization. Everyone gets the same email; it goes to people who follow CEITBA with the email turned on. Every Monday at 00:05 a draft for the previous week is created, and it goes out automatically at 12:00 (Argentina time) unless you cancel it or turn auto-send off.",
+      "loading": "Loading digests…",
+      "loadError": "We couldn't load the digests.",
+      "back": "← Digests",
+      "noSubject": "No subject",
+      "emptyTitle": "No digests yet",
+      "emptyMessage": "The first one is created automatically on Monday; you can also create one by hand by picking a week.",
+      "sentAt": "Sent {{when}} (Argentina time)",
+      "autoSendAt": "Auto-send: {{when}} (Argentina time)",
+      "autoSendOff": "Auto-send off",
+      "status": {
+        "draft": "Draft",
+        "sending": "Sending",
+        "sent": "Sent",
+        "cancelled": "Cancelled"
+      },
+      "counts": {
+        "sent": "Sent",
+        "failed": "Failed",
+        "pending": "Pending"
+      },
+      "new": {
+        "weekLabel": "New digest · pick any day of the week",
+        "submit": "New digest",
+        "creating": "Creating…",
+        "covers": "Covers the week of {{range}}",
+        "alreadyExists": "Already exists: open it"
+      },
+      "errors": {
+        "DIGEST_EXISTS": "There is already a digest for that week.",
+        "INVALID_WEEK_START": "The week has to start on a Monday.",
+        "DIGEST_NOT_EDITABLE": "This digest is no longer a draft, so it can't be changed.",
+        "EMAIL_NOT_ALLOWED": "Your email address can't receive the digest.",
+        "NETWORK_ERROR": "We couldn't reach the server. Check your connection.",
+        "generic": "Something went wrong. Please try again.",
+        "save": "We couldn't save your changes.",
+        "test": "We couldn't send the test.",
+        "send": "We couldn't start sending.",
+        "cancel": "We couldn't cancel the digest.",
+        "DIGEST_EMPTY": "A digest with no articles or events can't be sent.",
+        "AUTO_SEND_IN_PAST": "The auto-send time must be in the future.",
+        "MAIL_DISABLED": "Sending email is disabled in this environment."
+      },
+      "editor": {
+        "recipientEstimate_one": "{{count}} person who follows CEITBA with the email on would receive it",
+        "recipientEstimate_other": "{{count}} people who follow CEITBA with the email on would receive it",
+        "contentLegend": "Email content",
+        "subject": "Subject",
+        "intro": "Intro",
+        "introHint": "Optional · shown before the articles",
+        "articles": "This week's articles · {{included}} of {{total}}",
+        "events": "Next week's events · {{included}} of {{total}}",
+        "noArticles": "No articles were published that week.",
+        "noEvents": "No events for the following week.",
+        "autoSend": "Auto-send",
+        "autoSendHint": "If you turn it off, the digest stays a draft until you send it by hand.",
+        "autoSendAt": "Send date and time",
+        "timezone": "Argentina time",
+        "save": "Save",
+        "saved": "Changes saved.",
+        "saveFirst": "Save your changes before sending a test or the digest.",
+        "test": "Send me a test",
+        "testing": "Sending test…",
+        "testSent": "We sent a test to {{email}}.",
+        "sendNow": "Send now",
+        "sending": "Sending…",
+        "sendStarted": "Sending has started. Progress updates automatically.",
+        "cancel": "Cancel digest",
+        "stopSending": "Stop sending",
+        "cancelled": "Digest cancelled.",
+        "errors": {
+          "subject": "The subject can't be empty.",
+          "autoSendAt": "Pick the auto-send date and time.",
+          "autoSendPast": "The auto-send time must be in the future."
+        },
+        "readOnly": {
+          "sending": "Sending in progress. The numbers update automatically.",
+          "sent": "This digest has been sent and can't be changed.",
+          "cancelled": "This digest was cancelled and will not be sent."
+        },
+        "sendDialog": {
+          "title": "Send the digest now?",
+          "body_one": "It will be sent to {{count}} person (followers of CEITBA with the email on). This cannot be undone.",
+          "body_other": "It will be sent to {{count}} people (followers of CEITBA with the email on). This cannot be undone.",
+          "confirm": "Send now"
+        },
+        "cancelDialog": {
+          "title": "Cancel this digest?",
+          "body": "It won't be sent, automatically or by hand. You'd have to create a new one for that week.",
+          "bodySending": "Sending stops: people who already got it aren't affected, and the rest won't receive it.",
+          "confirm": "Yes, cancel",
+          "keep": "Go back"
+        },
+        "emptyWarning": "No article or event is included: include at least one to be able to send it.",
+        "leaveDialog": {
+          "title": "Leave without saving?",
+          "body": "You have unsaved changes to this digest. If you leave now, they will be lost.",
+          "confirm": "Leave without saving",
+          "stay": "Keep editing"
+        },
+        "charCount": "{{count}}/{{max}}"
+      },
+      "preview": {
+        "title": "Preview",
+        "stale": "You have unsaved changes: the preview shows the last saved version.",
+        "loading": "Loading…",
+        "error": "We couldn't load the preview."
+      },
+      "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself."
     }
   },
   "imageUploader": {
@@ -470,5 +583,24 @@
     "signIn": "Sign in with Google",
     "organizations": "See organizations",
     "close": "Close"
+  },
+  "digest": {
+    "name": "La semana en ITBA",
+    "toggle": "Get 'La semana en ITBA' by email",
+    "toggleError": "We couldn't save that change.",
+    "unsubscribe": {
+      "loading": "Unsubscribing…",
+      "doneTitle": "Done, you won't get the weekly digest anymore",
+      "doneHint": "If you change your mind, you can turn it back on from your account menu, top right (you'll need to sign in).",
+      "invalidTitle": "This link is not valid",
+      "invalidHint": "It may be incomplete or expired. You can turn the digest off from your account menu after signing in.",
+      "errorTitle": "We couldn't process your request",
+      "backHome": "Go to the newsletter",
+      "confirmTitle": "Stop receiving the weekly digest?",
+      "confirmHint": "You'll stop getting 'La semana en ITBA' by email. Confirm to unsubscribe.",
+      "confirm": "Confirm unsubscribe",
+      "confirming": "Unsubscribing…"
+    },
+    "toggleHint": "Turning it on also follows CEITBA."
   }
 }

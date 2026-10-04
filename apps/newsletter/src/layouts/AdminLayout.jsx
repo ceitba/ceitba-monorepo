@@ -40,6 +40,8 @@ function buildNav(profile, t) {
       label: t('admin.nav.media'),
       items: [
         { to: '/admin/analytics', label: t('admin.nav.analytics'), icon: <IconChart /> },
+        // Weekly digest email — the /digests API is STAFF-only.
+        { to: '/admin/digests', label: t('admin.nav.digests'), icon: <IconMail /> },
       ],
     })
   }
@@ -245,6 +247,8 @@ function TopbarAction() {
   const { pathname } = useLocation()
   const { t } = useTranslation()
   if (/\/(new|edit)$/.test(pathname)) return null
+  // The digest pages have their own "Nuevo resumen" form.
+  if (pathname.startsWith('/admin/digests')) return null
   const events = pathname.startsWith('/admin/events')
   return (
     <Link
@@ -267,9 +271,11 @@ function Breadcrumb() {
     '/admin/events/new':     `${t('admin.nav.events')} / ${t('admin.nav.new')}`,
     '/admin/suggestions':    t('admin.nav.suggestions'),
     '/admin/analytics':      t('admin.nav.analytics'),
+    '/admin/digests':        t('admin.nav.digests'),
   }
   const label = segments[pathname]
-    ?? (pathname.includes('/admin/suggestions/') ? `${t('admin.nav.suggestions')} / ${t('admin.nav.review')}`
+    ?? (pathname.startsWith('/admin/digests/') ? `${t('admin.nav.digests')} / ${t('admin.nav.edit')}`
+      : pathname.includes('/admin/suggestions/') ? `${t('admin.nav.suggestions')} / ${t('admin.nav.review')}`
       : pathname.includes('/edit')
         ? `${pathname.includes('articles') ? t('admin.nav.articles') : t('admin.nav.events')} / ${t('admin.nav.edit')}`
       : '')
@@ -290,6 +296,9 @@ function IconInbox() {
 }
 function IconChart() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+}
+function IconMail() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 6 12 13 2 6"/></svg>
 }
 function IconMenu() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>

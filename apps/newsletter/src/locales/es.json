@@ -375,7 +375,120 @@
       "new": "Nuevo",
       "edit": "Editar",
       "review": "Revisar",
-      "signOutUnsaved": "Tenés cambios sin guardar en el artículo. ¿Cerrar sesión igual y perderlos?"
+      "signOutUnsaved": "Tenés cambios sin guardar en el artículo. ¿Cerrar sesión igual y perderlos?",
+      "digests": "Resumen semanal"
+    },
+    "digests": {
+      "title": "La semana en ITBA",
+      "subtitle": "El resumen semanal de CEITBA por mail: los artículos de la semana pasada y los eventos de la próxima, de todas las organizaciones. Es el mismo mail para todos y lo reciben quienes siguen a CEITBA con el mail activado. Cada lunes a las 00:05 se crea el borrador de la semana anterior, que se envía solo a las 12:00 (hora de Argentina) salvo que lo canceles o desactives el envío automático.",
+      "loading": "Cargando resúmenes…",
+      "loadError": "No pudimos cargar los resúmenes.",
+      "back": "← Resúmenes",
+      "noSubject": "Sin asunto",
+      "emptyTitle": "Todavía no hay resúmenes",
+      "emptyMessage": "El primero se crea solo el lunes; también podés crear uno a mano eligiendo la semana.",
+      "sentAt": "Enviado el {{when}} (hora de Argentina)",
+      "autoSendAt": "Envío automático: {{when}} (hora de Argentina)",
+      "autoSendOff": "Envío automático desactivado",
+      "status": {
+        "draft": "Borrador",
+        "sending": "Enviando",
+        "sent": "Enviado",
+        "cancelled": "Cancelado"
+      },
+      "counts": {
+        "sent": "Enviados",
+        "failed": "Fallidos",
+        "pending": "Pendientes"
+      },
+      "new": {
+        "weekLabel": "Nuevo resumen · elegí un día de la semana",
+        "submit": "Nuevo resumen",
+        "creating": "Creando…",
+        "covers": "Cubre la semana del {{range}}",
+        "alreadyExists": "Ya existe: abrirlo"
+      },
+      "errors": {
+        "DIGEST_EXISTS": "Ya hay un resumen para esa semana.",
+        "INVALID_WEEK_START": "La semana tiene que empezar un lunes.",
+        "DIGEST_NOT_EDITABLE": "Este resumen ya no es un borrador, así que no se puede modificar.",
+        "EMAIL_NOT_ALLOWED": "Tu dirección de mail no puede recibir el resumen.",
+        "NETWORK_ERROR": "No pudimos conectarnos con el servidor. Revisá tu conexión.",
+        "generic": "Algo salió mal. Probá de nuevo.",
+        "save": "No pudimos guardar los cambios.",
+        "test": "No pudimos enviar la prueba.",
+        "send": "No pudimos iniciar el envío.",
+        "cancel": "No pudimos cancelar el resumen.",
+        "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos.",
+        "AUTO_SEND_IN_PAST": "La fecha del envío automático tiene que ser futura.",
+        "MAIL_DISABLED": "El envío de mails está desactivado en este entorno."
+      },
+      "editor": {
+        "recipientEstimate_one": "Lo recibiría {{count}} persona que sigue a CEITBA con el mail activado",
+        "recipientEstimate_other": "Lo recibirían {{count}} personas que siguen a CEITBA con el mail activado",
+        "contentLegend": "Contenido del mail",
+        "subject": "Asunto",
+        "intro": "Introducción",
+        "introHint": "Opcional · va antes de los artículos",
+        "articles": "Artículos de la semana · {{included}} de {{total}}",
+        "events": "Eventos de la próxima semana · {{included}} de {{total}}",
+        "noArticles": "No se publicaron artículos esa semana.",
+        "noEvents": "No hay eventos para la semana siguiente.",
+        "autoSend": "Envío automático",
+        "autoSendHint": "Si lo desactivás, el resumen queda como borrador hasta que lo envíes a mano.",
+        "autoSendAt": "Fecha y hora de envío",
+        "timezone": "Hora de Argentina",
+        "save": "Guardar",
+        "saved": "Cambios guardados.",
+        "saveFirst": "Guardá los cambios antes de enviar una prueba o el resumen.",
+        "test": "Enviarme una prueba",
+        "testing": "Enviando prueba…",
+        "testSent": "Te mandamos una prueba a {{email}}.",
+        "sendNow": "Enviar ahora",
+        "sending": "Enviando…",
+        "sendStarted": "El envío empezó. El progreso se actualiza solo.",
+        "cancel": "Cancelar resumen",
+        "stopSending": "Detener envío",
+        "cancelled": "Resumen cancelado.",
+        "errors": {
+          "subject": "El asunto no puede estar vacío.",
+          "autoSendAt": "Elegí la fecha y hora del envío automático.",
+          "autoSendPast": "La fecha del envío automático tiene que ser futura."
+        },
+        "readOnly": {
+          "sending": "Se está enviando. Los números se actualizan solos.",
+          "sent": "Este resumen ya se envió y no se puede modificar.",
+          "cancelled": "Este resumen fue cancelado y no se va a enviar."
+        },
+        "sendDialog": {
+          "title": "¿Enviar el resumen ahora?",
+          "body_one": "Se le va a enviar a {{count}} persona (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
+          "body_other": "Se les va a enviar a {{count}} personas (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
+          "confirm": "Enviar ahora"
+        },
+        "cancelDialog": {
+          "title": "¿Cancelar este resumen?",
+          "body": "No se va a enviar, ni automáticamente ni a mano. Para esa semana tendrías que crear uno nuevo.",
+          "bodySending": "Se frena el envío: quienes ya lo recibieron no se ven afectados y el resto no lo va a recibir.",
+          "confirm": "Sí, cancelar",
+          "keep": "Volver"
+        },
+        "emptyWarning": "No hay ningún artículo ni evento incluido: incluí al menos uno para poder enviarlo.",
+        "leaveDialog": {
+          "title": "¿Salir sin guardar?",
+          "body": "Tenés cambios sin guardar en el resumen. Si salís ahora, se pierden.",
+          "confirm": "Salir sin guardar",
+          "stay": "Seguir editando"
+        },
+        "charCount": "{{count}}/{{max}}"
+      },
+      "preview": {
+        "title": "Vista previa",
+        "stale": "Hay cambios sin guardar: la vista previa muestra la última versión guardada.",
+        "loading": "Cargando…",
+        "error": "No pudimos cargar la vista previa."
+      },
+      "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo."
     }
   },
   "imageUploader": {
@@ -470,5 +583,24 @@
     "signIn": "Iniciar sesión con Google",
     "organizations": "Ver organizaciones",
     "close": "Cerrar"
+  },
+  "digest": {
+    "name": "La semana en ITBA",
+    "toggle": "Recibir 'La semana en ITBA' por mail",
+    "toggleError": "No pudimos guardar el cambio.",
+    "unsubscribe": {
+      "loading": "Procesando tu baja…",
+      "doneTitle": "Listo, no vas a recibir más el resumen semanal",
+      "doneHint": "Si cambiás de idea, podés volver a activarlo desde el menú de tu cuenta, arriba a la derecha (tenés que iniciar sesión).",
+      "invalidTitle": "Este enlace no es válido",
+      "invalidHint": "Puede que esté incompleto o que haya expirado. Podés desactivar el resumen desde el menú de tu cuenta después de iniciar sesión.",
+      "errorTitle": "No pudimos procesar tu baja",
+      "backHome": "Ir al newsletter",
+      "confirmTitle": "¿Dejar de recibir el resumen semanal?",
+      "confirmHint": "Vas a dejar de recibir 'La semana en ITBA' por mail. Confirmá para darte de baja.",
+      "confirm": "Confirmar baja",
+      "confirming": "Procesando tu baja…"
+    },
+    "toggleHint": "Al activarlo, también seguís a CEITBA."
   }
 }
