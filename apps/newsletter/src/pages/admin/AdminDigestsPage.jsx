@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createDigest, fetchDigests } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
 import DigestCounts from '../../components/admin/DigestCounts'
 import DigestQuotaBar from '../../components/admin/DigestQuotaBar'
+import DigestSenderCard from '../../components/admin/DigestSenderCard'
 import DigestRates from '../../components/admin/DigestRates'
 import { addDaysISO, todayISO } from '../../utils/dates'
 import {
@@ -19,6 +20,25 @@ export default function AdminDigestsPage() {
   const [digests, setDigests] = useState([])
   const [status, setStatus] = useState('loading')
   const [quotaKey, setQuotaKey] = useState(0)
+  const [mailResult, setMailResult] = useState(null) // { ok, reason }
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Back from Google: ?mail=connected | ?mail=error&reason=<code>. Show the
+  // result, strip the params (a reload must not repeat it) and refresh the
+  // sender and quota.
+  useEffect(() => {
+    if (!staff) return
+    const params = new URLSearchParams(location.search)
+    const mail = params.get('mail')
+    if (mail !== 'connected' && mail !== 'error') return
+    setMailResult({ ok: mail === 'connected', reason: params.get('reason') })
+    params.delete('mail')
+    params.delete('reason')
+    const rest = params.toString()
+    navigate({ pathname: location.pathname, search: rest ? `?${rest}` : '' }, { replace: true })
+    setQuotaKey((k) => k + 1)
+  }, [staff, location.pathname, location.search, navigate])
 
   // Only the response of the latest request is applied, so a slow poll can't
   // overwrite newer data.
@@ -71,6 +91,10 @@ export default function AdminDigestsPage() {
         <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.digests.title')}</h1>
         <p className="font-body text-body-sm text-ink-secondary mt-0.5 max-w-2xl">{t('admin.digests.subtitle')}</p>
       </div>
+
+      {mailResult && <MailResultBanner result={mailResult} onDismiss={() => setMailResult(null)} />}
+
+      <DigestSenderCard refreshKey={quotaKey} onChanged={() => setQuotaKey((k) => k + 1)} />
 
       <DigestQuotaBar refreshKey={quotaKey} />
 
@@ -136,6 +160,37 @@ export default function AdminDigestsPage() {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+const MAIL_REASONS = new Set([
+  'access_denied', 'invalid_state', 'not_staff', 'wrong_account', 'missing_scope', 'no_refresh_token', 'exchange_failed',
+])
+
+// Outcome of the Google consent round-trip. Stays until dismissed: the error
+// reasons tell the person what to do differently.
+function MailResultBanner({ result, onDismiss }) {
+  const { t } = useTranslation()
+  const message = result.ok
+    ? t('admin.digests.sender.result.connected')
+    : t(`admin.digests.sender.result.${MAIL_REASONS.has(result.reason) ? result.reason : 'unknown'}`)
+  return (
+    <div
+      role={result.ok ? 'status' : 'alert'}
+      className={`flex items-start gap-3 px-4 py-3 rounded-card border font-body text-body-sm ${
+        result.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-600'
+      }`}
+    >
+      <p className="flex-1 min-w-0">{message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label={t('admin.digests.sender.result.dismiss')}
+        className="min-w-[44px] min-h-[44px] -m-3 flex items-center justify-center text-lg leading-none"
+      >
+        ×
+      </button>
     </div>
   )
 }

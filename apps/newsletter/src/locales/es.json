@@ -423,7 +423,8 @@
         "MAIL_QUOTA_EXHAUSTED": "Se usó todo el cupo diario de envío de la cuenta (las pruebas también cuentan). Vas a poder volver a probar ~{{when}} (hora de Argentina).",
         "MAIL_QUOTA_EXHAUSTED_noWhen": "Se usó todo el cupo diario de envío de la cuenta (las pruebas también cuentan). Probá más tarde.",
         "AUTO_SEND_IN_PAST": "La fecha del envío automático tiene que ser futura.",
-        "MAIL_DISABLED": "El envío de mails está desactivado en este entorno."
+        "MAIL_DISABLED": "El envío de mails está desactivado en este entorno.",
+        "MAIL_SENDER_NOT_CONNECTED": "La cuenta de envío no está conectada. Conectala desde la lista de resúmenes y probá de nuevo."
       },
       "editor": {
         "recipientEstimate_one": "Lo recibiría {{count}} persona que sigue a CEITBA con el mail activado",
@@ -466,7 +467,11 @@
           "title": "¿Enviar el resumen ahora?",
           "body_one": "Se le va a enviar a {{count}} persona (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
           "body_other": "Se les va a enviar a {{count}} personas (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
-          "confirm": "Enviar ahora"
+          "confirm": "Enviar ahora",
+          "senderWarning": {
+            "missing": "Todavía no hay una cuenta de envío conectada: el envío queda en espera y empieza recién cuando alguien la conecte.",
+            "broken": "La cuenta de envío necesita reconectarse: el envío queda en espera y sigue recién cuando alguien la reconecte."
+          }
         },
         "cancelDialog": {
           "title": "¿Cancelar este resumen?",
@@ -482,7 +487,12 @@
           "confirm": "Salir sin guardar",
           "stay": "Seguir editando"
         },
-        "charCount": "{{count}}/{{max}}"
+        "charCount": "{{count}}/{{max}}",
+        "senderNotice": {
+          "missing": "Todavía no hay una cuenta de envío conectada, así que el mail no puede salir.",
+          "broken": "La cuenta de envío tiene un problema y hay que reconectarla para que el mail pueda salir.",
+          "link": "Ir a la lista de resúmenes para conectarla"
+        }
       },
       "preview": {
         "title": "Vista previa",
@@ -529,7 +539,47 @@
         "laterBucket": "+7 días",
         "laterFrom": "Desde {{when}}"
       },
-      "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo."
+      "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo.",
+      "sender": {
+        "title": "Cuenta de envío",
+        "loadError": "No pudimos cargar la cuenta de envío.",
+        "status": {
+          "connected": "Conectada",
+          "broken": "Con problemas"
+        },
+        "connectedAt": "Conectada el {{when}} (hora de Argentina)",
+        "lastUsedAt": "Último envío: {{when}} (hora de Argentina)",
+        "neverUsed": "Todavía no se envió ningún mail desde esta cuenta.",
+        "missingTitle": "Todavía no se pueden enviar resúmenes",
+        "missingBody": "No hay ninguna cuenta de Gmail conectada para enviar los mails, así que ningún resumen va a salir (ni las pruebas) hasta que alguien la conecte.",
+        "help": "Iniciá sesión con ceitba@itba.edu.ar y dejá tildado el permiso para «enviar correo» cuando Google lo pida.",
+        "connect": "Conectar cuenta de envío",
+        "reconnect": "Reconectar",
+        "connecting": "Redirigiendo a Google…",
+        "disconnect": "Desconectar",
+        "disconnecting": "Desconectando…",
+        "brokenBody": "Google rechazó la cuenta de envío (por ejemplo, porque se cambió la contraseña o se quitó el acceso). Mientras no se reconecte, no sale ningún mail.",
+        "lastError": "Último error: {{error}}",
+        "connectError": "No pudimos iniciar la conexión con Google. Probá de nuevo.",
+        "disconnectError": "No pudimos desconectar la cuenta. Probá de nuevo.",
+        "disconnectDialog": {
+          "title": "¿Desconectar la cuenta de envío?",
+          "body": "Se va a revocar el acceso de {{email}} en Google. Hasta que alguien vuelva a conectar una cuenta, no se va a enviar ningún resumen: los envíos en curso o programados quedan en espera.",
+          "confirm": "Desconectar"
+        },
+        "result": {
+          "dismiss": "Cerrar aviso",
+          "connected": "Cuenta de envío conectada. Ya se pueden enviar resúmenes.",
+          "access_denied": "No se conectó la cuenta: cancelaste el permiso en Google. Probá de nuevo cuando quieras.",
+          "invalid_state": "El enlace de conexión venció (dura 10 minutos). Volvé a tocar «Conectar cuenta de envío».",
+          "not_staff": "Solo el staff de CEITBA puede conectar la cuenta de envío.",
+          "wrong_account": "Iniciaste sesión con otra cuenta. Tiene que ser ceitba@itba.edu.ar.",
+          "missing_scope": "Falta el permiso para «enviar correo». Volvé a conectar y dejalo tildado.",
+          "no_refresh_token": "Google no entregó un acceso duradero. Volvé a conectar y aceptá todos los permisos.",
+          "exchange_failed": "No pudimos completar la conexión con Google. Probá de nuevo en unos minutos.",
+          "unknown": "No pudimos conectar la cuenta de envío. Probá de nuevo."
+        }
+      }
     }
   },
   "imageUploader": {

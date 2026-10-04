@@ -113,3 +113,24 @@ export async function fetchCorrectionVote(token) {
 export async function sendCorrectionVote(token, vote) {
   return apiSend('POST', '/digests/correction-vote', { token, vote })
 }
+
+// ── Sender account (Gmail OAuth) the digests go out from ────────────────────
+// STAFF-only (CEITBA-API `web/mail`).
+
+// → { authorizationUrl }. The caller must navigate the whole window there
+// (window.location.assign): no fetch, no popup. Google then sends the browser
+// back to /newsletter/admin/digests?mail=connected | ?mail=error&reason=<code>.
+export async function connectCeitbaSender() {
+  return apiSend('POST', '/mail/accounts/ceitba/connect')
+}
+
+// → [{ id, email, ownerType: 'ceitba'|'organization', ownerRef,
+//      status: 'connected'|'broken'|'revoked', connectedAt, lastError, lastUsedAt }]
+export async function listSenderAccounts() {
+  return apiGet('/mail/accounts')
+}
+
+// 204. Revokes the account at Google too.
+export async function disconnectSenderAccount(id) {
+  return apiSend('DELETE', `/mail/accounts/${encodeURIComponent(id)}`)
+}
