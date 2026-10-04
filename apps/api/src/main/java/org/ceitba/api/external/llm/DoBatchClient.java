@@ -82,9 +82,19 @@ public class DoBatchClient implements LlmBatchClient {
 
     @Override
     public BatchResults results(String batchId) {
-        var node = call("GET", "/v1/batches/" + batchId + "/results", null);
-        boolean available = node.path("result_available").asBoolean(node.hasNonNull("output_file_url"));
-        return new BatchResults(available, text(node, "output_file_url"), text(node, "error_file_url"));
+        return resultsOf(call("GET", "/v1/batches/" + batchId + "/results", null));
+    }
+
+    // DO answers {result_available, download: {presigned_url, expires_at}}
+    // (the output JSONL; failed lines come back in it with their own status),
+    // not OpenAI's output_file_url/error_file_url: both shapes are read.
+    static BatchResults resultsOf(JsonNode node) {
+        var output = text(node, "output_file_url");
+        if (output == null) output = text(node.path("download"), "presigned_url", "url");
+        var errors = text(node, "error_file_url");
+        if (errors == null) errors = text(node.path("error_download"), "presigned_url", "url");
+        boolean available = node.path("result_available").asBoolean(output != null);
+        return new BatchResults(available, output, errors);
     }
 
     @Override
@@ -122,6 +132,14 @@ public class DoBatchClient implements LlmBatchClient {
     static BatchInfo info(JsonNode node) {
         var id = text(node, "id", "batch_id");
         var status = text(node, "status");
+        // DO reports "completed" a little before the output/error files exist
+        // (result_available false): reading results then found none and the
+        // batch was taken as answerless. Until they exist it is "finalizing".
+        var available = node.has("result_available") ? node.path("result_available")
+            : node.path("data").path("result_available");
+        if ("completed".equalsIgnoreCase(status) && available.isBoolean() && !available.asBoolean()) {
+            status = "finalizing";
+        }
         return new BatchInfo(id, status == null ? null : status.toLowerCase(java.util.Locale.ROOT), node.toString(),
             errorMessage(node));
     }

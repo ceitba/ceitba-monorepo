@@ -61,6 +61,12 @@ public final class KbChatPayloads {
             line.put("url", CHAT_ENDPOINT);
             var body = chatBody(params, false, json);
             if (batchModelId != null) body.put("model", batchModelId);
+            // Batch bodies reach OpenAI as-is (serverless chat translates for
+            // us): the GPT-5 family rejects max_tokens, so every request in the
+            // batch failed with no error file. max_completion_tokens works for
+            // all OpenAI chat models.
+            var max = body.remove("max_tokens");
+            if (max != null) body.set("max_completion_tokens", max);
             line.set("body", body);
         } else {
             var p = params.deepCopy();

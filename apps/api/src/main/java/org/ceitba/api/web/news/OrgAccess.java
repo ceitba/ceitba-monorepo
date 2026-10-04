@@ -1,5 +1,6 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
@@ -49,9 +50,13 @@ public class OrgAccess {
         return orgSlug != null && belongsTo(auth, orgSlug);
     }
 
+    // The author (createdBy) of an independent (org-less) article also sees
+    // it while unpublished; an org article's drafts are visible to the org's
+    // current members only, so an author who left the org loses access.
     public boolean canReadArticleDraft(String articleId, Authentication auth) {
         UUID userId = userIdOf(auth);
         if (userId == null) return false;
+        if (articleRepo.findIndependentStatusOwnedBy(articleId, userId).isPresent()) return true;
         return articleRepo.findById(articleId)
             .map(a -> a.getOrganization() != null
                 && membership.userBelongsTo(userId, a.getOrganization().getSlug()))
@@ -68,13 +73,44 @@ public class OrgAccess {
 
     // For PATCH: the caller must belong to the org that currently owns the
     // article and, when the patch moves it to another org, to that org too.
-    // Org-less articles are STAFF-only. A missing article yields false (403).
+    // Org-less articles fail this check; their author is covered by
+    // canEditOwnIndependentArticle. A missing article yields false (403).
     public boolean canWriteForArticle(String articleId, String patchOrg, Authentication auth) {
         UUID userId = userIdOf(auth);
         if (userId == null) return false;
         return articleRepo.findById(articleId)
             .map(a -> canMove(userId, a.getOrganization() != null ? a.getOrganization().getSlug() : null, patchOrg))
             .orElse(false);
+    }
+
+    // Independent (org-less) articles: any signed-in user may create one;
+    // STAFF moderates (publishes) it. See ArticleController for the status
+    // limits applied to non-staff authors.
+    public boolean isIndependent(String orgSlug) {
+        return orgSlug == null || orgSlug.isBlank();
+    }
+
+    // PATCH by the author of an independent article: allowed while it isn't
+    // published, and only if the patch keeps it org-less or moves it into an
+    // org the author belongs to (never someone else's org).
+    public boolean canEditOwnIndependentArticle(String articleId, String patchOrg, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        if (userId == null) return false;
+        boolean editable = articleRepo.findIndependentStatusOwnedBy(articleId, userId)
+            .map(status -> !"published".equals(status))
+            .orElse(false);
+        return editable && (isIndependent(patchOrg) || membership.userBelongsTo(userId, patchOrg));
+    }
+
+    // DELETE by the author of an independent, not-yet-published article.
+    public boolean canDeleteOwnIndependentArticle(String articleId, Authentication auth) {
+        return canEditOwnIndependentArticle(articleId, null, auth);
+    }
+
+    // Current user's id (API key -> its User; JWT email -> users row), or
+    // null for anonymous callers and not-yet-provisioned users.
+    public UUID currentUserId(Authentication auth) {
+        return userIdOf(auth);
     }
 
     public boolean canWriteForEvent(String eventId, String patchOrg, Authentication auth) {
@@ -101,6 +137,9 @@ public class OrgAccess {
         if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
             return null;
         }
+        // ApiKeyFilter authenticates ceitba_ keys with the User entity itself
+        // as principal (its getName() is User.toString(), not an email).
+        if (auth.getPrincipal() instanceof User user) return user.getId();
         String email = emailOf(auth);
         if (email == null) return null;
         return userRepo.findByEmail(email).map(u -> u.getId()).orElse(null);
