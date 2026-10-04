@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { canAccessAdmin, canManageOrganizations, signOut, startGoogleSignIn } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
+import { fetchDigestSubscription, setDigestSubscription } from '../api/digests'
 
 // Same shape as CeitbaPage's AuthMenu — sign-in button when anonymous,
 // avatar dropdown when signed in. The previous "Contribuir" CTA moves into
@@ -91,6 +92,7 @@ export default function AuthMenu({ mobile = false }) {
           >
             {t('auth.myProfile')}
           </a>
+          <DigestToggle />
           {isAdmin ? (
             <Link
               to="/admin/articles"
@@ -119,6 +121,71 @@ export default function AuthMenu({ mobile = false }) {
             {t('auth.signOut')}
           </button>
         </div>
+      )}
+    </div>
+  )
+}
+
+// "Recibir 'La semana en ITBA' por mail" — loaded when the menu opens,
+// toggled optimistically and rolled back if the PUT fails.
+function DigestToggle() {
+  const { t } = useTranslation()
+  const [enabled, setEnabled] = useState(null) // null until loaded
+  const [state, setState] = useState('loading') // 'loading' | 'ready' | 'saving' | 'loadError'
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    fetchDigestSubscription()
+      .then(({ enabled: value }) => { if (active) { setEnabled(Boolean(value)); setState('ready') } })
+      .catch(() => { if (active) setState('loadError') })
+    return () => { active = false }
+  }, [])
+
+  async function toggle() {
+    if (state !== 'ready') return
+    const previous = enabled
+    setEnabled(!previous)
+    setError(false)
+    setState('saving')
+    try {
+      const res = await setDigestSubscription(!previous)
+      setEnabled(Boolean(res?.enabled ?? !previous))
+    } catch {
+      setEnabled(previous)
+      setError(true)
+    } finally {
+      setState('ready')
+    }
+  }
+
+  if (state === 'loadError') return null
+
+  const on = Boolean(enabled)
+  return (
+    <div className="px-3 py-2 border-b border-border dark:border-[#3f3f46]">
+      <button
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={on}
+        onClick={toggle}
+        disabled={state !== 'ready'}
+        className="w-full flex items-center justify-between gap-3 text-left font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] disabled:cursor-wait"
+      >
+        <span className="leading-snug">{t('digest.toggle')}</span>
+        <span
+          aria-hidden="true"
+          className={[
+            'relative inline-flex flex-shrink-0 w-9 h-5 rounded-full transition-colors duration-150',
+            on ? 'bg-primary dark:bg-primary-400' : 'bg-border dark:bg-[#3f3f46]',
+            enabled === null ? 'opacity-50' : '',
+          ].join(' ')}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[#fff] shadow transition-transform duration-150 ${on ? 'translate-x-4' : ''}`} />
+        </span>
+      </button>
+      {error && (
+        <p role="alert" className="mt-1 font-body text-label text-red-600">{t('digest.toggleError')}</p>
       )}
     </div>
   )
