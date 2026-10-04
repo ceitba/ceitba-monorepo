@@ -122,6 +122,14 @@ public class DoBatchClient implements LlmBatchClient {
     static BatchInfo info(JsonNode node) {
         var id = text(node, "id", "batch_id");
         var status = text(node, "status");
+        // DO reports "completed" a little before the output/error files exist
+        // (result_available false): reading results then found none and the
+        // batch was taken as answerless. Until they exist it is "finalizing".
+        var available = node.has("result_available") ? node.path("result_available")
+            : node.path("data").path("result_available");
+        if ("completed".equalsIgnoreCase(status) && available.isBoolean() && !available.asBoolean()) {
+            status = "finalizing";
+        }
         return new BatchInfo(id, status == null ? null : status.toLowerCase(java.util.Locale.ROOT), node.toString(),
             errorMessage(node));
     }
