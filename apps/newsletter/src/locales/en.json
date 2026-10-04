@@ -131,7 +131,7 @@
     "status": {
       "published": "Published",
       "draft": "Draft",
-      "pending_review": "En revisión",
+      "pending_review": "Pending review",
       "changes_requested": "Changes requested",
       "rejected": "Rejected"
     },
@@ -354,7 +354,8 @@
     },
     "roles": {
       "staff": "Staff",
-      "user": "Member"
+      "user": "Author",
+      "member": "Member"
     },
     "nav": {
       "label": "Admin navigation",

@@ -354,7 +354,8 @@
     },
     "roles": {
       "staff": "Staff",
-      "user": "Miembro"
+      "user": "Autor",
+      "member": "Miembro"
     },
     "nav": {
       "label": "Navegación del panel",

@@ -333,11 +333,15 @@ export default function AdminArticleFormPage() {
   // An org article can't be made independent (the API keeps its org), so
   // the option only exists for new and already-independent articles.
   const canBeIndependent = !isEdit || !originalOrg
-  const orgLocked = isEdit && Boolean(originalOrg) && !staff && myOrgs.length === 1
   // Independent articles by non-staff go through staff review; once staff
-  // publish one, its author can no longer change it.
+  // publish one, its author can no longer change it (nor move it into an
+  // org to get around that: the API refuses).
   const moderated = !staff && !form.organization
-  const lockedForAuthor = moderated && isPublished
+  const lockedForAuthor = !staff && !originalOrg && isEdit && isPublished
+  const orgLocked = lockedForAuthor || (isEdit && Boolean(originalOrg) && !staff && myOrgs.length === 1)
+  // The current org may not be in the list yet (orgs still loading, or the
+  // request failed): keep it selectable so the select shows the truth.
+  const orgMissing = form.organization && !visibleOrgs.some((o) => o.slug === form.organization)
   const previewArticle = { ...form, readingTime, id: 'preview', body: [form.body] }
   const errorCount = Object.keys(errors).length
 
@@ -494,6 +498,7 @@ export default function AdminArticleFormPage() {
                 <FieldLabel>{t('admin.form.organization')}</FieldLabel>
                 <select value={form.organization} onChange={(e) => set('organization', e.target.value)} disabled={orgLocked} className={selectClass()}>
                   {canBeIndependent && <option value="">{t('admin.articleForm.independent')}</option>}
+                  {orgMissing && <option value={form.organization}>{form.organization}</option>}
                   {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
                 </select>
                 {moderated && (
