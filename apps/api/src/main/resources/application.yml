@@ -1,12 +1,6 @@
 spring:
   application:
     name: ceitba-api
-  # One thread per scheduled job (8 >= the @Scheduled methods): with Spring's default single thread a
-  # long Drive sync run delayed the wiki pipeline's sweep and batch polling.
-  task:
-    scheduling:
-      pool:
-        size: 8
   profiles:
     active: dev
   datasource:
@@ -38,6 +32,38 @@ spring:
         # absolute instant and never used this setting. See LocalTemporalZoneIT.
         format_sql: false
     open-in-view: false
+  lifecycle:
+    # Upper bound for the graceful phase of shutdown (requests in flight).
+    timeout-per-shutdown-phase: 60s
+  task:
+    execution:
+      shutdown:
+        # The digest worker runs on this executor: wait for the email being
+        # sent instead of killing it mid-SMTP (DigestSender stops taking new ones).
+        await-termination: true
+        await-termination-period: 60s
+    scheduling:
+      # One thread per scheduled job (8 >= the @Scheduled methods): with Spring's default single thread a
+      # long Drive sync run delayed the wiki pipeline's sweep and batch polling.
+      pool:
+        size: 8
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+  # SMTP for service/mail (used only with MAIL_ENABLED=true).
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 20000
+      mail.smtp.writetimeout: 20000
   flyway:
     enabled: true
     schemas: public,wiki
@@ -50,6 +76,10 @@ spring:
 
 server:
   port: ${PORT:8080}
+  # A deploy (SIGTERM) lets in-flight requests finish. The digest worker
+  # (task executor) also gets to finish the email in flight; see
+  # spring.task.execution.shutdown below.
+  shutdown: graceful
   servlet:
     context-path: /api
 
@@ -58,6 +88,11 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    # Boot's mail health check would open an SMTP connection (and log in) on
+    # every /actuator/health hit; a Gmail hiccup must not mark the API down.
+    mail:
+      enabled: false
 
 springdoc:
   swagger-ui:
@@ -214,6 +249,67 @@ drive-sync:
   # Dev only: comma list of subject codes; expansion is limited to them.
   community-only-codes: ${DRIVE_SYNC_COMMUNITY_ONLY_CODES:}
 
+# Outgoing email (service/mail). MAIL_ENABLED=false (default) cannot send at
+# all (digest send answers 409 MAIL_DISABLED), so dev and tests never email. Prod: the ceitba@itba.edu.ar Workspace account
+# over Gmail SMTP with an app password (docs/WEEKLY-DIGEST.md).
+mail:
+  enabled: ${MAIL_ENABLED:false}
+  # gmail-api (default; OAuth-connected sender account) | smtp | log.
+  # "log" is only allowed with log-sends=true; enabled=false wins over it.
+  transport: ${MAIL_TRANSPORT:gmail-api}
+  oauth:
+    # Registered on the Google OAuth client (same one as the login).
+    redirect-uri: ${GOOGLE_MAIL_REDIRECT_URI:http://localhost:8080/api/v1/mail/accounts/oauth/callback}
+    # 32 bytes, base64 (openssl rand -base64 32): encrypts the refresh tokens.
+    token-encryption-key: ${MAIL_TOKEN_ENCRYPTION_KEY:}
+  # DEV ONLY: with MAIL_ENABLED=false, log sends (masked addresses) and report
+  # them as successful instead of refusing (409 MAIL_DISABLED). Never in prod.
+  log-sends: ${MAIL_LOG_SENDS:false}
+  from: ${MAIL_FROM:CEITBA <ceitba@itba.edu.ar>}
+  # Sending quota (service/mail/MailSendService): recipients per rolling 24h
+  # per sending account (the From address). Workspace caps ~2000/day.
+  # DIGEST_DAILY_LIMIT is the older name, still honoured.
+  daily-limit: ${MAIL_DAILY_LIMIT:${DIGEST_DAILY_LIMIT:1500}}
+  # Per-account overrides (keys need brackets because of the dots/@):
+  # daily-limits:
+  #   "[otra@itba.edu.ar]": 500
+  # Backoff after transport errors: doubled per consecutive error, capped.
+  backoff-initial: ${MAIL_BACKOFF_INITIAL:PT5M}
+  backoff-max: ${MAIL_BACKOFF_MAX:PT1H}
+  # Pause after Gmail's own "5.4.5 daily sending limit exceeded".
+  quota-pause: ${MAIL_QUOTA_PAUSE:PT24H}
+  # Nightly cleanup (service/mail/MailRetentionService). The quota only reads
+  # the last 24h of mail_send_log; the minimum accepted send-log value is 2 days.
+  retention:
+    send-log: ${MAIL_RETENTION_SEND_LOG:P30D}
+    tracking-events: ${MAIL_RETENTION_TRACKING:P180D}
+
+# Weekly digest "La semana en ITBA" (docs/WEEKLY-DIGEST.md).
+digest:
+  # ItbaNews public URL (article links, the unsubscribe page).
+  public-base-url: ${DIGEST_PUBLIC_BASE_URL:https://ceitba.org.ar/newsletter}
+  # Public API base incl. /api (List-Unsubscribe one-click target).
+  api-base-url: ${DIGEST_API_BASE_URL:https://ceitba.org.ar/api}
+  # HARD guard: no digest email (test sends included) leaves for any other domain.
+  allowed-domains: ${DIGEST_ALLOWED_DOMAINS:itba.edu.ar}
+  # Open pixel + click redirects in sent issues (docs/WEEKLY-DIGEST.md).
+  tracking-enabled: ${DIGEST_TRACKING_ENABLED:true}
+  # Pause between two emails.
+  send-interval: ${DIGEST_SEND_INTERVAL:PT1S}
+  # Auto-send check / resume of stalled sends.
+  tick-interval: ${DIGEST_TICK_INTERVAL:PT5M}
+  jobs-enabled: ${DIGEST_JOBS_ENABLED:true}
+  # "Tu cuatrimestre", the per-reader block.
+  personal:
+    # CeitbaPage's Apuntes reader: a subject's wiki is <url>/<subjectId>?vista=wiki.
+    wiki-base-url: ${DIGEST_WIKI_BASE_URL:https://ceitba.org.ar/apuntes}
+    # "Armá tu horario en el combinador".
+    scheduler-url: ${DIGEST_SCHEDULER_URL:https://ceitba.org.ar/scheduler/}
+    # Lifetime of the "¿Es así?" correction vote links.
+    vote-token-ttl: ${DIGEST_VOTE_TOKEN_TTL:P14D}
+    max-wiki-links: ${DIGEST_MAX_WIKI_LINKS:5}
+    max-corrections: ${DIGEST_MAX_CORRECTIONS:3}
+
 # Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
 # instance. Paths are relative to the /api context path.
 rate-limit:
@@ -282,6 +378,25 @@ rate-limit:
       methods: [PUT, DELETE]
       capacity: ${RATE_LIMIT_VOTES_CAPACITY:60}
       period: ${RATE_LIMIT_VOTES_PERIOD:1m}
+    # Public one-click unsubscribe of the weekly digest. Gmail/Outlook POST
+    # it from their own servers, so many users can share one address.
+    digest-unsubscribe:
+      paths:
+        - /v1/digests/unsubscribe
+      methods: [POST]
+      capacity: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:60}
+      period: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:1m}
+    # Public correction vote page of the digest ("¿Es así?"): the GET that
+    # shows the correction and the POST that votes, both token-authenticated.
+    digest-correction-vote:
+      paths:
+        - /v1/digests/correction-vote
+      methods: [GET, POST]
+      capacity: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_CAPACITY:60}
+      period: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_PERIOD:1m}
+    # Digest open pixel / click redirects are NOT limited here: they must
+    # always answer (GIF / redirect). MailTrackingService limits what it
+    # records per client and per tracking id instead.
     # ItbaNews flushes one batch (<= 50 events) per tab every 10 s.
     analytics:
       paths:

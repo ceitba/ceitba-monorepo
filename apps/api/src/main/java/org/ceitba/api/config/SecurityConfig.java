@@ -49,6 +49,9 @@ import java.util.List;
 //                  POST /v1/auth/google/mobile, /v1/auth/refresh, /v1/auth/logout
 //                  POST /v1/auth/review-login  (store review account; 404 unless configured)
 //                  GET /v1/app/config
+//                  POST /v1/digests/unsubscribe  (HMAC-signed token, docs/WEEKLY-DIGEST.md)
+//                  GET/POST /v1/digests/correction-vote  (HMAC-signed, expiring token)
+//                  GET/HEAD /v1/mail/o/*, /v1/mail/c/*/*  (digest open pixel / click redirects)
 //                  POST /v1/auth/dev-login  (only with the dev profile AND AUTH_DEV_LOGIN_ENABLED=true)
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
@@ -181,6 +184,19 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/articles/*/votes").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/v1/articles/*/votes").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/analytics/events").permitAll()
+                // Weekly digest one-click unsubscribe (signed token; also the
+                // RFC 8058 List-Unsubscribe-Post target mail clients call).
+                .requestMatchers(HttpMethod.POST, "/v1/digests/unsubscribe").permitAll()
+                // "¿Es así?" correction votes from the digest (signed per-reader token).
+                .requestMatchers(HttpMethod.GET, "/v1/digests/correction-vote").permitAll()
+                .requestMatchers(HttpMethod.POST, "/v1/digests/correction-vote").permitAll()
+                // Digest open pixel and click redirects (opaque tracking ids;
+                // they always answer: a GIF or a redirect to a stored URL).
+                .requestMatchers(HttpMethod.GET, "/v1/mail/o/*", "/v1/mail/c/*/*").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/v1/mail/o/*", "/v1/mail/c/*/*").permitAll()
+                // Google redirects the browser here after the sender-account
+                // consent; authenticated by its signed state (a staff user id).
+                .requestMatchers(HttpMethod.GET, "/v1/mail/accounts/oauth/callback").permitAll()
                 // Logout must be reachable even with an expired/invalid cookie.
                 // The mobile token endpoints authenticate via their body
                 // (Google ID token / refresh token / review credentials), not a bearer JWT.

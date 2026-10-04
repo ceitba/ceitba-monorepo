@@ -28,6 +28,14 @@ public interface KbPageRepository extends JpaRepository<KbPage, UUID> {
     List<String> findSubjectIdsWithPages(@Param("ids") Collection<String> ids,
                                          @Param("statuses") Collection<KbPageStatus> statuses);
 
+    // [subjectId, slug, type (KbPageType), generatedAt] of the PUBLISHED pages
+    // of the given subjects, without bodies (weekly digest wiki links).
+    @Query("""
+        select p.subjectId, p.slug, p.type, p.generatedAt from KbPage p
+        where p.subjectId in :ids and p.status = org.ceitba.api.domain.kb.KbPageStatus.PUBLISHED
+        """)
+    List<Object[]> findPublishedHeads(@Param("ids") Collection<String> ids);
+
     // Projections without page bodies (forecast, change detection).
     @Query("select distinct p.subjectId from KbPage p where p.status <> :status")
     List<String> findSubjectIdsWithStatusNot(@Param("status") KbPageStatus status);

@@ -70,4 +70,48 @@ public interface UserRepository extends JpaRepository<User, UUID> {
         @Param("organization") String organization,
         Pageable pageable
     );
+
+    // Weekly digest audience (service/digest): followers of `orgSlug` (CEITBA)
+    // who did not opt out. The domain guard is applied by the caller.
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.digestEmailEnabled = true
+          AND EXISTS (SELECT 1 FROM UserFollow f WHERE f.userId = u.id AND f.organization = :orgSlug)
+        ORDER BY u.id
+        """)
+    List<User> findDigestAudience(@Param("orgSlug") String orgSlug);
+
+    // Size of the digest audience without loading it: same filter as
+    // findDigestAudience plus the allowed-domain guard (DigestProperties.
+    // isAllowedRecipient) done in SQL on the address's domain part.
+    @Query("""
+        SELECT COUNT(u) FROM User u
+        WHERE u.digestEmailEnabled = true
+          AND EXISTS (SELECT 1 FROM UserFollow f WHERE f.userId = u.id AND f.organization = :orgSlug)
+          AND SUBSTRING(LOWER(TRIM(u.email)), LOCATE('@', TRIM(u.email)) + 1) IN :domains
+        """)
+    long countDigestAudience(@Param("orgSlug") String orgSlug, @Param("domains") java.util.Collection<String> domains);
+
+    // countDigestAudience restricted to holders of `capability` (service/
+    // capability rule: enabled_for_all OR active staff OR email grant OR
+    // org-membership grant), in one query.
+    @Query("""
+        SELECT COUNT(u) FROM User u
+        WHERE u.digestEmailEnabled = true
+          AND EXISTS (SELECT 1 FROM UserFollow f WHERE f.userId = u.id AND f.organization = :orgSlug)
+          AND SUBSTRING(LOWER(TRIM(u.email)), LOCATE('@', TRIM(u.email)) + 1) IN :domains
+          AND (EXISTS (SELECT 1 FROM CapabilitySetting s WHERE s.capability = :capability AND s.enabledForAll = true)
+            OR EXISTS (SELECT 1 FROM CeitbaStaff cs WHERE cs.userId = u.id AND cs.start <= :now AND cs.end >= :now)
+            OR EXISTS (SELECT 1 FROM CapabilityUserGrant g WHERE g.capability = :capability AND g.email = LOWER(u.email))
+            OR EXISTS (SELECT 1 FROM CapabilityOrgGrant og, UserOrganization m
+                       WHERE og.capability = :capability AND m.organization = og.orgSlug AND m.userId = u.id))
+        """)
+    long countDigestAudienceWithCapability(@Param("orgSlug") String orgSlug,
+                                           @Param("domains") java.util.Collection<String> domains,
+                                           @Param("capability") String capability,
+                                           @Param("now") java.time.OffsetDateTime now);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.digestEmailEnabled = :enabled WHERE u.id = :id")
+    int setDigestEmailEnabled(@Param("id") UUID id, @Param("enabled") boolean enabled);
 }

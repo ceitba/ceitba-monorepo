@@ -12,6 +12,7 @@ the tables are ignored.
 | Key | Label | Gates |
 |---|---|---|
 | `apuntes` | Apuntes | `/v1/me/drive/**` (MyDriveController), `/v1/wiki/apuntes/subjects`, `/v1/wiki/subjects/{id}/files`, `/v1/wiki/files/**` (ApuntesController), `/v1/wiki/subjects/{id}/kb/**` and `/v1/wiki/kb/pages/{id}/report` (KbController) |
+| `resumen_semanal` | Resumen semanal | Recipients of the weekly digest "La semana en ITBA" (snapshot at send time, per-delivery re-check, draft `recipientEstimate`) and `GET`/`PUT /v1/digests/subscription`. `POST /v1/digests/unsubscribe`, the correction-vote token endpoints and the STAFF digest endpoints are not gated |
 
 Staff endpoints (`/v1/staff/drive/**`, `/v1/staff/kb/**`) and wiki bookmarks/notes are not gated.
 
