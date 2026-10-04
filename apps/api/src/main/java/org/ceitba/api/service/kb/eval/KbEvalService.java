@@ -856,6 +856,8 @@ public class KbEvalService implements KbRunHandler {
                     if (check.emptyAfterFiltering()) {
                         subj.put("error", "PLAN: " + KbPlanCheck.EMPTY_PLAN_ERROR + " (dropped "
                             + check.droppedByReason() + ")");
+                    } else if (check.indexOnly()) {
+                        subj.put("error", "PLAN: " + KbPlanCheck.INDEX_ONLY_ERROR);
                     }
                     subj.set("operations", ops);
                 }
@@ -911,13 +913,13 @@ public class KbEvalService implements KbRunHandler {
             var check = new KbPlanCheck(proposed);
             var files = frozen.path(r.getSubjectId());
             validateOps(proposed, files, check);
-            if (!check.emptyAfterFiltering()) continue;
+            if (!check.insufficient()) continue;
             var ids = new ArrayList<String>();
             files.forEach(f -> ids.add(f.path("fileId").asText()));
             log.warn("KB eval {}: PLAN of {} ({}, config {}) had no usable operation ({} proposed, dropped {}); "
                 + "asking once more", run.getId(), r.getSubjectId(), r.getModel(), configOfTarget(r.getTarget()),
                 check.proposed(), check.droppedByReason());
-            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids)));
+            r.redo(payloads.withNote(r.getParams(), KbPlanCheck.correction(ids, check.indexOnly())));
             out.add(r.getCustomId());
         }
         return out;
@@ -1112,9 +1114,10 @@ public class KbEvalService implements KbRunHandler {
         frozenFiles.forEach(f -> valid.add(f.path("fileId").asText()));
         var out = json.createArrayNode();
         var seen = new HashSet<String>();
+        check.firstCompile(valid.size());   // evals rebuild from scratch
         for (var op : proposed) {
             var kind = op.path("op").asText("create").toLowerCase(Locale.ROOT);
-            var slug = op.path("slug").asText("").trim();
+            var slug = KbPlanCheck.normalizeIndexSlug(op.path("slug").asText("").trim(), op.path("type").asText(""));
             if (kind.equals("delete")) {
                 check.dropped(KbPlanCheck.DELETE_IGNORED);
                 continue;
@@ -1135,7 +1138,7 @@ public class KbEvalService implements KbRunHandler {
                 check.droppedForSources(op.path("sources"));
                 continue;
             }
-            check.kept();
+            check.keptPage(slug);
             var o = out.addObject();
             o.put("op", "create");
             o.put("slug", slug);
