@@ -40,7 +40,8 @@ public class KbPipelineConfig {
             return new UnconfiguredLlmBatchClient();
         }
         var client = new DoBatchClient(props.baseUrl(), props.apiKey(), json, quota);
-        quota.bindProbe(client::probeQuota);
+        // No quota probe: a POST /v1/batches with a bogus file_id still spends one of
+        // the 5 hourly creations (verified), so counters come only from real calls.
         return client;
     }
 

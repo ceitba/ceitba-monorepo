@@ -14,9 +14,10 @@ import java.util.concurrent.atomic.AtomicReference;
 // in memory only. Keys are the header suffix: batch-creations-per-hour,
 // batch-create-per-minute, batch-requests-per-day, batch-status-checks-per-minute,
 // tokens-per-day, tokens-per-minute, requests. x-ratelimit-reset-* is a Unix
-// time when DO knows it (0 otherwise). DO has no usage endpoint; a POST
-// /v1/batches with a nonexistent file_id answers with the batch headers: the
-// probe behind refreshBatchQuota().
+// time when DO knows it (0 otherwise). DO has no usage endpoint. A POST
+// /v1/batches with a nonexistent file_id answers with the batch headers but
+// still spends one hourly creation, so no probe is bound in production
+// (refreshBatchQuota() is a no-op unless a test binds one).
 //
 // Rejected creation attempts count against batch-creations-per-hour: retrying
 // every 10 minutes (6/h against a limit of 5) kept the quota at 0 for hours.
