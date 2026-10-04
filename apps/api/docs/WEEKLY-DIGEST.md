@@ -14,7 +14,7 @@ Code: `service/digest/*` (selection, rendering, lifecycle, sending worker,
 `web/digest/DigestController`, `web/mail/MailTrackingController`, `web/mail/MailAccountController`.
 Schema: `V43__weekly_digest.sql` ("Tu cuatrimestre" adds no tables),
 `V44__mail_quota_tracking.sql` (quota ledger + open/click tracking),
-`V45__mail_sender_accounts.sql` (connected Gmail sender accounts).
+`V48__mail_sender_accounts.sql` (connected Gmail sender accounts).
 
 ## How it works
 
