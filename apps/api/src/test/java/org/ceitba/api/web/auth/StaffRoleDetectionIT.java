@@ -1,5 +1,6 @@
 package org.ceitba.api.web.auth;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.CeitbaBranch;
 import org.ceitba.api.domain.CeitbaStaff;
 import org.ceitba.api.domain.CeitbaStaffRole;
@@ -17,9 +18,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -33,12 +31,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 // Allowlist enforcement is tested at the HTTP layer in SubjectBookmarkAuthIT
 // and UserEndpointsIT (via the AuthorizationManager in SecurityConfig).
 @SpringBootTest
-@Testcontainers
 @TestPropertySource(properties = "auth.allowed-domains=itba.edu.ar")
 class StaffRoleDetectionIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

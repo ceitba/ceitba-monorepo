@@ -1,10 +1,17 @@
 name: Build & Test
 
+# Each change is tested once per branch it lands on:
+#   - PRs into dev / migration/** run the suite (the review gate).
+#   - Pushes to main run the suite again before the image is built and
+#     Deploy runs: there is no branch protection, so a PR can be merged
+#     before its checks finish and main must stay a real gate.
+#   - Pushes to dev and PRs into main run nothing: dev is not deployed, and
+#     the dev -> main release is tested by the push to main it produces.
 on:
   push:
-    branches: [main, dev, "migration/**"]
+    branches: [main, "migration/**"]
   pull_request:
-    branches: [main, dev, "migration/**"]
+    branches: [dev, "migration/**"]
 
 # One run at a time per branch. Pushes queue instead of racing, so an older
 # run can never finish last and overwrite a newer deploy/image; superseded PR
@@ -28,7 +35,8 @@ jobs:
 
       - name: Build + run unit and integration tests
         # Failsafe spins up Testcontainers Postgres via the host Docker socket;
-        # ubuntu-latest has Docker preinstalled.
+        # ubuntu-latest has Docker preinstalled. IT classes share one Postgres
+        # server with a database each (see SharedPostgres).
         run: ./mvnw -B -ntp verify
 
       - name: Upload test reports on failure
@@ -42,7 +50,7 @@ jobs:
 
   image:
     needs: test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read

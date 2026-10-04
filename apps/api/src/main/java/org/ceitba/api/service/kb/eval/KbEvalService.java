@@ -296,8 +296,14 @@ public class KbEvalService implements KbRunHandler {
         for (var m : modelsBody) {
             var plan = m.isTextual() ? m.asText() : m.path("plan").asText("");
             var write = m.isTextual() ? m.asText() : m.path("write").asText(plan);
-            var pe = effort(m.path("reasoningEffort").path("plan"));
-            var we = effort(m.path("reasoningEffort").path("write"));
+            var re = m.path("reasoningEffort");
+            if (!re.isMissingNode() && !re.isNull() && !re.isObject() && !re.isTextual()) {
+                throw new ValidationException("reasoningEffort", re.toString(),
+                    "must be an object {plan, write} or a string for both stages");
+            }
+            // A string applies to both stages.
+            var pe = effort(re.isTextual() ? re : re.path("plan"));
+            var we = effort(re.isTextual() ? re : re.path("write"));
             for (var id : List.of(plan, write)) {
                 var model = models.findById(id).orElseThrow(() -> new ValidationException("models", id, "not in the model catalog"));
                 if (!model.isEnabled()) throw new ValidationException("models", id, "is disabled in the catalog");
