@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { canAccessAdmin, signOut, startGoogleSignIn } from '../store/authStore'
+import { canAccessAdmin, canManageOrganizations, signOut, startGoogleSignIn } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
 
@@ -98,7 +98,7 @@ export default function AuthMenu({ mobile = false }) {
               onClick={() => setOpen(false)}
               className="block px-3 py-2 font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] hover:bg-primary-50 dark:hover:bg-primary-900"
             >
-              {t('auth.adminPanel')}
+              {canManageOrganizations(profile) ? t('auth.adminPanel') : t('auth.myArticles')}
             </Link>
           ) : CONTRIBUTIONS_ENABLED && (
             <button

@@ -111,7 +111,8 @@
       "invalid_state": "La sesión de inicio expiró o no es válida. Probá de nuevo.",
       "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo.",
       "access_denied": "Cancelaste el inicio de sesión con Google."
-    }
+    },
+    "myArticles": "Mis artículos"
   },
   "calendar": {
     "prevMonth": "Mes anterior",
@@ -130,7 +131,7 @@
     "status": {
       "published": "Publicado",
       "draft": "Borrador",
-      "pending_review": "Pendiente revisión",
+      "pending_review": "En revisión",
       "changes_requested": "Cambios solicitados",
       "rejected": "Rechazado"
     },
@@ -152,7 +153,10 @@
         "organization": "Organización",
         "date": "Fecha",
         "votes": "Votos"
-      }
+      },
+      "independent": "Independiente",
+      "pendingReview_one": "Hay {{count}} artículo independiente esperando revisión: abrilo y publicalo si está bien.",
+      "pendingReview_other": "Hay {{count}} artículos independientes esperando revisión: abrilos y publicalos si están bien."
     },
     "events": {
       "title": "Eventos",
@@ -245,7 +249,11 @@
       "statusHelp": {
         "new": "Guardalo como borrador para seguir después (solo lo ven los editores) o publicalo para que aparezca en el newsletter.",
         "draft": "Es un borrador: solo lo ven los editores de la organización. Publicalo cuando esté listo.",
-        "published": "Está publicado y visible en el newsletter. «Pasar a borrador» lo oculta."
+        "published": "Está publicado y visible en el newsletter. «Pasar a borrador» lo oculta.",
+        "independent": "Lo podés guardar como borrador y seguir después. Cuando esté listo, envialo a revisión: el staff lo publica.",
+        "independentPending": "Está en revisión: el staff lo va a publicar. Podés seguir editándolo o volverlo a borrador.",
+        "reviewByStaff": "Lo envió un autor para revisión. Si está bien, publicalo; si no, guardalo como borrador.",
+        "lockedForAuthor": "El staff ya lo publicó, así que no se puede editar desde acá. Para cambios, escribí a newsletter@ceitba.org.ar."
       },
       "date": "Fecha de publicación",
       "placement": "Ubicación",
@@ -259,7 +267,15 @@
         "body": "Tenés cambios sin guardar en este artículo. Si salís ahora, se pierden.",
         "discard": "Salir sin guardar",
         "stay": "Seguir editando"
-      }
+      },
+      "independent": "Independiente (sin organización)",
+      "independentHint": "Como autor independiente, el staff de CEITBA revisa el artículo antes de publicarlo.",
+      "submitForReview": "Enviar a revisión",
+      "updateSubmission": "Actualizar envío",
+      "backToDraft": "Volver a borrador",
+      "editPendingTitle": "Editando artículo en revisión",
+      "submittedDone": "Enviado a revisión",
+      "submittedHint": "El staff de CEITBA lo va a revisar y publicar. Mientras tanto lo podés seguir editando desde Artículos."
     },
     "eventForm": {
       "loading": "Cargando evento…",
@@ -338,7 +354,8 @@
     },
     "roles": {
       "staff": "Staff",
-      "user": "Miembro"
+      "user": "Autor",
+      "member": "Miembro"
     },
     "nav": {
       "label": "Navegación del panel",
@@ -448,12 +465,9 @@
   "write": {
     "cta": "Escribir en el newsletter",
     "title": "Publicá en el newsletter",
-    "intro": "Las agrupaciones, centros y equipos del ITBA publican sus propias notas acá: novedades, coberturas, convocatorias y lo que quieran contar.",
-    "signedOut": "Si sos parte de una, iniciá sesión con tu cuenta @itba.edu.ar y vas a poder escribir desde un editor visual.",
-    "notMember": "Tu cuenta todavía no está vinculada a ninguna organización. Pedile al admin de tu agrupación que te sume como miembro, o escribinos y te ayudamos.",
+    "intro": "Cualquier estudiante puede escribir en el newsletter. Las agrupaciones publican directo; los artículos independientes los revisa el staff de CEITBA antes de publicarse.",
+    "signedOut": "Iniciá sesión con tu cuenta @itba.edu.ar y vas a poder escribir desde un editor visual.",
     "signIn": "Iniciar sesión con Google",
-    "contact": "Escribir a CEITBA",
-    "emailSubject": "Quiero publicar en el newsletter",
     "organizations": "Ver organizaciones",
     "close": "Cerrar"
   }

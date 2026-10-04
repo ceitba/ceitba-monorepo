@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useBlocker, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   fetchArticleById,
@@ -9,7 +9,7 @@ import {
 import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
-import { setUnsavedChanges } from '../../store/unsavedStore'
+import { allowNextNavigation, setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import { useDialogFocus } from '../../hooks/useDialogFocus'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
@@ -39,7 +39,9 @@ function buildEmptyForm(profile) {
     excerpt:      '',
     body:         '',
     category:     DEFAULT_CATEGORY,
-    organization: myOrgs[0]?.slug ?? 'ceitba',
+    // '' = independent (no organization): the default for writers who
+    // don't belong to one.
+    organization: myOrgs[0]?.slug ?? (isStaff(profile) ? 'ceitba' : ''),
     authors:      profile?.name ? [profile.name] : [],
     date:         todayISO(),
     readingTime:  '',
@@ -57,7 +59,7 @@ function toPayload(form, status) {
     excerpt:      form.excerpt.trim(),
     body:         form.body.trim() ? [form.body.trim()] : [],
     category:     form.category,
-    organization: form.organization,
+    organization: form.organization || null,
     authors:      form.authors.map((a) => a.trim()).filter(Boolean),
     date:         form.date,
     readingTime:  form.readingTime,
@@ -101,11 +103,12 @@ export default function AdminArticleFormPage() {
   const [editorKey, setEditorKey]     = useState(0)    // remounts the editor with loaded content
   const [orgs, setOrgs]               = useState([])
   const [errors, setErrors]           = useState({})
-  const [attempted, setAttempted]     = useState(null) // 'published' | 'draft' after a failed attempt
+  const [attempted, setAttempted]     = useState(null) // status of a failed save attempt
+  const [originalOrg, setOriginalOrg] = useState(null) // organization when loaded (null = independent)
   const [saving, setSaving]           = useState(null) // status being saved
   const [dirty, setDirty]             = useState(false)
   const [lastSaved, setLastSaved]     = useState(null)
-  const [published, setPublished]     = useState(false)
+  const [doneStatus, setDoneStatus]   = useState(null) // 'published' | 'pending_review' once sent
   const [apiError, setApiError]       = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
 
@@ -139,7 +142,7 @@ export default function AdminArticleFormPage() {
           excerpt:      existing.excerpt ?? '',
           body,
           category:     existing.category || DEFAULT_CATEGORY,
-          organization: existing.organization ?? buildEmptyForm(profile).organization,
+          organization: existing.organization ?? '',
           authors:      Array.isArray(existing.authors) ? existing.authors.filter(Boolean) : [],
           date:         existing.date ?? todayISO(),
           readingTime,
@@ -149,6 +152,7 @@ export default function AdminArticleFormPage() {
         })
         setAutoReading(!readingTime || readingTime === readingTimeFor(body))
         setSavedStatus(existing.status ?? 'published')
+        setOriginalOrg(existing.organization ?? null)
         setArticleId(routeId)
         loadedIdRef.current = routeId
         setEditorKey((k) => k + 1)
@@ -167,10 +171,12 @@ export default function AdminArticleFormPage() {
   const computedReading = useMemo(() => readingTimeFor(form.body), [form.body])
   const readingTime = autoReading ? computedReading : form.readingTime
 
-  const [leaveTo, setLeaveTo] = useState(null)
-  useUnsavedLinkGuard(dirty, setLeaveTo)
+  // Any in-app navigation (links, sidebar, back/forward) with unsaved
+  // changes asks first; closing or reloading the tab is beforeunload's job.
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    currentLocation.pathname !== nextLocation.pathname && shouldBlockNavigation())
 
-  const stayHere = useCallback(() => setLeaveTo(null), [])
+  const stayHere = useCallback(() => blocker.reset?.(), [blocker])
   const closePreview = useCallback(() => setPreviewOpen(false), [])
 
   useEffect(() => {
@@ -222,7 +228,7 @@ export default function AdminArticleFormPage() {
   function validate(values, status) {
     const e = {}
     if (!values.title.trim()) e.title = t('admin.articleForm.errors.title')
-    if (status === 'published') {
+    if (status === 'published' || status === 'pending_review') {
       if (!values.excerpt.trim())                 e.excerpt  = t('admin.articleForm.errors.excerpt')
       if (!values.authors.some((a) => a.trim()))   e.authors  = t('admin.articleForm.errors.authors')
       if (!values.date)                            e.date     = t('admin.articleForm.errors.date')
@@ -252,7 +258,7 @@ export default function AdminArticleFormPage() {
       // The API requires a copete and an author on every article, drafts
       // included: fill a draft's blanks from what's already written.
       if (!payload.excerpt) payload.excerpt = markdownToPlainText(form.body).slice(0, EXCERPT_CARD_CHARS) || payload.title
-      if (!payload.authors.length) payload.authors = [profile?.name || payload.organization]
+      if (!payload.authors.length) payload.authors = [profile?.name || payload.organization || 'CEITBA']
 
       const saved = isEdit ? await updateArticle(articleId, payload) : await createArticle(payload)
       setSavedStatus(saved?.status ?? status)
@@ -265,14 +271,16 @@ export default function AdminArticleFormPage() {
         excerpt: f.excerpt.trim() ? f.excerpt : payload.excerpt,
         authors: f.authors.length ? f.authors : payload.authors,
       }))
+      setOriginalOrg(saved?.organization ?? (payload.organization || null))
       if (!isEdit && saved?.id) {
         loadedIdRef.current = saved.id
         setArticleId(saved.id)
+        allowNextNavigation()
         navigate(`/admin/articles/${saved.id}/edit`, { replace: true })
       }
-      if (status === 'published') {
-        setPublished(true)
-        redirectTimerRef.current = setTimeout(() => navigate('/admin/articles'), 1200)
+      if (status === 'published' || status === 'pending_review') {
+        setDoneStatus(status)
+        redirectTimerRef.current = setTimeout(() => { allowNextNavigation(); navigate('/admin/articles') }, 1200)
       }
     } catch {
       setApiError(t('admin.articleForm.saveError'))
@@ -300,31 +308,57 @@ export default function AdminArticleFormPage() {
     )
   }
 
-  if (published) {
+  if (doneStatus) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3 animate-fade-in">
         <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.articleForm.publishedDone')}</p>
+        <p className="font-display text-h5 font-bold text-ink-primary">
+          {doneStatus === 'pending_review' ? t('admin.articleForm.submittedDone') : t('admin.articleForm.publishedDone')}
+        </p>
+        {doneStatus === 'pending_review' && (
+          <p className="font-body text-body-sm text-ink-secondary max-w-sm text-center">{t('admin.articleForm.submittedHint')}</p>
+        )}
       </div>
     )
   }
 
   const isPublished = savedStatus === 'published'
+  const isPending = savedStatus === 'pending_review'
+  const staff = isStaff(profile)
   const myOrgs = getOrganizations(profile)
   const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
-  const visibleOrgs = isStaff(profile) ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
-  const orgLocked = !isStaff(profile) && myOrgs.length === 1
+  const visibleOrgs = staff ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
+  // An org article can't be made independent (the API keeps its org), so
+  // the option only exists for new and already-independent articles.
+  const canBeIndependent = !isEdit || !originalOrg
+  // Independent articles by non-staff go through staff review; once staff
+  // publish one, its author can no longer change it (nor move it into an
+  // org to get around that: the API refuses).
+  const moderated = !staff && !form.organization
+  const lockedForAuthor = !staff && !originalOrg && isEdit && isPublished
+  const orgLocked = lockedForAuthor || (isEdit && Boolean(originalOrg) && !staff && myOrgs.length === 1)
+  // The current org may not be in the list yet (orgs still loading, or the
+  // request failed): keep it selectable so the select shows the truth.
+  const orgMissing = form.organization && !visibleOrgs.some((o) => o.slug === form.organization)
   const previewArticle = { ...form, readingTime, id: 'preview', body: [form.body] }
   const errorCount = Object.keys(errors).length
 
-  const primaryAction = isPublished
-    ? { status: 'published', label: t('admin.articleForm.saveChanges') }
-    : { status: 'published', label: t('admin.articleForm.publish') }
-  const secondaryAction = isPublished
+  const primaryAction = moderated
+    ? { status: 'pending_review', label: isPending ? t('admin.articleForm.updateSubmission') : t('admin.articleForm.submitForReview') }
+    : isPublished
+      ? { status: 'published', label: t('admin.articleForm.saveChanges') }
+      : { status: 'published', label: t('admin.articleForm.publish') }
+  const secondaryAction = isPublished && !moderated
     ? { status: 'draft', label: t('admin.articleForm.unpublish') }
-    : { status: 'draft', label: t('admin.articleForm.saveDraft') }
+    : { status: 'draft', label: isPending ? t('admin.articleForm.backToDraft') : t('admin.articleForm.saveDraft') }
+  const statusHelp = lockedForAuthor ? t('admin.articleForm.statusHelp.lockedForAuthor')
+    : moderated ? (isPending ? t('admin.articleForm.statusHelp.independentPending') : t('admin.articleForm.statusHelp.independent'))
+    : isPending ? t('admin.articleForm.statusHelp.reviewByStaff')
+    : isPublished ? t('admin.articleForm.statusHelp.published')
+    : savedStatus ? t('admin.articleForm.statusHelp.draft')
+    : t('admin.articleForm.statusHelp.new')
 
   return (
     <div className="flex flex-col gap-6 max-w-[80rem]">
@@ -338,7 +372,9 @@ export default function AdminArticleFormPage() {
             <h1 className="font-display text-h4 font-bold text-ink-primary">
               {!isEdit
                 ? t('admin.articleForm.newTitle')
-                : isPublished ? t('admin.articleForm.editPublishedTitle') : t('admin.articleForm.editDraftTitle')}
+                : isPublished ? t('admin.articleForm.editPublishedTitle')
+                : isPending ? t('admin.articleForm.editPendingTitle')
+                : t('admin.articleForm.editDraftTitle')}
             </h1>
             <StatusPill status={savedStatus} />
           </div>
@@ -363,7 +399,7 @@ export default function AdminArticleFormPage() {
           <button
             type="button"
             onClick={() => save(secondaryAction.status)}
-            disabled={Boolean(saving)}
+            disabled={Boolean(saving) || lockedForAuthor}
             className="min-h-[40px] px-4 bg-white border border-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60"
           >
             {saving === secondaryAction.status ? t('admin.form.saving') : secondaryAction.label}
@@ -371,7 +407,7 @@ export default function AdminArticleFormPage() {
           <button
             type="button"
             onClick={() => save(primaryAction.status)}
-            disabled={Boolean(saving)}
+            disabled={Boolean(saving) || lockedForAuthor}
             className="min-h-[40px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60"
           >
             {saving === primaryAction.status ? t('admin.form.saving') : primaryAction.label}
@@ -440,9 +476,7 @@ export default function AdminArticleFormPage() {
         <aside className="lg:w-80 flex-shrink-0 flex flex-col gap-4 lg:sticky lg:top-20">
           <SidebarCard title={t('admin.articleForm.publication')}>
             <p className="font-body text-body-sm text-ink-secondary leading-relaxed">
-              {isPublished ? t('admin.articleForm.statusHelp.published')
-                : savedStatus ? t('admin.articleForm.statusHelp.draft')
-                : t('admin.articleForm.statusHelp.new')}
+              {statusHelp}
             </p>
             <div className="mt-3" data-field="date">
               <FieldLabel>{t('admin.articleForm.date')}</FieldLabel>
@@ -463,9 +497,15 @@ export default function AdminArticleFormPage() {
               <div>
                 <FieldLabel>{t('admin.form.organization')}</FieldLabel>
                 <select value={form.organization} onChange={(e) => set('organization', e.target.value)} disabled={orgLocked} className={selectClass()}>
+                  {canBeIndependent && <option value="">{t('admin.articleForm.independent')}</option>}
+                  {orgMissing && <option value={form.organization}>{form.organization}</option>}
                   {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
                 </select>
+                {moderated && (
+                  <p className="mt-1.5 font-body text-body-sm text-ink-secondary">{t('admin.articleForm.independentHint')}</p>
+                )}
               </div>
+              {!moderated && (<>
               <label className="flex items-center gap-3 cursor-pointer pt-1">
                 <span className="relative">
                   <input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} className="sr-only peer" />
@@ -477,6 +517,7 @@ export default function AdminArticleFormPage() {
               {form.featured && (
                 <p className="font-mono text-label text-ink-secondary leading-relaxed">{t('admin.articleForm.featuredHint')}</p>
               )}
+              </>)}
             </div>
           </SidebarCard>
 
@@ -542,42 +583,14 @@ export default function AdminArticleFormPage() {
 
       {/* After the preview so it stacks above it (a link in the preview
           can trigger it). */}
-      {leaveTo && (
+      {blocker.state === 'blocked' && (
         <LeaveDialog
           onStay={stayHere}
-          onLeave={() => { setDirty(false); setLeaveTo(null); setPreviewOpen(false); navigate(leaveTo) }}
+          onLeave={() => { setPreviewOpen(false); blocker.proceed() }}
         />
       )}
     </div>
   )
-}
-
-// BrowserRouter has no useBlocker, so while there are unsaved changes,
-// clicks on same-site links (sidebar, "← Artículos", topbar) are caught
-// before React Router handles them and confirmed in a dialog. Closing or
-// reloading the tab is covered by beforeunload.
-function useUnsavedLinkGuard(active, onBlocked) {
-  useEffect(() => {
-    if (!active) return
-    const base = import.meta.env.BASE_URL.replace(/\/+$/, '')
-    const onClick = (e) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-      const a = e.target.closest?.('a[href]')
-      if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return
-      // Links inside the editor are edited, not followed.
-      if (a.isContentEditable || a.closest('[contenteditable="true"]')) return
-      const url = new URL(a.href, window.location.href)
-      if (url.origin !== window.location.origin) return
-      if (base && url.pathname !== base && !url.pathname.startsWith(`${base}/`)) return
-      const to = (url.pathname.slice(base.length) || '/') + url.search + url.hash
-      if (to === window.location.pathname.slice(base.length) + window.location.search) return
-      e.preventDefault()
-      e.stopPropagation()
-      onBlocked(to)
-    }
-    document.addEventListener('click', onClick, true)
-    return () => document.removeEventListener('click', onClick, true)
-  }, [active, onBlocked])
 }
 
 function LeaveDialog({ onStay, onLeave }) {
@@ -605,12 +618,14 @@ function LeaveDialog({ onStay, onLeave }) {
 function StatusPill({ status }) {
   const { t } = useTranslation()
   const styles = {
-    published: 'bg-emerald-50 text-emerald-700',
-    draft:     'bg-amber-50 text-amber-700',
+    published:      'bg-emerald-50 text-emerald-700',
+    draft:          'bg-amber-50 text-amber-700',
+    pending_review: 'bg-primary-50 text-primary',
   }
+  const dot = { published: 'bg-emerald-600', draft: 'bg-amber-500', pending_review: 'bg-accent' }
   return (
     <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest', styles[status] ?? 'bg-surface text-ink-secondary border border-border'].join(' ')}>
-      <span className={['w-1.5 h-1.5 rounded-full', status === 'published' ? 'bg-emerald-600' : status === 'draft' ? 'bg-amber-500' : 'bg-border'].join(' ')} aria-hidden="true" />
+      <span className={['w-1.5 h-1.5 rounded-full', dot[status] ?? 'bg-border'].join(' ')} aria-hidden="true" />
       {status ? t(`admin.status.${status}`, { defaultValue: status }) : t('admin.articleForm.unsavedStatus')}
     </span>
   )

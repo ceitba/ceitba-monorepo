@@ -5,11 +5,13 @@ function normalize(a) {
   return { ...a, date: a.publishedAt ?? a.date }
 }
 
-export async function fetchArticles({ category, organization, status, page = 1, limit = 20 } = {}) {
+export async function fetchArticles({ category, organization, status, mine, page = 1, limit = 20 } = {}) {
   const params = new URLSearchParams({ page, limit })
   if (category) params.set('category', category)
   if (organization) params.set('organization', organization)
   if (status) params.set('status', status)
+  // Only the caller's own articles, any status (independent authors).
+  if (mine) params.set('mine', 'true')
 
   const json = await apiGet(`/articles?${params}`)
   return { ...json, data: json.data.map(normalize) }

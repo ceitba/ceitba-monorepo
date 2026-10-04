@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { signOut, getOrganizations, isStaff as isStaffProfile } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
-import { hasUnsavedChanges } from '../store/unsavedStore'
+import { allowNextNavigation, hasUnsavedChanges } from '../store/unsavedStore'
 
 function buildNav(profile, t) {
   const orgs = getOrganizations(profile)
@@ -16,7 +16,10 @@ function buildNav(profile, t) {
     label: t('admin.nav.content'),
     items: [
       { to: '/admin/articles', label: t('admin.nav.articles'), icon: <IconDoc /> },
-      { to: '/admin/events',   label: t('admin.nav.events'),   icon: <IconCal /> },
+      // Events always belong to an organization.
+      ...(isStaff || orgs.length > 0
+        ? [{ to: '/admin/events', label: t('admin.nav.events'), icon: <IconCal /> }]
+        : []),
       ...(isStaff && CONTRIBUTIONS_ENABLED
         ? [{ to: '/admin/suggestions', label: t('admin.nav.suggestions'), icon: <IconInbox /> }]
         : []),
@@ -74,7 +77,10 @@ export default function AdminLayout() {
   }, [sidebarOpen])
 
   async function handleSignOut() {
-    if (hasUnsavedChanges() && !window.confirm(t('admin.nav.signOutUnsaved'))) return
+    if (hasUnsavedChanges()) {
+      if (!window.confirm(t('admin.nav.signOutUnsaved'))) return
+      allowNextNavigation()
+    }
     await signOut()
     navigate('/admin/login', { replace: true })
   }
@@ -161,7 +167,9 @@ export default function AdminLayout() {
       <div className="px-5 py-4 border-t border-primary-700">
         <p className="font-body text-body-sm text-primary-200 truncate">{session?.name}</p>
         <p className="font-mono text-label text-primary-500 uppercase tracking-widest mt-0.5">
-          {session?.role ? t(`admin.roles.${session.role}`, { defaultValue: session.role }) : ''}
+          {session?.role === 'user' && getOrganizations(session).length > 0
+            ? t('admin.roles.member')
+            : session?.role ? t(`admin.roles.${session.role}`, { defaultValue: session.role }) : ''}
         </p>
         <button
           type="button"

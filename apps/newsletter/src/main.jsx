@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { getTheme, setTheme } from './store/prefsStore'
 import './i18n'
 import App from './App'
@@ -13,10 +13,14 @@ setTheme(getTheme())
 // site links to: the router would render nothing.
 const ROUTER_BASENAME = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
 
+// A data router (rather than BrowserRouter) so pages can use useBlocker:
+// the article editor asks before any in-app navigation, back/forward
+// included, drops unsaved changes. App keeps declaring its routes with
+// <Routes>, rendered under one catch-all route.
+const router = createBrowserRouter([{ path: '*', element: <App /> }], { basename: ROUTER_BASENAME })
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename={ROUTER_BASENAME}>
-      <App />
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </React.StrictMode>
 )
