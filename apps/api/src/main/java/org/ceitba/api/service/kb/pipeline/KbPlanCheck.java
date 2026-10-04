@@ -23,10 +23,14 @@ public final class KbPlanCheck {
     public static final String DELETE_IGNORED = "deleteIgnored";    // evals rebuild from scratch: no deletes
 
     public static final String EMPTY_PLAN_ERROR = "plan returned no operations with valid sources";
+    public static final String INDEX_ONLY_ERROR = "plan_insufficient: a first compilation with several sources "
+        + "planned only the index page (no topic or concept pages)";
 
     private final int proposed;
     private int kept;
     private final Map<String, Integer> dropped = new TreeMap<>();
+    private int contentKept;         // kept create/update operations that are not the index
+    private int firstCompileSources; // >= 2: a first compilation whose plan must have more than the index
 
     public KbPlanCheck(JsonNode proposed) {
         this.proposed = proposed == null ? 0 : proposed.size();
@@ -34,6 +38,35 @@ public final class KbPlanCheck {
 
     public void kept() {
         kept++;
+    }
+
+    // A kept create/update of the page `slug`.
+    public void keptPage(String slug) {
+        kept();
+        if (!slug.equals("index")) contentKept++;
+    }
+
+    // The subject is compiled for the first time (no existing pages) from
+    // `usableSources` files: with at least two, an index-only plan is not enough.
+    public void firstCompile(int usableSources) {
+        this.firstCompileSources = usableSources;
+    }
+
+    public boolean indexOnly() {
+        return firstCompileSources >= 2 && kept > 0 && contentKept == 0;
+    }
+
+    // Nothing usable: all operations dropped, or (first compilation) only an index.
+    public boolean insufficient() {
+        return emptyAfterFiltering() || indexOnly();
+    }
+
+    // "indice"/"índice" of an index page is the slug "index".
+    public static String normalizeIndexSlug(String slug, String type) {
+        if (type == null || !type.trim().equalsIgnoreCase("index")) return slug;
+        var folded = java.text.Normalizer.normalize(slug, java.text.Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "").toLowerCase(java.util.Locale.ROOT);
+        return folded.equals("indice") ? "index" : slug;
     }
 
     public void dropped(String reason) {
@@ -79,6 +112,16 @@ public final class KbPlanCheck {
     // The corrective note appended to a PLAN request whose operations were
     // all dropped.
     public static String correction(Collection<String> validIds) {
+        return correction(validIds, false);
+    }
+
+    public static String correction(Collection<String> validIds, boolean indexOnly) {
+        if (indexOnly) {
+            return "## Corrección\n\nYour previous plan only created the `index` page. This subject has several "
+                + "sources and no pages yet: plan the topic and concept pages too (one `create` per topic or concept "
+                + "the sources teach, each with `sources` copied exactly from the valid ids), plus the index. Answer "
+                + "again with `submit_plan`.\n\nValid ids: " + String.join(", ", validIds);
+        }
         return "## Corrección\n\nIn your previous answer no operation could be used: every `create` and `update` "
             + "needs `sources` with at least one id copied exactly from this list of valid file ids (no names, no "
             + "invented ids). Answer again with `submit_plan`.\n\nValid ids: " + String.join(", ", validIds);

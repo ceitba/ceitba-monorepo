@@ -18,6 +18,7 @@
     <description>CEITBA API</description>
 
     <properties>
+        <it.forkCount>1</it.forkCount>
         <java.version>21</java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.21.3</testcontainers.version>
@@ -239,8 +240,22 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <!-- One JVM by default: CI's private-repo runner has 2 vCPUs
+                         and 8 GB, and 3 parallel forks made the whole test run slower
+                         (8:11 -> 10:34 min) because every class boots its own
+                         Spring context. On a bigger machine run e.g.
+                         -Dit.forkCount=3; forks are safe (each JVM starts its
+                         own SharedPostgres, containers use mapped ports and
+                         per-class networks). -->
+                    <forkCount>${it.forkCount}</forkCount>
+                    <reuseForks>true</reuseForks>
                     <systemPropertyVariables>
                         <api.version>1.44</api.version>
+                        <!-- Each IT class has its own database, so its context
+                             is never reused; close old ones promptly instead of
+                             keeping up to 32 alive (heap, pooled connections to
+                             SharedPostgres, background jobs). -->
+                        <spring.test.context.cache.maxSize>2</spring.test.context.cache.maxSize>
                     </systemPropertyVariables>
                     <environmentVariables>
                         <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>

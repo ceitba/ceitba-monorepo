@@ -1,5 +1,6 @@
 package org.ceitba.api.web.media;
 
+import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -13,9 +14,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
@@ -31,7 +29,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // the per-user quota for proposal attachments.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
     "storage.endpoint=https://acct.r2.cloudflarestorage.com",
@@ -45,8 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class StorageConfiguredUploadIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

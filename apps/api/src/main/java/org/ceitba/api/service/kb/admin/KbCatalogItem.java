@@ -37,9 +37,14 @@ public record KbCatalogItem(String id, String name, String creator, Integer cont
         return capabilities.stream().anyMatch(c -> c.equalsIgnoreCase(capability));
     }
 
+    // Text models DO's catalog lists by type: OpenAI's GPT-5/6 family (Luna,
+    // Sol, gpt-oss...) are "reasoning", some code models "coding"; image,
+    // embedding, audio, reranking and the like are not chat completions.
+    private static final java.util.Set<String> CHAT_TYPES = java.util.Set.of("chat", "reasoning", "coding");
+
     // Chat models served serverless (when the catalog says so).
     public boolean serverlessChat() {
-        boolean chat = type == null || type.equalsIgnoreCase("chat");
+        boolean chat = type == null || CHAT_TYPES.contains(type.toLowerCase(java.util.Locale.ROOT));
         boolean serverless = availability.isEmpty() || availability.stream().anyMatch(a -> a.equalsIgnoreCase("serverless"));
         return chat && serverless;
     }

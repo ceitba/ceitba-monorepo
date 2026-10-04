@@ -1,5 +1,6 @@
 package org.ceitba.api.web.kb.pipeline;
 
+import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.external.llm.FakeLlmBatchClient;
@@ -23,9 +24,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -47,12 +45,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // the same in both modes, so every assertion reads them.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(InMemoryObjectStorage.Config.class)
 abstract class KbPipelineAcceptanceIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

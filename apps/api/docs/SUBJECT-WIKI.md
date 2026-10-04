@@ -60,7 +60,17 @@ A page is **rejected** (the previous revision stays) when:
 - frontmatter is missing/invalid, `subject` doesn't match the folder, slug invalid, or `type: index` on a non-`index` slug;
 - a `##` section has no `[[file:…]]` citation;
 - it cites a file not in its `sources`, or a source that is not a `PUBLISHED` file whose effective subject is this subject;
+- a citation has a space after `file:` (`[[file: <id>]]`; reason `citation_format`);
+- `latex_format`: a math command (`\bar`, `\frac`, `\sum`, `\pm`, `\sqrt`, Greek letters, …) outside `$…$`/`$$…$$`, a
+  doubled backslash before letters (`\\bar`), a line ending in a stray backslash, or an unbalanced `$` (write a literal
+  dollar as `\$`);
+- `meta_section`: a heading or bullet that is a note to the editor, not content (`Qué falta`, `TODO`, `FIXME`,
+  `Pendiente`, `Por completar`, `A completar`, `Agregar enlaces…`);
+- `self_link`: a wikilink to the page's own slug (`[[slug#heading]]` and `[[#heading]]` are fine);
 - it copies ≥ 40 consecutive words from a source's extracted text (normalized: lowercase, collapsed whitespace).
+
+Code spans and fences are ignored by the three style checks (`KbStyleChecks`). Each error text starts with its reason,
+which feeds `rejectReasons` and the retry prompt.
 
 Not fatal: wikilinks to pages that don't exist (kept in `kb_link` with `to_page_id = null` and rendered as plain
 text by the frontend; resolved automatically when the target appears later).

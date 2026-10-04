@@ -66,7 +66,15 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
      - the list of removed file ids with the pages citing them;
      - the page index (titles/aliases/summaries) of up to 8 related subjects (`kb_subject_relation`).
    - Output (tool use):
-     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason }] }`.
+     `{ operations: [{ op: create|update|delete, slug, type, title, sources: [fileId], reason, mustCover: [string] }] }`.
+   - `mustCover` (required; may be empty for `delete` and `index`): 2-8 items naming each definition, method, theorem or
+     formula the page must present, taken from the digests' `formulas`/`keyPoints` (LaTeX for quantitative topics).
+     Validation keeps it as an array of trimmed strings (max 10, 300 chars each); missing or invalid becomes `[]`, the op
+     is never dropped for it. It is copied into the WRITE and RETRY request bodies (pipeline and eval).
+   - Reject reason `missing_formula`: if a `mustCover` item contains LaTeX (a backslash command, or `^`/`_` followed by
+     a brace) and the written page has no `$` math at all, the page is rejected with `missing_formula: the plan
+     required formulas (...) but the page has none` (checked with the op in hand, in the pipeline and in evals; counted
+     in the eval's `rejectReasons`; the retry prompt tells the writer to add the formulas).
    - Rules given to the model:
      - update only pages whose sources changed or were removed, or that a new file clearly extends;
      - create pages for new key concepts the new material explains;
@@ -81,6 +89,10 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
    - If the model proposed ops but **none** survived, that PLAN request is sent once more (as the stage's second
      attempt, `KbRunHandler.redo`) with a corrective note listing the valid file ids. Still empty → the subject fails
      with `PLAN: plan returned no operations with valid sources`.
+   - Index-only plans: a subject compiled for the first time (no live pages) with at least 2 usable sources whose kept
+     ops are only the `index` page is **insufficient**, handled exactly like an empty plan (one retry with a note asking
+     for topic and concept pages; still insufficient → the subject fails with `PLAN: plan_insufficient: …`). An index
+     page planned as `indice`/`índice` with `type: index` is normalised to the slug `index`.
 4. **WRITE** (batch): one request per create/update op.
    - Input:
      - the current page Markdown (for updates);
@@ -144,6 +156,20 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
 - `FakeLlmBatchClient` for tests: completes immediately with canned or scripted outputs, keyed by stage.
 - Config: `KB_LLM_BASE_URL` (default `https://inference.do-ai.run`), `KB_LLM_API_KEY` (a DO model access key),
   `KB_MODEL`, `KB_PIPELINE_ENABLED` (default false), `KB_PIPELINE_CRON`, `KB_POLL_INTERVAL`, `KB_RUN_TOKEN_BUDGET`, `KB_RETRY_REJECTED`.
+
+## DigitalOcean quotas (`DoQuotaTracker`)
+
+Every DO response (429s included) updates an in-memory snapshot of its `x-ratelimit-limit-*`/`remaining-*` counters (no DB).
+- **Batch creations:** before creating a batch (`BatchLlmExecutor.submit`, so also the catalog's batch probe), if the snapshot
+  says `batch-creations-per-hour` has 0 left and was observed under 60 min ago, DO is not called: the job stays QUEUED with
+  `next_attempt_at = observedAt + 10 min` (error `QUOTA_WAIT: Esperando cupo de lotes de DigitalOcean: 0/5 esta hora`). When due,
+  the free probe refreshes the snapshot (at most once a minute) and the check repeats. The 429 back-off remains the fallback.
+- **Sync daily tokens (`tokens_per_day`):** `DoChatClient` throws `DoQuotaExhaustedException` at once (no retries), and
+  `SyncLlmExecutor` also stops before a request when the snapshot (under 30 min old) has fewer daily tokens left than it
+  needs (prompt chars / 4 + `max_tokens`). `KbRunEngine` then pauses instead of failing: unanswered requests stay SUBMITTED
+  without answer (the state a restart resumes from, never FAILED), their job stays open, and the run goes WAITING with the
+  reason until +30 min (in memory; the batch poller kicks the run when due; reset headers are 0, so a stale snapshot is
+  ignored and a real request re-checks). Batch usage does not count toward `tokens_per_day`.
 
 ## Budget
 

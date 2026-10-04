@@ -131,8 +131,34 @@ public final class LlmOutputParser {
         int cached = usage.path("cache_read_input_tokens").asInt(
             usage.path("prompt_tokens_details").path("cached_tokens").asInt(0));
         boolean ok = error == null && (toolInput != null || (!calledTool && !text.isEmpty()));
-        return new LlmResult(id, ok, toolInput, text.isEmpty() ? null : text.toString(), in, out, cached, path,
-            ok ? null : (error == null ? "empty response" : error));
+        return new LlmResult(id, ok, withoutNul(toolInput), text.isEmpty() ? null : withoutNul(text.toString()),
+            in, out, cached, path, ok ? null : (error == null ? "empty response" : error));
+    }
+
+    // Postgres text/jsonb can't hold U+0000 ("unsupported Unicode escape
+    // sequence"), and models occasionally emit it (gpt-5-nano wrote
+    // a NUL inside "distribución"): one such answer failed a whole eval. Dropped.
+    static String withoutNul(String s) {
+        return s == null || s.indexOf('\u0000') < 0 ? s : s.replace("\u0000", "");
+    }
+
+    static JsonNode withoutNul(JsonNode node) {
+        if (node == null) return null;
+        if (node.isTextual()) {
+            var t = node.asText();
+            return t.indexOf('\u0000') < 0 ? node : com.fasterxml.jackson.databind.node.TextNode.valueOf(withoutNul(t));
+        }
+        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode o) {
+            var out = o.objectNode();
+            o.fields().forEachRemaining(e -> out.set(withoutNul(e.getKey()), withoutNul(e.getValue())));
+            return out;
+        }
+        if (node instanceof com.fasterxml.jackson.databind.node.ArrayNode a) {
+            var out = a.arrayNode();
+            a.forEach(v -> out.add(withoutNul(v)));
+            return out;
+        }
+        return node;
     }
 
     // A JSON object answer written as text (optionally fenced).

@@ -2,6 +2,8 @@ package org.ceitba.api.service.kb.llm;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.config.KbLlmProperties;
+import org.ceitba.api.external.llm.DoQuotaExhaustedException;
+import org.ceitba.api.external.llm.DoQuotaTracker;
 import org.ceitba.api.external.llm.LlmApiException;
 import org.ceitba.api.external.llm.LlmOutputParser;
 import org.ceitba.api.external.llm.SyncChatClient;
@@ -29,11 +31,24 @@ public class SyncLlmExecutor {
     private final SyncChatClient client;
     private final KbLlmProperties props;
     private final ObjectMapper json;
+    private final DoQuotaTracker quota;
 
     public SyncLlmExecutor(SyncChatClient client, KbLlmProperties props, ObjectMapper json) {
+        this(client, props, json, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public SyncLlmExecutor(SyncChatClient client, KbLlmProperties props, ObjectMapper json, DoQuotaTracker quota) {
         this.client = client;
         this.props = props;
         this.json = json;
+        this.quota = quota;
+    }
+
+    // Rough tokens of a request (prompt at ~4 chars/token plus max_tokens), to
+    // compare with the daily tokens DO says are left.
+    static long estimateTokens(LlmLine line) {
+        return line.params().toString().length() / 4 + line.params().path("max_tokens").asLong(4096);
     }
 
     // One HTTP call of a request: its own usage and latency. reasoningTokens
@@ -48,9 +63,14 @@ public class SyncLlmExecutor {
         run(lines, o -> onResult.accept(o.result()), () -> false);
     }
 
+    // True when the pool stopped because DO's daily token quota ran out
+    // (a 429 tokens_per_day, or the snapshot left fewer tokens than the next
+    // request needs): the requests not started stay unanswered, never failed.
+
     // stop: checked before each request starts; once true, the remaining
     // requests are abandoned (in-flight ones still report their answers).
-    public void run(List<LlmLine> lines, Consumer<Outcome> onResult, java.util.function.BooleanSupplier stop) {
+    public boolean run(List<LlmLine> lines, Consumer<Outcome> onResult, java.util.function.BooleanSupplier stop) {
+        var quotaPaused = new java.util.concurrent.atomic.AtomicBoolean(false);
         var permits = new Semaphore(props.syncConcurrency());
         var stopped = new java.util.concurrent.atomic.AtomicBoolean(false);
         try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -62,7 +82,16 @@ public class SyncLlmExecutor {
                             stopped.set(true);
                             return;
                         }
+                        if (quota != null && quota.dailyTokensShort(estimateTokens(line))) {
+                            quotaPaused.set(true);
+                            stopped.set(true);
+                            return;
+                        }
                         onResult.accept(runTracked(line));
+                    } catch (DoQuotaExhaustedException e) {
+                        log.warn("KB pipeline: DO daily token quota exhausted; pausing sync requests");
+                        quotaPaused.set(true);
+                        stopped.set(true);
                     } catch (RuntimeException e) {
                         log.warn("KB pipeline: sync request {} failed: {}", line.customId(), e.getMessage());
                     } finally {
@@ -71,6 +100,7 @@ public class SyncLlmExecutor {
                 });
             }
         }
+        return quotaPaused.get();
     }
 
     public static final int MAX_TOKENS_CAP = 32_000;
@@ -80,7 +110,12 @@ public class SyncLlmExecutor {
     }
 
     public LlmOutputParser.LlmResult runOne(LlmLine line) {
-        return runTracked(line).result();
+        try {
+            return runTracked(line).result();
+        } catch (DoQuotaExhaustedException e) {
+            return new LlmOutputParser.LlmResult(line.customId(), false, null, null, 0, 0, 0, null,
+                "HTTP 429: " + e.getMessage());
+        }
     }
 
     // Empty/unparseable tool arguments or a cut at max_tokens: retried once
@@ -131,6 +166,8 @@ public class SyncLlmExecutor {
             try {
                 second = LlmOutputParser.fromChatCompletion(line.customId(),
                     call(KbChatPayloads.chatBody(line.params(), true, json), attempts), json);
+            } catch (DoQuotaExhaustedException e) {
+                throw e;
             } catch (LlmApiException e) {
                 // The fallback failed: keep the first answer as when the
                 // fallback brings no JSON, with its (paid) tokens.
@@ -147,6 +184,8 @@ public class SyncLlmExecutor {
             }
             return new LlmOutputParser.LlmResult(line.customId(), first.ok(), null, first.text(), usageIn, usageOut,
                 cached, "text", first.error());
+        } catch (DoQuotaExhaustedException e) {
+            throw e;   // run() pauses the pool; runOne() reports it
         } catch (LlmApiException e) {
             return new LlmOutputParser.LlmResult(line.customId(), false, null, null, 0, 0, 0, null,
                 "HTTP " + e.status() + ": " + e.getMessage());

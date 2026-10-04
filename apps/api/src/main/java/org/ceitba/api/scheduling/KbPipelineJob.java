@@ -42,12 +42,15 @@ public class KbPipelineJob {
     private final KbEvalService evals;
     private final KbBatchJobRepository jobs;
     private final TaskExecutor executor;
+    private final org.springframework.scheduling.TaskScheduler scheduler;
     private final java.time.Clock clock;
 
     public KbPipelineJob(KbRunEngine engine, KbPipelineService pipeline, KbModelCatalogService catalog,
                          KbEvalService evals, KbBatchJobRepository jobs,
-                         @Qualifier("applicationTaskExecutor") TaskExecutor executor, java.time.Clock clock) {
+                         @Qualifier("applicationTaskExecutor") TaskExecutor executor,
+                         org.springframework.scheduling.TaskScheduler scheduler, java.time.Clock clock) {
         this.clock = clock;
+        this.scheduler = scheduler;
         this.engine = engine;
         this.pipeline = pipeline;
         this.catalog = catalog;
@@ -56,11 +59,17 @@ public class KbPipelineJob {
         this.executor = executor;
     }
 
-    // Advances one run on the task executor.
+    // Advances one run on the task executor. When another advancer holds the
+    // run's lease (normally a live one, which loops again on its own; after a
+    // restart possibly the dead process), try again once that lease can have
+    // expired instead of waiting for the sweep.
     void kick(UUID runId) {
         executor.execute(() -> {
             try {
-                engine.advance(runId);
+                if (!engine.advance(runId)) {
+                    scheduler.schedule(() -> kick(runId),
+                        java.time.Instant.now(clock).plus(KbRunEngine.LEASE).plusSeconds(5));
+                }
             } catch (RuntimeException e) {
                 log.warn("KB run {} could not be advanced now (the sweep retries): {}", runId, e.getMessage());
             }
@@ -76,6 +85,7 @@ public class KbPipelineJob {
     public void pollBatches() {
         try {
             jobs.runsWithOpenBatches(java.time.OffsetDateTime.now(clock)).forEach(this::kick);
+            engine.quotaResumeDue().forEach(this::kick);   // sync runs paused on the daily token quota
         } catch (RuntimeException e) {
             log.warn("KB batch poll failed: {}", e.getMessage());
         }

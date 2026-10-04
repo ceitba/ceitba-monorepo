@@ -176,9 +176,16 @@ public class KbPayloads {
                     + "the input (fileId). Required with at least one id for create/update; may be empty only for delete.");
                 opProps.set("sources", sources);
                 opProps.putObject("reason").put("type", "string").put("description", "Why, in one short sentence");
+                var mustCover = stringArray();
+                mustCover.put("description", "What the page must present: each key definition, method, theorem or "
+                    + "formula it has to include, written precisely. For quantitative topics give the formulas in LaTeX "
+                    + "with their notation (e.g. `IC media σ desconocida: \\bar X \\pm t_{n-1,1-\\alpha/2}\\, s/\\sqrt{n}`). "
+                    + "2–8 items. May be empty only for delete and index.");
+                opProps.set("mustCover", mustCover);
                 // Every field is required: a create/update without valid
                 // sources is dropped (KbPipelineService.validateOps).
-                op.putArray("required").add("op").add("slug").add("type").add("title").add("sources").add("reason");
+                op.putArray("required").add("op").add("slug").add("type").add("title").add("sources").add("reason")
+                    .add("mustCover");
                 props.putObject("operations").put("type", "array").set("items", op);
                 schema.putArray("required").add("operations");
             }
