@@ -15,8 +15,12 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 // DigitalOcean serverless inference, OpenAI-compatible chat completions.
+// A 429 tokens_per_day throws DoQuotaExhaustedException at once (no retries).
+// Every response's x-ratelimit-* headers go to the DoQuotaTracker.
 // 429, 5xx and I/O errors are retried up to 4 times with exponential
-// back-off (honouring Retry-After).
+// back-off (honouring Retry-After). A request that times out is not retried
+// here: four more full timeouts would hold one page for 20+ minutes, and the
+// run engine already resends unanswered requests once.
 public class DoChatClient implements SyncChatClient {
 
     static final int MAX_ATTEMPTS = 4;
@@ -24,12 +28,24 @@ public class DoChatClient implements SyncChatClient {
     private final String baseUrl;
     private final String apiKey;
     private final ObjectMapper json;
+    private final Duration timeout;
+    private final DoQuotaTracker quota;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
 
     public DoChatClient(String baseUrl, String apiKey, ObjectMapper json) {
+        this(baseUrl, apiKey, json, Duration.ofMinutes(5));
+    }
+
+    public DoChatClient(String baseUrl, String apiKey, ObjectMapper json, Duration timeout) {
+        this(baseUrl, apiKey, json, timeout, null);
+    }
+
+    public DoChatClient(String baseUrl, String apiKey, ObjectMapper json, Duration timeout, DoQuotaTracker quota) {
+        this.quota = quota;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.apiKey = apiKey;
         this.json = json;
+        this.timeout = timeout;
     }
 
     @Override
@@ -46,18 +62,25 @@ public class DoChatClient implements SyncChatClient {
             long retryAfter = -1;
             try {
                 var req = HttpRequest.newBuilder(URI.create(baseUrl + "/v1/chat/completions"))
-                    .timeout(Duration.ofMinutes(5))
+                    .timeout(timeout)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body)))
                     .build();
                 var res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
                 status = res.statusCode();
+                if (quota != null) quota.observe(res.headers());
                 if (status / 100 == 2) return json.readTree(res.body());
                 detail = res.body().length() > 500 ? res.body().substring(0, 500) : res.body();
+                // The daily token bucket does not refill within a retry's reach: no retries.
+                if (status == 429 && DoQuotaExhaustedException.isDailyTokens(res.body())) {
+                    throw new DoQuotaExhaustedException("chat/completions -> 429: " + detail);
+                }
                 retryAfter = res.headers().firstValue("Retry-After").map(v -> {
                     try { return Long.parseLong(v.trim()) * 1000; } catch (NumberFormatException e) { return -1L; }
                 }).orElse(-1L);
+            } catch (java.net.http.HttpTimeoutException e) {
+                throw new LlmApiException(0, "chat/completions -> 0: timed out after " + timeout.toSeconds() + " s");
             } catch (IOException e) {
                 detail = e.getMessage();
             } catch (InterruptedException e) {

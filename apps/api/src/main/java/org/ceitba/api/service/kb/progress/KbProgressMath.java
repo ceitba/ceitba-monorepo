@@ -30,21 +30,22 @@ public final class KbProgressMath {
 
     private KbProgressMath() {}
 
-    // failedAnswer: answered with an error, awaiting resubmission (still SUBMITTED).
+    // failedAnswer: answered with an error, awaiting resubmission (still SUBMITTED):
+    // counted as in flight, not failed, since the engine resends it once.
     public record Row(String stage, String status, boolean failedAnswer, int estTokens, String model,
                       OffsetDateTime createdAt, OffsetDateTime completedAt, Integer latencyMs, String target,
                       String subjectId) {
 
         boolean finished() {
-            return status.equals("DONE") || status.equals("FAILED") || failedAnswer;
+            return status.equals("DONE") || status.equals("FAILED");
         }
 
         boolean failed() {
-            return status.equals("FAILED") || failedAnswer;
+            return status.equals("FAILED");
         }
 
         boolean inFlight() {
-            return status.equals("SUBMITTED") && !failedAnswer;
+            return status.equals("SUBMITTED");
         }
     }
 
@@ -321,6 +322,9 @@ public final class KbProgressMath {
             case "CANCELLED" -> { return "Cancelado"; }
             case "FAILED" -> { return "Falló en " + stageName(run.stage()) + (run.error() == null ? "" : ": " + run.error()); }
             case "BLOCKED_BY_COST_LIMIT" -> { return "Bloqueado por el límite de costo semanal: requiere aprobación"; }
+            case "WAITING" -> {
+                if (run.error() != null && run.error().startsWith("Cupo diario")) return run.error();
+            }
             default -> { }
         }
         if (run.stage().equals("DETECT")) return run.eval() ? "Preparando la evaluación" : "Detectando cambios";
@@ -337,6 +341,12 @@ public final class KbProgressMath {
                 .map(Job::nextAttemptAt).min(Comparator.naturalOrder()).orElse(null);
             if (limited != null) {
                 var at = limited.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE).format(HH_MM);
+                var wait = jobs.stream().filter(j -> j.stage().equals(st.stage()) && j.rateLimited()
+                    && j.error().startsWith("QUOTA_WAIT: ")).findFirst().orElse(null);
+                if (wait != null) {
+                    return line.append(": ").append(wait.error().substring("QUOTA_WAIT: ".length()))
+                        .append("; reintento a las ").append(at).toString();
+                }
                 boolean rate = jobs.stream().anyMatch(j -> j.stage().equals(st.stage()) && j.rateLimited()
                     && j.error().startsWith("RATE_LIMITED"));
                 line.append(rate ? ": DigitalOcean limitó la creación de lotes; reintento a las "

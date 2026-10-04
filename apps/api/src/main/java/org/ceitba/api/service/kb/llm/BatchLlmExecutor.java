@@ -1,6 +1,8 @@
 package org.ceitba.api.service.kb.llm;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.external.llm.DoBatchSlotException;
+import org.ceitba.api.external.llm.DoQuotaTracker;
 import org.ceitba.api.external.llm.LlmApiException;
 import org.ceitba.api.external.llm.LlmBatchClient;
 import org.ceitba.api.external.llm.LlmOutputParser;
@@ -17,21 +19,40 @@ public class BatchLlmExecutor {
 
     private final LlmBatchClient client;
     private final ObjectMapper json;
+    private final DoQuotaTracker quota;
+    private final java.time.Clock clock;
 
     public BatchLlmExecutor(LlmBatchClient client, ObjectMapper json) {
+        this(client, json, null, java.time.Clock.systemUTC());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BatchLlmExecutor(LlmBatchClient client, ObjectMapper json, DoQuotaTracker quota, java.time.Clock clock) {
         this.client = client;
         this.json = json;
+        this.quota = quota;
+        this.clock = clock;
     }
 
     public record Submitted(String fileId, String batchId) {}
 
     public record Collected(Map<String, LlmOutputParser.LlmResult> results, byte[] output, byte[] errors) {}
 
+    // Throws DoBatchSlotException (without calling DO) while the last quota
+    // snapshot says no batch creation is left this hour.
+    private void checkSlot() {
+        if (quota == null) return;
+        quota.batchCreationWait().ifPresent(w -> {
+            throw new DoBatchSlotException(w.reason(), w.until());
+        });
+    }
+
     // model: the catalog id (decides the provider); batchModelId: the id the
     // JSONL lines carry (KbLlmRouter.batchModelId).
     public Submitted submit(String name, String model, String batchModelId, List<LlmLine> lines, String requestId) {
         var provider = KbChatPayloads.batchProvider(model);
         if (provider == null) throw new LlmApiException(0, model + " has no batch support");
+        checkSlot();
         var sb = new StringBuilder();
         for (var l : lines) {
             sb.append(KbChatPayloads.batchLine(l.customId(), l.params(), provider, batchModelId, json)).append('\n');

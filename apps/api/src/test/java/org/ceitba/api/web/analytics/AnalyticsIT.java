@@ -1,5 +1,6 @@
 package org.ceitba.api.web.analytics;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.news.Article;
 import org.ceitba.api.repository.news.AnalyticsEventRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
@@ -17,9 +18,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -36,12 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @TestPropertySource(properties = "auth.allowed-domains=itba.edu.ar")
 class AnalyticsIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

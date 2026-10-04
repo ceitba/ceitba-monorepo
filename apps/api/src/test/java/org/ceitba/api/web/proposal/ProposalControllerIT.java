@@ -1,5 +1,6 @@
 package org.ceitba.api.web.proposal;
 
+import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.domain.User;
@@ -20,9 +21,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Arrays;
 import java.util.List;
@@ -43,12 +41,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // carries a user id, email or name.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "itba.api.use-fake=true"})
 class ProposalControllerIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {
