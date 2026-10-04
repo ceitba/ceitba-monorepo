@@ -390,21 +390,37 @@ class DigestSenderTest {
         String token = new DigestUnsubscribeTokens(HMAC).issue(a);
         assertThat(mail.headers().get("List-Unsubscribe"))
             .isEqualTo("<https://ceitba.org.ar/api/v1/digests/unsubscribe?token=" + token + ">");
-        // Every href / text URL points at the redirect endpoint.
+        // Every href / text URL points at the redirect endpoint, except the
+        // unsubscribe link of the body, which is left alone (it must always work).
+        String unsubscribe = "https://ceitba.org.ar/newsletter/unsubscribe?token=" + token;
         var href = java.util.regex.Pattern.compile("href=\"([^\"]*)\"").matcher(mail.html());
         int links = 0;
+        int untouched = 0;
         while (href.find()) {
+            if (href.group(1).equals(unsubscribe)) {
+                untouched++;
+                continue;
+            }
             links++;
             assertThat(href.group(1)).startsWith("https://ceitba.org.ar/api/v1/mail/c/");
         }
-        assertThat(links).isGreaterThan(3);
+        assertThat(links).isGreaterThanOrEqualTo(3);
+        assertThat(untouched).isEqualTo(1);
         var url = java.util.regex.Pattern.compile("https?://\\S+").matcher(mail.text());
-        while (url.find()) assertThat(url.group()).startsWith("https://ceitba.org.ar/api/v1/mail/c/");
+        int textUntouched = 0;
+        while (url.find()) {
+            if (url.group().equals(unsubscribe)) {
+                textUntouched++;
+                continue;
+            }
+            assertThat(url.group()).startsWith("https://ceitba.org.ar/api/v1/mail/c/");
+        }
+        assertThat(textUntouched).isEqualTo(1);
         assertThat(mail.html()).contains("/v1/mail/o/").contains("Medimos aperturas y clics");
-        assertThat(mail.text()).doesNotContain("token=").contains("Medimos aperturas y clics");
+        assertThat(mail.text()).contains("Medimos aperturas y clics");
 
         // The tracking id is opaque (not the user id) and stored before sending,
-        // with the per-reader links (vote + unsubscribe) of this delivery.
+        // with the per-reader links (the vote link; not the unsubscribe one) of this delivery.
         var trackingId = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(deliveries).setTrackingId(eq(ISSUE), eq(a), trackingId.capture());
         assertThat(trackingId.getValue()).hasSize(22).doesNotContain(a.toString());
@@ -413,8 +429,7 @@ class DigestSenderTest {
             org.mockito.ArgumentCaptor.forClass(List.class);
         verify(deliveryLinks).saveAll(saved.capture());
         assertThat(saved.getValue()).extracting(org.ceitba.api.domain.digest.DigestDeliveryLink::getUrlKey)
-            .containsExactlyInAnyOrder("https://ceitba.org.ar/newsletter/correction?vote=confirm",
-                "https://ceitba.org.ar/newsletter/unsubscribe");
+            .containsExactly("https://ceitba.org.ar/newsletter/correction?vote=confirm");
         assertThat(saved.getValue()).allMatch(l -> l.getLinkId() >= 1000);
         // The shared article link is an issue link (id < 1000).
         verify(issueLinks).save(org.mockito.ArgumentMatchers.argThat(l ->

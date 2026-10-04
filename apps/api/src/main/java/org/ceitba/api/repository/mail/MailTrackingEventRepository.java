@@ -2,13 +2,23 @@ package org.ceitba.api.repository.mail;
 
 import org.ceitba.api.domain.mail.MailTrackingEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 public interface MailTrackingEventRepository extends JpaRepository<MailTrackingEvent, Long> {
+
+    // Retention (MailRetentionService).
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM MailTrackingEvent e WHERE e.at < :cutoff")
+    int deleteOlderThan(@Param("cutoff") OffsetDateTime cutoff);
 
     // Unflagged clicks of a digest issue per link, grouped by url_key (the
     // URL without per-reader tokens): [url_key, label, unique, total].

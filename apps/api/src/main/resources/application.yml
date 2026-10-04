@@ -259,6 +259,11 @@ mail:
   backoff-max: ${MAIL_BACKOFF_MAX:PT1H}
   # Pause after Gmail's own "5.4.5 daily sending limit exceeded".
   quota-pause: ${MAIL_QUOTA_PAUSE:PT24H}
+  # Nightly cleanup (service/mail/MailRetentionService). The quota only reads
+  # the last 24h of mail_send_log; the minimum accepted send-log value is 2 days.
+  retention:
+    send-log: ${MAIL_RETENTION_SEND_LOG:P30D}
+    tracking-events: ${MAIL_RETENTION_TRACKING:P180D}
 
 # Weekly digest "La semana en ITBA" (docs/WEEKLY-DIGEST.md).
 digest:

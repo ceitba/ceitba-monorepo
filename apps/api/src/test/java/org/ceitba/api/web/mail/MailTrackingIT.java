@@ -73,6 +73,7 @@ class MailTrackingIT {
     @Autowired UserFollowRepository follows;
     @Autowired ArticleRepository articles;
     @Autowired DigestSender sender;
+    @Autowired org.ceitba.api.service.mail.MailRetentionService retention;
 
     @BeforeEach
     void seed() {
@@ -138,6 +139,41 @@ class MailTrackingIT {
     }
 
     @Test
+    void retentionDeletesOldTrackingAndSendLogRowsOnly() throws Exception {
+        String id = sentIssue();
+        String t = jdbc.queryForObject(
+            "SELECT tracking_id FROM public.digest_deliveries WHERE issue_id = ?::uuid AND status = 'sent' LIMIT 1",
+            String.class, id);
+        String other = jdbc.queryForObject(
+            "SELECT tracking_id FROM public.digest_deliveries WHERE issue_id = ?::uuid AND status = 'sent' AND tracking_id <> ?",
+            String.class, id, t);
+        long sendLogBefore = jdbc.queryForObject("SELECT COUNT(*) FROM public.mail_send_log", Long.class);
+        jdbc.update("INSERT INTO public.mail_send_log (account, kind, recipients, outcome, attempted_at) "
+            + "VALUES ('x@itba.edu.ar', 'digest', 1, 'sent', now() - interval '40 days')");
+        jdbc.update("INSERT INTO public.mail_tracking_event (tracking_id, type, at, ua_class) "
+            + "VALUES (?, 'open', now() - interval '200 days', 'browser')", t);
+        jdbc.update("INSERT INTO public.mail_tracking_event (tracking_id, type, at, ua_class) "
+            + "VALUES (?, 'open', now() - interval '10 days', 'browser')", t);
+        // t was sent 200 days ago, `other` just now: only t's per-delivery links go.
+        jdbc.update("UPDATE public.digest_deliveries SET sent_at = now() - interval '200 days' WHERE tracking_id = ?", t);
+        for (String tid : new String[] {t, other}) {
+            jdbc.update("INSERT INTO public.digest_delivery_links (tracking_id, link_id, url, url_key, label) "
+                + "VALUES (?, 1000, 'https://ceitba.org.ar/x', 'https://ceitba.org.ar/x', 'x')", tid);
+        }
+
+        retention.cleanup();
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.mail_send_log", Long.class)).isEqualTo(sendLogBefore);
+        assertThat(jdbc.queryForObject(
+            "SELECT COUNT(*) FROM public.mail_tracking_event WHERE tracking_id = ?", Long.class, t)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT tracking_id FROM public.digest_delivery_links", String.class))
+            .containsExactly(other);
+        // The aggregates on the delivery itself survive.
+        assertThat(jdbc.queryForObject(
+            "SELECT COUNT(*) FROM public.digest_deliveries WHERE tracking_id = ?", Long.class, t)).isEqualTo(1);
+    }
+
+    @Test
     void sentIssueIsTrackedAndStatsAreAggregate() throws Exception {
         String id = sentIssue();
 
@@ -150,10 +186,10 @@ class MailTrackingIT {
         Integer articleLink = jdbc.queryForObject(
             "SELECT link_id FROM public.digest_issue_links WHERE issue_id = ?::uuid AND url = ?",
             Integer.class, id, ARTICLE_URL);
-        // Personal links: the unsubscribe link of each delivery, with its token.
+        // The unsubscribe link is never tracked (it must always work).
         assertThat(jdbc.queryForObject(
-            "SELECT COUNT(*) FROM public.digest_delivery_links WHERE url_key = ?", Long.class, HOME + "/unsubscribe"))
-            .isEqualTo(2);
+            "SELECT COUNT(*) FROM public.digest_delivery_links WHERE url_key LIKE ?", Long.class, "%/unsubscribe%"))
+            .isZero();
 
         String a = tracking.get(0);
         String b = tracking.get(1);
@@ -166,15 +202,13 @@ class MailTrackingIT {
         mvc.perform(get("/v1/mail/c/" + b + "/" + articleLink).header("User-Agent", "Barracuda Sentinel"))
             .andExpect(status().isFound())
             .andExpect(header().string("Location", ARTICLE_URL));
-        // b's personal link id under a's tracking id does not exist for a... both
-        // have 1000 = unsubscribe, each resolving to its own reader's token.
-        String unsubA = jdbc.queryForObject(
-            "SELECT url FROM public.digest_delivery_links WHERE tracking_id = ? AND link_id = 1000", String.class, a);
+        // No per-reader link exists for these deliveries: id 1000 is unknown -> home.
         mvc.perform(get("/v1/mail/c/" + a + "/1000").header("User-Agent", BROWSER))
-            .andExpect(header().string("Location", unsubA));
+            .andExpect(status().isFound())
+            .andExpect(header().string("Location", HOME));
 
         assertThat(jdbc.queryForMap("SELECT open_count, click_count FROM public.digest_deliveries WHERE tracking_id = ?", a))
-            .containsEntry("open_count", 2).containsEntry("click_count", 2);
+            .containsEntry("open_count", 2).containsEntry("click_count", 1);
         assertThat(jdbc.queryForObject(
             "SELECT COUNT(*) FROM public.mail_tracking_event WHERE flagged AND flag_reason = 'scanner'", Long.class))
             .isEqualTo(1);
@@ -190,8 +224,7 @@ class MailTrackingIT {
             .andExpect(jsonPath("$.clicksByLink[0].label").value("Título a-ceitba"))
             .andExpect(jsonPath("$.clicksByLink[0].uniqueClicks").value(1))
             .andExpect(jsonPath("$.clicksByLink[0].totalClicks").value(1))
-            // The unsubscribe link, grouped without its token.
-            .andExpect(jsonPath("$.clicksByLink[1].url").value(HOME + "/unsubscribe"))
+            .andExpect(jsonPath("$.clicksByLink.length()").value(1))
             .andExpect(jsonPath("$.opensByHour.length()").value(1))
             .andExpect(jsonPath("$.opensByHour[0].count").value(1));
         // Aggregates only: nothing that identifies a reader.

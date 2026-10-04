@@ -267,11 +267,19 @@ or logging transport is wrapped inside it, so no caller can bypass it),
   the rolling-window estimate if that is later. The pause is persisted in
   `mail_account_state`, so it survives restarts; test sends get 429 during
   it.
-- **Other transport errors** (auth, connection, 4xx) pause the background
+- **Other transport errors** (`TRANSPORT`: auth, connection, timeouts, `421`,
+  `4.7.x`) pause the background
   worker with exponential backoff, 5 min → 10 → 20 → 40 → 1 h cap
   (`MAIL_BACKOFF_INITIAL` / `MAIL_BACKOFF_MAX`), instead of retrying every
   tick. Also persisted. A manual test send still tries (to check whether SMTP
   is back); any successful send clears the backoff.
+- **Recipient-scoped errors don't pause anything.** `RECIPIENT` (rejected
+  address, mailbox over quota `4.2.2`) counts against the quota (it reached
+  Gmail) and fails that delivery; `TRANSIENT` (other 4.x.x) is logged,
+  not counted, and retried for that delivery only (3 attempts).
+- **Domain guard.** `MailSendService` refuses `digest` and `test` emails to
+  any address outside `DIGEST_ALLOWED_DOMAINS` (`RECIPIENT`, nothing sent or
+  logged), whatever the caller checked.
 - **Admin.** `GET /v1/digests/quota` → `{account, limit, usedLast24h,
   remaining, pausedUntil, pauseReason, nextCapacityAt}`. A `sending` issue
   in the list and detail carries `resumeAt` (while the account is paused or
@@ -294,13 +302,17 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
   and last open plus an open count.
 - **Click redirects.** Every http(s) link of the HTML and plain-text parts —
   articles, events, wiki and correction-vote links of "Tu cuatrimestre", the
-  scheduler call to action, the unsubscribe link in the body — becomes
-  `${DIGEST_API_BASE_URL}/v1/mail/c/{trackingId}/{linkId}`. The
-  `List-Unsubscribe` **header** is never wrapped. `GET` answers a 302 to the
+  scheduler call to action — becomes
+  `${DIGEST_API_BASE_URL}/v1/mail/c/{trackingId}/{linkId}`. Two things are
+  never wrapped: the `List-Unsubscribe` **header** and the unsubscribe link
+  in the body (`${DIGEST_PUBLIC_BASE_URL}/unsubscribe…`), which must work
+  even if tracking rows are missing, expired or the endpoint is limiting. In
+  the plain-text part a URL ends before trailing `. , ; : ! ?` and an
+  unbalanced `)`, which stay outside the link. `GET` answers a 302 to the
   original URL, resolved **only** from server-side data: the issue's shared
   links (`digest_issue_links`, ids < 1000, collected from the shared template)
   or the delivery's own links (`digest_delivery_links`, ids ≥ 1000:
-  unsubscribe and "Tu cuatrimestre", which carry per-reader tokens). Nothing
+  "Tu cuatrimestre", which carries per-reader tokens). Nothing
   is ever taken from the request, so it is not an open redirect; unknown
   ids go to `${DIGEST_PUBLIC_BASE_URL}`. A click implies an open.
 - **Scanners and bots.** Events from known scanner/bot user agents (and
@@ -310,10 +322,13 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
   coarse client class (`gmail_proxy`, `yahoo_proxy`, `outlook`, `browser`,
   `scanner`, `unknown`).
 - **Cheap and rate limited.** One indexed lookup, an insert and an update.
-  Both endpoints always answer; what gets *recorded* is limited in memory
-  per client address (600/min, keyed by an HMAC of the IP, never stored:
-  Gmail's image proxy fetches for many readers from few addresses) and per
-  tracking id (30/h). They ignore the session cookie, like unsubscribe.
+  Both endpoints always answer. The in-memory rate limiter runs **before any
+  DB read**: per client address (600/min, keyed by an HMAC of the IP, never
+  stored: Gmail's image proxy fetches for many readers from few addresses)
+  and per tracking id (30/h). A refused request still gets its answer without
+  touching the DB: the GIF for the pixel, and a redirect to
+  `${DIGEST_PUBLIC_BASE_URL}` (the home, since the stored target is not
+  looked up) for a click. They ignore the session cookie, like unsubscribe.
 - **Opens are approximate; clicks are the reliable signal.** Gmail fetches
   images through its proxy and caches them, so repeat opens are mostly
   invisible (the first open is seen). Apple Mail Privacy Protection
@@ -330,8 +345,7 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
   openRate, uniqueClicks, clickRate, clicksByLink: [{label, url,
   uniqueClicks, totalClicks}], opensByHour: [{hour, count}]}`. Rates are over
   delivered (`sent`) emails, 0..1 (null with none). `clicksByLink` groups by
-  the URL without its `token` parameter (so every "Sí, es así" or
-  unsubscribe link is one row) and `label` is the link text.
+  the URL without its `token` parameter (so every "Sí, es así" link is one row) and `label` is the link text.
   `opensByHour` counts first (unique) opens per hour (ART). The issue list
   has `openRate`/`clickRate` per issue.
 
@@ -356,6 +370,20 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | GET | `/v1/mail/o/{trackingId}.gif` | Public open pixel; always a 1×1 GIF |
 | GET | `/v1/mail/c/{trackingId}/{linkId}` | Public click redirect; 302 to the stored URL, else to `DIGEST_PUBLIC_BASE_URL` |
 
+## Retention
+
+A nightly job (03:40 ART, `MailRetentionJob`, off with `DIGEST_JOBS_ENABLED=
+false`) keeps the bookkeeping bounded:
+
+- `mail_tracking_event` rows older than `MAIL_RETENTION_TRACKING` (180 days)
+  and the `digest_delivery_links` of deliveries sent that long ago (clicks on
+  such old emails then land on the newsletter home; the shared issue links
+  and the per-delivery counters `open_count`/`click_count`/... stay, so
+  open and click rates survive, per-link click stats of old issues do not).
+- `mail_send_log` rows older than `MAIL_RETENTION_SEND_LOG` (30 days). The
+  sending quota only ever reads the last 24h (`MailSendService.WINDOW`), and
+  the smallest accepted value is 2 days, so nothing that is deleted is read.
+
 ## Configuration
 
 | Variable | Default | Meaning |
@@ -372,6 +400,8 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | `MAIL_BACKOFF_INITIAL` / `MAIL_BACKOFF_MAX` | `PT5M` / `PT1H` | Backoff after transport errors (doubled per consecutive error) |
 | `MAIL_QUOTA_PAUSE` | `PT24H` | Pause after Gmail's `5.4.5` daily-limit error |
 | `DIGEST_TRACKING_ENABLED` | `true` | Open pixel + click redirects in sent issues |
+| `MAIL_RETENTION_SEND_LOG` | `P30D` | Age after which `mail_send_log` rows are deleted (min `P2D`) |
+| `MAIL_RETENTION_TRACKING` | `P180D` | Age after which tracking events and per-delivery link rows are deleted |
 | `DIGEST_SEND_INTERVAL` | `PT1S` | Pause between emails |
 | `DIGEST_TICK_INTERVAL` | `PT5M` | Auto-send check and resume of stalled sends |
 | `DIGEST_JOBS_ENABLED` | `true` | Weekly draft + auto-send + worker (tests set `false`) |

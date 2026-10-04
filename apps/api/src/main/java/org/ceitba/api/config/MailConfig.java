@@ -25,7 +25,8 @@ import java.time.Clock;
 // The transport itself is deliberately not a bean, so no caller can bypass
 // the quota.
 @Configuration
-@EnableConfigurationProperties({EmailProperties.class, DigestProperties.class, DigestPersonalProperties.class})
+@EnableConfigurationProperties({EmailProperties.class, DigestProperties.class, DigestPersonalProperties.class,
+    MailRetentionProperties.class})
 public class MailConfig {
 
     private static final Logger log = LoggerFactory.getLogger(MailConfig.class);

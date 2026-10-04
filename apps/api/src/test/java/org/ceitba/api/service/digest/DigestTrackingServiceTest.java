@@ -141,11 +141,27 @@ class DigestTrackingServiceTest {
     }
 
     @Test
-    void recordingIsRateLimitedPerTrackingIdButTheRedirectStillWorks() {
-        for (int i = 0; i < DigestTrackingService.PER_TRACKING_ID_PER_HOUR + 5; i++) {
+    void refusedRequestsStillAnswerButNeverTouchTheDatabase() {
+        int allowed = (int) DigestTrackingService.PER_TRACKING_ID_PER_HOUR;
+        for (int i = 0; i < allowed; i++) {
             assertThat(service.click(TID, "3", client(BROWSER))).isEqualTo("https://ceitba.org.ar/newsletter/articles/a1");
         }
-        verify(events, org.mockito.Mockito.times((int) DigestTrackingService.PER_TRACKING_ID_PER_HOUR)).save(any());
+        // Over the limit: the redirect still happens (to the home page), and
+        // neither the click nor the pixel reads or writes anything.
+        for (int i = 0; i < 5; i++) {
+            assertThat(service.click(TID, "3", client(BROWSER))).isEqualTo(HOME);
+            service.open(TID, client(BROWSER));
+        }
+        verify(deliveries, org.mockito.Mockito.times(allowed)).findByTrackingId(TID);
+        verify(events, org.mockito.Mockito.times(allowed)).save(any());
+    }
+
+    @Test
+    void theBodyUnsubscribeLinkIsNeverTracked() {
+        assertThat(service.isUnsubscribeLink(HOME + "/unsubscribe?token=u.SIG")).isTrue();
+        assertThat(service.isUnsubscribeLink(HOME + "/unsubscribe")).isTrue();
+        assertThat(service.isUnsubscribeLink(HOME + "/unsubscribed-articles")).isFalse();
+        assertThat(service.isUnsubscribeLink(HOME + "/articles/a1")).isFalse();
     }
 
     @Test

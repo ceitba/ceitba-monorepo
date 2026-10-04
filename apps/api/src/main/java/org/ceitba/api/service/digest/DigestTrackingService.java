@@ -105,7 +105,7 @@ public class DigestTrackingService {
             map.put(l.getUrl(), l.getLinkId());
             max = Math.max(max, l.getLinkId());
         }
-        for (var link : MailLinkRewriter.collect(template.htmlBody(), template.textBody())) {
+        for (var link : MailLinkRewriter.collect(template.htmlBody(), template.textBody(), this::isUnsubscribeLink)) {
             if (map.containsKey(link.url())) continue;
             if (max + 1 >= MailLinkRewriter.PERSONAL_BASE) break;   // absurdly many links: the rest are per delivery
             int id = ++max;
@@ -115,11 +115,20 @@ public class DigestTrackingService {
         return map;
     }
 
+    // The body unsubscribe link (ItbaNews page) is never tracked: it must work
+    // even if tracking rows are missing, expired or the API is rate limiting.
+    boolean isUnsubscribeLink(String url) {
+        String prefix = props.publicBaseUrl() + "/unsubscribe";
+        return url.startsWith(prefix)
+            && (url.length() == prefix.length() || "?#/".indexOf(url.charAt(prefix.length())) >= 0);
+    }
+
     // The email with every body link wrapped and the pixel appended (pure).
     public Tracked track(OutgoingEmail email, String trackingId, Map<String, Integer> shared) {
         String base = props.apiBaseUrl() + "/v1/mail";
         var r = MailLinkRewriter.rewrite(email.html(), email.text(), shared,
-            id -> base + "/c/" + trackingId + "/" + id, base + "/o/" + trackingId + ".gif");
+            id -> base + "/c/" + trackingId + "/" + id, base + "/o/" + trackingId + ".gif",
+            this::isUnsubscribeLink);
         return new Tracked(email.withBody(r.html(), r.text()), r.personalLinks());
     }
 
@@ -133,7 +142,8 @@ public class DigestTrackingService {
 
     // ------------------------------------------------------------ public side
 
-    // Pixel fetch. Unknown ids and over-limit clients are ignored.
+    // Pixel fetch. Unknown ids and over-limit clients are ignored (the rate
+    // limiter runs before any DB read).
     @Transactional
     public void open(String trackingId, ClientInfo client) {
         if (!MailLinkRewriter.isWellFormedTrackingId(trackingId) || !admit(trackingId, client)) return;
@@ -147,26 +157,28 @@ public class DigestTrackingService {
     }
 
     // Click redirect target: the stored URL of that link of that delivery, or
-    // the newsletter home for anything unknown. Never a URL from the request.
+    // the newsletter home for anything unknown or rate limited. Never a URL
+    // from the request.
     @Transactional
     public String click(String trackingId, String linkId, ClientInfo client) {
         String fallback = fallbackUrl();
         if (!MailLinkRewriter.isWellFormedTrackingId(trackingId)) return fallback;
         Integer id = parseLinkId(linkId);
         if (id == null) return fallback;
+        // The rate limiter comes before any DB read: a refused client still
+        // gets a redirect (the newsletter home) without touching the DB.
+        if (!admit(trackingId, client)) return fallback;
         var delivery = deliveries.findByTrackingId(trackingId).orElse(null);
         if (delivery == null) return fallback;
         Optional<String> url = id < MailLinkRewriter.PERSONAL_BASE
             ? issueLinks.findById(new DigestIssueLink.Key(delivery.getIssueId(), id)).map(DigestIssueLink::getUrl)
             : deliveryLinks.findById(new DigestDeliveryLink.Key(trackingId, id)).map(DigestDeliveryLink::getUrl);
         if (url.isEmpty() || !isHttp(url.get())) return fallback;
-        if (admit(trackingId, client)) {
-            var now = OffsetDateTime.now(clock);
-            var cls = MailClientClass.of(client.userAgent());
-            String flag = flag(cls, client, delivery.getSentAt(), now);
-            events.save(new MailTrackingEvent(trackingId, MailTrackingEvent.CLICK, id, now, flag, cls.db()));
-            if (flag == null) deliveries.recordClick(trackingId, now);
-        }
+        var now = OffsetDateTime.now(clock);
+        var cls = MailClientClass.of(client.userAgent());
+        String flag = flag(cls, client, delivery.getSentAt(), now);
+        events.save(new MailTrackingEvent(trackingId, MailTrackingEvent.CLICK, id, now, flag, cls.db()));
+        if (flag == null) deliveries.recordClick(trackingId, now);
         return url.get();
     }
 
