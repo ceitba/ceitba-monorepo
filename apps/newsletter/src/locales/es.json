@@ -419,7 +419,9 @@
         "test": "No pudimos enviar la prueba.",
         "send": "No pudimos iniciar el envío.",
         "cancel": "No pudimos cancelar el resumen.",
-        "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos."
+        "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos.",
+        "AUTO_SEND_IN_PAST": "La fecha del envío automático tiene que ser futura.",
+        "MAIL_DISABLED": "El envío de mails está desactivado en este entorno."
       },
       "editor": {
         "recipientEstimate_one": "Lo recibiría {{count}} persona que sigue a CEITBA con el mail activado",
@@ -450,7 +452,8 @@
         "cancelled": "Resumen cancelado.",
         "errors": {
           "subject": "El asunto no puede estar vacío.",
-          "autoSendAt": "Elegí la fecha y hora del envío automático."
+          "autoSendAt": "Elegí la fecha y hora del envío automático.",
+          "autoSendPast": "La fecha del envío automático tiene que ser futura."
         },
         "readOnly": {
           "sending": "Se está enviando. Los números se actualizan solos.",
@@ -476,14 +479,16 @@
           "body": "Tenés cambios sin guardar en el resumen. Si salís ahora, se pierden.",
           "confirm": "Salir sin guardar",
           "stay": "Seguir editando"
-        }
+        },
+        "charCount": "{{count}}/{{max}}"
       },
       "preview": {
         "title": "Vista previa",
         "stale": "Hay cambios sin guardar: la vista previa muestra la última versión guardada.",
         "loading": "Cargando…",
         "error": "No pudimos cargar la vista previa."
-      }
+      },
+      "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo."
     }
   },
   "imageUploader": {
@@ -586,14 +591,15 @@
     "unsubscribe": {
       "loading": "Procesando tu baja…",
       "doneTitle": "Listo, no vas a recibir más el resumen semanal",
-      "doneHint": "Si cambiás de idea, podés volver a activarlo desde el menú de tu cuenta, arriba a la derecha.",
-      "resubscribe": "Volver a suscribirme",
-      "resubscribed": "Listo, vas a volver a recibir el resumen.",
-      "resubscribeError": "No pudimos reactivar el resumen. Probá desde el menú de tu cuenta.",
+      "doneHint": "Si cambiás de idea, podés volver a activarlo desde el menú de tu cuenta, arriba a la derecha (tenés que iniciar sesión).",
       "invalidTitle": "Este enlace no es válido",
       "invalidHint": "Puede que esté incompleto o que haya expirado. Podés desactivar el resumen desde el menú de tu cuenta después de iniciar sesión.",
       "errorTitle": "No pudimos procesar tu baja",
-      "backHome": "Ir al newsletter"
+      "backHome": "Ir al newsletter",
+      "confirmTitle": "¿Dejar de recibir el resumen semanal?",
+      "confirmHint": "Vas a dejar de recibir 'La semana en ITBA' por mail. Confirmá para darte de baja.",
+      "confirm": "Confirmar baja",
+      "confirming": "Procesando tu baja…"
     },
     "correction": {
       "kicker": "Horario por confirmar",
@@ -627,6 +633,7 @@
       "voteError": "No pudimos registrar tu voto. Probá de nuevo.",
       "openScheduler": "Ir al combinador de horarios",
       "backHome": "Ir al newsletter"
-    }
+    },
+    "toggleHint": "Al activarlo, también seguís a CEITBA."
   }
 }

@@ -419,7 +419,9 @@
         "test": "We couldn't send the test.",
         "send": "We couldn't start sending.",
         "cancel": "We couldn't cancel the digest.",
-        "DIGEST_EMPTY": "A digest with no articles or events can't be sent."
+        "DIGEST_EMPTY": "A digest with no articles or events can't be sent.",
+        "AUTO_SEND_IN_PAST": "The auto-send time must be in the future.",
+        "MAIL_DISABLED": "Sending email is disabled in this environment."
       },
       "editor": {
         "recipientEstimate_one": "{{count}} person who follows CEITBA with the email on would receive it",
@@ -450,7 +452,8 @@
         "cancelled": "Digest cancelled.",
         "errors": {
           "subject": "The subject can't be empty.",
-          "autoSendAt": "Pick the auto-send date and time."
+          "autoSendAt": "Pick the auto-send date and time.",
+          "autoSendPast": "The auto-send time must be in the future."
         },
         "readOnly": {
           "sending": "Sending in progress. The numbers update automatically.",
@@ -476,14 +479,16 @@
           "body": "You have unsaved changes to this digest. If you leave now, they will be lost.",
           "confirm": "Leave without saving",
           "stay": "Keep editing"
-        }
+        },
+        "charCount": "{{count}}/{{max}}"
       },
       "preview": {
         "title": "Preview",
         "stale": "You have unsaved changes: the preview shows the last saved version.",
         "loading": "Loading…",
         "error": "We couldn't load the preview."
-      }
+      },
+      "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself."
     }
   },
   "imageUploader": {
@@ -586,14 +591,15 @@
     "unsubscribe": {
       "loading": "Unsubscribing…",
       "doneTitle": "Done, you won't get the weekly digest anymore",
-      "doneHint": "If you change your mind, you can turn it back on from your account menu, top right.",
-      "resubscribe": "Subscribe again",
-      "resubscribed": "Done, you'll get the digest again.",
-      "resubscribeError": "We couldn't turn the digest back on. Try from your account menu.",
+      "doneHint": "If you change your mind, you can turn it back on from your account menu, top right (you'll need to sign in).",
       "invalidTitle": "This link is not valid",
       "invalidHint": "It may be incomplete or expired. You can turn the digest off from your account menu after signing in.",
       "errorTitle": "We couldn't process your request",
-      "backHome": "Go to the newsletter"
+      "backHome": "Go to the newsletter",
+      "confirmTitle": "Stop receiving the weekly digest?",
+      "confirmHint": "You'll stop getting 'La semana en ITBA' by email. Confirm to unsubscribe.",
+      "confirm": "Confirm unsubscribe",
+      "confirming": "Unsubscribing…"
     },
     "correction": {
       "kicker": "Schedule to confirm",
@@ -627,6 +633,7 @@
       "voteError": "We couldn't record your vote. Please try again.",
       "openScheduler": "Go to the schedule builder",
       "backHome": "Go to the newsletter"
-    }
+    },
+    "toggleHint": "Turning it on also follows CEITBA."
   }
 }
