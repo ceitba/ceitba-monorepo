@@ -164,6 +164,30 @@ class MeSchedulesIT {
     }
 
     @Test
+    void onlyAPayloadChangeMovesPayloadUpdatedAt() throws Exception {
+        String id = create(ALICE, "First").get("id").asText();
+        // Pretend it was built a long time ago.
+        jdbc.update("UPDATE public.saved_schedules SET payload_updated_at = now() - interval '200 days'");
+        var before = jdbc.queryForObject("SELECT payload_updated_at FROM public.saved_schedules", java.sql.Timestamp.class);
+
+        // Rename (same payload as created: create() sends an empty-ish payload) and primary toggle.
+        var current = mvc.perform(get("/v1/me/schedules/" + id).with(as(ALICE))).andReturn().getResponse().getContentAsString();
+        String payload = json.readTree(current).get("payload").toString();
+        mvc.perform(put("/v1/me/schedules/" + id).with(as(ALICE)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Renamed\",\"payload\":" + payload + "}"))
+            .andExpect(status().isOk());
+        mvc.perform(put("/v1/me/schedules/" + id + "/primary").with(as(ALICE))).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT payload_updated_at FROM public.saved_schedules", java.sql.Timestamp.class))
+            .isEqualTo(before);
+
+        mvc.perform(put("/v1/me/schedules/" + id).with(as(ALICE)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Renamed\",\"payload\":{\"changed\":true}}"))
+            .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT payload_updated_at FROM public.saved_schedules", java.sql.Timestamp.class))
+            .isAfter(before);
+    }
+
+    @Test
     void makePrimaryMovesTheFlagAndIsIdempotent() throws Exception {
         String first = create(ALICE, "First").get("id").asText();
         String second = create(ALICE, "Second").get("id").asText();

@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,4 +65,12 @@ public interface ArticleRepository extends JpaRepository<Article, String> {
         WHERE a.id = :id AND a.organization IS NULL AND a.createdBy.id = :userId
         """)
     Optional<String> findIndependentStatusOwnedBy(@Param("id") String id, @Param("userId") UUID userId);
+
+    // Weekly digest candidates (service/digest): published in [from, to].
+    @Query("""
+        SELECT a FROM Article a LEFT JOIN FETCH a.organization
+        WHERE a.status = 'published' AND a.publishedAt >= :from AND a.publishedAt <= :to
+        ORDER BY a.publishedAt DESC, a.createdAt DESC, a.id ASC
+        """)
+    List<Article> findPublishedBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

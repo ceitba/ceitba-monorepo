@@ -31,7 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 // root changes: rotating AUTH_JWT_SECRET without a CONTENT_HMAC_SECRET
 // invalidates every unattached proposal upload key, makes a Firestore
 // import re-run duplicate legacy comments, lets every past article voter vote
-// once more and splits analytics unique-visitor counts across the change.
+// once more, splits analytics unique-visitor counts across the change and
+// breaks the unsubscribe and correction vote links of every weekly digest
+// already sent.
 // Set CONTENT_HMAC_SECRET to rotate the JWT secret independently; changing it
 // later has the same effects.
 @Component
@@ -41,6 +43,13 @@ public class ContentHmac {
     public static final String FIRESTORE_COMMENT_IDS = "firestore-comment-ids";
     public static final String VOTE_FINGERPRINTS = "vote-fingerprints";
     public static final String ANALYTICS_IP_HASHES = "analytics-ip-hashes";
+    // Weekly digest one-click unsubscribe links (service/digest).
+    public static final String DIGEST_UNSUBSCRIBE = "digest-unsubscribe";
+    // Weekly digest "¿Es así?" schedule-correction vote links (service/digest).
+    public static final String DIGEST_CORRECTION_VOTE = "digest-correction-vote";
+    // In-memory rate-limit keys of the digest open pixel / click redirects
+    // (never stored).
+    public static final String MAIL_TRACKING_IP = "mail-tracking-ip";
 
     static final int MIN_DEDICATED_SECRET_BYTES = 32;
     private static final String ALGORITHM = "HmacSHA256";

@@ -15,4 +15,8 @@ public interface ScheduleCorrectionVoteRepository
     long countByCorrectionIdAndType(UUID correctionId, ScheduleCorrectionVoteType type);
 
     List<ScheduleCorrectionVote> findByUserIdAndCorrectionIdIn(UUID userId, Collection<UUID> correctionIds);
+
+    // The votes of many users on many corrections (weekly digest prompts).
+    List<ScheduleCorrectionVote> findByUserIdInAndCorrectionIdIn(Collection<UUID> userIds,
+                                                                 Collection<UUID> correctionIds);
 }

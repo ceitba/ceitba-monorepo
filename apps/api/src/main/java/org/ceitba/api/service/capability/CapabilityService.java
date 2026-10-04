@@ -11,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 // Effective capabilities of a user (docs/CAPABILITIES.md). A user has a
@@ -55,6 +57,27 @@ public class CapabilityService {
         granted.addAll(orgGrants.findCapabilitiesByMember(user.getId()));
         granted.retainAll(known);
         return new TreeSet<>(granted);
+    }
+
+    // Of `users`, the ids of those who have `capability`, in at most four
+    // queries whatever the number of users (weekly digest batches).
+    @Transactional(readOnly = true)
+    public Set<UUID> holders(Capability capability, Collection<User> users) {
+        if (users.isEmpty()) return Set.of();
+        Set<UUID> ids = users.stream().map(User::getId).collect(Collectors.toSet());
+        if (settings.findEnabledForAll().contains(capability.key())) return ids;
+        Set<UUID> out = new HashSet<>();
+        for (var s : staffRepository.findAllActive(OffsetDateTime.now(clock))) {
+            if (ids.contains(s.getUserId())) out.add(s.getUserId());
+        }
+        Set<String> grantedEmails = userGrants.findByCapabilityOrderByEmail(capability.key()).stream()
+            .map(g -> g.getEmail().toLowerCase(Locale.ROOT))
+            .collect(Collectors.toSet());
+        for (var u : users) {
+            if (u.getEmail() != null && grantedEmails.contains(u.getEmail().toLowerCase(Locale.ROOT))) out.add(u.getId());
+        }
+        out.addAll(orgGrants.findMembersWithCapability(capability.key(), ids));
+        return out;
     }
 
     @Transactional(readOnly = true)

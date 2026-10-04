@@ -50,6 +50,14 @@ public interface CommissionRepository extends JpaRepository<Commission, String> 
         """)
     List<Commission> findBySubjectCodeInWithTimes(@Param("subjectCodes") Collection<String> subjectCodes);
 
+    // Whether any commission is running or starts by `startsBy` (the digest's
+    // "is there a current term at all").
+    @Query("""
+        SELECT COUNT(c) > 0 FROM Commission c
+        WHERE c.courseEnd >= :today AND c.courseStart <= :startsBy
+        """)
+    boolean existsRunningOrStartingBy(@Param("today") LocalDate today, @Param("startsBy") LocalDate startsBy);
+
     // Commissions by id with times hydrated (schedule-correction views).
     @EntityGraph(attributePaths = {"times"})
     @Query("SELECT DISTINCT c FROM Commission c WHERE c.id IN :ids")

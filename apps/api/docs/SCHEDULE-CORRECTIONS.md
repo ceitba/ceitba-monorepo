@@ -16,6 +16,7 @@ Code: `service/correction/ScheduleCorrectionService` (rules), `CorrectionSlots` 
 - Staff list (`GET /v1/staff/schedule-corrections?status=&page=&limit=`, newest first): corrections of a commission whose course has ended (`course_end < today`, ART) are frozen PENDING/APPLIED and no longer actionable, so they are left out of the default (unfiltered) list and of `status=PENDING` / `status=APPLIED`. `status=REJECTED|RESOLVED|SUPERSEDED` still lists them. Their status is not changed (no extra status, no migration); a commission ending today is still running.
 - Sync expiry: when a sync changes a commission's SGA slot set, each PENDING/APPLIED correction whose creation snapshot differs from the new SGA slots becomes RESOLVED (new SGA == proposal) or SUPERSEDED. Room-only changes don't count.
 - Notification: the first time a correction becomes APPLIED (votes or staff) its suggester gets a push (see `docs/PUSH-NOTIFICATIONS.md`) and the correction shows `seen: false` in `GET /v1/me/schedule-corrections` until `POST /v1/me/schedule-corrections/{id}/seen`. Re-applying after an un-apply does not notify again.
+- Weekly digest: readers are asked about up to three PENDING corrections on their own commissions (not their own suggestion, not yet voted) and can vote from the email through a signed link; the vote goes through the same `vote` path. See `docs/WEEKLY-DIGEST.md` ("Tu cuatrimestre").
 - Anonymity is absolute: no public, "me" or staff response carries the suggester, the voters or the reviewing staff member.
 
 ## Concurrency

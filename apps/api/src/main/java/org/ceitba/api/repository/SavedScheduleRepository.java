@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +14,10 @@ import java.util.UUID;
 public interface SavedScheduleRepository extends JpaRepository<SavedSchedule, UUID> {
 
     List<SavedSchedule> findByUserIdOrderByUpdatedAtDesc(UUID userId);
+
+    // The primary schedule of each given user (at most one per user), for the
+    // weekly digest's "Tu cuatrimestre".
+    List<SavedSchedule> findByUserIdInAndPrimaryTrue(Collection<UUID> userIds);
 
     long countByUserId(UUID userId);
 
