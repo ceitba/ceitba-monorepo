@@ -5,6 +5,8 @@ import { createDigest, fetchDigests } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
 import DigestCounts from '../../components/admin/DigestCounts'
+import DigestQuotaBar from '../../components/admin/DigestQuotaBar'
+import DigestRates from '../../components/admin/DigestRates'
 import { addDaysISO, todayISO } from '../../utils/dates'
 import {
   SENDING_POLL_MS, digestErrorMessage, formatArtDateTime, formatWeekRange, isPastInstant, mondayOf,
@@ -16,6 +18,7 @@ export default function AdminDigestsPage() {
   const staff = isStaff()
   const [digests, setDigests] = useState([])
   const [status, setStatus] = useState('loading')
+  const [quotaKey, setQuotaKey] = useState(0)
 
   // Only the response of the latest request is applied, so a slow poll can't
   // overwrite newer data.
@@ -34,7 +37,10 @@ export default function AdminDigestsPage() {
   const anySending = digests.some((d) => d.status === 'sending')
   useEffect(() => {
     if (!anySending) return
-    const id = setInterval(() => load({ quiet: true }), SENDING_POLL_MS)
+    const id = setInterval(() => {
+      load({ quiet: true })
+      setQuotaKey((k) => k + 1)
+    }, SENDING_POLL_MS)
     return () => clearInterval(id)
   }, [anySending, load])
 
@@ -65,6 +71,8 @@ export default function AdminDigestsPage() {
         <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.digests.title')}</h1>
         <p className="font-body text-body-sm text-ink-secondary mt-0.5 max-w-2xl">{t('admin.digests.subtitle')}</p>
       </div>
+
+      <DigestQuotaBar refreshKey={quotaKey} />
 
       <NewDigestForm digests={digests} />
 
@@ -107,7 +115,20 @@ export default function AdminDigestsPage() {
                             : t('admin.digests.autoSendOff')
                           : null}
                     </p>
+                    {d.status === 'sending' && d.resumeAt && (
+                      <p className="font-body text-body-sm text-accent-700">
+                        {t('admin.digests.resumesAt', { when: formatArtDateTime(d.resumeAt, i18n.language) })}
+                      </p>
+                    )}
+                    {d.status === 'sending' && d.estimatedFinishAt && (
+                      <p className="font-body text-body-sm text-ink-secondary">
+                        {t('admin.digests.finishesAt', { when: formatArtDateTime(d.estimatedFinishAt, i18n.language) })}
+                      </p>
+                    )}
                   </div>
+                  {(d.status === 'sent' || d.status === 'sending') && (
+                    <DigestRates openRate={d.openRate} clickRate={d.clickRate} />
+                  )}
                   <DigestCounts counts={d.counts} />
                 </div>
               </Link>

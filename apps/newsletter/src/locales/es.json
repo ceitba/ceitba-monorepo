@@ -420,6 +420,8 @@
         "send": "No pudimos iniciar el envío.",
         "cancel": "No pudimos cancelar el resumen.",
         "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos.",
+        "MAIL_QUOTA_EXHAUSTED": "Se usó todo el cupo diario de envío de la cuenta (las pruebas también cuentan). Vas a poder volver a probar ~{{when}} (hora de Argentina).",
+        "MAIL_QUOTA_EXHAUSTED_noWhen": "Se usó todo el cupo diario de envío de la cuenta (las pruebas también cuentan). Probá más tarde.",
         "AUTO_SEND_IN_PAST": "La fecha del envío automático tiene que ser futura.",
         "MAIL_DISABLED": "El envío de mails está desactivado en este entorno."
       },
@@ -487,6 +489,45 @@
         "stale": "Hay cambios sin guardar: la vista previa muestra la última versión guardada.",
         "loading": "Cargando…",
         "error": "No pudimos cargar la vista previa."
+      },
+      "resumesAt": "Envío en pausa: se reanuda ~{{when}} (hora de Argentina)",
+      "finishesAt": "Termina ~{{when}} (hora de Argentina), según el cupo diario",
+      "quota": {
+        "title": "Cupo de envío",
+        "label": "Hoy: {{used}} / {{limit}} usados",
+        "hint": "Mails enviados desde esta cuenta en las últimas 24 horas (resúmenes y pruebas). Gmail permite unos 2000 por día; cuando se completa el cupo, el envío sigue solo a medida que se libera.",
+        "loadError": "No pudimos cargar el cupo de envío.",
+        "pausedQuota": "Envío en pausa hasta ~{{when}} (hora de Argentina): Gmail avisó que se alcanzó el límite diario de la cuenta.",
+        "pausedTransport": "Envío en pausa hasta ~{{when}} (hora de Argentina) por un problema de conexión con Gmail. Se reintenta solo.",
+        "full": "Se usó todo el cupo de las últimas 24 horas: el próximo mail sale ~{{when}} (hora de Argentina)."
+      },
+      "rates": {
+        "opens": "Aperturas",
+        "clicks": "Clics"
+      },
+      "stats": {
+        "title": "Aperturas y clics",
+        "refresh": "Actualizar",
+        "refreshing": "Actualizando…",
+        "loading": "Cargando estadísticas…",
+        "error": "No pudimos cargar las estadísticas.",
+        "delivered": "Entregados",
+        "uniqueOpens": "Aperturas únicas",
+        "uniqueClicks": "Clics únicos",
+        "rate": "{{rate}} de los entregados",
+        "byLink": "Clics por enlace",
+        "link": "Enlace",
+        "unique": "Únicos",
+        "total": "Totales",
+        "noClicks": "Todavía no hay clics.",
+        "byHour": "Primeras aperturas por hora",
+        "byHourAria": "Gráfico de barras de primeras aperturas por hora: {{hours}} horas, máximo {{max}} por hora",
+        "opensCount_one": "{{count}} apertura",
+        "opensCount_other": "{{count}} aperturas",
+        "noOpens": "Todavía no hay aperturas.",
+        "note": "Solo datos agregados, nunca por persona. Las aperturas son aproximadas: Gmail guarda las imágenes en caché (no se ven las aperturas repetidas), Apple Mail las descarga sola al recibir el mail y algunos clientes las bloquean. Los clics son la señal confiable. No se cuentan escáneres de seguridad, bots ni lo que pasa en los primeros segundos después del envío.",
+        "laterBucket": "+7 días",
+        "laterFrom": "Desde {{when}}"
       },
       "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo."
     }

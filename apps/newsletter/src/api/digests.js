@@ -6,8 +6,28 @@ import { apiGet, apiRequest, apiSend, ApiError, toError } from './client'
 
 const path = (id) => `/digests/${encodeURIComponent(id)}`
 
+// Each item: { id, weekStart, weekEnd, subject, status, autoSendAt, sentAt,
+// createdAt, counts, resumeAt, estimatedFinishAt, openRate, clickRate }.
+// resumeAt/estimatedFinishAt only while 'sending' (resumeAt only when the
+// sending account is paused); rates are 0..1 over delivered emails, null
+// with nothing delivered.
 export async function fetchDigests() {
   return apiGet('/digests')
+}
+
+// Sending quota of the account the digest goes out from (rolling 24h):
+// → { account, limit, usedLast24h, remaining, pausedUntil, pauseReason
+//     ('quota' | 'transport' | null), nextCapacityAt }
+export async function fetchDigestQuota() {
+  return apiGet('/digests/quota')
+}
+
+// Aggregate engagement (never per person):
+// → { delivered, uniqueOpens, openRate, uniqueClicks, clickRate,
+//     clicksByLink: [{ label, url, uniqueClicks, totalClicks }],
+//     opensByHour: [{ hour, count }] }
+export async function fetchDigestStats(id) {
+  return apiGet(`${path(id)}/stats`)
 }
 
 // weekStart must be a Monday ("YYYY-MM-DD"). 409 DIGEST_EXISTS if that week
@@ -42,7 +62,9 @@ export async function fetchDigestPreview(id) {
   return res.text()
 }
 
-// Sends the digest to the caller only. → { sentTo }; 422 EMAIL_NOT_ALLOWED.
+// Sends the digest to the caller only. → { sentTo }; 422 EMAIL_NOT_ALLOWED;
+// 429 MAIL_QUOTA_EXHAUSTED (err.data.resumeAt) when the account's daily
+// sending quota is used up — test sends count against it.
 export async function sendDigestTest(id) {
   return apiSend('POST', `${path(id)}/test`)
 }
