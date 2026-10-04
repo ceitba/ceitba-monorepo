@@ -17,6 +17,7 @@ import org.ceitba.api.service.mail.EmailSender;
 import org.ceitba.api.service.mail.OutgoingEmail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
@@ -38,11 +39,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// The batch: throttling, rolling daily quota, failure handling, resume and
-// stop-on-cancel, with in-memory stand-ins for the delivery table.
+// The batch: throttling, rolling daily quota, failure handling, at-most-once
+// claiming, resume and stop-on-cancel, with in-memory stand-ins for the
+// delivery table.
 class DigestSenderTest {
 
     static final UUID ISSUE = UUID.randomUUID();
@@ -53,8 +56,10 @@ class DigestSenderTest {
     final ArticleRepository articles = mock(ArticleRepository.class);
     final UserFollowRepository follows = mock(UserFollowRepository.class);
 
-    // userId -> status ("pending" | "sent" | "failed"); removed = dropped.
+    // userId -> status ("pending" | "sending" | "sent" | "failed"); removed = dropped.
     final Map<UUID, String> rows = new java.util.LinkedHashMap<>();
+    final Map<UUID, Integer> attempts = new HashMap<>();
+    final Map<UUID, String> errors = new HashMap<>();
     final Map<UUID, String> emails = new HashMap<>();
     final List<String> sentTo = new ArrayList<>();
     final AtomicInteger sleeps = new AtomicInteger();
@@ -93,18 +98,33 @@ class DigestSenderTest {
         when(articles.findPublishedBetween(any(), any())).thenReturn(List.of(a));
 
         when(deliveries.countAttemptsSince(any())).thenAnswer(i -> attemptsLast24h);
-        when(deliveries.findPending(eq(ISSUE), any())).thenAnswer(i -> rows.entrySet().stream()
+        // Like the claim query: fresh rows first (attempts, then insertion order).
+        when(deliveries.lockNextPending(eq(ISSUE), any())).thenAnswer(i -> rows.entrySet().stream()
             .filter(e -> e.getValue().equals("pending"))
-            .map(e -> new DigestDelivery(ISSUE, e.getKey(), emails.get(e.getKey())))
-            .toList());
-        when(deliveries.markSent(eq(ISSUE), any(), any())).thenAnswer(i -> mark(i.getArgument(1), "sent"));
-        when(deliveries.markFailed(eq(ISSUE), any(), any(), any())).thenAnswer(i -> mark(i.getArgument(1), "failed"));
-        when(deliveries.deletePending(eq(ISSUE), any())).thenAnswer(i -> rows.remove((UUID) i.getArgument(1)) != null ? 1 : 0);
+            .min(java.util.Comparator.comparingInt(e -> attempts.getOrDefault(e.getKey(), 0)))
+            .map(e -> {
+                var d = new DigestDelivery(ISSUE, e.getKey(), emails.get(e.getKey()));
+                ReflectionTestUtils.setField(d, "attempts", attempts.getOrDefault(e.getKey(), 0));
+                return d;
+            }));
+        when(deliveries.markSending(eq(ISSUE), any(), any())).thenAnswer(i -> move(i.getArgument(1), "pending", "sending"));
+        when(deliveries.markSent(eq(ISSUE), any(), any())).thenAnswer(i -> move(i.getArgument(1), "sending", "sent"));
+        when(deliveries.markFailed(eq(ISSUE), any(), any(), any())).thenAnswer(i -> {
+            errors.put(i.getArgument(1), i.getArgument(3));
+            return move(i.getArgument(1), "sending", "failed");
+        });
+        when(deliveries.retryLater(eq(ISSUE), any(), any())).thenAnswer(i -> {
+            attempts.merge(i.getArgument(1), 1, Integer::sum);
+            return move(i.getArgument(1), "sending", "pending");
+        });
+        when(deliveries.release(eq(ISSUE), any(), any())).thenAnswer(i -> move(i.getArgument(1), "sending", "pending"));
+        when(deliveries.deleteClaimed(eq(ISSUE), any())).thenAnswer(i ->
+            "sending".equals(rows.get((UUID) i.getArgument(1))) && rows.remove((UUID) i.getArgument(1)) != null ? 1 : 0);
     }
 
-    int mark(UUID userId, String status) {
-        if (!"pending".equals(rows.get(userId))) return 0;
-        rows.put(userId, status);
+    int move(UUID userId, String from, String to) {
+        if (!from.equals(rows.get(userId))) return 0;
+        rows.put(userId, to);
         return 1;
     }
 
@@ -144,7 +164,6 @@ class DigestSenderTest {
         s.runPending();
         assertThat(sentTo).hasSize(3);
         assertThat(rows.values()).filteredOn("pending"::equals).hasSize(2);
-        verify(issues, never()).markSentIfDone(any(), any());
 
         attemptsLast24h = 0;   // a day later
         s.runPending();
@@ -168,20 +187,59 @@ class DigestSenderTest {
     }
 
     @Test
-    void transportFailureStopsWithoutTouchingTheRow() {
+    void transportFailureStopsWithoutBlamingTheRow() {
         var a = recipient("a@itba.edu.ar");
         recipient("b@itba.edu.ar");
-        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSIENT, "535 5.7.8 bad credentials", null);
+        failure = to -> new EmailSendException(EmailSendException.Kind.TRANSPORT, "535 5.7.8 bad credentials", null);
 
         sender(1500).runPending();
 
         assertThat(sentTo).isEmpty();
         assertThat(rows.get(a)).isEqualTo("pending");
+        assertThat(attempts).doesNotContainKey(a);
         verify(deliveries, never()).markFailed(any(), any(), any(), any());
 
         failure = to -> null;   // SMTP back: the next tick resumes
         sender(1500).runPending();
         assertThat(sentTo).hasSize(2);
+    }
+
+    @Test
+    void temporaryFailureOfOneRecipientNeverStallsTheIssueAndFailsAfterThreeAttempts() {
+        var bad = recipient("bad@itba.edu.ar");
+        recipient("b@itba.edu.ar");
+        recipient("c@itba.edu.ar");
+        failure = to -> to.startsWith("bad")
+            ? new EmailSendException(EmailSendException.Kind.TRANSIENT, "451 4.3.0 try later", null) : null;
+
+        sender(1500).runPending();
+
+        // Everyone else was served; the bad one was tried 3 times, then given up.
+        assertThat(sentTo).containsExactly("b@itba.edu.ar", "c@itba.edu.ar");
+        assertThat(rows.get(bad)).isEqualTo("failed");
+        assertThat(attempts.get(bad)).isEqualTo(2);   // two retries, the third failure is final
+        assertThat(errors.get(bad)).startsWith("gave up after 3 attempts").contains("451 4.3.0");
+        verify(deliveries, times(2)).retryLater(eq(ISSUE), eq(bad), any());
+        verify(issues).markSentIfDone(eq(ISSUE), any());
+    }
+
+    @Test
+    void rowsLeftSendingByACrashAreFailedNeverResent() {
+        var interrupted = recipient("lost@itba.edu.ar");
+        rows.put(interrupted, "sending");   // claimed before the crash, outcome unknown
+        recipient("ok@itba.edu.ar");
+        when(deliveries.failStale(any(), any())).thenAnswer(i -> {
+            rows.replaceAll((k, v) -> v.equals("sending") ? "failed" : v);
+            return 1;
+        });
+
+        sender(1500).runPending();
+
+        // Cutoff is 5 minutes before "now" (15:00Z), reason is recorded as unknown.
+        verify(deliveries).failStale(Instant.parse("2026-10-05T14:55:00Z").atOffset(ZoneOffset.UTC),
+            "unknown outcome (interrupted)");
+        assertThat(rows.get(interrupted)).isEqualTo("failed");
+        assertThat(sentTo).containsExactly("ok@itba.edu.ar");   // lost@ is not resent
     }
 
     @Test

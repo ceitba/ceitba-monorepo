@@ -31,11 +31,14 @@ public final class DigestDtos {
     public record EventItem(String id, String title, LocalDate eventDate, LocalTime startTime, LocalTime endTime,
                             String location, OrgRef organization, boolean excluded) {}
 
+    // recipientEstimate: eligible recipients, only for a draft (null otherwise;
+    // counts holds the real numbers once sending started).
     public record Detail(UUID id, LocalDate weekStart, LocalDate weekEnd, String subject, String intro,
                          String status, OffsetDateTime autoSendAt, OffsetDateTime sentAt, Counts counts,
-                         long recipientEstimate, List<ArticleItem> articles, List<EventItem> events) {}
+                         Long recipientEstimate, List<ArticleItem> articles, List<EventItem> events) {}
 
-    public record CreateRequest(@NotNull LocalDate weekStart) {}
+    // autoSendAt (optional, ISO-8601 instant): must not be in the past.
+    public record CreateRequest(@NotNull LocalDate weekStart, String autoSendAt) {}
 
     // Absent (or null) subject / excluded*Ids = unchanged. intro and
     // autoSendAt are JsonNodes so absent (unchanged) and explicit null (clear;

@@ -40,14 +40,14 @@ public interface DigestIssueRepository extends JpaRepository<DigestIssue, UUID> 
     @Query("SELECT i.id FROM DigestIssue i WHERE i.status = 'sending' ORDER BY i.weekStart ASC")
     List<UUID> findSendingIds();
 
-    // sending -> sent once no pending delivery is left. 0 rows = still pending
-    // (or not sending any more).
+    // sending -> sent once no delivery is pending or being sent. 0 rows = work
+    // left (or not sending any more).
     @Modifying
     @Transactional
     @Query("""
         UPDATE DigestIssue i SET i.status = 'sent', i.sentAt = :now, i.updatedAt = :now
         WHERE i.id = :id AND i.status = 'sending'
-          AND NOT EXISTS (SELECT 1 FROM DigestDelivery d WHERE d.issueId = :id AND d.status = 'pending')
+          AND NOT EXISTS (SELECT 1 FROM DigestDelivery d WHERE d.issueId = :id AND d.status IN ('pending', 'sending'))
         """)
     int markSentIfDone(@Param("id") UUID id, @Param("now") OffsetDateTime now);
 
