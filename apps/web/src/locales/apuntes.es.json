@@ -782,6 +782,18 @@
       "crashed": "Esta vista falló al mostrar los datos que devolvió la API.",
       "simulated": "Costos simulados (cliente LLM de prueba), no facturación real.",
       "simulatedShort": "simulado",
+      "quota": {
+        "title": "DigitalOcean · cupo",
+        "batchesHour": "Lotes esta hora",
+        "batchRequestsDay": "Solicitudes en lote hoy",
+        "tokensDay": "Tokens hoy (sync)",
+        "tokensMinute": "Tokens por minuto",
+        "updated": "Actualizado hace {{ago}}",
+        "never": "Sin lecturas todavía",
+        "approx": "aprox.",
+        "staleHint": "Dato desactualizado: el valor real puede ser distinto.",
+        "refresh": "Actualizar cupo de DigitalOcean"
+      },
       "progress": {
         "title": "Progreso",
         "starting": "Iniciando…",
