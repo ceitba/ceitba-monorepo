@@ -105,7 +105,8 @@ class KbBatchSubmitterTest {
     void rateLimitedCreationWaitsWithBackoffAndNeverFails() {
         for (int i = 0; i < 6; i++) fake.failNextCreate(new LlmApiException(429, RATE_LIMIT));
         var job = submitter.queue(runId, "DIGEST", 1, MODEL, ids(), "kb/runs/x/digest.jsonl");
-        var expectedWaits = List.of(1, 5, 15, 60, 60, 60);
+        // batch_creations_per_hour: refused attempts count, so always a full hour.
+        var expectedWaits = List.of(60, 60, 60, 60, 60, 60);
         for (int i = 0; i < expectedWaits.size(); i++) {
             var start = clock.now();
             assertThat(submitter.submitQueued(job.getId())).isEqualTo(KbBatchSubmitter.Outcome.WAITING);

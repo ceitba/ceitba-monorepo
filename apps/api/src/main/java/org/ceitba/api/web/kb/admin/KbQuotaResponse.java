@@ -5,7 +5,7 @@ import java.time.OffsetDateTime;
 // DigitalOcean rate-limit counters as last seen in response headers (docs
 // ADMIN §quota). Every counter is null until DO answered once with it;
 // observedAt = the most recent observation; stale = nothing seen in the last
-// 10 minutes (GET ?refresh=true runs the free batch probe).
+// 10 minutes (?refresh=true is accepted but does not probe DO: probing spends a batch creation).
 public record KbQuotaResponse(OffsetDateTime observedAt, Batch batch, Sync sync, boolean stale) {
 
     public record Counter(Long limit, Long remaining) {}

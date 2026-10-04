@@ -68,6 +68,19 @@ public class KbBatchSubmitter {
     }
 
     // Wait before the n-th retry of a refused creation (n = failures so far, 1-based).
+    // A refused creation counts against batch-creations-per-hour, so a 429 for
+    // that quota waits a full hour (the next attempt then meets the quota
+    // snapshot's own reset time first); other transient errors use backoff().
+    OffsetDateTime creationRetryAt(LlmApiException e, int failures) {
+        var at = now().plus(backoff(failures));
+        var msg = e.getMessage() == null ? "" : e.getMessage();
+        if (msg.contains("batch_creations_per_hour") || msg.contains("batch_create_per_minute")) {
+            var hour = now().plus(Duration.ofMinutes(msg.contains("batch_creations_per_hour") ? 60 : 2));
+            if (at.isBefore(hour)) at = hour;
+        }
+        return at;
+    }
+
     public static Duration backoff(int failures) {
         return BACKOFF.get(Math.max(0, Math.min(failures, BACKOFF.size()) - 1));
     }
@@ -137,7 +150,7 @@ public class KbBatchSubmitter {
             if (kind == DoBatchErrors.Kind.RATE_LIMITED || kind == DoBatchErrors.Kind.TRANSIENT) {
                 // A snapshot-based wait (no DO call made) has its own time and message.
                 var slot = e instanceof DoBatchSlotException x ? x : null;
-                var at = slot != null ? slot.retryAt() : now().plus(backoff(job.getSubmitFailures() + 1));
+                var at = slot != null ? slot.retryAt() : creationRetryAt(e, job.getSubmitFailures() + 1);
                 tx.executeWithoutResult(s -> {
                     jobs.findById(jobId).orElseThrow().retryAt(at, slot != null ? QUOTA_WAIT + slot.getMessage()
                         .replace(" (rate_limit_exceeded)", "") : (kind == DoBatchErrors.Kind.RATE_LIMITED

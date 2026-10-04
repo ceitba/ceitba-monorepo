@@ -55,9 +55,26 @@ class DoQuotaTrackerTest {
         var lines = List.of(new LlmLine("c1", json.createObjectNode()));
         assertThatThrownBy(() -> exec.submit("n", "openai-gpt-5", "gpt-5", lines, "rid"))
             .isInstanceOfSatisfying(DoBatchSlotException.class, e -> {
-                assertThat(e.retryAt().toInstant()).isEqualTo(clock.instant().plus(Duration.ofMinutes(10)));
+                // No reset header: a full hour, not a 10-minute re-probe (refused attempts count).
+                assertThat(e.retryAt().toInstant()).isEqualTo(clock.instant().plus(Duration.ofMinutes(60)));
                 assertThat(e.getMessage()).contains("0/5 esta hora");
             });
+    }
+
+    @Test
+    void zeroBatchQuotaWaitsForDosResetTimeAndNeverProbesMeanwhile() {
+        var t = new DoQuotaTracker(clock);
+        var probes = new java.util.concurrent.atomic.AtomicInteger();
+        t.bindProbe(probes::incrementAndGet);
+        var reset = clock.instant().plus(Duration.ofMinutes(8)).getEpochSecond();
+        t.observe(HttpHeaders.of(Map.of(
+            "x-ratelimit-limit-batch-creations-per-hour", List.of("5"),
+            "x-ratelimit-remaining-batch-creations-per-hour", List.of("0"),
+            "x-ratelimit-reset-batch-creations-per-hour", List.of(String.valueOf(reset))), (a, b) -> true));
+        var wait = t.batchCreationWait().orElseThrow();
+        assertThat(wait.until().toInstant()).isEqualTo(Instant.ofEpochSecond(reset).plusSeconds(30));
+        t.refreshBatchQuota();
+        assertThat(probes.get()).isZero();
     }
 
     @Test
