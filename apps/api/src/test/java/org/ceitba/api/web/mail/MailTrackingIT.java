@@ -80,8 +80,10 @@ class MailTrackingIT {
         jdbc.execute("""
             TRUNCATE public.digest_deliveries, public.digest_issues, public.user_follows, public.mail_send_log,
                      public.mail_account_state, public.articles, public.news_events, public.organizations,
-                     public."user" CASCADE
+                     public."user", public.capability_settings CASCADE
             """);
+        // The digest is behind the resumen_semanal capability; open it to everyone here.
+        jdbc.update("INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('resumen_semanal', true)");
         var ceitba = orgs.save(new Organization("ceitba", "CEITBA", "Centro de Estudiantes"));
         User alice = users.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));
         User bob = users.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));
