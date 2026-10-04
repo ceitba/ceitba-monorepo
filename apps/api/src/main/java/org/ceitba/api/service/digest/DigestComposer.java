@@ -9,21 +9,27 @@ import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
 import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.mail.OutgoingEmail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 // Builds an issue's email: the shared content (same for every recipient,
 // rendered once), the audience, and per recipient only the unsubscribe link
-// and the optional DigestPersonalSection. Shared by DigestService (previews,
+// and the DigestPersonalSection ("Tu cuatrimestre"). Shared by DigestService (previews,
 // test sends, recipient snapshot) and DigestSender (the batch).
 @Component
 public class DigestComposer {
+
+    private static final Logger log = LoggerFactory.getLogger(DigestComposer.class);
 
     // The digest is CEITBA's email: its audience is CEITBA's followers
     // (every user follows it by default).
@@ -106,12 +112,40 @@ public class DigestComposer {
 
     // readerId null = a preview without a reader (inert unsubscribe link).
     public DigestRenderer.Output render(Issue issue, DigestRenderer.Template template, UUID readerId) {
-        var personal = personalSection.forReader(readerId, issue).orElse(null);
+        return render(template, readerId, personalSection(issue, readerId));
+    }
+
+    // With the reader's personal section already loaded (null = none).
+    public DigestRenderer.Output render(DigestRenderer.Template template, UUID readerId,
+                                        DigestPersonalSection.Section personal) {
         return template.forReader(personal, unsubscribePageUrl(readerId));
     }
 
+    // The personal sections of a page of recipients, loaded together. A
+    // failure only costs the personal block: the shared digest still goes out.
+    public Map<UUID, DigestPersonalSection.Section> personalSections(Issue issue, Collection<UUID> readerIds) {
+        if (readerIds.isEmpty()) return Map.of();
+        try {
+            return personalSection.forReaders(readerIds, issue);
+        } catch (RuntimeException e) {
+            log.warn("Digest {}: personal sections unavailable, sending without them: {}",
+                issue.week().weekStart(), e.getMessage(), e);
+            return Map.of();
+        }
+    }
+
+    private DigestPersonalSection.Section personalSection(Issue issue, UUID readerId) {
+        if (readerId == null) return null;
+        return personalSections(issue, List.of(readerId)).get(readerId);
+    }
+
     public OutgoingEmail email(Issue issue, DigestRenderer.Template template, UUID userId, String to, boolean test) {
-        var out = render(issue, template, userId);
+        return email(issue, template, userId, to, test, personalSection(issue, userId));
+    }
+
+    public OutgoingEmail email(Issue issue, DigestRenderer.Template template, UUID userId, String to, boolean test,
+                               DigestPersonalSection.Section personal) {
+        var out = render(template, userId, personal);
         var headers = new LinkedHashMap<String, String>();
         // RFC 2369 + RFC 8058 one-click: mail clients POST to the API directly.
         headers.put("List-Unsubscribe",

@@ -117,12 +117,15 @@ public class DigestSender {
                 }
                 return Outcome.DONE;
             }
+            // "Tu cuatrimestre" of the whole page, batch-loaded.
+            var personal = composer.personalSections(issue,
+                batch.stream().map(DigestDelivery::getUserId).toList());
             for (DigestDelivery d : batch) {
                 if (quota[0] <= 0) {
                     log.info("Digest sending paused: daily limit of {} reached", props.dailyLimit());
                     return Outcome.STOPPED;
                 }
-                Step step = tx.execute(s -> sendOne(issue, template, d));
+                Step step = tx.execute(s -> sendOne(issue, template, d, personal.get(d.getUserId())));
                 switch (step) {
                     case CANCELLED -> {
                         log.info("Digest {}: no longer sending, stopped", issue.week().weekStart());
@@ -147,7 +150,8 @@ public class DigestSender {
     }
 
     // Runs inside one transaction (see the class comment).
-    Step sendOne(DigestComposer.Issue issue, DigestRenderer.Template template, DigestDelivery d) {
+    Step sendOne(DigestComposer.Issue issue, DigestRenderer.Template template, DigestDelivery d,
+                 DigestPersonalSection.Section personal) {
         String status = issues.findStatusForShare(issue.id()).orElse(null);
         if (!DigestIssue.SENDING.equals(status)) return Step.CANCELLED;
 
@@ -158,7 +162,7 @@ public class DigestSender {
             return Step.SKIPPED;
         }
         try {
-            sender.send(composer.email(issue, template, d.getUserId(), d.getEmail(), false));
+            sender.send(composer.email(issue, template, d.getUserId(), d.getEmail(), false, personal));
         } catch (EmailSendException e) {
             if (e.kind() == EmailSendException.Kind.TRANSIENT) {
                 log.warn("Digest sending paused, transport problem (retried later): {}", e.getMessage());

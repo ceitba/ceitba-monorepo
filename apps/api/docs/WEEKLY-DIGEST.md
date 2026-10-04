@@ -2,12 +2,15 @@
 
 Every Monday CEITBA emails its followers one digest of the whole newsletter:
 everything published last week (every organization, plus independent
-articles) and every event of the coming week. The content is the same for
-every recipient. Staff review, edit and send it from the ItbaNews admin area.
+articles) and every event of the coming week. That content is the same for
+every recipient; below it each reader gets a short personal block,
+"Tu cuatrimestre" (their subjects, wiki links and schedule corrections to
+confirm). Staff review, edit and send it from the ItbaNews admin area.
 
 Code: `service/digest/*` (selection, rendering, lifecycle, sending worker),
-`service/mail/*` (transport), `scheduling/DigestJob`, `web/digest/DigestController`.
-Schema: `V43__weekly_digest.sql`.
+`service/digest/personal/*` ("Tu cuatrimestre"), `service/mail/*`
+(transport), `scheduling/DigestJob`, `web/digest/DigestController`.
+Schema: `V43__weekly_digest.sql` ("Tu cuatrimestre" adds no tables).
 
 ## How it works
 
@@ -41,11 +44,98 @@ week's Monday, unique). Status: `draft` → `sending` → `sent`, or `draft` /
 domain. `recipientEstimate` in the detail is that count.
 
 **Rendering.** The shared content is rendered once per issue
-(`DigestRenderer.template`); per recipient only the unsubscribe link and an
-optional per-reader block are spliced in. That block comes from the
-`DigestPersonalSection` extension point (placed between the content and the
-footer); the default bean returns nothing. It is meant for a future
-"Tu cuatrimestre" section.
+(`DigestRenderer.template`); per recipient only the unsubscribe link and the
+"Tu cuatrimestre" block are spliced in (between the content and the footer).
+The block comes from the `DigestPersonalSection` extension point, which is
+asked for a whole page of recipients at once (`forReaders`): the sending
+worker loads it per page of 50 deliveries in a fixed number of queries
+(about ten, whatever the page size). If loading it fails, that page goes out
+without the block instead of not at all. Previews and test sends show the
+caller's own block.
+
+## "Tu cuatrimestre" (per reader)
+
+Code: `service/digest/personal/*` (`DigestTerm` = current-term rule,
+`CorrectionPrompts` = which corrections, `PersonalDigestLoader` = batch
+loading, `PersonalDigestRenderer`, `TuCuatrimestreSection` = the bean),
+`service/digest/DigestCorrectionVote*` (links and endpoints).
+
+**Nothing at all** is rendered between terms: when no commission is running
+or starts within 14 days (ART), the block is omitted for everyone.
+Otherwise, per reader:
+
+1. **Subjects** of their **primary** saved schedule (`saved_schedules`,
+   `is_primary`), if it belongs to the current term. Otherwise (no primary
+   schedule, unparsable payload, or a stale one) only a call to action:
+   "Armá tu horario en el combinador" → `DIGEST_SCHEDULER_URL`.
+2. **Wiki links**: for each of those subjects with a `PUBLISHED`
+   `wiki.kb_page`, a link to CeitbaPage's Apuntes reader,
+   `${DIGEST_WIKI_BASE_URL}/<subjectId>?vista=wiki` (the subject's wiki tab;
+   without an index page, `/<subjectId>/wiki/<latest slug>`). Only for
+   readers with the `apuntes` capability (the reader is capability-gated;
+   checked for the whole page in four queries). Marked "actualizado esta
+   semana" when a page's `generated_at` falls in the covered week (ART).
+   At most `DIGEST_MAX_WIKI_LINKS` (5).
+3. **Corrections to confirm**: `PENDING` schedule corrections on the
+   reader's own commissions that they did not suggest and have not voted on,
+   most confirmed first, then oldest; at most `DIGEST_MAX_CORRECTIONS` (3):
+   "Alguien reportó que Física I (com. A) se dicta martes 09:00 a 12:00 en
+   vez de lunes 08:00 a 11:00. ¿Es así?" with **Sí, es así** / **No**
+   buttons. The suggester is never named. A reader's "own" commission is
+   only known when the schedule names exactly one commission for the
+   subject ("any" or several alternatives = no prompts for that subject).
+
+The audience, the `@itba.edu.ar` guard and the opt-out are unchanged: the
+block is only ever added to an email that would be sent anyway.
+
+**What "current term" means** (`DigestTerm`). Commission rows carry no
+year/period, only `course_start`/`course_end`, and a saved schedule stores
+subject codes + commission **names** (`{"selectedCourses": [{"subject_id",
+"selectedCommissions": ["A"]}]}`, written by the scheduler and the app), not
+commission ids. Most subjects reuse the same names every term, so:
+
+- A subject's current term = its commissions with `course_end >= today` and
+  `course_start <= today + 14 days`, narrowed to the newest term with
+  `CommissionTerms` (the rule `GET /v1/subjects` uses). A term synced months
+  ahead is not current; the two weeks before classes start, the starting
+  term is.
+- Each schedule entry keeps the current-term commissions whose name it lists
+  (no name or "any" = all of them); entries with no match are dropped.
+- The schedule is current when at least one entry survives **and** its
+  `updated_at` (ART date) is no earlier than **60 days before the latest
+  `course_start`** among the kept commissions. Students build next term's
+  schedule in the weeks before it starts, and consecutive terms start ~4-5
+  months apart, so last term's schedule (same names) is stale. Caveat: any
+  update of the schedule row (renaming it, making it primary) refreshes
+  `updated_at`.
+
+**Voting from the email.** Each button links to the ItbaNews page
+`${DIGEST_PUBLIC_BASE_URL}/correction?token=…&vote=confirm|reject`. The token
+is `<userId>.<correctionId>.<expiresAtEpochSeconds>.<base64url HMAC>`, keyed
+with `ContentHmac`'s `digest-correction-vote` purpose key (same derivation as
+the unsubscribe key, its own label), valid `DIGEST_VOTE_TOKEN_TTL` (14 days).
+It says who may vote on which correction until when; the vote itself is
+never taken from the link. **Nothing changes on GET** (mail scanners follow
+links): the page loads the correction with
+`GET /v1/digests/correction-vote?token=` and only the button click POSTs
+`{token, vote}`. The vote goes through `ScheduleCorrectionService.vote` as
+the token's user, so one vote per user, the 3-confirm rule, the commission
+lock and anonymity are exactly those of the in-app vote. A replay of the same
+vote changes nothing; a different vote replaces the previous one (as in the
+app); `previousVote` in the response says which case it was.
+
+| Case | Response |
+|---|---|
+| Bad signature, malformed, unknown/deleted user | `400 INVALID_TOKEN` |
+| Expired (genuine) token | `410 TOKEN_EXPIRED` |
+| `vote` other than `confirm`/`reject` | `400 INVALID_VOTE` |
+| Correction no longer exists | `404 CORRECTION_NOT_FOUND` |
+| Not PENDING/APPLIED, or its commission ended (GET says `open: false`) | `409 CORRECTION_CLOSED` (POST) |
+| User's email no longer on an allowed domain | `422 EMAIL_NOT_ALLOWED` |
+
+Both endpoints are public, ignore the session cookie/Authorization header
+(like unsubscribe) and are rate limited per IP
+(`RATE_LIMIT_DIGEST_CORRECTION_VOTE_*`, 60/min).
 
 **Sending.** "Send" (manual or auto) locks the issue, snapshots the
 recipients into `digest_deliveries` (`pending`) and sets the issue to
@@ -108,12 +198,14 @@ and are not counted in the quota.
 | POST | `/v1/digests` | `{weekStart}` (Monday, else `400 INVALID_WEEK_START`) → 201; `409 DIGEST_EXISTS` |
 | GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients) |
 | PATCH | `/v1/digests/{id}` | Any of `subject, intro, excludedArticleIds, excludedEventIds, autoSendAt` (`null` intro clears, `null` autoSendAt disables); draft only (`409 DIGEST_NOT_EDITABLE`) |
-| GET | `/v1/digests/{id}/preview` | `text/html`, as the caller would receive it; `mode` is accepted and ignored |
+| GET | `/v1/digests/{id}/preview` | `text/html`, as the caller would receive it (their own "Tu cuatrimestre"); `mode` is accepted and ignored |
 | POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status |
 | POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send |
 | POST | `/v1/digests/{id}/cancel` | From `draft` or `sending` |
 | GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` |
 | POST | `/v1/digests/unsubscribe?token=` | Public; 204; `400 INVALID_TOKEN`; accepts the RFC 8058 form body |
+| GET | `/v1/digests/correction-vote?token=` | Public; the correction (subject, commission, `proposed`/`sga` slots, `status`, `open`, counts, `myVote`, `expiresAt`); never writes |
+| POST | `/v1/digests/correction-vote` | Public; `{token, vote: confirm\|reject}` → `{correction, previousVote}`; errors in the table above |
 
 ## Configuration
 
@@ -130,6 +222,10 @@ and are not counted in the quota.
 | `DIGEST_SEND_INTERVAL` | `PT1S` | Pause between emails |
 | `DIGEST_TICK_INTERVAL` | `PT5M` | Auto-send check and resume of stalled sends |
 | `DIGEST_JOBS_ENABLED` | `true` | Weekly draft + auto-send + worker (tests set `false`) |
+| `DIGEST_WIKI_BASE_URL` | `https://ceitba.org.ar/apuntes` | CeitbaPage Apuntes reader (`/apuntes/:subjectId`, routes in `CeitbaPage/src/App.tsx`) |
+| `DIGEST_SCHEDULER_URL` | `https://ceitba.org.ar/scheduler/` | "Armá tu horario" call to action |
+| `DIGEST_VOTE_TOKEN_TTL` | `P14D` | Lifetime of the correction vote links |
+| `DIGEST_MAX_WIKI_LINKS` / `DIGEST_MAX_CORRECTIONS` | `5` / `3` | Caps per email (`0` hides that part) |
 
 The transport is behind `service/mail/EmailSender`; switching to another
 provider (e.g. the Gmail API with OAuth) later means one new implementation

@@ -12,7 +12,13 @@ public class DigestException extends DomainException {
         DIGEST_NOT_EDITABLE(409),
         DIGEST_EMPTY(409),
         EMAIL_NOT_ALLOWED(422),
-        INVALID_TOKEN(400);
+        INVALID_TOKEN(400),
+        // Correction vote links ("¿Es así?").
+        TOKEN_EXPIRED(410),
+        INVALID_VOTE(400),
+        CORRECTION_NOT_FOUND(404),
+        // No longer PENDING/APPLIED, or its commission has ended.
+        CORRECTION_CLOSED(409);
 
         private final int status;
 

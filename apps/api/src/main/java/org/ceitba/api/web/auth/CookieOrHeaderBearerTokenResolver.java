@@ -18,8 +18,9 @@ import java.util.Set;
 // The public token endpoints never read a bearer token: they authenticate via
 // their request body, and an expired access token (the normal state when the
 // app calls /refresh) must not turn them into a 401. The same goes for the
-// weekly digest one-click unsubscribe (signed token in the URL): a stale
-// session cookie of the person unsubscribing must not reject it.
+// weekly digest one-click unsubscribe (signed token in the URL) and the
+// digest's correction vote page (GET and POST, signed token): a stale
+// session cookie of the person following the link must not reject it.
 @Component
 public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
 
@@ -33,6 +34,9 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
     static final Set<String> TOKEN_ENDPOINTS = Set.of(
         "/v1/auth/google/mobile", "/v1/auth/refresh", "/v1/auth/logout", "/v1/auth/review-login",
         "/v1/digests/unsubscribe");
+
+    // Token-authenticated for every method.
+    static final Set<String> TOKEN_PATHS_ANY_METHOD = Set.of("/v1/digests/correction-vote");
 
     @Override
     public String resolve(HttpServletRequest request) {
@@ -53,10 +57,11 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
     }
 
     private static boolean isTokenEndpoint(HttpServletRequest request) {
-        if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
         String uri = request.getRequestURI();
         String ctx = request.getContextPath();
         String path = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) ? uri.substring(ctx.length()) : uri;
+        if (TOKEN_PATHS_ANY_METHOD.contains(path)) return true;
+        if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
         return TOKEN_ENDPOINTS.contains(path);
     }
 }

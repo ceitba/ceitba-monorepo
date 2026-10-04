@@ -101,7 +101,8 @@ public class GlobalExceptionHandler {
     }
 
     // Weekly digest (docs/WEEKLY-DIGEST.md): INVALID_WEEK_START, DIGEST_EXISTS,
-    // DIGEST_NOT_EDITABLE, DIGEST_EMPTY, EMAIL_NOT_ALLOWED, INVALID_TOKEN.
+    // DIGEST_NOT_EDITABLE, DIGEST_EMPTY, EMAIL_NOT_ALLOWED, INVALID_TOKEN,
+    // TOKEN_EXPIRED, INVALID_VOTE, CORRECTION_NOT_FOUND, CORRECTION_CLOSED.
     @ExceptionHandler(DigestException.class)
     public ResponseEntity<ErrorResponse> handleDigest(DigestException ex, HttpServletRequest req) {
         return ResponseEntity.status(ex.reason().status())

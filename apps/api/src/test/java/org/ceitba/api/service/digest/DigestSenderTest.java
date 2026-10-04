@@ -57,6 +57,8 @@ class DigestSenderTest {
     final Map<UUID, String> rows = new java.util.LinkedHashMap<>();
     final Map<UUID, String> emails = new HashMap<>();
     final List<String> sentTo = new ArrayList<>();
+    final List<OutgoingEmail> sentEmails = new ArrayList<>();
+    DigestPersonalSection personalSection = (readers, issue) -> Map.of();
     final AtomicInteger sleeps = new AtomicInteger();
     Function<String, RuntimeException> failure = to -> null;
     String issueStatus = DigestIssue.SENDING;
@@ -66,11 +68,12 @@ class DigestSenderTest {
         var props = new DigestProperties(null, null, null, dailyLimit, Duration.ofMillis(1), null, false);
         var tokens = new DigestUnsubscribeTokens(ContentHmac.fromJwtSecret("dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch"));
         var composer = new DigestComposer(articles, mock(NewsEventRepository.class), follows, users, tokens,
-            (reader, issue) -> Optional.empty(), props);
+            (readers, issue) -> personalSection.forReaders(readers, issue), props);
         EmailSender mail = (OutgoingEmail e) -> {
             var ex = failure.apply(e.to());
             if (ex != null) throw ex;
             sentTo.add(e.to());
+            sentEmails.add(e);
         };
         return new DigestSender(issues, deliveries, composer, mail, props,
             mock(PlatformTransactionManager.class), Clock.fixed(Instant.parse("2026-10-05T15:00:00Z"), ZoneOffset.UTC),
@@ -133,6 +136,35 @@ class DigestSenderTest {
         assertThat(rows.values()).containsOnly("sent");
         assertThat(sleeps.get()).isEqualTo(3);
         verify(issues).markSentIfDone(eq(ISSUE), any());
+    }
+
+    @Test
+    void personalSectionsAreLoadedOncePerPageAndSplicedPerReader() {
+        var a = recipient("a@itba.edu.ar");
+        var b = recipient("b@itba.edu.ar");
+        var calls = new ArrayList<java.util.Collection<UUID>>();
+        personalSection = (readers, issue) -> {
+            calls.add(List.copyOf(readers));
+            return Map.of(a, new DigestPersonalSection.Section("<tr><td>SOLO-A</td></tr>", "SOLO-A"));
+        };
+
+        sender(1500).runPending();
+
+        assertThat(calls).hasSize(1);
+        assertThat(calls.get(0)).containsExactlyInAnyOrder(a, b);
+        assertThat(sentEmails.get(0).html()).contains("SOLO-A");
+        assertThat(sentEmails.get(1).html()).doesNotContain("SOLO-A");
+    }
+
+    @Test
+    void aFailingPersonalSectionStillSendsTheSharedDigest() {
+        recipient("a@itba.edu.ar");
+        personalSection = (readers, issue) -> { throw new IllegalStateException("db down"); };
+
+        sender(1500).runPending();
+
+        assertThat(sentTo).containsExactly("a@itba.edu.ar");
+        assertThat(rows.values()).containsOnly("sent");
     }
 
     @Test
@@ -222,7 +254,7 @@ class DigestSenderTest {
         var props = new DigestProperties(null, null, null, 1500, Duration.ZERO, null, false);
         var tokens = new DigestUnsubscribeTokens(ContentHmac.fromJwtSecret("dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch"));
         var composer = new DigestComposer(articles, mock(NewsEventRepository.class), follows, users, tokens,
-            (reader, issue) -> Optional.empty(), props);
+            (readers, issue) -> Map.of(), props);
         new DigestSender(issues, deliveries, composer, captured::add, props, mock(PlatformTransactionManager.class),
             Clock.systemUTC(), d -> { }).runPending();
 

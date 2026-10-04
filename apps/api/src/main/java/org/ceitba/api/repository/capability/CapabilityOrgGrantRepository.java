@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +20,14 @@ public interface CapabilityOrgGrantRepository
         WHERE m.userId = :userId AND m.organization = g.orgSlug
         """)
     List<String> findCapabilitiesByMember(@Param("userId") UUID userId);
+
+    // Of `userIds`, those in an organization the capability is granted to.
+    @Query("""
+        SELECT DISTINCT m.userId FROM CapabilityOrgGrant g, UserOrganization m
+        WHERE g.capability = :capability AND m.organization = g.orgSlug AND m.userId IN :userIds
+        """)
+    List<UUID> findMembersWithCapability(@Param("capability") String capability,
+                                         @Param("userIds") Collection<UUID> userIds);
 
     List<CapabilityOrgGrant> findByCapabilityOrderByOrgSlug(String capability);
 

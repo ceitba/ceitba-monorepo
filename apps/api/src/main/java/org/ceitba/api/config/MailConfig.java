@@ -15,7 +15,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 // MAIL_ENABLED=true: SMTP through Spring Boot's JavaMailSender (spring.mail.*).
 // Otherwise (the default) a logging no-op, so dev and tests never send.
 @Configuration
-@EnableConfigurationProperties({EmailProperties.class, DigestProperties.class})
+@EnableConfigurationProperties({EmailProperties.class, DigestProperties.class, DigestPersonalProperties.class})
 public class MailConfig {
 
     private static final Logger log = LoggerFactory.getLogger(MailConfig.class);

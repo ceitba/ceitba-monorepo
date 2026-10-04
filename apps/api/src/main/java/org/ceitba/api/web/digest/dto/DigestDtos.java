@@ -49,4 +49,22 @@ public final class DigestDtos {
     public record TestSendResponse(String sentTo) {}
 
     public record Subscription(@NotNull Boolean enabled) {}
+
+    // ---- "¿Es así?" correction vote page (public, token-authenticated)
+
+    public record Slot(String day, String from, String to) {}
+
+    // Never carries the suggester or any voter. `myVote` is the token
+    // holder's current vote (CONFIRM | REJECT | null); `open` = votes are
+    // accepted (PENDING/APPLIED on a commission that has not ended).
+    public record CorrectionVoteView(UUID correctionId, String subjectId, String subjectName,
+                                     String commissionName, String status, boolean open,
+                                     List<Slot> proposed, List<Slot> sga, int confirms, int rejects,
+                                     String myVote, OffsetDateTime expiresAt) {}
+
+    public record CorrectionVoteRequest(@NotNull @Size(max = 200) String token, @NotNull String vote) {}
+
+    // previousVote: what the holder had voted before this request (null =
+    // first vote; equal to the new one = nothing changed).
+    public record CorrectionVoteResult(CorrectionVoteView correction, String previousVote) {}
 }

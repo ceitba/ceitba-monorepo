@@ -242,6 +242,16 @@ digest:
   # Auto-send check / resume of stalled sends.
   tick-interval: ${DIGEST_TICK_INTERVAL:PT5M}
   jobs-enabled: ${DIGEST_JOBS_ENABLED:true}
+  # "Tu cuatrimestre", the per-reader block.
+  personal:
+    # CeitbaPage's Apuntes reader: a subject's wiki is <url>/<subjectId>?vista=wiki.
+    wiki-base-url: ${DIGEST_WIKI_BASE_URL:https://ceitba.org.ar/apuntes}
+    # "Armá tu horario en el combinador".
+    scheduler-url: ${DIGEST_SCHEDULER_URL:https://ceitba.org.ar/scheduler/}
+    # Lifetime of the "¿Es así?" correction vote links.
+    vote-token-ttl: ${DIGEST_VOTE_TOKEN_TTL:P14D}
+    max-wiki-links: ${DIGEST_MAX_WIKI_LINKS:5}
+    max-corrections: ${DIGEST_MAX_CORRECTIONS:3}
 
 # Per-client-IP rate limiting (web/ratelimit/RateLimitFilter). In-memory, per
 # instance. Paths are relative to the /api context path.
@@ -319,6 +329,14 @@ rate-limit:
       methods: [POST]
       capacity: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:60}
       period: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:1m}
+    # Public correction vote page of the digest ("¿Es así?"): the GET that
+    # shows the correction and the POST that votes, both token-authenticated.
+    digest-correction-vote:
+      paths:
+        - /v1/digests/correction-vote
+      methods: [GET, POST]
+      capacity: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_CAPACITY:60}
+      period: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_PERIOD:1m}
     # ItbaNews flushes one batch (<= 50 events) per tab every 10 s.
     analytics:
       paths:

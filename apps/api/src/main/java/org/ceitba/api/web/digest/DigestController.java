@@ -2,6 +2,7 @@ package org.ceitba.api.web.digest;
 
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.service.digest.DigestCorrectionVoteService;
 import org.ceitba.api.service.digest.DigestService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.digest.dto.DigestDtos;
@@ -24,7 +25,8 @@ import java.util.UUID;
 
 // "La semana en ITBA" weekly digest (docs/WEEKLY-DIGEST.md). Issue endpoints
 // are STAFF-only; subscription is any signed-in user; unsubscribe is public
-// (signed token, also the RFC 8058 one-click target). {id} only matches a
+// (signed token, also the RFC 8058 one-click target) and so is the
+// correction vote of "Tu cuatrimestre" (signed per-reader token). {id} only matches a
 // UUID, so the literal subscription/unsubscribe paths never collide with it.
 @RestController
 @RequestMapping("/v1/digests")
@@ -33,9 +35,11 @@ public class DigestController {
     private static final String ID = "/{id:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}";
 
     private final DigestService service;
+    private final DigestCorrectionVoteService correctionVotes;
 
-    public DigestController(DigestService service) {
+    public DigestController(DigestService service, DigestCorrectionVoteService correctionVotes) {
         this.service = service;
+        this.correctionVotes = correctionVotes;
     }
 
     @GetMapping
@@ -64,7 +68,7 @@ public class DigestController {
 
     @GetMapping(value = ID + "/preview", produces = MediaType.TEXT_HTML_VALUE)
     @PreAuthorize("hasRole('STAFF')")
-    // Every recipient gets the same content, so there is one preview; `mode`
+    // The shared content plus the caller's own "Tu cuatrimestre"; `mode`
     // (all|me) is accepted and ignored for compatibility.
     public ResponseEntity<String> preview(@PathVariable UUID id,
                                           @RequestParam(required = false) String mode,
@@ -102,6 +106,18 @@ public class DigestController {
     public DigestDtos.Subscription setSubscription(@RequestBody @Valid DigestDtos.Subscription req,
                                                    @CurrentUser User user) {
         return new DigestDtos.Subscription(service.setSubscribed(user.getId(), req.enabled()));
+    }
+
+    // Public, token-authenticated ("¿Es así?" links of "Tu cuatrimestre").
+    // Read-only: email scanners follow links, so only the POST votes.
+    @GetMapping("/correction-vote")
+    public DigestDtos.CorrectionVoteView correctionVote(@RequestParam(required = false) String token) {
+        return correctionVotes.view(token);
+    }
+
+    @PostMapping("/correction-vote")
+    public DigestDtos.CorrectionVoteResult voteCorrection(@RequestBody @Valid DigestDtos.CorrectionVoteRequest req) {
+        return correctionVotes.vote(req.token(), req.vote());
     }
 
     // Public. Token in the query string; the body (if any) is the RFC 8058
