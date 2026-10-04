@@ -15,5 +15,6 @@ Typical fixes:
   delimiters; every `$` must close; write prices and literal dollars as `\$` (e.g. `\$2.000`).
 - "meta_section": delete the heading or bullet (notes like "Qué falta", TODO, "Por completar", "Agregar enlaces...");
   a page contains only content for students.
+- "missing_formula": the plan required formulas (`mustCover`) but the page has none; add them in KaTeX (`$...$` or `$$...$$`) with each variable explained, plus a short `## Ejemplo` when the material has one, and cover every `mustCover` item.
 - "self_link": remove the `[[...]]` link to the page itself (keep the text); `[[#heading]]` to its own sections is fine.
 - "citation format: no space allowed after 'file:'": write `[[file:<id>|short name]]` with the id right after the colon.

@@ -11,6 +11,7 @@ import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.domain.drive.DriveFile;
 import org.ceitba.api.domain.kb.KbEval;
+import org.ceitba.api.service.kb.KbMustCover;
 import org.ceitba.api.domain.kb.KbEvalRating;
 import org.ceitba.api.domain.kb.KbEvalSet;
 import org.ceitba.api.domain.kb.KbFileDigest;
@@ -736,6 +737,7 @@ public class KbEvalService implements KbRunHandler {
                             body.put("type", op.path("type").asText());
                             body.put("title", op.path("title").asText());
                             body.put("reason", op.path("reason").asText(""));
+                            body.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
                             var changed = body.putArray("changedSources");
                             body.putArray("keptSources");
                             var texts = new ArrayList<KbPayloads.SourceText>();
@@ -788,6 +790,11 @@ public class KbEvalService implements KbRunHandler {
                             var body = json.createObjectNode();
                             body.put("slug", p.getKey());
                             body.set("errors", page.path("firstErrors"));
+                            r.path("operations").forEach(op -> {
+                                if (op.path("slug").asText().equals(p.getKey())) {
+                                    body.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
+                                }
+                            });
                             body.put("page", page.path("first").asText());
                             body.set("allowedSources", allowed);
                             var params = payloads.tuned(c.write(), "RETRY", s.maxTokens("retry"), c.writeEffort(),
@@ -1092,6 +1099,11 @@ public class KbEvalService implements KbRunHandler {
             for (var m : KbLinker.unlinked(d.body(), d.slug(), targets)) {
                 errs.add("unlinked mention of '" + m.text() + "': link it as [[" + m.slug() + "|" + m.text() + "]]");
             }
+            for (var op : subj.path("operations")) {
+                if (op.path("slug").asText().equals(d.slug())) {
+                    errs.addAll(KbMustCover.missingFormulaErrors(op.path("mustCover"), d.body()));
+                }
+            }
             errors.put(d.slug(), errs);
         }
         for (var e : linked.entrySet()) {
@@ -1146,6 +1158,7 @@ public class KbEvalService implements KbRunHandler {
             o.put("title", op.path("title").asText(slug.replace('-', ' ')));
             o.set("sources", sources);
             o.put("reason", op.path("reason").asText(""));
+            o.set("mustCover", KbMustCover.normalize(op.path("mustCover")));
         }
         return out;
     }
