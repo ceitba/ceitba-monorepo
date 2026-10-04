@@ -184,6 +184,7 @@ function DigestToggle() {
           <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[#fff] shadow transition-transform duration-150 ${on ? 'translate-x-4' : ''}`} />
         </span>
       </button>
+      <p className="mt-1 font-body text-label text-ink-secondary dark:text-[#a1a1aa]">{t('digest.toggleHint')}</p>
       {error && (
         <p role="alert" className="mt-1 font-body text-label text-red-600">{t('digest.toggleError')}</p>
       )}

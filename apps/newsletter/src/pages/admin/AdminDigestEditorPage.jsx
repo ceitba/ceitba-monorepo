@@ -13,7 +13,7 @@ import DigestCounts from '../../components/admin/DigestCounts'
 import { formatDate } from '../../utils/dates'
 import {
   SENDING_POLL_MS, artInputToInstant, defaultAutoSendInput, digestErrorMessage, formatArtDateTime,
-  formatWeekRange, instantToArtInput, shortTime,
+  formatWeekRange, instantToArtInput, nowArtInput, shortTime,
 } from '../../utils/digest'
 
 function formFrom(digest) {
@@ -56,6 +56,11 @@ export default function AdminDigestEditorPage() {
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
   const [previewVersion, setPreviewVersion] = useState(0)
+  // Sequence guard: every fetch/mutation takes a number, and a response is
+  // applied only if nothing newer started (or finished) since. Stops a slow
+  // poll from overwriting the result of a save/send/cancel.
+  const seqRef = useRef(0)
+  const nextSeq = () => ++seqRef.current
 
   // Replace the server copy and reset the form to it.
   const applyDigest = useCallback((d) => {
@@ -66,10 +71,11 @@ export default function AdminDigestEditorPage() {
   useEffect(() => {
     if (!staff) return
     let cancelled = false
+    const seq = ++seqRef.current
     setLoadState('loading')
     fetchDigest(id)
-      .then((d) => { if (!cancelled) { applyDigest(d); setLoadState('ready') } })
-      .catch((err) => { if (!cancelled) setLoadState(err?.status === 404 ? 'notFound' : 'error') })
+      .then((d) => { if (!cancelled && seq === seqRef.current) { applyDigest(d); setLoadState('ready') } })
+      .catch((err) => { if (!cancelled && seq === seqRef.current) setLoadState(err?.status === 404 ? 'notFound' : 'error') })
     return () => { cancelled = true }
   }, [id, staff, reloadKey, applyDigest])
 
@@ -79,7 +85,10 @@ export default function AdminDigestEditorPage() {
   useEffect(() => {
     if (!sending) return
     const timer = setInterval(() => {
-      fetchDigest(id).then(applyDigest).catch(() => { /* try again next tick */ })
+      const seq = ++seqRef.current
+      fetchDigest(id)
+        .then((d) => { if (seq === seqRef.current) applyDigest(d) })
+        .catch(() => { /* try again next tick */ })
     }, SENDING_POLL_MS)
     return () => clearInterval(timer)
   }, [sending, id, applyDigest])
@@ -146,7 +155,11 @@ export default function AdminDigestEditorPage() {
   // the real state instead of a form that can't be saved.
   async function refreshAfterConflict(err) {
     if (err?.status === 409) {
-      try { applyDigest(await fetchDigest(id)) } catch { /* keep current view */ }
+      const seq = nextSeq()
+      try {
+        const d = await fetchDigest(id)
+        if (seq === seqRef.current) applyDigest(d)
+      } catch { /* keep current view */ }
     }
   }
 
@@ -156,9 +169,11 @@ export default function AdminDigestEditorPage() {
     if (!form.subject.trim()) { setFormError(t('admin.digests.editor.errors.subject')); return }
     const autoSendAt = form.autoSend ? artInputToInstant(form.autoSendInput) : null
     if (form.autoSend && !autoSendAt) { setFormError(t('admin.digests.editor.errors.autoSendAt')); return }
+    if (autoSendAt && Date.parse(autoSendAt) <= Date.now()) { setFormError(t('admin.digests.editor.errors.autoSendPast')); return }
 
     setSaving(true)
     setError('')
+    nextSeq()
     try {
       const updated = await updateDigest(id, {
         subject: form.subject.trim(),
@@ -167,6 +182,7 @@ export default function AdminDigestEditorPage() {
         excludedEventIds: form.excludedEventIds,
         autoSendAt,
       })
+      nextSeq()
       applyDigest(updated)
       setPreviewVersion((v) => v + 1)
       setToast(t('admin.digests.editor.saved'))
@@ -194,8 +210,11 @@ export default function AdminDigestEditorPage() {
   async function handleSendNow() {
     setBusyAction('send')
     setError('')
+    nextSeq()
     try {
-      applyDigest(await sendDigestNow(id))
+      const sent = await sendDigestNow(id)
+      nextSeq()
+      applyDigest(sent)
       setToast(t('admin.digests.editor.sendStarted'))
     } catch (err) {
       setError(digestErrorMessage(err, t, 'admin.digests.errors.send'))
@@ -209,8 +228,11 @@ export default function AdminDigestEditorPage() {
   async function handleCancel() {
     setBusyAction('cancel')
     setError('')
+    nextSeq()
     try {
-      applyDigest(await cancelDigest(id))
+      const cancelled = await cancelDigest(id)
+      nextSeq()
+      applyDigest(cancelled)
       setToast(t('admin.digests.editor.cancelled'))
     } catch (err) {
       setError(digestErrorMessage(err, t, 'admin.digests.errors.cancel'))
@@ -271,8 +293,10 @@ export default function AdminDigestEditorPage() {
                 type="text"
                 value={form.subject}
                 onChange={(e) => set('subject', e.target.value)}
+                maxLength={SUBJECT_MAX}
                 className={inputClass}
               />
+              <Counter value={form.subject} max={SUBJECT_MAX} />
             </Field>
             <Field label={t('admin.digests.editor.intro')} hint={t('admin.digests.editor.introHint')} htmlFor="digest-intro">
               <textarea
@@ -280,8 +304,10 @@ export default function AdminDigestEditorPage() {
                 rows={4}
                 value={form.intro}
                 onChange={(e) => set('intro', e.target.value)}
+                maxLength={INTRO_MAX}
                 className={inputClass}
               />
+              <Counter value={form.intro} max={INTRO_MAX} />
             </Field>
           </fieldset>
 
@@ -338,6 +364,7 @@ export default function AdminDigestEditorPage() {
                   type="datetime-local"
                   value={form.autoSendInput}
                   onChange={(e) => set('autoSendInput', e.target.value)}
+                  min={nowArtInput()}
                   className={`${inputClass} sm:max-w-xs`}
                 />
               </Field>
@@ -536,6 +563,18 @@ function DigestPreview({ id, version, stale }) {
 function withBlankTargets(html) {
   const base = '<base target="_blank">'
   return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + base) : base + html
+}
+
+const SUBJECT_MAX = 200
+const INTRO_MAX = 5000
+
+function Counter({ value, max }) {
+  const { t } = useTranslation()
+  return (
+    <p className="self-end font-mono text-label text-ink-secondary" aria-hidden="true">
+      {t('admin.digests.editor.charCount', { count: value.length, max })}
+    </p>
+  )
 }
 
 function Field({ label, hint, htmlFor, children }) {

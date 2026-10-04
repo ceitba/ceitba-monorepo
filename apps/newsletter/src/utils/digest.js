@@ -54,10 +54,26 @@ export function mondayOf(iso) {
   return addDaysISO(iso, -((d.getDay() + 6) % 7))
 }
 
-// Default auto-send slot for a week's issue: the following Monday 12:00 ART
-// (weekStart + 7 days), matching what the API schedules for auto drafts.
+// Default auto-send slot for a week's issue: the later of the following
+// Monday 12:00 ART (weekStart + 7 days, what the API schedules for auto
+// drafts) and the next full hour from now, so it is never in the past.
 export function defaultAutoSendInput(weekStart) {
-  return weekStart ? `${addDaysISO(weekStart, 7)}T12:00` : ''
+  if (!weekStart) return ''
+  const monday = `${addDaysISO(weekStart, 7)}T12:00`
+  const nextHour = instantToArtInput(new Date(Math.floor(Date.now() / 3600000) * 3600000 + 3600000).toISOString())
+  // Both are "YYYY-MM-DDTHH:mm" strings, so lexical order is chronological.
+  return monday > nextHour ? monday : nextHour
+}
+
+// "YYYY-MM-DDTHH:mm" for the datetime-local `min` attribute (now, in ART).
+export function nowArtInput() {
+  return instantToArtInput(new Date().toISOString())
+}
+
+// True when an ISO instant is at or before now.
+export function isPastInstant(instant) {
+  const ms = Date.parse(instant)
+  return !Number.isNaN(ms) && ms <= Date.now()
 }
 
 // "HH:mm:ss" → "HH:mm".
@@ -67,6 +83,7 @@ export function shortTime(value) {
 
 const KNOWN_ERRORS = new Set([
   'DIGEST_EXISTS', 'INVALID_WEEK_START', 'DIGEST_NOT_EDITABLE', 'DIGEST_EMPTY', 'EMAIL_NOT_ALLOWED', 'NETWORK_ERROR',
+  'AUTO_SEND_IN_PAST', 'MAIL_DISABLED',
 ])
 
 // ApiError → translated message for the digest admin.

@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { setDigestSubscription, unsubscribeFromDigest } from '../api/digests'
-import { useAuthSession } from '../hooks/useAuthSession'
+import { unsubscribeFromDigest } from '../api/digests'
 
 // Target of the one-click unsubscribe link in "La semana en ITBA" emails
 // (/newsletter/unsubscribe?token=…). Works signed out: the token alone
@@ -11,34 +10,17 @@ export default function UnsubscribePage() {
   const { t } = useTranslation()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
-  const { profile } = useAuthSession()
-  // 'loading' → 'done' | 'invalid' | 'error'
-  const [state, setState] = useState(token ? 'loading' : 'invalid')
-  const [attempt, setAttempt] = useState(0)
-  const [resubscribe, setResubscribe] = useState('idle') // 'idle' | 'busy' | 'done' | 'error'
-  // StrictMode mounts effects twice; the call is idempotent, but there is no
-  // reason to send it twice.
-  const sentRef = useRef(null)
+  // 'confirm' → 'loading' → 'done' | 'invalid' | 'error'. Nothing is sent on
+  // page load: email link scanners that execute JS would otherwise
+  // unsubscribe people. One-click unsubscribe for mail clients is handled by
+  // the List-Unsubscribe header on the API side.
+  const [state, setState] = useState(token ? 'confirm' : 'invalid')
 
-  useEffect(() => {
-    if (!token) return
-    const key = `${token}#${attempt}`
-    if (sentRef.current === key) return
-    sentRef.current = key
+  function handleConfirm() {
     setState('loading')
     unsubscribeFromDigest(token)
       .then(() => setState('done'))
       .catch((err) => setState(err?.status === 400 || err?.code === 'INVALID_TOKEN' ? 'invalid' : 'error'))
-  }, [token, attempt])
-
-  async function handleResubscribe() {
-    setResubscribe('busy')
-    try {
-      await setDigestSubscription(true)
-      setResubscribe('done')
-    } catch {
-      setResubscribe('error')
-    }
   }
 
   return (
@@ -51,32 +33,28 @@ export default function UnsubscribePage() {
         <div className="p-6 sm:p-8 flex flex-col gap-4" aria-live="polite">
           <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">{t('digest.name')}</p>
 
+          {state === 'confirm' && (
+            <>
+              <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.confirmTitle')}</h1>
+              <p className="font-body text-body text-ink-secondary leading-relaxed">{t('digest.unsubscribe.confirmHint')}</p>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="self-start min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
+              >
+                {t('digest.unsubscribe.confirm')}
+              </button>
+            </>
+          )}
+
           {state === 'loading' && (
-            <p className="font-body text-body text-ink-secondary" aria-busy="true">{t('digest.unsubscribe.loading')}</p>
+            <p className="font-body text-body text-ink-secondary" aria-busy="true">{t('digest.unsubscribe.confirming')}</p>
           )}
 
           {state === 'done' && (
             <>
               <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.doneTitle')}</h1>
               <p className="font-body text-body text-ink-secondary leading-relaxed">{t('digest.unsubscribe.doneHint')}</p>
-              {profile && resubscribe !== 'done' && (
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResubscribe}
-                    disabled={resubscribe === 'busy'}
-                    className="self-start min-h-[44px] px-5 bg-white border border-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60"
-                  >
-                    {t('digest.unsubscribe.resubscribe')}
-                  </button>
-                  {resubscribe === 'error' && (
-                    <p role="alert" className="font-body text-body-sm text-red-600">{t('digest.unsubscribe.resubscribeError')}</p>
-                  )}
-                </div>
-              )}
-              {resubscribe === 'done' && (
-                <p className="font-body text-body-sm text-emerald-700">{t('digest.unsubscribe.resubscribed')}</p>
-              )}
             </>
           )}
 
@@ -92,7 +70,7 @@ export default function UnsubscribePage() {
               <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.errorTitle')}</h1>
               <button
                 type="button"
-                onClick={() => setAttempt((a) => a + 1)}
+                onClick={handleConfirm}
                 className="self-start min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
               >
                 {t('admin.common.retry')}
