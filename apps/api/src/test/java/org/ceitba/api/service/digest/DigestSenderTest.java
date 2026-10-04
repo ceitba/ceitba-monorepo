@@ -81,6 +81,8 @@ class DigestSenderTest {
     final MutableClock clock = new MutableClock(NOW);
     final DigestIssueLinkRepository issueLinks = mock(DigestIssueLinkRepository.class);
     final DigestDeliveryLinkRepository deliveryLinks = mock(DigestDeliveryLinkRepository.class);
+    final org.ceitba.api.service.capability.CapabilityService capabilities =
+        mock(org.ceitba.api.service.capability.CapabilityService.class);
     boolean tracking = false;
     String senderUnavailable = null;   // MailSendService/transport.unavailableReason()
 
@@ -88,7 +90,7 @@ class DigestSenderTest {
         var props = new DigestProperties(null, null, null, tracking, Duration.ofMillis(1), null, false);
         var tokens = new DigestUnsubscribeTokens(HMAC);
         var composer = new DigestComposer(articles, mock(NewsEventRepository.class), follows, users, tokens,
-            (readers, issue) -> personalSection.forReaders(readers, issue), props);
+            (readers, issue) -> personalSection.forReaders(readers, issue), props, capabilities, clock);
         EmailSender transport = new EmailSender() {
             @Override
             public void send(OutgoingEmail e) {
@@ -122,6 +124,7 @@ class DigestSenderTest {
             rows.containsValue("pending") || rows.containsValue("sending") ? 0 : 1);
 
         when(follows.existsByUserIdAndOrganization(any(), eq("ceitba"))).thenReturn(true);
+        when(capabilities.has(any(), eq(org.ceitba.api.service.capability.Capability.RESUMEN_SEMANAL))).thenReturn(true);
         // One article: the issue is not empty.
         var a = new Article("a1", "Título", "Resumen", List.of("p"), "general", List.of("x"));
         a.setPublishedAt(LocalDate.of(2026, 9, 30));

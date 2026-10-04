@@ -62,7 +62,8 @@ class DigestServiceTest {
         var users = mock(UserRepository.class);
         var tokens = new DigestUnsubscribeTokens(ContentHmac.fromJwtSecret("dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch"));
         var composer = new DigestComposer(articles, mock(NewsEventRepository.class),
-            mock(UserFollowRepository.class), users, tokens, (readers, issue) -> java.util.Map.of(), props);
+            mock(UserFollowRepository.class), users, tokens, (readers, issue) -> java.util.Map.of(), props,
+            mock(org.ceitba.api.service.capability.CapabilityService.class), clock);
         var follows = new FollowService(mock(UserFollowRepository.class), mock(OrganizationRepository.class), users);
         var deliveries = mock(DigestDeliveryRepository.class);
         var hmac = ContentHmac.fromJwtSecret("dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch");

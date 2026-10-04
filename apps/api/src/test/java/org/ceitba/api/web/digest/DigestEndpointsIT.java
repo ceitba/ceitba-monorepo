@@ -85,8 +85,11 @@ class DigestEndpointsIT {
     void seed() {
         jdbc.execute("""
             TRUNCATE public.digest_deliveries, public.digest_issues, public.user_follows, public.mail_send_log, public.mail_account_state,
-                     public.articles, public.news_events, public.organizations, public."user" CASCADE
+                     public.articles, public.news_events, public.organizations, public."user",
+                     public.capability_settings, public.capability_user_grants CASCADE
             """);
+        // The digest is behind resumen_semanal; most tests run with it open to everyone.
+        setDigestOpenToAll(true);
         var ceitba = orgs.save(new Organization("ceitba", "CEITBA", "Centro de Estudiantes"));
         var sabf = orgs.save(new Organization("sabf", "SABF", "South American Business Forum"));
 
@@ -108,6 +111,13 @@ class DigestEndpointsIT {
         event("e-ceitba", ceitba, LocalDate.of(2026, 10, 6));
         event("e-general", null, LocalDate.of(2026, 10, 9));
         event("e-late", ceitba, LocalDate.of(2026, 10, 12));
+    }
+
+    void setDigestOpenToAll(boolean open) {
+        jdbc.update("""
+            INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('resumen_semanal', ?)
+            ON CONFLICT (capability) DO UPDATE SET enabled_for_all = EXCLUDED.enabled_for_all
+            """, open);
     }
 
     void article(String id, Organization org, LocalDate publishedAt, String status) {
@@ -307,6 +317,28 @@ class DigestEndpointsIT {
         mvc.perform(post("/v1/digests/" + id + "/cancel").with(staff()))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error").value("DIGEST_NOT_EDITABLE"));
+    }
+
+    @Test
+    void withoutTheCapabilityOnlyHoldersGetEstimatedAndSubscribe() throws Exception {
+        setDigestOpenToAll(false);
+        // Plain USER, no grant: 403; unsubscribing stays open.
+        mvc.perform(get("/v1/digests/subscription").with(user()))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("CAPABILITY_REQUIRED"));
+        mvc.perform(put("/v1/digests/subscription").with(user())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(post("/v1/digests/unsubscribe").param("token", tokens.issue(alice.getId()))
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED).content("List-Unsubscribe=One-Click"))
+            .andExpect(status().isNoContent());
+
+        // A grant on bob's email: the estimate counts only him (alice opted out above).
+        jdbc.update("INSERT INTO public.capability_user_grants (capability, email) VALUES ('resumen_semanal', 'bob@itba.edu.ar')");
+        mvc.perform(get("/v1/digests/subscription").with(user())).andExpect(status().isOk());
+        String body = mvc.perform(post("/v1/digests").with(staff())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"weekStart\":\"" + WEEK + "\"}"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat((Number) JsonPath.read(body, "$.recipientEstimate")).isEqualTo(1);
     }
 
     @Test

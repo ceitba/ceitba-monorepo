@@ -7,7 +7,8 @@ import java.util.Optional;
 // new feature; keys are stored as plain text in the capability_* tables.
 public enum Capability {
 
-    APUNTES("apuntes", "Apuntes", "Compartir carpetas de Drive, ver apuntes y wikis por materia");
+    APUNTES("apuntes", "Apuntes", "Compartir carpetas de Drive, ver apuntes y wikis por materia"),
+    RESUMEN_SEMANAL("resumen_semanal", "Resumen semanal", "Recibir el mail semanal 'La semana en ITBA'");
 
     private final String key;
     private final String label;

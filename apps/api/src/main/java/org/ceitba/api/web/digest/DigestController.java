@@ -2,6 +2,8 @@ package org.ceitba.api.web.digest;
 
 import jakarta.validation.Valid;
 import org.ceitba.api.domain.User;
+import org.ceitba.api.service.capability.Capability;
+import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.digest.DigestCorrectionVoteService;
 import org.ceitba.api.service.digest.DigestService;
 import org.ceitba.api.service.mail.MailSenderAccountService;
@@ -38,10 +40,12 @@ public class DigestController {
     private final DigestService service;
     private final DigestCorrectionVoteService correctionVotes;
     private final MailSenderAccountService senderAccounts;
+    private final CapabilityService capabilities;
 
     public DigestController(DigestService service, DigestCorrectionVoteService correctionVotes,
-                            MailSenderAccountService senderAccounts) {
+                            MailSenderAccountService senderAccounts, CapabilityService capabilities) {
         this.service = service;
+        this.capabilities = capabilities;
         this.senderAccounts = senderAccounts;
         this.correctionVotes = correctionVotes;
     }
@@ -119,12 +123,14 @@ public class DigestController {
 
     @GetMapping("/subscription")
     public DigestDtos.Subscription subscription(@CurrentUser User user) {
+        capabilities.require(user, Capability.RESUMEN_SEMANAL);
         return new DigestDtos.Subscription(service.isSubscribed(user.getId()));
     }
 
     @PutMapping("/subscription")
     public DigestDtos.Subscription setSubscription(@RequestBody @Valid DigestDtos.Subscription req,
                                                    @CurrentUser User user) {
+        capabilities.require(user, Capability.RESUMEN_SEMANAL);
         return new DigestDtos.Subscription(service.setSubscribed(user.getId(), req.enabled()));
     }
 

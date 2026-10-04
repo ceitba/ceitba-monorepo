@@ -537,3 +537,12 @@ staff's normal email from it. `MAIL_DAILY_LIMIT=1500` leaves headroom for
 that; with more recipients than the limit the issue simply finishes the next
 day. If Gmail still answers 5.4.5, the account is paused 24h (see "Sending
 quota"). Gmail also throttles bursts, hence the 1 email/s pace.
+
+## Rollout
+
+The digest sits behind the `resumen_semanal` capability (docs/CAPABILITIES.md). It is off by default, so only
+staff plus users or organizations that were granted it receive the email (on top of the usual conditions:
+follows CEITBA, `digest_email_enabled`, allowed domain). Eligibility is checked when recipients are
+snapshotted and again before each delivery, so revoking a grant mid-send stops further emails to that person;
+`recipientEstimate` counts holders only. To open it to everyone, turn on `enabledForAll` via
+`PUT /v1/staff/capabilities/resumen_semanal` (CeitbaPage `/manage` capabilities screen).
