@@ -164,9 +164,15 @@ export function canViewFollowers(slug, profile = _profile) {
   return isStaff(profile) || isOrgAdmin(slug, profile)
 }
 
-// Who may enter /admin: staff, or members of at least one organization
-// (they manage their org's articles/events/profile).
+// Who may enter /admin: anyone signed in. Staff and organization members
+// manage their org's content; everyone else writes independent articles
+// (no organization) that staff review before publishing.
 export function canAccessAdmin(profile = _profile) {
+  return profile != null
+}
+
+// Staff and org members publish directly; independent authors submit.
+export function canManageOrganizations(profile = _profile) {
   return isStaff(profile) || isOrgMember(profile)
 }
 

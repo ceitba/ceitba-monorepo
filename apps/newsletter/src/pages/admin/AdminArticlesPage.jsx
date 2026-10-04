@@ -8,20 +8,31 @@ import { formatDate } from '../../utils/dates'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 
-// Articles visible to the current admin user, drafts included.
+// Articles visible to the current admin user, drafts included, plus the ids
+// the user wrote (their independent drafts are theirs to delete).
 //
 // Staff list everything with one ?status=all walk (already newest first).
-// Org members get ?status=all scoped to each of their organizations — the
-// API returns an org's drafts to its members — merged and re-sorted.
+// Everyone else gets ?status=all scoped to each of their organizations — the
+// API returns an org's drafts to its members — and their own articles
+// (?mine=true, any status), merged and re-sorted.
 async function loadArticles(profile) {
   if (isStaff(profile)) {
-    return fetchAllArticles({ status: ALL_STATUSES })
+    return { list: await fetchAllArticles({ status: ALL_STATUSES }), mineIds: new Set() }
   }
   const slugs = getOrganizations(profile).map((o) => o.slug)
-  const lists = await Promise.all(
-    slugs.map((organization) => fetchAllArticles({ organization, status: ALL_STATUSES })),
-  )
-  return sortNewestFirst(dedupeById(lists.flat()))
+  const [mine, ...lists] = await Promise.all([
+    fetchAllArticles({ mine: true, status: ALL_STATUSES }),
+    ...slugs.map((organization) => fetchAllArticles({ organization, status: ALL_STATUSES })),
+  ])
+  return {
+    list: sortNewestFirst(dedupeById([...mine, ...lists.flat()])),
+    mineIds: new Set(mine.map((a) => a.id)),
+  }
+}
+
+// The API lets authors delete their own unpublished independent articles.
+function canDelete(article, staff, mineIds) {
+  return staff || (mineIds.has(article.id) && !article.organization && article.status !== 'published')
 }
 
 function dedupeById(list) {
@@ -44,6 +55,7 @@ export default function AdminArticlesPage() {
   const { profile } = useAuthSession()
   const staff = isStaff(profile)
   const [articles, setArticles] = useState([])
+  const [mineIds, setMineIds]   = useState(() => new Set())
   const [votes, setVotes]       = useState({})
   const [status, setStatus]     = useState('loading')
   const [confirmId, setConfirmId] = useState(null)
@@ -55,9 +67,10 @@ export default function AdminArticlesPage() {
     let cancelled = false
     setStatus('loading')
     loadArticles(profile)
-      .then((list) => {
+      .then(({ list, mineIds: ids }) => {
         if (cancelled) return
         setArticles(list)
+        setMineIds(ids)
         setStatus('success')
       })
       .catch(() => { if (!cancelled) setStatus('error') })
@@ -107,6 +120,8 @@ export default function AdminArticlesPage() {
     )
   }
 
+  const pendingCount = articles.filter((a) => a.status === 'pending_review').length
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -124,6 +139,12 @@ export default function AdminArticlesPage() {
           <PlusIcon /> {t('admin.articles.new')}
         </Link>
       </div>
+
+      {staff && pendingCount > 0 && (
+        <p className="font-body text-body-sm text-amber-700 bg-amber-50 border border-amber-200 px-4 py-3 rounded-sm">
+          {t('admin.articles.pendingReview', { count: pendingCount })}
+        </p>
+      )}
 
       {deleteError && (
         <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
@@ -175,7 +196,7 @@ export default function AdminArticlesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">
-                        {article.organization}
+                        {article.organization || t('admin.articles.independent')}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -196,8 +217,7 @@ export default function AdminArticlesPage() {
                         >
                           {t('admin.common.edit')}
                         </Link>
-                        {/* DELETE /articles/{id} is STAFF-only on the API. */}
-                        {staff && (confirmId === article.id ? (
+                        {canDelete(article, staff, mineIds) && (confirmId === article.id ? (
                           <span className="flex items-center gap-1.5">
                             <button
                               type="button"
