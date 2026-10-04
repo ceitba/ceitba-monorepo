@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 // DigitalOcean serverless inference, OpenAI-compatible chat completions.
+// A 429 tokens_per_day throws DoQuotaExhaustedException at once (no retries).
+// Every response's x-ratelimit-* headers go to the DoQuotaTracker.
 // 429, 5xx and I/O errors are retried up to 4 times with exponential
 // back-off (honouring Retry-After). A request that times out is not retried
 // here: four more full timeouts would hold one page for 20+ minutes, and the
@@ -27,6 +29,7 @@ public class DoChatClient implements SyncChatClient {
     private final String apiKey;
     private final ObjectMapper json;
     private final Duration timeout;
+    private final DoQuotaTracker quota;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
 
     public DoChatClient(String baseUrl, String apiKey, ObjectMapper json) {
@@ -34,6 +37,11 @@ public class DoChatClient implements SyncChatClient {
     }
 
     public DoChatClient(String baseUrl, String apiKey, ObjectMapper json, Duration timeout) {
+        this(baseUrl, apiKey, json, timeout, null);
+    }
+
+    public DoChatClient(String baseUrl, String apiKey, ObjectMapper json, Duration timeout, DoQuotaTracker quota) {
+        this.quota = quota;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.apiKey = apiKey;
         this.json = json;
@@ -61,8 +69,13 @@ public class DoChatClient implements SyncChatClient {
                     .build();
                 var res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
                 status = res.statusCode();
+                if (quota != null) quota.observe(res.headers());
                 if (status / 100 == 2) return json.readTree(res.body());
                 detail = res.body().length() > 500 ? res.body().substring(0, 500) : res.body();
+                // The daily token bucket does not refill within a retry's reach: no retries.
+                if (status == 429 && DoQuotaExhaustedException.isDailyTokens(res.body())) {
+                    throw new DoQuotaExhaustedException("chat/completions -> 429: " + detail);
+                }
                 retryAfter = res.headers().firstValue("Retry-After").map(v -> {
                     try { return Long.parseLong(v.trim()) * 1000; } catch (NumberFormatException e) { return -1L; }
                 }).orElse(-1L);

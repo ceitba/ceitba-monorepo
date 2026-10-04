@@ -3,6 +3,7 @@ package org.ceitba.api.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.external.llm.DoBatchClient;
 import org.ceitba.api.external.llm.DoChatClient;
+import org.ceitba.api.external.llm.DoQuotaTracker;
 import org.ceitba.api.external.llm.FakeLlmBatchClient;
 import org.ceitba.api.external.llm.FakeSyncChatClient;
 import org.ceitba.api.external.llm.LlmBatchClient;
@@ -24,7 +25,12 @@ public class KbPipelineConfig {
     private static final Logger log = LoggerFactory.getLogger(KbPipelineConfig.class);
 
     @Bean
-    public LlmBatchClient llmBatchClient(KbLlmProperties props, ObjectMapper json) {
+    public DoQuotaTracker doQuotaTracker(java.time.Clock clock) {
+        return new DoQuotaTracker(clock);
+    }
+
+    @Bean
+    public LlmBatchClient llmBatchClient(KbLlmProperties props, ObjectMapper json, DoQuotaTracker quota) {
         if (props.useFake()) {
             log.warn("KB pipeline: FAKE inference (KB_LLM_USE_FAKE=true); results are simulated");
             return new FakeLlmBatchClient(json);
@@ -33,14 +39,16 @@ public class KbPipelineConfig {
             log.info("KB pipeline: inference not configured (KB_LLM_API_KEY); runs can only be dry");
             return new UnconfiguredLlmBatchClient();
         }
-        return new DoBatchClient(props.baseUrl(), props.apiKey(), json);
+        var client = new DoBatchClient(props.baseUrl(), props.apiKey(), json, quota);
+        quota.bindProbe(client::probeQuota);
+        return client;
     }
 
     @Bean
-    public SyncChatClient syncChatClient(KbLlmProperties props, ObjectMapper json) {
+    public SyncChatClient syncChatClient(KbLlmProperties props, ObjectMapper json, DoQuotaTracker quota) {
         if (props.useFake()) return new FakeSyncChatClient(json);
         if (!props.hasKey()) return new UnconfiguredSyncChatClient();
-        return new DoChatClient(props.baseUrl(), props.apiKey(), json, props.requestTimeout());
+        return new DoChatClient(props.baseUrl(), props.apiKey(), json, props.requestTimeout(), quota);
     }
 
     @Bean

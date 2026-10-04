@@ -10,6 +10,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.service.kb.admin.KbCostService;
 import org.ceitba.api.service.kb.admin.KbForecastService;
 import org.ceitba.api.service.kb.admin.KbModelCatalogService;
+import org.ceitba.api.service.kb.admin.KbQuotaService;
 import org.ceitba.api.service.kb.admin.KbSettingsService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,15 +41,26 @@ public class StaffKbAdminController {
     private final KbModelCatalogService catalog;
     private final KbCostService costs;
     private final KbForecastService forecast;
+    private final KbQuotaService quota;
     private final ObjectMapper json;
 
     public StaffKbAdminController(KbSettingsService settings, KbModelCatalogService catalog, KbCostService costs,
-                                  KbForecastService forecast, ObjectMapper json) {
+                                  KbForecastService forecast, KbQuotaService quota, ObjectMapper json) {
+        this.quota = quota;
         this.settings = settings;
         this.catalog = catalog;
         this.costs = costs;
         this.forecast = forecast;
         this.json = json;
+    }
+
+    // ---- DigitalOcean quota ----
+
+    @GetMapping("/quota")
+    @Operation(summary = "DigitalOcean rate-limit counters last seen in response headers (in memory); "
+        + "refresh=true runs the free batch probe first")
+    public KbQuotaResponse quota(@RequestParam(defaultValue = "false") boolean refresh) {
+        return quota.get(refresh);
     }
 
     // ---- settings ----

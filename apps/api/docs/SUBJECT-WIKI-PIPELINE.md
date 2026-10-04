@@ -145,6 +145,20 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
 - Config: `KB_LLM_BASE_URL` (default `https://inference.do-ai.run`), `KB_LLM_API_KEY` (a DO model access key),
   `KB_MODEL`, `KB_PIPELINE_ENABLED` (default false), `KB_PIPELINE_CRON`, `KB_POLL_INTERVAL`, `KB_RUN_TOKEN_BUDGET`, `KB_RETRY_REJECTED`.
 
+## DigitalOcean quotas (`DoQuotaTracker`)
+
+Every DO response (429s included) updates an in-memory snapshot of its `x-ratelimit-limit-*`/`remaining-*` counters (no DB).
+- **Batch creations:** before creating a batch (`BatchLlmExecutor.submit`, so also the catalog's batch probe), if the snapshot
+  says `batch-creations-per-hour` has 0 left and was observed under 60 min ago, DO is not called: the job stays QUEUED with
+  `next_attempt_at = observedAt + 10 min` (error `QUOTA_WAIT: Esperando cupo de lotes de DigitalOcean: 0/5 esta hora`). When due,
+  the free probe refreshes the snapshot (at most once a minute) and the check repeats. The 429 back-off remains the fallback.
+- **Sync daily tokens (`tokens_per_day`):** `DoChatClient` throws `DoQuotaExhaustedException` at once (no retries), and
+  `SyncLlmExecutor` also stops before a request when the snapshot (under 30 min old) has fewer daily tokens left than it
+  needs (prompt chars / 4 + `max_tokens`). `KbRunEngine` then pauses instead of failing: unanswered requests stay SUBMITTED
+  without answer (the state a restart resumes from, never FAILED), their job stays open, and the run goes WAITING with the
+  reason until +30 min (in memory; the batch poller kicks the run when due; reset headers are 0, so a stale snapshot is
+  ignored and a real request re-checks). Batch usage does not count toward `tokens_per_day`.
+
 ## Budget
 
 Before submitting each stage, estimate input tokens (chars/3.5) and enforce `KB_RUN_TOKEN_BUDGET`. Subjects are

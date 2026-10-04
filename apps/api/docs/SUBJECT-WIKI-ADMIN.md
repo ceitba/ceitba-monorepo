@@ -251,12 +251,28 @@ These complete sections 1–4; the frontend already calls them.
 
 - **Settings:** `reasoningEffort: { digest?, plan?, write?, retry? }`, each `low|medium|high|null`. `null` means the model default.
   Defaults: `low` for GLM digest and plan, `medium` for write.
-- **Eval model config:** `{ plan, write, reasoningEffort?: { plan?, write? } }`. The effort is part of `configKey`, e.g.
+- **Eval model config:** `{ plan, write, reasoningEffort?: { plan?, write? } | "low"|"medium"|"high" }`. A string applies to both
+  stages; any other non-object type is a 400 `ValidationError`. The effort is part of `configKey`, e.g.
   `glm-5.3@low|glm-5.3@medium`.
 - **Catalog item:** `supportsReasoningEffort: boolean` and `emptyToolCallRate: number|null`, computed over that model's last
   200 structured requests.
 - **Eval metrics** add `emptyToolCallRate`.
 - `GET /models/{id}/stage-cost?stage=` returns `{ stage, model, mode, expectedWeeklyUsd, low, high, basis }`.
+
+## DigitalOcean quota
+
+`GET /v1/staff/kb/quota[?refresh=true]` (STAFF). DO has no usage endpoint; the counters are the latest `x-ratelimit-*` headers
+of any DO response, kept in memory (lost on restart; reset headers are always 0 and ignored). `refresh=true` runs the free
+batch probe (`POST /v1/batches` with a nonexistent `file_id`: 404 with the batch headers, consumes nothing), at most once a minute.
+```
+{ observedAt: ISO|null,
+  batch: { creationsPerHour: C, createPerMinute: C, requestsPerDay: C, statusChecksPerMinute: C },
+  sync:  { tokensPerDay: C, tokensPerMinute: C, requestsPerMinute: C },
+  stale: boolean }          // C = { limit, remaining } | null (never observed); stale = nothing seen in 10 min
+```
+Progress strings: `Esperando cupo de lotes de DigitalOcean: 0/5 esta hora; reintento a las HH:MM` (batch stage, job QUEUED) and, for
+a run, `Cupo diario de tokens de DigitalOcean agotado; reintento a las HH:MM` (status WAITING, also in `run.error`).
+A batch model probe waiting for a slot reports the same batch text in `lastProbe.error`.
 
 ## Progress (runs and evals)
 

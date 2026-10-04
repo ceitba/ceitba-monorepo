@@ -21,12 +21,18 @@ public class DoBatchClient implements LlmBatchClient {
     private final String baseUrl;
     private final String apiKey;
     private final ObjectMapper json;
+    private final DoQuotaTracker quota;
     private final HttpClient http = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(20))
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build();
 
     public DoBatchClient(String baseUrl, String apiKey, ObjectMapper json) {
+        this(baseUrl, apiKey, json, null);
+    }
+
+    public DoBatchClient(String baseUrl, String apiKey, ObjectMapper json, DoQuotaTracker quota) {
+        this.quota = quota;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.apiKey = apiKey;
         this.json = json;
@@ -73,6 +79,18 @@ public class DoBatchClient implements LlmBatchClient {
         body.put("request_id", requestId);
         if (endpoint != null) body.put("endpoint", endpoint);
         return info(call("POST", "/v1/batches", body));
+    }
+
+    // Free quota probe: a creation with a nonexistent file_id answers 404 with
+    // the batch rate-limit headers and consumes nothing. Never throws.
+    @Override
+    public void probeQuota() {
+        try {
+            createBatch("00000000-0000-0000-0000-000000000000", "quota-probe", "openai",
+                "/v1/chat/completions");
+        } catch (LlmApiException expected) {
+            // 404 (headers already observed by call())
+        }
     }
 
     @Override
@@ -170,6 +188,7 @@ public class DoBatchClient implements LlmBatchClient {
                     .method(method, HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body)));
             }
             var res = send(b.build());
+            if (quota != null) quota.observe(res.headers());
             var text = new String(res.body(), java.nio.charset.StandardCharsets.UTF_8);
             if (res.statusCode() / 100 != 2) {
                 throw new LlmApiException(res.statusCode(), method + " " + path + " -> " + res.statusCode() + ": "

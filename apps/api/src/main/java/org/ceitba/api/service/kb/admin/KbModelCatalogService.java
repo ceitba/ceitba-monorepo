@@ -364,11 +364,14 @@ public class KbModelCatalogService {
             noAnswer(probe, Duration.between(started, OffsetDateTime.now(clock)).toMillis());
             switch (kind) {
                 case RATE_LIMITED, TRANSIENT -> {
-                    var at = now.plus(KbBatchSubmitter.backoff(retries + 1));
+                    var slot = e instanceof org.ceitba.api.external.llm.DoBatchSlotException x ? x : null;
+                    var at = slot != null ? slot.retryAt() : now.plus(KbBatchSubmitter.backoff(retries + 1));
                     probe.put("pending", true);
                     probe.put("retryAt", at.toString());
                     probe.put("retries", retries + 1);
-                    probe.put("error", (kind == DoBatchErrors.Kind.RATE_LIMITED
+                    probe.put("error", slot != null ? slot.getMessage().replace(" (rate_limit_exceeded)", "")
+                        + "; reintento a las " + at.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE).toLocalTime()
+                            .truncatedTo(java.time.temporal.ChronoUnit.MINUTES) : (kind == DoBatchErrors.Kind.RATE_LIMITED
                         ? "DigitalOcean limitó la creación de lotes; reintento a las "
                         : "DigitalOcean no respondió al crear el lote; reintento a las ")
                         + at.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE).toLocalTime()

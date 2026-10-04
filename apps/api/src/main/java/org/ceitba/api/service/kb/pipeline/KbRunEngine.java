@@ -23,6 +23,7 @@ import org.ceitba.api.service.kb.llm.BatchLlmExecutor;
 import org.ceitba.api.service.kb.llm.KbLlmRouter;
 import org.ceitba.api.service.kb.llm.KbUsageRecorder;
 import org.ceitba.api.service.kb.llm.LlmLine;
+import org.ceitba.api.external.llm.DoQuotaTracker;
 import org.ceitba.api.service.kb.llm.SyncLlmExecutor;
 import org.ceitba.api.service.media.ObjectStorage;
 import org.slf4j.Logger;
@@ -87,6 +88,12 @@ public class KbRunEngine {
     private final Clock clock;
     // Per run: "advance again" requests that arrived while it was advancing.
     private final java.util.concurrent.ConcurrentHashMap<UUID, AtomicBoolean> again =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    static final String QUOTA_PAUSE_PREFIX = "Cupo diario";
+    static final String QUOTA_PAUSE = "Cupo diario de tokens de DigitalOcean agotado; reintento a las ";
+    // Runs paused on the daily token quota -> when to try again (in memory:
+    // after a restart the first request finds out again).
+    private final java.util.concurrent.ConcurrentHashMap<UUID, OffsetDateTime> quotaPausedUntil =
         new java.util.concurrent.ConcurrentHashMap<>();
     public static final java.time.Duration LEASE = java.time.Duration.ofMinutes(3);
     static final java.time.Duration CANCEL_CHECK = java.time.Duration.ofSeconds(5);
@@ -315,7 +322,7 @@ public class KbRunEngine {
             // Sync jobs (one per model) resume together, sharing the concurrency.
             var openSync = open.stream().filter(j -> j.getMode().equals("SYNC") && j.getStatus().equals("SUBMITTED"))
                 .map(KbBatchJob::getId).toList();
-            if (!openSync.isEmpty()) runSyncJobs(openSync);
+            if (!openSync.isEmpty() && (quotaPaused(runId) || runSyncJobs(openSync))) allDone = false;
             for (var job : open) {
                 if (job.getMode().equals("SYNC")) continue;
                 if (job.getStatus().equals("QUEUED")) {
@@ -504,7 +511,11 @@ public class KbRunEngine {
     // pool of KB_SYNC_CONCURRENCY in-flight requests; each answer is recorded
     // as it arrives (restart-safe). Answers for a run that was cancelled
     // meanwhile are recorded in usage (they were paid for) but not applied.
-    private void runSyncJobs(List<UUID> jobIds) {
+    // Returns true when the pool paused on DO's daily token quota: the
+    // unanswered requests stay SUBMITTED without answer (the state a restart
+    // resumes from; never counted as failed), their jobs stay open, and the
+    // runs go WAITING with the reason until pausedUntil.
+    private boolean runSyncJobs(List<UUID> jobIds) {
         Map<UUID, KbBatchJob> byId = new LinkedHashMap<>();
         Map<String, UUID> jobOf = new java.util.HashMap<>();
         var lines = new ArrayList<LlmLine>();
@@ -525,7 +536,7 @@ public class KbRunEngine {
         });
         Map<UUID, StringBuffer> outputs = new java.util.concurrent.ConcurrentHashMap<>();
         var runIds = byId.values().stream().map(KbBatchJob::getRunId).distinct().toList();
-        sync.run(lines, (SyncLlmExecutor.Outcome outcome) -> {
+        boolean paused = sync.run(lines, (SyncLlmExecutor.Outcome outcome) -> {
             var result = outcome.result();
             var job = byId.get(jobOf.get(result.customId()));
             recordLock.lock();
@@ -536,23 +547,68 @@ public class KbRunEngine {
             }
             outputs.computeIfAbsent(job.getId(), k -> new StringBuffer()).append(outputLine(result)).append('\n');
         }, cancelCheck(runIds));
+        var pausedRuns = new java.util.HashSet<UUID>();
         for (var job : byId.values()) {
             var out = outputs.get(job.getId());
+            boolean unanswered = paused && inTx(() -> requests.findByBatchJobId(job.getId()).stream()
+                .anyMatch(r -> r.getStatus().equals("SUBMITTED") && r.getCompletedAt() == null));
             String outKey = null;
             if (out != null && out.length() > 0) {
                 outKey = job.getPayloadKey().replace(".jsonl", "-out"
-                    + (pendingCount.get(job.getId()) < job.getRequestCount() ? "-resumed" : "") + ".jsonl");
+                    + (unanswered ? "-partial-" + now().toEpochSecond()
+                        : pendingCount.get(job.getId()) < job.getRequestCount() ? "-resumed" : "") + ".jsonl");
                 putAudit(outKey, out.toString().getBytes(StandardCharsets.UTF_8));
+            }
+            if (unanswered) {
+                pausedRuns.add(job.getRunId());
+                continue;
             }
             var key = outKey;
             inTxVoid(() -> {
                 var j = jobs.findById(job.getId()).orElseThrow();
                 if (j.getStatus().equals("SUBMITTED")) j.finish("COMPLETED", key, now(), null);
-                runs.setStatusIf(job.getRunId(), "RUNNING", MOVING);
             });
             log.info("KB run {} {} sync job done ({} requests, {})", job.getRunId(), job.getStage(),
                 pendingCount.get(job.getId()), job.getModel());
         }
+        for (var runId : runIds) {
+            if (!pausedRuns.contains(runId)) inTxVoid(() -> runs.setStatusIf(runId, "RUNNING", MOVING));
+        }
+        for (var runId : pausedRuns) pauseForQuota(runId);
+        return !pausedRuns.isEmpty();
+    }
+
+    // Daily token quota spent: no reply until pausedUntil (every 30 min the
+    // snapshot is re-checked, with a real request when it is stale).
+    private void pauseForQuota(UUID runId) {
+        var until = now().plus(DoQuotaTracker.DAILY_RETRY);
+        quotaPausedUntil.put(runId, until);
+        var at = until.atZoneSameInstant(org.ceitba.api.config.ClockConfig.ZONE)
+            .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        var reason = QUOTA_PAUSE + at;
+        inTxVoid(() -> {
+            runs.setStatusIf(runId, "WAITING", MOVING);
+            runs.findById(runId).filter(KbRun::isActive).ifPresent(r -> r.setError(reason));
+        });
+        log.warn("KB run {} paused: {}", runId, reason);
+    }
+
+    // True while the run's quota pause has not elapsed; once it has, the
+    // pause and its reason are cleared and the run goes on.
+    private boolean quotaPaused(UUID runId) {
+        var until = quotaPausedUntil.get(runId);
+        if (until == null) return false;
+        if (now().isBefore(until)) return true;
+        quotaPausedUntil.remove(runId, until);
+        inTxVoid(() -> runs.findById(runId).filter(r -> r.getError() != null && r.getError().startsWith(QUOTA_PAUSE_PREFIX))
+            .ifPresent(r -> r.setError(null)));
+        return false;
+    }
+
+    // Runs whose quota pause is over (the batch poller kicks them).
+    public List<UUID> quotaResumeDue() {
+        var now = now();
+        return quotaPausedUntil.entrySet().stream().filter(e -> !now.isBefore(e.getValue())).map(Map.Entry::getKey).toList();
     }
 
     // Whether every run of a sync pool was cancelled, read from the DB at most
