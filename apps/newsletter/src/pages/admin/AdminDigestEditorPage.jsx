@@ -264,7 +264,8 @@ export default function AdminDigestEditorPage() {
   const actionsLocked = saving || busyAction != null
   // The API refuses to send an issue with nothing in it (409 DIGEST_EMPTY).
   const empty = includedArticles + includedEvents === 0
-  const senderNotConnected = senderStatus === 'missing' || senderStatus === 'broken'
+  // Only relevant while mail can still go out for this issue.
+  const senderNotConnected = (editable || sending) && (senderStatus === 'missing' || senderStatus === 'broken')
 
   return (
     <div className="flex flex-col gap-6">
@@ -279,11 +280,16 @@ export default function AdminDigestEditorPage() {
           </h1>
           <DigestStatusBadge status={digest.status} />
         </div>
-        <p className="font-body text-body-sm text-ink-secondary">
-          {digest.status === 'sent' && digest.sentAt
-            ? t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })
-            : t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate ?? 0 })}
-        </p>
+        {digest.status === 'sent' && digest.sentAt ? (
+          <p className="font-body text-body-sm text-ink-secondary">
+            {t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })}
+          </p>
+        ) : digest.recipientEstimate != null && (
+          // The API only estimates recipients for drafts.
+          <p className="font-body text-body-sm text-ink-secondary">
+            {t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate })}
+          </p>
+        )}
         {sending && digest.resumeAt && (
           <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm self-start">
             {t('admin.digests.resumesAt', { when: formatArtDateTime(digest.resumeAt, i18n.language) })}
