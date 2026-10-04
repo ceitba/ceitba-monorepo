@@ -1,5 +1,6 @@
 package org.ceitba.api.web.auth;
 
+import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.domain.User;
@@ -20,9 +21,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +40,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // so every request that is not about rate limits uses a fresh client IP).
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(TestGoogleIdTokens.LocalKeyVerifier.class)
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
@@ -66,8 +63,7 @@ class ReviewLoginIT {
     static final String REVIEW_EMAIL = "appreview@example.com";
     static final String PASSWORD = "correct horse battery staple";
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry r) {

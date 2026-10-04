@@ -1,5 +1,6 @@
 package org.ceitba.api.web.staff;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.CeitbaBranch;
 import org.ceitba.api.domain.CeitbaStaff;
 import org.ceitba.api.domain.CeitbaStaffRole;
@@ -25,9 +26,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -48,12 +46,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // /v1/auth/me.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "itba.api.use-fake=true"})
 class ModeratorIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

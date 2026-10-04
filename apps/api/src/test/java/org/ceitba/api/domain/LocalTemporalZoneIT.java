@@ -1,5 +1,6 @@
 package org.ceitba.api.domain;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.news.NewsEvent;
 import org.ceitba.api.external.itba.FakeItbaApiClient;
 import org.ceitba.api.external.itba.SubjectPlanProjection;
@@ -20,9 +21,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,11 +57,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(properties = "itba.api.use-fake=true")
 @AutoConfigureMockMvc
-@Testcontainers
 class LocalTemporalZoneIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

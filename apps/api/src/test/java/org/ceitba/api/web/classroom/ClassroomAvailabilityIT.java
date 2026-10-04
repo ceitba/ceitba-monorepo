@@ -1,5 +1,6 @@
 package org.ceitba.api.web.classroom;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.DayOfWeek;
@@ -17,9 +18,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -34,12 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(ClassroomAvailabilityIT.FixedClock.class)
 class ClassroomAvailabilityIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

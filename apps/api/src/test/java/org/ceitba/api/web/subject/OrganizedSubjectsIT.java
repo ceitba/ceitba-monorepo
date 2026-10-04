@@ -1,5 +1,6 @@
 package org.ceitba.api.web.subject;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.DayOfWeek;
@@ -19,10 +20,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -40,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "itba.api.use-fake=true")
 @AutoConfigureMockMvc
-@Testcontainers
 @Import({OrganizedSubjectsIT.FixedClock.class, OrganizedSubjectsIT.TxRecordingClient.class})
 class OrganizedSubjectsIT {
 
@@ -78,8 +75,7 @@ class OrganizedSubjectsIT {
         }
     }
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {

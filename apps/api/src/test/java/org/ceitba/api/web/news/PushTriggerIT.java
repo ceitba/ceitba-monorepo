@@ -1,5 +1,6 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
@@ -26,9 +27,6 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -46,7 +44,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // after commit, asynchronously, once per publication, pruning dead tokens.
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(FakePushGatewayConfig.class)
 @TestPropertySource(properties = {
     "auth.allowed-domains=itba.edu.ar",
@@ -54,8 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class PushTriggerIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry r) {
