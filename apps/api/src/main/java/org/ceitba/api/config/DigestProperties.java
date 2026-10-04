@@ -11,7 +11,8 @@ import java.util.Locale;
 //   apiBaseUrl:    public API base (context path included), for List-Unsubscribe
 //   allowedDomains: HARD guard; no digest email (test sends included) ever
 //                   goes to an address outside these domains
-//   dailyLimit:    send attempts per rolling 24h across issues
+//   trackingEnabled: open pixel + click redirects in sent issues (the
+//                   sending quota itself is mail.daily-limit, EmailProperties)
 //   sendInterval:  pause between two emails (throttling)
 //   tickInterval:  how often due auto-sends start and stalled sends resume
 //   jobsEnabled:   scheduled jobs (weekly draft, auto-send, sending worker)
@@ -20,7 +21,7 @@ public record DigestProperties(
     String publicBaseUrl,
     String apiBaseUrl,
     List<String> allowedDomains,
-    Integer dailyLimit,
+    Boolean trackingEnabled,
     Duration sendInterval,
     Duration tickInterval,
     Boolean jobsEnabled
@@ -37,7 +38,7 @@ public record DigestProperties(
                 .filter(d -> d != null && !d.isBlank())
                 .map(d -> d.trim().toLowerCase(Locale.ROOT).replaceFirst("^@", ""))
                 .toList();
-        if (dailyLimit == null || dailyLimit < 0) dailyLimit = 1500;
+        if (trackingEnabled == null) trackingEnabled = true;
         if (sendInterval == null || sendInterval.isNegative()) sendInterval = Duration.ofSeconds(1);
         if (tickInterval == null || tickInterval.isZero() || tickInterval.isNegative()) tickInterval = Duration.ofMinutes(5);
         if (jobsEnabled == null) jobsEnabled = true;

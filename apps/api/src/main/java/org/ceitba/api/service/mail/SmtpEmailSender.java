@@ -54,9 +54,12 @@ public class SmtpEmailSender implements EmailSender {
     }
 
     // SMTP replies that mean "not now" rather than "not this recipient":
-    // 4xx, and 5.4.5 (Gmail daily sending limit) / 534-535 (authentication).
+    // 4xx and 534-535 (authentication).
     private static final Pattern TRANSIENT_REPLY =
-        Pattern.compile("\\b(4\\d\\d[ -]4\\.\\d+\\.\\d+|5\\.4\\.5|53[45][ -]5\\.7\\.\\d+)\\b");
+        Pattern.compile("\\b(4\\d\\d[ -]4\\.\\d+\\.\\d+|53[45][ -]5\\.7\\.\\d+)\\b");
+    // Gmail's daily sending limit: "550 5.4.5 Daily user sending limit
+    // exceeded" (also "5.4.5 Daily SMTP relay limit exceeded").
+    private static final Pattern QUOTA_REPLY = Pattern.compile("\\b5\\.4\\.5\\b");
 
     static EmailSendException classify(MailException e) {
         if (e instanceof MailAuthenticationException) {
@@ -66,8 +69,12 @@ public class SmtpEmailSender implements EmailSender {
             return new EmailSendException(EmailSendException.Kind.RECIPIENT, e.getMessage(), e);
         }
         String text = messages(e).toLowerCase(Locale.ROOT);
-        // Gmail: "550 5.4.5 Daily user sending limit exceeded", "421 4.7.0 Try
-        // again later", "454 4.7.0 Too many login attempts": back off.
+        // Gmail's daily limit is authoritative: the account is paused a day.
+        if (QUOTA_REPLY.matcher(text).find() || text.contains("sending limit exceeded")) {
+            return new EmailSendException(EmailSendException.Kind.QUOTA, e.getMessage(), e);
+        }
+        // Gmail: "421 4.7.0 Try again later", "454 4.7.0 Too many login
+        // attempts", "4.7.28 rate limited": back off.
         if (text.contains("limit exceeded") || text.contains("rate limit")
                 || text.contains("try again later") || TRANSIENT_REPLY.matcher(text).find()) {
             return new EmailSendException(EmailSendException.Kind.TRANSIENT, e.getMessage(), e);

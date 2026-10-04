@@ -47,6 +47,9 @@ public class ContentHmac {
     public static final String DIGEST_UNSUBSCRIBE = "digest-unsubscribe";
     // Weekly digest "¿Es así?" schedule-correction vote links (service/digest).
     public static final String DIGEST_CORRECTION_VOTE = "digest-correction-vote";
+    // In-memory rate-limit keys of the digest open pixel / click redirects
+    // (never stored).
+    public static final String MAIL_TRACKING_IP = "mail-tracking-ip";
 
     static final int MIN_DEDICATED_SECRET_BYTES = 32;
     private static final String ALGORITHM = "HmacSHA256";

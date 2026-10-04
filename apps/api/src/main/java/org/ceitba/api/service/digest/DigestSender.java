@@ -6,7 +6,10 @@ import org.ceitba.api.domain.digest.DigestIssue;
 import org.ceitba.api.repository.digest.DigestDeliveryRepository;
 import org.ceitba.api.repository.digest.DigestIssueRepository;
 import org.ceitba.api.service.mail.EmailSendException;
-import org.ceitba.api.service.mail.EmailSender;
+import org.ceitba.api.service.mail.MailLinkRewriter;
+import org.ceitba.api.service.mail.MailQuotaExhaustedException;
+import org.ceitba.api.service.mail.MailSendService;
+import org.ceitba.api.service.mail.OutgoingEmail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -30,11 +34,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //     (row lock) therefore waits for the email in flight and nothing is sent
 //     after it; a crash leaves the row pending (resumed on the next run).
 //   - throttled (digest.send-interval between emails)
-//   - at most digest.daily-limit attempts per rolling 24h across issues;
-//     when the quota is used up the run stops and a later tick resumes
+//   - sending quota (MailSendService, rolling 24h per sending account,
+//     shared with test sends and any other email): while the account is
+//     paused or out of quota the run does not even start; when the quota
+//     runs out mid-run it stops, and a later tick resumes once capacity
+//     frees (so a big issue simply overflows into the next day)
 //   - a pending recipient who unsubscribed/unfollowed CEITBA meanwhile is dropped
 //   - a recipient problem marks that delivery failed and goes on; a
-//     transport problem (auth, quota, connection) stops the run
+//     transport problem (auth, Gmail's daily limit, connection) stops the
+//     run, and MailSendService pauses the account (backoff / 24h)
+//   - open/click tracking (DigestTrackingService): each delivery gets a
+//     random tracking id and its links rewritten right before sending
 //   - no pending row left: the issue becomes `sent`
 // One run at a time per process (single API instance).
 @Component
@@ -50,12 +60,13 @@ public class DigestSender {
 
     public enum Outcome { DONE, STOPPED, CANCELLED }
 
-    enum Step { SENT, FAILED, SKIPPED, TRANSIENT, CANCELLED }
+    enum Step { SENT, FAILED, SKIPPED, TRANSIENT, QUOTA, CANCELLED }
 
     private final DigestIssueRepository issues;
     private final DigestDeliveryRepository deliveries;
     private final DigestComposer composer;
-    private final EmailSender sender;
+    private final MailSendService sender;
+    private final DigestTrackingService tracking;
     private final DigestProperties props;
     private final TransactionTemplate tx;
     private final Clock clock;
@@ -64,18 +75,19 @@ public class DigestSender {
 
     @Autowired
     public DigestSender(DigestIssueRepository issues, DigestDeliveryRepository deliveries,
-                        DigestComposer composer, EmailSender sender, DigestProperties props,
-                        PlatformTransactionManager txManager, Clock clock) {
-        this(issues, deliveries, composer, sender, props, txManager, clock, d -> Thread.sleep(d));
+                        DigestComposer composer, MailSendService sender, DigestTrackingService tracking,
+                        DigestProperties props, PlatformTransactionManager txManager, Clock clock) {
+        this(issues, deliveries, composer, sender, tracking, props, txManager, clock, d -> Thread.sleep(d));
     }
 
     DigestSender(DigestIssueRepository issues, DigestDeliveryRepository deliveries,
-                 DigestComposer composer, EmailSender sender, DigestProperties props,
-                 PlatformTransactionManager txManager, Clock clock, Sleeper sleeper) {
+                 DigestComposer composer, MailSendService sender, DigestTrackingService tracking,
+                 DigestProperties props, PlatformTransactionManager txManager, Clock clock, Sleeper sleeper) {
         this.issues = issues;
         this.deliveries = deliveries;
         this.composer = composer;
         this.sender = sender;
+        this.tracking = tracking;
         this.props = props;
         this.tx = new TransactionTemplate(txManager);
         this.clock = clock;
@@ -86,9 +98,16 @@ public class DigestSender {
     public void runPending() {
         if (!running.compareAndSet(false, true)) return;
         try {
-            long[] quota = {remainingQuota()};
-            for (UUID id : issues.findSendingIds()) {
-                if (process(id, quota) == Outcome.STOPPED) break;
+            var ids = issues.findSendingIds();
+            if (ids.isEmpty()) return;
+            // Paused or out of quota: don't touch SMTP until then.
+            var readyAt = sender.readyAt();
+            if (readyAt.isPresent()) {
+                log.debug("Digest sending waits until {} (sending quota / pause of {})", readyAt.get(), sender.account());
+                return;
+            }
+            for (UUID id : ids) {
+                if (process(id) == Outcome.STOPPED) break;
             }
         } catch (RuntimeException e) {
             log.warn("Digest sending run failed (the next tick retries): {}", e.getMessage(), e);
@@ -97,17 +116,13 @@ public class DigestSender {
         }
     }
 
-    long remainingQuota() {
-        var since = OffsetDateTime.now(clock).minusHours(24);
-        return Math.max(0, props.dailyLimit() - deliveries.countAttemptsSince(since));
-    }
-
-    Outcome process(UUID issueId, long[] quota) {
+    Outcome process(UUID issueId) {
         DigestIssue entity = issues.findById(issueId).orElse(null);
         if (entity == null || !DigestIssue.SENDING.equals(entity.getStatus())) return Outcome.CANCELLED;
         var issue = DigestComposer.Issue.of(entity);
         // Shared content: rendered once per run, only the per-reader parts vary.
         var template = composer.template(issue, composer.content(issue));
+        Map<String, Integer> sharedLinks = tracking.enabled() ? tracking.issueLinks(issueId, template) : Map.of();
 
         while (true) {
             List<DigestDelivery> batch = deliveries.findPending(issueId, Limit.of(PAGE));
@@ -121,22 +136,17 @@ public class DigestSender {
             var personal = composer.personalSections(issue,
                 batch.stream().map(DigestDelivery::getUserId).toList());
             for (DigestDelivery d : batch) {
-                if (quota[0] <= 0) {
-                    log.info("Digest sending paused: daily limit of {} reached", props.dailyLimit());
-                    return Outcome.STOPPED;
-                }
-                Step step = tx.execute(s -> sendOne(issue, template, d, personal.get(d.getUserId())));
+                Step step = tx.execute(s -> sendOne(issue, template, d, personal.get(d.getUserId()), sharedLinks));
                 switch (step) {
                     case CANCELLED -> {
                         log.info("Digest {}: no longer sending, stopped", issue.week().weekStart());
                         return Outcome.CANCELLED;
                     }
-                    case TRANSIENT -> {
+                    case TRANSIENT, QUOTA -> {
                         return Outcome.STOPPED;
                     }
                     case SKIPPED -> { }
                     case SENT, FAILED -> {
-                        quota[0]--;
                         try {
                             sleeper.sleep(props.sendInterval());
                         } catch (InterruptedException e) {
@@ -151,7 +161,7 @@ public class DigestSender {
 
     // Runs inside one transaction (see the class comment).
     Step sendOne(DigestComposer.Issue issue, DigestRenderer.Template template, DigestDelivery d,
-                 DigestPersonalSection.Section personal) {
+                 DigestPersonalSection.Section personal, Map<String, Integer> sharedLinks) {
         String status = issues.findStatusForShare(issue.id()).orElse(null);
         if (!DigestIssue.SENDING.equals(status)) return Step.CANCELLED;
 
@@ -162,9 +172,21 @@ public class DigestSender {
             return Step.SKIPPED;
         }
         try {
-            sender.send(composer.email(issue, template, d.getUserId(), d.getEmail(), false, personal));
+            OutgoingEmail email = composer.email(issue, template, d.getUserId(), d.getEmail(), false, personal);
+            if (tracking.enabled()) {
+                // Kept across retries of the same delivery.
+                String trackingId = d.getTrackingId() != null ? d.getTrackingId() : MailLinkRewriter.newTrackingId();
+                var tracked = tracking.track(email, trackingId, sharedLinks);
+                deliveries.setTrackingId(issue.id(), d.getUserId(), trackingId);
+                tracking.saveDeliveryLinks(trackingId, tracked.personalLinks());
+                email = tracked.email();
+            }
+            sender.send(email);
+        } catch (MailQuotaExhaustedException e) {
+            log.info("Digest sending paused: sending quota of {} used up, resumes at {}", e.account(), e.resumeAt());
+            return Step.QUOTA;
         } catch (EmailSendException e) {
-            if (e.kind() == EmailSendException.Kind.TRANSIENT) {
+            if (e.kind() != EmailSendException.Kind.RECIPIENT) {
                 log.warn("Digest sending paused, transport problem (retried later): {}", e.getMessage());
                 return Step.TRANSIENT;
             }

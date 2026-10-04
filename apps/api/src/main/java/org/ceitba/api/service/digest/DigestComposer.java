@@ -35,6 +35,10 @@ public class DigestComposer {
     // (every user follows it by default).
     public static final String AUDIENCE_ORG = "ceitba";
 
+    // Kinds of the sending-quota ledger (mail_send_log.kind).
+    public static final String KIND_DIGEST = "digest";
+    public static final String KIND_TEST = "test";
+
     // Entity-free copy of an issue's editable fields.
     public record Issue(UUID id, DigestWeek week, String subject, String intro,
                         List<String> excludedArticleIds, List<String> excludedEventIds) {
@@ -154,7 +158,7 @@ public class DigestComposer {
         headers.put("List-Id", "La semana en ITBA <digest.ceitba.org.ar>");
         if (!test) headers.put("Precedence", "bulk");
         String subject = test ? "[Prueba] " + issue.subject() : issue.subject();
-        return new OutgoingEmail(to, subject, out.html(), out.text(), headers);
+        return new OutgoingEmail(to, subject, out.html(), out.text(), headers, test ? KIND_TEST : KIND_DIGEST);
     }
 
     // The ItbaNews page that calls POST /v1/digests/unsubscribe.

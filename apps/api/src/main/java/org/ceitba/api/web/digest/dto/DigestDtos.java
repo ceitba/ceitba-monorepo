@@ -21,9 +21,16 @@ public final class DigestDtos {
 
     public record OrgRef(String slug, String name) {}
 
+    // resumeAt: while `sending` and the sending account is paused (quota used
+    // up, Gmail's daily limit, transport backoff), when it resumes.
+    // estimatedFinishAt: while `sending`, when the last email should go out
+    // (rolling quota included; approximate). openRate/clickRate: unique
+    // opens/clicks over delivered (sent) emails, 0..1; null with nothing
+    // delivered.
     public record Summary(UUID id, LocalDate weekStart, LocalDate weekEnd, String subject, String status,
                           OffsetDateTime autoSendAt, OffsetDateTime sentAt, OffsetDateTime createdAt,
-                          Counts counts) {}
+                          Counts counts, OffsetDateTime resumeAt, OffsetDateTime estimatedFinishAt,
+                          Double openRate, Double clickRate) {}
 
     public record ArticleItem(String id, String title, String excerpt, String coverImage, LocalDate publishedAt,
                               OrgRef organization, boolean excluded) {}
@@ -33,7 +40,26 @@ public final class DigestDtos {
 
     public record Detail(UUID id, LocalDate weekStart, LocalDate weekEnd, String subject, String intro,
                          String status, OffsetDateTime autoSendAt, OffsetDateTime sentAt, Counts counts,
-                         long recipientEstimate, List<ArticleItem> articles, List<EventItem> events) {}
+                         long recipientEstimate, List<ArticleItem> articles, List<EventItem> events,
+                         OffsetDateTime resumeAt, OffsetDateTime estimatedFinishAt) {}
+
+    // GET /v1/digests/quota: the sending account's rolling 24h quota.
+    // pausedUntil/pauseReason (quota | transport): an active pause.
+    // nextCapacityAt: with nothing remaining, when the next email can go.
+    public record Quota(String account, int limit, long usedLast24h, long remaining,
+                        OffsetDateTime pausedUntil, String pauseReason, OffsetDateTime nextCapacityAt) {}
+
+    // GET /v1/digests/{id}/stats: aggregate engagement only, never per person.
+    // Rates are over delivered emails (null with none); flagged events
+    // (scanners, bots, within seconds of sending) are excluded.
+    public record Stats(long delivered, long uniqueOpens, Double openRate, long uniqueClicks, Double clickRate,
+                        List<LinkClicks> clicksByLink, List<HourCount> opensByHour) {}
+
+    // url = the link without per-reader tokens.
+    public record LinkClicks(String label, String url, long uniqueClicks, long totalClicks) {}
+
+    // hour = start of the hour (ART offset); count = first opens in it.
+    public record HourCount(OffsetDateTime hour, long count) {}
 
     public record CreateRequest(@NotNull LocalDate weekStart) {}
 

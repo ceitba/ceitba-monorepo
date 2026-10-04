@@ -3,6 +3,7 @@ package org.ceitba.api.web.error;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.ceitba.api.common.exception.ExternalApiException;
+import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.common.exception.FeatureNotConfiguredException;
 import org.ceitba.api.common.exception.InvalidStateException;
 import org.ceitba.api.common.exception.RateLimitExceededException;
@@ -17,6 +18,7 @@ import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.capability.CapabilityRequiredException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
 import org.ceitba.api.service.digest.DigestException;
+import org.ceitba.api.service.mail.MailQuotaExhaustedException;
 import org.ceitba.api.service.drive.DriveException;
 import org.ceitba.api.service.kb.pipeline.KbPipelineException;
 import org.ceitba.api.service.wiki.BookmarkLimitException;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.time.Instant;
 import java.util.stream.Collectors;
 
 // The ONE place exceptions become HTTP statuses. Controllers throw, services
@@ -107,6 +110,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDigest(DigestException ex, HttpServletRequest req) {
         return ResponseEntity.status(ex.reason().status())
             .body(ErrorResponse.of(ex.reason().code(), ex.getMessage(), req.getRequestURI()));
+    }
+
+    // The sending account has no quota left (docs/WEEKLY-DIGEST.md, "Sending
+    // quota"): 429 with Retry-After and `resumeAt`.
+    @ExceptionHandler(MailQuotaExhaustedException.class)
+    public ResponseEntity<MailQuotaErrorResponse> handleMailQuota(MailQuotaExhaustedException ex,
+                                                                  HttpServletRequest req) {
+        long retryAfter = Math.max(1, java.time.Duration.between(Instant.now(), ex.resumeAt()).toSeconds());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", Long.toString(retryAfter))
+            .body(new MailQuotaErrorResponse(MailQuotaExhaustedException.CODE, ex.getMessage(), req.getRequestURI(),
+                Instant.now(), ex.resumeAt().atZone(ClockConfig.ZONE).toOffsetDateTime()));
     }
 
     @ExceptionHandler(KbPipelineException.class)

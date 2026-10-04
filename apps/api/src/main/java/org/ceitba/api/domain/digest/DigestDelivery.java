@@ -41,6 +41,26 @@ public class DigestDelivery {
     @Column(name = "sent_at")
     private OffsetDateTime sentAt;
 
+    // Open/click tracking (docs/WEEKLY-DIGEST.md): random opaque id set right
+    // before sending (kept across retries), and unflagged-event aggregates.
+    @Column(name = "tracking_id")
+    private String trackingId;
+
+    @Column(name = "first_opened_at")
+    private OffsetDateTime firstOpenedAt;
+
+    @Column(name = "last_opened_at")
+    private OffsetDateTime lastOpenedAt;
+
+    @Column(name = "open_count", nullable = false)
+    private int openCount;
+
+    @Column(name = "first_clicked_at")
+    private OffsetDateTime firstClickedAt;
+
+    @Column(name = "click_count", nullable = false)
+    private int clickCount;
+
     protected DigestDelivery() {}
 
     public DigestDelivery(UUID issueId, UUID userId, String email) {
@@ -55,4 +75,10 @@ public class DigestDelivery {
     public String getStatus() { return status; }
     public String getError() { return error; }
     public OffsetDateTime getSentAt() { return sentAt; }
+    public String getTrackingId() { return trackingId; }
+    public OffsetDateTime getFirstOpenedAt() { return firstOpenedAt; }
+    public OffsetDateTime getLastOpenedAt() { return lastOpenedAt; }
+    public int getOpenCount() { return openCount; }
+    public OffsetDateTime getFirstClickedAt() { return firstClickedAt; }
+    public int getClickCount() { return clickCount; }
 }

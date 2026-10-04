@@ -226,6 +226,18 @@ drive-sync:
 mail:
   enabled: ${MAIL_ENABLED:false}
   from: ${MAIL_FROM:CEITBA <ceitba@itba.edu.ar>}
+  # Sending quota (service/mail/MailSendService): recipients per rolling 24h
+  # per sending account (the From address). Workspace caps ~2000/day.
+  # DIGEST_DAILY_LIMIT is the older name, still honoured.
+  daily-limit: ${MAIL_DAILY_LIMIT:${DIGEST_DAILY_LIMIT:1500}}
+  # Per-account overrides (keys need brackets because of the dots/@):
+  # daily-limits:
+  #   "[otra@itba.edu.ar]": 500
+  # Backoff after transport errors: doubled per consecutive error, capped.
+  backoff-initial: ${MAIL_BACKOFF_INITIAL:PT5M}
+  backoff-max: ${MAIL_BACKOFF_MAX:PT1H}
+  # Pause after Gmail's own "5.4.5 daily sending limit exceeded".
+  quota-pause: ${MAIL_QUOTA_PAUSE:PT24H}
 
 # Weekly digest "La semana en ITBA" (docs/WEEKLY-DIGEST.md).
 digest:
@@ -235,8 +247,8 @@ digest:
   api-base-url: ${DIGEST_API_BASE_URL:https://ceitba.org.ar/api}
   # HARD guard: no digest email (test sends included) leaves for any other domain.
   allowed-domains: ${DIGEST_ALLOWED_DOMAINS:itba.edu.ar}
-  # Send attempts per rolling 24h (Workspace caps ~2000 recipients/day).
-  daily-limit: ${DIGEST_DAILY_LIMIT:1500}
+  # Open pixel + click redirects in sent issues (docs/WEEKLY-DIGEST.md).
+  tracking-enabled: ${DIGEST_TRACKING_ENABLED:true}
   # Pause between two emails.
   send-interval: ${DIGEST_SEND_INTERVAL:PT1S}
   # Auto-send check / resume of stalled sends.
@@ -337,6 +349,9 @@ rate-limit:
       methods: [GET, POST]
       capacity: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_CAPACITY:60}
       period: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_PERIOD:1m}
+    # Digest open pixel / click redirects are NOT limited here: they must
+    # always answer (GIF / redirect). MailTrackingService limits what it
+    # records per client and per tracking id instead.
     # ItbaNews flushes one batch (<= 50 events) per tab every 10 s.
     analytics:
       paths:

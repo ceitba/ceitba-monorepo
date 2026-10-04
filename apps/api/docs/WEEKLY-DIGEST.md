@@ -7,10 +7,13 @@ every recipient; below it each reader gets a short personal block,
 "Tu cuatrimestre" (their subjects, wiki links and schedule corrections to
 confirm). Staff review, edit and send it from the ItbaNews admin area.
 
-Code: `service/digest/*` (selection, rendering, lifecycle, sending worker),
-`service/digest/personal/*` ("Tu cuatrimestre"), `service/mail/*`
-(transport), `scheduling/DigestJob`, `web/digest/DigestController`.
-Schema: `V43__weekly_digest.sql` ("Tu cuatrimestre" adds no tables).
+Code: `service/digest/*` (selection, rendering, lifecycle, sending worker,
+`DigestTrackingService`), `service/digest/personal/*` ("Tu cuatrimestre"),
+`service/mail/*` (transport, `MailSendService` = sending-quota ledger,
+`MailLinkRewriter`, `MailClientClass`), `scheduling/DigestJob`,
+`web/digest/DigestController`, `web/mail/MailTrackingController`.
+Schema: `V43__weekly_digest.sql` ("Tu cuatrimestre" adds no tables),
+`V44__mail_quota_tracking.sql` (quota ledger + open/click tracking).
 
 ## How it works
 
@@ -148,13 +151,17 @@ thread) then takes the pending rows one by one:
   resumes the rows still pending; a sent row is never sent again (the only
   window is a crash between the SMTP accept and the commit).
 - Throttled: `DIGEST_SEND_INTERVAL` (1 s) between emails.
-- Rolling quota: at most `DIGEST_DAILY_LIMIT` send attempts (sent + failed,
-  by `sent_at`) in the last 24h across all issues. When it is used up the
-  run stops; a later tick continues.
+- Sending quota (see "Sending quota" below): every email goes through
+  `MailSendService`. While the account is paused or out of quota the worker
+  does not start at all (no SMTP until `resumeAt`); when the quota runs out
+  mid-run it stops and a later tick resumes once capacity frees, so an
+  issue with more recipients than the limit just finishes the next day(s).
 - A recipient problem (rejected address, malformed message) marks that row
-  `failed` and goes on. A transport problem (authentication, Gmail's
-  "daily sending limit exceeded", 4xx, connection) stops the run without
-  touching the row; the next tick retries.
+  `failed` and goes on. A transport problem (authentication, 4xx,
+  connection) or Gmail's "daily sending limit exceeded" stops the run
+  without touching the row, and the account is paused (backoff / 24h).
+- Each delivery gets a random tracking id and its links rewritten right
+  before sending (see "Open and click tracking").
 - A pending recipient who meanwhile unsubscribed, unfollowed CEITBA or is
   outside the allowed domains is dropped (row deleted).
 - No pending rows left → the issue is `sent` with `sent_at`.
@@ -184,28 +191,133 @@ limited per IP (`RATE_LIMIT_DIGEST_UNSUBSCRIBE_*`) and ignores the session
 cookie.
 
 Footer copy: "Recibís este resumen semanal porque seguís a CEITBA en ITBA
-News." plus the unsubscribe link.
+News. Medimos aperturas y clics para mejorar el resumen." plus the
+unsubscribe link.
 
 **Test sends** go to the caller's own email, ignore their opt-out but never
-the domain guard (`422 EMAIL_NOT_ALLOWED`), have a `[Prueba]` subject prefix
-and are not counted in the quota.
+the domain guard (`422 EMAIL_NOT_ALLOWED`), have a `[Prueba]` subject
+prefix, **consume sending quota** (`429 MAIL_QUOTA_EXHAUSTED` with
+`resumeAt` and `Retry-After` when none is left, or while Gmail's daily-limit
+pause lasts) and are **not tracked** (plain links, no pixel), so they never
+show up in an issue's stats.
+
+## Sending quota (Gmail limits)
+
+Code: `service/mail/MailSendService` (the only `EmailSender` bean: the SMTP
+or logging transport is wrapped inside it, so no caller can bypass it),
+`MailLedger`/`JpaMailLedger`.
+
+- **Ledger.** Every SMTP attempt, whoever makes it (digest deliveries, test
+  sends, later the per-org emails), is a `mail_send_log` row: `account` (the
+  From address, e.g. `ceitba@itba.edu.ar`), `kind` (`digest` | `test` | …),
+  `recipients` (1 per message), `attempted_at`, `outcome` (`sent`,
+  `rejected`, `quota`, `transient`) and the error. Rows are committed in
+  their own transaction, so an email that left stays counted.
+- **Rolling window.** `remaining = limit − used in the last 24h`, where
+  `used` sums the recipients of the attempts that reached Gmail (`sent` and
+  `rejected`; transport errors and Gmail's own limit error don't). With
+  nothing remaining, nothing is sent: the next capacity frees when enough of
+  the oldest attempts leave the window (the oldest attempt + 24h when
+  exactly at the limit). The worker checks this before touching SMTP and
+  waits until then; overflow rolls into the next day by itself.
+- **Limit.** `MAIL_DAILY_LIMIT` (falls back to the older
+  `DIGEST_DAILY_LIMIT`; default 1500, safely under Workspace's ~2000
+  recipients per rolling 24h), per sending account; `mail.daily-limits`
+  overrides it per address (yml only).
+- **Gmail's own error is authoritative.** A `550 5.4.5 Daily user sending
+  limit exceeded` (our count can be off, e.g. staff also send from the
+  account by hand) pauses the account for `MAIL_QUOTA_PAUSE` (24h), or until
+  the rolling-window estimate if that is later. The pause is persisted in
+  `mail_account_state`, so it survives restarts; test sends get 429 during
+  it.
+- **Other transport errors** (auth, connection, 4xx) pause the background
+  worker with exponential backoff, 5 min → 10 → 20 → 40 → 1 h cap
+  (`MAIL_BACKOFF_INITIAL` / `MAIL_BACKOFF_MAX`), instead of retrying every
+  tick. Also persisted. A manual test send still tries (to check whether SMTP
+  is back); any successful send clears the backoff.
+- **Admin.** `GET /v1/digests/quota` → `{account, limit, usedLast24h,
+  remaining, pausedUntil, pauseReason, nextCapacityAt}`. A `sending` issue
+  in the list and detail carries `resumeAt` (while the account is paused or
+  out of quota) and `estimatedFinishAt` (approximate: simulates the rolling
+  window at the send pace; issues are sent oldest week first, so each
+  estimate includes the pending emails of earlier sending issues).
+
+## Open and click tracking
+
+Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
+`service/mail/MailClientClass`, `web/mail/MailTrackingController`.
+
+- **Tracking id.** Each delivery gets a random 128-bit id
+  (`digest_deliveries.tracking_id`, base64url, never the user id), set right
+  before sending and kept across retries.
+- **Open pixel.** `<img src="${DIGEST_API_BASE_URL}/v1/mail/o/{trackingId}.gif"
+  width="1" height="1" alt="">` at the end of the body.
+  `GET /v1/mail/o/{trackingId}.gif` is public, always answers a 1×1
+  transparent GIF with no-cache headers (unknown ids too) and records first
+  and last open plus an open count.
+- **Click redirects.** Every http(s) link of the HTML and plain-text parts —
+  articles, events, wiki and correction-vote links of "Tu cuatrimestre", the
+  scheduler call to action, the unsubscribe link in the body — becomes
+  `${DIGEST_API_BASE_URL}/v1/mail/c/{trackingId}/{linkId}`. The
+  `List-Unsubscribe` **header** is never wrapped. `GET` answers a 302 to the
+  original URL, resolved **only** from server-side data: the issue's shared
+  links (`digest_issue_links`, ids < 1000, collected from the shared template)
+  or the delivery's own links (`digest_delivery_links`, ids ≥ 1000:
+  unsubscribe and "Tu cuatrimestre", which carry per-reader tokens). Nothing
+  is ever taken from the request, so it is not an open redirect; unknown
+  ids go to `${DIGEST_PUBLIC_BASE_URL}`. A click implies an open.
+- **Scanners and bots.** Events from known scanner/bot user agents (and
+  `HEAD` requests), or within 10 s of the email being sent, are recorded in
+  `mail_tracking_event` but flagged (`scanner` / `early`) and excluded from
+  every stat and counter. No IP and no full user agent are stored, only a
+  coarse client class (`gmail_proxy`, `yahoo_proxy`, `outlook`, `browser`,
+  `scanner`, `unknown`).
+- **Cheap and rate limited.** One indexed lookup, an insert and an update.
+  Both endpoints always answer; what gets *recorded* is limited in memory
+  per client address (600/min, keyed by an HMAC of the IP, never stored:
+  Gmail's image proxy fetches for many readers from few addresses) and per
+  tracking id (30/h). They ignore the session cookie, like unsubscribe.
+- **Opens are approximate; clicks are the reliable signal.** Gmail fetches
+  images through its proxy and caches them, so repeat opens are mostly
+  invisible (the first open is seen). Apple Mail Privacy Protection
+  pre-fetches every image when the email arrives, so Apple Mail users look
+  like they opened it (unless it falls inside the 10 s window). Clients that
+  block images never report an open. A click is a person (minus scanners).
+- **Privacy.** The admin shows aggregate numbers only, never who opened or
+  clicked. The footer says "Medimos aperturas y clics para mejorar el
+  resumen." The stored per-reader links include their tokens (the same ones
+  the email carries); they are deleted with the delivery (issue or user
+  deletion cascades). `DIGEST_TRACKING_ENABLED=false` turns the pixel and the
+  rewriting off for future sends.
+- **Stats.** `GET /v1/digests/{id}/stats` → `{delivered, uniqueOpens,
+  openRate, uniqueClicks, clickRate, clicksByLink: [{label, url,
+  uniqueClicks, totalClicks}], opensByHour: [{hour, count}]}`. Rates are over
+  delivered (`sent`) emails, 0..1 (null with none). `clicksByLink` groups by
+  the URL without its `token` parameter (so every "Sí, es así" or
+  unsubscribe link is one row) and `label` is the link text.
+  `opensByHour` counts first (unique) opens per hour (ART). The issue list
+  has `openRate`/`clickRate` per issue.
 
 ## API (STAFF unless noted)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/v1/digests` | Newest week first, with `counts {pending,sent,failed}` |
+| GET | `/v1/digests` | Newest week first, with `counts {pending,sent,failed}`, `openRate`, `clickRate`, and while sending `resumeAt` / `estimatedFinishAt` |
+| GET | `/v1/digests/quota` | Sending quota of the account (see "Sending quota") |
+| GET | `/v1/digests/{id}/stats` | Aggregate opens/clicks (see "Open and click tracking"); 404 unknown id |
 | POST | `/v1/digests` | `{weekStart}` (Monday, else `400 INVALID_WEEK_START`) → 201; `409 DIGEST_EXISTS` |
-| GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients) |
+| GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients), `resumeAt` / `estimatedFinishAt` while sending |
 | PATCH | `/v1/digests/{id}` | Any of `subject, intro, excludedArticleIds, excludedEventIds, autoSendAt` (`null` intro clears, `null` autoSendAt disables); draft only (`409 DIGEST_NOT_EDITABLE`) |
 | GET | `/v1/digests/{id}/preview` | `text/html`, as the caller would receive it (their own "Tu cuatrimestre"); `mode` is accepted and ignored |
-| POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status |
+| POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status; `429 MAIL_QUOTA_EXHAUSTED` `{…, resumeAt}` + `Retry-After` |
 | POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send |
 | POST | `/v1/digests/{id}/cancel` | From `draft` or `sending` |
 | GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` |
 | POST | `/v1/digests/unsubscribe?token=` | Public; 204; `400 INVALID_TOKEN`; accepts the RFC 8058 form body |
 | GET | `/v1/digests/correction-vote?token=` | Public; the correction (subject, commission, `proposed`/`sga` slots, `status`, `open`, counts, `myVote`, `expiresAt`); never writes |
 | POST | `/v1/digests/correction-vote` | Public; `{token, vote: confirm\|reject}` → `{correction, previousVote}`; errors in the table above |
+| GET | `/v1/mail/o/{trackingId}.gif` | Public open pixel; always a 1×1 GIF |
+| GET | `/v1/mail/c/{trackingId}/{linkId}` | Public click redirect; 302 to the stored URL, else to `DIGEST_PUBLIC_BASE_URL` |
 
 ## Configuration
 
@@ -216,9 +328,12 @@ and are not counted in the quota.
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | _(empty)_ | `ceitba@itba.edu.ar` and its **app password**; required when enabled (startup fails otherwise) |
 | `MAIL_FROM` | `CEITBA <ceitba@itba.edu.ar>` | From header (must be the account or an alias of it) |
 | `DIGEST_PUBLIC_BASE_URL` | `https://ceitba.org.ar/newsletter` | Article, events, organizations and unsubscribe-page links |
-| `DIGEST_API_BASE_URL` | `https://ceitba.org.ar/api` | `List-Unsubscribe` one-click target |
+| `DIGEST_API_BASE_URL` | `https://ceitba.org.ar/api` | `List-Unsubscribe` one-click target; open pixel and click redirect base |
 | `DIGEST_ALLOWED_DOMAINS` | `itba.edu.ar` | **Hard guard**: digest emails (test sends included) only go to these domains |
-| `DIGEST_DAILY_LIMIT` | `1500` | Send attempts per rolling 24h |
+| `MAIL_DAILY_LIMIT` | `DIGEST_DAILY_LIMIT`, else `1500` | Recipients per rolling 24h per sending account (all emails) |
+| `MAIL_BACKOFF_INITIAL` / `MAIL_BACKOFF_MAX` | `PT5M` / `PT1H` | Backoff after transport errors (doubled per consecutive error) |
+| `MAIL_QUOTA_PAUSE` | `PT24H` | Pause after Gmail's `5.4.5` daily-limit error |
+| `DIGEST_TRACKING_ENABLED` | `true` | Open pixel + click redirects in sent issues |
 | `DIGEST_SEND_INTERVAL` | `PT1S` | Pause between emails |
 | `DIGEST_TICK_INTERVAL` | `PT5M` | Auto-send check and resume of stalled sends |
 | `DIGEST_JOBS_ENABLED` | `true` | Weekly draft + auto-send + worker (tests set `false`) |
@@ -257,6 +372,7 @@ We have no DNS access for itba.edu.ar, so the digest goes out through the
 (rolling 24h, the exact cap depends on the plan) and fewer for new or
 trial-like accounts; hitting it returns `550 5.4.5 Daily user sending limit
 exceeded` and blocks the account's sending for up to 24h — including the
-staff's normal email from it. `DIGEST_DAILY_LIMIT=1500` leaves headroom for
+staff's normal email from it. `MAIL_DAILY_LIMIT=1500` leaves headroom for
 that; with more recipients than the limit the issue simply finishes the next
-day. Gmail also throttles bursts, hence the 1 email/s pace.
+day. If Gmail still answers 5.4.5, the account is paused 24h (see "Sending
+quota"). Gmail also throttles bursts, hence the 1 email/s pace.

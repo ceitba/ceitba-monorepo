@@ -12,7 +12,8 @@ import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.digest.DigestDeliveryRepository;
 import org.ceitba.api.repository.digest.DigestIssueRepository;
 import org.ceitba.api.service.mail.EmailSendException;
-import org.ceitba.api.service.mail.EmailSender;
+import org.ceitba.api.service.mail.MailQuotaExhaustedException;
+import org.ceitba.api.service.mail.MailSendService;
 import org.ceitba.api.web.digest.dto.DigestDtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,20 +58,23 @@ public class DigestService {
     private final UserRepository users;
     private final DigestComposer composer;
     private final DigestUnsubscribeTokens tokens;
-    private final EmailSender sender;
+    private final MailSendService sender;
+    private final DigestTrackingService tracking;
     private final DigestProperties props;
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public DigestService(DigestIssueRepository issues, DigestDeliveryRepository deliveries, UserRepository users,
-                         DigestComposer composer, DigestUnsubscribeTokens tokens, EmailSender sender,
-                         DigestProperties props, ApplicationEventPublisher events, Clock clock) {
+                         DigestComposer composer, DigestUnsubscribeTokens tokens, MailSendService sender,
+                         DigestTrackingService tracking, DigestProperties props, ApplicationEventPublisher events,
+                         Clock clock) {
         this.issues = issues;
         this.deliveries = deliveries;
         this.users = users;
         this.composer = composer;
         this.tokens = tokens;
         this.sender = sender;
+        this.tracking = tracking;
         this.props = props;
         this.events = events;
         this.clock = clock;
@@ -81,10 +85,34 @@ public class DigestService {
     @Transactional(readOnly = true)
     public List<DigestDtos.Summary> list() {
         var all = issues.findAllByOrderByWeekStartDesc();
-        var counts = counts(all.stream().map(DigestIssue::getId).toList());
-        return all.stream().map(i -> new DigestDtos.Summary(i.getId(), i.getWeekStart(), i.getWeekStart().plusDays(6),
-            i.getSubject(), i.getStatus(), i.getAutoSendAt(), i.getSentAt(), i.getCreatedAt(),
-            counts.getOrDefault(i.getId(), DigestDtos.Counts.ZERO))).toList();
+        var ids = all.stream().map(DigestIssue::getId).toList();
+        var counts = counts(ids);
+        var engagement = tracking.engagement(ids);
+        var progress = sendingProgress();
+        return all.stream().map(i -> {
+            var e = engagement.getOrDefault(i.getId(), DigestTrackingService.Engagement.ZERO);
+            var p = progress.get(i.getId());
+            return new DigestDtos.Summary(i.getId(), i.getWeekStart(), i.getWeekStart().plusDays(6),
+                i.getSubject(), i.getStatus(), i.getAutoSendAt(), i.getSentAt(), i.getCreatedAt(),
+                counts.getOrDefault(i.getId(), DigestDtos.Counts.ZERO),
+                p == null ? null : p.resumeAt(), p == null ? null : p.estimatedFinishAt(),
+                e.openRate(), e.clickRate());
+        }).toList();
+    }
+
+    // The sending account's rolling 24h quota.
+    @Transactional(readOnly = true)
+    public DigestDtos.Quota quota() {
+        var q = sender.status();
+        return new DigestDtos.Quota(q.account(), q.limit(), q.usedLast24h(), q.remaining(),
+            odt(q.pausedUntil()), q.pauseReason(), odt(q.nextCapacityAt()));
+    }
+
+    // Aggregate open/click stats of an issue (never per person).
+    @Transactional(readOnly = true)
+    public DigestDtos.Stats stats(UUID id) {
+        load(id);
+        return tracking.stats(id);
     }
 
     @Transactional(readOnly = true)
@@ -146,7 +174,8 @@ public class DigestService {
     }
 
     // Sends the `me` rendering to the caller now. Ignores their opt-out, never
-    // the domain guard. Any status.
+    // the domain guard. Any status. Consumes sending quota (429
+    // MAIL_QUOTA_EXHAUSTED when there is none) and is not tracked.
     @Transactional(readOnly = true)
     public String sendTest(UUID id, UUID userId) {
         var user = users.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
@@ -160,6 +189,11 @@ public class DigestService {
         try {
             sender.send(composer.email(issue, template, userId, to, true));
         } catch (EmailSendException e) {
+            // Gmail's own daily limit: the account is now paused, same 429.
+            if (e.kind() == EmailSendException.Kind.QUOTA) {
+                throw new MailQuotaExhaustedException(sender.account(),
+                    sender.readyAt().orElse(clock.instant().plus(MailSendService.WINDOW)));
+            }
             throw new ExternalApiException("mail", "test send", e);
         }
         return to;
@@ -284,10 +318,36 @@ public class DigestService {
         var evts = candidates.events().stream().map(e -> new DigestDtos.EventItem(e.id(), e.title(), e.eventDate(),
             e.startTime(), e.endTime(), e.location(), ref(e.organization()), exE.contains(e.id()))).toList();
         long estimate = composer.recipients().size();
+        var p = DigestIssue.SENDING.equals(i.getStatus()) ? sendingProgress().get(i.getId()) : null;
         return new DigestDtos.Detail(i.getId(), i.getWeekStart(), i.getWeekStart().plusDays(6), i.getSubject(),
             i.getIntro(), i.getStatus(), i.getAutoSendAt(), i.getSentAt(),
             counts(List.of(i.getId())).getOrDefault(i.getId(), DigestDtos.Counts.ZERO),
-            estimate, articles, evts);
+            estimate, articles, evts,
+            p == null ? null : p.resumeAt(), p == null ? null : p.estimatedFinishAt());
+    }
+
+    record Progress(OffsetDateTime resumeAt, OffsetDateTime estimatedFinishAt) {}
+
+    // For each sending issue: when the paused account resumes (null = not
+    // paused) and when its last email should go out. The worker sends the
+    // issues in order (oldest week first), so each estimate includes the
+    // pending emails of the issues before it.
+    private Map<UUID, Progress> sendingProgress() {
+        var sendingIds = issues.findSendingIds();
+        if (sendingIds.isEmpty()) return Map.of();
+        var pending = counts(sendingIds);
+        var resumeAt = odt(sender.readyAt().orElse(null));
+        var out = new HashMap<UUID, Progress>();
+        long cumulative = 0;
+        for (UUID id : sendingIds) {
+            cumulative += pending.getOrDefault(id, DigestDtos.Counts.ZERO).pending();
+            out.put(id, new Progress(resumeAt, odt(sender.estimateFinish(cumulative, props.sendInterval()))));
+        }
+        return out;
+    }
+
+    private static OffsetDateTime odt(java.time.Instant i) {
+        return i == null ? null : i.atZone(ClockConfig.ZONE).toOffsetDateTime();
     }
 
     private Map<UUID, DigestDtos.Counts> counts(List<UUID> ids) {

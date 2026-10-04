@@ -48,6 +48,13 @@ public class DigestController {
         return service.list();
     }
 
+    // The sending account's rolling 24h quota and any active pause.
+    @GetMapping("/quota")
+    @PreAuthorize("hasRole('STAFF')")
+    public DigestDtos.Quota quota() {
+        return service.quota();
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('STAFF')")
     public ResponseEntity<DigestDtos.Detail> create(@RequestBody @Valid DigestDtos.CreateRequest req) {
@@ -58,6 +65,13 @@ public class DigestController {
     @PreAuthorize("hasRole('STAFF')")
     public DigestDtos.Detail get(@PathVariable UUID id) {
         return service.detail(id);
+    }
+
+    // Aggregate opens/clicks (never per person).
+    @GetMapping(ID + "/stats")
+    @PreAuthorize("hasRole('STAFF')")
+    public DigestDtos.Stats stats(@PathVariable UUID id) {
+        return service.stats(id);
     }
 
     @PatchMapping(ID)
@@ -78,6 +92,7 @@ public class DigestController {
             .body(service.previewHtml(id, user.getId()));
     }
 
+    // Consumes sending quota: 429 MAIL_QUOTA_EXHAUSTED (with resumeAt) when none is left.
     @PostMapping(ID + "/test")
     @PreAuthorize("hasRole('STAFF')")
     public DigestDtos.TestSendResponse test(@PathVariable UUID id, @CurrentUser User user) {

@@ -21,6 +21,7 @@ import java.util.Set;
 // weekly digest one-click unsubscribe (signed token in the URL) and the
 // digest's correction vote page (GET and POST, signed token): a stale
 // session cookie of the person following the link must not reject it.
+// Same for the digest's open pixel and click redirects (/v1/mail/**).
 @Component
 public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
 
@@ -37,6 +38,10 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
 
     // Token-authenticated for every method.
     static final Set<String> TOKEN_PATHS_ANY_METHOD = Set.of("/v1/digests/correction-vote");
+
+    // Public, never authenticated: the digest's open pixel and click
+    // redirects (a stale cookie of the reader must not turn them into 401s).
+    static final String MAIL_TRACKING_PREFIX = "/v1/mail/";
 
     @Override
     public String resolve(HttpServletRequest request) {
@@ -60,7 +65,7 @@ public class CookieOrHeaderBearerTokenResolver implements BearerTokenResolver {
         String uri = request.getRequestURI();
         String ctx = request.getContextPath();
         String path = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) ? uri.substring(ctx.length()) : uri;
-        if (TOKEN_PATHS_ANY_METHOD.contains(path)) return true;
+        if (TOKEN_PATHS_ANY_METHOD.contains(path) || path.startsWith(MAIL_TRACKING_PREFIX)) return true;
         if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
         return TOKEN_ENDPOINTS.contains(path);
     }

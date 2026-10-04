@@ -84,7 +84,7 @@ class DigestEndpointsIT {
     @BeforeEach
     void seed() {
         jdbc.execute("""
-            TRUNCATE public.digest_deliveries, public.digest_issues, public.user_follows,
+            TRUNCATE public.digest_deliveries, public.digest_issues, public.user_follows, public.mail_send_log, public.mail_account_state,
                      public.articles, public.news_events, public.organizations, public."user" CASCADE
             """);
         var ceitba = orgs.save(new Organization("ceitba", "CEITBA", "Centro de Estudiantes"));

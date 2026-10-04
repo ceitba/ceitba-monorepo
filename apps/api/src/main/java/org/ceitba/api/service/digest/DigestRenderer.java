@@ -46,6 +46,8 @@ public final class DigestRenderer {
     // Footer copy (docs/WEEKLY-DIGEST.md).
     static final String WHY = "Recibís este resumen semanal porque seguís a CEITBA en ITBA News.";
     static final String UNSUBSCRIBE = "Dejar de recibir este resumen";
+    // Open/click tracking notice (docs/WEEKLY-DIGEST.md).
+    static final String TRACKING = "Medimos aperturas y clics para mejorar el resumen.";
 
     // Palette (ItbaNews EDITORIAL_UI_SYSTEM.md).
     private static final String PRIMARY = "#1A3C6E";
@@ -70,12 +72,12 @@ public final class DigestRenderer {
         String muted = "font-family:" + BODY + ";font-size:13px;line-height:21px;color:" + INK_2 + ";";
         String htmlFooterStart = "<tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\">"
             + "<div style=\"border-top:1px solid " + BORDER + ";padding-top:20px;" + muted + "\">"
-            + "<p style=\"margin:0 0 10px 0;\">" + esc(WHY) + "</p>"
+            + "<p style=\"margin:0 0 10px 0;\">" + esc(WHY) + " " + esc(TRACKING) + "</p>"
             + "<p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"" + linkStyle + "\" href=\"";
         String htmlFooterEnd = "\">" + esc(UNSUBSCRIBE) + "</a></p>"
             + "<p style=\"margin:0;\">CEITBA · Centro de Estudiantes del ITBA</p>"
             + "</div></td></tr></table></td></tr></table></body></html>";
-        String textFooterStart = "\n--\n" + WHY + "\n" + UNSUBSCRIBE + ": ";
+        String textFooterStart = "\n--\n" + WHY + "\n" + TRACKING + "\n" + UNSUBSCRIBE + ": ";
         return new Template(htmlBody(in), htmlFooterStart, htmlFooterEnd, textBody(in), textFooterStart);
     }
 
