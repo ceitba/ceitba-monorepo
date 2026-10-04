@@ -3,6 +3,10 @@ package org.ceitba.api.service.mail;
 // Transport-agnostic email sending (docs/WEEKLY-DIGEST.md). The SMTP
 // implementation (SmtpEmailSender) can be swapped for an HTTP API provider
 // without touching the callers. MAIL_ENABLED=false wires LoggingEmailSender.
+// Every email currently goes out as the one configured account (MAIL_FROM).
+// Sending as other identities (e.g. each org's own account via the Gmail API
+// and OAuth) would add a sender identity to OutgoingEmail and let the
+// implementation pick credentials per identity; callers stay the same.
 public interface EmailSender {
 
     // Throws EmailSendException; its kind() tells the caller whether the

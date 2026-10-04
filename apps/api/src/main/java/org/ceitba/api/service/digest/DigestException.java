@@ -10,6 +10,7 @@ public class DigestException extends DomainException {
         INVALID_WEEK_START(400),
         DIGEST_EXISTS(409),
         DIGEST_NOT_EDITABLE(409),
+        DIGEST_EMPTY(409),
         EMAIL_NOT_ALLOWED(422),
         INVALID_TOKEN(400);
 

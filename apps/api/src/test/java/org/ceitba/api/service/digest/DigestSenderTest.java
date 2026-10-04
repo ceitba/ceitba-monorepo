@@ -10,7 +10,6 @@ import org.ceitba.api.repository.digest.DigestDeliveryRepository;
 import org.ceitba.api.repository.digest.DigestIssueRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
-import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.crypto.ContentHmac;
 import org.ceitba.api.service.mail.EmailSendException;
@@ -52,6 +51,7 @@ class DigestSenderTest {
     final DigestDeliveryRepository deliveries = mock(DigestDeliveryRepository.class);
     final UserRepository users = mock(UserRepository.class);
     final ArticleRepository articles = mock(ArticleRepository.class);
+    final UserFollowRepository follows = mock(UserFollowRepository.class);
 
     // userId -> status ("pending" | "sent" | "failed"); removed = dropped.
     final Map<UUID, String> rows = new java.util.LinkedHashMap<>();
@@ -65,14 +65,14 @@ class DigestSenderTest {
     DigestSender sender(int dailyLimit) {
         var props = new DigestProperties(null, null, null, dailyLimit, Duration.ofMillis(1), null, false);
         var tokens = new DigestUnsubscribeTokens(ContentHmac.fromJwtSecret("dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch"));
-        var composer = new DigestComposer(articles, mock(NewsEventRepository.class), mock(OrganizationRepository.class),
-            mock(UserFollowRepository.class), users, tokens, props);
+        var composer = new DigestComposer(articles, mock(NewsEventRepository.class), follows, users, tokens,
+            (reader, issue) -> Optional.empty(), props);
         EmailSender mail = (OutgoingEmail e) -> {
             var ex = failure.apply(e.to());
             if (ex != null) throw ex;
             sentTo.add(e.to());
         };
-        return new DigestSender(issues, deliveries, users, composer, mail, props,
+        return new DigestSender(issues, deliveries, composer, mail, props,
             mock(PlatformTransactionManager.class), Clock.fixed(Instant.parse("2026-10-05T15:00:00Z"), ZoneOffset.UTC),
             d -> sleeps.incrementAndGet());
     }
@@ -86,7 +86,8 @@ class DigestSenderTest {
         when(issues.findStatusForShare(ISSUE)).thenAnswer(i -> Optional.of(issueStatus));
         when(issues.markSentIfDone(eq(ISSUE), any())).thenAnswer(i -> rows.containsValue("pending") ? 0 : 1);
 
-        // One independent article: every reader has a non-empty digest.
+        when(follows.existsByUserIdAndOrganization(any(), eq("ceitba"))).thenReturn(true);
+        // One article: the issue is not empty.
         var a = new Article("a1", "Título", "Resumen", List.of("p"), "general", List.of("x"));
         a.setPublishedAt(LocalDate.of(2026, 9, 30));
         when(articles.findPublishedBetween(any(), any())).thenReturn(List.of(a));
@@ -204,11 +205,35 @@ class DigestSenderTest {
     void dropsRecipientsThatNoLongerQualify() {
         var off = recipient("off@itba.edu.ar", false);
         var foreign = recipient("x@gmail.com");
+        var unfollowed = recipient("gone@itba.edu.ar");
+        when(follows.existsByUserIdAndOrganization(unfollowed, "ceitba")).thenReturn(false);
         recipient("ok@itba.edu.ar");
 
         sender(1500).runPending();
 
         assertThat(sentTo).containsExactly("ok@itba.edu.ar");
-        assertThat(rows).doesNotContainKeys(off, foreign);
+        assertThat(rows).doesNotContainKeys(off, foreign, unfollowed);
+    }
+
+    @Test
+    void everyEmailCarriesItsOwnUnsubscribeHeaders() {
+        var ids = List.of(recipient("a@itba.edu.ar"), recipient("b@itba.edu.ar"));
+        var captured = new ArrayList<OutgoingEmail>();
+        var props = new DigestProperties(null, null, null, 1500, Duration.ZERO, null, false);
+        var tokens = new DigestUnsubscribeTokens(ContentHmac.fromJwtSecret("dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch"));
+        var composer = new DigestComposer(articles, mock(NewsEventRepository.class), follows, users, tokens,
+            (reader, issue) -> Optional.empty(), props);
+        new DigestSender(issues, deliveries, composer, captured::add, props, mock(PlatformTransactionManager.class),
+            Clock.systemUTC(), d -> { }).runPending();
+
+        assertThat(captured).hasSize(2);
+        for (int i = 0; i < 2; i++) {
+            var mail = captured.get(i);
+            String token = tokens.issue(ids.get(i));
+            assertThat(mail.headers().get("List-Unsubscribe"))
+                .isEqualTo("<https://ceitba.org.ar/api/v1/digests/unsubscribe?token=" + token + ">");
+            assertThat(mail.headers()).containsEntry("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            assertThat(mail.html()).contains("https://ceitba.org.ar/newsletter/unsubscribe?token=" + token);
+        }
     }
 }

@@ -71,8 +71,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
         Pageable pageable
     );
 
-    // Weekly digest audience (service/digest): users who did not opt out.
-    List<User> findByDigestEmailEnabledTrue();
+    // Weekly digest audience (service/digest): followers of `orgSlug` (CEITBA)
+    // who did not opt out. The domain guard is applied by the caller.
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.digestEmailEnabled = true
+          AND EXISTS (SELECT 1 FROM UserFollow f WHERE f.userId = u.id AND f.organization = :orgSlug)
+        ORDER BY u.id
+        """)
+    List<User> findDigestAudience(@Param("orgSlug") String orgSlug);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE User u SET u.digestEmailEnabled = :enabled WHERE u.id = :id")

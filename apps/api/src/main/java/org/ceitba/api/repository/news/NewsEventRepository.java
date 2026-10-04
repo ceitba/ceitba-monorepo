@@ -32,11 +32,11 @@ public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
         Pageable pageable
     );
 
-    // Weekly digest candidates (service/digest): org events on [from, to].
+    // Weekly digest candidates (service/digest): every event on [from, to].
     @Query("""
-        SELECT e FROM NewsEvent e JOIN FETCH e.organization
+        SELECT e FROM NewsEvent e LEFT JOIN FETCH e.organization
         WHERE e.eventDate >= :from AND e.eventDate <= :to
         ORDER BY e.eventDate ASC, e.startTime ASC, e.id ASC
         """)
-    List<NewsEvent> findOrgEventsBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+    List<NewsEvent> findBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

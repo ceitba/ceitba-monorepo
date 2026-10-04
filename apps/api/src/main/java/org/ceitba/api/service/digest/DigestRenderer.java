@@ -6,24 +6,46 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
-import java.util.List;
 import java.util.Locale;
 
-// Renders one reader's digest as table-based, inline-styled HTML (what email
-// clients reliably support) plus a plain-text alternative. Warm/editorial
-// look of ItbaNews (DESING.md / EDITORIAL_UI_SYSTEM.md) with web-safe font
-// fallbacks. Every piece of user content goes through esc()/attr().
+// Renders an issue as table-based, inline-styled HTML (what email clients
+// reliably support) plus a plain-text alternative. Warm/editorial look of
+// ItbaNews (DESING.md / EDITORIAL_UI_SYSTEM.md) with web-safe font fallbacks.
+// Every piece of user content goes through esc()/attr().
+//
+// Composable: template() renders the shared content once per issue;
+// Template.forReader() then only splices in each recipient's optional
+// personal section (DigestPersonalSection, between the content and the
+// footer) and their unsubscribe link.
 public final class DigestRenderer {
 
     public record Input(String subject,
                         DigestWeek week,
                         String intro,
-                        DigestContent.Personal digest,
-                        boolean allOrgs,
-                        String unsubscribeUrl,
+                        DigestContent.Shared digest,
                         String publicBaseUrl) {}
 
     public record Output(String html, String text) {}
+
+    // The shared rendering, cut where the per-reader parts go.
+    public record Template(String htmlBody, String htmlFooterStart, String htmlFooterEnd,
+                           String textBody, String textFooterStart) {
+
+        public Output forReader(DigestPersonalSection.Section personal, String unsubscribeUrl) {
+            boolean hasPersonal = personal != null;
+            String html = htmlBody
+                + (hasPersonal && personal.html() != null ? personal.html() : "")
+                + htmlFooterStart + attr(unsubscribeUrl) + htmlFooterEnd;
+            String text = textBody
+                + (hasPersonal && personal.text() != null ? "\n" + personal.text().strip() + "\n" : "")
+                + textFooterStart + unsubscribeUrl + "\n";
+            return new Output(html, text);
+        }
+    }
+
+    // Footer copy (docs/WEEKLY-DIGEST.md).
+    static final String WHY = "Recibís este resumen semanal porque seguís a CEITBA en ITBA News.";
+    static final String UNSUBSCRIBE = "Dejar de recibir este resumen";
 
     // Palette (ItbaNews EDITORIAL_UI_SYSTEM.md).
     private static final String PRIMARY = "#1A3C6E";
@@ -43,13 +65,27 @@ public final class DigestRenderer {
 
     private DigestRenderer() {}
 
-    public static Output render(Input in) {
-        return new Output(html(in), text(in));
+    public static Template template(Input in) {
+        String linkStyle = "color:" + PRIMARY + ";text-decoration:underline;";
+        String muted = "font-family:" + BODY + ";font-size:13px;line-height:21px;color:" + INK_2 + ";";
+        String htmlFooterStart = "<tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\">"
+            + "<div style=\"border-top:1px solid " + BORDER + ";padding-top:20px;" + muted + "\">"
+            + "<p style=\"margin:0 0 10px 0;\">" + esc(WHY) + "</p>"
+            + "<p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"" + linkStyle + "\" href=\"";
+        String htmlFooterEnd = "\">" + esc(UNSUBSCRIBE) + "</a></p>"
+            + "<p style=\"margin:0;\">CEITBA · Centro de Estudiantes del ITBA</p>"
+            + "</div></td></tr></table></td></tr></table></body></html>";
+        String textFooterStart = "\n--\n" + WHY + "\n" + UNSUBSCRIBE + ": ";
+        return new Template(htmlBody(in), htmlFooterStart, htmlFooterEnd, textBody(in), textFooterStart);
+    }
+
+    public static Output render(Input in, DigestPersonalSection.Section personal, String unsubscribeUrl) {
+        return template(in).forReader(personal, unsubscribeUrl);
     }
 
     // ---------------------------------------------------------------- HTML
 
-    private static String html(Input in) {
+    private static String htmlBody(Input in) {
         var d = in.digest();
         var sb = new StringBuilder(8192);
         sb.append("<!DOCTYPE html><html lang=\"es\"><head>")
@@ -64,7 +100,7 @@ public final class DigestRenderer {
           .append("<body style=\"margin:0;padding:0;background:").append(SURFACE).append(";\">")
           // Preheader (inbox preview line), hidden in the body.
           .append("<div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">")
-          .append(esc(preheader(in))).append("</div>")
+          .append(esc(preheader(d))).append("</div>")
           .append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:")
           .append(SURFACE).append(";\"><tr><td align=\"center\" style=\"padding:24px 12px;\">")
           .append("<table role=\"presentation\" class=\"container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" ")
@@ -76,7 +112,7 @@ public final class DigestRenderer {
 
         sectionLabel(sb, "Lo que pasó", "Artículos publicados del " + in.week().rangeLabel());
         if (d.articles().isEmpty()) {
-            emptyRow(sb, "Esta semana no hubo artículos nuevos de las organizaciones que seguís.");
+            emptyRow(sb, "Esta semana no hubo artículos nuevos.");
         } else {
             for (var a : d.articles()) article(sb, a, in.publicBaseUrl());
         }
@@ -92,9 +128,6 @@ public final class DigestRenderer {
                   "font-family:" + BODY + ";font-size:15px;font-weight:600;color:" + PRIMARY + ";text-decoration:none;"))
               .append("</td></tr>");
         }
-
-        footer(sb, in);
-        sb.append("</table></td></tr></table></body></html>");
         return sb.toString();
     }
 
@@ -145,7 +178,7 @@ public final class DigestRenderer {
         }
         sb.append("<div style=\"font-family:").append(MONO).append(";font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:")
           .append(INK_2).append(";\">")
-          .append(esc(a.organization() != null ? a.organization().name() : "Independiente"));
+          .append(esc(orgLabel(a.organization())));
         if (a.publishedAt() != null) sb.append(" · ").append(esc(shortDate(a.publishedAt())));
         sb.append("</div>")
           .append("<h2 style=\"margin:6px 0 6px 0;font-family:").append(DISPLAY)
@@ -191,36 +224,19 @@ public final class DigestRenderer {
         sb.append("</td></tr></table></td></tr>");
     }
 
-    private static void footer(StringBuilder sb, Input in) {
-        String muted = "font-family:" + BODY + ";font-size:13px;line-height:21px;color:" + INK_2 + ";";
-        String linkStyle = "color:" + PRIMARY + ";text-decoration:underline;";
-        sb.append("<tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\">")
-          .append("<div style=\"border-top:1px solid ").append(BORDER).append(";padding-top:20px;").append(muted).append("\">")
-          .append("<p style=\"margin:0 0 10px 0;\">").append(esc(whyLine(in))).append("</p>")
-          .append("<p style=\"margin:0 0 10px 0;\">")
-          .append(link(in.publicBaseUrl() + "/organizations", "Elegí qué organizaciones seguir", linkStyle))
-          .append(" · ")
-          .append(link(in.unsubscribeUrl(), "Dejar de recibir este resumen", linkStyle))
-          .append("</p>")
-          .append("<p style=\"margin:0;\">CEITBA · Centro de Estudiantes del ITBA</p>")
-          .append("</div></td></tr>");
-    }
-
     // ---------------------------------------------------------------- text
 
-    private static String text(Input in) {
+    private static String textBody(Input in) {
         var d = in.digest();
         var sb = new StringBuilder(2048);
         sb.append("LA SEMANA EN ITBA\n").append(capitalize(in.week().rangeLabel())).append("\n\n");
         if (in.intro() != null && !in.intro().isBlank()) sb.append(in.intro().strip()).append("\n\n");
 
         sb.append("LO QUE PASÓ\n").append("-----------\n");
-        if (d.articles().isEmpty()) {
-            sb.append("Esta semana no hubo artículos nuevos de las organizaciones que seguís.\n");
-        }
+        if (d.articles().isEmpty()) sb.append("Esta semana no hubo artículos nuevos.\n");
         for (var a : d.articles()) {
             sb.append("\n* ").append(oneLine(a.title())).append('\n')
-              .append("  ").append(a.organization() != null ? oneLine(a.organization().name()) : "Independiente");
+              .append("  ").append(oneLine(orgLabel(a.organization())));
             if (a.publishedAt() != null) sb.append(" · ").append(shortDate(a.publishedAt()));
             sb.append('\n');
             if (a.excerpt() != null && !a.excerpt().isBlank()) sb.append("  ").append(oneLine(a.excerpt())).append('\n');
@@ -238,32 +254,16 @@ public final class DigestRenderer {
             if (e.organization() != null) sb.append("  ").append(oneLine(e.organization().name())).append('\n');
         }
         if (!d.events().isEmpty()) sb.append("\nTodos los eventos: ").append(in.publicBaseUrl()).append("/events\n");
-
-        sb.append("\n--\n").append(whyLine(in)).append('\n')
-          .append("Elegí qué organizaciones seguir: ").append(in.publicBaseUrl()).append("/organizations\n")
-          .append("Dejar de recibir este resumen: ").append(in.unsubscribeUrl()).append('\n');
         return sb.toString();
     }
 
     // ---------------------------------------------------------------- helpers
 
-    static String whyLine(Input in) {
-        if (in.allOrgs()) {
-            return "Vista previa: así lo vería alguien que sigue a todas las organizaciones.";
-        }
-        List<DigestContent.Org> orgs = in.digest().followedOrgs() == null ? List.of() : in.digest().followedOrgs();
-        if (orgs.isEmpty()) {
-            return "Recibís este resumen semanal de ITBA News porque tenés cuenta en CEITBA.";
-        }
-        var names = orgs.stream().map(o -> oneLine(o.name())).toList();
-        String list = names.size() == 1 ? names.get(0)
-            : String.join(", ", names.subList(0, names.size() - 1)) + " y " + names.get(names.size() - 1);
-        return "Recibís este resumen semanal de ITBA News porque seguís a "
-            + (names.size() == 1 ? "1 organización: " : names.size() + " organizaciones: ") + list + ".";
+    private static String orgLabel(DigestContent.Org org) {
+        return org != null ? org.name() : "Independiente";
     }
 
-    private static String preheader(Input in) {
-        var d = in.digest();
+    private static String preheader(DigestContent.Shared d) {
         if (!d.articles().isEmpty()) return oneLine(d.articles().get(0).title());
         if (!d.events().isEmpty()) return "Lo que viene: " + oneLine(d.events().get(0).title());
         return "Lo que pasó y lo que viene en ITBA";
@@ -289,7 +289,7 @@ public final class DigestRenderer {
         return esc(s.strip()).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>");
     }
 
-    static String esc(String s) {
+    public static String esc(String s) {
         if (s == null) return "";
         var sb = new StringBuilder(s.length() + 16);
         for (int i = 0; i < s.length(); i++) {

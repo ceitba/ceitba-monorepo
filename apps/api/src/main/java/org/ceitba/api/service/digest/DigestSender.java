@@ -3,7 +3,6 @@ package org.ceitba.api.service.digest;
 import org.ceitba.api.config.DigestProperties;
 import org.ceitba.api.domain.digest.DigestDelivery;
 import org.ceitba.api.domain.digest.DigestIssue;
-import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.digest.DigestDeliveryRepository;
 import org.ceitba.api.repository.digest.DigestIssueRepository;
 import org.ceitba.api.service.mail.EmailSendException;
@@ -20,7 +19,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -34,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //   - throttled (digest.send-interval between emails)
 //   - at most digest.daily-limit attempts per rolling 24h across issues;
 //     when the quota is used up the run stops and a later tick resumes
+//   - a pending recipient who unsubscribed/unfollowed CEITBA meanwhile is dropped
 //   - a recipient problem marks that delivery failed and goes on; a
 //     transport problem (auth, quota, connection) stops the run
 //   - no pending row left: the issue becomes `sent`
@@ -55,7 +54,6 @@ public class DigestSender {
 
     private final DigestIssueRepository issues;
     private final DigestDeliveryRepository deliveries;
-    private final UserRepository users;
     private final DigestComposer composer;
     private final EmailSender sender;
     private final DigestProperties props;
@@ -65,18 +63,17 @@ public class DigestSender {
     private final AtomicBoolean running = new AtomicBoolean();
 
     @Autowired
-    public DigestSender(DigestIssueRepository issues, DigestDeliveryRepository deliveries, UserRepository users,
+    public DigestSender(DigestIssueRepository issues, DigestDeliveryRepository deliveries,
                         DigestComposer composer, EmailSender sender, DigestProperties props,
                         PlatformTransactionManager txManager, Clock clock) {
-        this(issues, deliveries, users, composer, sender, props, txManager, clock, d -> Thread.sleep(d));
+        this(issues, deliveries, composer, sender, props, txManager, clock, d -> Thread.sleep(d));
     }
 
-    DigestSender(DigestIssueRepository issues, DigestDeliveryRepository deliveries, UserRepository users,
+    DigestSender(DigestIssueRepository issues, DigestDeliveryRepository deliveries,
                  DigestComposer composer, EmailSender sender, DigestProperties props,
                  PlatformTransactionManager txManager, Clock clock, Sleeper sleeper) {
         this.issues = issues;
         this.deliveries = deliveries;
-        this.users = users;
         this.composer = composer;
         this.sender = sender;
         this.props = props;
@@ -109,8 +106,8 @@ public class DigestSender {
         DigestIssue entity = issues.findById(issueId).orElse(null);
         if (entity == null || !DigestIssue.SENDING.equals(entity.getStatus())) return Outcome.CANCELLED;
         var issue = DigestComposer.Issue.of(entity);
-        var candidates = composer.candidates(issue.week());
-        var orgIndex = composer.organizations();
+        // Shared content: rendered once per run, only the per-reader parts vary.
+        var template = composer.template(issue, composer.content(issue));
 
         while (true) {
             List<DigestDelivery> batch = deliveries.findPending(issueId, Limit.of(PAGE));
@@ -125,7 +122,7 @@ public class DigestSender {
                     log.info("Digest sending paused: daily limit of {} reached", props.dailyLimit());
                     return Outcome.STOPPED;
                 }
-                Step step = tx.execute(s -> sendOne(issue, candidates, orgIndex, d));
+                Step step = tx.execute(s -> sendOne(issue, template, d));
                 switch (step) {
                     case CANCELLED -> {
                         log.info("Digest {}: no longer sending, stopped", issue.week().weekStart());
@@ -150,23 +147,18 @@ public class DigestSender {
     }
 
     // Runs inside one transaction (see the class comment).
-    Step sendOne(DigestComposer.Issue issue, DigestContent.Candidates candidates,
-                 Map<String, DigestContent.Org> orgIndex, DigestDelivery d) {
+    Step sendOne(DigestComposer.Issue issue, DigestRenderer.Template template, DigestDelivery d) {
         String status = issues.findStatusForShare(issue.id()).orElse(null);
         if (!DigestIssue.SENDING.equals(status)) return Step.CANCELLED;
 
-        var user = users.findById(d.getUserId()).orElse(null);
-        if (user == null || !user.isDigestEmailEnabled() || !props.isAllowedRecipient(d.getEmail())) {
-            deliveries.deletePending(issue.id(), d.getUserId());
-            return Step.SKIPPED;
-        }
-        var personal = composer.forReader(issue, candidates, composer.followedSlugs(d.getUserId()), orgIndex);
-        if (personal.isEmpty()) {
+        // Unsubscribed, unfollowed CEITBA or left the allowed domains since
+        // the snapshot: dropped.
+        if (!composer.stillEligible(d.getUserId(), d.getEmail())) {
             deliveries.deletePending(issue.id(), d.getUserId());
             return Step.SKIPPED;
         }
         try {
-            sender.send(composer.email(issue, personal, d.getUserId(), d.getEmail(), false));
+            sender.send(composer.email(issue, template, d.getUserId(), d.getEmail(), false));
         } catch (EmailSendException e) {
             if (e.kind() == EmailSendException.Kind.TRANSIENT) {
                 log.warn("Digest sending paused, transport problem (retried later): {}", e.getMessage());

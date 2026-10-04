@@ -12,12 +12,16 @@ class DigestRendererTest {
 
     static final DigestWeek WEEK = new DigestWeek(LocalDate.of(2026, 9, 28));
     static final DigestContent.Org ORG = new DigestContent.Org("ceitba", "CEITBA <b>&</b>");
+    static final String UNSUB = "https://ceitba.org.ar/newsletter/unsubscribe?token=abc";
+
+    static DigestRenderer.Template template(String intro, DigestContent.Article a, DigestContent.Event e) {
+        var shared = new DigestContent.Shared(a == null ? List.of() : List.of(a), e == null ? List.of() : List.of(e));
+        return DigestRenderer.template(new DigestRenderer.Input("Asunto", WEEK, intro, shared,
+            "https://ceitba.org.ar/newsletter"));
+    }
 
     static DigestRenderer.Output render(String intro, DigestContent.Article a, DigestContent.Event e) {
-        var personal = new DigestContent.Personal(
-            a == null ? List.of() : List.of(a), e == null ? List.of() : List.of(e), List.of(ORG));
-        return DigestRenderer.render(new DigestRenderer.Input("Asunto", WEEK, intro, personal, false,
-            "https://ceitba.org.ar/newsletter/unsubscribe?token=abc", "https://ceitba.org.ar/newsletter"));
+        return template(intro, a, e).forReader(null, UNSUB);
     }
 
     @Test
@@ -36,6 +40,9 @@ class DigestRendererTest {
         assertThat(html).contains("CEITBA &lt;b&gt;&amp;&lt;/b&gt;");
         // The id is URL-encoded in the link, so it cannot break out of href.
         assertThat(html).contains("/articles/id%22%3E%3Cscript%3E");
+        // The unsubscribe URL is an attribute too.
+        assertThat(template(null, null, null).forReader(null, "https://x/\"><b>").html())
+            .contains("href=\"https://x/&quot;&gt;&lt;b&gt;\"");
     }
 
     @Test
@@ -50,21 +57,38 @@ class DigestRendererTest {
     }
 
     @Test
-    void sectionsLinksAndPlainText() {
+    void sectionsLinksFooterAndPlainText() {
         var a = new DigestContent.Article("a1", "Título", "Resumen", null, LocalDate.of(2026, 9, 30), null);
         var e = new DigestContent.Event("e1", "Charla", LocalDate.of(2026, 10, 6),
-            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", ORG);
+            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", null);
         var out = render(null, a, e);
         assertThat(out.html()).contains("La semana en ITBA", "Lo que pasó", "Lo que viene",
-            "https://ceitba.org.ar/newsletter/articles/a1", "Independiente",
-            "https://ceitba.org.ar/newsletter/unsubscribe?token=abc", "18:00 a 20:00 hs");
+            "https://ceitba.org.ar/newsletter/articles/a1", "Independiente", "Charla",
+            "href=\"" + UNSUB + "\"", "18:00 a 20:00 hs", "seguís a CEITBA en ITBA News")
+            .endsWith("</html>")
+            .doesNotContain("/organizations");
         assertThat(out.text()).contains("LO QUE PASÓ", "Título", "Charla", "Martes 6 de octubre",
-            "https://ceitba.org.ar/newsletter/articles/a1", "Dejar de recibir este resumen: https://");
-        assertThat(out.text()).contains("seguís a 1 organización");
+            "https://ceitba.org.ar/newsletter/articles/a1",
+            "seguís a CEITBA en ITBA News", "Dejar de recibir este resumen: " + UNSUB);
     }
 
     @Test
-    void emptySectionsSayso() {
+    void personalSectionGoesBetweenContentAndFooter() {
+        var t = template(null, null, null);
+        var out = t.forReader(new DigestPersonalSection.Section("<tr><td>TU CUATRI</td></tr>", "TU CUATRI"), UNSUB);
+        assertThat(out.html().indexOf("TU CUATRI"))
+            .isGreaterThan(out.html().indexOf("Lo que viene"))
+            .isLessThan(out.html().indexOf("seguís a CEITBA"));
+        assertThat(out.text().indexOf("TU CUATRI"))
+            .isGreaterThan(out.text().indexOf("LO QUE VIENE"))
+            .isLessThan(out.text().indexOf("seguís a CEITBA"));
+        // Only the per-reader parts differ between two readers.
+        var other = t.forReader(null, "https://other");
+        assertThat(other.html()).doesNotContain("TU CUATRI").contains("https://other");
+    }
+
+    @Test
+    void emptySectionsSaySo() {
         var html = render(null, null, null).html();
         assertThat(html).contains("no hubo artículos nuevos", "No hay eventos anunciados");
     }

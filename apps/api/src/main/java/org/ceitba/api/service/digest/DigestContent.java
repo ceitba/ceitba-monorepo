@@ -4,8 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-// Entity-free view of an issue's candidates (service/digest only builds them
-// from entities inside its own transactions).
+// Entity-free view of an issue's content (service/digest only builds it from
+// entities inside its own transactions).
 public final class DigestContent {
 
     private DigestContent() {}
@@ -18,10 +18,11 @@ public final class DigestContent {
     public record Event(String id, String title, LocalDate eventDate, LocalTime startTime,
                         LocalTime endTime, String location, Org organization) {}
 
+    // Every candidate of the week, before staff exclusions.
     public record Candidates(DigestWeek week, List<Article> articles, List<Event> events) {}
 
-    // One reader's digest. followedOrgs = null means "every org" (preview).
-    public record Personal(List<Article> articles, List<Event> events, List<Org> followedOrgs) {
+    // What every recipient gets: the candidates minus staff exclusions.
+    public record Shared(List<Article> articles, List<Event> events) {
         public boolean isEmpty() { return articles.isEmpty() && events.isEmpty(); }
     }
 }

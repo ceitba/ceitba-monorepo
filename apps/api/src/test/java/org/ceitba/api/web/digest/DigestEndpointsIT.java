@@ -91,17 +91,22 @@ class DigestEndpointsIT {
         var sabf = orgs.save(new Organization("sabf", "SABF", "South American Business Forum"));
 
         alice = users.save(new User(UUID.randomUUID(), "alice@itba.edu.ar", "Alice"));   // follows ceitba
-        bob = users.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));         // follows sabf
+        bob = users.save(new User(UUID.randomUUID(), "bob@itba.edu.ar", "Bob"));         // ceitba + sabf
+        var dave = users.save(new User(UUID.randomUUID(), "dave@itba.edu.ar", "Dave"));  // only sabf
         var carol = users.save(new User(UUID.randomUUID(), "carol@gmail.com", "Carol")); // not allowed
         follows.save(new UserFollow(alice.getId(), "ceitba"));
+        follows.save(new UserFollow(bob.getId(), "ceitba"));
         follows.save(new UserFollow(bob.getId(), "sabf"));
+        follows.save(new UserFollow(dave.getId(), "sabf"));
         follows.save(new UserFollow(carol.getId(), "ceitba"));
 
         article("a-ceitba", ceitba, LocalDate.of(2026, 9, 30), "published");
         article("a-sabf", sabf, LocalDate.of(2026, 10, 2), "published");
+        article("a-indep", null, LocalDate.of(2026, 9, 29), "published");
         article("a-draft", ceitba, LocalDate.of(2026, 10, 1), "draft");
         article("a-old", ceitba, LocalDate.of(2026, 9, 27), "published");
         event("e-ceitba", ceitba, LocalDate.of(2026, 10, 6));
+        event("e-general", null, LocalDate.of(2026, 10, 9));
         event("e-late", ceitba, LocalDate.of(2026, 10, 12));
     }
 
@@ -178,13 +183,16 @@ class DigestEndpointsIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.subject").value("La semana en ITBA · 28 de septiembre al 4 de octubre"))
             .andExpect(jsonPath("$.status").value("draft"))
-            .andExpect(jsonPath("$.articles.length()").value(2))
+            .andExpect(jsonPath("$.articles.length()").value(3))
             .andExpect(jsonPath("$.articles[0].id").value("a-sabf"))
             .andExpect(jsonPath("$.articles[0].organization.name").value("SABF"))
-            .andExpect(jsonPath("$.events.length()").value(1))
+            .andExpect(jsonPath("$.articles[2].id").value("a-indep"))
+            .andExpect(jsonPath("$.articles[2].organization").doesNotExist())
+            .andExpect(jsonPath("$.events.length()").value(2))
             .andExpect(jsonPath("$.events[0].id").value("e-ceitba"))
             .andExpect(jsonPath("$.events[0].startTime").value("18:00:00"))
-            // alice and bob; carol's domain is not allowed
+            .andExpect(jsonPath("$.events[1].id").value("e-general"))
+            // CEITBA followers on an allowed domain: alice and bob
             .andExpect(jsonPath("$.recipientEstimate").value(2));
 
         // What the frontend sends on every save: all five fields.
@@ -199,7 +207,7 @@ class DigestEndpointsIT {
             .andExpect(jsonPath("$.autoSendAt").value(containsString("2026-10-05T15:00")))
             .andExpect(jsonPath("$.articles[0].excluded").value(true))
             .andExpect(jsonPath("$.articles[1].excluded").value(false))
-            .andExpect(jsonPath("$.recipientEstimate").value(1));
+            .andExpect(jsonPath("$.recipientEstimate").value(2));
 
         mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON).content("""
                 {"subject":"Edición especial","intro":null,"excludedArticleIds":["a-sabf"],
@@ -209,16 +217,28 @@ class DigestEndpointsIT {
             .andExpect(jsonPath("$.autoSendAt").doesNotExist())
             .andExpect(jsonPath("$.intro").doesNotExist());
 
-        mvc.perform(get("/v1/digests/" + id + "/preview?mode=all").with(staff()))
+        mvc.perform(get("/v1/digests/" + id + "/preview").with(staff()))
             .andExpect(status().isOk())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
             .andExpect(content().string(containsString("Título a-ceitba")))
-            .andExpect(content().string(containsString("Evento e-ceitba")));
+            .andExpect(content().string(containsString("Evento e-general")))
+            .andExpect(content().string(containsString("seguís a CEITBA en ITBA News")));
+        // `mode` is accepted and ignored.
         mvc.perform(get("/v1/digests/" + id + "/preview?mode=me").with(staff()))
             .andExpect(status().isOk())
-            .andExpect(content().string(containsString("seguís a 1 organización: CEITBA")));
-        mvc.perform(get("/v1/digests/" + id + "/preview?mode=nope").with(staff()))
-            .andExpect(status().isBadRequest());
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Título a-sabf"))));
+    }
+
+    @Test
+    void sendingAnEmptyIssueIsRefused() throws Exception {
+        String id = create();
+        mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"excludedArticleIds":["a-ceitba","a-sabf","a-indep"],"excludedEventIds":["e-ceitba","e-general"]}
+                """))
+            .andExpect(status().isOk());
+        mvc.perform(post("/v1/digests/" + id + "/send").with(staff()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("DIGEST_EMPTY"));
     }
 
     @Test

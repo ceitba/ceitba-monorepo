@@ -92,19 +92,12 @@ public class DigestService {
         return detail(load(id));
     }
 
+    // Rendered as the caller would receive it (their unsubscribe link and
+    // personal section, if any).
     @Transactional(readOnly = true)
-    public String previewHtml(UUID id, String mode, UUID viewerId) {
+    public String previewHtml(UUID id, UUID viewerId) {
         var issue = DigestComposer.Issue.of(load(id));
-        var candidates = composer.candidates(issue.week());
-        if ("all".equals(mode)) {
-            return composer.render(issue, composer.forAllOrgs(issue, candidates), true, null).html();
-        }
-        if ("me".equals(mode)) {
-            var personal = composer.forReader(issue, candidates, composer.followedSlugs(viewerId),
-                composer.organizations());
-            return composer.render(issue, personal, false, viewerId).html();
-        }
-        throw new ValidationException("mode", mode, "must be 'all' or 'me'");
+        return composer.render(issue, composer.template(issue, composer.content(issue)), viewerId).html();
     }
 
     // ------------------------------------------------------------ writes
@@ -162,11 +155,10 @@ public class DigestService {
                 "Digest emails only go to " + String.join(", ", props.allowedDomains()) + " addresses");
         }
         var issue = DigestComposer.Issue.of(load(id));
-        var candidates = composer.candidates(issue.week());
-        var personal = composer.forReader(issue, candidates, composer.followedSlugs(userId), composer.organizations());
+        var template = composer.template(issue, composer.content(issue));
         String to = user.getEmail().trim();
         try {
-            sender.send(composer.email(issue, personal, userId, to, true));
+            sender.send(composer.email(issue, template, userId, to, true));
         } catch (EmailSendException e) {
             throw new ExternalApiException("mail", "test send", e);
         }
@@ -174,11 +166,16 @@ public class DigestService {
     }
 
     // draft -> sending: snapshot the recipients (pending deliveries); the
-    // worker sends after commit.
+    // worker sends after commit. An issue with nothing left to send is
+    // refused (409 DIGEST_EMPTY).
     @Transactional
     public DigestDtos.Detail send(UUID id, UUID byUserId) {
         var issue = loadForUpdate(id);
         requireDraft(issue);
+        if (composer.content(DigestComposer.Issue.of(issue)).isEmpty()) {
+            throw new DigestException(DigestException.Reason.DIGEST_EMPTY,
+                "Nothing to send: every article and event of the week is excluded or there are none");
+        }
         startSending(issue, byUserId);
         return detail(issue);
     }
@@ -220,7 +217,8 @@ public class DigestService {
         return Optional.of(issue.getId());
     }
 
-    // Drafts whose auto-send time has come. Returns the ids that started.
+    // Drafts whose auto-send time has come. Returns the ids that started. A
+    // due draft with nothing to send is cancelled (and logged) instead.
     @Transactional
     public List<UUID> startDueAutoSends() {
         var now = OffsetDateTime.now(clock);
@@ -229,6 +227,11 @@ public class DigestService {
             var issue = issues.findByIdForUpdate(id).orElse(null);
             if (issue == null || !issue.isDraft() || issue.getAutoSendAt() == null
                     || issue.getAutoSendAt().isAfter(now)) continue;
+            if (composer.content(DigestComposer.Issue.of(issue)).isEmpty()) {
+                issue.setStatus(DigestIssue.CANCELLED);
+                log.info("Digest {}: nothing to send at auto-send time, cancelled", issue.getWeekStart());
+                continue;
+            }
             startSending(issue, null);
             started.add(id);
         }
@@ -260,8 +263,7 @@ public class DigestService {
     // ------------------------------------------------------------ helpers
 
     private void startSending(DigestIssue issue, UUID byUserId) {
-        var snapshot = DigestComposer.Issue.of(issue);
-        var recipients = composer.recipients(snapshot, composer.candidates(snapshot.week()));
+        var recipients = composer.recipients();
         deliveries.saveAll(recipients.stream()
             .map(r -> new DigestDelivery(issue.getId(), r.userId(), r.email()))
             .toList());
@@ -281,7 +283,7 @@ public class DigestService {
             a.excerpt(), a.coverImage(), a.publishedAt(), ref(a.organization()), exA.contains(a.id()))).toList();
         var evts = candidates.events().stream().map(e -> new DigestDtos.EventItem(e.id(), e.title(), e.eventDate(),
             e.startTime(), e.endTime(), e.location(), ref(e.organization()), exE.contains(e.id()))).toList();
-        long estimate = composer.recipients(issue, candidates).size();
+        long estimate = composer.recipients().size();
         return new DigestDtos.Detail(i.getId(), i.getWeekStart(), i.getWeekStart().plusDays(6), i.getSubject(),
             i.getIntro(), i.getStatus(), i.getAutoSendAt(), i.getSentAt(),
             counts(List.of(i.getId())).getOrDefault(i.getId(), DigestDtos.Counts.ZERO),

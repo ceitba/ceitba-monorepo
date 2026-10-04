@@ -1,9 +1,9 @@
 # Weekly digest email — "La semana en ITBA"
 
-Every Monday each student gets one personalised email with what was published
-last week by the organizations they follow, and the events those
-organizations have next week. Staff review, edit and send it from the ItbaNews
-admin area.
+Every Monday CEITBA emails its followers one digest of the whole newsletter:
+everything published last week (every organization, plus independent
+articles) and every event of the coming week. The content is the same for
+every recipient. Staff review, edit and send it from the ItbaNews admin area.
 
 Code: `service/digest/*` (selection, rendering, lifecycle, sending worker),
 `service/mail/*` (transport), `scheduling/DigestJob`, `web/digest/DigestController`.
@@ -23,21 +23,29 @@ week's Monday, unique). Status: `draft` → `sending` → `sent`, or `draft` /
 - **Every 5 min** (`DIGEST_TICK_INTERVAL`) drafts whose `auto_send_at` has
   passed start sending. A draft whose auto-send time is more than 24h in the
   past (the API was down for days) is left for staff instead of sending stale
-  news. Staff can also create an issue for any week by hand (no auto-send).
+  news. A due draft with nothing to send (no items, or all excluded) is set
+  to `cancelled` and logged instead of sending an empty email. Staff can
+  also create an issue for any week by hand (no auto-send).
 
-**Content of an issue (candidates).**
+**Content of an issue.** The same for every recipient:
 - Articles with `status = published` and `published_at` in
-  `[week_start, week_start + 6]`.
-- Events of an organization with `event_date` in
-  `[week_start + 7, week_start + 13]` (the week after the covered one).
-  Org-less events are not candidates.
+  `[week_start, week_start + 6]`, from every organization and org-less
+  (independent) ones.
+- Events with `event_date` in `[week_start + 7, week_start + 13]` (the week
+  after the covered one), with or without an organization.
+- Minus whatever staff excluded. Sending an issue with nothing left is
+  refused with `409 DIGEST_EMPTY`.
 
-**Per reader.** Org articles only for that org's followers, org-less
-(independent) articles for everyone, events only of followed orgs; minus
-staff exclusions. A user is a recipient when `digest_email_enabled` is true,
-the email domain is in `DIGEST_ALLOWED_DOMAINS`, they follow at least one org
-(everyone follows `ceitba` by default) and their personalised digest is not
-empty.
+**Recipients.** Users who follow `ceitba` (every user does by default), have
+`digest_email_enabled = true` and an email on a `DIGEST_ALLOWED_DOMAINS`
+domain. `recipientEstimate` in the detail is that count.
+
+**Rendering.** The shared content is rendered once per issue
+(`DigestRenderer.template`); per recipient only the unsubscribe link and an
+optional per-reader block are spliced in. That block comes from the
+`DigestPersonalSection` extension point (placed between the content and the
+footer); the default bean returns nothing. It is meant for a future
+"Tu cuatrimestre" section.
 
 **Sending.** "Send" (manual or auto) locks the issue, snapshots the
 recipients into `digest_deliveries` (`pending`) and sets the issue to
@@ -57,8 +65,8 @@ thread) then takes the pending rows one by one:
   `failed` and goes on. A transport problem (authentication, Gmail's
   "daily sending limit exceeded", 4xx, connection) stops the run without
   touching the row; the next tick retries.
-- A pending recipient who meanwhile unsubscribed, has no follows left for
-  the content, or is outside the allowed domains is dropped (row deleted).
+- A pending recipient who meanwhile unsubscribed, unfollowed CEITBA or is
+  outside the allowed domains is dropped (row deleted).
 - No pending rows left → the issue is `sent` with `sent_at`.
 
 **Stopping a send ("Detener envío").** `POST /v1/digests/{id}/cancel` also
@@ -85,6 +93,9 @@ in emails already sent. `POST /v1/digests/unsubscribe` is public, rate
 limited per IP (`RATE_LIMIT_DIGEST_UNSUBSCRIBE_*`) and ignores the session
 cookie.
 
+Footer copy: "Recibís este resumen semanal porque seguís a CEITBA en ITBA
+News." plus the unsubscribe link.
+
 **Test sends** go to the caller's own email, ignore their opt-out but never
 the domain guard (`422 EMAIL_NOT_ALLOWED`), have a `[Prueba]` subject prefix
 and are not counted in the quota.
@@ -95,11 +106,11 @@ and are not counted in the quota.
 |---|---|---|
 | GET | `/v1/digests` | Newest week first, with `counts {pending,sent,failed}` |
 | POST | `/v1/digests` | `{weekStart}` (Monday, else `400 INVALID_WEEK_START`) → 201; `409 DIGEST_EXISTS` |
-| GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` |
+| GET | `/v1/digests/{id}` | Detail: all candidates with `excluded` flags, `recipientEstimate` (eligible recipients) |
 | PATCH | `/v1/digests/{id}` | Any of `subject, intro, excludedArticleIds, excludedEventIds, autoSendAt` (`null` intro clears, `null` autoSendAt disables); draft only (`409 DIGEST_NOT_EDITABLE`) |
-| GET | `/v1/digests/{id}/preview?mode=all\|me` | `text/html`; `all` = as if following every org |
+| GET | `/v1/digests/{id}/preview` | `text/html`, as the caller would receive it; `mode` is accepted and ignored |
 | POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status |
-| POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only |
+| POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send |
 | POST | `/v1/digests/{id}/cancel` | From `draft` or `sending` |
 | GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` |
 | POST | `/v1/digests/unsubscribe?token=` | Public; 204; `400 INVALID_TOKEN`; accepts the RFC 8058 form body |
@@ -120,8 +131,10 @@ and are not counted in the quota.
 | `DIGEST_TICK_INTERVAL` | `PT5M` | Auto-send check and resume of stalled sends |
 | `DIGEST_JOBS_ENABLED` | `true` | Weekly draft + auto-send + worker (tests set `false`) |
 
-The transport is behind `service/mail/EmailSender`; switching to an HTTP
-provider (SES, Resend, …) later means one new implementation in `MailConfig`.
+The transport is behind `service/mail/EmailSender`; switching to another
+provider (e.g. the Gmail API with OAuth) later means one new implementation
+in `MailConfig`. Sending as other identities (each org's own account) would
+add a sender identity to `OutgoingEmail`; callers stay the same.
 Spring Boot's mail health check is disabled so SMTP trouble never marks the
 API down.
 

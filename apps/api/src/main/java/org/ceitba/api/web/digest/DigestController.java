@@ -64,12 +64,14 @@ public class DigestController {
 
     @GetMapping(value = ID + "/preview", produces = MediaType.TEXT_HTML_VALUE)
     @PreAuthorize("hasRole('STAFF')")
+    // Every recipient gets the same content, so there is one preview; `mode`
+    // (all|me) is accepted and ignored for compatibility.
     public ResponseEntity<String> preview(@PathVariable UUID id,
-                                          @RequestParam(defaultValue = "all") String mode,
+                                          @RequestParam(required = false) String mode,
                                           @CurrentUser User user) {
         return ResponseEntity.ok()
             .contentType(new MediaType(MediaType.TEXT_HTML, java.nio.charset.StandardCharsets.UTF_8))
-            .body(service.previewHtml(id, mode, user.getId()));
+            .body(service.previewHtml(id, user.getId()));
     }
 
     @PostMapping(ID + "/test")

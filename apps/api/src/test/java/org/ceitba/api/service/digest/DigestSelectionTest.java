@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,38 +25,27 @@ class DigestSelectionTest {
 
     static final DigestContent.Candidates CANDIDATES = new DigestContent.Candidates(WEEK,
         List.of(article("a-ceitba", CEITBA), article("a-sabf", SABF), article("a-indep", null)),
-        List.of(event("e-ceitba", CEITBA), event("e-sabf", SABF)));
+        List.of(event("e-ceitba", CEITBA), event("e-sabf", SABF), event("e-none", null)));
 
     @Test
-    void followerOfOneOrgGetsItsContentPlusIndependentArticles() {
-        var p = DigestSelection.personalise(CANDIDATES, Set.of("ceitba"), List.of(), List.of(), List.of(CEITBA));
-        assertThat(p.articles()).extracting(DigestContent.Article::id).containsExactly("a-ceitba", "a-indep");
-        assertThat(p.events()).extracting(DigestContent.Event::id).containsExactly("e-ceitba");
-    }
-
-    @Test
-    void allOrgsModeSeesEverything() {
-        var p = DigestSelection.personalise(CANDIDATES, null, List.of(), List.of(), null);
-        assertThat(p.articles()).hasSize(3);
-        assertThat(p.events()).hasSize(2);
+    void everyOrgAndOrgLessItemIsIncludedByDefault() {
+        var s = DigestSelection.included(CANDIDATES, List.of(), List.of());
+        assertThat(s.articles()).extracting(DigestContent.Article::id).containsExactly("a-ceitba", "a-sabf", "a-indep");
+        assertThat(s.events()).extracting(DigestContent.Event::id).containsExactly("e-ceitba", "e-sabf", "e-none");
     }
 
     @Test
     void staffExclusionsApply() {
-        var p = DigestSelection.personalise(CANDIDATES, Set.of("ceitba", "sabf"),
-            List.of("a-indep", "a-sabf"), List.of("e-ceitba"), List.of());
-        assertThat(p.articles()).extracting(DigestContent.Article::id).containsExactly("a-ceitba");
-        assertThat(p.events()).extracting(DigestContent.Event::id).containsExactly("e-sabf");
+        var s = DigestSelection.included(CANDIDATES, List.of("a-indep", "a-sabf"), List.of("e-ceitba"));
+        assertThat(s.articles()).extracting(DigestContent.Article::id).containsExactly("a-ceitba");
+        assertThat(s.events()).extracting(DigestContent.Event::id).containsExactly("e-sabf", "e-none");
+        assertThat(s.isEmpty()).isFalse();
     }
 
     @Test
-    void followerOfUnrelatedOrgOnlyGetsIndependentArticles() {
-        var p = DigestSelection.personalise(CANDIDATES, Set.of("other"), List.of(), List.of(), List.of());
-        assertThat(p.articles()).extracting(DigestContent.Article::id).containsExactly("a-indep");
-        assertThat(p.events()).isEmpty();
-        assertThat(p.isEmpty()).isFalse();
-
-        var none = DigestSelection.personalise(CANDIDATES, Set.of("other"), List.of("a-indep"), List.of(), List.of());
-        assertThat(none.isEmpty()).isTrue();
+    void everythingExcludedIsEmpty() {
+        var s = DigestSelection.included(CANDIDATES, List.of("a-ceitba", "a-sabf", "a-indep"),
+            List.of("e-ceitba", "e-sabf", "e-none"));
+        assertThat(s.isEmpty()).isTrue();
     }
 }
