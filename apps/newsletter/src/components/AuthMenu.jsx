@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { canAccessAdmin, canManageOrganizations, signOut, startGoogleSignIn } from '../store/authStore'
+import { canAccessAdmin, canManageOrganizations, hasCapability, signOut, startGoogleSignIn } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
 import { fetchDigestSubscription, setDigestSubscription } from '../api/digests'
@@ -92,7 +92,8 @@ export default function AuthMenu({ mobile = false }) {
           >
             {t('auth.myProfile')}
           </a>
-          <DigestToggle />
+          {/* Behind the resumen_semanal capability; a 403 CAPABILITY_REQUIRED hides it too. */}
+          {hasCapability('resumen_semanal', profile) && <DigestToggle />}
           {isAdmin ? (
             <Link
               to="/admin/articles"
