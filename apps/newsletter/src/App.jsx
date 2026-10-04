@@ -22,6 +22,7 @@ import AdminOrganizationProfilePage   from './pages/admin/AdminOrganizationProfi
 import AdminOrganizationFollowersPage from './pages/admin/AdminOrganizationFollowersPage'
 import AdminOrganizationsListPage     from './pages/admin/AdminOrganizationsListPage'
 import UnsubscribePage                from './pages/UnsubscribePage'
+import CorrectionVotePage             from './pages/CorrectionVotePage'
 
 // Contributor workflow — still backed by localStorage mocks, so it is hidden
 // behind CONTRIBUTIONS_ENABLED (see config/features.js). Lazy so the mock
@@ -114,6 +115,8 @@ export default function App() {
         <Route path="/organizations/:slug" element={<OrgPortalPage />} />
         {/* One-click unsubscribe link from the weekly digest email. */}
         <Route path="/unsubscribe"         element={<UnsubscribePage />} />
+        {/* "Sí, es así" / "No" schedule-correction links of the digest. */}
+        <Route path="/correction"          element={<CorrectionVotePage />} />
         <Route path="*"                    element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

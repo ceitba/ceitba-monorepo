@@ -72,3 +72,22 @@ export async function setDigestSubscription(enabled) {
 export async function unsubscribeFromDigest(token) {
   return apiSend('POST', `/digests/unsubscribe?token=${encodeURIComponent(token)}`)
 }
+
+// ── "¿Es así?" schedule-correction votes from the digest ("Tu cuatrimestre") ─
+// Public, authenticated by the signed per-reader token of the email link.
+// GET only shows the correction (never votes: mail scanners follow links);
+// the vote is a POST from a button click.
+// Error codes: INVALID_TOKEN (400), TOKEN_EXPIRED (410), INVALID_VOTE (400),
+// CORRECTION_NOT_FOUND (404), CORRECTION_CLOSED (409), EMAIL_NOT_ALLOWED (422).
+
+// → { correctionId, subjectId, subjectName, commissionName, status, open,
+//     proposed: [{day, from, to}], sga: [{day, from, to}], confirms, rejects,
+//     myVote: 'CONFIRM' | 'REJECT' | null, expiresAt }
+export async function fetchCorrectionVote(token) {
+  return apiGet(`/digests/correction-vote?token=${encodeURIComponent(token)}`)
+}
+
+// vote: 'confirm' | 'reject' → { correction, previousVote }
+export async function sendCorrectionVote(token, vote) {
+  return apiSend('POST', '/digests/correction-vote', { token, vote })
+}
