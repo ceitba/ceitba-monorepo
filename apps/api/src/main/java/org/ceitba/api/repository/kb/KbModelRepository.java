@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface KbModelRepository extends JpaRepository<KbModel, String> {
 
     java.util.List<KbModel> findAllByOrderByIdAsc();
+
+    long countByIdStartingWith(String prefix);
 }

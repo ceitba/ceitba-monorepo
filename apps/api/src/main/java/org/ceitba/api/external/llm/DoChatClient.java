@@ -30,6 +30,9 @@ public class DoChatClient implements SyncChatClient {
     private final ObjectMapper json;
     private final Duration timeout;
     private final DoQuotaTracker quota;
+    // Path prefix of the OpenAI routes: "/v1" for DO (base URL is the host),
+    // "" for custom endpoints whose base URL already ends in /v1.
+    private String apiPrefix = "/v1";
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
 
     public DoChatClient(String baseUrl, String apiKey, ObjectMapper json) {
@@ -48,6 +51,21 @@ public class DoChatClient implements SyncChatClient {
         this.timeout = timeout;
     }
 
+    // A custom OpenAI-compatible server (llama.cpp, vLLM, ...): baseUrl includes
+    // /v1 (calls go to {baseUrl}/chat/completions and {baseUrl}/models); a blank
+    // key sends no Authorization header.
+    public static DoChatClient openAiCompatible(String baseUrl, String apiKey, ObjectMapper json, Duration timeout) {
+        var c = new DoChatClient(baseUrl, apiKey == null ? "" : apiKey, json, timeout, null);
+        c.apiPrefix = "";
+        return c;
+    }
+
+    private HttpRequest.Builder request(String path) {
+        var b = HttpRequest.newBuilder(URI.create(baseUrl + apiPrefix + path));
+        if (apiKey != null && !apiKey.isBlank()) b.header("Authorization", "Bearer " + apiKey);
+        return b;
+    }
+
     @Override
     public boolean available() {
         return true;
@@ -61,9 +79,8 @@ public class DoChatClient implements SyncChatClient {
             String detail;
             long retryAfter = -1;
             try {
-                var req = HttpRequest.newBuilder(URI.create(baseUrl + "/v1/chat/completions"))
+                var req = request("/chat/completions")
                     .timeout(timeout)
-                    .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body)))
                     .build();
@@ -99,9 +116,8 @@ public class DoChatClient implements SyncChatClient {
     @Override
     public List<String> listModels() {
         try {
-            var req = HttpRequest.newBuilder(URI.create(baseUrl + "/v1/models"))
+            var req = request("/models")
                 .timeout(Duration.ofSeconds(60))
-                .header("Authorization", "Bearer " + apiKey)
                 .GET().build();
             var res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (res.statusCode() / 100 != 2) throw new LlmApiException(res.statusCode(), "GET /v1/models failed");

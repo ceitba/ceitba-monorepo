@@ -53,3 +53,5 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.38 mail_sender_accounts | V48 |
 | V4.39 kb_oom_guards | V49 |
 | V4.40 kb_run_subject_skipped | V50 |
+| V4.41 kb_llm_endpoint | V51 |
+| V4.42 kb_model_remote_id | V52 |
