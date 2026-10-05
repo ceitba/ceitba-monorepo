@@ -264,9 +264,26 @@ public class KbRunEngine {
         });
     }
 
+    // A step that throws is retried later with back-off (1, 2, 4... minutes);
+    // after MAX_STEP_FAILURES in a row on the same stage the run is FAILED.
+    public static final int MAX_STEP_FAILURES = 4;
+    private record StepFailure(String stage, int count, OffsetDateTime nextAt) {}
+    private final Map<UUID, StepFailure> stepFailures = new java.util.concurrent.ConcurrentHashMap<>();
+
     private boolean stepOnce(UUID runId) {
         var run = inTx(() -> runs.findById(runId).orElse(null));
-        if (run == null || !run.isActive() || run.getStatus().equals("BLOCKED_BY_COST_LIMIT")) return false;
+        if (run == null || !run.isActive() || run.getStatus().equals("BLOCKED_BY_COST_LIMIT")) {
+            stepFailures.remove(runId);
+            return false;
+        }
+        var failure = stepFailures.get(runId);
+        if (failure != null && failure.stage().equals(run.getStage()) && now().isBefore(failure.nextAt())) return false;
+        var moved = stepGuarded(runId, run);
+        if (stepFailures.get(runId) == failure) stepFailures.remove(runId);   // no new failure: a clean step
+        return moved;
+    }
+
+    private boolean stepGuarded(UUID runId, KbRun run) {
         var handler = handler(run);
         try {
             if (run.getStage().equals("DETECT")) {
@@ -282,9 +299,26 @@ public class KbRunEngine {
             inTxVoid(() -> runs.findById(runId).ifPresent(r -> r.setError("LLM API: " + e.getMessage())));
             return false;
         } catch (RuntimeException e) {
-            log.error("KB run {} failed at {}", runId, run.getStage(), e);
+            var prev = stepFailures.get(runId);
+            int n = prev != null && prev.stage().equals(run.getStage()) ? prev.count() + 1 : 1;
+            var reason = e.getClass().getSimpleName() + ": " + e.getMessage();
+            if (n < MAX_STEP_FAILURES) {
+                var wait = java.time.Duration.ofMinutes(1L << (n - 1));
+                log.warn("KB run {} step {} failed ({} of {}); retrying in {}", runId, run.getStage(), n,
+                    MAX_STEP_FAILURES, wait, e);
+                stepFailures.put(runId, new StepFailure(run.getStage(), n, now().plus(wait)));
+                try {
+                    inTxVoid(() -> runs.findById(runId).ifPresent(r ->
+                        r.setError("step " + r.getStage() + " failed (" + n + "/" + MAX_STEP_FAILURES + "), will retry: " + reason)));
+                } catch (RuntimeException e2) {
+                    log.warn("KB run {}: could not record the step failure: {}", runId, e2.getMessage());
+                }
+                return false;
+            }
+            stepFailures.remove(runId);
+            log.error("KB run {} failed at {} after {} attempts", runId, run.getStage(), n, e);
             inTxVoid(() -> runs.lockById(runId).filter(KbRun::isActive).ifPresent(r -> {
-                r.setError(e.getClass().getSimpleName() + ": " + e.getMessage());
+                r.setError(reason + " (" + r.getStage() + ", " + n + " attempts)");
                 for (var s : runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(runId)) {
                     if (s.isActive()) s.fail("run failed at " + r.getStage());
                 }
@@ -612,9 +646,15 @@ public class KbRunEngine {
                 var job = byId.get(jobOf.get(result.customId()));
                 recordLock.lock();
                 try {
-                    inTxVoid(() -> record(job.getRunId(), job.getId(), "SYNC", result, outcome));
-                    // The audit copy is streamed to a temp file, not kept in memory.
-                    outputs.computeIfAbsent(job.getId(), k -> OutFile.open()).write(outputLine(result));
+                    recordOne(job, "SYNC", result, outcome);
+                    // The audit copy is streamed to a temp file, not kept in memory
+                    // (best effort: a failure here never fails the stage).
+                    try {
+                        outputs.computeIfAbsent(job.getId(), k -> OutFile.open()).write(outputLine(result));
+                    } catch (RuntimeException e) {
+                        log.warn("KB run {}: audit line of {} not written: {}", job.getRunId(), result.customId(),
+                            e.getMessage());
+                    }
                 } finally {
                     recordLock.unlock();
                 }
@@ -840,10 +880,39 @@ public class KbRunEngine {
         if (page.isEmpty()) return;
         var results = List.copyOf(page);
         page.clear();
-        inTxVoid(() -> {
-            runs.lockById(job.getRunId()).orElseThrow();   // first: same lock order as cancel
-            for (var res : results) record(job.getRunId(), job.getId(), "BATCH", res, null);
-        });
+        try {
+            inTxVoid(() -> {
+                runs.lockById(job.getRunId()).orElseThrow();   // first: same lock order as cancel
+                for (var res : results) record(job.getRunId(), job.getId(), "BATCH", res, null);
+            });
+        } catch (RuntimeException e) {
+            // One bad row (e.g. text the database refuses) must not fail the
+            // job: the page is recorded again answer by answer.
+            log.warn("KB run {}: recording a page of answers failed ({}); recording one by one", job.getRunId(),
+                e.getMessage());
+            for (var res : results) recordOne(job, "BATCH", res, null);
+        }
+    }
+
+    // One answer in its own transaction; if it cannot be stored, only that
+    // request fails (it is never retried: the same answer would fail again).
+    private void recordOne(KbBatchJob job, String mode, LlmOutputParser.LlmResult res,
+                           SyncLlmExecutor.Outcome outcome) {
+        try {
+            inTxVoid(() -> {
+                runs.lockById(job.getRunId()).orElseThrow();
+                record(job.getRunId(), job.getId(), mode, res, outcome);
+            });
+        } catch (RuntimeException e) {
+            log.warn("KB run {}: answer {} could not be stored: {}", job.getRunId(), res.customId(), e.getMessage());
+            try {
+                var why = "could not store the answer: " + e.getClass().getSimpleName();
+                inTxVoid(() -> requests.findById(res.customId()).ifPresent(r -> r.failed(why)));
+            } catch (RuntimeException e2) {
+                log.warn("KB run {}: request {} could not be marked failed: {}", job.getRunId(), res.customId(),
+                    e2.getMessage());
+            }
+        }
     }
 
     // Stores a file as an audit copy with the reasoning_content of reasoning

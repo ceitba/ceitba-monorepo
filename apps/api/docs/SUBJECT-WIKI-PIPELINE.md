@@ -54,8 +54,18 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
 2. **DIGEST** (batch): one request per *chunk* (~20k tokens) of each added/changed file without a digest.
    - Each request records the fingerprint of the text it actually sent (`kb_run_request.content_fingerprint`, V41);
      the digest is stored under it. Every added/changed input then needs a digest for the fingerprint DETECT saw: if
-     its digest failed (also for another file with the same content) or the file changed during the run, the subject
-     fails and stays dirty instead of being planned with `digest: null`.
+     its digest failed (also for another file with the same content) or the file changed during the run, that file
+     is *unread*. Unread files are left out of the subject's inputs for this run (never planned with `digest: null`),
+     not recorded as compiled (next run retries them) and the subject fails only above the tolerance (see
+     "Graceful fallback").
+   - A file split in chunks where some failed keeps the merged digest of the others, stored under its fingerprint with
+     `partial: true` and `failedChunks`; PLAN/WRITE see `partial: true`, and the next run digests the file again
+     (a partial digest never counts as "known") and replaces it.
+   - Reasoning models (`supportsReasoningEffort`) get headroom on top of the stage's `maxTokens`, because their
+     thinking counts against `max_tokens`/`max_completion_tokens`: +1000 minimal, +4000 low, +8000 medium (or unset),
+     +16000 high, capped at the sync cap (32000) and the model's `maxOutputTokens`. A TRUNCATED/EMPTY answer is
+     retried once with double `max_tokens` (cap 32000) in sync and in batch (the batch line renames it to
+     `max_completion_tokens` for OpenAI).
    - Output: JSON via tool use:
      `{ topics: [{ name, aliases, summary, keyPoints, formulas }], materialKind, unitHint, language }`.
    - Multi-chunk files are merged deterministically in code; no LLM merge.
@@ -118,6 +128,27 @@ DETECT → DIGEST (batch) → PLAN (batch) → WRITE (batch) → [RETRY (batch, 
    page stays recorded, so a failed forced rewrite after a takedown is tried again next run. A subject where every
    write failed (and nothing was deleted) is `FAILED`; one with some failures is `PUBLISHED` with an `error` and makes
    the run `PARTIAL`.
+
+## Graceful fallback
+
+Nothing short of a run-level failure stops a run; failures degrade per item.
+
+- **Request:** an unparseable/failed answer, or an answer the database refuses to store, fails that request only
+  (a page of batch answers that fails to store is recorded answer by answer). Audit copies, run artifacts in
+  storage and progress summaries are best effort: they log WARN and never fail a stage.
+- **Page:** a page rejected or unanswered after RETRY is skipped; the subject's other valid pages publish, and the
+  sources of the failed page stay uncompiled (next run retries them).
+- **File:** unread files (no digest at all) are skipped for the run and retried next run. The subject FAILS only if
+  more than `KB_DIGEST_MAX_MISSING_RATIO` (default 0.2) of its added+changed files are unread, or all of them.
+  Otherwise it publishes with the note "N archivos sin resumen; se reintentan en la próxima corrida" (PARTIAL).
+  `kb_run_subject.skipped` (V50) lists them; `KbRunSubjectResponse.skippedFiles` shows the count.
+- **Subject:** an exception in BUILD, DIGEST check, PLAN answer, WRITE/RETRY validation (links, validation) or
+  PUBLISH marks only that subject FAILED with a short reason (WARN log with run id and subject); it stays dirty.
+- **Run:** SUCCEEDED when everything went through; PARTIAL when some subjects failed, were published with rejected
+  pages or unread files, or were DEFERRED (`error` carries "3 materias con fallas, 12 diferidas"); FAILED when
+  every subject failed, or at run level (cost cap, cancel, DO account error, restart loop).
+- **Engine:** an exception in a step is recorded on the run (`error`) and the step is retried with back-off (1, 2, 4
+  minutes) on the next poll; after `MAX_STEP_FAILURES` (4) consecutive failures of the same stage the run is FAILED.
 
 ## Orchestration
 

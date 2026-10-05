@@ -52,11 +52,29 @@ public class KbPayloads {
 
     public ObjectNode tuned(String model, String stageKey, int maxTokens, String effort, String stable,
                             String variable) {
+        var m = models.findById(model).orElse(null);
+        boolean reasoning = m != null && m.isSupportsReasoningEffort();
+        if (reasoning) maxTokens = withHeadroom(maxTokens, effort, m.getMaxOutputTokens());
         var p = params(model, stageKey.toLowerCase(java.util.Locale.ROOT), maxTokens, stable, variable);
-        if (effort != null && models.findById(model).map(m -> m.isSupportsReasoningEffort()).orElse(false)) {
-            p.put("reasoning_effort", effort);
-        }
+        if (effort != null && reasoning) p.put("reasoning_effort", effort);
         return p;
+    }
+
+    // Reasoning models spend part of max_tokens (max_completion_tokens) on
+    // thinking before the answer: the configured answer budget plus room for
+    // it (low 4000, medium 8000, high 16000; unset effort = the provider's
+    // default, medium), capped at the sync cap and the model's own output
+    // limit. Never lower than what was configured.
+    public static int withHeadroom(int maxTokens, String effort, Integer modelMaxOutput) {
+        int extra = switch (effort == null ? "medium" : effort.toLowerCase(java.util.Locale.ROOT)) {
+            case "minimal", "none" -> 1000;
+            case "low" -> 4000;
+            case "high" -> 16000;
+            default -> 8000;
+        };
+        int cap = org.ceitba.api.service.kb.llm.SyncLlmExecutor.MAX_TOKENS_CAP;
+        if (modelMaxOutput != null && modelMaxOutput > 0) cap = Math.min(cap, modelMaxOutput);
+        return Math.max(maxTokens, Math.min(cap, maxTokens + extra));
     }
 
     public String prompt(String stage) {

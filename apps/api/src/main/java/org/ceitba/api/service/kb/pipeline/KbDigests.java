@@ -17,6 +17,29 @@ public final class KbDigests {
 
     private KbDigests() {}
 
+    // Like merge, for a file some of whose chunks failed (null entries, by chunk
+    // index): the digest of the ones that worked, flagged
+    // partial: true with failedChunks (0-based indexes). All present: plain merge.
+    public static ObjectNode mergePartial(List<JsonNode> chunks, ObjectMapper json) {
+        var out = merge(chunks, json);
+        var failed = new java.util.ArrayList<Integer>();
+        for (int i = 0; i < chunks.size(); i++) if (chunks.get(i) == null) failed.add(i);
+        if (!failed.isEmpty()) {
+            out.put("partial", true);
+            var arr = out.putArray("failedChunks");
+            failed.forEach(arr::add);
+        }
+        return out;
+    }
+
+    // Subjects' files without a digest: the ones to leave out of the run, or
+    // null when the subject must fail (all of them, or more than maxRatio).
+    public static List<String> tolerableMissing(List<String> missing, int total, double maxRatio) {
+        if (missing.isEmpty()) return missing;
+        if (missing.size() >= total || missing.size() > total * maxRatio) return null;
+        return missing;
+    }
+
     public static ObjectNode merge(List<JsonNode> chunks, ObjectMapper json) {
         var out = json.createObjectNode();
         Map<String, ObjectNode> topics = new LinkedHashMap<>();

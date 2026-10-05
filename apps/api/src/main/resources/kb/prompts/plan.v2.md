@@ -5,6 +5,7 @@ and answer only by calling `submit_plan`.
 You get:
 - `pages`: the current pages (slug, type, title, summary, aliases, sources). You do not see their text.
 - `addedOrChanged`: digests of files that are new or changed.
+  A file with `partial: true` was only partly read: its digest may miss topics, so do not drop pages for it.
 - `removed`: files that no longer count, with the pages that cite them.
 - `related`: page titles of related courses (only to avoid duplicating their concepts; never plan pages for them).
 - `hasIndex`: whether the wiki already has its `index` page.
