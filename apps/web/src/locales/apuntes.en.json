@@ -570,7 +570,7 @@
         "tz": "Buenos Aires time",
         "rawCron": "edit cron",
         "simpleCron": "back to day and time",
-        "budget": "Token budget per run",
+        "budget": "Token limit (secondary)",
         "costLimit": "Weekly cost limit (US$)",
         "noLimit": "No limit",
         "overrides": "Per-subject overrides",
@@ -592,6 +592,9 @@
         "autoRefreshPrices": "Refresh DigitalOcean prices weekly",
         "autoRefreshHint": "Syncs prices from DO's catalog once a week. Costs already recorded don't change.",
         "restoreFailed": "Could not restore the settings.",
+        "costBudget": "Budget per run (US$)",
+        "costBudgetInvalid": "Enter an amount between US$ 0.10 and US$ 100.",
+        "costBudgetHint": "Subjects join the run only if their full cost (digests + plan + writing) fits the budget, cheapest first. Whatever does not fit waits for the next run.",
         "budgetRequired": "Enter a token budget (0 or more)."
       },
       "models": {
@@ -621,6 +624,7 @@
         "batchPlain": "batch"
       },
       "runs": {
+        "budget": {"title": "Budget", "summary": "US$ {{spent}} spent / US$ {{limit}} limit · admitted estimate US$ {{estimated}} · {{admitted}} subjects admitted, {{deferred}} deferred (US$ {{deferredEstimated}} estimated)", "oversized": "Run dedicated to {{subject}}: it did not fit the budget"},
         "runNow": "Run now",
         "dryRun": "Simulation (dry run)",
         "preview": "Preview",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  approveRunCost, cancelRun, isActiveStatus, isBlockedStatus, fetchRunProgress, costPairs, fetchPreview, fetchRun, fetchRuns, startRun, type KbRun, type KbRunSubject,
+  approveRunCost, cancelRun, isActiveStatus, isBlockedStatus, fetchRunProgress, costPairs, fetchPreview, fetchRun, fetchRuns, startRun, type KbRun, type KbRunBudget, type KbRunSubject,
 } from '../../../api/kbAdmin'
 import { ApiError } from '../../../api/client'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
@@ -173,6 +173,25 @@ function PreviewDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
+// Cost budget of the run (limit, spend, admitted vs deferred subjects).
+function RunBudget({ budget: b, subjects }: { budget: KbRunBudget; subjects: KbRunSubject[] }) {
+  const { t } = useTranslation()
+  const oversized = b.oversizedSubjectId
+    ? subjects?.find((s) => s.subjectId === b.oversizedSubjectId)?.subjectName || b.oversizedSubjectId
+    : null
+  return (
+    <div className="mb-3 font-body text-body-sm" aria-label={t('manage.wikiAi.runs.budget.title')}>
+      <p>
+        {t('manage.wikiAi.runs.budget.summary', {
+          spent: usd(b.spentUsd, 2), limit: usd(b.limitUsd, 2), estimated: usd(b.estimatedUsd, 2),
+          admitted: b.admitted ?? 0, deferred: b.deferred ?? 0, deferredEstimated: usd(b.deferredEstimatedUsd, 2),
+        })}
+      </p>
+      {oversized && <p className="text-amber-700 dark:text-amber-300">{t('manage.wikiAi.runs.budget.oversized', { subject: oversized })}</p>}
+    </div>
+  )
+}
+
 function asList(v: unknown): { slug?: string; errors?: string[]; title?: string }[] {
   if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? { slug: x } : (x as { slug?: string; errors?: string[] })))
   return []
@@ -240,6 +259,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <Info label={t('manage.wikiAi.runs.prompt')} value={r.promptVersion ?? '—'} />
                 </dl>
                 {r.error && <p className="mb-3 font-body text-body-sm text-red-600 dark:text-red-400">{r.error}</p>}
+                {r.budget && <RunBudget budget={r.budget} subjects={r.subjects} />}
                 {finished ? (
                 <ol className="flex flex-wrap gap-y-2" aria-label={t('manage.wikiAi.runs.timeline')}>
                     {PIPELINE.map((st, i) => {
@@ -296,7 +316,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                                   +{s.added?.length ?? 0} ~{s.changed?.length ?? 0} −{s.removed?.length ?? 0}{s.model ? ` · ${s.model}` : ''}
                                 </p>
                               </td>
-                              <td className={TD}><StatusPill status={s.status} />{s.error && <p className="text-red-600 dark:text-red-400 mt-1">{s.error}</p>}</td>
+                              <td className={TD}><StatusPill status={s.status} />{s.error && <p className={`mt-1 ${/DEFER/i.test(s.status) ? 'text-amber-700 dark:text-amber-300' : 'text-red-600 dark:text-red-400'}`}>{s.error}</p>}</td>
                               <td className={TD}>
                                 <p>{t('manage.wikiAi.runs.pagesSummary', { created: countOps(s.operations, 'create', s.accepted), updated: countOps(s.operations, 'update', s.accepted), deleted: asList(s.deleted).length, rejected: rejected.length })}</p>
                                 {rejected.length > 0 && (
