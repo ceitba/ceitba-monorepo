@@ -14,6 +14,7 @@ import java.time.Duration;
 //   KB_MODEL_DIGEST=glm-5.3-flash, KB_MODEL_PLAN=glm-5.3, KB_MODEL_WRITE=glm-5.3,
 //   KB_MODEL_RETRY=(write model)
 //   KB_RUN_TOKEN_BUDGET=3000000      estimated input tokens per run
+//   KB_RUN_COST_BUDGET_USD=5.00      estimated cost per run (admission and deferral); 0.10-100
 //   KB_RUN_TOKEN_BUDGET_MAX=50000000 hard ceiling of runTokenBudget (env and STAFF setting)
 //   KB_RUN_MAX_REQUESTS_PER_STAGE=5000 requests a stage builds at most; the
 //                                    remaining subjects are deferred to the next run
@@ -39,10 +40,14 @@ public record KbPipelineProperties(
     Long runTokenBudgetMax,
     Integer maxRequestsPerStage,
     Integer batchMaxRequests,
-    Double digestMaxMissingRatio
+    Double digestMaxMissingRatio,
+    java.math.BigDecimal runCostBudgetUsd
 ) {
     public static final long DEFAULT_TOKEN_BUDGET_MAX = 50_000_000L;
     public static final int DEFAULT_MAX_REQUESTS = 5000;
+    public static final java.math.BigDecimal MIN_COST_BUDGET_USD = new java.math.BigDecimal("0.10");
+    public static final java.math.BigDecimal MAX_COST_BUDGET_USD = new java.math.BigDecimal("100");
+    public static final java.math.BigDecimal DEFAULT_COST_BUDGET_USD = new java.math.BigDecimal("5.00");
 
     public KbPipelineProperties {
         cron = blank(cron) ? "0 0 3 * * SUN" : cron.trim();
@@ -57,6 +62,8 @@ public record KbPipelineProperties(
         batchMaxRequests = batchMaxRequests == null || batchMaxRequests <= 0 ? DEFAULT_MAX_REQUESTS : batchMaxRequests;
         digestMaxMissingRatio = digestMaxMissingRatio == null || digestMaxMissingRatio < 0 || digestMaxMissingRatio > 1
             ? 0.2 : digestMaxMissingRatio;
+        runCostBudgetUsd = runCostBudgetUsd == null ? DEFAULT_COST_BUDGET_USD
+            : runCostBudgetUsd.max(MIN_COST_BUDGET_USD).min(MAX_COST_BUDGET_USD);
         retryRejected = retryRejected == null || retryRejected;
         background = background == null || background;
     }

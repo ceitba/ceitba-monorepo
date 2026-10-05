@@ -257,17 +257,25 @@ abstract class KbPipelineAcceptanceIT {
         assertThat(publishedSlugs(FIN)).containsExactly("conceptos-centrales");
     }
 
+    // A budget nothing fits in: the smallest subject runs alone (dedicated
+    // run), the other is deferred without being digested and stays dirty.
     @Test
-    void tokenBudgetDefersSubjectsWhichStayDirty() throws Exception {
+    void budgetAdmitsTheOversizedSubjectAloneAndDefersTheRest() throws Exception {
         call(put("/v1/staff/kb/settings"), "{\"runTokenBudget\": 1}", 200);
         var run = run();
-        assertThat(run.path("status").asText()).isEqualTo("PARTIAL");   // deferred subjects: not a clean run
-        var statuses = jdbc.queryForList("SELECT status FROM wiki.kb_run_subject WHERE run_id = ?::uuid",
+        assertThat(run.path("status").asText()).as(run.toString()).isEqualTo("PARTIAL");   // deferred: not a clean run
+        var statuses = jdbc.queryForList("SELECT status FROM wiki.kb_run_subject WHERE run_id = ?::uuid ORDER BY status",
             String.class, run.path("id").asText());
-        assertThat(statuses).containsOnly("DEFERRED");
-        assertThat(llmRequests()).isEmpty();
+        assertThat(statuses).containsExactly("DEFERRED", "PUBLISHED");
+        var reason = jdbc.queryForObject("SELECT error FROM wiki.kb_run_subject WHERE run_id = ?::uuid AND status = 'DEFERRED'",
+            String.class, run.path("id").asText());
+        assertThat(reason).startsWith("presupuesto de la corrida");
+        assertThat(run.path("budget").path("admitted").asInt()).isEqualTo(1);
+        assertThat(run.path("budget").path("deferred").asInt()).isEqualTo(1);
+        assertThat(run.path("budget").hasNonNull("oversizedSubjectId")).isTrue();
+        assertThat(run.path("error").asText()).contains("1 materia completada", "1 diferida por presupuesto");
         var preview = call(get("/v1/staff/kb/pipeline/preview"), null, 200);
-        assertThat(preview.toString()).contains(FIN, CONT);
+        assertThat(preview.toString()).containsAnyOf(FIN, CONT);
     }
 
     @Test
