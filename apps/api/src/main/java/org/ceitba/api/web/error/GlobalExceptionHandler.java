@@ -156,6 +156,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "AccessDenied", ex.getMessage(), req);
     }
 
+    @ExceptionHandler(org.ceitba.api.service.kb.admin.KbEndpointService.EndpointInUseException.class)
+    public ResponseEntity<ErrorResponse> handleEndpointInUse(
+            org.ceitba.api.service.kb.admin.KbEndpointService.EndpointInUseException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "KB_ENDPOINT_IN_USE", ex.getMessage(), req);
+    }
+
     @ExceptionHandler(InvalidStateException.class)
     public ResponseEntity<ErrorResponse> handleInvalidState(InvalidStateException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "InvalidState", ex.getMessage(), req);

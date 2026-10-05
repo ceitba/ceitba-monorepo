@@ -149,4 +149,13 @@ public interface KbRunRequestRepository extends JpaRepository<KbRunRequest, Stri
         WHERE stage = 'DIGEST' AND target IN (:targets)
         """, nativeQuery = true)
     int redactDigestRequests(@org.springframework.data.repository.query.Param("targets") Collection<String> targets);
+
+    // Requests of an active run that use a model starting with `prefix`.
+    @org.springframework.data.jpa.repository.Query("""
+        select count(r) from KbRunRequest r
+        where r.model like concat(:prefix, '%')
+          and r.runId in (select run.id from KbRun run where run.status in :statuses)
+        """)
+    long countOfActiveRunsWithModelPrefix(@org.springframework.data.repository.query.Param("prefix") String prefix,
+                                          @org.springframework.data.repository.query.Param("statuses") java.util.Collection<String> statuses);
 }

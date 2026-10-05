@@ -66,6 +66,20 @@ public class KbLlmRouter {
         return batch.available() && sync.available();
     }
 
+    // Custom models (custom:<endpoint>:<slug>) only ever run sync, on their own
+    // endpoint: no DO key needed.
+    // Inference can start when every model is custom (own endpoint, no DO key)
+    // or, if any is a DO model, the DO key is configured.
+    public boolean availableFor(java.util.Collection<String> models) {
+        boolean needsDo = models.stream().anyMatch(m -> m != null && !m.isBlank() && !KbEndpointRegistry.isCustom(m));
+        return !needsDo || available();
+    }
+
+    public boolean available(String model, String mode) {
+        if (KbEndpointRegistry.isCustom(model)) return true;
+        return available(mode);
+    }
+
     public boolean available(String mode) {
         return "BATCH".equals(mode) ? batch.available() : sync.available();
     }

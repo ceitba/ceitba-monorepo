@@ -259,6 +259,18 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
 - no invented facts;
 - the false-friend warning for cross-subject links.
 
+## Custom endpoints (own GPU)
+
+Besides DigitalOcean, a stage can use a staff-registered OpenAI-compatible server (`custom:<endpoint>:<slug>`
+catalog ids, slash-free; the raw model id is `kb_model.remote_model_id`; endpoint table `kb_llm_endpoint`, staff API in `docs/SUBJECT-WIKI-ADMIN.md`). `KbLlmRouter` never
+batches them (`auto`/`batch` fall back to SYNC); `SyncLlmExecutor` sends the request to the endpoint's client
+(`DoChatClient.openAiCompatible`, base URL including `/v1`, raw model id in the body, no Authorization header when
+the endpoint has no key) and bounds it with the endpoint's own semaphore (`max_concurrency`) instead of
+`KB_SYNC_CONCURRENCY`. The record lock, virtual threads and throttled cancel check are unchanged. The DO daily
+token quota check does not apply to custom models. Structured output uses tools, with the `json_object` fallback
+used directly when the catalog says `toolCalling: no` (llama.cpp without `--jinja`). The endpoint token is encrypted
+at rest (HKDF from `AUTH_JWT_SECRET`, optional `KB_SECRETS_KEY` override) and write-only.
+
 ## Staff endpoints
 
 - `POST /v1/staff/kb/pipeline/runs` (manual trigger, `?dryRun=true` supported).

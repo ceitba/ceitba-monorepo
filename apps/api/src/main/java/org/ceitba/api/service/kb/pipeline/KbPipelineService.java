@@ -161,11 +161,20 @@ public class KbPipelineService implements KbRunHandler {
     // Creates a run (409 KB_RUN_ACTIVE when one is active; 503
     // KB_LLM_UNCONFIGURED without inference unless dry) and starts it.
     public KbRunResponse trigger(String trigger, boolean dryRun) {
-        if (!dryRun && !router.available()) {
+        var s = settings.effective();
+        // The DO key is needed only when some stage model is a DO model.
+        var stageModels = new java.util.ArrayList<>(java.util.Arrays.asList(s.modelDigest(), s.modelPlan(),
+            s.modelWrite(), s.modelRetry()));
+        if (s.subjectOverrides() != null) {
+            s.subjectOverrides().elements().forEachRemaining(o -> {
+                stageModels.add(o.path("modelWrite").asText(null));
+                stageModels.add(o.path("modelPlan").asText(null));
+            });
+        }
+        if (!dryRun && !router.availableFor(stageModels)) {
             throw new KbPipelineException(KbPipelineException.Reason.LLM_UNCONFIGURED,
                 "Inference is not configured (KB_LLM_API_KEY); only dry runs are possible");
         }
-        var s = settings.effective();
         var run = engine.inTx(() -> {
             if (!runs.findByStatusInAndTriggerNot(KbRunEngine.ACTIVE, "EVAL").isEmpty()) {
                 throw new KbPipelineException(KbPipelineException.Reason.RUN_ACTIVE, "A pipeline run is already active");

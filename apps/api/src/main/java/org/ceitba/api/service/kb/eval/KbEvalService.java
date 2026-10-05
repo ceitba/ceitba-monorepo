@@ -308,6 +308,9 @@ public class KbEvalService implements KbRunHandler {
             for (var id : List.of(plan, write)) {
                 var model = models.findById(id).orElseThrow(() -> new ValidationException("models", id, "not in the model catalog"));
                 if (!model.isEnabled()) throw new ValidationException("models", id, "is disabled in the catalog");
+                if (org.ceitba.api.service.kb.llm.KbEndpointRegistry.isCustom(id) && !model.selectableIn("SYNC")) {
+                    throw new ValidationException("models", id, "has no successful sync probe yet");
+                }
             }
             var key = configKey(plan, pe, write, we);
             out.putIfAbsent(key, new Config(key, plan, write, pe, we));
@@ -336,11 +339,17 @@ public class KbEvalService implements KbRunHandler {
     }
 
     public KbEvalDtos.Eval create(UUID setId, JsonNode modelsBody, String note, UUID userId) {
-        if (!router.available()) {
+        var configs = configs(modelsBody);
+        // The DO key is needed only when some stage model of some config is a DO model.
+        var stageModels = new ArrayList<String>();
+        for (var c : configs) {
+            stageModels.add(c.plan());
+            stageModels.add(c.write());
+        }
+        if (!router.availableFor(stageModels)) {
             throw new KbPipelineException(KbPipelineException.Reason.LLM_UNCONFIGURED,
                 "Inference is not configured (KB_LLM_API_KEY)");
         }
-        var configs = configs(modelsBody);
         var set = engine.inTx(() -> sets.findById(setId)
             .orElseThrow(() -> new ResourceNotFoundException("KbEvalSet", setId.toString())));
         if (set.getFrozenInputs() == null) refreeze(setId);

@@ -81,6 +81,62 @@ cacheReadPerM, batchDiscount (0..1), contextWindow, notes, pricesUpdatedAt, last
 - All costs are computed from recorded token usage multiplied by the catalog price **at the time of the run**, and stored
   on the run. Changing a price later doesn't rewrite history. `GET /costs?reprice=true` shows past runs at today's prices.
 
+## Custom OpenAI-compatible endpoints (own GPU)
+
+Staff can point the pipeline at their own server (llama.cpp `llama-server`, vLLM, ...) from the admin UI, with no
+env change. Models of an endpoint are catalog models with id `custom:<endpointName>:<modelSlug>`, provider `custom`, `batchSupported=false`, price 0 (editable like any price). They work
+in every stage, evals and probes; `auto`/`batch` modes always run them sync. The catalog id is slash-free (the
+`/models/{id}` routes would otherwise need `%2F`, which Tomcat rejects): `modelSlug` is the raw model id with every
+character outside `[A-Za-z0-9._-]` replaced by `-`, truncated to fit the 128-char id (a short hash suffix tells apart
+two raw ids that slug alike). The raw id the endpoint knows is stored in `kb_model.remote_model_id` (V52), returned
+as `remoteModelId` by the model endpoints and sent in the request body. Runs and evals need `KB_LLM_API_KEY` only
+when some stage model is a DigitalOcean model. Manually created or DO-synced catalog ids must match
+`[A-Za-z0-9._:-]+` (and `custom:*` ids only come from discovery).
+
+Table `wiki.kb_llm_endpoint` (V51): `name` (unique, `[a-z0-9-]`, not renamable), `base_url` (http/https; **includes
+`/v1`**, e.g. `http://host:8081/v1`; calls go to `{baseUrl}/chat/completions` and `{baseUrl}/models`),
+`api_key_encrypted`, `max_concurrency` (1-64, default 2), `timeout_sec` (5-3600, default 600 = PT10M), `enabled`.
+
+Staff API, all under `/v1/staff/kb/endpoints` (STAFF only):
+
+| Call | Body / result |
+|---|---|
+| `GET /` | `[{id, name, baseUrl, hasKey, keyReadable, maxConcurrency, timeoutSec, enabled, modelCount, createdAt, updatedAt}]` |
+| `POST /` | `{name, baseUrl, apiKey?, maxConcurrency?, timeoutSec?, enabled?}` -> item |
+| `PUT /{id}` | same, all optional; `apiKey` omitted = keep, `""` = remove -> item |
+| `DELETE /{id}` | 204; 409 `KB_ENDPOINT_IN_USE` while a model of it is in the settings (incl. subject overrides) or in an active run/eval; also deletes its catalog models |
+| `POST /{id}/test` | `GET {baseUrl}/models` -> `{ok, latencyMs, models[], error?}` |
+| `POST /{id}/discover` | lists the models and adds `custom:<name>:<slug>` (disabled until staff enable them; existing ones untouched) -> `{added[], existing[]}` |
+| `GET /{id}/stats?minutes=60` | `{windowMinutes, requests, errors, p50Ms, p95Ms, outputTokensPerSec, inFlight}` |
+
+Workflow: add endpoint -> test -> discover -> enable the model and set its prices -> probe it (sync) -> select it in
+the settings or an eval (both need an enabled model with a successful sync probe).
+
+**The token is write-only and set from the UI.** It is encrypted with AES-256-GCM before it is stored and is never
+returned or logged (responses only say `hasKey`). The key is derived with HKDF-SHA256 from `AUTH_JWT_SECRET` (info
+`ceitba-kb-endpoint-keys-v1`), so nothing needs to be configured. Optional override: `KB_SECRETS_KEY` (base64 of 32
+bytes, `openssl rand -base64 32`); when set, new tokens use it, and tokens saved before stay readable (each stored
+value is prefixed `v1:jwt:` or `v1:env:` with the key source). **Rotating `AUTH_JWT_SECRET`** (or changing/removing
+a `KB_SECRETS_KEY` that encrypted tokens) makes the stored tokens undecryptable: the endpoint then shows
+`hasKey: true, keyReadable: false`, `test` answers `ok: false` with "re-enter the token", and requests fail with
+that error until the token is saved again.
+
+Routing and limits: each endpoint has its own semaphore of `max_concurrency`, independent of `KB_SYNC_CONCURRENCY`
+(which only paces DigitalOcean); a stage on a custom model runs at most that many requests at once, shared by runs,
+evals and probes. `reasoning_effort` is sent only if the model's `supportsReasoningEffort` (false by default for
+custom models). Tools need `--jinja` on llama.cpp: when the probe says `toolCalling: no` (or the server refuses the
+tool request with an HTTP error) the executor uses the `json_object` fallback directly.
+
+Stats (stress testing): `requests`, `p50Ms`/`p95Ms` and `outputTokensPerSec` come from `kb_llm_usage` sync rows of
+`custom:<name>:%` in the window (`outputTokensPerSec` = output tokens / summed latency, i.e. per-request speed, not
+aggregate throughput). Failed calls leave no usage row: they are counted in memory (since the last API restart) and
+added to `requests` and `errors` (`errors` also counts answers with 0 output tokens). `inFlight` is the in-memory
+count of HTTP calls running now.
+
+Limits: the DO key gate (`KB_LLM_API_KEY`) still applies to starting a run or an eval, even if all models are
+custom. Model ids with `/` in catalog URLs (`/models/{id}/probe`) need the SPA to encode them as `%2F`, which the
+servlet container may reject; if so, probe from the endpoint-aware UI path once an alias exists.
+
 ## 3. Cost analytics
 
 - Every HTTP call records `model, mode, stage, subjectId, inputTokens, cachedInputTokens, outputTokens, costUsd` in

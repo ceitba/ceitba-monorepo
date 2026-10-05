@@ -32,17 +32,40 @@ public class SyncLlmExecutor {
     private final KbLlmProperties props;
     private final ObjectMapper json;
     private final DoQuotaTracker quota;
+    private final KbEndpointRegistry endpoints;   // null = no custom endpoints (tests)
 
     public SyncLlmExecutor(SyncChatClient client, KbLlmProperties props, ObjectMapper json) {
-        this(client, props, json, null);
+        this(client, props, json, null, null);
+    }
+
+    public SyncLlmExecutor(SyncChatClient client, KbLlmProperties props, ObjectMapper json, DoQuotaTracker quota) {
+        this(client, props, json, quota, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    public SyncLlmExecutor(SyncChatClient client, KbLlmProperties props, ObjectMapper json, DoQuotaTracker quota) {
+    public SyncLlmExecutor(SyncChatClient client, KbLlmProperties props, ObjectMapper json, DoQuotaTracker quota,
+                           KbEndpointRegistry endpoints) {
         this.client = client;
         this.props = props;
         this.json = json;
         this.quota = quota;
+        this.endpoints = endpoints;
+    }
+
+    private static String modelOf(LlmLine line) {
+        return line.params().path("model").asText("");
+    }
+
+    // The custom endpoint of a line's model, or null (DigitalOcean). A model
+    // whose endpoint cannot be resolved also returns null: the call then fails
+    // with the resolution error as that request's error.
+    private KbEndpointRegistry.Target customTarget(LlmLine line) {
+        if (endpoints == null || !KbEndpointRegistry.isCustom(modelOf(line))) return null;
+        try {
+            return endpoints.resolve(modelOf(line));
+        } catch (LlmApiException e) {
+            return null;
+        }
     }
 
     // Rough tokens of a request (prompt at ~4 chars/token plus max_tokens), to
@@ -90,13 +113,29 @@ public class SyncLlmExecutor {
                     break;
                 }
                 var line = lines.next();
+                // A custom model is bounded by its endpoint's own max_concurrency,
+                // not by KB_SYNC_CONCURRENCY (which only paces DigitalOcean).
+                var target = customTarget(line);
+                final Semaphore held;
+                if (target != null) {
+                    permits.release();
+                    target.semaphore().acquireUninterruptibly();
+                    held = target.semaphore();
+                    if (stopped.get() || stop.getAsBoolean()) {
+                        stopped.set(true);
+                        held.release();
+                        break;
+                    }
+                } else {
+                    held = permits;
+                }
                 pool.submit(() -> {
                     try {
                         if (stopped.get() || stop.getAsBoolean()) {
                             stopped.set(true);
                             return;
                         }
-                        if (quota != null && quota.dailyTokensShort(estimateTokens(line))) {
+                        if (target == null && quota != null && quota.dailyTokensShort(estimateTokens(line))) {
                             quotaPaused.set(true);
                             stopped.set(true);
                             return;
@@ -109,7 +148,7 @@ public class SyncLlmExecutor {
                     } catch (RuntimeException e) {
                         log.warn("KB pipeline: sync request {} failed: {}", line.customId(), e.getMessage());
                     } finally {
-                        permits.release();
+                        held.release();
                     }
                 });
             }
@@ -124,11 +163,15 @@ public class SyncLlmExecutor {
     }
 
     public LlmOutputParser.LlmResult runOne(LlmLine line) {
+        var target = customTarget(line);
+        if (target != null) target.semaphore().acquireUninterruptibly();
         try {
             return runTracked(line).result();
         } catch (DoQuotaExhaustedException e) {
             return new LlmOutputParser.LlmResult(line.customId(), false, null, null, 0, 0, 0, null,
                 "HTTP 429: " + e.getMessage());
+        } finally {
+            if (target != null) target.semaphore().release();
         }
     }
 
@@ -156,7 +199,15 @@ public class SyncLlmExecutor {
     private com.fasterxml.jackson.databind.JsonNode call(com.fasterxml.jackson.databind.JsonNode body,
                                                          List<Attempt> attempts) {
         long t = System.nanoTime();
-        var res = client.complete(body);
+        com.fasterxml.jackson.databind.JsonNode res;
+        var model = body.path("model").asText("");
+        if (endpoints != null && KbEndpointRegistry.isCustom(model)) {
+            var target = endpoints.resolve(model);   // LlmApiException when gone/disabled/unreadable key
+            ((com.fasterxml.jackson.databind.node.ObjectNode) body).put("model", target.rawModel());
+            res = target.complete(body);
+        } else {
+            res = client.complete(body);
+        }
         var u = res.path("usage");
         var reasoning = u.path("completion_tokens_details").path("reasoning_tokens");
         attempts.add(new Attempt(u.path("prompt_tokens").asInt(u.path("input_tokens").asInt(0)),
@@ -167,7 +218,19 @@ public class SyncLlmExecutor {
     }
 
     private LlmOutputParser.LlmResult attempt(LlmLine line, List<Attempt> attempts) {
+        boolean custom = endpoints != null && KbEndpointRegistry.isCustom(modelOf(line));
+        boolean hasToolDef = line.params().path("tools").size() > 0;
         try {
+            if (custom && hasToolDef && endpoints.toolsOff(modelOf(line))) {
+                // The probe said no tool calling (llama.cpp without --jinja): go straight to json_object.
+                var r = LlmOutputParser.fromChatCompletion(line.customId(),
+                    call(KbChatPayloads.chatBody(line.params(), true, json), attempts), json);
+                if (r.toolInput() != null) {
+                    return new LlmOutputParser.LlmResult(line.customId(), true, r.toolInput(), r.text(), r.tokensIn(),
+                        r.tokensOut(), r.cachedTokens(), "json_object", null);
+                }
+                return r;
+            }
             var first = LlmOutputParser.fromChatCompletion(line.customId(),
                 call(KbChatPayloads.chatBody(line.params(), false, json), attempts), json);
             if (first.error() != null && (first.error().startsWith("TRUNCATED") || first.error().startsWith("EMPTY_TOOL"))) {
@@ -201,6 +264,21 @@ public class SyncLlmExecutor {
         } catch (DoQuotaExhaustedException e) {
             throw e;   // run() pauses the pool; runOne() reports it
         } catch (LlmApiException e) {
+            if (custom && hasToolDef && e.status() >= 400 && e.status() < 600 && attempts.isEmpty()) {
+                // A server without tool support (llama.cpp needs --jinja) refuses the request: json_object instead.
+                try {
+                    var r = LlmOutputParser.fromChatCompletion(line.customId(),
+                        call(KbChatPayloads.chatBody(line.params(), true, json), attempts), json);
+                    if (r.toolInput() != null) {
+                        return new LlmOutputParser.LlmResult(line.customId(), true, r.toolInput(), r.text(),
+                            r.tokensIn(), r.tokensOut(), r.cachedTokens(), "json_object", null);
+                    }
+                    return r;
+                } catch (LlmApiException e2) {
+                    return new LlmOutputParser.LlmResult(line.customId(), false, null, null, 0, 0, 0, null,
+                        "HTTP " + e2.status() + ": " + e2.getMessage());
+                }
+            }
             return new LlmOutputParser.LlmResult(line.customId(), false, null, null, 0, 0, 0, null,
                 "HTTP " + e.status() + ": " + e.getMessage());
         }

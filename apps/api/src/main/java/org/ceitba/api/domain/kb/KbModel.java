@@ -92,6 +92,14 @@ public class KbModel {
     @Column(name = "batch_model_id", length = 128)
     private String batchModelId;
 
+    // Custom endpoint models only (V52): the id the endpoint knows, sent in the
+    // request body. The catalog id is a slash-free slug of it.
+    @Column(name = "remote_model_id", length = 512)
+    private String remoteModelId;
+
+    public String getRemoteModelId() { return remoteModelId; }
+    public void setRemoteModelId(String remoteModelId) { this.remoteModelId = remoteModelId; }
+
     protected KbModel() {}
 
     public KbModel(String id, String displayName, String provider, boolean batchSupported, boolean enabled) {
