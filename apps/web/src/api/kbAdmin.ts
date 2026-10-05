@@ -36,6 +36,9 @@ export interface KbSettings {
   enabled: boolean
   // Spring cron, 6 fields with seconds: "0 0 3 * * SUN" (Buenos Aires).
   cron: string
+  // Per-run cost budget in USD (0.10..100); absent on API builds without it.
+  runCostBudgetUsd?: number
+  // Secondary cap.
   runTokenBudget: number
   weeklyCostLimitUsd: number | null
   retryRejected: boolean
@@ -412,6 +415,18 @@ export interface KbBatchJob {
   costUsd?: number | null
 }
 
+export interface KbRunBudget {
+  limitUsd: number | null
+  estimatedUsd: number | null
+  spentUsd: number | null
+  admitted: number | null
+  deferred: number | null
+  deferredEstimatedUsd: number | null
+  tokenBudget: number | null
+  // Subject too big for the budget: it got a run of its own.
+  oversizedSubjectId: string | null
+}
+
 export interface KbRun {
   id: string
   trigger: string
@@ -434,6 +449,8 @@ export interface KbRun {
   simulated?: boolean
   // ADMIN doc §6: { DIGEST, PLAN, WRITE, RETRY }.
   costByStage?: Record<string, number> | null
+  // Absent on runs from before the cost budget.
+  budget?: KbRunBudget | null
   error: string | null
   subjects: KbRunSubject[]
   batches: KbBatchJob[]

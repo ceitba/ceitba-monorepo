@@ -22,7 +22,7 @@ const STAGE_FIELD: Record<ModelStage, 'modelDigest' | 'modelPlan' | 'modelWrite'
 const DAYS = [0, 1, 2, 3, 4, 5, 6] // cron day-of-week, 0 = Sunday
 
 // The budget field may be empty while editing; Save stays disabled then.
-type Draft = Omit<KbSettings, 'runTokenBudget'> & { runTokenBudget: number | '' }
+type Draft = Omit<KbSettings, 'runTokenBudget' | 'runCostBudgetUsd'> & { runTokenBudget: number | ''; runCostBudgetUsd?: number | '' }
 
 // Response metadata that rides along on the loaded settings and must never
 // be sent back: the API would store it (costImpact) or reject it.
@@ -42,6 +42,8 @@ function changedFields(draft: Draft, loaded: KbSettings): SettingsPatch {
 }
 
 const budgetValid = (v: number | '') => v !== '' && Number.isFinite(v) && v >= 0
+// API range for the per-run cost budget; undefined = API without the field.
+const costBudgetValid = (v: number | '' | undefined) => v === undefined || (v !== '' && Number.isFinite(v) && v >= 0.1 && v <= 100)
 
 // Pick from the catalog: enabled + successfully probed models only (the
 // current value stays selectable so nothing silently changes).
@@ -164,7 +166,7 @@ export default function SettingsView() {
     [draft, settings.data],
   )
   const dirty = Object.keys(changes).length > 0
-  const valid = !!draft && budgetValid(draft.runTokenBudget)
+  const valid = !!draft && budgetValid(draft.runTokenBudget) && costBudgetValid(draft.runCostBudgetUsd)
 
   // Full proposed settings, for the forecast/preview endpoints.
   const body = useCallback((): SettingsBody => settingsFields(draft!) as SettingsBody, [draft])
@@ -307,6 +309,14 @@ export default function SettingsView() {
                     </button>
                   </span>
                 </div>
+                {draft.runCostBudgetUsd !== undefined && (
+                  <label className="flex flex-col gap-1">
+                    <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costBudget')}</span>
+                    <input type="number" min={0.1} max={100} step={0.1} value={draft.runCostBudgetUsd} onChange={(e) => set('runCostBudgetUsd', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!costBudgetValid(draft.runCostBudgetUsd)} className={FIELD} />
+                    {!costBudgetValid(draft.runCostBudgetUsd) && <span role="alert" className="font-body text-[0.75rem] text-red-700 dark:text-red-300">{t('manage.wikiAi.settings.costBudgetInvalid')}</span>}
+                    <span className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costBudgetHint')}</span>
+                  </label>
+                )}
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.budget')}</span>
                   <input type="number" min={0} step={10000} value={draft.runTokenBudget ?? ''} onChange={(e) => set('runTokenBudget', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!budgetValid(draft.runTokenBudget)} className={FIELD} />
