@@ -97,6 +97,7 @@ export default function ModelsView() {
                       <p className="font-semibold text-ink-primary dark:text-night-text">{m.displayName || m.id}</p>
                       <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{m.id} · {parseCustomModel(m.id) ? t('manage.wikiAi.endpoints.providerOwn') : m.provider}</p>
                       {parseCustomModel(m.id) && <p className="font-body text-[0.72rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.endpointName', { name: parseCustomModel(m.id)!.endpoint })}</p>}
+                      {m.remoteModelId && <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{t('manage.wikiAi.endpoints.remoteId', { id: m.remoteModelId })}</p>}
                       {m.contextWindow && <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.context', { k: Math.round(m.contextWindow / 1000) })}</p>}
                       <PriceSourceLine m={m} />
                     </td>

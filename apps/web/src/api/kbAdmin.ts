@@ -225,8 +225,10 @@ export interface KbModel {
   // edited by hand by staff.
   priceSource?: 'do-catalog' | 'manual' | null
   lastProbe: ModelProbe | null
-  // Models of an own endpoint are "custom/<endpoint name>/<model>".
+  // Models of an own endpoint have id "custom:<endpoint name>:<slug>"
+  // (slash-free); remoteModelId is the raw id the endpoint knows.
   endpointId?: string | null
+  remoteModelId?: string | null
 }
 
 export interface PriceChange { field: string; old: number | string | null; new: number | string | null }
@@ -820,8 +822,8 @@ export const testEndpoint = (id: string) => apiSend<EndpointTestResult>('POST', 
 export const discoverEndpointModels = (id: string) => apiSend<EndpointDiscoverResult>('POST', `${ENDPOINTS}/${enc(id)}/discover`)
 export const fetchEndpointStats = (id: string, minutes: number) => apiGet<EndpointStats>(`${ENDPOINTS}/${enc(id)}/stats?minutes=${minutes}`)
 
-// "custom/<endpoint>/<model>" → { endpoint, model }; null for other models.
+// "custom:<endpoint>:<slug>" → { endpoint, model: slug }; null for other models.
 export function parseCustomModel(id: string): { endpoint: string; model: string } | null {
-  const m = /^custom\/([^/]+)\/(.+)$/.exec(id)
+  const m = /^custom:([^:]+):(.+)$/.exec(id)
   return m ? { endpoint: m[1], model: m[2] } : null
 }
