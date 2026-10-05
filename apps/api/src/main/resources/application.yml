@@ -203,6 +203,10 @@ kb:
     execution-mode: ${KB_EXECUTION_MODE:auto}
     sync-concurrency: ${KB_SYNC_CONCURRENCY:16}
     request-timeout: ${KB_LLM_REQUEST_TIMEOUT:PT5M}
+  # OPTIONAL override of the AES-GCM key for custom LLM endpoint tokens stored in the DB
+  # (base64 of 32 bytes, openssl rand -base64 32). Empty = derived from AUTH_JWT_SECRET (HKDF).
+  secrets:
+    key: ${KB_SECRETS_KEY:}
   pipeline:
     enabled: ${KB_PIPELINE_ENABLED:false}
     cron: ${KB_PIPELINE_CRON:0 0 3 * * SUN}

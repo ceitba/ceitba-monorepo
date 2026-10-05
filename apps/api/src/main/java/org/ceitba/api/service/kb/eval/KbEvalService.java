@@ -308,6 +308,9 @@ public class KbEvalService implements KbRunHandler {
             for (var id : List.of(plan, write)) {
                 var model = models.findById(id).orElseThrow(() -> new ValidationException("models", id, "not in the model catalog"));
                 if (!model.isEnabled()) throw new ValidationException("models", id, "is disabled in the catalog");
+                if (org.ceitba.api.service.kb.llm.KbEndpointRegistry.isCustom(id) && !model.selectableIn("SYNC")) {
+                    throw new ValidationException("models", id, "has no successful sync probe yet");
+                }
             }
             var key = configKey(plan, pe, write, we);
             out.putIfAbsent(key, new Config(key, plan, write, pe, we));

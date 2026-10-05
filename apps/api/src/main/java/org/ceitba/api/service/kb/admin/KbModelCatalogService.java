@@ -292,7 +292,7 @@ public class KbModelCatalogService {
                 throw new ValidationException("mode", modeOverride, "DO batches only take anthropic-*/openai-* models");
             }
         }
-        if (!router.available(mode)) {
+        if (!router.available(id, mode)) {
             throw new KbPipelineException(KbPipelineException.Reason.LLM_UNCONFIGURED,
                 "Inference is not configured (KB_LLM_API_KEY)");
         }
@@ -643,6 +643,7 @@ public class KbModelCatalogService {
     static String provider(String id) {
         var p = KbChatPayloads.batchProvider(id);
         if (p != null) return p;
+        if (id.startsWith(org.ceitba.api.service.kb.llm.KbEndpointRegistry.PREFIX)) return "custom";
         if (id.startsWith("glm")) return "zhipu";
         if (id.startsWith("deepseek")) return "deepseek";
         return "do";

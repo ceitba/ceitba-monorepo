@@ -238,6 +238,8 @@ services:
       KB_EXECUTION_MODE: ${KB_EXECUTION_MODE:-auto}
       KB_SYNC_CONCURRENCY: ${KB_SYNC_CONCURRENCY:-16}
       KB_LLM_REQUEST_TIMEOUT: ${KB_LLM_REQUEST_TIMEOUT:-PT5M}
+      # Optional override of the key that encrypts custom LLM endpoint tokens (default: derived from AUTH_JWT_SECRET).
+      KB_SECRETS_KEY: ${KB_SECRETS_KEY:-}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
       KB_PIPELINE_ENABLED: ${KB_PIPELINE_ENABLED:-false}
       KB_PIPELINE_CRON: ${KB_PIPELINE_CRON:-0 0 3 * * SUN}

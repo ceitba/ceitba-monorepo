@@ -66,6 +66,13 @@ public class KbLlmRouter {
         return batch.available() && sync.available();
     }
 
+    // Custom models (custom/<endpoint>/<model>) only ever run sync, on their own
+    // endpoint: no DO key needed.
+    public boolean available(String model, String mode) {
+        if (KbEndpointRegistry.isCustom(model)) return true;
+        return available(mode);
+    }
+
     public boolean available(String mode) {
         return "BATCH".equals(mode) ? batch.available() : sync.available();
     }
