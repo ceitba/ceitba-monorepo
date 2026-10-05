@@ -1,5 +1,6 @@
 package org.ceitba.api.service.kb.admin;
 
+import org.ceitba.api.service.kb.llm.KbEndpointRegistry;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -118,6 +119,12 @@ public class KbModelCatalogService {
     public KbModelResponse create(JsonNode body) {
         var id = body.path("id").asText("").trim();
         if (id.isEmpty() || id.length() > 128) throw new ValidationException("id", id, "required (max 128 chars)");
+        if (!KbEndpointRegistry.SAFE_ID.matcher(id).matches()) {
+            throw new ValidationException("id", id, "only letters, digits and . _ : - (it goes in URL paths)");
+        }
+        if (KbEndpointRegistry.isCustom(id)) {
+            throw new ValidationException("id", id, "custom:* ids are created by discovering an endpoint's models");
+        }
         return tx.execute(s -> {
             if (models.existsById(id)) throw new ResourceAlreadyExistsException("KbModel", id);
             var provider = provider(id);
@@ -165,6 +172,10 @@ public class KbModelCatalogService {
                 var m = existing.get(c.id());
                 if (m == null) {
                     if (!c.serverlessChat() || c.inputPerM() == null) continue;
+                    if (!KbEndpointRegistry.SAFE_ID.matcher(c.id()).matches()) {
+                        log.warn("KB catalog: skipping DO model id with characters that break the /models/{id} routes: {}", c.id());
+                        continue;
+                    }
                     m = new KbModel(c.id(), c.name() == null ? c.id() : c.name(),
                         c.creator() == null ? provider(c.id()) : c.creator(), KbChatPayloads.batchByRule(c.id()), false);
                     m.setPrices(c.inputPerM(), c.outputPerM(), c.cacheReadPerM(), null, now);
@@ -256,6 +267,10 @@ public class KbModelCatalogService {
             var added = new ArrayList<String>();
             for (var id : ids) {
                 if (known.contains(id) || id.length() > 128) continue;
+                if (!KbEndpointRegistry.SAFE_ID.matcher(id).matches()) {
+                    log.warn("KB catalog: skipping DO model id with characters that break the /models/{id} routes: {}", id);
+                    continue;
+                }
                 var m = new KbModel(id, id, provider(id), KbChatPayloads.batchByRule(id), false);
                 m.setSupportsReasoningEffort(id.startsWith("glm"));
                 models.save(m);
@@ -643,7 +658,7 @@ public class KbModelCatalogService {
     static String provider(String id) {
         var p = KbChatPayloads.batchProvider(id);
         if (p != null) return p;
-        if (id.startsWith(org.ceitba.api.service.kb.llm.KbEndpointRegistry.PREFIX)) return "custom";
+        if (id.startsWith(KbEndpointRegistry.PREFIX)) return "custom";
         if (id.startsWith("glm")) return "zhipu";
         if (id.startsWith("deepseek")) return "deepseek";
         return "do";
@@ -667,6 +682,7 @@ public class KbModelCatalogService {
             m.getPricesUpdatedAt(), m.getPriceSource(),
             m.getLastProbe(), m.selectableIn(m.modeFor(settings.effective().executionMode())), emptyToolCallRate,
             m.getBatchModelId(), KbChatPayloads.batchProvider(m.getId()) == null ? null
-                : m.getBatchModelId() != null ? m.getBatchModelId() : KbChatPayloads.defaultBatchModelId(m.getId()));
+                : m.getBatchModelId() != null ? m.getBatchModelId() : KbChatPayloads.defaultBatchModelId(m.getId()),
+            m.getRemoteModelId());
     }
 }

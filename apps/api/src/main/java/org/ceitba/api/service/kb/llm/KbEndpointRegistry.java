@@ -17,31 +17,53 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// Resolves custom model ids (custom/<endpointName>/<rawModelId>) to their
-// endpoint's client. Each endpoint has its own semaphore of max_concurrency
-// (independent of KB_SYNC_CONCURRENCY, which only bounds DigitalOcean), an
-// in-memory in-flight counter and a short log of failed calls (for /stats).
+// Resolves custom catalog ids (custom:<endpointName>:<slug>, slash-free so the
+// /models/{id} routes work) to their endpoint's client. The id the endpoint
+// itself knows (kb_model.remote_model_id) goes in the request body. Each
+// endpoint has its own semaphore of max_concurrency (independent of
+// KB_SYNC_CONCURRENCY, which only bounds DigitalOcean), an in-memory in-flight
+// counter and a short log of failed calls (for /stats).
 // The API key is decrypted only here, to build the client; it is never logged.
 @Component
 public class KbEndpointRegistry {
 
-    public static final String PREFIX = "custom/";
+    public static final String PREFIX = "custom:";
+    public static final int ID_MAX = 128;
+
+    // Characters a catalog id may have (it travels in URL paths).
+    public static final java.util.regex.Pattern SAFE_ID = java.util.regex.Pattern.compile("[A-Za-z0-9._:-]+");
 
     public static boolean isCustom(String model) {
-        return model != null && model.startsWith(PREFIX) && model.indexOf('/', PREFIX.length()) > PREFIX.length();
+        return model != null && model.startsWith(PREFIX) && model.indexOf(':', PREFIX.length()) > PREFIX.length();
     }
 
     public static String endpointName(String model) {
-        return model.substring(PREFIX.length(), model.indexOf('/', PREFIX.length()));
+        return model.substring(PREFIX.length(), model.indexOf(':', PREFIX.length()));
     }
 
-    // The id the endpoint itself knows (sent in the request body).
-    public static String rawModel(String model) {
-        return model.substring(model.indexOf('/', PREFIX.length()) + 1);
+    // "custom:<endpoint>:" (endpoint names never contain ':').
+    public static String prefixOf(String endpointName) {
+        return PREFIX + endpointName + ":";
     }
 
-    public static String catalogId(String endpointName, String rawModel) {
-        return PREFIX + endpointName + "/" + rawModel;
+    // custom:<endpoint>:<slug>: every char outside [A-Za-z0-9._-] becomes '-',
+    // truncated to the id column. withHash appends a short hash of the raw id
+    // (for a collision between two raw ids that slug alike).
+    public static String catalogId(String endpointName, String rawModel, boolean withHash) {
+        var prefix = prefixOf(endpointName);
+        var slug = rawModel.replaceAll("[^A-Za-z0-9._-]", "-");
+        int room = ID_MAX - prefix.length() - (withHash ? 7 : 0);
+        if (slug.length() > room) slug = slug.substring(0, room);
+        return prefix + slug + (withHash ? "-" + shortHash(rawModel) : "");
+    }
+
+    static String shortHash(String raw) {
+        try {
+            var d = java.security.MessageDigest.getInstance("SHA-256").digest(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(d, 0, 3);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     // Counters that survive a rebuilt client (endpoint edited).
@@ -112,7 +134,10 @@ public class KbEndpointRegistry {
             .orElseThrow(() -> new LlmApiException(0, "custom endpoint '" + name + "' does not exist"));
         if (!e.isEnabled()) throw new LlmApiException(0, "custom endpoint '" + name + "' is disabled");
         var b = built.compute(e.getId(), (id, old) -> old != null && old.version().equals(e.getUpdatedAt()) ? old : build(e));
-        return new Target(e.getId(), rawModel(model), b.client(), b.sem(), counters(e.getId()));
+        var raw = models.findById(model).map(org.ceitba.api.domain.kb.KbModel::getRemoteModelId)
+            .filter(r -> r != null && !r.isBlank())
+            .orElseThrow(() -> new LlmApiException(0, "custom model '" + model + "' is not in the catalog (discover the endpoint again)"));
+        return new Target(e.getId(), raw, b.client(), b.sem(), counters(e.getId()));
     }
 
     private Built build(KbLlmEndpoint e) {

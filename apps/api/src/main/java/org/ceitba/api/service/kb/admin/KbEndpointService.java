@@ -85,7 +85,7 @@ public class KbEndpointService {
         var e = get(id);
         if (body.hasNonNull("name") && !body.get("name").asText().trim().equalsIgnoreCase(e.getName())) {
             throw new ValidationException("name", body.get("name").asText(),
-                "cannot be renamed (model ids custom/<name>/<model> depend on it); create a new endpoint");
+                "cannot be renamed (model ids custom:<name>:<slug> depend on it); create a new endpoint");
         }
         if (body.hasNonNull("baseUrl")) e.setBaseUrl(baseUrl(body.get("baseUrl").asText()));
         apply(e, body, true);
@@ -140,7 +140,7 @@ public class KbEndpointService {
     @Transactional
     public void delete(UUID id) {
         var e = get(id);
-        var prefix = KbEndpointRegistry.PREFIX + e.getName() + "/";
+        var prefix = KbEndpointRegistry.prefixOf(e.getName());
         var s = settings.effective();
         var used = new ArrayList<String>();
         for (var m : new String[]{s.modelDigest(), s.modelPlan(), s.modelWrite(), s.modelRetry()}) {
@@ -187,7 +187,7 @@ public class KbEndpointService {
         }
     }
 
-    // Lists the endpoint's models and adds custom/<name>/<model> to the catalog
+    // Lists the endpoint's models and adds custom:<name>:<slug> to the catalog
     // (provider custom, no batch, price 0, disabled); existing ones are untouched.
     public KbEndpointDtos.DiscoverResult discover(UUID id) {
         var e = tx(() -> get(id));
@@ -209,13 +209,22 @@ public class KbEndpointService {
         var existing = new ArrayList<String>();
         var now = OffsetDateTime.now(clock);
         for (var raw : ids) {
-            var catalogId = KbEndpointRegistry.catalogId(e.getName(), raw);
-            if (raw.isBlank() || catalogId.length() > 128) continue;
-            if (models.existsById(catalogId)) {
+            if (raw == null || raw.isBlank() || raw.length() > 512) continue;
+            // Slash-free id; the same raw id always maps to the same catalog id.
+            var catalogId = KbEndpointRegistry.catalogId(e.getName(), raw, false);
+            var found = models.findById(catalogId).orElse(null);
+            if (found != null && found.getRemoteModelId() != null && !found.getRemoteModelId().equals(raw)) {
+                // Another raw id slugs to the same id: tell them apart with a hash.
+                catalogId = KbEndpointRegistry.catalogId(e.getName(), raw, true);
+                found = models.findById(catalogId).orElse(null);
+            }
+            if (found != null) {
+                if (found.getRemoteModelId() == null) found.setRemoteModelId(raw);
                 existing.add(catalogId);
                 continue;
             }
             var m = new KbModel(catalogId, raw, "custom", false, false);
+            m.setRemoteModelId(raw);
             m.setPrices(BigDecimal.ZERO, BigDecimal.ZERO, null, null, now);
             m.setPriceSource("custom");
             models.save(m);
@@ -230,7 +239,7 @@ public class KbEndpointService {
         if (minutes < 1 || minutes > 10080) throw new ValidationException("minutes", minutes, "must be between 1 and 10080");
         var e = get(id);
         var now = OffsetDateTime.now(clock);
-        var row = usage.endpointStats(KbEndpointRegistry.PREFIX + e.getName() + "/", now.minusMinutes(minutes)).get(0);
+        var row = usage.endpointStats(KbEndpointRegistry.prefixOf(e.getName()), now.minusMinutes(minutes)).get(0);
         long calls = ((Number) row[0]).longValue();
         long empty = ((Number) row[1]).longValue();
         Long p50 = row[2] == null ? null : Math.round(((Number) row[2]).doubleValue());
@@ -248,7 +257,7 @@ public class KbEndpointService {
     }
 
     private KbEndpointDtos.Item view(KbLlmEndpoint e) {
-        long count = models.countByIdStartingWith(KbEndpointRegistry.PREFIX + e.getName() + "/");
+        long count = models.countByIdStartingWith(KbEndpointRegistry.prefixOf(e.getName()));
         return new KbEndpointDtos.Item(e.getId(), e.getName(), e.getBaseUrl(), e.hasKey(),
             cipher.readable(e.getApiKeyEncrypted()), e.getMaxConcurrency(), e.getTimeoutSec(), e.isEnabled(), count,
             e.getCreatedAt(), e.getUpdatedAt());

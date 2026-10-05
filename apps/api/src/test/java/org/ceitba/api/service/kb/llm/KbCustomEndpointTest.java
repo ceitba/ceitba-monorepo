@@ -89,12 +89,15 @@ class KbCustomEndpointTest {
     @Test
     void customModelGoesToItsEndpointWithItsOwnConcurrency() throws Exception {
         // KB_SYNC_CONCURRENCY is 16, the endpoint allows 2: only 2 are ever in flight.
+        var catalog = new KbModel("custom:gpu:my-model.gguf", "my/model.gguf", "custom", false, true);
+        catalog.setRemoteModelId("my/model.gguf");
+        modelRows.rows.put(catalog.getId(), catalog);
         var exec = new SyncLlmExecutor(new FakeSyncChatClient(json), new KbLlmProperties(null, "k", "sync", 16, false),
             json, null, registry);
         var lines = new ArrayList<LlmLine>();
         for (int i = 0; i < 6; i++) {
             lines.add(new LlmLine("c" + i, json.readTree("""
-                {"model":"custom/gpu/my/model.gguf","max_tokens":100,"system":"s",
+                {"model":"custom:gpu:my-model.gguf","max_tokens":100,"system":"s",
                  "tools":[{"name":"submit_page","input_schema":{"type":"object"}}],
                  "messages":[{"role":"user","content":"x"}]}""")));
         }
@@ -112,19 +115,54 @@ class KbCustomEndpointTest {
 
     @Test
     void discoverUpsertsCatalogIdsAndKeepsExistingOnes() {
-        var existing = new KbModel("custom/gpu/qwen3.gguf", "mine", "custom", false, true);
+        var existing = new KbModel("custom:gpu:qwen3.gguf", "mine", "custom", false, true);
+        existing.setRemoteModelId("qwen3.gguf");
         modelRows.rows.put(existing.getId(), existing);
         var service = new KbEndpointService(endpointRows.on("findByName", a -> java.util.Optional.empty())
             .as(KbLlmEndpointRepository.class), modelRows.as(KbModelRepository.class), null, null, null, cipher,
             registry, Clock.systemUTC(), NoTx.template());
         var res = service.discover(endpointRows.all().get(0).getId());
-        assertThat(res.added()).containsExactly("custom/gpu/org/llama");
-        assertThat(res.existing()).containsExactly("custom/gpu/qwen3.gguf");
-        var added = modelRows.rows.get("custom/gpu/org/llama");
+        assertThat(res.added()).containsExactly("custom:gpu:org-llama");
+        assertThat(res.existing()).containsExactly("custom:gpu:qwen3.gguf");
+        var added = modelRows.rows.get("custom:gpu:org-llama");
         assertThat(added.getProvider()).isEqualTo("custom");
         assertThat(added.isBatchSupported()).isFalse();
         assertThat(added.isEnabled()).isFalse();
         assertThat(added.getInputPerM()).isEqualByComparingTo("0");
-        assertThat(modelRows.rows.get("custom/gpu/qwen3.gguf").isEnabled()).isTrue();   // untouched
+        assertThat(modelRows.rows.get("custom:gpu:qwen3.gguf").isEnabled()).isTrue();   // untouched
+    }
+
+    @Test
+    void rawIdWithSlashGetsSlashFreeCatalogIdAndRoutesWithRawId() throws Exception {
+        var service = new KbEndpointService(endpointRows.on("findByName", a -> java.util.Optional.empty())
+            .as(KbLlmEndpointRepository.class), modelRows.as(KbModelRepository.class), null, null, null, cipher,
+            registry, Clock.systemUTC(), NoTx.template());
+        service.discover(endpointRows.all().get(0).getId());
+        var m = modelRows.rows.get("custom:gpu:org-llama");
+        assertThat(m.getRemoteModelId()).isEqualTo("org/llama");
+        assertThat(modelRows.rows.keySet()).allSatisfy(id -> assertThat(id).doesNotContain("/"));
+        // Same slug, different raw id: told apart by a hash; discovering again changes nothing.
+        assertThat(KbEndpointRegistry.catalogId("gpu", "org llama", false)).isEqualTo("custom:gpu:org-llama");
+        assertThat(KbEndpointRegistry.catalogId("gpu", "org llama", true)).startsWith("custom:gpu:org-llama-")
+            .hasSize("custom:gpu:org-llama-".length() + 6);
+        assertThat(KbEndpointRegistry.catalogId("gpu", "x".repeat(300), true)).hasSize(128);
+        assertThat(service.discover(endpointRows.all().get(0).getId()).added()).isEmpty();
+
+        // The service's stub hid findByName from the shared repo: restore it for the registry.
+        endpointRows.on("findByName", a -> endpointRows.all().stream().filter(e -> e.getName().equals(a[0])).findFirst());
+        var exec = new SyncLlmExecutor(new FakeSyncChatClient(json), new KbLlmProperties(null, "k", "sync", 16, false),
+            json, null, registry);
+        var line = new LlmLine("c", json.readTree("""
+            {"model":"custom:gpu:org-llama","max_tokens":100,"system":"s","messages":[{"role":"user","content":"x"}]}"""));
+        exec.run(List.of(line), (SyncLlmExecutor.Outcome o) -> { }, () -> false);
+        assertThat(bodies).hasSize(1).allSatisfy(b -> assertThat(b).contains("\"model\":\"org/llama\""));
+    }
+
+    @Test
+    void doKeyIsNeededOnlyWhenSomeStageModelIsNotCustom() {
+        var router = new KbLlmRouter(new org.ceitba.api.external.llm.UnconfiguredLlmBatchClient(),
+            new org.ceitba.api.external.llm.UnconfiguredSyncChatClient(), null, null);
+        assertThat(router.availableFor(List.of("custom:gpu:a", "custom:gpu:b"))).isTrue();
+        assertThat(router.availableFor(List.of("custom:gpu:a", "glm-5"))).isFalse();
     }
 }

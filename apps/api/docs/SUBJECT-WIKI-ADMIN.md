@@ -84,9 +84,14 @@ cacheReadPerM, batchDiscount (0..1), contextWindow, notes, pricesUpdatedAt, last
 ## Custom OpenAI-compatible endpoints (own GPU)
 
 Staff can point the pipeline at their own server (llama.cpp `llama-server`, vLLM, ...) from the admin UI, with no
-env change. Models of an endpoint are catalog models with id `custom/<endpointName>/<modelId>` (the raw `modelId`
-may contain `/` or `:`), provider `custom`, `batchSupported=false`, price 0 (editable like any price). They work
-in every stage, evals and probes; `auto`/`batch` modes always run them sync.
+env change. Models of an endpoint are catalog models with id `custom:<endpointName>:<modelSlug>`, provider `custom`, `batchSupported=false`, price 0 (editable like any price). They work
+in every stage, evals and probes; `auto`/`batch` modes always run them sync. The catalog id is slash-free (the
+`/models/{id}` routes would otherwise need `%2F`, which Tomcat rejects): `modelSlug` is the raw model id with every
+character outside `[A-Za-z0-9._-]` replaced by `-`, truncated to fit the 128-char id (a short hash suffix tells apart
+two raw ids that slug alike). The raw id the endpoint knows is stored in `kb_model.remote_model_id` (V52), returned
+as `remoteModelId` by the model endpoints and sent in the request body. Runs and evals need `KB_LLM_API_KEY` only
+when some stage model is a DigitalOcean model. Manually created or DO-synced catalog ids must match
+`[A-Za-z0-9._:-]+` (and `custom:*` ids only come from discovery).
 
 Table `wiki.kb_llm_endpoint` (V51): `name` (unique, `[a-z0-9-]`, not renamable), `base_url` (http/https; **includes
 `/v1`**, e.g. `http://host:8081/v1`; calls go to `{baseUrl}/chat/completions` and `{baseUrl}/models`),
@@ -101,7 +106,7 @@ Staff API, all under `/v1/staff/kb/endpoints` (STAFF only):
 | `PUT /{id}` | same, all optional; `apiKey` omitted = keep, `""` = remove -> item |
 | `DELETE /{id}` | 204; 409 `KB_ENDPOINT_IN_USE` while a model of it is in the settings (incl. subject overrides) or in an active run/eval; also deletes its catalog models |
 | `POST /{id}/test` | `GET {baseUrl}/models` -> `{ok, latencyMs, models[], error?}` |
-| `POST /{id}/discover` | lists the models and adds `custom/<name>/<model>` (disabled until staff enable them; existing ones untouched) -> `{added[], existing[]}` |
+| `POST /{id}/discover` | lists the models and adds `custom:<name>:<slug>` (disabled until staff enable them; existing ones untouched) -> `{added[], existing[]}` |
 | `GET /{id}/stats?minutes=60` | `{windowMinutes, requests, errors, p50Ms, p95Ms, outputTokensPerSec, inFlight}` |
 
 Workflow: add endpoint -> test -> discover -> enable the model and set its prices -> probe it (sync) -> select it in
@@ -123,7 +128,7 @@ custom models). Tools need `--jinja` on llama.cpp: when the probe says `toolCall
 tool request with an HTTP error) the executor uses the `json_object` fallback directly.
 
 Stats (stress testing): `requests`, `p50Ms`/`p95Ms` and `outputTokensPerSec` come from `kb_llm_usage` sync rows of
-`custom/<name>/%` in the window (`outputTokensPerSec` = output tokens / summed latency, i.e. per-request speed, not
+`custom:<name>:%` in the window (`outputTokensPerSec` = output tokens / summed latency, i.e. per-request speed, not
 aggregate throughput). Failed calls leave no usage row: they are counted in memory (since the last API restart) and
 added to `requests` and `errors` (`errors` also counts answers with 0 output tokens). `inFlight` is the in-memory
 count of HTTP calls running now.

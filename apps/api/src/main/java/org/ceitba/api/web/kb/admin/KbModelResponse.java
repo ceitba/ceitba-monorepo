@@ -23,6 +23,8 @@ import java.time.OffsetDateTime;
 // PUT; null = default); effectiveBatchModelId: what a batch sends (stored,
 // else the catalog id without its openai-/anthropic- prefix; null for models
 // without a batch provider). Sync requests always use `id`.
+// remoteModelId: custom endpoint models only: the raw id the endpoint knows (the
+// catalog id is custom:<endpoint>:<slug>, slash-free); null otherwise.
 public record KbModelResponse(
     String id,
     String displayName,
@@ -48,7 +50,8 @@ public record KbModelResponse(
     boolean selectable,
     Double emptyToolCallRate,
     String batchModelId,
-    String effectiveBatchModelId
+    String effectiveBatchModelId,
+    String remoteModelId
 ) {
     // batch: null when the model has no batch support.
     public record EffectivePrices(Price batch, Price sync) {}

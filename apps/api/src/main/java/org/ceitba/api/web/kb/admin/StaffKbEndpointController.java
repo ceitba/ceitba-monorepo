@@ -69,7 +69,7 @@ public class StaffKbEndpointController {
     }
 
     @PostMapping("/{id}/discover")
-    @Operation(summary = "Add the endpoint's models to the catalog as custom/<name>/<model> (disabled, price 0)")
+    @Operation(summary = "Add the endpoint's models to the catalog as custom:<name>:<slug> (disabled, price 0)")
     public KbEndpointDtos.DiscoverResult discover(@PathVariable UUID id) {
         return endpoints.discover(id);
     }
