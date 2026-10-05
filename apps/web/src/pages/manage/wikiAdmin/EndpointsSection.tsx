@@ -107,6 +107,11 @@ export default function EndpointsSection({ onModelsChanged }: { onModelsChanged:
                       {e.enabled ? t('manage.wikiAi.endpoints.enabled') : t('manage.wikiAi.endpoints.disabled')}
                     </span>
                   </div>
+                  {e.hasKey && e.keyReadable === false && (
+                    <p role="alert" className="px-2 py-1 rounded-sm bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 font-body text-[0.78rem]">
+                      <span className="font-semibold">⚠ {t('manage.wikiAi.endpoints.tokenUnreadable')}</span> {t('manage.wikiAi.endpoints.tokenUnreadableHint')}
+                    </p>
+                  )}
                   <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{e.baseUrl}</p>
                   <p className="font-body text-[0.78rem] text-ink-secondary dark:text-night-muted">
                     {t('manage.wikiAi.endpoints.concurrency')}: {e.maxConcurrency} · {t('manage.wikiAi.endpoints.timeout')}: {e.timeoutSec}s · {t('manage.wikiAi.endpoints.models', { count: e.modelCount })}

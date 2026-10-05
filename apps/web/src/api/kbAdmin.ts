@@ -779,6 +779,8 @@ export interface KbEndpoint {
   name: string
   baseUrl: string
   hasKey: boolean
+  // false when the stored token can't be decrypted any more (re-enter it).
+  keyReadable?: boolean
   maxConcurrency: number
   timeoutSec: number
   enabled: boolean
