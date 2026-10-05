@@ -145,7 +145,7 @@ Nothing short of a run-level failure stops a run; failures degrade per item.
 - **Subject:** an exception in BUILD, DIGEST check, PLAN answer, WRITE/RETRY validation (links, validation) or
   PUBLISH marks only that subject FAILED with a short reason (WARN log with run id and subject); it stays dirty.
 - **Run:** SUCCEEDED when everything went through; PARTIAL when some subjects failed, were published with rejected
-  pages or unread files, or were DEFERRED (`error` carries "3 materias con fallas, 12 diferidas"); FAILED when
+  pages or unread files, or were DEFERRED (`error` carries "3 materias con fallas, 12 diferidas"; with budget deferrals "34 materias completadas · 192 diferidas por presupuesto (US$ X estimado)"); FAILED when
   every subject failed, or at run level (cost cap, cancel, DO account error, restart loop).
 - **Engine:** an exception in a step is recorded on the run (`error`) and the step is retried with back-off (1, 2, 4
   minutes) on the next poll; after `MAX_STEP_FAILURES` (4) consecutive failures of the same stage the run is FAILED.
@@ -204,9 +204,35 @@ Every DO response (429s included) updates an in-memory snapshot of its `x-rateli
 
 ## Budget
 
-Before submitting each stage, estimate input tokens (chars/3.5) and enforce `KB_RUN_TOKEN_BUDGET`. Subjects are
-prioritized by change size (added + changed chars, then removed count), and the ones that don't fit are deferred, staying
-dirty for next week. Actual usage from the results is recorded per run, per stage and per subject.
+### Cost budget and admission (before DIGEST)
+
+Incident: a run spent US$ 0.67 (9.9M tokens, all DIGEST) on two huge subjects (22.99: 1,422 files, 7.2M tokens; 93.43:
+459 files, 4.5M), left no token budget for PLAN/WRITE, and all 226 subjects ended DEFERRED with nothing published. A
+token budget also weighs cheap DIGEST tokens (nano, batch) like expensive WRITE tokens (sync).
+
+The budget is now money. `runCostBudgetUsd` (env `KB_RUN_COST_BUDGET_USD`, default 5.00, 0.10 to 100) is spent
+by **admission**, which runs in DETECT, before any LLM call:
+1. Each dirty subject's **whole** cost is estimated with the forecast heuristics (`KbForecastService.subjectEstimates`):
+   DIGEST of the files **without a cached full digest** only (a subject left with cached digests by an earlier run is
+   cheap now), plus PLAN, WRITE and RETRY, tokens times the per-stage model's effective price (batch discount included).
+2. Subjects are sorted **smallest estimated cost first** (ties: oldest dirty first, meaning never compiled, then oldest
+   `compiledAt`, then id). `kb_run_subject.priority` stores that order (higher first) so every stage follows it.
+3. A subject is admitted only if its whole estimate fits the remaining cost budget (and the remaining
+   `runTokenBudget`). Others are DEFERRED right away, **never digested**, with the reason
+   `presupuesto de la corrida (US$ X estimado)` in `kb_run_subject.error`; they stay dirty for the next run.
+4. Exception: if nothing was admitted yet and the first candidate alone exceeds the budget, it is admitted **alone**
+   (a dedicated run; everyone else is deferred). It is exempt from the token budget but not from the per-stage request
+   caps: when its DIGEST needs more requests than the cap, whole files are digested up to the cap and the subject is
+   DEFERRED ("digest parcial"); the digests are cached, so the next run continues from there.
+
+The result is stored in `run.stats.budget` and returned as `budget` on the run (`limitUsd`, `estimatedUsd` of the
+admitted subjects, `spentUsd` = recorded cost so far, `admitted`, `deferred`, `deferredEstimatedUsd`, `tokenBudget`,
+`oversizedSubjectId`). The run summary (`error`) reads e.g. "34 materias completadas · 192 diferidas por presupuesto
+(US$ 3.10 estimado)".
+
+`KB_RUN_TOKEN_BUDGET` stays as a secondary hard cap on estimated input tokens (checked in admission and again when each
+stage builds its requests; clamped to `KB_RUN_TOKEN_BUDGET_MAX`). Actual usage from the results is recorded per run, per
+stage and per subject.
 
 Hard caps, independent of the budget (a staff run once saved `runTokenBudget` = 5e12 and built 23,586 DIGEST requests,
 which took the API down):
