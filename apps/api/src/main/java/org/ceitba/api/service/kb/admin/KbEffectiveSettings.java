@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 
 // The pipeline settings in force: env defaults overridden by
 // kb_pipeline_settings (docs/SUBJECT-WIKI-ADMIN.md §1).
+// runCostBudgetUsd: estimated US$ a run may take on (admission); runTokenBudget
+// is the secondary hard cap.
 // subjectOverrides: {"<subjectId>": {modelWrite?, modelPlan?, paused?}}.
 // reasoningEffort / maxTokens: {digest, plan, write, retry} (defaults
 // low/low/medium/medium and 4000/6000/12000/12000; GLM is a reasoning model
@@ -19,6 +21,7 @@ public record KbEffectiveSettings(
     boolean enabled,
     String cron,
     long runTokenBudget,
+    BigDecimal runCostBudgetUsd,
     BigDecimal weeklyCostLimitUsd,
     boolean retryRejected,
     JsonNode subjectOverrides,

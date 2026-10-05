@@ -37,7 +37,7 @@ import java.util.UUID;
 public class KbSettingsService {
 
     public static final List<String> FIELDS = List.of("modelDigest", "modelPlan", "modelWrite", "modelRetry",
-        "executionMode", "enabled", "cron", "runTokenBudget", "weeklyCostLimitUsd", "retryRejected",
+        "executionMode", "enabled", "cron", "runTokenBudget", "runCostBudgetUsd", "weeklyCostLimitUsd", "retryRejected",
         "subjectOverrides", "reasoningEffort", "maxTokens", "autoRefreshPrices");
     static final List<String> STAGES = List.of("digest", "plan", "write", "retry");
     private static final Set<String> MODEL_FIELDS = Set.of("modelDigest", "modelPlan", "modelWrite", "modelRetry");
@@ -167,6 +167,9 @@ public class KbSettingsService {
                 case "runTokenBudget" -> {
                     if (!v.isIntegralNumber()) throw new ValidationException(f, v, "must be a whole number");
                 }
+                case "runCostBudgetUsd" -> {
+                    if (!v.isNumber()) throw new ValidationException(f, v, "must be a number (US$)");
+                }
                 case "weeklyCostLimitUsd" -> {
                     if (!v.isNumber()) throw new ValidationException(f, v, "must be a number (US$) or null");
                 }
@@ -248,6 +251,7 @@ public class KbSettingsService {
             // (a run once started with 5 trillion) can never exceed it.
             Math.min(env.runTokenBudgetMax(),
                 s.has("runTokenBudget") ? s.get("runTokenBudget").asLong() : env.runTokenBudget()),
+            s.hasNonNull("runCostBudgetUsd") ? s.get("runCostBudgetUsd").decimalValue() : env.runCostBudgetUsd(),
             s.hasNonNull("weeklyCostLimitUsd") ? s.get("weeklyCostLimitUsd").decimalValue() : null,
             s.has("retryRejected") ? s.get("retryRejected").asBoolean() : env.retryRejected(),
             s.has("subjectOverrides") ? s.get("subjectOverrides") : json.createObjectNode(),
@@ -339,6 +343,12 @@ public class KbSettingsService {
             throw new ValidationException("runTokenBudget", body.get("runTokenBudget"),
                 "must be at most " + env.runTokenBudgetMax() + " (KB_RUN_TOKEN_BUDGET_MAX)");
         }
+        if (merged.runCostBudgetUsd().compareTo(KbPipelineProperties.MIN_COST_BUDGET_USD) < 0
+            || merged.runCostBudgetUsd().compareTo(KbPipelineProperties.MAX_COST_BUDGET_USD) > 0) {
+            throw new ValidationException("runCostBudgetUsd", merged.runCostBudgetUsd(),
+                "must be between " + KbPipelineProperties.MIN_COST_BUDGET_USD + " and "
+                    + KbPipelineProperties.MAX_COST_BUDGET_USD + " (US$)");
+        }
         if (merged.weeklyCostLimitUsd() != null && merged.weeklyCostLimitUsd().compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidationException("weeklyCostLimitUsd", merged.weeklyCostLimitUsd(), "must be >= 0");
         }
@@ -377,6 +387,7 @@ public class KbSettingsService {
         values.put("enabled", e.enabled());
         values.put("cron", e.cron());
         values.put("runTokenBudget", e.runTokenBudget());
+        values.put("runCostBudgetUsd", e.runCostBudgetUsd());
         if (e.weeklyCostLimitUsd() == null) values.putNull("weeklyCostLimitUsd");
         else values.put("weeklyCostLimitUsd", e.weeklyCostLimitUsd());
         values.put("retryRejected", e.retryRejected());

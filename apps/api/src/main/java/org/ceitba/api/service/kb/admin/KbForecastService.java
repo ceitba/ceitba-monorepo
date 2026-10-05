@@ -34,6 +34,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 // Expected costs (docs/SUBJECT-WIKI-ADMIN.md §7), for the current or proposed
@@ -296,6 +297,15 @@ public class KbForecastService {
                                     Map<String, Double> cache) {
         var lines = new ArrayList<Line>();
         var dirty = snap.dirty(s);
+        var known = knownDigests(dirty);
+        var planned = new HashSet<String>();
+        for (var d : dirty) lines.addAll(subjectLines(s, snap, d, known, planned, ratios, cache));
+        return lines;
+    }
+
+    // Fingerprints among the added/changed files of `dirty` that already have
+    // a full digest (a partial one is digested again).
+    private Set<String> knownDigests(List<KbInputs.Diff> dirty) {
         var fps = new HashSet<String>();
         dirty.forEach(d -> {
             d.added().forEach(i -> fps.add(fp(i)));
@@ -303,43 +313,74 @@ public class KbForecastService {
         });
         var known = new HashSet<String>();
         if (!fps.isEmpty()) {
-            digests.findByContentFingerprintInAndPromptVersion(fps, KbPayloads.PROMPT_VERSION)
-                .forEach(dg -> known.add(dg.getContentFingerprint()));
+            digests.findByContentFingerprintInAndPromptVersion(fps, KbPayloads.PROMPT_VERSION).stream()
+                .filter(dg -> !dg.isPartial()).forEach(dg -> known.add(dg.getContentFingerprint()));
         }
-        var planned = new HashSet<String>();
-        for (var d : dirty) {
-            var subject = d.subjectId();
-            long changedChars = 0;
-            int changedFiles = 0;
-            for (var list : List.of(d.added(), d.changed())) {
-                for (var i : list) {
-                    changedChars += i.chars();
-                    changedFiles++;
-                    var f = fp(i);
-                    if (known.contains(f) || !planned.add(f)) continue;
-                    int chunks = (int) Math.max(1, Math.ceil(i.chars() / (double) KbPayloads.CHUNK_CHARS));
-                    lines.add(line(s, "DIGEST", null, chunks, (long) (i.chars() / 3.5) + (long) OVERHEAD * chunks,
-                        ratios, cache));
-                }
+        return known;
+    }
+
+    // One subject's end-to-end token profile: DIGEST of the files without a
+    // digest (`known` ones cost nothing; `planned` dedupes identical content),
+    // then PLAN, WRITE and RETRY.
+    private List<Line> subjectLines(KbEffectiveSettings s, Snapshot snap, KbInputs.Diff d, Set<String> known,
+                                    Set<String> planned, Map<String, Integer> ratios, Map<String, Double> cache) {
+        var lines = new ArrayList<Line>();
+        var subject = d.subjectId();
+        long changedChars = 0;
+        int changedFiles = 0;
+        for (var list : List.of(d.added(), d.changed())) {
+            for (var i : list) {
+                changedChars += i.chars();
+                changedFiles++;
+                var f = fp(i);
+                if (known.contains(f) || !planned.add(f)) continue;
+                int chunks = (int) Math.max(1, Math.ceil(i.chars() / (double) KbPayloads.CHUNK_CHARS));
+                lines.add(line(s, "DIGEST", null, chunks, (long) (i.chars() / 3.5) + (long) OVERHEAD * chunks,
+                    ratios, cache));
             }
-            var live = snap.liveSources().getOrDefault(subject, List.of());
-            int pageCount = live.size();
-            lines.add(line(s, "PLAN", subject, 1,
-                OVERHEAD + 150L * pageCount + (long) DIGEST_TOKENS_PER_FILE * changedFiles + 1500, ratios, cache));
-            var touchedIds = new HashSet<UUID>();
-            d.changed().forEach(i -> touchedIds.add(i.fileId()));
-            touchedIds.addAll(d.removed());
-            long citing = live.stream().filter(src -> java.util.Arrays.stream(src).anyMatch(touchedIds::contains)).count();
-            int writes = (int) (citing + (d.added().isEmpty() ? 0 : Math.max(1, d.added().size() / 2))
-                + (pageCount == 0 ? 1 : 0));
-            if (writes == 0) continue;
-            long excerpts = Math.min(12_000, (long) (changedChars / 3.5));
-            long perWrite = OVERHEAD + 1500 + 100L * pageCount + excerpts + 800L * Math.min(changedFiles, 5) + 2000;
-            lines.add(line(s, "WRITE", subject, writes, perWrite * writes, ratios, cache));
-            int retries = (int) Math.ceil(writes * 0.15);
-            lines.add(line(s, "RETRY", subject, retries, (perWrite + 4000) * retries, ratios, cache));
         }
+        var live = snap.liveSources().getOrDefault(subject, List.of());
+        int pageCount = live.size();
+        lines.add(line(s, "PLAN", subject, 1,
+            OVERHEAD + 150L * pageCount + (long) DIGEST_TOKENS_PER_FILE * changedFiles + 1500, ratios, cache));
+        var touchedIds = new HashSet<UUID>();
+        d.changed().forEach(i -> touchedIds.add(i.fileId()));
+        touchedIds.addAll(d.removed());
+        long citing = live.stream().filter(src -> java.util.Arrays.stream(src).anyMatch(touchedIds::contains)).count();
+        int writes = (int) (citing + (d.added().isEmpty() ? 0 : Math.max(1, d.added().size() / 2))
+            + (pageCount == 0 ? 1 : 0));
+        if (writes == 0) return lines;
+        long excerpts = Math.min(12_000, (long) (changedChars / 3.5));
+        long perWrite = OVERHEAD + 1500 + 100L * pageCount + excerpts + 800L * Math.min(changedFiles, 5) + 2000;
+        lines.add(line(s, "WRITE", subject, writes, perWrite * writes, ratios, cache));
+        int retries = (int) Math.ceil(writes * 0.15);
+        lines.add(line(s, "RETRY", subject, retries, (perWrite + 4000) * retries, ratios, cache));
         return lines;
+    }
+
+    // Estimated end-to-end cost of one subject (admission, ADMIN doc §7).
+    public record SubjectEstimate(String subjectId, BigDecimal costUsd, long inputTokens) {}
+
+    // Each dirty subject's full estimate at the effective prices of `s`: the
+    // forecast heuristics, DIGEST for files without a cached digest only.
+    // Subjects are priced independently (no cross-subject dedupe of identical
+    // content: an upper bound).
+    @Transactional(readOnly = true)
+    public Map<String, SubjectEstimate> subjectEstimates(KbEffectiveSettings s, List<KbInputs.Diff> dirty) {
+        Map<String, List<UUID[]>> sources = new HashMap<>();
+        for (Object[] r : pages.findSubjectSources(List.of(KbPageStatus.PUBLISHED, KbPageStatus.HIDDEN))) {
+            sources.computeIfAbsent((String) r[0], k -> new ArrayList<>()).add(r[1] == null ? new UUID[0] : (UUID[]) r[1]);
+        }
+        var catalog = catalog();
+        var snap = new Snapshot(Map.of(), List.of(), sources, catalog, outputRatios(), cacheRatios());
+        var known = knownDigests(dirty);
+        Map<String, SubjectEstimate> out = new LinkedHashMap<>();
+        for (var d : dirty) {
+            var lines = subjectLines(s, snap, d, known, new HashSet<>(), snap.ratios(), snap.cacheRatios());
+            out.put(d.subjectId(), new SubjectEstimate(d.subjectId(), total(lines, catalog),
+                lines.stream().mapToLong(Line::input).sum()));
+        }
+        return out;
     }
 
     // Weekly change rate of published files (drive modifiedTime in the last 28

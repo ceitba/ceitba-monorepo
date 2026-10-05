@@ -40,6 +40,7 @@ import org.ceitba.api.web.kb.dto.KbBatchJobResponse;
 import org.ceitba.api.web.kb.dto.KbImportPage;
 import org.ceitba.api.web.kb.dto.KbImportRequest;
 import org.ceitba.api.web.kb.dto.KbPreviewResponse;
+import org.ceitba.api.web.kb.dto.KbRunBudgetResponse;
 import org.ceitba.api.web.kb.dto.KbRunResponse;
 import org.ceitba.api.web.kb.dto.KbRunSubjectResponse;
 import org.slf4j.Logger;
@@ -324,30 +325,82 @@ public class KbPipelineService implements KbRunHandler {
         return !run.isEval();
     }
 
+    static final String BUDGET_REASON = "presupuesto de la corrida";
+
     // DETECT: the dirty subjects (nothing dirty: the run ends with zero requests).
+    // Admission (SUBJECT-WIKI-PIPELINE.md): every dirty subject's whole cost
+    // (DIGEST of uncached files + PLAN + WRITE + RETRY) is estimated; subjects
+    // are taken smallest first while they fit the run's cost budget. The rest
+    // are DEFERRED right here, never digested. When even the smallest does
+    // not fit it runs alone. Run subjects' priority encodes this order.
     @Override
     public void detect(KbRun run) {
         var s = settings.effective();
         run.setExpectedCostUsd(forecast.nextRunTotal(s));
-        var dirty = inputs.diffs(s::paused).stream().filter(KbInputs.Diff::dirty)
-            .sorted(Comparator.comparingLong(KbInputs.Diff::priority).reversed()).toList();
-        for (var d : dirty) {
+        var dirty = inputs.diffs(s::paused).stream().filter(KbInputs.Diff::dirty).toList();
+        var estimates = forecast.subjectEstimates(s, dirty);
+        Map<String, OffsetDateTime> compiledAt = new HashMap<>();
+        states.findAll().forEach(st -> compiledAt.put(st.getSubjectId(), st.getCompiledAt()));
+        var candidates = dirty.stream().map(d -> {
+            var e = estimates.get(d.subjectId());
+            return new KbAdmission.Candidate(d.subjectId(), e.costUsd(), e.inputTokens(), compiledAt.get(d.subjectId()));
+        }).toList();
+        var result = KbAdmission.admit(candidates, s.runCostBudgetUsd(), s.runTokenBudget());
+        var order = new ArrayList<>(result.admitted());
+        order.addAll(result.deferred());
+        var byId = new HashMap<String, KbInputs.Diff>();
+        dirty.forEach(d -> byId.put(d.subjectId(), d));
+        var deferredIds = new HashSet<String>();
+        result.deferred().forEach(c -> deferredIds.add(c.subjectId()));
+        int n = order.size();
+        for (int rank = 0; rank < n; rank++) {
+            var c = order.get(rank);
+            var d = byId.get(c.subjectId());
             var removed = json.createArrayNode();
             d.removed().forEach(id -> removed.add(id.toString()));
-            runSubjects.save(new KbRunSubject(run.getId(), d.subjectId(), s.writeModelFor(d.subjectId()),
-                d.priority(), inputs.toJson(d.current()), inputs.toJson(d.added()), inputs.toJson(d.changed()),
-                removed, json.createArrayNode(), json.createObjectNode()));
+            var rs = new KbRunSubject(run.getId(), d.subjectId(), s.writeModelFor(d.subjectId()),
+                n - rank, inputs.toJson(d.current()), inputs.toJson(d.added()), inputs.toJson(d.changed()),
+                removed, json.createArrayNode(), json.createObjectNode());
+            if (deferredIds.contains(c.subjectId())) {
+                rs.setStatus("DEFERRED");
+                rs.setError(BUDGET_REASON + " (US$ " + usdText(c.costUsd()) + " estimado)");
+            }
+            runSubjects.save(rs);
         }
+        var budget = json.createObjectNode();
+        budget.put("limitUsd", s.runCostBudgetUsd());
+        budget.put("estimatedUsd", usd(result.admittedUsd()));
+        budget.put("admitted", result.admitted().size());
+        budget.put("deferred", result.deferred().size());
+        budget.put("deferredEstimatedUsd", usd(result.deferredUsd()));
+        budget.put("tokenBudget", s.runTokenBudget());
+        if (result.oversized() != null) budget.put("oversizedSubjectId", result.oversized().subjectId());
+        run.setStats(json.createObjectNode().set("budget", budget));
         if (dirty.isEmpty()) {
             run.setStage("DONE");
             run.finish("SUCCEEDED", now());
             log.info("KB pipeline: run {}: nothing changed", run.getId());
         } else {
             run.setStage("DIGEST");
-            log.info("KB pipeline: run {}: {} dirty subjects", run.getId(), dirty.size());
+            log.info("KB pipeline: run {}: {} dirty subjects, {} admitted (US${} of US${}), {} deferred for budget{}",
+                run.getId(), dirty.size(), result.admitted().size(), usd(result.admittedUsd()), s.runCostBudgetUsd(),
+                result.deferred().size(),
+                result.oversized() == null ? "" : " (" + result.oversized().subjectId() + " alone: over budget)");
         }
         runSubjects.flush();
         refreshSummary(run);
+    }
+
+    private static String usdText(BigDecimal v) {
+        return v.signum() > 0 && v.compareTo(new BigDecimal("0.01")) < 0 ? "<0.01"
+            : v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    // The subject admitted alone because it alone exceeds the cost budget:
+    // exempt from the token budget (not from the request caps).
+    private static boolean exempt(KbRun run, String subjectId) {
+        return run.getStats() != null
+            && subjectId.equals(run.getStats().path("budget").path("oversizedSubjectId").asText(null));
     }
 
     // Requests of the stage, within the run's token budget and the hard cap
@@ -363,8 +416,9 @@ public class KbPipelineService implements KbRunHandler {
         Set<String> plannedFingerprints = new HashSet<>();
         for (var rs : active) {
           try {
+            boolean exempt = exempt(run, rs.getSubjectId());
             if (stage.equals("DIGEST")) {
-                built += buildDigest(run, rs, plannedFingerprints, seq, s, cap - built);
+                built += buildDigest(run, rs, plannedFingerprints, seq, s, cap - built, exempt);
                 continue;
             }
             List<KbRunRequest> mine = switch (stage) {
@@ -374,7 +428,7 @@ public class KbPipelineService implements KbRunHandler {
                 default -> List.of();
             };
             long est = mine.stream().mapToLong(KbRunRequest::getEstTokens).sum();
-            if (!mine.isEmpty() && run.getEstimatedTokens() + est > s.runTokenBudget()) {
+            if (!exempt && !mine.isEmpty() && run.getEstimatedTokens() + est > s.runTokenBudget()) {
                 rs.setStatus("DEFERRED");
                 log.info("KB pipeline: run {}: {} deferred (token budget)", run.getId(), rs.getSubjectId());
                 continue;
@@ -588,14 +642,25 @@ public class KbPipelineService implements KbRunHandler {
         long failed = worked.stream().filter(rs -> rs.getStatus().equals("FAILED")).count();
         long partial = worked.stream().filter(rs -> rs.getStatus().equals("PUBLISHED") && rs.getError() != null).count();
         long deferred = all.stream().filter(rs -> rs.getStatus().equals("DEFERRED")).count();
+        long budgetDeferred = all.stream().filter(rs -> rs.getStatus().equals("DEFERRED")
+            && rs.getError() != null && rs.getError().startsWith(BUDGET_REASON)).count();
+        long completed = all.stream().filter(rs -> rs.getStatus().equals("PUBLISHED")).count();
         // Deferred subjects stay dirty for the next run: not a clean success.
         var status = KbRunOutcome.status(worked.size(), failed, partial + deferred);
         if (!status.equals("SUCCEEDED")) {
             var parts = new ArrayList<String>();
+            if (budgetDeferred > 0) parts.add(completed + (completed == 1 ? " materia completada" : " materias completadas"));
             if (failed > 0) parts.add(failed + (failed == 1 ? " materia con fallas" : " materias con fallas"));
             if (partial > 0) parts.add(partial + (partial == 1 ? " materia parcial" : " materias parciales"));
-            if (deferred > 0) parts.add(deferred + (deferred == 1 ? " diferida" : " diferidas"));
-            run.setError(String.join(", ", parts));
+            if (budgetDeferred > 0) {
+                var est = run.getStats() == null ? BigDecimal.ZERO
+                    : run.getStats().path("budget").path("deferredEstimatedUsd").decimalValue();
+                parts.add(budgetDeferred + (budgetDeferred == 1 ? " diferida" : " diferidas") + " por presupuesto (US$ "
+                    + usdText(est) + " estimado)");
+            }
+            long other = deferred - budgetDeferred;
+            if (other > 0) parts.add(other + (other == 1 ? " diferida" : " diferidas"));
+            run.setError(String.join(budgetDeferred > 0 ? " · " : ", ", parts));
         }
         run.finish(status, now());
     }
@@ -611,22 +676,23 @@ public class KbPipelineService implements KbRunHandler {
     // detached before the next. A subject whose exact estimate turns out
     // over budget has its saved requests deleted and is deferred.
     private int buildDigest(KbRun run, KbRunSubject rs, Set<String> planned, KbRunEngine.Seq seq,
-                            KbEffectiveSettings s, int room) {
+                            KbEffectiveSettings s, int room, boolean exempt) {
         var before = new HashSet<>(planned);
         var need = digestTargets(rs, planned);
         if (need.isEmpty()) return 0;
         // Every file is at least one request: past the stage's request cap
         // the subject is deferred without reading any text.
-        if (need.size() > room) return defer(run, rs, planned, before, "request cap (" + need.size() + " files, "
+        if (!exempt && need.size() > room) return defer(run, rs, planned, before, "request cap (" + need.size() + " files, "
             + Math.max(room, 0) + " requests left of " + settings.maxRequestsPerStage() + ")");
         long budget = s.runTokenBudget() - run.getEstimatedTokens();
         long chars = 0;
         for (var page : pages(need, ID_PAGE)) {
             for (Object[] r : files.textLengths(page)) chars += ((Number) r[1]).longValue();
         }
-        if ((long) (chars * 0.9 / 3.5) > budget) return defer(run, rs, planned, before, "token budget");
+        if (!exempt && (long) (chars * 0.9 / 3.5) > budget) return defer(run, rs, planned, before, "token budget");
         long est = 0;
         var saved = new ArrayList<String>();
+        boolean truncated = false;
         for (var page : pages(need, DIGEST_PAGE)) {
             var mine = new ArrayList<KbRunRequest>();
             var rows = new ArrayList<>(files.textsOf(page));
@@ -635,6 +701,12 @@ public class KbPipelineService implements KbRunHandler {
                 var id = (UUID) f[0];
                 var sentFingerprint = fingerprintOf(id, (String) f[2]);
                 var chunks = KbPayloads.chunks((String) f[3]);
+                // The dedicated run of an oversized subject digests whole files up to the
+                // request cap; the rest continues next run (digests are cached).
+                if (exempt && saved.size() + mine.size() + chunks.size() > room) {
+                    truncated = true;
+                    break;
+                }
                 for (int i = 0; i < chunks.size(); i++) {
                     var text = "Archivo: " + f[1] + " (parte " + (i + 1) + "/" + chunks.size() + ")\n\n" + chunks.get(i);
                     var params = payloads.tuned(s.modelDigest(), "DIGEST", s, null, text);
@@ -647,7 +719,7 @@ public class KbPipelineService implements KbRunHandler {
             // Over budget, or (chunked texts) over the request cap: drop what was
             // saved for this subject and defer it.
             boolean overCap = saved.size() + mine.size() > room;
-            if (est > budget || overCap) {
+            if (!exempt && (est > budget || overCap)) {
                 if (!saved.isEmpty()) {
                     for (var ids : pages(saved, ID_PAGE)) requests.deleteByCustomIds(ids);
                 }
@@ -655,8 +727,17 @@ public class KbPipelineService implements KbRunHandler {
             }
             persist(mine);
             mine.forEach(r -> saved.add(r.getCustomId()));
+            if (truncated) break;
         }
         run.addEstimated(est);
+        if (truncated) {
+            // Its digests are stored after the stage; the subject itself waits.
+            rs.setStatus("DEFERRED");
+            rs.setError("request cap: digest parcial (" + saved.size() + " pedidos de " + need.size()
+                + " archivos); continúa en la próxima corrida");
+            log.info("KB pipeline: run {}: {} digest partial (request cap {}), continues next run", run.getId(),
+                rs.getSubjectId(), room);
+        }
         return saved.size();
     }
 
@@ -1444,6 +1525,9 @@ public class KbPipelineService implements KbRunHandler {
             if (n > 0) byStage.put(st, n);
         }
         stats.put("estimatedTokens", run.getEstimatedTokens());
+        if (run.getStats() != null && run.getStats().has("budget")) {
+            stats.set("budget", run.getStats().get("budget"));
+        }
         if (run.getStats() != null && run.getStats().has("droppedPlanOps")) {
             stats.set("droppedPlanOps", run.getStats().get("droppedPlanOps"));
         }
@@ -1456,7 +1540,16 @@ public class KbPipelineService implements KbRunHandler {
             r.getTokensIn(), r.getTokensOut(), r.getTokensCached(), r.getCostEstimate(), usd(r.getCostEstimate()),
             r.getExpectedCostUsd(),
             full ? costByStage(r) : null, r.isCostApproved(), r.isSimulated(), r.getError(),
-            full ? subjectsOf(r) : null, full ? batchesOf(r) : null, full ? progressService.progress(r.getId()) : null);
+            full ? subjectsOf(r) : null, full ? batchesOf(r) : null, full ? progressService.progress(r.getId()) : null, budgetOf(r));
+    }
+
+    private KbRunBudgetResponse budgetOf(KbRun r) {
+        var b = r.getStats() == null ? null : r.getStats().get("budget");
+        if (b == null) return null;
+        return new KbRunBudgetResponse(b.path("limitUsd").decimalValue(), b.path("estimatedUsd").decimalValue(),
+            usd(r.getCostEstimate()), b.path("admitted").asInt(), b.path("deferred").asInt(),
+            b.path("deferredEstimatedUsd").decimalValue(), b.path("tokenBudget").asLong(),
+            b.path("oversizedSubjectId").asText(null));
     }
 
     private Map<String, BigDecimal> costByStage(KbRun r) {

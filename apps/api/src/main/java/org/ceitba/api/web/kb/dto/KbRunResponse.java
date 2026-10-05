@@ -12,6 +12,7 @@ import java.util.UUID;
 // expectedCostUsd: the forecast when the run was detected;
 // costByStage: {DIGEST, PLAN, WRITE, RETRY} (detail only);
 // simulated: produced by the fake executors; stage: DETECT | DIGEST | PLAN | WRITE | RETRY | PUBLISH | DONE.
+// budget: cost budget and admission of the run (KbRunBudgetResponse);
 // subjects/batches are only filled on GET .../runs/{id}.
 public record KbRunResponse(
     UUID id,
@@ -36,5 +37,6 @@ public record KbRunResponse(
     String error,
     List<KbRunSubjectResponse> subjects,
     List<KbBatchJobResponse> batches,
-    KbProgressResponse progress
+    KbProgressResponse progress,
+    KbRunBudgetResponse budget
 ) {}

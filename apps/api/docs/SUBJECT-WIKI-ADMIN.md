@@ -19,6 +19,7 @@ and require the STAFF role.
 | `enabled` | `KB_PIPELINE_ENABLED` | weekly schedule on or off |
 | `cron` | `KB_PIPELINE_CRON` (`0 0 3 * * SUN`) | Spring cron, **6 fields with seconds first**, America/Argentina/Buenos_Aires. A standard 5-field expression is accepted on PUT and stored/returned with `0 ` prepended (`0 3 * * SUN` → `0 0 3 * * SUN`) |
 | `runTokenBudget` | `KB_RUN_TOKEN_BUDGET` | at most `KB_RUN_TOKEN_BUDGET_MAX` (50M): PUT refuses more, a larger stored value is clamped when used |
+| `runCostBudgetUsd` | `KB_RUN_COST_BUDGET_USD` (5.00) | US$ 0.10 to 100 (PUT refuses others): the estimated cost a run may take on. Admission (pipeline doc, "Cost budget and admission") defers subjects whose whole estimated cost (DIGEST of uncached files + PLAN + WRITE + RETRY at effective prices) does not fit, smallest first. `runTokenBudget` stays as a secondary cap. Returned in `values` and `source` like the other fields |
 | `weeklyCostLimitUsd` | null | hard stop: no stage is submitted while the pipeline's recorded cost of the last 7 days plus that stage's estimate exceeds this |
 | `retryRejected` | `KB_RETRY_REJECTED` | |
 | `subjectOverrides` | `{}` | `{ "<subjectId>": { modelWrite?, modelPlan?, paused?: bool } }` |
@@ -34,7 +35,7 @@ Endpoints:
   models that change against the catalog (enabled, probed, and the mode is supported). `costImpact` is
   `{ previous, projected }`, each a `weekly` object of the forecast (§7) for the current and the new settings.
   - Field types are checked: `enabled`/`retryRejected`/`autoRefreshPrices` booleans, `runTokenBudget` a whole number,
-    `weeklyCostLimitUsd` a number, `subjectOverrides`/`reasoningEffort`/`maxTokens` objects, the rest strings; anything
+    `runCostBudgetUsd`/`weeklyCostLimitUsd` numbers, `subjectOverrides`/`reasoningEffort`/`maxTokens` objects, the rest strings; anything
     else is `400 ValidationError` naming the field (`"25"` is not read as 0, `"yes"` not as false).
   - Keys that are not settings fields (`costImpact`, `source`, `updatedAt`, `updatedBy*`, …: the envelope echoed back)
     are ignored.
@@ -242,6 +243,14 @@ These complete sections 1–4; the frontend already calls them.
   unchanged. It's used to show a cost next to each option in the model picker.
 - A forecast reads the corpus once (inputs and their diffs, page sources per subject without bodies, catalog, learned
   ratios); `stage-cost` calls, which the model table makes for every (model, stage), share that snapshot for 30 s.
+
+### Run budget (for the admin SPA)
+- Every run response (`GET /pipeline/runs`, `.../runs/{id}`) carries `budget`: `{ limitUsd, estimatedUsd, spentUsd,
+  admitted, deferred, deferredEstimatedUsd, tokenBudget, oversizedSubjectId }` (null on runs created before it).
+  `estimatedUsd` is the admitted subjects' whole-run estimate, `spentUsd` the recorded cost so far, `limitUsd` the
+  `runCostBudgetUsd` in force at detection. The SPA can show spent / estimated against limit and "N admitidas, M
+  diferidas por presupuesto (US$ X)". A subject deferred for budget has `status: DEFERRED` and `error` starting
+  with `presupuesto de la corrida (US$ X estimado)`.
 
 ### Actuals vs expected
 - Each completed run stores `expectedCostUsd` (the forecast at submission) next to `costUsd` (actual).
