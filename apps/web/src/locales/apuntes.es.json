@@ -570,7 +570,7 @@
         "tz": "Hora de Buenos Aires",
         "rawCron": "editar cron",
         "simpleCron": "volver a día y hora",
-        "budget": "Presupuesto de tokens por ejecución",
+        "budget": "Límite de tokens (secundario)",
         "costLimit": "Límite de costo semanal (US$)",
         "noLimit": "Sin límite",
         "overrides": "Excepciones por materia",
@@ -592,6 +592,9 @@
         "autoRefreshPrices": "Actualizar precios de DigitalOcean semanalmente",
         "autoRefreshHint": "Sincroniza los precios del catálogo de DO una vez por semana. Los costos ya registrados no cambian.",
         "restoreFailed": "No se pudo restaurar la configuración.",
+        "costBudget": "Presupuesto por corrida (US$)",
+        "costBudgetInvalid": "Ingresá un monto entre US$ 0,10 y US$ 100.",
+        "costBudgetHint": "Las materias entran a la corrida solo si su costo completo (resúmenes + plan + redacción) entra en el presupuesto; las más baratas primero. Lo que no entra queda para la próxima corrida.",
         "budgetRequired": "Ingresá un presupuesto de tokens (0 o más)."
       },
       "models": {
@@ -621,6 +624,7 @@
         "batchPlain": "batch"
       },
       "runs": {
+        "budget": {"title": "Presupuesto", "summary": "US$ {{spent}} gastados / US$ {{limit}} de límite · estimado admitido US$ {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas (US$ {{deferredEstimated}} estimado)", "oversized": "Corrida dedicada a {{subject}}: no entraba en el presupuesto"},
         "runNow": "Ejecutar ahora",
         "dryRun": "Simulación (dry run)",
         "preview": "Vista previa",
