@@ -53,7 +53,8 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
       runs.reload()
       if (run?.id) onOpen(run.id)
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 409 ? t('manage.wikiAi.runs.alreadyActive') : apuntesErrorMessage(e, t))
+      // Only KB_RUN_ACTIVE means another run; other 409s (e.g. a data error) show their own message.
+      setError(e instanceof ApiError && e.code === 'KB_RUN_ACTIVE' ? t('manage.wikiAi.runs.alreadyActive') : apuntesErrorMessage(e, t))
     } finally {
       setBusy(null); setConfirmRun(null)
     }
