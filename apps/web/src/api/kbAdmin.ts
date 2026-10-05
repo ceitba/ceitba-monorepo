@@ -225,6 +225,8 @@ export interface KbModel {
   // edited by hand by staff.
   priceSource?: 'do-catalog' | 'manual' | null
   lastProbe: ModelProbe | null
+  // Models of an own endpoint are "custom/<endpoint name>/<model>".
+  endpointId?: string | null
 }
 
 export interface PriceChange { field: string; old: number | string | null; new: number | string | null }
@@ -770,3 +772,54 @@ export interface KbQuota {
 }
 
 export const fetchQuota = (refresh = false) => apiGet<KbQuota>(`${BASE}/quota${refresh ? '?refresh=true' : ''}`)
+
+// ── Own LLM endpoints (OpenAI-compatible servers registered by staff) ────
+export interface KbEndpoint {
+  id: string
+  name: string
+  baseUrl: string
+  hasKey: boolean
+  maxConcurrency: number
+  timeoutSec: number
+  enabled: boolean
+  modelCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+// apiKey: omitted on update keeps the stored token, "" removes it.
+export interface KbEndpointInput {
+  name?: string
+  baseUrl?: string
+  apiKey?: string
+  maxConcurrency?: number
+  timeoutSec?: number
+  enabled?: boolean
+}
+
+export interface EndpointTestResult { ok: boolean; latencyMs: number | null; models: string[]; error?: string | null }
+export interface EndpointDiscoverResult { added: string[]; existing: string[] }
+export interface EndpointStats {
+  windowMinutes: number
+  requests: number
+  errors: number
+  p50Ms: number | null
+  p95Ms: number | null
+  outputTokensPerSec: number | null
+  inFlight: number
+}
+
+const ENDPOINTS = `${BASE}/endpoints`
+export const fetchEndpoints = () => apiGet<KbEndpoint[]>(ENDPOINTS)
+export const createEndpoint = (body: KbEndpointInput) => apiSend<KbEndpoint>('POST', ENDPOINTS, body)
+export const updateEndpoint = (id: string, body: KbEndpointInput) => apiSend<KbEndpoint>('PUT', `${ENDPOINTS}/${enc(id)}`, body)
+export const deleteEndpoint = (id: string) => apiSend<void>('DELETE', `${ENDPOINTS}/${enc(id)}`)
+export const testEndpoint = (id: string) => apiSend<EndpointTestResult>('POST', `${ENDPOINTS}/${enc(id)}/test`)
+export const discoverEndpointModels = (id: string) => apiSend<EndpointDiscoverResult>('POST', `${ENDPOINTS}/${enc(id)}/discover`)
+export const fetchEndpointStats = (id: string, minutes: number) => apiGet<EndpointStats>(`${ENDPOINTS}/${enc(id)}/stats?minutes=${minutes}`)
+
+// "custom/<endpoint>/<model>" → { endpoint, model }; null for other models.
+export function parseCustomModel(id: string): { endpoint: string; model: string } | null {
+  const m = /^custom\/([^/]+)\/(.+)$/.exec(id)
+  return m ? { endpoint: m[1], model: m[2] } : null
+}

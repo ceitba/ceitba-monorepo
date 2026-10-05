@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { effectivePrices, fetchForecast, fetchModels, probeModel, probeOk, syncModels, updateModel, sortModels, type KbModel, type ModelSyncResult } from '../../../api/kbAdmin'
+import { effectivePrices, fetchForecast, fetchModels, parseCustomModel, probeModel, probeOk, syncModels, updateModel, sortModels, type KbModel, type ModelSyncResult } from '../../../api/kbAdmin'
 import { apuntesErrorMessage } from '../../../utils/apuntes'
 import ErrorBanner from '../../../components/ErrorBanner'
 import Notice from '../../../components/Notice'
 import { ViewState } from './shared'
+import EndpointsSection from './EndpointsSection'
 import { pct } from './format'
 import { BTN, FIELD, TD, TH } from './styles'
 import { useLoad } from './useLoad'
@@ -94,7 +95,8 @@ export default function ModelsView() {
                   <tr key={m.id} className="border-t border-border dark:border-night-border">
                     <td className={`${TD} min-w-[13rem]`}>
                       <p className="font-semibold text-ink-primary dark:text-night-text">{m.displayName || m.id}</p>
-                      <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{m.id}{m.provider ? ` · ${m.provider}` : ''}</p>
+                      <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{m.id} · {parseCustomModel(m.id) ? t('manage.wikiAi.endpoints.providerOwn') : m.provider}</p>
+                      {parseCustomModel(m.id) && <p className="font-body text-[0.72rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.endpointName', { name: parseCustomModel(m.id)!.endpoint })}</p>}
                       {m.contextWindow && <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.models.context', { k: Math.round(m.contextWindow / 1000) })}</p>}
                       <PriceSourceLine m={m} />
                     </td>
@@ -133,6 +135,7 @@ export default function ModelsView() {
           </div>
         )}
       </ViewState>
+      <EndpointsSection onModelsChanged={models.reload} />
     </div>
   )
 }
