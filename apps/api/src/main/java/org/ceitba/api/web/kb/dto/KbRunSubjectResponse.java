@@ -26,5 +26,7 @@ public record KbRunSubjectResponse(
     java.math.BigDecimal costUsd,
     String error,
     // {proposed, kept, dropped: {reason: count}} when PLAN dropped operations, else null.
-    JsonNode droppedPlanOps
+    JsonNode droppedPlanOps,
+    // Files left out of this run (no digest); they are retried next run.
+    int skippedFiles
 ) {}

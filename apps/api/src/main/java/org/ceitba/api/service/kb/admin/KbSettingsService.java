@@ -73,6 +73,10 @@ public class KbSettingsService {
         return env.maxRequestsPerStage();
     }
 
+    public double digestMaxMissingRatio() {
+        return env.digestMaxMissingRatio();
+    }
+
     public int batchMaxRequests() {
         return env.batchMaxRequests();
     }

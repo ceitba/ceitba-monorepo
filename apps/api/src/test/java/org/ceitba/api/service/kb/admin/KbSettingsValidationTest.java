@@ -17,7 +17,7 @@ class KbSettingsValidationTest {
 
     final ObjectMapper json = new ObjectMapper();
     final KbSettingsService service = new KbSettingsService(null, null, null,
-        new KbPipelineProperties(false, null, null, null, null, null, null, null, null, null, null, null, null),
+        new KbPipelineProperties(false, null, null, null, null, null, null, null, null, null, null, null, null, null),
         new KbLlmProperties(null, null, "sync", null, false), null, json, Clock.systemUTC(), null);
 
     @Test

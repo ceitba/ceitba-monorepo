@@ -261,7 +261,7 @@ abstract class KbPipelineAcceptanceIT {
     void tokenBudgetDefersSubjectsWhichStayDirty() throws Exception {
         call(put("/v1/staff/kb/settings"), "{\"runTokenBudget\": 1}", 200);
         var run = run();
-        assertThat(run.path("status").asText()).isEqualTo("SUCCEEDED");
+        assertThat(run.path("status").asText()).isEqualTo("PARTIAL");   // deferred subjects: not a clean run
         var statuses = jdbc.queryForList("SELECT status FROM wiki.kb_run_subject WHERE run_id = ?::uuid",
             String.class, run.path("id").asText());
         assertThat(statuses).containsOnly("DEFERRED");
@@ -293,5 +293,58 @@ abstract class KbPipelineAcceptanceIT {
         var last = summary.path("accuracy").path("lastRuns").get(0);
         assertThat(last.path("trigger").asText()).isEqualTo("MANUAL");
         assertThat(last.hasNonNull("startedAt") && last.has("expectedUsd") && last.has("actualUsd")).isTrue();
+    }
+
+    // One subject whose PLAN is unusable fails alone (and stays dirty): the
+    // other publishes and the run is PARTIAL, with the counts in its error.
+    @Test
+    void aFailingSubjectDoesNotStopTheOthers() throws Exception {
+        var base = KbFakeAnswers.responder(json, false);
+        respond(r -> "submit_plan".equals(r.toolName()) && r.userText().contains("Matemática Financiera")
+            ? badPlan() : base.apply(r));
+        var run = run();
+        assertThat(run.path("status").asText()).as(run.toString()).isEqualTo("PARTIAL");
+        assertThat(run.path("error").asText()).contains("1 materia con fallas");
+        assertThat(jdbc.queryForObject("SELECT error FROM wiki.kb_run WHERE id = ?::uuid", String.class,
+            run.path("id").asText())).contains("1 materia con fallas");
+        assertThat(publishedSlugs(FIN)).isEmpty();
+        assertThat(publishedSlugs(CONT)).containsExactly("conceptos-centrales");
+        assertThat(jdbc.queryForObject("SELECT status FROM wiki.kb_run_subject WHERE subject_id = ?", String.class, FIN))
+            .isEqualTo("FAILED");
+    }
+
+    // A plan whose only operation cites no valid file: dropped, the subject fails.
+    private com.fasterxml.jackson.databind.JsonNode badPlan() {
+        var o = json.createObjectNode();
+        var op = o.putArray("operations").addObject();
+        op.put("op", "create").put("slug", "x").put("type", "concept").put("title", "X").put("reason", "r");
+        op.putArray("sources").add("not-a-file");
+        return o;
+    }
+
+    // A file nobody could digest (1 of 5, under the 20% ratio) is left out:
+    // the subject publishes with the rest, notes it, and the file is not
+    // recorded as compiled so the next run retries it.
+    @Test
+    void aSubjectGoesOnWithoutOneUnreadFile() throws Exception {
+        for (var tag : new String[] {"uno", "dos", "tres"}) file("Extra " + tag + ".pdf", FIN, text(tag));
+        var base = KbFakeAnswers.responder(json, false);
+        respond(r -> "submit_digest".equals(r.toolName()) && r.userText().contains("betapalabra1 ")
+            ? null : base.apply(r));
+        var run = run();
+        assertThat(run.path("status").asText()).as(run.toString()).isEqualTo("PARTIAL");
+        assertThat(publishedSlugs(FIN)).containsExactly("conceptos-centrales");
+        assertThat(jdbc.queryForObject("SELECT jsonb_array_length(skipped) FROM wiki.kb_run_subject "
+            + "WHERE run_id = ?::uuid AND subject_id = ?", Integer.class, run.path("id").asText(), FIN)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT error FROM wiki.kb_run_subject WHERE run_id = ?::uuid AND subject_id = ?",
+            String.class, run.path("id").asText(), FIN))
+            .contains("archivo sin resumen; se reintentan en la próxima corrida");
+        var compiled = jdbc.queryForObject("SELECT inputs::text FROM wiki.kb_subject_state WHERE subject_id = ?",
+            String.class, FIN);
+        assertThat(compiled).doesNotContain(f2.toString());
+        // Next run: only that file is dirty again.
+        respond(KbFakeAnswers.responder(json, false));
+        var again = run();
+        assertThat(again.path("status").asText()).as(again.toString()).isEqualTo("SUCCEEDED");
     }
 }

@@ -68,4 +68,15 @@ public class KbFileDigest {
     public String getContentFingerprint() { return contentFingerprint; }
     public String getPromptVersion() { return promptVersion; }
     public JsonNode getDigest() { return digest; }
+
+    // Merged from only some of the file's chunks (the rest failed): the next
+    // run digests the file again.
+    public boolean isPartial() { return digest != null && digest.path("partial").asBoolean(false); }
+
+    public void replace(String model, JsonNode digest, int tokensIn, int tokensOut) {
+        this.model = model;
+        this.digest = digest;
+        this.tokensIn = tokensIn;
+        this.tokensOut = tokensOut;
+    }
 }
