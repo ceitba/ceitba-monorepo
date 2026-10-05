@@ -73,3 +73,13 @@ export function prettyConfig(key: string, plan?: string, write?: string): string
   const fmt = (s?: string) => (s ? s.replace(/@(\w+)$/, ' ($1)') : '?')
   return w ? `${fmt(p)} → ${fmt(w)}` : key
 }
+
+export function ms(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—'
+  return n >= 1000 ? `${(n / 1000).toFixed(1)} s` : `${Math.round(n)} ms`
+}
+
+export function rate(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—'
+  return n.toFixed(n < 10 ? 1 : 0)
+}
