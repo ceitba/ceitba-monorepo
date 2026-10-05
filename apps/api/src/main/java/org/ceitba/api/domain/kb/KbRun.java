@@ -51,10 +51,11 @@ public class KbRun {
     @Column(name = "prompt_version", length = 16)
     private String promptVersion;
 
-    @Column(length = 128)
+    // "digest|plan|write" model ids; custom endpoint ids are long (V53).
+    @Column(length = 512)
     private String model;
 
-    @Column(length = 128)
+    @Column(length = 512)
     private String generator;
 
     // Summary per subject (refreshed as the run moves); details in kb_run_subject.

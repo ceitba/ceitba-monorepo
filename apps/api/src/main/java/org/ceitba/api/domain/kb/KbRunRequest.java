@@ -37,7 +37,7 @@ public class KbRunRequest {
     @Column(name = "item_key", nullable = false, columnDefinition = "text")
     private String itemKey;
 
-    @Column(nullable = false, length = 128)
+    @Column(nullable = false, length = 512)
     private String target;
 
     @Column(nullable = false)
