@@ -12,7 +12,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -20,7 +19,6 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Modifier;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +50,6 @@ public class ResetSharedContextTestExecutionListener extends AbstractTestExecuti
 
     static final String BASELINE_SCHEMA = "it_baseline";
     private static final String DONE = ResetSharedContextTestExecutionListener.class.getName() + ".done";
-    private static final Duration EXECUTOR_IDLE_TIMEOUT = Duration.ofSeconds(30);
 
     private static final Map<ApplicationContext, Baseline> BASELINES =
         Collections.synchronizedMap(new WeakHashMap<>());
@@ -81,7 +78,7 @@ public class ResetSharedContextTestExecutionListener extends AbstractTestExecuti
             BASELINES.put(context, Baseline.capture(dataSource));
             return;
         }
-        awaitIdleExecutors(context);
+        AsyncWork.awaitIdle(context);
         baseline.restore(dataSource);
         resetFakes(context);
     }
@@ -95,25 +92,6 @@ public class ResetSharedContextTestExecutionListener extends AbstractTestExecuti
     // there would wipe data the outer class set up.
     private static boolean isInnerClass(Class<?> testClass) {
         return testClass.getEnclosingClass() != null && !Modifier.isStatic(testClass.getModifiers());
-    }
-
-    private static void awaitIdleExecutors(ApplicationContext context) {
-        long deadline = System.nanoTime() + EXECUTOR_IDLE_TIMEOUT.toNanos();
-        for (var executor : context.getBeansOfType(ThreadPoolTaskExecutor.class, false, false).values()) {
-            var pool = executor.getThreadPoolExecutor();
-            while (pool.getActiveCount() > 0 || !pool.getQueue().isEmpty()) {
-                if (System.nanoTime() > deadline) {
-                    throw new IllegalStateException("Async work from the previous test class is still running on "
-                        + executor.getThreadNamePrefix() + "* after " + EXECUTOR_IDLE_TIMEOUT);
-                }
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException(e);
-                }
-            }
-        }
     }
 
     private static void resetFakes(ApplicationContext context) {

@@ -1,5 +1,6 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
@@ -11,6 +12,7 @@ import org.ceitba.api.service.push.PushNotificationService;
 import org.ceitba.api.service.push.events.PushToOrgFollowers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,12 +46,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PushTriggerIT {
 
     private static final Duration WAIT = Duration.ofSeconds(10);
-    private static final Duration QUIET = Duration.ofMillis(700);
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired UserRepository users;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
     @Autowired PushNotificationService pushService;
     @Autowired ApplicationEventPublisher events;
     @Autowired TransactionTemplate tx;
@@ -103,8 +105,9 @@ class PushTriggerIT {
         await().atMost(WAIT).until(() -> gateway.calls().size() >= n);
     }
 
-    private void assertNoPushFor(Duration quiet) {
-        await().during(quiet).atMost(quiet.plusSeconds(2)).until(() -> gateway.calls().isEmpty());
+    private void assertNoPush() {
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).isEmpty();
     }
 
     @Test
@@ -129,7 +132,7 @@ class PushTriggerIT {
     @Test
     void aDraftDoesNotPushUntilItIsPublishedAndEditsDoNotRepush() throws Exception {
         createArticle("art-2", "it", "draft");
-        assertNoPushFor(QUIET);
+        assertNoPush();
 
         mvc.perform(patch("/v1/articles/art-2").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +197,7 @@ class PushTriggerIT {
     @Test
     void anArticleWithoutOrganizationDoesNotPush() throws Exception {
         createArticle("art-3", null, "published");
-        assertNoPushFor(QUIET);
+        assertNoPush();
     }
 
     @Test
@@ -223,7 +226,7 @@ class PushTriggerIT {
                      "organization":"missing-org","authors":["IT"],"status":"published"}
                     """))
             .andExpect(status().isNotFound());
-        assertNoPushFor(QUIET);
+        assertNoPush();
     }
 
     @Test
@@ -234,7 +237,7 @@ class PushTriggerIT {
             events.publishEvent(trigger);
             status.setRollbackOnly();
         });
-        assertNoPushFor(QUIET);
+        assertNoPush();
 
         tx.executeWithoutResult(status -> events.publishEvent(trigger));
         awaitCalls(1);
@@ -254,6 +257,7 @@ class PushTriggerIT {
     }
 
     private void assertNoMoreCallsThan(int n) {
-        await().during(QUIET).atMost(QUIET.plusSeconds(2)).until(() -> gateway.calls().size() == n);
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).hasSize(n);
     }
 }

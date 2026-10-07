@@ -1,12 +1,14 @@
 package org.ceitba.api.web.proposal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
 import org.ceitba.api.service.push.FakePushGatewayConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,7 +41,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ProposalPushIT {
 
     private static final Duration WAIT = Duration.ofSeconds(10);
-    private static final Duration QUIET = Duration.ofMillis(700);
     private static final String AUTHOR = "autor@itba.edu.ar";
     private static final String OTHER = "otro@itba.edu.ar";
     private static final String MOD = "mod@itba.edu.ar";
@@ -49,6 +50,7 @@ class ProposalPushIT {
     @Autowired UserRepository users;
     @Autowired ObjectMapper json;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
 
     @BeforeEach
     void seed() {
@@ -92,7 +94,8 @@ class ProposalPushIT {
     }
 
     private void assertCallsStay(int n) {
-        await().during(QUIET).atMost(QUIET.plusSeconds(2)).until(() -> gateway.calls().size() == n);
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).hasSize(n);
     }
 
     @Test

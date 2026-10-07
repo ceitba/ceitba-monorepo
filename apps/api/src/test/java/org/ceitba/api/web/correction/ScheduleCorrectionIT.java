@@ -2,6 +2,7 @@ package org.ceitba.api.web.correction;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.Career;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
@@ -31,6 +32,7 @@ import org.ceitba.api.service.push.events.PushToUsers;
 import org.ceitba.api.service.sync.DataSyncService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -127,6 +129,7 @@ class ScheduleCorrectionIT {
     @Autowired DataSyncService sync;
     @Autowired FakeItbaApiClient itba;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
     @Autowired ApplicationEvents events;
 
     @BeforeEach
@@ -760,8 +763,8 @@ class ScheduleCorrectionIT {
 
         // More confirms: no second push.
         vote(student(4), id, "CONFIRM");
-        await().during(Duration.ofMillis(700)).atMost(Duration.ofSeconds(3))
-            .until(() -> gateway.calls().size() == 1);
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).hasSize(1);
     }
 
     @Test

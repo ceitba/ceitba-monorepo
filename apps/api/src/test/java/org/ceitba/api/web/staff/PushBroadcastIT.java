@@ -1,11 +1,13 @@
 package org.ceitba.api.web.staff;
 
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
 import org.ceitba.api.service.push.FakePushGatewayConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,7 +33,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(FakePushGatewayConfig.class)
 class PushBroadcastIT {
 
-    private static final Duration QUIET = Duration.ofMillis(700);
     private static final String BODY = """
         {"title":"CEITBA","body":"Mañana no hay clases","data":{"type":"announcement","id":"42"}}
         """;
@@ -40,6 +41,7 @@ class PushBroadcastIT {
     @Autowired JdbcTemplate jdbc;
     @Autowired UserRepository users;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
 
     @BeforeEach
     void seed() {
@@ -62,7 +64,8 @@ class PushBroadcastIT {
     }
 
     private void assertNothingSent() {
-        await().during(QUIET).atMost(QUIET.plusSeconds(2)).until(() -> gateway.calls().isEmpty());
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).isEmpty();
     }
 
     @Test
