@@ -1,4 +1,4 @@
-// Hosted MCP server (Streamable HTTP + OAuth 2.1), e.g. https://mcp.ceitba.org.ar/mcp.
+// Hosted MCP server (Streamable HTTP + OAuth 2.1), e.g. https://ceitba.org.ar/mcp.
 // Configuration: apps/mcp/.env.example. Deployment: apps/mcp/README.md.
 import { CeitbaApi } from "./api/client";
 import { httpConfig, requireHttpSecrets } from "./config";
@@ -27,7 +27,7 @@ const provider = new CeitbaOAuthProvider({
   }),
   box: new SecretBox(cfg.encryptionKey),
   log,
-  resourceUrl: new URL("/mcp", cfg.publicUrl),
+  resourceUrl: new URL(cfg.publicUrl),
   accessTokenTtlSeconds: cfg.accessTokenTtlSeconds,
   grantTtlDays: cfg.grantTtlDays,
   allowApiKeyBearer: cfg.allowApiKeyBearer,

@@ -5,7 +5,7 @@ Cursor, VS Code, Kiro, ...) access to CEITBA data through the API (`apps/api`). 
 
 | Mode | Entry | Auth | For |
 |---|---|---|---|
-| **Hosted**: Streamable HTTP at `https://mcp.ceitba.org.ar/mcp` | `src/http.ts` | OAuth 2.1 (sign in with the ITBA Google account), or a `ceitba_` API key as the bearer token | Everyone: Claude.ai and ChatGPT connectors, and any client that supports remote servers |
+| **Hosted**: Streamable HTTP at `https://ceitba.org.ar/mcp` | `src/http.ts` | OAuth 2.1 (sign in with the ITBA Google account), or a `ceitba_` API key as the bearer token | Everyone: Claude.ai and ChatGPT connectors, and any client that supports remote servers |
 | **Local**: stdio | `src/stdio.ts` | Optional `CEITBA_API_KEY` | Desktop clients, offline development |
 
 User-facing setup guide (Spanish, then English): **[CONECTAR.md](CONECTAR.md)**.
@@ -48,11 +48,12 @@ are anonymous and deduplicated by IP, so every user of the hosted server would c
 
 A scoped key cannot mint keys, but can revoke itself. The owner must still pass the email allowlist.
 
-**OAuth bridge (hosted mode).** This server is its own OAuth 2.1 authorization server. The SDK's `mcpAuthRouter`
-provides metadata, dynamic client registration, PKCE, token and revoke. `src/oauth/provider.ts` does the CEITBA part:
+**OAuth bridge (hosted mode).** This server is its own OAuth 2.1 authorization server, with issuer
+`https://ceitba.org.ar/mcp`. The SDK's handlers provide metadata, dynamic client registration, PKCE, token and
+revoke. `src/oauth/provider.ts` does the CEITBA part:
 
-1. The MCP client calls `/authorize`. We store the request (10 min) and redirect the user to Google.
-2. Google redirects to `/oauth/google/callback`, and we exchange the code for an ID token.
+1. The MCP client calls `/mcp/authorize`. We store the request (10 min) and redirect the user to Google.
+2. Google redirects to `/mcp/oauth/google/callback`, and we exchange the code for an ID token.
 3. `POST /api/v1/auth/google/mobile {idToken, nonce}`. The API verifies the token, the allowlist and the `hd` domain,
    then returns a short session.
 4. With that session we create a **scoped API key**: `["read"]` for students, `["read","staff","write"]` for staff and
@@ -111,11 +112,11 @@ Inspect it with the MCP inspector:
 bunx @modelcontextprotocol/inspector bun src/stdio.ts
 ```
 
-**Hosted mode locally** needs a Google OAuth client with redirect URI `http://localhost:8787/oauth/google/callback`.
+**Hosted mode locally** needs a Google OAuth client with redirect URI `http://localhost:8787/mcp/oauth/google/callback`.
 Its client id must be in the API's `AUTH_GOOGLE_MOBILE_AUDIENCES`.
 
 ```sh
-cp .env.example .env    # set CEITBA_API_URL=http://localhost:8080/api, MCP_PUBLIC_URL=http://localhost:8787
+cp .env.example .env    # set CEITBA_API_URL=http://localhost:8080/api, MCP_PUBLIC_URL=http://localhost:8787/mcp
 bun --env-file=.env src/http.ts
 ```
 
@@ -123,18 +124,29 @@ bun --env-file=.env src/http.ts
 
 CI (`ci.yml`, job `mcp-test`) typechecks, tests and builds the image. On `main`, `deploy.yml` runs `mcp-test`, then
 `mcp-image` (pushes `ghcr.io/ceitba/ceitba-mcp`), then `mcp-deploy` (copies `docker-compose.yml` to `~/CEITBA-MCP`, then
-pulls and starts the container). It runs after the API deploy. Caddy serves it at `mcp.ceitba.org.ar`
-(`infra/caddy/Caddyfile`).
+pulls and starts the container). It runs after the API deploy.
+
+**Routing.** The server shares `ceitba.org.ar` with the main site; no extra DNS name or certificate is needed. Caddy
+(`infra/caddy/Caddyfile`) forwards only these paths to `ceitba-mcp:8787`, without stripping the prefix:
+
+| Path | What |
+|---|---|
+| `/mcp`, `/mcp/*` | MCP endpoint, OAuth endpoints (`/mcp/authorize`, `/mcp/token`, `/mcp/register`, `/mcp/revoke`), Google callback, `/mcp/healthz` |
+| `/.well-known/oauth-protected-resource/mcp` | RFC 9728 resource metadata (the 401 `WWW-Authenticate` points here) |
+| `/.well-known/oauth-authorization-server/mcp`, `/.well-known/openid-configuration/mcp` | RFC 8414 metadata for issuer `https://ceitba.org.ar/mcp` |
+
+Everything else, including `/authorize` and the root `/.well-known/*`, stays with the main site. The issuer has a
+path, so the SDK's `mcpAuthRouter` is not used: it always mounts the OAuth endpoints at the origin root. `src/app.ts`
+mounts the SDK's individual handlers under the base path instead. Changing `MCP_PUBLIC_URL`'s path means changing the
+Caddy matcher and the Google redirect URI too.
 
 One-time setup:
 
-1. **DNS.** Add an `A`/`AAAA` record for `mcp.ceitba.org.ar` pointing at the VPS. Caddy gets the certificate on the
-   first request.
-2. **Google Cloud Console.** Use a new OAuth web client (recommended) or the existing one. Add the authorized redirect
-   URI `https://mcp.ceitba.org.ar/oauth/google/callback`.
-3. **API.** Add that client id to `AUTH_GOOGLE_MOBILE_AUDIENCES` in `~/CEITBA-API/.env` (comma separated), and deploy
+1. **Google Cloud Console.** Use a new OAuth web client (recommended) or the existing one. Add the authorized redirect
+   URI `https://ceitba.org.ar/mcp/oauth/google/callback`.
+2. **API.** Add that client id to `AUTH_GOOGLE_MOBILE_AUDIENCES` in `~/CEITBA-API/.env` (comma separated), and deploy
    the API first, since V54 adds key scopes.
-4. **VPS.** Run `mkdir ~/CEITBA-MCP`, then create `~/CEITBA-MCP/.env` from [.env.example](.env.example)
+3. **VPS.** Run `mkdir ~/CEITBA-MCP`, then create `~/CEITBA-MCP/.env` from [.env.example](.env.example)
    (`MCP_ENCRYPTION_KEY=$(openssl rand -base64 32)`, plus the Google client id and secret). Back up
    `MCP_ENCRYPTION_KEY`: losing it invalidates every MCP sign-in, and users only need to connect again.
 
@@ -146,7 +158,7 @@ their own, and users can revoke them from `GET /api/v1/auth/api-keys`; they are 
 ```
 src/
   stdio.ts, http.ts       entry points
-  app.ts                  express app: OAuth router, Google callback, POST /mcp
+  app.ts                  express app under the /mcp base path: OAuth handlers, Google callback, POST /mcp
   server.ts               McpServer: tools, resources, prompts, instructions
   tools/                  define.ts (visibility, errors, logging) + one file per domain
   api/                    fetch client (X-Api-Key, X-Forwarded-For, {error,message} errors) + response types

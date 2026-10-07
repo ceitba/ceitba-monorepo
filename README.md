@@ -8,7 +8,7 @@ The platform of CEITBA, the student center of ITBA, served at [ceitba.org.ar](ht
 | Main site + staff admin | `apps/web` | `/` | React 18, Vite, TypeScript |
 | Combinador de Horarios | `apps/scheduler` | `/scheduler/` | React 18, Vite, TypeScript |
 | Newsletter | `apps/newsletter` | `/newsletter/` | React 18, Vite, JavaScript |
-| MCP server for AI assistants ([connect guide](apps/mcp/CONECTAR.md)) | `apps/mcp` | `mcp.ceitba.org.ar/mcp` | Bun, TypeScript, MCP SDK |
+| MCP server for AI assistants ([connect guide](apps/mcp/CONECTAR.md)) | `apps/mcp` | `/mcp` | Bun, TypeScript, MCP SDK |
 
 The mobile app lives in its own repo, [ceitba/CEITBApp](https://github.com/ceitba/CEITBApp).
 

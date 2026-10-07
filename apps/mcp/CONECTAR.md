@@ -11,14 +11,14 @@ El servidor MCP de CEITBA le da a tu asistente (Claude, ChatGPT, Cursor, VS Code
 Para estudiantes la conexión es de **solo lectura**: el asistente no puede publicar, votar ni modificar nada en tu
 nombre.
 
-**Dirección del servidor:** `https://mcp.ceitba.org.ar/mcp`
+**Dirección del servidor:** `https://ceitba.org.ar/mcp`
 
 La primera vez, tu cliente abre el navegador para que inicies sesión con Google. Usá tu cuenta **@itba.edu.ar**.
 
 ## Claude (claude.ai y Claude Desktop)
 
 1. Andá a **Configuración → Conectores → Agregar conector personalizado**.
-2. Nombre: `CEITBA`. URL: `https://mcp.ceitba.org.ar/mcp`.
+2. Nombre: `CEITBA`. URL: `https://ceitba.org.ar/mcp`.
 3. Tocá **Conectar** e iniciá sesión con Google.
 
 En una conversación, activá el conector CEITBA desde el menú de herramientas.
@@ -28,13 +28,13 @@ En una conversación, activá el conector CEITBA desde el menú de herramientas.
 Los conectores MCP personalizados dependen de tu plan y de que tengas habilitado el modo desarrollador.
 
 1. **Configuración → Conectores → Crear** (o **Agregar servidor MCP**).
-2. URL: `https://mcp.ceitba.org.ar/mcp`. Autenticación: **OAuth**.
+2. URL: `https://ceitba.org.ar/mcp`. Autenticación: **OAuth**.
 3. Iniciá sesión con Google.
 
 ## Claude Code
 
 ```sh
-claude mcp add --transport http ceitba https://mcp.ceitba.org.ar/mcp
+claude mcp add --transport http ceitba https://ceitba.org.ar/mcp
 ```
 
 Después, dentro de Claude Code, corré `/mcp` y elegí `ceitba` para iniciar sesión.
@@ -46,7 +46,7 @@ En `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "ceitba": { "url": "https://mcp.ceitba.org.ar/mcp" }
+    "ceitba": { "url": "https://ceitba.org.ar/mcp" }
   }
 }
 ```
@@ -58,7 +58,7 @@ En `.vscode/mcp.json` o desde **MCP: Add Server**:
 ```json
 {
   "servers": {
-    "ceitba": { "type": "http", "url": "https://mcp.ceitba.org.ar/mcp" }
+    "ceitba": { "type": "http", "url": "https://ceitba.org.ar/mcp" }
   }
 }
 ```
@@ -70,7 +70,7 @@ En `~/.kiro/settings/mcp.json` (para todos tus proyectos) o en `.kiro/settings/m
 ```json
 {
   "mcpServers": {
-    "ceitba": { "url": "https://mcp.ceitba.org.ar/mcp" }
+    "ceitba": { "url": "https://ceitba.org.ar/mcp" }
   }
 }
 ```
@@ -93,7 +93,7 @@ Si tu cliente no soporta el inicio de sesión OAuth, podés usar una **clave de 
 4. Configurá el servidor con el header `Authorization: Bearer ceitba_...`. Por ejemplo, en Cursor:
 
    ```json
-   { "mcpServers": { "ceitba": { "url": "https://mcp.ceitba.org.ar/mcp",
+   { "mcpServers": { "ceitba": { "url": "https://ceitba.org.ar/mcp",
      "headers": { "Authorization": "Bearer ceitba_..." } } } }
    ```
 
@@ -146,11 +146,11 @@ the schedule combiner, news, events, organizations and benefits. If you sign in 
 also reaches your saved schedules, study groups, proposals and, with Apuntes enabled, subject notes and wikis.
 Student connections are **read-only**.
 
-- **Server URL:** `https://mcp.ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client
+- **Server URL:** `https://ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client
   and sign in with Google.
-- **Claude Code:** `claude mcp add --transport http ceitba https://mcp.ceitba.org.ar/mcp`
-- **Cursor / Kiro:** `{"mcpServers":{"ceitba":{"url":"https://mcp.ceitba.org.ar/mcp"}}}`
-- **VS Code:** `{"servers":{"ceitba":{"type":"http","url":"https://mcp.ceitba.org.ar/mcp"}}}`
+- **Claude Code:** `claude mcp add --transport http ceitba https://ceitba.org.ar/mcp`
+- **Cursor / Kiro:** `{"mcpServers":{"ceitba":{"url":"https://ceitba.org.ar/mcp"}}}`
+- **VS Code:** `{"servers":{"ceitba":{"type":"http","url":"https://ceitba.org.ar/mcp"}}}`
 - **No OAuth support?** Create a read-only API key (see the browser-console snippet above) and send it as
   `Authorization: Bearer ceitba_...`.
 - **Local stdio:** `bun apps/mcp/src/stdio.ts` with `CEITBA_API_KEY` set.

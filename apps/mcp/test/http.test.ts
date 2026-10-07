@@ -59,7 +59,7 @@ beforeAll(async () => {
   base = `http://localhost:${port}`;
   const cfg: HttpConfig = {
     apiUrl: api.url, defaultLang: "es", rateLimitPerMinute: 0, logLevel: "error", version: "test",
-    port, host: "127.0.0.1", publicUrl: base, dbPath: ":memory:", encryptionKey: randomBytes(32).toString("base64"),
+    port, host: "127.0.0.1", publicUrl: `${base}/mcp`, dbPath: ":memory:", encryptionKey: randomBytes(32).toString("base64"),
     googleClientId: "g", googleClientSecret: "s", googleHostedDomain: "itba.edu.ar", trustProxy: 1,
     accessTokenTtlSeconds: 3600, grantTtlDays: 30, allowApiKeyBearer: true, allowedHosts: ["localhost", "127.0.0.1"]
   };
@@ -71,7 +71,7 @@ beforeAll(async () => {
       authorizationUrl: (state, nonce) => `https://google.test/auth?state=${state}&nonce=${nonce}`,
       exchangeCode: async code => `id-token-${code}`
     },
-    resourceUrl: new URL("/mcp", base), accessTokenTtlSeconds: 3600, grantTtlDays: 30, allowApiKeyBearer: true
+    resourceUrl: new URL(`${base}/mcp`), accessTokenTtlSeconds: 3600, grantTtlDays: 30, allowApiKeyBearer: true
   });
   const app = createApp({ cfg, api: ceitba, provider, log: silentLogger, limiter: new RateLimiter(0) });
   await new Promise<void>(r => { server = app.listen(port, "127.0.0.1", () => r()); });
@@ -97,7 +97,7 @@ const rpc = (token: string | null, method: string, params: Record<string, unknow
 const initParams = { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } };
 
 async function login(googleCode: string, scope?: string) {
-  const reg = await fetch(`${base}/register`, {
+  const reg = await fetch(`${base}/mcp/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ client_name: "Test client", redirect_uris: ["http://localhost:9999/cb"], token_endpoint_auth_method: "none" })
@@ -107,7 +107,7 @@ async function login(googleCode: string, scope?: string) {
 
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  const authorize = new URL(`${base}/authorize`);
+  const authorize = new URL(`${base}/mcp/authorize`);
   Object.entries({
     response_type: "code", client_id: client.client_id, redirect_uri: "http://localhost:9999/cb",
     code_challenge: challenge, code_challenge_method: "S256", state: "st4te", resource: `${base}/mcp`,
@@ -118,7 +118,7 @@ async function login(googleCode: string, scope?: string) {
   const google = new URL(a.headers.get("location")!);
   expect(google.host).toBe("google.test");
 
-  const cb = await fetch(`${base}/oauth/google/callback?code=${googleCode}&state=${google.searchParams.get("state")}`, { redirect: "manual" });
+  const cb = await fetch(`${base}/mcp/oauth/google/callback?code=${googleCode}&state=${google.searchParams.get("state")}`, { redirect: "manual" });
   expect(cb.status).toBe(302);
   const back = new URL(cb.headers.get("location")!);
   expect(back.searchParams.get("state")).toBe("st4te");
@@ -126,7 +126,7 @@ async function login(googleCode: string, scope?: string) {
 }
 
 async function token(params: Record<string, string>) {
-  const res = await fetch(`${base}/token`, {
+  const res = await fetch(`${base}/mcp/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(params)
@@ -138,10 +138,32 @@ describe("discovery", () => {
   test("protected resource and authorization server metadata", async () => {
     const prm = await (await fetch(`${base}/.well-known/oauth-protected-resource/mcp`)).json() as Record<string, unknown>;
     expect(prm.resource).toBe(`${base}/mcp`);
-    expect(prm.authorization_servers).toEqual([`${base}/`]);
-    const as = await (await fetch(`${base}/.well-known/oauth-authorization-server`)).json() as Record<string, unknown>;
+    expect(prm.authorization_servers).toEqual([`${base}/mcp`]);
+    const as = await (await fetch(`${base}/.well-known/oauth-authorization-server/mcp`)).json() as Record<string, unknown>;
     expect(as.code_challenge_methods_supported).toEqual(["S256"]);
-    expect(as.registration_endpoint).toBe(`${base}/register`);
+    expect(as.registration_endpoint).toBe(`${base}/mcp/register`);
+  });
+
+  test("every endpoint and alternate discovery path lives under /mcp; nothing at the site root", async () => {
+    const as = await (await fetch(`${base}/.well-known/oauth-authorization-server/mcp`)).json() as Record<string, string>;
+    expect(as.issuer).toBe(`${base}/mcp`);
+    for (const k of ["authorization_endpoint", "token_endpoint", "registration_endpoint", "revocation_endpoint"]) {
+      expect(as[k]).toStartWith(`${base}/mcp/`);
+    }
+    for (const p of ["/.well-known/openid-configuration/mcp", "/mcp/.well-known/oauth-authorization-server", "/mcp/.well-known/openid-configuration"]) {
+      expect(((await (await fetch(base + p)).json()) as Record<string, string>).issuer).toBe(`${base}/mcp`);
+    }
+    // Paths the main site owns are not answered by this server.
+    for (const p of ["/authorize", "/token", "/register", "/.well-known/oauth-authorization-server", "/oauth/google/callback"]) {
+      expect((await fetch(base + p, { redirect: "manual" })).status).toBe(404);
+    }
+  });
+
+  test("a browser opening /mcp gets a pointer to the guide", async () => {
+    const res = await fetch(`${base}/mcp`, { headers: { Accept: "text/html" } });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("CONECTAR.md");
+    expect((await fetch(`${base}/mcp`, { headers: { Accept: "application/json" } })).status).toBe(405);
   });
 
   test("unauthenticated MCP calls get 401 pointing at the metadata", async () => {
@@ -199,7 +221,7 @@ describe("OAuth bridge", () => {
     const reuse = await token({ grant_type: "refresh_token", refresh_token: refresh1, client_id: client.client_id });
     expect(reuse.status).toBe(400);
 
-    const rev = await fetch(`${base}/revoke`, {
+    const rev = await fetch(`${base}/mcp/revoke`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ token: String(t2.body.refresh_token), client_id: client.client_id })

@@ -1,15 +1,16 @@
 # Hosted MCP server, deployed to ~/CEITBA-MCP on the VPS (deploy.yml).
 # Secrets live in ~/CEITBA-MCP/.env (see .env.example), never in the repo.
-# Caddy reaches it as ceitba-mcp:8787 over ceitba-proxy and serves it at
-# https://mcp.ceitba.org.ar; it reaches the API as ceitba-api:8080 on the same
-# network (private peer, so the API trusts the X-Forwarded-For it sends).
+# Caddy reaches it as ceitba-mcp:8787 over ceitba-proxy and forwards only
+# https://ceitba.org.ar/mcp* and /.well-known/*/mcp to it (infra/caddy/Caddyfile);
+# it reaches the API as ceitba-api:8080 on the same network (private peer, so
+# the API trusts the X-Forwarded-For it sends).
 services:
   ceitba-mcp:
     image: ghcr.io/ceitba/ceitba-mcp:latest
     container_name: ceitba-mcp
     environment:
       CEITBA_API_URL: ${CEITBA_API_URL:-http://ceitba-api:8080/api}
-      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-https://mcp.ceitba.org.ar}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-https://ceitba.org.ar/mcp}
       MCP_ENCRYPTION_KEY: ${MCP_ENCRYPTION_KEY:?set MCP_ENCRYPTION_KEY in .env (openssl rand -base64 32)}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID in .env}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set GOOGLE_CLIENT_SECRET in .env}

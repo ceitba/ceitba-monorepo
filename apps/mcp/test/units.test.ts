@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
+import { normalizePublicUrl } from "../src/config";
 import { parseScopes } from "../src/context";
 import { createLogger } from "../src/log";
 import { SecretBox } from "../src/oauth/crypto";
@@ -37,6 +38,13 @@ describe("OAuthStore.sweep", () => {
 });
 
 describe("helpers", () => {
+  test("MCP_PUBLIC_URL defaults to the /mcp path and keeps an explicit one", () => {
+    expect(normalizePublicUrl("https://ceitba.org.ar")).toBe("https://ceitba.org.ar/mcp");
+    expect(normalizePublicUrl("https://ceitba.org.ar/")).toBe("https://ceitba.org.ar/mcp");
+    expect(normalizePublicUrl("https://ceitba.org.ar/mcp/")).toBe("https://ceitba.org.ar/mcp");
+    expect(normalizePublicUrl("http://localhost:8787/x/mcp")).toBe("http://localhost:8787/x/mcp");
+    expect(() => normalizePublicUrl("https://ceitba.org.ar/mcp?x=1")).toThrow();
+  });
   test("scopes always include read and ignore unknown values", () => {
     expect([...parseScopes(["ceitba.staff", "admin"])].sort()).toEqual(["read", "staff"]);
   });

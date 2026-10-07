@@ -12,7 +12,7 @@ One repo, five apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
 | `apps/web` | Main CEITBA site + `/manage` staff admin (benefits, users, orgs), served at `/` | React 18 + Vite + TS |
 | `apps/scheduler` | "Combinador de Horarios": schedule builder, saved schedules, share sessions, served at `/scheduler/` | React 18 + Vite + TS |
 | `apps/newsletter` | Student newsletter (articles, events, org follows, admin area), served at `/newsletter/` | React 18 + Vite, **plain JS (JSX)** |
-| `apps/mcp` | MCP server for AI assistants: stdio + Streamable HTTP with OAuth, served at `mcp.ceitba.org.ar/mcp` | Bun + TS, `@modelcontextprotocol/sdk` |
+| `apps/mcp` | MCP server for AI assistants: stdio + Streamable HTTP with OAuth, served at `/mcp` (plus `/.well-known/*/mcp`) | Bun + TS, `@modelcontextprotocol/sdk` |
 | `packages/scheduler-core` | Pure schedule generator shared by `apps/scheduler` and `apps/mcp` | TS (source-only package) |
 
 `infra/caddy/` is the production reverse proxy. `docs/EDITORIAL_UI_SYSTEM.md` defines the shared warm/editorial
@@ -38,7 +38,9 @@ bun run build | lint                         # all apps; build = tsc + vite buil
 There is no JS test runner for the SPAs; lint + build is their only CI gate. `apps/mcp` and `packages/scheduler-core`
 use `bun test` (`bun run test`). Copy each app's `.env.example` → `.env.local` and point it at a local API.
 
-- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/scheduler*` → `/var/www/scheduler`,
+- **Hosting**: everything lives on `ceitba.org.ar` (no extra DNS names). Caddy serves `/api/*` → API,
+  `/ceitba-media/*` → MinIO, `/mcp`, `/mcp/*` and `/.well-known/{oauth-protected-resource,oauth-authorization-server,openid-configuration}/mcp`
+  → MCP server, `/scheduler*` → `/var/www/scheduler`,
   `/newsletter*` → `/var/www/itbanews` (`/itbanews*` 301s to `/newsletter`), everything else → `/var/www/main`
   (web). All apps use `try_files … /index.html` fallback. Production build env lives in `.github/spa-apps.json`.
 - **Base path**: `vite.config` sets `base` from `VITE_BASE_PATH`. The router basename must strip the trailing slash

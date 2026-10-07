@@ -1,8 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
+import { authorizationHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
+import { metadataHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/metadata.js";
+import { clientRegistrationHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/register.js";
+import { revocationHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/revoke.js";
+import { tokenHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/token.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
-import { getOAuthProtectedResourceMetadataUrl, mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
+import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import type { OAuthMetadata, OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { CeitbaApi } from "./api/client";
 import type { HttpConfig } from "./config";
 import { parseScopes, type SessionContext } from "./context";
@@ -16,12 +22,23 @@ import { IdentityCache, isAuthRejection, resolveIdentity } from "./session";
 // Express app for the hosted server (Streamable HTTP, stateless: one MCP
 // server instance per request, built for the caller's identity and scopes).
 //
-//   POST /mcp                                     MCP endpoint (Bearer token)
-//   /.well-known/oauth-protected-resource/mcp     RFC 9728 metadata
-//   /.well-known/oauth-authorization-server       RFC 8414 metadata
-//   /authorize /token /register /revoke           OAuth 2.1 (PKCE, DCR) via the SDK
-//   /oauth/google/callback                        Google → us (bridge step)
-//   /healthz                                      liveness
+// Everything lives under the path of MCP_PUBLIC_URL (production:
+// https://ceitba.org.ar/mcp, shared with the main site), so the reverse proxy
+// only forwards that prefix plus the path-suffixed /.well-known documents.
+// With base = /mcp:
+//
+//   POST /mcp                                               MCP endpoint (Bearer token)
+//   /.well-known/oauth-protected-resource/mcp               RFC 9728 metadata
+//   /.well-known/oauth-authorization-server/mcp             RFC 8414 metadata (issuer has a path)
+//   /.well-known/openid-configuration/mcp,
+//   /mcp/.well-known/{openid-configuration,oauth-authorization-server}
+//                                                           same metadata, for clients that try those
+//   /mcp/authorize /mcp/token /mcp/register /mcp/revoke     OAuth 2.1 (PKCE, DCR) handlers from the SDK
+//   /mcp/oauth/google/callback                              Google → us (bridge step)
+//   /healthz, /mcp/healthz                                  liveness
+//
+// The SDK's mcpAuthRouter is not used because it always mounts the OAuth
+// endpoints at the origin root ("/authorize"...), which belongs to the main site.
 
 export interface AppDeps {
   cfg: HttpConfig;
@@ -32,38 +49,68 @@ export interface AppDeps {
   identities?: IdentityCache;
 }
 
+export function oauthMetadata(publicUrl: string, docsUrl: URL): OAuthMetadata {
+  return {
+    issuer: publicUrl,
+    service_documentation: docsUrl.href,
+    authorization_endpoint: `${publicUrl}/authorize`,
+    token_endpoint: `${publicUrl}/token`,
+    registration_endpoint: `${publicUrl}/register`,
+    revocation_endpoint: `${publicUrl}/revoke`,
+    revocation_endpoint_auth_methods_supported: ["client_secret_post", "none"],
+    response_types_supported: ["code"],
+    code_challenge_methods_supported: ["S256"],
+    token_endpoint_auth_methods_supported: ["client_secret_post", "none"],
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    scopes_supported: SUPPORTED_SCOPES
+  };
+}
+
 export function createApp({ cfg, api, provider, log, limiter, identities = new IdentityCache() }: AppDeps): Express {
   const app = createMcpExpressApp({ host: cfg.host, allowedHosts: cfg.allowedHosts });
   app.set("trust proxy", cfg.trustProxy);
   app.disable("x-powered-by");
 
-  const issuer = new URL(cfg.publicUrl);
-  const resourceUrl = new URL("/mcp", cfg.publicUrl);
-  const docsUrl = new URL("https://github.com/ceitba/ceitba-monorepo/tree/main/apps/mcp");
+  const resourceUrl = new URL(cfg.publicUrl);
+  const base = resourceUrl.pathname; // e.g. "/mcp"
+  const docsUrl = new URL("https://github.com/ceitba/ceitba-monorepo/blob/main/apps/mcp/CONECTAR.md");
 
-  app.get("/healthz", (_req, res) => {
+  const health = (_req: Request, res: Response) => {
     res.json({ status: "ok", version: cfg.version });
-  });
+  };
+  app.get("/healthz", health);
+  app.get(`${base}/healthz`, health);
 
-  app.use(mcpAuthRouter({
-    provider,
-    issuerUrl: issuer,
-    resourceServerUrl: resourceUrl,
-    serviceDocumentationUrl: docsUrl,
-    scopesSupported: SUPPORTED_SCOPES,
-    resourceName: "CEITBA"
-  }));
+  // Discovery documents.
+  const asMetadata = oauthMetadata(cfg.publicUrl, docsUrl);
+  const prm: OAuthProtectedResourceMetadata = {
+    resource: cfg.publicUrl,
+    authorization_servers: [cfg.publicUrl],
+    scopes_supported: SUPPORTED_SCOPES,
+    resource_name: "CEITBA",
+    resource_documentation: docsUrl.href
+  };
+  app.use(`/.well-known/oauth-protected-resource${base}`, metadataHandler(prm));
+  for (const path of [
+    `/.well-known/oauth-authorization-server${base}`,
+    `/.well-known/openid-configuration${base}`,
+    `${base}/.well-known/oauth-authorization-server`,
+    `${base}/.well-known/openid-configuration`
+  ]) {
+    app.use(path, metadataHandler(asMetadata));
+  }
 
-  app.get("/oauth/google/callback", (req, res) => {
+  // OAuth endpoints (the SDK handlers: validation, PKCE, rate limits, DCR).
+  app.use(`${base}/authorize`, authorizationHandler({ provider }));
+  app.use(`${base}/token`, tokenHandler({ provider }));
+  app.use(`${base}/register`, clientRegistrationHandler({ clientsStore: provider.clientsStore }));
+  app.use(`${base}/revoke`, revocationHandler({ provider }));
+
+  app.get(`${base}/oauth/google/callback`, (req, res) => {
     provider.handleGoogleCallback(req, res).catch(e => {
       log.error("google callback crashed", { error: e instanceof Error ? e.message : String(e) });
       if (!res.headersSent) res.status(500).type("text/plain").send("Error interno");
     });
-  });
-
-  app.get("/", (_req, res) => {
-    res.type("text/plain").send(
-      `CEITBA MCP server\n\nMCP endpoint: ${resourceUrl.href}\nGuía / guide: ${docsUrl.href}\n`);
   });
 
   const bearer = requireBearerAuth({
@@ -78,7 +125,7 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
     res.status(401).json({ error: "invalid_token", error_description: msg });
   };
 
-  app.post("/mcp", bearer, async (req: Request, res: Response) => {
+  app.post(base, bearer, async (req: Request, res: Response) => {
     let cred;
     try {
       cred = provider.resolve(req.auth!);
@@ -133,11 +180,19 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
   });
 
   // Stateless server: no SSE stream to resume and no session to delete.
-  const notAllowed = (_req: Request, res: Response) => {
+  // A browser opening the URL gets a pointer to the connect guide instead.
+  const notAllowed = (req: Request, res: Response) => {
+    if (req.method === "GET" && req.accepts(["text/html", "application/json"]) === "text/html") {
+      res.type("text/plain").send(
+        `CEITBA MCP server\n\nAgregá esta dirección como servidor MCP (remoto, OAuth) en tu asistente:\n` +
+        `Add this URL as a remote MCP server (OAuth) in your assistant:\n\n  ${cfg.publicUrl}\n\n` +
+        `Guía / guide: ${docsUrl.href}\n`);
+      return;
+    }
     res.status(405).set("Allow", "POST").json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null });
   };
-  app.get("/mcp", notAllowed);
-  app.delete("/mcp", notAllowed);
+  app.get(base, notAllowed);
+  app.delete(base, notAllowed);
 
   return app;
 }

@@ -43,7 +43,7 @@ export interface ProviderOptions {
   google: GoogleClient;
   box: SecretBox;
   log: Logger;
-  // Canonical MCP resource URL (e.g. https://mcp.ceitba.org.ar/mcp).
+  // Canonical MCP resource URL (e.g. https://ceitba.org.ar/mcp).
   resourceUrl: URL;
   accessTokenTtlSeconds: number;
   grantTtlDays: number;

@@ -43,7 +43,8 @@ export interface StdioConfig extends CommonConfig {
 export interface HttpConfig extends CommonConfig {
   port: number;
   host: string;
-  // Public origin of this server, e.g. https://mcp.ceitba.org.ar (no trailing slash).
+  // Public URL of the MCP endpoint, e.g. https://ceitba.org.ar/mcp (no trailing slash).
+  // Also the OAuth issuer and the prefix of every route (see app.ts).
   publicUrl: string;
   dbPath: string;
   // base64, 32 bytes: AES-256-GCM key for the API keys stored per grant.
@@ -63,6 +64,16 @@ export interface HttpConfig extends CommonConfig {
 }
 
 const trimSlash = (s: string) => s.replace(/\/+$/, "");
+
+// The public URL of the MCP endpoint, which is also the OAuth issuer and the
+// prefix of every route this server owns (e.g. https://ceitba.org.ar/mcp).
+// A bare origin gets "/mcp" appended, so the server never claims "/".
+export function normalizePublicUrl(raw: string): string {
+  const u = new URL(trimSlash(raw));
+  if (u.search || u.hash) throw new Error("MCP_PUBLIC_URL must not have a query or fragment");
+  const path = trimSlash(u.pathname) || "/mcp";
+  return u.origin + path;
+}
 
 export function commonConfig(): CommonConfig {
   const level = str("LOG_LEVEL", "info") as CommonConfig["logLevel"];
@@ -84,7 +95,7 @@ export function stdioConfig(): StdioConfig {
 }
 
 export function httpConfig(): HttpConfig {
-  const publicUrl = trimSlash(str("MCP_PUBLIC_URL", "http://localhost:8787"));
+  const publicUrl = normalizePublicUrl(str("MCP_PUBLIC_URL", "http://localhost:8787/mcp"));
   const cfg: HttpConfig = {
     ...commonConfig(),
     port: int("PORT", 8787),
@@ -120,7 +131,7 @@ export function requireHttpSecrets(cfg: HttpConfig): void {
   if (Buffer.from(cfg.encryptionKey, "base64").length !== 32) {
     throw new Error("MCP_ENCRYPTION_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)");
   }
-  if (!cfg.publicUrl.startsWith("https://") && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cfg.publicUrl)) {
+  if (!cfg.publicUrl.startsWith("https://") && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(cfg.publicUrl)) {
     throw new Error("MCP_PUBLIC_URL must be https:// (http is only allowed for localhost)");
   }
 }
