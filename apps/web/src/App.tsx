@@ -24,6 +24,9 @@ const WikiPage = lazy(() => import('./pages/apuntes/WikiPage'))
 const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
 const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 
+// Sections that used to be separate SPAs, each in its own chunk.
+const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
+
 // Local dev-only sign-in (CEITBA-API POST /v1/auth/dev-login). Both env
 // checks are inlined so Vite folds them to `false` in production builds and
 // Rollup drops the lazy import (the page is not emitted at all).
@@ -53,10 +56,6 @@ function AuthCallback() {
 }
 
 function Layout() {
-  // Hydrate the session once at boot so the navbar and any guards have
-  // data after the first /me round-trip resolves.
-  useEffect(() => { getSession() }, [])
-
   return (
     <div className="flex flex-col min-h-screen bg-page-bg">
       <Navbar />
@@ -64,7 +63,6 @@ function Layout() {
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
@@ -85,11 +83,28 @@ function Layout() {
   )
 }
 
+function Root() {
+  // Hydrate the session once at boot so the navbar and any guards have
+  // data after the first /me round-trip resolves.
+  useEffect(() => { getSession() }, [])
+
+  return (
+    <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      {/* OAuth redirect URI of the old standalone scheduler; sign-ins
+          started before the merge can still land here. */}
+      <Route path="/scheduler/auth/callback" element={<AuthCallback />} />
+      <Route path="/scheduler/*" element={<Suspense fallback={<PageFallback />}><SchedulerApp /></Suspense>} />
+      <Route path="/*" element={<Layout />} />
+    </Routes>
+  )
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Layout />
+        <Root />
       </BrowserRouter>
     </ThemeProvider>
   )
