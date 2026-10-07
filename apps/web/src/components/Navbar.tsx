@@ -67,7 +67,7 @@ export default function Navbar() {
             className="flex flex-col justify-center hover:opacity-80 transition-opacity duration-150"
           >
             <span className="font-display text-h5 font-bold text-primary tracking-tight leading-tight">CEITBA</span>
-            <span className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest leading-tight">
+            <span className="hidden sm:block font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest leading-tight">
               {t('nav.tagline')}
             </span>
           </Link>
