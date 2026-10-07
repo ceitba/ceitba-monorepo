@@ -311,7 +311,12 @@
     "plan": "Plan",
     "fileNumber": "Legajo",
     "unset": "Sin definir",
-    "pickCareerFirst": "Elegí una carrera para ver los planes disponibles."
+    "pickCareerFirst": "Elegí una carrera para ver los planes disponibles.",
+    "fileNumberValue": "Legajo: {{number}}",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveError": "No pudimos guardar el cambio. Probá de nuevo.",
+    "loadError": "No pudimos cargar tus datos académicos."
   },
   "auth": {
     "profile": "Mi perfil",
@@ -433,8 +438,12 @@
     },
     "filterLabel": "Filtrar por categoría",
     "all": "Todos",
-    "empty": "No hay beneficios cargados para esta categoría todavía.",
-    "learnMore": "Ver más"
+    "empty": "Cuando el CEITBA sume beneficios, los vas a ver acá.",
+    "learnMore": "Ver más",
+    "emptyTitle": "Todavía no hay beneficios cargados",
+    "emptyFilteredTitle": "No hay beneficios en esta categoría",
+    "emptyFiltered": "Probá con otra categoría o mirá todos los beneficios.",
+    "showAll": "Ver todos los beneficios"
   },
   "staff": {
     "sectionTitle": "Nuestro equipo",

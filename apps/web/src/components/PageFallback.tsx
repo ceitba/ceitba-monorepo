@@ -2,7 +2,7 @@
 // the pages show while their data loads.
 export default function PageFallback() {
   return (
-    <main className="container-content py-section-mobile lg:py-section" aria-busy="true">
+    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section" aria-busy="true">
       <div className="flex flex-col gap-4" aria-hidden="true">
         <div className="h-4 w-32 rounded-sm skeleton" />
         <div className="h-10 w-2/3 rounded-sm skeleton" />

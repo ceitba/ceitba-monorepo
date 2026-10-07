@@ -14,6 +14,8 @@ export { Skeleton, SkeletonText, SkeletonRows, SkeletonTable, SkeletonCards, Ske
 export { default as Badge } from './Badge'
 export type { BadgeTone } from './Badge'
 export { default as Switch } from './Switch'
+export { default as ToggleGroup } from './ToggleGroup'
+export type { ToggleOption } from './ToggleGroup'
 export { toast } from './toastStore'
 export { Toaster } from './Toaster'
 export { default as Modal } from '../Modal'

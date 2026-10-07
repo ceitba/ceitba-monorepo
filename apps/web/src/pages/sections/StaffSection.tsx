@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaffMembers, useStaffYears } from '../../hooks/useContent'
 import type { StaffMember } from '../../api/content'
-import LoadError from '../../components/LoadError'
+import { EmptyState, ErrorState, LoadingRegion, Skeleton, ToggleGroup } from '../../components/ui'
 import { safeHttpUrl } from '../../utils/url'
 
 const PLACEHOLDER_COUNT = 8
@@ -28,7 +28,7 @@ function MemberCard({ member, lang }: { member: StaffMember; lang: 'es' | 'en' }
         />
       ) : (
         <div className="w-14 h-14 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
-          <span className="font-display font-bold text-primary text-h5 leading-none">{initials}</span>
+          <span className="font-display font-bold text-primary dark:text-primary-200 text-h5 leading-none">{initials}</span>
         </div>
       )}
       <div>
@@ -45,7 +45,7 @@ function MemberCard({ member, lang }: { member: StaffMember; lang: 'es' | 'en' }
           target="_blank"
           rel="noopener noreferrer"
           aria-label={t('staff.linkedinAria', { name: member.name })}
-          className="text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+          className="inline-flex items-center justify-center w-11 h-11 rounded-sm text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
@@ -101,50 +101,23 @@ export default function StaffSection() {
           </p>
         </div>
 
-        {yearList.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-8" role="group" aria-label={t('staff.yearLabel')}>
-            {yearList.map(year => (
-              <button
-                key={year}
-                onClick={() => setSelectedYear(year)}
-                aria-pressed={selectedYear === year}
-                className={`px-4 py-1.5 rounded-full font-mono text-label uppercase tracking-widest transition-colors duration-150 ${
-                  selectedYear === year
-                    ? 'bg-primary dark:bg-primary-300 text-white dark:text-night-navy'
-                    : 'border border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary hover:text-primary'
-                }`}
-              >
-                {year}
-              </button>
-            ))}
-          </div>
+        {yearList.length > 0 && selectedYear != null && (
+          <ToggleGroup
+            className="mb-8"
+            label={t('staff.yearLabel')}
+            value={selectedYear}
+            onChange={setSelectedYear}
+            options={yearList.map((year) => ({ value: year, label: year }))}
+          />
         )}
 
-        {failed && <LoadError onRetry={retry} />}
-
-        {!failed && !loadingMembers && !hasAnyMember && (
-          <div className="flex flex-col items-center gap-4 py-12 px-6 mb-8 rounded-card border border-dashed border-border dark:border-night-border text-center">
-            <div className="w-12 h-12 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2.5" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">
-                {t('staff.comingSoon')}
-              </p>
-              <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">
-                {t('staff.comingSoonMessage')}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {failed ? null : hasAnyMember ? (
+        {failed ? (
+          <ErrorState onRetry={retry} />
+        ) : !loadingMembers && !hasAnyMember ? (
+          <EmptyState title={t('staff.comingSoon')} body={t('staff.comingSoonMessage')} />
+        ) : hasAnyMember ? (
           Array.from(grouped.entries()).map(([deptSlug, list]) => (
-            <div key={deptSlug} className="mb-10 last:mb-0">
+            <div key={deptSlug} className="mb-10 last:mb-0 animate-fade-in">
               <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text mb-4">
                 {t(`departments.${deptSlug}.name`)}
               </h3>
@@ -156,18 +129,19 @@ export default function StaffSection() {
             </div>
           ))
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" aria-hidden="true">
+          <LoadingRegion className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {Array.from({ length: PLACEHOLDER_COUNT }).map((_, i) => (
               <div
                 key={i}
+                aria-hidden="true"
                 className="flex flex-col items-center gap-3 p-5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface"
               >
-                <div className="w-14 h-14 rounded-full skeleton" />
-                <div className="w-24 h-3.5 rounded skeleton" />
-                <div className="w-16 h-2.5 rounded skeleton" />
+                <Skeleton className="w-14 h-14 !rounded-full" />
+                <Skeleton className="w-24 h-3.5" />
+                <Skeleton className="w-16 h-2.5" />
               </div>
             ))}
-          </div>
+          </LoadingRegion>
         )}
       </div>
     </section>

@@ -5,8 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { devLogin } from '../api/drive'
 import { getSession } from '../store/authStore'
 import { apuntesErrorMessage, isSafeReturnPath } from '../utils/apuntes'
-import ErrorBanner from '../components/ErrorBanner'
-import { BTN_OUTLINE, BTN_PRIMARY, INPUT } from '../components/apuntes/buttons'
+import { Alert, Button, Field, inputClass } from '../components/ui'
 
 // Local-only sign-in against CEITBA-API's POST /v1/auth/dev-login (API `dev`
 // profile + AUTH_DEV_LOGIN_ENABLED=true). App.tsx only lazy-imports this
@@ -43,7 +42,7 @@ export default function DevLoginPage() {
   }
 
   return (
-    <main id="main-content" className="container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
       <div className="max-w-md mx-auto flex flex-col gap-5 p-6 rounded-card border-2 border-dashed border-accent-400 bg-white dark:bg-night-surface">
         <div>
           <span className="font-mono text-label uppercase tracking-widest text-accent-600 dark:text-accent-300">{t('devLogin.eyebrow')}</span>
@@ -51,13 +50,13 @@ export default function DevLoginPage() {
           <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{t('devLogin.body')}</p>
         </div>
 
-        {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+        {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
 
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
-            <button key={p.email} type="button" disabled={busy} onClick={() => signIn(p)} className={BTN_OUTLINE}>
-              {p.email.split('@')[0]}{p.staff ? ' (staff)' : ''}
-            </button>
+            <Button key={p.email} variant="outline" disabled={busy} onClick={() => signIn(p)}>
+              {p.staff ? t('devLogin.presetStaff', { user: p.email.split('@')[0] }) : p.email.split('@')[0]}
+            </Button>
           ))}
         </div>
 
@@ -65,21 +64,19 @@ export default function DevLoginPage() {
           onSubmit={(e) => { e.preventDefault(); void signIn({ email: email.trim(), name: name.trim(), staff }) }}
           className="flex flex-col gap-3 pt-4 border-t border-border dark:border-night-border"
         >
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">Email</span>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('devLogin.name')}</span>
-            <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={INPUT} />
-          </label>
-          <label className="flex items-center gap-2 font-body text-body-sm text-ink-primary dark:text-night-text cursor-pointer">
+          <Field label={t('devLogin.email')} required>
+            {(p) => <input {...p} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass()} />}
+          </Field>
+          <Field label={t('devLogin.name')} required>
+            {(p) => <input {...p} type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass()} />}
+          </Field>
+          <label className="flex items-center gap-2 min-h-[44px] font-body text-body-sm text-ink-primary dark:text-night-text cursor-pointer">
             <input type="checkbox" checked={staff} onChange={(e) => setStaff(e.target.checked)} className="h-4 w-4 accent-primary" />
             {t('devLogin.staff')}
           </label>
-          <button type="submit" disabled={busy || !email.trim()} className={`${BTN_PRIMARY} self-start`}>
-            {busy ? '…' : t('devLogin.submit')}
-          </button>
+          <Button type="submit" loading={busy} disabled={!email.trim()} className="self-start">
+            {t('devLogin.submit')}
+          </Button>
         </form>
       </div>
     </main>
