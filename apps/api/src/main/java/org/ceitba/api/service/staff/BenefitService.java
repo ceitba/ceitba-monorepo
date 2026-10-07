@@ -10,9 +10,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 public class BenefitService {
+
+    // Same rule as OrganizationRequest.slug.
+    private static final Pattern SLUG = Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)*$");
 
     private final BenefitRepository repository;
 
@@ -29,6 +33,9 @@ public class BenefitService {
 
     @Transactional
     public BenefitResponse create(String slug, UpdateBenefitRequest req) {
+        if (slug == null || slug.length() < 2 || slug.length() > 40 || !SLUG.matcher(slug).matches()) {
+            throw new InvalidBenefitSlugException(slug);
+        }
         if (repository.existsById(slug)) {
             throw new ResourceAlreadyExistsException("Benefit", slug);
         }

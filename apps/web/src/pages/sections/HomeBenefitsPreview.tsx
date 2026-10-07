@@ -4,36 +4,7 @@ import { useBenefits } from '../../hooks/useContent'
 import SeeAllButton from '../../components/SeeAllButton'
 import { ErrorState, SkeletonCards } from '../../components/ui'
 import { benefitCategoryName } from '../../utils/benefits'
-
-const ICONS: Record<string, React.ReactNode> = {
-  deportes: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  ),
-  membresias: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-      <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" />
-    </svg>
-  ),
-  eventos: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  ),
-  academico: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  ),
-  representacion: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-}
+import BenefitIcon from './BenefitIcon'
 
 export default function HomeBenefitsPreview() {
   const { t, i18n } = useTranslation()
@@ -82,7 +53,7 @@ export default function HomeBenefitsPreview() {
                       className="w-10 h-10 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
                       style={{ backgroundColor: `var(${cat.colorVar})` }}
                     >
-                      {ICONS[cat.slug]}
+                      <BenefitIcon slug={cat.slug} size={22} />
                     </span>
                     <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150">
                       {benefitCategoryName(cat.slug, cat, lang, t)}

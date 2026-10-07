@@ -79,6 +79,18 @@ export function deleteStaffMember(id: string): Promise<void> {
   return apiSend('DELETE', `/staff-members/${id}`)
 }
 
+// The slug becomes the category's primary key: lowercase letters, digits and
+// single hyphens, 2-40 chars (the API answers 400 InvalidSlug otherwise and
+// 409 if it is taken).
+export function createBenefit(slug: string, payload: Omit<BenefitEntry, 'slug'>): Promise<BenefitEntry> {
+  return apiSend('POST', `/benefits/${encodeURIComponent(slug)}`, payload)
+}
+
+// Deletes the category and, through the database cascade, all its cards.
+export function deleteBenefit(slug: string): Promise<void> {
+  return apiSend('DELETE', `/benefits/${encodeURIComponent(slug)}`)
+}
+
 export function updateBenefit(slug: string, payload: Omit<BenefitEntry, 'slug'>): Promise<BenefitEntry> {
   return apiSend('PUT', `/benefits/${slug}`, payload)
 }

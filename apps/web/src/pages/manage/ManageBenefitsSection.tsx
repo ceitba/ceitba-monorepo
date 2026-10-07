@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '../../api/client'
 import {
+  createBenefit,
   createBenefitCard,
+  deleteBenefit,
   deleteBenefitCard,
   fetchBenefitCards,
   updateBenefit,
@@ -9,7 +12,7 @@ import {
   type BenefitCard,
   type BenefitEntry,
 } from '../../api/content'
-import { useBenefits } from '../../hooks/useContent'
+import { useBenefitCards, useBenefits } from '../../hooks/useContent'
 import { benefitCategoryName } from '../../utils/benefits'
 import {
   Alert,
@@ -379,9 +382,15 @@ function CategoriesTab() {
   const { t, i18n } = useTranslation()
   const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
   const { data, loading, error: loadError, reload } = useBenefits()
+  // Only used to say how many cards a category delete takes with it.
+  const { data: cards, reload: reloadCards } = useBenefitCards()
   const [drafts, setDrafts] = useState<Record<string, BenefitEntry>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [creating, setCreating] = useState(false)
+  const [deleting, setDeleting] = useState<BenefitEntry | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   if (loadError && !data) {
     return <ErrorState message={t('manage.benefits.categories.loadFailed')} onRetry={() => void reload()} />
@@ -389,8 +398,32 @@ function CategoriesTab() {
   if (loading && !data) return <SkeletonCards count={3} className="flex flex-col gap-4" cardClassName="h-56" />
   const categories = data ?? []
 
+  const createButton = (
+    <Button onClick={() => setCreating(true)}>{t('manage.benefits.categories.create')}</Button>
+  )
+  const createModal = creating && (
+    <CreateCategoryModal
+      categories={categories}
+      onCreated={async () => {
+        await reload()
+        setCreating(false)
+        toast.success(t('manage.benefits.categories.created'))
+      }}
+      onCancel={() => setCreating(false)}
+    />
+  )
+
   if (categories.length === 0) {
-    return <EmptyState title={t('manage.benefits.categories.empty')} body={t('manage.benefits.categories.emptyHint')} />
+    return (
+      <>
+        <EmptyState
+          title={t('manage.benefits.categories.empty')}
+          body={t('manage.benefits.categories.emptyHint')}
+          action={createButton}
+        />
+        {createModal}
+      </>
+    )
   }
 
   function draftFor(b: BenefitEntry): BenefitEntry {
@@ -423,11 +456,41 @@ function CategoriesTab() {
     }
   }
 
+  async function confirmDelete() {
+    if (!deleting) return
+    const slug = deleting.slug
+    setDeleteError(null); setDeleteBusy(true)
+    try {
+      await deleteBenefit(slug)
+      await reload()
+      void reloadCards()
+      setDrafts((prev) => { const { [slug]: _, ...rest } = prev; void _; return rest })
+      setDeleting(null)
+      toast.success(t('manage.benefits.categories.deleted'))
+    } catch (e) {
+      setDeleteError(adminErrorMessage(e, t))
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
+  // The cascade takes the category's cards with it; say how many when the
+  // card list loaded, otherwise warn without a number.
+  function deleteBody(b: BenefitEntry): string {
+    const name = benefitCategoryName(b.slug, b, lang, t)
+    if (!cards) return t('manage.benefits.categories.deleteBodyUnknown', { name })
+    const count = cards.filter((c) => c.categorySlug === b.slug).length
+    return t('manage.benefits.categories.deleteBody', { name, count })
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-        {t('manage.benefits.categories.help')}
-      </p>
+      <div className="flex flex-wrap items-start gap-3">
+        <p className="flex-1 min-w-[16rem] font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          {t('manage.benefits.categories.help')}
+        </p>
+        {createButton}
+      </div>
 
       {categories.map((b) => {
         const d = draftFor(b)
@@ -456,20 +519,201 @@ function CategoriesTab() {
               />
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              {!dirty && (
-                <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.benefits.categories.noChanges')}</p>
-              )}
-              <Button variant="outline" size="sm" disabled={!dirty} loading={busy === b.slug} onClick={() => save(b.slug)}>
-                {t('manage.save')}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="dangerGhost" size="sm" onClick={() => { setDeleteError(null); setDeleting(b) }}>
+                {t('manage.delete')}
               </Button>
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+                {!dirty && (
+                  <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.benefits.categories.noChanges')}</p>
+                )}
+                <Button variant="outline" size="sm" disabled={!dirty} loading={busy === b.slug} onClick={() => save(b.slug)}>
+                  {t('manage.save')}
+                </Button>
+              </div>
             </div>
           </article>
         )
       })}
+
+      {createModal}
+
+      {deleting && (
+        <ConfirmDialog
+          title={t('manage.benefits.categories.confirmDelete')}
+          body={deleteBody(deleting)}
+          confirmLabel={t('manage.benefits.categories.deleteConfirm')}
+          busy={deleteBusy}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </div>
   )
 }
+
+// Same rule as the API (BenefitService): lowercase letters and digits in
+// groups separated by single hyphens, 2-40 characters.
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
+const SLUG_MAX = 40
+
+// "Educación física" -> "educacion-fisica".
+function slugify(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, SLUG_MAX)
+    .replace(/-+$/, '')
+}
+
+type SlugProblem = 'required' | 'format' | 'taken'
+
+function slugProblem(slug: string, categories: BenefitEntry[]): SlugProblem | null {
+  if (!slug) return 'required'
+  if (slug.length < 2 || slug.length > SLUG_MAX || !SLUG_RE.test(slug)) return 'format'
+  if (categories.some((c) => c.slug === slug)) return 'taken'
+  return null
+}
+
+function CreateCategoryModal({
+  categories,
+  onCreated,
+  onCancel,
+}: {
+  categories: BenefitEntry[]
+  onCreated: () => Promise<void>
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const [nameEs, setNameEs] = useState('')
+  const [nameEn, setNameEn] = useState('')
+  // The slug follows the Spanish name until staff edit it by hand.
+  const [slug, setSlug] = useState('')
+  const [slugEdited, setSlugEdited] = useState(false)
+  const [colorVar, setColorVar] = useState(() => {
+    const used = new Set(categories.map((c) => c.colorVar))
+    return colorVarOf(CATEGORY_COLORS.find((c) => !used.has(colorVarOf(c))) ?? CATEGORY_COLORS[0])
+  })
+  const [displayOrder, setDisplayOrder] = useState(() =>
+    categories.length === 0 ? 0 : Math.max(...categories.map((c) => c.displayOrder)) + 1)
+  const [submitted, setSubmitted] = useState(false)
+  const [busy, setBusy] = useState(false)
+  // A slug the server rejected (taken by a category created meanwhile, or
+  // refused by its validation), so the field shows it until it changes.
+  const [rejected, setRejected] = useState<{ slug: string; problem: SlugProblem } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const effectiveSlug = slugEdited ? slug : slugify(nameEs)
+  const problem = slugProblem(effectiveSlug, categories)
+    ?? (rejected?.slug === effectiveSlug ? rejected.problem : null)
+  const nameMissing = !nameEs.trim()
+  // Don't nag before the first submit, except about a hand-typed slug.
+  const showSlugError = problem != null && (submitted || (slugEdited && problem !== 'required'))
+  const slugError = showSlugError ? t(`manage.benefits.categories.slugErrors.${problem}`) : undefined
+  const nameError = submitted && nameMissing ? t('manage.benefits.categories.nameEsRequired') : undefined
+
+  async function submit() {
+    setSubmitted(true)
+    setError(null)
+    if (nameMissing || problem) return
+    setBusy(true)
+    try {
+      await createBenefit(effectiveSlug, {
+        colorVar,
+        displayOrder,
+        linkUrl: null,
+        contactEmail: null,
+        highlightsEs: [],
+        highlightsEn: [],
+        nameEs: nameEs.trim(),
+        nameEn: nameEn.trim() || null,
+      })
+      await onCreated()
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 409 || e.code === 'InvalidSlug')) {
+        console.error(e)
+        setRejected({ slug: effectiveSlug, problem: e.status === 409 ? 'taken' : 'format' })
+      } else {
+        setError(adminErrorMessage(e, t))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal
+      title={t('manage.benefits.categories.createTitle')}
+      onClose={onCancel}
+      busy={busy}
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" disabled={busy} onClick={onCancel}>{t('manage.cancel')}</Button>
+          <Button type="submit" form={CREATE_FORM_ID} loading={busy}>{t('manage.benefits.categories.createSubmit')}</Button>
+        </>
+      }
+    >
+      <form
+        id={CREATE_FORM_ID}
+        className="flex flex-col gap-4"
+        noValidate
+        onSubmit={(e) => { e.preventDefault(); void submit() }}
+      >
+        {error && <Alert tone="error">{error}</Alert>}
+
+        <Field label={t('manage.benefits.categories.nameEs')} required error={nameError}>
+          {(p) => (
+            <input
+              {...p}
+              value={nameEs}
+              maxLength={255}
+              onChange={(e) => setNameEs(e.target.value)}
+              className={inputClass({ invalid: !!nameError })}
+            />
+          )}
+        </Field>
+
+        <Field label={t('manage.benefits.categories.nameEn')} hint={t('manage.benefits.categories.nameEnHint')}>
+          {(p) => (
+            <input {...p} value={nameEn} maxLength={255} onChange={(e) => setNameEn(e.target.value)} className={inputClass()} />
+          )}
+        </Field>
+
+        <Field label={t('manage.benefits.categories.slug')} required hint={t('manage.benefits.categories.slugHint')} error={slugError}>
+          {(p) => (
+            <input
+              {...p}
+              value={effectiveSlug}
+              maxLength={SLUG_MAX}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              onChange={(e) => { setSlugEdited(true); setSlug(e.target.value) }}
+              className={inputClass({ invalid: !!slugError, className: 'font-mono' })}
+            />
+          )}
+        </Field>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ColorPicker value={colorVar} onChange={setColorVar} />
+          <TextInput
+            label={t('manage.benefits.categories.order')}
+            type="number"
+            value={String(displayOrder)}
+            onChange={(v) => setDisplayOrder(Number(v) || 0)}
+          />
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+const CREATE_FORM_ID = 'create-benefit-category'
 
 // Swatch radio group over the site's category colors. A value outside the
 // set (set by hand in the database) stays selected as "Personalizado".

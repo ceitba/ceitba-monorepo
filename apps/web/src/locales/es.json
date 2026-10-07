@@ -63,7 +63,7 @@
         "categories": "Categorías"
       },
       "categories": {
-        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su nombre, color y orden acá.",
+        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Creá categorías nuevas y editá su nombre, color y orden acá.",
         "order": "Orden",
         "nameEs": "Nombre (ES)",
         "nameEn": "Nombre (EN)",
@@ -82,7 +82,27 @@
         "saved": "Guardaste la categoría.",
         "loadFailed": "No pudimos cargar las categorías.",
         "empty": "Todavía no hay categorías de beneficios.",
-        "emptyHint": "Acá vas a poder editar el nombre, el color y el orden de cada categoría. Las crea el equipo técnico del CEITBA."
+        "emptyHint": "Las categorías agrupan las tarjetas de beneficios y sirven para filtrarlas en el sitio. Creá la primera para empezar a cargar beneficios.",
+        "create": "Nueva categoría",
+        "createTitle": "Nueva categoría de beneficios",
+        "createSubmit": "Crear categoría",
+        "created": "Creaste la categoría.",
+        "nameEsRequired": "Escribí el nombre en español.",
+        "nameEnHint": "Opcional. Si lo dejás vacío, el sitio en inglés muestra el nombre en español.",
+        "slug": "Identificador",
+        "slugHint": "Se arma solo a partir del nombre y no se puede cambiar después. Solo minúsculas, números y guiones.",
+        "slugErrors": {
+          "required": "Escribí un identificador.",
+          "format": "Usá entre 2 y 40 caracteres: minúsculas sin tildes, números y guiones simples (por ejemplo, \"salud-mental\").",
+          "taken": "Ya existe una categoría con ese identificador. Elegí otro."
+        },
+        "confirmDelete": "¿Eliminar esta categoría?",
+        "deleteBody_zero": "La categoría «{{name}}» se va a eliminar. No tiene tarjetas. Esta acción no se puede deshacer.",
+        "deleteBody_one": "La categoría «{{name}}» se va a eliminar junto con su tarjeta. Esta acción no se puede deshacer.",
+        "deleteBody_other": "La categoría «{{name}}» se va a eliminar junto con sus {{count}} tarjetas. Esta acción no se puede deshacer.",
+        "deleteBodyUnknown": "La categoría «{{name}}» se va a eliminar junto con todas sus tarjetas. Esta acción no se puede deshacer.",
+        "deleteConfirm": "Sí, eliminar",
+        "deleted": "Eliminaste la categoría."
       },
       "cards": {
         "filter": "Categoría",
@@ -117,7 +137,7 @@
         "loadFailed": "No pudimos cargar las tarjetas de beneficios.",
         "emptyFiltered": "No hay tarjetas en esta categoría.",
         "emptyHint": "Acá van a aparecer las tarjetas que se muestran en la sección Beneficios del sitio.",
-        "needsCategory": "Cada tarjeta necesita una categoría y todavía no hay ninguna, así que no podés agregar tarjetas. Las categorías las crea el equipo técnico del CEITBA: pediles una y después volvé acá.",
+        "needsCategory": "Cada tarjeta necesita una categoría y todavía no hay ninguna. Creá una en Categorías y después volvé acá.",
         "goToCategories": "Ver categorías",
         "titlesRequired": "Completá el título en español y en inglés para guardar."
       },

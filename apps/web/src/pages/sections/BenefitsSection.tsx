@@ -4,39 +4,10 @@ import { useBenefitCards, useBenefits } from '../../hooks/useContent'
 import type { BenefitCard, BenefitEntry } from '../../api/content'
 import { Button, EmptyState, ErrorState, SkeletonCards, ToggleGroup } from '../../components/ui'
 import { benefitCategoryName } from '../../utils/benefits'
+import BenefitIcon from './BenefitIcon'
 import { safeHttpUrl, safeLinkUrl } from '../../utils/url'
 
 const ALL = '__all__'
-
-const ICONS: Record<string, React.ReactNode> = {
-  deportes: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  ),
-  membresias: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-      <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" />
-    </svg>
-  ),
-  eventos: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  ),
-  academico: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  ),
-  representacion: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-}
 
 export default function BenefitsSection() {
   const { t, i18n } = useTranslation()
@@ -82,7 +53,7 @@ export default function BenefitsSection() {
               { value: ALL, label: t('benefits.all') },
               ...categoryList.map((c) => ({
                 value: c.slug,
-                label: <CategoryLabel label={benefitCategoryName(c.slug, c, lang, t)} icon={ICONS[c.slug]} colorVar={c.colorVar} active={active === c.slug} />,
+                label: <CategoryLabel label={benefitCategoryName(c.slug, c, lang, t)} icon={<BenefitIcon slug={c.slug} />} colorVar={c.colorVar} active={active === c.slug} />,
               })),
             ]}
           />
@@ -181,7 +152,7 @@ function BenefitCardView({
             className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-label uppercase tracking-widest text-primary-800"
             style={category ? { backgroundColor: `var(${category.colorVar})` } : undefined}
           >
-            {ICONS[card.categorySlug]}
+            <BenefitIcon slug={card.categorySlug} />
             {categoryLabel}
           </span>
           {card.price && (
