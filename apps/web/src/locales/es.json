@@ -474,5 +474,11 @@
     "toggle": "Recibir 'La semana en ITBA' por mail",
     "toggleHint": "Al activarlo, también seguís a CEITBA.",
     "toggleError": "No pudimos guardar el cambio."
+  },
+  "ui": {
+    "back": "Volver",
+    "close": "Cerrar",
+    "loading": "Cargando",
+    "cancel": "Cancelar"
   }
 }

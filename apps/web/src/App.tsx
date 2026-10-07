@@ -11,6 +11,7 @@ import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
+import { Toaster } from './components/ui/Toaster'
 import { getSession, isSafeReturnPath, takeReturnTo } from './store/authStore'
 
 // Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
@@ -94,6 +95,7 @@ function Layout() {
         </Routes>
       </div>
       <Footer />
+      <Toaster />
     </div>
   )
 }

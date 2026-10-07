@@ -474,5 +474,11 @@
     "toggle": "Get 'La semana en ITBA' by email",
     "toggleHint": "Turning it on also follows CEITBA.",
     "toggleError": "We couldn't save that change."
+  },
+  "ui": {
+    "back": "Back",
+    "close": "Close",
+    "loading": "Loading",
+    "cancel": "Cancel"
   }
 }
