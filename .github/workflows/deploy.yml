@@ -2,8 +2,9 @@ name: Deploy
 
 # Every push to main deploys the apps it changed, to the same VPS paths as the
 # old per-repo workflows: API image + compose (~/CEITBA-API), Caddy (~/infra),
-# SPAs (/var/www/{main,scheduler,itbanews}). The API ships first; SPA deploys
-# wait for it, so an SPA never goes live ahead of the API it depends on.
+# MCP server image + compose (~/CEITBA-MCP), SPAs (/var/www/{main,scheduler,itbanews}).
+# The API ships first; MCP and SPA deploys wait for it, so nothing goes live
+# ahead of the API it depends on.
 # Deploy credentials live only in the `production` environment.
 #
 # Run it by hand ("Run workflow" on main) to redeploy every app regardless of
@@ -30,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.api }}
+      mcp: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -55,11 +57,106 @@ jobs:
             newsletter:
               - 'apps/newsletter/**'
               - *shared
+            mcp:
+              - 'apps/mcp/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'bun.lock'
       - id: spas
         env:
           # Manual runs deploy every app.
           CHANGES: ${{ github.event_name == 'workflow_dispatch' && '["web","scheduler","newsletter"]' || steps.filter.outputs.changes }}
         run: echo "matrix=$(jq -c --argjson changes "$CHANGES" '[.[] | select(.app as $a | $changes | index($a))]' .github/spa-apps.json)" >> "$GITHUB_OUTPUT"
+
+  # Hosted MCP server (apps/mcp): test, image, deploy to ~/CEITBA-MCP. It
+  # deploys after the API (it relies on the API's scoped keys) and never
+  # after an API failure, like the SPAs.
+  mcp-test:
+    needs: changes
+    if: needs.changes.outputs.mcp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2 # the version that wrote bun.lock; bump both together
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' lint
+      - run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' test
+
+  mcp-image:
+    needs: mcp-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ghcr.io/ceitba/ceitba-mcp
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          file: apps/mcp/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=mcp
+          cache-to: type=gha,mode=max,scope=mcp
+
+  mcp-deploy:
+    needs: [changes, api-test, api-image, api-deploy, mcp-image]
+    if: >-
+      always() && !cancelled()
+      && needs.mcp-image.result == 'success'
+      && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      # Only the compose file is copied: ~/CEITBA-MCP/.env (secrets) lives on the VPS.
+      - name: Copy MCP compose to VPS
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "apps/mcp/docker-compose.yml"
+          target: "~/CEITBA-MCP/"
+          strip_components: 2
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_TOKEN
+          script: |
+            set -e
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u ceitba --password-stdin
+            cd ~/CEITBA-MCP
+            # Fail before touching anything if .env lacks a required variable.
+            docker compose config -q
+            docker compose pull ceitba-mcp
+            docker compose up -d
+            docker image prune -f
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # main has no required checks, so a PR can merge before CI finishes: test
   # again here and make main a real gate.

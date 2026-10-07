@@ -8,6 +8,7 @@ The platform of CEITBA, the student center of ITBA, served at [ceitba.org.ar](ht
 | Main site + staff admin | `apps/web` | `/` | React 18, Vite, TypeScript |
 | Combinador de Horarios | `apps/scheduler` | `/scheduler/` | React 18, Vite, TypeScript |
 | Newsletter | `apps/newsletter` | `/newsletter/` | React 18, Vite, JavaScript |
+| MCP server for AI assistants ([connect guide](apps/mcp/CONECTAR.md)) | `apps/mcp` | `mcp.ceitba.org.ar/mcp` | Bun, TypeScript, MCP SDK |
 
 The mobile app lives in its own repo, [ceitba/CEITBApp](https://github.com/ceitba/CEITBApp).
 
@@ -31,7 +32,8 @@ See each app's README for details.
 ## Repository layout
 
 ```
-apps/        api (Maven) and the three web apps (bun workspaces)
+apps/        api (Maven), the three web apps and the MCP server (bun workspaces)
+packages/    shared TS packages (scheduler-core: the schedule generator)
 infra/       Caddy reverse proxy config for production
 docs/        cross-app docs (EDITORIAL_UI_SYSTEM.md: the shared UI design system)
 .github/     CI (ci.yml) and deploys (deploy.yml); spa-apps.json holds each web app's build settings

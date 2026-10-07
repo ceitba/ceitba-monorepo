@@ -2,6 +2,19 @@ www.ceitba.org.ar {
     redir https://ceitba.org.ar{uri} permanent
 }
 
+# Hosted MCP server (apps/mcp, ~/CEITBA-MCP). Its own host so the OAuth
+# metadata (/.well-known/oauth-*) and endpoints (/authorize, /token, ...)
+# live at the root as MCP clients expect. MCP responses can stream (SSE), so
+# flush immediately.
+mcp.ceitba.org.ar {
+    request_body {
+        max_size 1MB
+    }
+    reverse_proxy ceitba-mcp:8787 {
+        flush_interval -1
+    }
+}
+
 ceitba.org.ar {
     handle /api/* {
         reverse_proxy ceitba-api:8080
