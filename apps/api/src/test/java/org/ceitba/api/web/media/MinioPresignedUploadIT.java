@@ -14,12 +14,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
@@ -64,7 +62,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // unchanged, exactly as in prod (Host: ceitba.org.ar).
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "auth.allowed-domains=itba.edu.ar")
 class MinioPresignedUploadIT {
 
     static final String BUCKET = "ceitba-media";
@@ -76,7 +73,6 @@ class MinioPresignedUploadIT {
     static final String SERVICE_SECRET = "service-secret-for-tests";
 
     static final Network NET = Network.newNetwork();
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
     static final GenericContainer<?> MINIO;
     static final GenericContainer<?> CADDY;
 
@@ -116,7 +112,6 @@ class MinioPresignedUploadIT {
             .withExposedPorts(80)
             .waitingFor(Wait.forListeningPort());
 
-        POSTGRES.start();
         MINIO.start();
         mc.start();   // one shot: start() returns once the script exited 0
         // Run it again: `docker compose up` does so on every deploy.
@@ -142,9 +137,6 @@ class MinioPresignedUploadIT {
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
         // What prod sets, with ceitba.org.ar replaced by the proxy's address.
         r.add("storage.endpoint", MinioPresignedUploadIT::proxyBase);
         r.add("storage.bucket", () -> BUCKET);

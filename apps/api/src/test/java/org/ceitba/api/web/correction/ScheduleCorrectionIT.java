@@ -1,6 +1,5 @@
 package org.ceitba.api.web.correction;
 
-import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.domain.Career;
@@ -43,9 +42,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
@@ -89,7 +85,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @RecordApplicationEvents
 @Import({FakePushGatewayConfig.class, ScheduleCorrectionIT.FixedClock.class})
-@TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "itba.api.use-fake=true"})
 class ScheduleCorrectionIT {
 
     // 2026-10-02 in ART: the second semester is running.
@@ -101,15 +96,6 @@ class ScheduleCorrectionIT {
             return Clock.fixed(Instant.parse("2026-10-02T15:00:00Z"),
                 ZoneId.of("America/Argentina/Buenos_Aires"));
         }
-    }
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
     static final String PLAN = "S10-Rev23";
