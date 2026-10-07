@@ -19,13 +19,6 @@
 
     <properties>
         <it.forkCount>1</it.forkCount>
-        <!-- Integration-test JVM. Context boots and short request bursts
-             dominate it, so C1-only JIT (no C2 compile threads competing for
-             CI's 2 vCPUs) and the throughput collector pay off. C1-only
-             shrinks the default code cache to 48 MB, which this suite fills
-             (the JIT then switches off and requests fail with "Out of space
-             in CodeCache"), so restore the tiered default of 240 MB. -->
-        <it.argLine>-XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=240m -XX:+UseParallelGC</it.argLine>
         <java.version>21</java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.21.3</testcontainers.version>
@@ -255,7 +248,6 @@
                          containers use mapped ports and per-class networks). -->
                     <forkCount>${it.forkCount}</forkCount>
                     <reuseForks>true</reuseForks>
-                    <argLine>${it.argLine}</argLine>
                     <systemPropertyVariables>
                         <api.version>1.44</api.version>
                         <!-- ITs with the same configuration share one context

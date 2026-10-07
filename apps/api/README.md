@@ -44,6 +44,15 @@ Use `./scripts/mvn` — runs Maven inside a JDK-21 container. Caches `~/.m2` on 
 ./scripts/mvn -B verify             # same, via container — no host JDK
 ```
 
+Writing a `@SpringBootTest` IT: don't wire a datasource. Each Spring test context gets its own
+database automatically, and ITs with the same configuration share one context. The database is
+put back to its post-startup state before each class that reuses it (see
+`src/test/java/org/ceitba/api/support/`). Every distinct configuration is a full app boot, so
+before you add `@TestPropertySource`, `@Import`, `@MockBean` or `@DynamicPropertySource`, check
+whether the defaults in `src/test/resources/application.yml` already cover it. Use
+`AsyncWork.awaitIdle(context)` rather than a fixed wait to assert that no more `@Async` work
+(e.g. pushes) will happen.
+
 ## Configuration
 
 All config flows through env vars; see [`.env.example`](.env.example). Highlights:
