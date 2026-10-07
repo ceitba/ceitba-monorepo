@@ -1,17 +1,19 @@
-import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import LoadErrorState from '../../components/admin/LoadErrorState'
 import { fetchEventById, createEvent, updateEvent } from '../../api/events'
-import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
+import { useAuthSession } from '../../hooks/useAuthSession'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
+import { useAdminContext } from '../../admin/adminContext'
 import { todayISO } from '../../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
-import type { Organization } from '../../types'
-
+import {
+  Alert, Button, ErrorState, Field, SkeletonForm, buttonClass, inputClass, selectClass, textareaClass, toast,
+} from '@/components/ui'
 
 interface EventForm {
   title: string
@@ -47,26 +49,18 @@ export default function AdminEventFormPage() {
   const isEdit   = Boolean(id)
   const { t } = useTranslation()
   const categoryLabel = useCategoryLabel()
+  const { profile } = useAuthSession()
+  const { orgs } = useAdminContext()
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
   // possible once the event loaded, so a failed load can't overwrite it.
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'notFound' | 'error'>(isEdit ? 'loading' : 'ready')
   const [reloadKey, setReloadKey] = useState(0)
 
   const [form, setForm]         = useState(buildEmptyForm)
-  const [orgs, setOrgs]         = useState<Organization[]>([])
   const [errors, setErrors]     = useState<EventFormErrors>({})
   const [touched, setTouched]   = useState(false)
   const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
   const [apiError, setApiError] = useState('')
-
-  useEffect(() => {
-    fetchOrganizations()
-      // Cast: GET /organizations answers { data: [...] } (OrganizationController.list),
-      // not the bare array api/organizations declares.
-      .then(({ data }) => setOrgs(data ?? []))
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     if (!isEdit) return
@@ -126,152 +120,119 @@ export default function AdminEventFormPage() {
       } else {
         await createEvent(form)
       }
-      setSaved(true)
-      setTimeout(() => navigate(newsletterPath('/admin/events')), 800)
-    } catch {
+      toast.success(isEdit ? t('admin.eventForm.updated') : t('admin.eventForm.created'))
+      navigate(newsletterPath('/admin/events'))
+    } catch (err) {
+      console.error('newsletter admin: save event', err)
       setApiError(t('admin.eventForm.saveError'))
-    } finally {
       setSaving(false)
     }
   }
 
+  const back = { to: newsletterPath('/admin/events'), label: t('admin.eventForm.back') }
+  const title = isEdit ? t('admin.eventForm.editTitle') : t('admin.eventForm.newTitle')
+
   if (loadState === 'loading') {
     return (
-      <div className="flex items-center justify-center py-32" aria-busy="true">
-        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.eventForm.loading')}</p>
+      <div className="flex flex-col gap-6 max-w-2xl">
+        <AdminSectionHeader title={title} back={back} />
+        <SkeletonForm fields={6} />
       </div>
     )
   }
 
   if (loadState === 'notFound' || loadState === 'error') {
+    const notFound = loadState === 'notFound'
     return (
-      <LoadErrorState
-        notFound={loadState === 'notFound'}
-        backTo="/admin/events"
-        backLabel={t('admin.eventForm.back')}
-        onRetry={() => setReloadKey((k) => k + 1)}
+      <ErrorState
+        title={notFound ? t('admin.form.notFoundTitle') : t('admin.form.loadErrorTitle')}
+        message={notFound ? t('admin.form.notFoundMessage') : t('admin.form.loadErrorMessage')}
+        onRetry={notFound ? undefined : () => setReloadKey((k) => k + 1)}
+        backTo={back.to}
+        backLabel={back.label}
       />
     )
   }
 
-  if (saved) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 gap-3 animate-fade-in">
-        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <p className="font-display text-h5 font-bold text-ink-primary">
-          {isEdit ? t('admin.eventForm.updated') : t('admin.eventForm.created')}
-        </p>
-      </div>
-    )
-  }
+  const staff = isStaff(profile)
+  const myOrgs = getOrganizations(profile)
+  const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
+  const visibleOrgs = staff ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
+  const orgLocked = !staff && myOrgs.length === 1
+  // The current org may not be in the list yet (still loading or the
+  // request failed): keep it selectable so the select shows the truth.
+  const orgMissing = form.organization && !visibleOrgs.some((o) => o.slug === form.organization)
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6 max-w-2xl">
-      <div className="flex items-center gap-4">
-        <Link to={newsletterPath('/admin/events')} className="font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
-          {t('admin.eventForm.back')}
-        </Link>
-        <h1 className="font-display text-h3 font-bold text-ink-primary">
-          {isEdit ? t('admin.eventForm.editTitle') : t('admin.eventForm.newTitle')}
-        </h1>
-      </div>
+      <AdminSectionHeader title={title} back={back} />
 
-      <div className="bg-white rounded-card border border-border shadow-card p-6 flex flex-col gap-5">
-        {apiError && (
-          <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
-            {apiError}
-          </p>
-        )}
+      <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-4 sm:p-6 flex flex-col gap-5">
+        {apiError && <Alert tone="error">{apiError}</Alert>}
 
         <Field label={t('admin.eventForm.title')} error={errors.title} required>
-          <input type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder={t('admin.eventForm.titlePlaceholder')} className={inputClass(errors.title)} />
+          {(p) => (
+            <input {...p} type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder={t('admin.eventForm.titlePlaceholder')} className={inputClass({ invalid: !!errors.title })} />
+          )}
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label={t('admin.form.date')} error={errors.date} required>
-            <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass(errors.date)} />
+            {(p) => <input {...p} type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass({ invalid: !!errors.date })} />}
           </Field>
           <Field label={t('admin.eventForm.start')} error={errors.time} required>
-            <input type="time" value={form.time} onChange={(e) => set('time', e.target.value)} className={inputClass(errors.time)} />
+            {(p) => <input {...p} type="time" value={form.time} onChange={(e) => set('time', e.target.value)} className={inputClass({ invalid: !!errors.time })} />}
           </Field>
           <Field label={t('admin.eventForm.end')} error={errors.endTime} required>
-            <input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} className={inputClass(errors.endTime)} />
+            {(p) => <input {...p} type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} className={inputClass({ invalid: !!errors.endTime })} />}
           </Field>
         </div>
 
         <Field label={t('admin.eventForm.location')} error={errors.location} required>
-          <input type="text" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder={t('admin.eventForm.locationPlaceholder')} className={inputClass(errors.location)} />
+          {(p) => (
+            <input {...p} type="text" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder={t('admin.eventForm.locationPlaceholder')} className={inputClass({ invalid: !!errors.location })} />
+          )}
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t('admin.form.category')} error={errors.category}>
-            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputClass(errors.category)}>
-              {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
-            </select>
+            {(p) => (
+              <select {...p} value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass({ invalid: !!errors.category })}>
+                {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+              </select>
+            )}
           </Field>
-          <Field label={t('admin.form.organization')}>
-            {(() => {
-              const myOrgs = getOrganizations()
-              const allowedSlugs = new Set(myOrgs.map((m) => m.slug))
-              const visibleOrgs = isStaff() ? orgs : orgs.filter((o) => allowedSlugs.has(o.slug))
-              const locked = !isStaff() && myOrgs.length === 1
-              return (
-                <select
-                  value={form.organization ?? undefined}
-                  onChange={(e) => set('organization', e.target.value)}
-                  disabled={locked}
-                  className={inputClass(null)}
-                >
-                  {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-                </select>
-              )
-            })()}
+          <Field label={t('admin.form.organization')} hint={orgLocked ? t('admin.eventForm.orgLocked') : undefined}>
+            {(p) => (
+              <select
+                {...p}
+                value={form.organization ?? ''}
+                onChange={(e) => set('organization', e.target.value)}
+                disabled={orgLocked}
+                className={selectClass()}
+              >
+                {orgMissing && <option value={form.organization ?? ''}>{form.organization}</option>}
+                {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+              </select>
+            )}
           </Field>
         </div>
 
         <Field label={t('admin.eventForm.description')} hint={t('admin.eventForm.descriptionHint')}>
-          <textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder={t('admin.eventForm.descriptionPlaceholder')} className={inputClass(null)} />
+          {(p) => (
+            <textarea {...p} rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder={t('admin.eventForm.descriptionPlaceholder')} className={textareaClass()} />
+          )}
         </Field>
       </div>
 
-      <div className="flex gap-3">
-        <button type="submit" disabled={saving || loadState !== 'ready'} className="min-h-[44px] px-6 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
-          {saving ? t('admin.form.saving') : isEdit ? t('admin.form.saveChanges') : t('admin.eventForm.create')}
-        </button>
-        <Link to={newsletterPath('/admin/events')} className="min-h-[44px] px-6 inline-flex items-center bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded">
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" loading={saving} loadingLabel={t('admin.form.saving')}>
+          {isEdit ? t('admin.form.saveChanges') : t('admin.eventForm.create')}
+        </Button>
+        <Link to={back.to} className={buttonClass({ variant: 'ghost' })}>
           {t('admin.common.cancel')}
         </Link>
       </div>
     </form>
   )
-}
-
-interface FieldProps {
-  label: string
-  hint?: string
-  error?: string
-  required?: boolean
-  children: ReactNode
-}
-
-function Field({ label, hint, error, required, children }: FieldProps) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-2 flex-wrap">
-        <label className="font-body text-body-sm font-semibold text-ink-primary">
-          {label}
-          {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
-        </label>
-        {hint  && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
-        {error && <span className="font-body text-body-sm text-red-600">{error}</span>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function inputClass(error: string | null | undefined) {
-  return ['w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
 }

@@ -1,15 +1,31 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ALL_STATUSES, deleteArticle, fetchAllArticles } from '../../api/articles'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import CategoryBadge from '../../components/CategoryBadge'
+import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
+import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
+import { useAdminContext } from '../../admin/adminContext'
 import { formatDate } from '../../utils/dates'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 import { newsletterPath } from '@/newsletter/paths'
+import {
+  Alert, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, Tabs, buttonClass, type TabItem,
+} from '@/components/ui'
 import type { UserProfile } from '@/store/authStore'
-import type { Article, VoteCounts } from '../../types'
+import type { Article, ArticleStatus, VoteCounts } from '../../types'
+
+// The vote counts come from the analytics summary over this many days (the
+// same window as the analytics page's default "30 días").
+const VOTE_DAYS = 30
+
+// Status tabs, in the order an editor cares about them; only statuses that
+// have articles get a tab.
+const STATUS_ORDER: ArticleStatus[] = ['pending_review', 'draft', 'changes_requested', 'published', 'rejected']
+type Filter = 'all' | ArticleStatus
 
 // Articles visible to the current admin user, drafts included, plus the ids
 // the user wrote (their independent drafts are theirs to delete).
@@ -56,12 +72,15 @@ function sortNewestFirst(list: Article[]): Article[] {
 export default function AdminArticlesPage() {
   const { t, i18n } = useTranslation()
   const { profile } = useAuthSession()
+  const { orgName } = useAdminContext()
   const staff = isStaff(profile)
   const [articles, setArticles] = useState<Article[]>([])
   const [mineIds, setMineIds]   = useState(() => new Set<string>())
   const [votes, setVotes]       = useState<Record<string, VoteCounts>>({})
   const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [filter, setFilter]     = useState<Filter>('all')
+  const [toDelete, setToDelete] = useState<Article | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -76,255 +95,216 @@ export default function AdminArticlesPage() {
         setMineIds(ids)
         setStatus('success')
       })
-      .catch(() => { if (!cancelled) setStatus('error') })
+      .catch((err: unknown) => {
+        console.error('newsletter admin: articles', err)
+        if (!cancelled) setStatus('error')
+      })
 
     // Vote counts come from the STAFF-only analytics summary. Best-effort:
     // never let it fail the list, and don't call it for org members (403).
     if (isStaff(profile)) {
-      fetchAnalyticsSummary(30)
+      fetchAnalyticsSummary(VOTE_DAYS)
         .then((summary) => {
           if (cancelled) return
           setVotes(Object.fromEntries(
             (summary.voteBreakdown ?? []).map((v) => [v.articleId, { up: v.up, down: v.down }]),
           ))
         })
-        .catch(() => {})
+        .catch((err: unknown) => console.error('newsletter admin: vote counts', err))
     }
     return () => { cancelled = true }
   }, [profile, reloadKey])
 
-  async function handleDelete(id: string) {
+  async function handleDelete() {
+    if (!toDelete) return
+    setDeleting(true)
     setDeleteError('')
     try {
-      await deleteArticle(id)
-      setArticles((prev) => prev.filter((a) => a.id !== id))
-    } catch {
+      await deleteArticle(toDelete.id)
+      setArticles((prev) => prev.filter((a) => a.id !== toDelete.id))
+      setToDelete(null)
+    } catch (err) {
+      console.error('newsletter admin: delete article', err)
       setDeleteError(t('admin.articles.deleteError'))
+    } finally {
+      setDeleting(false)
     }
-    setConfirmId(null)
   }
 
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center py-32" aria-busy="true">
-        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.articles.loading')}</p>
-      </div>
-    )
-  }
+  const newButton = (
+    <Link to={newsletterPath('/admin/articles/new')} className={buttonClass()}>
+      <PlusIcon /> {t('admin.articles.new')}
+    </Link>
+  )
 
-  if (status === 'error') {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-        <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.articles.loadError')}</p>
-        <button type="button" onClick={() => setReloadKey((k) => k + 1)} className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
-          {t('admin.common.retry')}
-        </button>
-      </div>
-    )
-  }
-
-  const pendingCount = articles.filter((a) => a.status === 'pending_review').length
+  const counts = Object.fromEntries(STATUS_ORDER.map((s) => [s, articles.filter((a) => (a.status ?? 'published') === s).length]))
+  const tabs: TabItem<Filter>[] = [
+    { id: 'all', label: t('admin.articles.filters.all'), count: articles.length },
+    ...STATUS_ORDER.filter((s) => counts[s] > 0).map((s) => ({ id: s, label: t(`admin.status.${s}`), count: counts[s] })),
+  ]
+  // A filter whose last article was deleted falls back to "Todos".
+  const activeFilter: Filter = tabs.some((tab) => tab.id === filter) ? filter : 'all'
+  const visible = activeFilter === 'all' ? articles : articles.filter((a) => (a.status ?? 'published') === activeFilter)
+  const pendingCount = counts.pending_review ?? 0
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.articles.title')}</h1>
-          <p className="font-body text-body-sm text-ink-secondary mt-0.5">
-            {t('admin.articles.count', { count: articles.length })}
-          </p>
-        </div>
-        <Link
-          to={newsletterPath('/admin/articles/new')}
-          className="inline-flex items-center gap-2 min-h-[44px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
-        >
-          <PlusIcon /> {t('admin.articles.new')}
-        </Link>
-      </div>
+      <AdminSectionHeader
+        title={t('admin.articles.title')}
+        subtitle={status === 'success' ? t('admin.articles.count', { count: articles.length }) : undefined}
+        action={newButton}
+      />
 
-      {staff && pendingCount > 0 && (
-        <p className="font-body text-body-sm text-amber-700 bg-amber-50 border border-amber-200 px-4 py-3 rounded-sm">
-          {t('admin.articles.pendingReview', { count: pendingCount })}
-        </p>
+      {status === 'loading' && <SkeletonTable rows={6} cols={staff ? 6 : 5} />}
+
+      {status === 'error' && (
+        <ErrorState title={t('admin.articles.loadError')} onRetry={() => setReloadKey((k) => k + 1)} />
       )}
 
-      {deleteError && (
-        <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
-          {deleteError}
-        </p>
+      {status === 'success' && articles.length === 0 && (
+        <EmptyState
+          title={t('admin.articles.emptyTitle')}
+          body={t('admin.articles.emptyMessage')}
+        />
       )}
 
-      {/* Table */}
-      {articles.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="bg-white rounded-card border border-border shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+      {status === 'success' && articles.length > 0 && (
+        <>
+          {staff && pendingCount > 0 && activeFilter !== 'pending_review' && (
+            <Alert
+              tone="warning"
+              action={
+                <Button variant="outline" size="sm" onClick={() => setFilter('pending_review')}>
+                  {t('admin.articles.showPending')}
+                </Button>
+              }
+            >
+              {t('admin.articles.pendingReview', { count: pendingCount })}
+            </Alert>
+          )}
+
+          {tabs.length > 2 && (
+            <Tabs
+              items={tabs}
+              active={activeFilter}
+              onChange={setFilter}
+              label={t('admin.articles.filters.label')}
+              idPrefix="admin-articles"
+            />
+          )}
+
+          <div
+            id={`admin-articles-panel-${activeFilter}`}
+            role={tabs.length > 2 ? 'tabpanel' : undefined}
+            aria-labelledby={tabs.length > 2 ? `admin-articles-tab-${activeFilter}` : undefined}
+          >
+            <TableCard>
               <thead>
-                <tr className="border-b border-border bg-surface">
+                <tr className={theadRowClass}>
                   <Th>{t('admin.articles.columns.title')}</Th>
                   <Th>{t('admin.articles.columns.status')}</Th>
                   <Th>{t('admin.articles.columns.category')}</Th>
                   <Th>{t('admin.articles.columns.organization')}</Th>
                   <Th>{t('admin.articles.columns.date')}</Th>
-                  {staff && <Th>{t('admin.articles.columns.votes')}</Th>}
+                  {staff && <Th>{t('admin.articles.columns.votes', { count: VOTE_DAYS })}</Th>}
                   <Th><span className="sr-only">{t('admin.common.actions')}</span></Th>
                 </tr>
               </thead>
               <tbody>
-                {articles.map((article) => (
-                  <tr
-                    key={article.id}
-                    className="border-b border-border last:border-b-0 hover:bg-surface transition-colors duration-100"
-                  >
+                {visible.map((article) => (
+                  <tr key={article.id} className={rowClass}>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5">
-                        <span className="font-body text-body-sm font-semibold text-ink-primary line-clamp-1">
+                        <span className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text line-clamp-2">
                           {article.title}
                         </span>
                         {article.featured && (
-                          <span className="font-mono text-label text-accent-500 uppercase tracking-widest">
+                          <span className="font-mono text-label text-accent-700 dark:text-accent-300 uppercase tracking-widest">
                             {t('admin.articles.featured')}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={article.status ?? 'published'} />
+                      <ArticleStatusBadge status={article.status ?? 'published'} />
                     </td>
                     <td className="px-4 py-3">
                       <CategoryBadge category={article.category} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">
-                        {article.organization || t('admin.articles.independent')}
+                      <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+                        {article.organization ? orgName(article.organization) : t('admin.articles.independent')}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <time className="font-mono text-label text-ink-secondary" dateTime={article.date ?? undefined}>
+                      <time className="font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap" dateTime={article.date ?? undefined}>
                         {formatDate(article.date, i18n.language)}
                       </time>
                     </td>
                     {staff && (
                       <td className="px-4 py-3">
-                        <VotePill votes={votes[article.id]} />
+                        <VoteCell votes={votes[article.id]} />
                       </td>
                     )}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-1 justify-end">
                         <Link
                           to={newsletterPath(`/admin/articles/${article.id}/edit`)}
-                          className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded"
+                          className={buttonClass({ variant: 'ghost', size: 'sm' })}
+                          aria-label={t('admin.articles.editAria', { title: article.title })}
                         >
                           {t('admin.common.edit')}
                         </Link>
-                        {canDelete(article, staff, mineIds) && (confirmId === article.id ? (
-                          <span className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(article.id)}
-                              className="min-h-[36px] px-3 font-body text-body-sm text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150"
-                            >
-                              {t('admin.common.confirm')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmId(null)}
-                              className="min-h-[36px] px-2 font-body text-body-sm text-ink-secondary hover:bg-surface rounded-sm transition-colors duration-150"
-                            >
-                              {t('admin.common.cancel')}
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmId(article.id)}
-                            className="min-h-[36px] px-3 font-body text-body-sm text-ink-secondary hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150"
+                        {canDelete(article, staff, mineIds) && (
+                          <Button
+                            variant="dangerGhost"
+                            size="sm"
+                            onClick={() => { setDeleteError(''); setToDelete(article) }}
+                            aria-label={t('admin.articles.deleteAria', { title: article.title })}
                           >
                             {t('admin.common.delete')}
-                          </button>
-                        ))}
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </TableCard>
           </div>
-        </div>
+        </>
+      )}
+
+      {toDelete && (
+        <ConfirmDialog
+          title={t('admin.articles.deleteDialog.title')}
+          body={t('admin.articles.deleteDialog.body', { title: toDelete.title })}
+          confirmLabel={t('admin.articles.deleteDialog.confirm')}
+          busy={deleting}
+          error={deleteError || undefined}
+          onConfirm={handleDelete}
+          onCancel={() => setToDelete(null)}
+        />
       )}
     </div>
   )
 }
 
-interface ThProps {
-  children: ReactNode
-}
-
-function Th({ children }: ThProps) {
-  return (
-    <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">
-      {children}
-    </th>
-  )
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  published:          'bg-emerald-50 text-emerald-700',
-  draft:              'bg-amber-50 text-amber-700',
-  pending_review:     'bg-amber-50 text-amber-700',
-  changes_requested:  'bg-blue-50 text-blue-700',
-  rejected:           'bg-red-50 text-red-600',
-}
-
-interface StatusBadgeProps {
-  status: string
-}
-
-function StatusBadge({ status }: StatusBadgeProps) {
+function VoteCell({ votes }: { votes: VoteCounts | undefined }) {
   const { t } = useTranslation()
-  const cls = STATUS_STYLES[status] ?? 'bg-surface text-ink-secondary'
-  return (
-    <span className={['font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-sm', cls].join(' ')}>
-      {t(`admin.status.${status}`, { defaultValue: status })}
-    </span>
-  )
-}
-
-function EmptyState() {
-  const { t } = useTranslation()
-  return (
-    <div className="bg-white rounded-card border border-border shadow-card flex flex-col items-center justify-center py-20 gap-4 text-center">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full bg-primary-50" />
-        <div className="absolute top-3 left-3 w-8 h-8 rotate-45 bg-accent-100" />
-      </div>
-      <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.articles.emptyTitle')}</p>
-      <p className="font-body text-body-sm text-ink-secondary">{t('admin.articles.emptyMessage')}</p>
-      <Link
-        to={newsletterPath('/admin/articles/new')}
-        className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
-      >
-        <PlusIcon /> {t('admin.articles.new')}
-      </Link>
-    </div>
-  )
-}
-
-interface VotePillProps {
-  votes: VoteCounts | undefined
-}
-
-function VotePill({ votes }: VotePillProps) {
   if (!votes || (votes.up === 0 && votes.down === 0)) {
-    return <span className="font-mono text-label text-border">—</span>
+    return (
+      <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">{t('admin.articles.noVotes')}</span>
+      </span>
+    )
   }
   return (
-    <span className="flex items-center gap-2 font-mono text-label">
-      <span className="text-emerald-600">▲ {votes.up}</span>
-      <span className="text-red-500">▼ {votes.down}</span>
+    <span className="flex items-center gap-2 font-mono text-label whitespace-nowrap">
+      <span className="sr-only">{t('admin.articles.votesSr', { up: votes.up, down: votes.down })}</span>
+      <span className="text-emerald-700 dark:text-emerald-300" aria-hidden="true">▲ {votes.up}</span>
+      <span className="text-red-600 dark:text-red-400" aria-hidden="true">▼ {votes.down}</span>
     </span>
   )
 }

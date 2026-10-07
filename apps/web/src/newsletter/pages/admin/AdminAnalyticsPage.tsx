@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Alert, ErrorState, LoadingRegion, Skeleton, SkeletonCards } from '@/components/ui'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
-import { addDaysISO, localeFor, todayISO } from '../../utils/dates'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
+import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
+import { addDaysISO, formatDate, localeFor, todayISO } from '../../utils/dates'
 import type { AnalyticsSummary } from '../../types'
 
 // GET /analytics/summary?days=N looks back N days and defaults to 30 when
 // the param is missing, so "all time" must be an explicit, large window
 // (the API has no upper bound; ~100 years covers all stored events).
 const ALL_TIME_DAYS = 36500
+const SPARK_DAYS = 14
 
 const RANGES = [
   { key: 'days7',   days: 7  },
@@ -25,21 +29,29 @@ const EMPTY_SUMMARY: AnalyticsSummary = {
   voteBreakdown:     [],
 }
 
+const card = 'bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-5'
+const cardLabel = 'font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted'
+
 export default function AdminAnalyticsPage() {
   const [days, setDays]       = useState(30)
   const [summary, setSummary] = useState(EMPTY_SUMMARY)
   const [status, setStatus]   = useState<'loading' | 'success' | 'error'>('loading')
+  const [reloadKey, setReloadKey] = useState(0)
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
+  const locale = localeFor(i18n.language)
 
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
     fetchAnalyticsSummary(days)
       .then((data) => { if (!cancelled) { setSummary(data); setStatus('success') } })
-      .catch(() => { if (!cancelled) setStatus('error') })
+      .catch((err: unknown) => {
+        console.error('newsletter admin: analytics', err)
+        if (!cancelled) setStatus('error')
+      })
     return () => { cancelled = true }
-  }, [days])
+  }, [days, reloadKey])
 
   const totalVotes = useMemo(
     () => summary.voteBreakdown.reduce((s, v) => s + v.up + v.down, 0),
@@ -66,119 +78,145 @@ export default function AdminAnalyticsPage() {
   const sparkData = useMemo(() => {
     const viewsMap = Object.fromEntries(summary.dailyViews.map(({ date, views }) => [date, views]))
     const today = todayISO()
-    return Array.from({ length: 14 }, (_, i) => {
-      const key = addDaysISO(today, -(13 - i))
+    return Array.from({ length: SPARK_DAYS }, (_, i) => {
+      const key = addDaysISO(today, -(SPARK_DAYS - 1 - i))
       return { date: key, value: viewsMap[key] ?? 0 }
     })
   }, [summary.dailyViews])
 
-  const sparkMax = Math.max(...sparkData.map((d) => d.value), 1)
-  const noData   = summary.totalArticleViews === 0
+  const header = (
+    <AdminSectionHeader
+      title={t('admin.analytics.title')}
+      subtitle={t('admin.analytics.subtitle')}
+      action={<RangePicker active={days} onChange={setDays} />}
+    />
+  )
+
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col gap-8">
+        {header}
+        <ErrorState title={t('admin.analytics.loadError')} onRetry={() => setReloadKey((k) => k + 1)} />
+      </div>
+    )
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex flex-col gap-8">
+        {header}
+        <SkeletonCards count={3} className="grid grid-cols-2 lg:grid-cols-3 gap-4" cardClassName="h-32" />
+        <LoadingRegion className={card}>
+          <Skeleton className="h-3 w-48 mb-4" />
+          <Skeleton className="h-20 w-full" />
+        </LoadingRegion>
+        <SkeletonCards count={2} className="grid grid-cols-1 lg:grid-cols-2 gap-6" cardClassName="h-56" />
+      </div>
+    )
+  }
+
+  const sparkValues = sparkData.map((d) => d.value)
+  const sparkMax = Math.max(...sparkValues, 1)
+  const fmtDay = (iso: string) => formatDate(iso, i18n.language, { day: 'numeric', month: 'short' })
+  const fmtNum = (n: number) => n.toLocaleString(locale)
+  const noData = summary.totalArticleViews === 0
+  const viewedRows = articleRows.filter((a) => a.views > 0)
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Header + range picker */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.analytics.title')}</h1>
-          <p className="font-body text-body-sm text-ink-secondary mt-0.5">
-            {t('admin.analytics.subtitle')}
-          </p>
-        </div>
-        <RangePicker active={days} onChange={setDays} />
-      </div>
+      {header}
 
-      {status === 'error' && (
-        <div className="bg-red-50 border border-red-200 rounded-card px-5 py-4">
-          <p className="font-body text-body-sm text-red-800">
-            {t('admin.analytics.loadError')}
-          </p>
-        </div>
-      )}
-
-      {status !== 'error' && noData && (
-        <div className="bg-amber-50 border border-amber-200 rounded-card px-5 py-4">
-          <p className="font-body text-body-sm text-amber-800">
-            <strong>{t('admin.analytics.noDataTitle')}</strong> {t('admin.analytics.noDataMessage')}
-          </p>
-        </div>
+      {noData && (
+        <Alert tone="info" title={t('admin.analytics.noDataTitle')}>{t('admin.analytics.noDataMessage')}</Alert>
       )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label={t('admin.analytics.articleViews')}   value={summary.totalArticleViews} icon={<IconEye />}  loading={status === 'loading'} lang={i18n.language} />
-        <StatCard label={t('admin.analytics.uniqueVisitors')} value={summary.uniqueVisitors}    icon={<IconUser />} loading={status === 'loading'} lang={i18n.language} />
-        <StatCard label={t('admin.analytics.totalVotes')}     value={totalVotes}                icon={<IconThumb />} loading={status === 'loading'} lang={i18n.language} />
+        <StatCard label={t('admin.analytics.articleViews')}   value={fmtNum(summary.totalArticleViews)} icon={<IconEye />} />
+        <StatCard label={t('admin.analytics.uniqueVisitors')} value={fmtNum(summary.uniqueVisitors)}    icon={<IconUser />} />
+        <StatCard label={t('admin.analytics.totalVotes')}     value={fmtNum(totalVotes)}                icon={<IconThumb />} />
       </div>
 
       {/* Sparkline — daily views */}
-      <div className="bg-white rounded-card border border-border shadow-card p-5">
-        <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-4">
-          {t('admin.analytics.dailyViews')}
-        </p>
-        <div className="flex items-end gap-1 h-20">
+      <section className={card} aria-labelledby="analytics-daily">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
+          <h3 id="analytics-daily" className={cardLabel}>{t('admin.analytics.dailyViews', { count: SPARK_DAYS })}</h3>
+          {/* The values without hovering: min / max / today. */}
+          <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
+            {t('admin.analytics.sparkSummary', {
+              min: fmtNum(Math.min(...sparkValues)),
+              max: fmtNum(Math.max(...sparkValues)),
+              last: fmtNum(sparkValues[sparkValues.length - 1] ?? 0),
+            })}
+          </p>
+        </div>
+        <div className="flex items-end gap-1 h-20" aria-hidden="true">
           {sparkData.map(({ date, value }) => (
-            <div key={date} className="flex-1 flex flex-col items-center gap-1 group" title={`${date}: ${value}`}>
+            <div key={date} className="flex-1 flex flex-col items-center">
               <div
-                className="w-full bg-primary-200 group-hover:bg-primary transition-colors duration-150 rounded-sm"
+                className="w-full bg-primary-200 dark:bg-primary-700 rounded-sm"
                 style={{ height: `${Math.max(4, (value / sparkMax) * 100)}%` }}
               />
             </div>
           ))}
         </div>
-        <div className="flex justify-between mt-1">
-          <span className="font-mono text-label text-border">{sparkData[0]?.date?.slice(5)}</span>
-          <span className="font-mono text-label text-border">{sparkData[13]?.date?.slice(5)}</span>
+        <div className="flex justify-between mt-1 font-mono text-label text-ink-secondary dark:text-night-muted" aria-hidden="true">
+          <span>{fmtDay(sparkData[0].date)}</span>
+          <span>{fmtDay(sparkData[sparkData.length - 1].date)}</span>
         </div>
-      </div>
+        <table className="sr-only">
+          <caption>{t('admin.analytics.dailyViews', { count: SPARK_DAYS })}</caption>
+          <thead>
+            <tr><th scope="col">{t('admin.analytics.columns.day')}</th><th scope="col">{t('admin.analytics.columns.views')}</th></tr>
+          </thead>
+          <tbody>
+            {sparkData.map(({ date, value }) => (
+              <tr key={date}><td>{fmtDay(date)}</td><td>{value}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       {/* Two-column: top articles + category breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-card border border-border shadow-card p-5">
-          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-4">
-            {t('admin.analytics.topArticles')}
-          </p>
-          {articleRows.filter((a) => a.views > 0).length === 0 ? (
+        <section className={card}>
+          <h3 className={`${cardLabel} mb-4`}>{t('admin.analytics.topArticles')}</h3>
+          {viewedRows.length === 0 ? (
             <EmptyMetric label={t('admin.analytics.noViews')} />
           ) : (
-            <BarChart
-              data={articleRows.filter((a) => a.views > 0).map((a) => ({ label: a.title, value: a.views }))}
-              colorClass="bg-primary"
-            />
+            <BarChart data={viewedRows.map((a) => ({ label: a.title, value: a.views }))} colorClass="bg-primary dark:bg-primary-400" />
           )}
-        </div>
+        </section>
 
-        <div className="bg-white rounded-card border border-border shadow-card p-5">
-          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-4">
-            {t('admin.analytics.categoryViews')}
-          </p>
+        <section className={card}>
+          <h3 className={`${cardLabel} mb-4`}>{t('admin.analytics.categoryViews')}</h3>
           {catData.length === 0 ? (
             <EmptyMetric label={t('admin.analytics.noCategoryData')} />
           ) : (
             <BarChart data={catData} colorClass="bg-accent-400" />
           )}
-        </div>
+        </section>
       </div>
 
       {/* Vote breakdown table */}
-      <div className="bg-white rounded-card border border-border shadow-card overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
-          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">
-            {t('admin.analytics.votesByArticle')}
-          </p>
-          <p className="font-body text-body-sm text-ink-secondary mt-0.5">
+      <section className="flex flex-col gap-3">
+        <div>
+          <h3 className={cardLabel}>{t('admin.analytics.votesByArticle')}</h3>
+          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-0.5">
             {t('admin.analytics.votesPrivate')}
           </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[540px]">
+        {articleRows.length === 0 ? (
+          <EmptyMetric label={t('admin.analytics.noViews')} />
+        ) : (
+          <TableCard minWidth="min-w-[540px]">
             <thead>
-              <tr className="border-b border-border bg-surface">
-                <VTh>{t('admin.analytics.columns.article')}</VTh>
-                <VTh>▲ {t('admin.analytics.columns.helpful')}</VTh>
-                <VTh>▼ {t('admin.analytics.columns.notHelpful')}</VTh>
-                <VTh>{t('admin.analytics.columns.ratio')}</VTh>
-                <VTh>{t('admin.analytics.columns.views')}</VTh>
+              <tr className={theadRowClass}>
+                <Th>{t('admin.analytics.columns.article')}</Th>
+                <Th>{t('admin.analytics.columns.helpful')}</Th>
+                <Th>{t('admin.analytics.columns.notHelpful')}</Th>
+                <Th>{t('admin.analytics.columns.ratio')}</Th>
+                <Th>{t('admin.analytics.columns.views')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -186,52 +224,56 @@ export default function AdminAnalyticsPage() {
                 const total = a.votes.up + a.votes.down
                 const ratio = total > 0 ? Math.round((a.votes.up / total) * 100) : null
                 return (
-                  <tr key={a.id} className="border-b border-border last:border-b-0 hover:bg-surface">
+                  <tr key={a.id} className={rowClass}>
                     <td className="px-4 py-3">
-                      <span className="font-body text-body-sm text-ink-primary line-clamp-1">{a.title}</span>
+                      <span className="font-body text-body-sm text-ink-primary dark:text-night-text line-clamp-2">{a.title}</span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-label text-emerald-600">{a.votes.up}</td>
-                    <td className="px-4 py-3 font-mono text-label text-red-500">{a.votes.down}</td>
+                    <td className="px-4 py-3 font-mono text-label text-emerald-700 dark:text-emerald-300">{a.votes.up}</td>
+                    <td className="px-4 py-3 font-mono text-label text-red-600 dark:text-red-400">{a.votes.down}</td>
                     <td className="px-4 py-3">
                       {ratio !== null ? (
-                        <span className={['font-mono text-label', ratio >= 70 ? 'text-emerald-600' : ratio >= 40 ? 'text-amber-600' : 'text-red-500'].join(' ')}>
+                        <span className={[
+                          'font-mono text-label',
+                          ratio >= 70 ? 'text-emerald-700 dark:text-emerald-300' : ratio >= 40 ? 'text-amber-700 dark:text-amber-300' : 'text-red-600 dark:text-red-400',
+                        ].join(' ')}>
                           {ratio}%
                         </span>
                       ) : (
-                        <span className="font-mono text-label text-border">—</span>
+                        <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
+                          <span aria-hidden="true">—</span>
+                          <span className="sr-only">{t('admin.analytics.noVotes')}</span>
+                        </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono text-label text-ink-secondary">{a.views}</td>
+                    <td className="px-4 py-3 font-mono text-label text-ink-secondary dark:text-night-muted">{fmtNum(a.views)}</td>
                   </tr>
                 )
               })}
             </tbody>
-          </table>
-        </div>
-      </div>
+          </TableCard>
+        )}
+      </section>
     </div>
   )
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
 
-interface RangePickerProps {
-  active: number
-  onChange: (days: number) => void
-}
-
-function RangePicker({ active, onChange }: RangePickerProps) {
+function RangePicker({ active, onChange }: { active: number; onChange: (days: number) => void }) {
   const { t } = useTranslation()
   return (
-    <div className="flex rounded-sm border border-border overflow-hidden">
+    <div role="group" aria-label={t('admin.analytics.rangeLabel')} className="flex rounded-sm border border-border dark:border-night-border overflow-hidden">
       {RANGES.map(({ key, days }) => (
         <button
           key={key}
           type="button"
           onClick={() => onChange(days)}
+          aria-pressed={active === days}
           className={[
-            'min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150',
-            active === days ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface',
+            'min-h-[44px] px-4 font-mono text-label uppercase tracking-widest transition-colors duration-150',
+            active === days
+              ? 'bg-primary text-white'
+              : 'bg-white dark:bg-night-surface text-ink-secondary dark:text-night-muted hover:text-ink-primary dark:hover:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised',
           ].join(' ')}
         >
           {t(`admin.analytics.ranges.${key}`)}
@@ -241,24 +283,12 @@ function RangePicker({ active, onChange }: RangePickerProps) {
   )
 }
 
-interface StatCardProps {
-  label: string
-  value: number
-  icon: ReactNode
-  loading: boolean
-  lang: string
-}
-
-function StatCard({ label, value, icon, loading, lang }: StatCardProps) {
+function StatCard({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
   return (
-    <div className="bg-white rounded-card border border-border shadow-card p-5 flex flex-col gap-2">
-      <div className="w-8 h-8 text-primary">{icon}</div>
-      {loading ? (
-        <div className="skeleton h-8 w-20 rounded" />
-      ) : (
-        <p className="font-display text-h3 font-bold text-ink-primary tabular-nums">{value.toLocaleString(localeFor(lang))}</p>
-      )}
-      <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{label}</p>
+    <div className={`${card} flex flex-col gap-2`}>
+      <div className="w-8 h-8 text-primary dark:text-primary-300" aria-hidden="true">{icon}</div>
+      <p className="font-display text-h3 font-bold text-ink-primary dark:text-night-text tabular-nums">{value}</p>
+      <p className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">{label}</p>
     </div>
   )
 }
@@ -268,51 +298,27 @@ interface BarDatum {
   value: number
 }
 
-interface BarChartProps {
-  data: BarDatum[]
-  colorClass: string
-}
-
-function BarChart({ data, colorClass }: BarChartProps) {
+function BarChart({ data, colorClass }: { data: BarDatum[]; colorClass: string }) {
   const max = Math.max(...data.map((d) => d.value), 1)
   return (
-    <div className="flex flex-col gap-3">
+    <ul className="flex flex-col gap-3 list-none m-0 p-0">
       {data.map(({ label, value }) => (
-        <div key={label} className="flex items-center gap-3">
-          <span className="w-32 font-body text-body-sm text-ink-secondary truncate text-right flex-shrink-0" title={label}>
+        <li key={label} className="flex items-center gap-3">
+          <span className="w-36 font-body text-body-sm text-ink-secondary dark:text-night-muted text-right flex-shrink-0 break-words">
             {label}
           </span>
-          <div className="flex-1 bg-surface rounded-full h-2.5">
-            <div
-              className={['h-2.5 rounded-full transition-all duration-500', colorClass].join(' ')}
-              style={{ width: `${(value / max) * 100}%` }}
-            />
+          <div className="flex-1 bg-page-bg dark:bg-night-raised rounded-full h-2.5" aria-hidden="true">
+            <div className={['h-2.5 rounded-full', colorClass].join(' ')} style={{ width: `${(value / max) * 100}%` }} />
           </div>
-          <span className="w-8 font-mono text-label text-ink-secondary text-right flex-shrink-0">{value}</span>
-        </div>
+          <span className="w-10 font-mono text-label text-ink-secondary dark:text-night-muted text-right flex-shrink-0">{value}</span>
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
-interface EmptyMetricProps {
-  label: string
-}
-
-function EmptyMetric({ label }: EmptyMetricProps) {
-  return <p className="font-body text-body-sm text-ink-secondary py-4 text-center">{label}</p>
-}
-
-interface VThProps {
-  children: ReactNode
-}
-
-function VTh({ children }: VThProps) {
-  return (
-    <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">
-      {children}
-    </th>
-  )
+function EmptyMetric({ label }: { label: string }) {
+  return <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted py-4 text-center">{label}</p>
 }
 
 function IconEye() {

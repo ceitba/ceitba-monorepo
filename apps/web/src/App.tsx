@@ -57,8 +57,9 @@ function AuthCallback() {
 }
 
 // Pages with their own full-screen chrome instead of the app's Navbar and
-// Footer: the newsletter's admin dashboard and its sign-in page.
-const CHROMELESS = ['/newsletter/admin/*', '/newsletter/contribute/*']
+// Footer: the newsletter's contributor portal (behind a feature flag). The
+// newsletter admin renders inside the site chrome, like /manage.
+const CHROMELESS = ['/newsletter/contribute/*']
 
 function Layout() {
   const { pathname } = useLocation()

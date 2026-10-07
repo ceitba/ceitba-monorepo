@@ -137,7 +137,6 @@
       "actions": "Acciones",
       "edit": "Editar",
       "delete": "Eliminar",
-      "confirm": "Confirmar",
       "cancel": "Cancelar"
     },
     "status": {
@@ -152,11 +151,10 @@
       "count_one": "{{count}} artículo en total",
       "count_other": "{{count}} artículos en total",
       "new": "Nuevo artículo",
-      "loading": "Cargando artículos…",
       "loadError": "No se pudieron cargar los artículos",
       "featured": "Destacado",
       "emptyTitle": "Sin artículos",
-      "emptyMessage": "Creá el primer artículo para el newsletter.",
+      "emptyMessage": "Cuando escribas el primero, va a aparecer acá. Empezá con «Nuevo artículo».",
       "deleteError": "No se pudo eliminar el artículo. Intentá de nuevo.",
       "columns": {
         "title": "Título",
@@ -164,21 +162,34 @@
         "category": "Categoría",
         "organization": "Organización",
         "date": "Fecha",
-        "votes": "Votos"
+        "votes": "Votos ({{count}} días)"
       },
       "independent": "Independiente",
       "pendingReview_one": "Hay {{count}} artículo independiente esperando revisión: abrilo y publicalo si está bien.",
-      "pendingReview_other": "Hay {{count}} artículos independientes esperando revisión: abrilos y publicalos si están bien."
+      "pendingReview_other": "Hay {{count}} artículos independientes esperando revisión: abrilos y publicalos si están bien.",
+      "filters": {
+        "all": "Todos",
+        "label": "Filtrar artículos por estado"
+      },
+      "showPending": "Ver pendientes",
+      "editAria": "Editar «{{title}}»",
+      "deleteAria": "Eliminar «{{title}}»",
+      "noVotes": "Sin votos",
+      "votesSr": "{{up}} votos útiles, {{down}} no útiles",
+      "deleteDialog": {
+        "title": "¿Eliminar este artículo?",
+        "body": "«{{title}}» se borra para siempre. No se puede deshacer.",
+        "confirm": "Sí, eliminar"
+      }
     },
     "events": {
       "title": "Eventos",
       "count_one": "{{count}} evento en total",
       "count_other": "{{count}} eventos en total",
       "new": "Nuevo evento",
-      "loading": "Cargando eventos…",
       "loadError": "No se pudieron cargar los eventos",
       "emptyTitle": "Sin eventos",
-      "emptyMessage": "Creá el primer evento para el calendario.",
+      "emptyMessage": "Cuando cargues el primero, va a aparecer acá y en el calendario. Empezá con «Nuevo evento».",
       "deleteError": "No se pudo eliminar el evento. Intentá de nuevo.",
       "columns": {
         "title": "Título",
@@ -186,10 +197,19 @@
         "category": "Categoría",
         "location": "Lugar",
         "organization": "Organización"
+      },
+      "editAria": "Editar «{{title}}»",
+      "deleteAria": "Eliminar «{{title}}»",
+      "deleteStaffOnly": "Solo el staff del CEITBA puede eliminar eventos. Si hay que borrar uno, escribinos a newsletter@ceitba.org.ar.",
+      "noUpcoming": "No hay eventos próximos.",
+      "past": "Pasados",
+      "deleteDialog": {
+        "title": "¿Eliminar este evento?",
+        "body": "«{{title}}» se borra del calendario para siempre. No se puede deshacer.",
+        "confirm": "Sí, eliminar"
       }
     },
     "form": {
-      "optional": "Opcional",
       "saving": "Guardando…",
       "saveChanges": "Guardar cambios",
       "category": "Categoría",
@@ -205,14 +225,13 @@
       }
     },
     "articleForm": {
-      "loading": "Cargando artículo…",
       "back": "← Artículos",
       "newTitle": "Nuevo artículo",
       "saveError": "No se pudo guardar el artículo. Intentá de nuevo.",
       "title": "Título",
       "titlePlaceholder": "Título del artículo",
       "excerpt": "Copete",
-      "excerptHint": "Se muestra completo en la tarjeta.",
+      "excerptHint": "{{length}}/{{limit}} · Se muestra completo en la tarjeta.",
       "excerptPlaceholder": "Copete: 2–3 oraciones que resuman la nota…",
       "body": "Cuerpo",
       "publish": "Publicar",
@@ -226,12 +245,6 @@
       "featured": "Mostrar como destacado",
       "featuredHint": "Desplazará al artículo destacado actual.",
       "coverColor": "Color si no hay imagen",
-      "colors": {
-        "blue": "Azul",
-        "amber": "Ámbar",
-        "green": "Verde",
-        "violet": "Violeta"
-      },
       "errors": {
         "title": "El título es obligatorio.",
         "excerpt": "El copete es obligatorio.",
@@ -248,7 +261,7 @@
       "savedAt": "Guardado a las {{time}}",
       "upToDate": "Sin cambios",
       "notSavedYet": "Todavía no se guardó",
-      "excerptTruncated": "La tarjeta lo va a recortar en: «{{shown}}…»",
+      "excerptTruncated": "{{length}}/{{limit}} · La tarjeta lo va a recortar en: «{{shown}}…»",
       "noAuthors": "sin autores",
       "saveChanges": "Guardar cambios",
       "unpublish": "Pasar a borrador",
@@ -270,7 +283,6 @@
       "date": "Fecha de publicación",
       "placement": "Ubicación",
       "byline": "Firma",
-      "readingTimeComputed": "calculado del texto",
       "readingTimeEdit": "Editar",
       "readingTimeAuto": "Automático",
       "cover": "Portada",
@@ -287,10 +299,16 @@
       "backToDraft": "Volver a borrador",
       "editPendingTitle": "Editando artículo en revisión",
       "submittedDone": "Enviado a revisión",
-      "submittedHint": "El staff de CEITBA lo va a revisar y publicar. Mientras tanto lo podés seguir editando desde Artículos."
+      "submittedHint": "El staff del CEITBA lo va a revisar y publicar. Mientras tanto lo podés seguir editando.",
+      "publishedHint": "Ya está visible en el newsletter.",
+      "viewArticle": "Ver artículo",
+      "backToList": "Volver a artículos",
+      "keepEditing": "Seguir editando",
+      "orgLocked": "La organización de este artículo no se puede cambiar.",
+      "authorsHint": "Escribí un nombre y apretá Enter para agregarlo.",
+      "readingTimeAutoValue": "{{time}} · calculado del texto"
     },
     "eventForm": {
-      "loading": "Cargando evento…",
       "back": "← Eventos",
       "newTitle": "Nuevo evento",
       "editTitle": "Editar evento",
@@ -314,7 +332,8 @@
         "endTime": "La hora de fin es obligatoria.",
         "location": "El lugar es obligatorio.",
         "endBeforeStart": "La hora de fin debe ser posterior al inicio."
-      }
+      },
+      "orgLocked": "Tus eventos se publican a nombre de tu organización."
     },
     "analytics": {
       "title": "Analíticas",
@@ -325,7 +344,7 @@
       "articleViews": "Vistas de artículos",
       "uniqueVisitors": "Visitantes únicos",
       "totalVotes": "Votos totales",
-      "dailyViews": "Vistas diarias — últimos 14 días",
+      "dailyViews": "Vistas diarias, últimos {{count}} días",
       "topArticles": "Artículos más vistos",
       "noViews": "Sin visitas registradas aún.",
       "categoryViews": "Vistas por categoría",
@@ -337,63 +356,44 @@
         "helpful": "Útil",
         "notHelpful": "No útil",
         "ratio": "Ratio",
-        "views": "Vistas"
+        "views": "Vistas",
+        "day": "Día"
       },
       "ranges": {
         "days7": "7 días",
         "days30": "30 días",
         "allTime": "Todo"
-      }
+      },
+      "sparkSummary": "Mín. {{min}} · Máx. {{max}} · Hoy {{last}}",
+      "rangeLabel": "Período",
+      "noVotes": "Sin votos"
     },
     "followers": {
       "link": "Seguidores",
-      "view": "Ver →",
       "title": "Seguidores",
       "backToProfile": "← Perfil",
       "backToProfileLong": "Volver al perfil",
-      "backToPanel": "Volver al panel",
       "noAccessTitle": "Sin acceso",
       "noAccess": "Solo los admins de la organización y el staff de CEITBA pueden ver sus seguidores.",
       "forbidden": "No tenés permiso para ver los seguidores de esta organización.",
       "loadError": "No pudimos cargar los seguidores.",
-      "errorTitle": "Error",
-      "loading": "Cargando…",
-      "count_one": "persona sigue esta organización",
-      "count_other": "personas siguen esta organización",
       "searchPlaceholder": "Buscar por nombre o email…",
-      "empty": "Todavía nadie sigue esta organización.",
-      "noMatches": "No hay coincidencias."
-    },
-    "roles": {
-      "staff": "Staff",
-      "user": "Autor",
-      "member": "Miembro"
+      "empty": "Cuando alguien siga a la organización desde el newsletter, va a aparecer acá.",
+      "noMatches": "No hay coincidencias.",
+      "subtitle_one": "{{org}} · {{count}} persona sigue esta organización",
+      "subtitle_other": "{{org}} · {{count}} personas siguen esta organización",
+      "emptyTitle": "Todavía no hay seguidores",
+      "searchLabel": "Buscar"
     },
     "nav": {
-      "label": "Navegación del panel",
-      "content": "Contenido",
       "articles": "Artículos",
       "events": "Eventos",
-      "suggestions": "Sugerencias",
-      "organization": "Organización",
-      "orgProfile": "Perfil · {{org}}",
-      "media": "Medios",
       "analytics": "Analíticas",
-      "superadmin": "Superadmin",
-      "allOrganizations": "Todas las organizaciones",
-      "backToSite": "Volver al sitio público",
-      "panel": "Panel Admin",
-      "viewSite": "Ver sitio",
-      "new": "Nuevo",
-      "edit": "Editar",
-      "review": "Revisar",
-      "signOutUnsaved": "Tenés cambios sin guardar en el artículo. ¿Cerrar sesión igual y perderlos?",
       "digests": "Resumen semanal"
     },
     "digests": {
       "title": "La semana en ITBA",
       "subtitle": "El resumen semanal de CEITBA por mail: los artículos de la semana pasada y los eventos de la próxima, de todas las organizaciones. Es el mismo mail para todos y lo reciben quienes siguen a CEITBA con el mail activado. Cada lunes a las 00:05 se crea el borrador de la semana anterior, que se envía solo a las 12:00 (hora de Argentina) salvo que lo canceles o desactives el envío automático.",
-      "loading": "Cargando resúmenes…",
       "loadError": "No pudimos cargar los resúmenes.",
       "back": "← Resúmenes",
       "noSubject": "Sin asunto",
@@ -406,7 +406,7 @@
         "draft": "Borrador",
         "sending": "Enviando",
         "sent": "Enviado",
-        "cancelled": "Cancelado"
+        "cancelled": "Anulado"
       },
       "counts": {
         "sent": "Enviados",
@@ -418,7 +418,8 @@
         "submit": "Nuevo resumen",
         "creating": "Creando…",
         "covers": "Cubre la semana del {{range}}",
-        "alreadyExists": "Ya existe: abrirlo"
+        "alreadyExists": "Abrirlo",
+        "existsReason": "Ya hay un resumen para esa semana."
       },
       "errors": {
         "DIGEST_EXISTS": "Ya hay un resumen para esa semana.",
@@ -430,7 +431,7 @@
         "save": "No pudimos guardar los cambios.",
         "test": "No pudimos enviar la prueba.",
         "send": "No pudimos iniciar el envío.",
-        "cancel": "No pudimos cancelar el resumen.",
+        "cancel": "No pudimos anular el número o detener el envío.",
         "delete": "No pudimos eliminar el resumen.",
         "DIGEST_SENDING": "El resumen se está enviando: detené el envío antes de eliminarlo.",
         "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos.",
@@ -446,7 +447,7 @@
         "contentLegend": "Contenido del mail",
         "subject": "Asunto",
         "intro": "Introducción",
-        "introHint": "Opcional · va antes de los artículos",
+        "introHint": "Opcional · va antes de los artículos · {{count}}/{{max}}",
         "articles": "Artículos de la semana · {{included}} de {{total}}",
         "events": "Eventos de la próxima semana · {{included}} de {{total}}",
         "noArticles": "No se publicaron artículos esa semana.",
@@ -462,12 +463,11 @@
         "testing": "Enviando prueba…",
         "testSent": "Te mandamos una prueba a {{email}}.",
         "sendNow": "Enviar ahora",
-        "sending": "Enviando…",
         "sendStarted": "El envío empezó. El progreso se actualiza solo.",
-        "cancel": "Cancelar resumen",
+        "cancel": "Anular número",
         "delete": "Eliminar resumen",
         "stopSending": "Detener envío",
-        "cancelled": "Resumen cancelado.",
+        "cancelled": "Número anulado.",
         "errors": {
           "subject": "El asunto no puede estar vacío.",
           "autoSendAt": "Elegí la fecha y hora del envío automático.",
@@ -476,7 +476,7 @@
         "readOnly": {
           "sending": "Se está enviando. Los números se actualizan solos.",
           "sent": "Este resumen ya se envió y no se puede modificar.",
-          "cancelled": "Este resumen fue cancelado y no se va a enviar."
+          "cancelled": "Este número fue anulado y no se va a enviar."
         },
         "sendDialog": {
           "title": "¿Enviar el resumen ahora?",
@@ -486,22 +486,25 @@
           "senderWarning": {
             "missing": "Todavía no hay una cuenta de envío conectada: el envío queda en espera y empieza recién cuando alguien la conecte.",
             "broken": "La cuenta de envío necesita reconectarse: el envío queda en espera y sigue recién cuando alguien la reconecte."
-          }
+          },
+          "bodyUnknown": "Se les va a enviar a todos los suscriptores (quienes siguen a CEITBA con el mail activado). No se puede deshacer.",
+          "keep": "Volver"
         },
         "deleteDialog": {
           "title": "¿Eliminar este resumen?",
           "body_sent": "Se borra para siempre, junto con sus estadísticas (aperturas, clics y envíos). Los mails que ya salieron no se pueden recuperar.",
           "body_other": "Se borra para siempre. Después podés crear uno nuevo para esa semana.",
           "confirm": "Sí, eliminar",
-          "deleting": "Eliminando…",
           "keep": "Volver"
         },
         "cancelDialog": {
-          "title": "¿Cancelar este resumen?",
+          "title": "¿Anular este número?",
           "body": "No se va a enviar, ni automáticamente ni a mano. Para esa semana tendrías que crear uno nuevo.",
           "bodySending": "Se frena el envío: quienes ya lo recibieron no se ven afectados y el resto no lo va a recibir.",
-          "confirm": "Sí, cancelar",
-          "keep": "Volver"
+          "confirm": "Sí, anular",
+          "keep": "Volver",
+          "titleSending": "¿Detener el envío?",
+          "confirmSending": "Sí, detener"
         },
         "emptyWarning": "No hay ningún artículo ni evento incluido: incluí al menos uno para poder enviarlo.",
         "leaveDialog": {
@@ -515,12 +518,14 @@
           "missing": "Todavía no hay una cuenta de envío conectada, así que el mail no puede salir.",
           "broken": "La cuenta de envío tiene un problema y hay que reconectarla para que el mail pueda salir.",
           "link": "Ir a la lista de resúmenes para conectarla"
-        }
+        },
+        "stopped": "Envío detenido.",
+        "deleted": "Resumen eliminado.",
+        "upToDate": "No hay cambios sin guardar."
       },
       "preview": {
         "title": "Vista previa",
         "stale": "Hay cambios sin guardar: la vista previa muestra la última versión guardada.",
-        "loading": "Cargando…",
         "error": "No pudimos cargar la vista previa."
       },
       "resumesAt": "Envío en pausa: se reanuda ~{{when}} (hora de Argentina)",
@@ -542,7 +547,6 @@
         "title": "Aperturas y clics",
         "refresh": "Actualizar",
         "refreshing": "Actualizando…",
-        "loading": "Cargando estadísticas…",
         "error": "No pudimos cargar las estadísticas.",
         "delivered": "Entregados",
         "uniqueOpens": "Aperturas únicas",
@@ -554,13 +558,14 @@
         "total": "Totales",
         "noClicks": "Todavía no hay clics.",
         "byHour": "Primeras aperturas por hora",
-        "byHourAria": "Gráfico de barras de primeras aperturas por hora: {{hours}} horas, máximo {{max}} por hora",
         "opensCount_one": "{{count}} apertura",
         "opensCount_other": "{{count}} aperturas",
         "noOpens": "Todavía no hay aperturas.",
         "note": "Solo datos agregados, nunca por persona. Las aperturas son aproximadas: Gmail guarda las imágenes en caché (no se ven las aperturas repetidas), Apple Mail las descarga sola al recibir el mail y algunos clientes las bloquean. Los clics son la señal confiable. No se cuentan escáneres de seguridad, bots ni lo que pasa en los primeros segundos después del envío.",
         "laterBucket": "+7 días",
-        "laterFrom": "Desde {{when}}"
+        "laterFrom": "Desde {{when}}",
+        "peak_one": "Pico: {{count}} apertura ({{when}})",
+        "peak_other": "Pico: {{count}} aperturas ({{when}})"
       },
       "autoSendPast": "Este borrador tenía un envío automático que ya pasó: no se va a enviar solo.",
       "sender": {
@@ -580,9 +585,7 @@
         "reconnect": "Reconectar",
         "connecting": "Redirigiendo a Google…",
         "disconnect": "Desconectar",
-        "disconnecting": "Desconectando…",
         "brokenBody": "Google rechazó la cuenta de envío (por ejemplo, porque se cambió la contraseña o se quitó el acceso). Mientras no se reconecte, no sale ningún mail.",
-        "lastError": "Último error: {{error}}",
         "connectError": "No pudimos iniciar la conexión con Google. Probá de nuevo.",
         "disconnectError": "No pudimos desconectar la cuenta. Probá de nuevo.",
         "disconnectDialog": {
@@ -602,6 +605,72 @@
           "exchange_failed": "No pudimos completar la conexión con Google. Probá de nuevo en unos minutos.",
           "unknown": "No pudimos conectar la cuenta de envío. Probá de nuevo."
         }
+      }
+    },
+    "layout": {
+      "title": "Newsletter · Administración",
+      "subtitle": "Escribí artículos y gestioná los eventos y el perfil de tu organización.",
+      "subtitleStaff": "Artículos, eventos, organizaciones, estadísticas y el resumen semanal de ITBA News.",
+      "tabsAria": "Secciones de la administración del newsletter"
+    },
+    "guard": {
+      "signInTitle": "Iniciá sesión para administrar el newsletter",
+      "signInBody": "Entrá con tu cuenta @itba.edu.ar para escribir artículos y gestionar los eventos de tu organización.",
+      "signIn": "Iniciar sesión con Google",
+      "deniedTitle": "No tenés acceso a la administración del newsletter",
+      "deniedBody": "Pedile acceso a tu organización o al CEITBA.",
+      "backToNewsletter": "Volver al newsletter"
+    },
+    "colors": {
+      "blue": "Azul",
+      "amber": "Ámbar",
+      "green": "Verde",
+      "violet": "Violeta"
+    },
+    "preview": {
+      "card": "Tarjeta en la lista",
+      "featuredCard": "Tarjeta destacada",
+      "full": "Vista del artículo completo",
+      "featured": "Destacado",
+      "noTitle": "Sin título",
+      "noExcerpt": "Sin copete",
+      "noAuthors": "Sin autores",
+      "noBody": "El cuerpo del artículo va a aparecer acá."
+    },
+    "orgProfile": {
+      "title": "Perfil de la organización",
+      "fields": {
+        "name": "Nombre corto",
+        "fullName": "Nombre completo",
+        "description": "Descripción",
+        "category": "Categoría",
+        "categoryHint": "Por ejemplo: centro de estudiantes, deporte, cultura.",
+        "color": "Color",
+        "colorHint": "Es el color de la portada de la organización en ITBA News.",
+        "logoUrl": "URL del logo",
+        "backgroundUrl": "URL del fondo"
+      },
+      "namesStaffOnly": "Solo el staff del CEITBA puede cambiar el nombre.",
+      "preview": "Vista previa",
+      "saved": "Perfil guardado.",
+      "unsaved": "Cambios sin guardar",
+      "upToDate": "Sin cambios",
+      "loadError": "No pudimos cargar la organización",
+      "notFoundTitle": "No encontramos la organización",
+      "notFound": "Puede que el enlace esté mal o que la organización ya no exista.",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los miembros de la organización y el staff del CEITBA pueden editar su perfil.",
+      "backToPanel": "Volver a artículos",
+      "backToManage": "← Gestión",
+      "errors": {
+        "save": "No pudimos guardar el perfil. Probá de nuevo.",
+        "forbidden": "No tenés permiso para editar esta organización."
+      },
+      "leave": {
+        "title": "¿Salir sin guardar?",
+        "body": "Tenés cambios sin guardar en el perfil. Si salís ahora, se pierden.",
+        "discard": "Salir sin guardar",
+        "stay": "Seguir editando"
       }
     }
   },

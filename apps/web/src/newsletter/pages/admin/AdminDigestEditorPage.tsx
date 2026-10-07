@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
+import {
+  Alert, Button, ConfirmDialog, ErrorState, Field, LoadingRegion, Skeleton, SkeletonForm, inputClass, textareaClass, toast,
+} from '@/components/ui'
 import {
   cancelDigest, deleteDigest, fetchDigest, fetchDigestQuota, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
 } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
 import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
-import LoadErrorState from '../../components/admin/LoadErrorState'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
-import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import DigestCounts from '../../components/admin/DigestCounts'
 import DigestStatsPanel from '../../components/admin/DigestStatsPanel'
 import { formatDate } from '../../utils/dates'
@@ -60,6 +62,8 @@ function isDirty(form: DigestForm, base: DigestForm): boolean {
     || (form.autoSend && form.autoSendInput !== base.autoSendInput)
 }
 
+const panel = 'bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card'
+
 export default function AdminDigestEditorPage() {
   // The route is /admin/digests/:id, so the param is always there.
   const { id = '' } = useParams()
@@ -72,11 +76,12 @@ export default function AdminDigestEditorPage() {
   const [digest, setDigest] = useState<DigestDetail | null>(null)
   const [form, setForm] = useState<DigestForm | null>(null)
   const [saving, setSaving] = useState(false)
-  const [busyAction, setBusyAction] = useState<BusyAction | null>(null) // 'test' | 'send' | 'cancel' | 'delete'
-  const [dialog, setDialog] = useState<DialogKind | null>(null)         // 'send' | 'cancel' | 'delete'
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null)
+  const [dialog, setDialog] = useState<DialogKind | null>(null)
+  // A failed send/cancel/delete shows inside its open dialog.
+  const [dialogError, setDialogError] = useState('')
   const [error, setError] = useState('')
   const [formError, setFormError] = useState('')
-  const [toast, setToast] = useState<string | null>(null)
   const [previewVersion, setPreviewVersion] = useState(0)
   // 'connected' | 'broken' | 'missing' | null (unknown yet / request failed).
   // Only warns; a send simply waits until a sender is connected.
@@ -113,7 +118,7 @@ export default function AdminDigestEditorPage() {
       const seq = ++seqRef.current
       fetchDigest(id)
         .then((d) => { if (seq === seqRef.current) applyDigest(d) })
-        .catch(() => { /* try again next tick */ })
+        .catch((err: unknown) => console.error('newsletter admin: digest poll (retrying)', err))
     }, SENDING_POLL_MS)
     return () => clearInterval(timer)
   }, [sending, id, applyDigest])
@@ -123,22 +128,15 @@ export default function AdminDigestEditorPage() {
     let cancelled = false
     fetchDigestQuota()
       .then((q) => { if (!cancelled) setSenderStatus(q?.senderStatus ?? null) })
-      .catch(() => { /* the notice is a nicety; ignore */ })
+      .catch((err: unknown) => console.error('newsletter admin: sender status (notice skipped)', err))
     return () => { cancelled = true }
   }, [staff, id])
-
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 5000)
-    return () => clearTimeout(timer)
-  }, [toast])
 
   const base = useMemo(() => (digest ? formFrom(digest) : null), [digest])
   const dirty = form && base ? isDirty(form, base) : false
 
   // Same guard as the article editor: in-app navigation with unsaved edits
-  // asks first (sign-out reads the store too); closing the tab warns via
-  // beforeunload.
+  // asks first; closing the tab warns via beforeunload.
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
     currentLocation.pathname !== nextLocation.pathname && shouldBlockNavigation())
 
@@ -156,21 +154,29 @@ export default function AdminDigestEditorPage() {
 
   if (!staff) return <Navigate to={newsletterPath('/admin/articles')} replace />
 
+  const back = { to: newsletterPath('/admin/digests'), label: t('admin.digests.back') }
+
   if (loadState === 'loading') {
     return (
-      <div className="flex items-center justify-center py-32" aria-busy="true">
-        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.digests.loading')}</p>
+      <div className="flex flex-col gap-6">
+        <AdminSectionHeader title={t('admin.nav.digests')} back={back} />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <SkeletonForm fields={4} />
+          <LoadingRegion><Skeleton className="h-[420px] w-full rounded-card" /></LoadingRegion>
+        </div>
       </div>
     )
   }
 
   if (loadState !== 'ready') {
+    const notFound = loadState === 'notFound'
     return (
-      <LoadErrorState
-        notFound={loadState === 'notFound'}
-        backTo="/admin/digests"
-        backLabel={t('admin.digests.back')}
-        onRetry={() => setReloadKey((k) => k + 1)}
+      <ErrorState
+        title={notFound ? t('admin.form.notFoundTitle') : t('admin.form.loadErrorTitle')}
+        message={notFound ? t('admin.form.notFoundMessage') : t('admin.form.loadErrorMessage')}
+        onRetry={notFound ? undefined : () => setReloadKey((k) => k + 1)}
+        backTo={back.to}
+        backLabel={back.label}
       />
     )
   }
@@ -201,6 +207,11 @@ export default function AdminDigestEditorPage() {
     }
   }
 
+  function openDialog(kind: DialogKind) {
+    setDialogError('')
+    setDialog(kind)
+  }
+
   async function handleSave(e?: FormEvent<HTMLFormElement>) {
     e?.preventDefault()
     if (!editable || saving) return
@@ -225,7 +236,7 @@ export default function AdminDigestEditorPage() {
       nextSeq()
       applyDigest(updated)
       setPreviewVersion((v) => v + 1)
-      setToast(t('admin.digests.editor.saved'))
+      toast.success(t('admin.digests.editor.saved'))
     } catch (err) {
       setError(digestErrorMessage(err, t, 'admin.digests.errors.save'))
       await refreshAfterConflict(err)
@@ -239,7 +250,7 @@ export default function AdminDigestEditorPage() {
     setError('')
     try {
       const { sentTo } = await sendDigestTest(id)
-      setToast(t('admin.digests.editor.testSent', { email: sentTo }))
+      toast.success(t('admin.digests.editor.testSent', { email: sentTo }))
     } catch (err) {
       // 429 MAIL_QUOTA_EXHAUSTED: says when the quota frees up.
       // 409 MAIL_SENDER_NOT_CONNECTED / MAIL_DISABLED have their own messages.
@@ -252,54 +263,54 @@ export default function AdminDigestEditorPage() {
 
   async function handleSendNow() {
     setBusyAction('send')
-    setError('')
+    setDialogError('')
     nextSeq()
     try {
       const sent = await sendDigestNow(id)
       nextSeq()
       applyDigest(sent)
-      setToast(t('admin.digests.editor.sendStarted'))
+      setDialog(null)
+      toast.success(t('admin.digests.editor.sendStarted'))
     } catch (err) {
-      setError(digestErrorMessage(err, t, 'admin.digests.errors.send'))
+      setDialogError(digestErrorMessage(err, t, 'admin.digests.errors.send'))
       await refreshAfterConflict(err)
     } finally {
       setBusyAction(null)
-      setDialog(null)
     }
   }
 
   async function handleCancel() {
     setBusyAction('cancel')
-    setError('')
+    setDialogError('')
     nextSeq()
     try {
       const cancelled = await cancelDigest(id)
       nextSeq()
       applyDigest(cancelled)
-      setToast(t('admin.digests.editor.cancelled'))
+      setDialog(null)
+      toast.success(sending ? t('admin.digests.editor.stopped') : t('admin.digests.editor.cancelled'))
     } catch (err) {
-      setError(digestErrorMessage(err, t, 'admin.digests.errors.cancel'))
+      setDialogError(digestErrorMessage(err, t, 'admin.digests.errors.cancel'))
       await refreshAfterConflict(err)
     } finally {
       setBusyAction(null)
-      setDialog(null)
     }
   }
 
   async function handleDelete() {
     setBusyAction('delete')
-    setError('')
+    setDialogError('')
     nextSeq()
     try {
       await deleteDigest(id)
       // Unsaved edits of a deleted issue must not hold the navigation back.
       setUnsavedChanges(false)
+      toast.success(t('admin.digests.editor.deleted'))
       navigate(newsletterPath('/admin/digests'), { replace: true })
     } catch (err) {
-      setError(digestErrorMessage(err, t, 'admin.digests.errors.delete'))
+      setDialogError(digestErrorMessage(err, t, 'admin.digests.errors.delete'))
       await refreshAfterConflict(err)
       setBusyAction(null)
-      setDialog(null)
     }
   }
 
@@ -308,73 +319,70 @@ export default function AdminDigestEditorPage() {
   const actionsLocked = saving || busyAction != null
   // The API refuses to send an issue with nothing in it (409 DIGEST_EMPTY).
   const empty = includedArticles + includedEvents === 0
+  const readyToSend = !dirty && !empty
   // Only relevant while mail can still go out for this issue.
   const senderNotConnected = (editable || sending) && (senderStatus === 'missing' || senderStatus === 'broken')
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <Link to={newsletterPath('/admin/digests')} className="self-start font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
-          {t('admin.digests.back')}
-        </Link>
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">
-            {formatWeekRange(digest.weekStart, digest.weekEnd, i18n.language)}
-          </h1>
-          <DigestStatusBadge status={digest.status} />
-        </div>
-        {digest.status === 'sent' && digest.sentAt ? (
-          <p className="font-body text-body-sm text-ink-secondary">
-            {t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })}
-          </p>
-        ) : digest.recipientEstimate != null && (
-          // The API only estimates recipients for drafts.
-          <p className="font-body text-body-sm text-ink-secondary">
-            {t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate })}
-          </p>
-        )}
-        {sending && digest.resumeAt && (
-          <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm self-start">
-            {t('admin.digests.resumesAt', { when: formatArtDateTime(digest.resumeAt, i18n.language) })}
-          </p>
-        )}
-        {sending && digest.estimatedFinishAt && (
-          <p className="font-body text-body-sm text-ink-secondary">
-            {t('admin.digests.finishesAt', { when: formatArtDateTime(digest.estimatedFinishAt, i18n.language) })}
-          </p>
-        )}
-      </div>
+      <AdminSectionHeader
+        back={back}
+        title={formatWeekRange(digest.weekStart, digest.weekEnd, i18n.language)}
+        badge={<DigestStatusBadge status={digest.status} />}
+        subtitle={
+          <div className="flex flex-col gap-1">
+            {digest.status === 'sent' && digest.sentAt ? (
+              <p>{t('admin.digests.sentAt', { when: formatArtDateTime(digest.sentAt, i18n.language) })}</p>
+            ) : digest.recipientEstimate != null && (
+              // The API only estimates recipients for drafts.
+              <p>{t('admin.digests.editor.recipientEstimate', { count: digest.recipientEstimate })}</p>
+            )}
+            {sending && digest.estimatedFinishAt && (
+              <p>{t('admin.digests.finishesAt', { when: formatArtDateTime(digest.estimatedFinishAt, i18n.language) })}</p>
+            )}
+          </div>
+        }
+      />
 
-      {error && (
-        <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{error}</p>
+      {sending && digest.resumeAt && (
+        <Alert tone="warning">{t('admin.digests.resumesAt', { when: formatArtDateTime(digest.resumeAt, i18n.language) })}</Alert>
       )}
 
+      {error && <Alert tone="error" onDismiss={() => setError('')}>{error}</Alert>}
+
       {senderNotConnected && (
-        <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 border border-accent px-3 py-2 rounded-sm">
-          {t(`admin.digests.editor.senderNotice.${senderStatus}`)}{' '}
-          <Link to={newsletterPath('/admin/digests')} className="font-semibold underline underline-offset-2">
-            {t('admin.digests.editor.senderNotice.link')}
-          </Link>
-        </p>
+        <Alert
+          tone="warning"
+          action={
+            <Link to={back.to} className="font-mono text-label uppercase tracking-widest underline underline-offset-2 min-h-[44px] inline-flex items-center">
+              {t('admin.digests.editor.senderNotice.link')}
+            </Link>
+          }
+        >
+          {t(`admin.digests.editor.senderNotice.${senderStatus}`)}
+        </Alert>
       )}
 
       {!editable && (
-        <div className="bg-white rounded-card border border-border shadow-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <p className="flex-1 font-body text-body-sm text-ink-secondary">
+        <div className={`${panel} p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4`}>
+          <p className="flex-1 font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {t(`admin.digests.editor.readOnly.${digest.status}`, { defaultValue: t('admin.digests.editor.readOnly.cancelled') })}
           </p>
           <DigestCounts counts={digest.counts} />
           <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
-            {!sending && (
-              <button type="button" onClick={handleTest} disabled={actionsLocked} className={secondaryBtn}>
-                {busyAction === 'test' ? t('admin.digests.editor.testing') : t('admin.digests.editor.test')}
-              </button>
-            )}
-            {!sending && (
-              <button type="button" onClick={() => setDialog('delete')} disabled={actionsLocked} className={dangerBtn}>
-                {t('admin.digests.editor.delete')}
-              </button>
+            {sending ? (
+              <Button variant="dangerGhost" onClick={() => openDialog('cancel')} disabled={actionsLocked}>
+                {t('admin.digests.editor.stopSending')}
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={handleTest} loading={busyAction === 'test'} loadingLabel={t('admin.digests.editor.testing')} disabled={actionsLocked}>
+                  {t('admin.digests.editor.test')}
+                </Button>
+                <Button variant="dangerGhost" onClick={() => openDialog('delete')} disabled={actionsLocked}>
+                  {t('admin.digests.editor.delete')}
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -388,29 +396,20 @@ export default function AdminDigestEditorPage() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start">
         {/* ── Editor column ─────────────────────────────── */}
         <form onSubmit={handleSave} noValidate className="flex flex-col gap-6 min-w-0">
-          <fieldset disabled={!editable} className="bg-white rounded-card border border-border shadow-card p-4 sm:p-6 flex flex-col gap-5 min-w-0">
+          <fieldset disabled={!editable} className={`${panel} p-4 sm:p-6 flex flex-col gap-5 min-w-0`}>
             <legend className="sr-only">{t('admin.digests.editor.contentLegend')}</legend>
-            <Field label={t('admin.digests.editor.subject')} htmlFor="digest-subject">
-              <input
-                id="digest-subject"
-                type="text"
-                value={form.subject}
-                onChange={(e) => set('subject', e.target.value)}
-                maxLength={SUBJECT_MAX}
-                className={inputClass}
-              />
-              <Counter value={form.subject} max={SUBJECT_MAX} />
+            <Field label={t('admin.digests.editor.subject')} hint={t('admin.digests.editor.charCount', { count: form.subject.length, max: SUBJECT_MAX })}>
+              {(p) => (
+                <input {...p} type="text" value={form.subject} onChange={(e) => set('subject', e.target.value)} maxLength={SUBJECT_MAX} className={inputClass()} />
+              )}
             </Field>
-            <Field label={t('admin.digests.editor.intro')} hint={t('admin.digests.editor.introHint')} htmlFor="digest-intro">
-              <textarea
-                id="digest-intro"
-                rows={4}
-                value={form.intro}
-                onChange={(e) => set('intro', e.target.value)}
-                maxLength={INTRO_MAX}
-                className={inputClass}
-              />
-              <Counter value={form.intro} max={INTRO_MAX} />
+            <Field
+              label={t('admin.digests.editor.intro')}
+              hint={t('admin.digests.editor.introHint', { count: form.intro.length, max: INTRO_MAX })}
+            >
+              {(p) => (
+                <textarea {...p} rows={4} value={form.intro} onChange={(e) => set('intro', e.target.value)} maxLength={INTRO_MAX} className={textareaClass()} />
+              )}
             </Field>
           </fieldset>
 
@@ -446,73 +445,63 @@ export default function AdminDigestEditorPage() {
             onToggle={(itemId) => toggleExcluded('excludedEventIds', itemId)}
           />
 
-          <fieldset disabled={!editable} className="bg-white rounded-card border border-border shadow-card p-4 sm:p-6 flex flex-col gap-4 min-w-0">
+          <fieldset disabled={!editable} className={`${panel} p-4 sm:p-6 flex flex-col gap-4 min-w-0`}>
             <legend className="sr-only">{t('admin.digests.editor.autoSend')}</legend>
-            <label className="flex items-start gap-3 cursor-pointer">
+            <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.autoSend}
                 onChange={(e) => set('autoSend', e.target.checked)}
-                className="mt-1 w-4 h-4 accent-primary"
+                className="mt-1 w-5 h-5 accent-primary"
               />
               <span className="flex flex-col">
-                <span className="font-body text-body-sm font-semibold text-ink-primary">{t('admin.digests.editor.autoSend')}</span>
-                <span className="font-body text-body-sm text-ink-secondary">{t('admin.digests.editor.autoSendHint')}</span>
+                <span className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text">{t('admin.digests.editor.autoSend')}</span>
+                <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('admin.digests.editor.autoSendHint')}</span>
               </span>
             </label>
             {form.autoSend && (
-              <Field label={t('admin.digests.editor.autoSendAt')} hint={t('admin.digests.editor.timezone')} htmlFor="digest-autosend">
-                <input
-                  id="digest-autosend"
-                  type="datetime-local"
-                  value={form.autoSendInput}
-                  onChange={(e) => set('autoSendInput', e.target.value)}
-                  min={nowArtInput()}
-                  className={`${inputClass} sm:max-w-xs`}
-                />
+              <Field label={t('admin.digests.editor.autoSendAt')} hint={t('admin.digests.editor.timezone')} className="sm:max-w-xs">
+                {(p) => (
+                  <input
+                    {...p}
+                    type="datetime-local"
+                    value={form.autoSendInput}
+                    onChange={(e) => set('autoSendInput', e.target.value)}
+                    min={nowArtInput()}
+                    className={inputClass()}
+                  />
+                )}
               </Field>
             )}
           </fieldset>
 
-          {formError && (
-            <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{formError}</p>
-          )}
+          {formError && <Alert tone="error">{formError}</Alert>}
 
           {editable && (
-            <div className="flex flex-col gap-3 bg-white rounded-card border border-border shadow-card p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                <button type="submit" disabled={!dirty || actionsLocked} className={primaryBtn}>
-                  {saving ? t('admin.form.saving') : t('admin.digests.editor.save')}
-                </button>
-                <button type="button" onClick={handleTest} disabled={dirty || actionsLocked} className={secondaryBtn}>
-                  {busyAction === 'test' ? t('admin.digests.editor.testing') : t('admin.digests.editor.test')}
-                </button>
-                <button type="button" onClick={() => setDialog('send')} disabled={dirty || empty || actionsLocked} className={accentBtn}>
+            <div className={`${panel} p-4 sm:p-6 flex flex-col gap-3`}>
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+                <Button type="submit" loading={saving} loadingLabel={t('admin.form.saving')} disabled={!dirty || busyAction != null}>
+                  {t('admin.digests.editor.save')}
+                </Button>
+                <Button variant="outline" onClick={handleTest} loading={busyAction === 'test'} loadingLabel={t('admin.digests.editor.testing')} disabled={dirty || actionsLocked}>
+                  {t('admin.digests.editor.test')}
+                </Button>
+                <Button variant={readyToSend ? 'accent' : 'outline'} onClick={() => openDialog('send')} disabled={!readyToSend || actionsLocked}>
                   {t('admin.digests.editor.sendNow')}
-                </button>
-                <button type="button" onClick={() => setDialog('cancel')} disabled={actionsLocked} className={dangerBtn}>
-                  {t('admin.digests.editor.cancel')}
-                </button>
-                <button type="button" onClick={() => setDialog('delete')} disabled={actionsLocked} className={dangerBtn}>
-                  {t('admin.digests.editor.delete')}
-                </button>
+                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
+                  <Button variant="dangerGhost" onClick={() => openDialog('cancel')} disabled={actionsLocked}>
+                    {t('admin.digests.editor.cancel')}
+                  </Button>
+                  <Button variant="dangerGhost" onClick={() => openDialog('delete')} disabled={actionsLocked}>
+                    {t('admin.digests.editor.delete')}
+                  </Button>
+                </div>
               </div>
-              {empty && (
-                <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm">
-                  {t('admin.digests.editor.emptyWarning')}
-                </p>
-              )}
-              {dirty && (
-                <p className="font-body text-body-sm text-ink-secondary">{t('admin.digests.editor.saveFirst')}</p>
-              )}
-            </div>
-          )}
-
-          {sending && (
-            <div className="flex">
-              <button type="button" onClick={() => setDialog('cancel')} disabled={actionsLocked} className={dangerBtn}>
-                {t('admin.digests.editor.stopSending')}
-              </button>
+              {empty && <Alert tone="warning">{t('admin.digests.editor.emptyWarning')}</Alert>}
+              <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted" aria-live="polite">
+                {dirty ? t('admin.digests.editor.saveFirst') : t('admin.digests.editor.upToDate')}
+              </p>
             </div>
           )}
         </form>
@@ -523,69 +512,64 @@ export default function AdminDigestEditorPage() {
 
       {dialog === 'send' && (
         <ConfirmDialog
+          danger={false}
           title={t('admin.digests.editor.sendDialog.title')}
-          confirmLabel={busyAction === 'send' ? t('admin.digests.editor.sending') : t('admin.digests.editor.sendDialog.confirm')}
-          cancelLabel={t('admin.common.cancel')}
+          body={
+            <>
+              <p>
+                {digest.recipientEstimate != null
+                  ? t('admin.digests.editor.sendDialog.body', { count: digest.recipientEstimate })
+                  : t('admin.digests.editor.sendDialog.bodyUnknown')}
+              </p>
+              {senderNotConnected && (
+                <Alert tone="warning" className="mt-3">{t(`admin.digests.editor.sendDialog.senderWarning.${senderStatus}`)}</Alert>
+              )}
+            </>
+          }
+          confirmLabel={t('admin.digests.editor.sendDialog.confirm')}
+          cancelLabel={t('admin.digests.editor.sendDialog.keep')}
           busy={busyAction === 'send'}
+          error={dialogError || undefined}
           onConfirm={handleSendNow}
-          onClose={() => setDialog(null)}
-        >
-          {t('admin.digests.editor.sendDialog.body', { count: digest.recipientEstimate ?? 0 })}
-          {senderNotConnected && (
-            <span className="block mt-3 text-accent-700 bg-accent-50 px-3 py-2 rounded-sm text-body-sm">
-              {t(`admin.digests.editor.sendDialog.senderWarning.${senderStatus}`)}
-            </span>
-          )}
-        </ConfirmDialog>
+          onCancel={() => setDialog(null)}
+        />
       )}
+
       {dialog === 'cancel' && (
         <ConfirmDialog
-          tone="danger"
-          title={t('admin.digests.editor.cancelDialog.title')}
-          confirmLabel={t('admin.digests.editor.cancelDialog.confirm')}
+          title={sending ? t('admin.digests.editor.cancelDialog.titleSending') : t('admin.digests.editor.cancelDialog.title')}
+          body={sending ? t('admin.digests.editor.cancelDialog.bodySending') : t('admin.digests.editor.cancelDialog.body')}
+          confirmLabel={sending ? t('admin.digests.editor.cancelDialog.confirmSending') : t('admin.digests.editor.cancelDialog.confirm')}
           cancelLabel={t('admin.digests.editor.cancelDialog.keep')}
           busy={busyAction === 'cancel'}
+          error={dialogError || undefined}
           onConfirm={handleCancel}
-          onClose={() => setDialog(null)}
-        >
-          {sending ? t('admin.digests.editor.cancelDialog.bodySending') : t('admin.digests.editor.cancelDialog.body')}
-        </ConfirmDialog>
+          onCancel={() => setDialog(null)}
+        />
       )}
 
       {dialog === 'delete' && (
         <ConfirmDialog
-          tone="danger"
           title={t('admin.digests.editor.deleteDialog.title')}
-          confirmLabel={busyAction === 'delete' ? t('admin.digests.editor.deleteDialog.deleting') : t('admin.digests.editor.deleteDialog.confirm')}
+          body={t(`admin.digests.editor.deleteDialog.body_${digest.status === 'sent' ? 'sent' : 'other'}`)}
+          confirmLabel={t('admin.digests.editor.deleteDialog.confirm')}
           cancelLabel={t('admin.digests.editor.deleteDialog.keep')}
           busy={busyAction === 'delete'}
+          error={dialogError || undefined}
           onConfirm={handleDelete}
-          onClose={() => setDialog(null)}
-        >
-          {t(`admin.digests.editor.deleteDialog.body_${digest.status === 'sent' ? 'sent' : 'other'}`)}
-        </ConfirmDialog>
+          onCancel={() => setDialog(null)}
+        />
       )}
 
       {blocker.state === 'blocked' && (
         <ConfirmDialog
-          tone="danger"
           title={t('admin.digests.editor.leaveDialog.title')}
+          body={t('admin.digests.editor.leaveDialog.body')}
           confirmLabel={t('admin.digests.editor.leaveDialog.confirm')}
           cancelLabel={t('admin.digests.editor.leaveDialog.stay')}
           onConfirm={() => blocker.proceed()}
-          onClose={() => blocker.reset()}
-        >
-          {t('admin.digests.editor.leaveDialog.body')}
-        </ConfirmDialog>
-      )}
-
-      {toast && (
-        <div
-          role="status"
-          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm z-50 bg-primary-900 text-white font-body text-body-sm px-4 py-3 rounded-card shadow-card-hover animate-fade-in"
-        >
-          {toast}
-        </div>
+          onCancel={() => blocker.reset()}
+        />
       )}
     </div>
   )
@@ -609,29 +593,29 @@ interface ChecklistProps {
 
 function Checklist({ title, empty, items, disabled, onToggle }: ChecklistProps) {
   return (
-    <section className="bg-white rounded-card border border-border shadow-card min-w-0">
-      <h2 className="px-4 sm:px-6 py-3 border-b border-border font-mono text-label uppercase tracking-widest text-ink-secondary">
+    <section className={`${panel} min-w-0`}>
+      <h3 className="px-4 sm:px-6 py-3 border-b border-border dark:border-night-border font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
         {title}
-      </h2>
+      </h3>
       {items.length === 0 ? (
-        <p className="px-4 sm:px-6 py-6 font-body text-body-sm text-ink-secondary">{empty}</p>
+        <p className="px-4 sm:px-6 py-6 font-body text-body-sm text-ink-secondary dark:text-night-muted">{empty}</p>
       ) : (
-        <ul className="list-none m-0 p-0 divide-y divide-border">
+        <ul className="list-none m-0 p-0 divide-y divide-border dark:divide-night-border">
           {items.map((item) => (
             <li key={item.id}>
-              <label className={`flex items-start gap-3 px-4 sm:px-6 py-3 ${disabled ? '' : 'cursor-pointer hover:bg-surface'} transition-colors duration-100`}>
+              <label className={`flex items-start gap-3 px-4 sm:px-6 py-3 min-h-[44px] ${disabled ? '' : 'cursor-pointer hover:bg-page-bg dark:hover:bg-night-raised'} transition-colors duration-100`}>
                 <input
                   type="checkbox"
                   checked={!item.excluded}
                   disabled={disabled}
                   onChange={() => onToggle(item.id)}
-                  className="mt-1 w-4 h-4 flex-shrink-0 accent-primary"
+                  className="mt-0.5 w-5 h-5 flex-shrink-0 accent-primary"
                 />
-                <span className={`flex flex-col min-w-0 ${item.excluded ? 'opacity-50' : ''}`}>
-                  <span className={`font-body text-body-sm font-semibold text-ink-primary ${item.excluded ? 'line-through' : ''}`}>
+                <span className="flex flex-col min-w-0">
+                  <span className={`font-body text-body-sm font-semibold ${item.excluded ? 'line-through text-ink-secondary dark:text-night-muted' : 'text-ink-primary dark:text-night-text'}`}>
                     {item.title}
                   </span>
-                  <span className="font-mono text-label text-ink-secondary break-words">
+                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted break-words">
                     {[item.org, item.meta].filter(Boolean).join(' · ')}
                   </span>
                 </span>
@@ -664,41 +648,42 @@ function DigestPreview({ id, version, stale }: DigestPreviewProps) {
     setState('loading')
     fetchDigestPreview(id)
       .then((text) => { if (req === reqRef.current) { setHtml(withBlankTargets(text)); setState('ready') } })
-      .catch(() => { if (req === reqRef.current) setState('error') })
+      .catch((err: unknown) => {
+        console.error('newsletter admin: digest preview', err)
+        if (req === reqRef.current) setState('error')
+      })
   }, [id, version, retry])
 
   return (
-    <section className="bg-white rounded-card border border-border shadow-card flex flex-col min-w-0 xl:sticky xl:top-20">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border flex-wrap">
-        <h2 className="font-mono text-label uppercase tracking-widest text-ink-secondary">{t('admin.digests.preview.title')}</h2>
-      </div>
+    <section className={`${panel} flex flex-col min-w-0 xl:sticky xl:top-24`}>
+      <h3 className="px-4 py-3 border-b border-border dark:border-night-border font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+        {t('admin.digests.preview.title')}
+      </h3>
       {stale && (
-        <p className="px-4 py-2 bg-accent-50 font-body text-body-sm text-accent-700 border-b border-border">
+        <p className="px-4 py-2 bg-amber-50 dark:bg-amber-950/40 font-body text-body-sm text-amber-800 dark:text-amber-300 border-b border-border dark:border-night-border">
           {t('admin.digests.preview.stale')}
         </p>
       )}
-      <div className="relative h-[70vh] min-h-[420px] bg-surface">
+      <div className="relative h-[70vh] min-h-[420px] bg-page-bg dark:bg-night-raised">
         {state === 'error' ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-4">
-            <p className="font-body text-body-sm text-ink-secondary">{t('admin.digests.preview.error')}</p>
-            <button type="button" onClick={() => setRetry((r) => r + 1)} className={secondaryBtn}>
-              {t('admin.common.retry')}
-            </button>
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <ErrorState compact title={t('admin.digests.preview.error')} onRetry={() => setRetry((r) => r + 1)} />
           </div>
         ) : (
           <>
             {html && (
+              // The email itself is always white, as in a mail client.
               <iframe
                 title={t('admin.digests.preview.title')}
                 srcDoc={html}
                 sandbox="allow-popups allow-popups-to-escape-sandbox"
-                className={`w-full h-full border-0 bg-[#fff] transition-opacity duration-150 ${state === 'loading' ? 'opacity-50' : ''}`}
+                className={`w-full h-full border-0 bg-white transition-opacity duration-150 ${state === 'loading' ? 'opacity-50' : ''}`}
               />
             )}
             {state === 'loading' && (
-              <p className="absolute top-3 right-3 font-mono text-label text-ink-secondary uppercase tracking-widest" aria-busy="true">
-                {t('admin.digests.preview.loading')}
-              </p>
+              <LoadingRegion className={html ? 'absolute top-3 right-3' : 'absolute inset-0 p-4'}>
+                {!html && <Skeleton className="h-full w-full" />}
+              </LoadingRegion>
             )}
           </>
         )}
@@ -714,43 +699,3 @@ function withBlankTargets(html: string): string {
 
 const SUBJECT_MAX = 200
 const INTRO_MAX = 5000
-
-interface CounterProps {
-  value: string
-  max: number
-}
-
-function Counter({ value, max }: CounterProps) {
-  const { t } = useTranslation()
-  return (
-    <p className="self-end font-mono text-label text-ink-secondary" aria-hidden="true">
-      {t('admin.digests.editor.charCount', { count: value.length, max })}
-    </p>
-  )
-}
-
-interface FieldProps {
-  label: string
-  hint?: string
-  htmlFor: string
-  children: ReactNode
-}
-
-function Field({ label, hint, htmlFor, children }: FieldProps) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-2 flex-wrap">
-        <label htmlFor={htmlFor} className="font-body text-body-sm font-semibold text-ink-primary">{label}</label>
-        {hint && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-const inputClass = 'w-full min-h-[44px] px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:ring-1 focus:border-primary focus:ring-primary/30 transition-colors duration-150 disabled:bg-surface disabled:text-ink-secondary'
-const btnBase = 'min-h-[44px] px-5 inline-flex items-center justify-center font-body text-body-sm font-semibold rounded-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed'
-const primaryBtn = `${btnBase} bg-primary text-surface hover:bg-primary-600`
-const secondaryBtn = `${btnBase} bg-white border border-border text-ink-primary hover:border-primary hover:text-primary`
-const accentBtn = `${btnBase} bg-accent text-ink-primary hover:bg-accent-500`
-const dangerBtn = `${btnBase} bg-white border border-border text-red-600 hover:bg-red-50 hover:border-red-300`
