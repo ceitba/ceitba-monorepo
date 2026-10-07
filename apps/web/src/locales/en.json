@@ -7,7 +7,10 @@
     "langToggleAria": "Switch to Spanish",
     "themeToggleLight": "Switch to light mode",
     "themeToggleDark": "Switch to dark mode",
-    "apuntes": "Notes"
+    "apuntes": "Notes",
+    "sectionsAria": "Sections",
+    "scheduler": "Schedules",
+    "newsletter": "Newsletter"
   },
   "tabs": {
     "home": "Home",
@@ -324,7 +327,11 @@
       "access_denied": "You cancelled the Google sign-in."
     },
     "apuntes": "Notes",
-    "myApuntes": "My notes"
+    "myApuntes": "My notes",
+    "accountMenu": "Account menu",
+    "savedSchedules": "My saved schedules",
+    "newsletterAdmin": "Newsletter panel",
+    "myArticles": "My articles"
   },
   "hero": {
     "eyebrow": "Student Center",
@@ -462,5 +469,10 @@
       "title": "Notes isn't enabled for your account yet",
       "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu."
     }
+  },
+  "digest": {
+    "toggle": "Get 'La semana en ITBA' by email",
+    "toggleHint": "Turning it on also follows CEITBA.",
+    "toggleError": "We couldn't save that change."
   }
 }

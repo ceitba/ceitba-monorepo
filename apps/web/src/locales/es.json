@@ -7,7 +7,10 @@
     "langToggleAria": "Cambiar a inglés",
     "themeToggleLight": "Cambiar a modo claro",
     "themeToggleDark": "Cambiar a modo oscuro",
-    "apuntes": "Apuntes"
+    "apuntes": "Apuntes",
+    "sectionsAria": "Secciones",
+    "scheduler": "Horarios",
+    "newsletter": "Newsletter"
   },
   "tabs": {
     "home": "Inicio",
@@ -324,7 +327,11 @@
       "access_denied": "Cancelaste el inicio de sesión con Google."
     },
     "apuntes": "Apuntes",
-    "myApuntes": "Mis apuntes"
+    "myApuntes": "Mis apuntes",
+    "accountMenu": "Menú de cuenta",
+    "savedSchedules": "Mis horarios guardados",
+    "newsletterAdmin": "Panel del newsletter",
+    "myArticles": "Mis artículos"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
@@ -462,5 +469,10 @@
       "title": "Apuntes todavía no está habilitado para tu cuenta",
       "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
     }
+  },
+  "digest": {
+    "toggle": "Recibir 'La semana en ITBA' por mail",
+    "toggleHint": "Al activarlo, también seguís a CEITBA.",
+    "toggleError": "No pudimos guardar el cambio."
   }
 }

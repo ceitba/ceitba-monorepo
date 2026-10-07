@@ -2,7 +2,7 @@
 
 The platform of CEITBA, ITBA's student center: academic data from ITBA (careers, subjects, schedules), student
 tools built on it (scheduler, Apuntes, subject wikis) and the student newsletter. One domain shared by the API and
-every web app. Seed glossary: `/domain-modeling` and `/grill-with-docs` extend it as terms get settled.
+the web app. Seed glossary: `/domain-modeling` and `/grill-with-docs` extend it as terms get settled.
 
 ## Academic data (mirrored from ITBA)
 

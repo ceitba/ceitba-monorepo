@@ -18,7 +18,7 @@ These are the standards sources reviews (human and `/code-review`) check against
 
 - `AGENTS.md`: cross-app rules (auth, hosting, secrets, CI pinning, docs language).
 - `apps/api/AGENTS.md`: API layering, exceptions, transactions, Flyway, tests.
-- `docs/agents/web-apps.md` and `apps/<app>/AGENTS.md`: SPA patterns (API client, stores, i18n, base path).
+- `apps/web/AGENTS.md`: web app patterns (sections, shared API client and stores, i18n namespaces).
 - `docs/EDITORIAL_UI_SYSTEM.md`: the binding UI system for every web app.
 - `GLOSSARY.md`: names for domain concepts in code, UI copy and docs.
 - `docs/adr/`: decisions that new code must not silently contradict.
