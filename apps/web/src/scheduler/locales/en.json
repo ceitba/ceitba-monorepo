@@ -166,7 +166,8 @@
       "noSaved": "To join, first build a schedule and save it to your account.",
       "confirm": "Join with this",
       "noSavedTitle": "You don't have saved schedules",
-      "makeOne": "Build a schedule"
+      "makeOne": "Build a schedule",
+      "loadFailed": "We couldn't load your saved schedules."
     },
     "heatmap": {
       "label": "Group schedule heatmap",

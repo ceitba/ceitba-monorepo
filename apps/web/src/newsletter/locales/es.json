@@ -333,9 +333,9 @@
       "orgLocked": "Tus eventos se publican a nombre de tu organización."
     },
     "analytics": {
-      "title": "Analíticas",
+      "title": "Estadísticas",
       "subtitle": "Rendimiento del contenido para el equipo de medios.",
-      "loadError": "No se pudieron cargar las analíticas. Intentá de nuevo más tarde.",
+      "loadError": "No se pudieron cargar las estadísticas. Intentá de nuevo más tarde.",
       "noDataTitle": "Sin datos aún.",
       "noDataMessage": "Los datos se registran cuando los lectores visitan artículos y votan.",
       "articleViews": "Vistas de artículos",
@@ -385,7 +385,7 @@
     "nav": {
       "articles": "Artículos",
       "events": "Eventos",
-      "analytics": "Analíticas",
+      "analytics": "Estadísticas",
       "digests": "Resumen semanal"
     },
     "digests": {

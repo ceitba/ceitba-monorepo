@@ -163,7 +163,8 @@
       "noSaved": "Para sumarte, primero armá un horario y guardalo en tu cuenta.",
       "confirm": "Sumar al grupo",
       "noSavedTitle": "No tenés horarios guardados",
-      "makeOne": "Armar un horario"
+      "makeOne": "Armar un horario",
+      "loadFailed": "No pudimos cargar tus horarios guardados."
     },
     "heatmap": {
       "label": "Mapa de horarios compartidos",

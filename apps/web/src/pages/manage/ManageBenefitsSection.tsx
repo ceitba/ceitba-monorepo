@@ -231,7 +231,7 @@ function CardsTab({ onShowCategories }: { onShowCategories: () => void }) {
                   <td className="px-3 py-2">{c.displayOrder}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2 justify-end">
-                      <Button variant="outline" size="sm" onClick={() => { setFormError(null); setEditing(c) }}>{t('manage.edit')}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setFormError(null); setEditing(c) }}>{t('manage.edit')}</Button>
                       <Button variant="dangerGhost" size="sm" onClick={() => { setDeleteError(null); setDeleting(c) }}>{t('manage.delete')}</Button>
                     </div>
                   </td>

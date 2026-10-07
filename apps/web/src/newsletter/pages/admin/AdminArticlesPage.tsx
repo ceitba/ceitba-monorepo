@@ -201,7 +201,7 @@ export default function AdminArticlesPage() {
             <TableCard>
               <thead>
                 <tr className={theadRowClass}>
-                  <Th>{t('admin.articles.columns.title')}</Th>
+                  <Th className="min-w-[16rem]">{t('admin.articles.columns.title')}</Th>
                   <Th>{t('admin.articles.columns.status')}</Th>
                   <Th>{t('admin.articles.columns.category')}</Th>
                   <Th>{t('admin.articles.columns.organization')}</Th>

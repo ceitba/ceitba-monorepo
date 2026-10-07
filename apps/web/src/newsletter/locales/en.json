@@ -333,9 +333,9 @@
       "orgLocked": "Your events are published under your organization."
     },
     "analytics": {
-      "title": "Analytics",
+      "title": "Statistics",
       "subtitle": "Content performance for the media team.",
-      "loadError": "Couldn't load analytics. Please try again later.",
+      "loadError": "Couldn't load statistics. Please try again later.",
       "noDataTitle": "No data yet.",
       "noDataMessage": "Data is recorded when readers visit articles and vote.",
       "articleViews": "Article views",
@@ -385,7 +385,7 @@
     "nav": {
       "articles": "Articles",
       "events": "Events",
-      "analytics": "Analytics",
+      "analytics": "Statistics",
       "digests": "Weekly digest"
     },
     "digests": {

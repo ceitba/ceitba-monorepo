@@ -58,6 +58,8 @@ export default function SharePage() {
   const [joinError, setJoinError] = useState<string | null>(null)
   // null until loaded (the join dialog waits for it).
   const [savedList, setSavedList] = useState<SavedSchedule[] | null>(null)
+  const [savedListFailed, setSavedListFailed] = useState(false)
+  const [savedListAttempt, setSavedListAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
   const [deleting, setDeleting] = useState<{ busy: boolean; error: string | null } | null>(null)
   // Bumped by every fetch and by join/leave, so a slower, older response
@@ -125,12 +127,16 @@ export default function SharePage() {
 
   useEffect(() => {
     if (!profile) return
-    listSavedSchedules().then(setSavedList).catch((e) => {
-      console.error(e)
-      // The join dialog then offers to save one first.
-      setSavedList([])
-    })
-  }, [profile])
+    let cancelled = false
+    listSavedSchedules()
+      .then((list) => { if (!cancelled) { setSavedList(list); setSavedListFailed(false) } })
+      .catch((e) => {
+        console.error(e)
+        // A failed load must not look like "you have no saved schedules".
+        if (!cancelled) setSavedListFailed(true)
+      })
+    return () => { cancelled = true }
+  }, [profile, savedListAttempt])
 
   const heatmap = useMemo(
     () => (session ? buildHeatmap(session.participants, subjectsByPlan) : null),
@@ -279,6 +285,8 @@ export default function SharePage() {
       {showJoin && (
         <JoinDialog
           savedList={savedList}
+          loadFailed={savedListFailed}
+          onRetryLoad={() => { setSavedListFailed(false); setSavedList(null); setSavedListAttempt((n) => n + 1) }}
           busy={busy}
           error={joinError}
           onJoin={handleJoin}
@@ -303,12 +311,16 @@ export default function SharePage() {
 
 function JoinDialog({
   savedList,
+  loadFailed,
+  onRetryLoad,
   busy,
   error,
   onJoin,
   onClose,
 }: {
   savedList: SavedSchedule[] | null
+  loadFailed: boolean
+  onRetryLoad: () => void
   busy: boolean
   error: string | null
   onJoin: (id: string) => void
@@ -317,7 +329,7 @@ function JoinDialog({
   const { t } = useTranslation()
   const [picked, setPicked] = useState<string | null>(null)
   const selected = picked ?? savedList?.[0]?.id ?? null
-  const empty = savedList !== null && savedList.length === 0
+  const empty = !loadFailed && savedList !== null && savedList.length === 0
 
   return (
     <Modal
@@ -325,7 +337,7 @@ function JoinDialog({
       onClose={onClose}
       busy={busy}
       footer={
-        empty ? (
+        empty || loadFailed ? (
           <Button variant="ghost" onClick={onClose}>{t('ui.close')}</Button>
         ) : (
           <>
@@ -337,7 +349,9 @@ function JoinDialog({
         )
       }
     >
-      {savedList === null ? (
+      {loadFailed ? (
+        <ErrorState compact message={t('share.join.loadFailed')} onRetry={onRetryLoad} />
+      ) : savedList === null ? (
         <LoadingRegion className="flex flex-col gap-2">
           <Skeleton className="h-14 rounded-card" />
           <Skeleton className="h-14 rounded-card" />

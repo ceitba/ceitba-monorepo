@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, ErrorState, LoadingRegion, Skeleton, SkeletonCards } from '@/components/ui'
+import { Alert, ErrorState, LoadingRegion, Skeleton, SkeletonCards, ToggleGroup } from '@/components/ui'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
@@ -262,24 +262,13 @@ export default function AdminAnalyticsPage() {
 function RangePicker({ active, onChange }: { active: number; onChange: (days: number) => void }) {
   const { t } = useTranslation()
   return (
-    <div role="group" aria-label={t('admin.analytics.rangeLabel')} className="flex rounded-sm border border-border dark:border-night-border overflow-hidden">
-      {RANGES.map(({ key, days }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => onChange(days)}
-          aria-pressed={active === days}
-          className={[
-            'min-h-[44px] px-4 font-mono text-label uppercase tracking-widest transition-colors duration-150',
-            active === days
-              ? 'bg-primary text-white'
-              : 'bg-white dark:bg-night-surface text-ink-secondary dark:text-night-muted hover:text-ink-primary dark:hover:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised',
-          ].join(' ')}
-        >
-          {t(`admin.analytics.ranges.${key}`)}
-        </button>
-      ))}
-    </div>
+    <ToggleGroup
+      joined
+      label={t('admin.analytics.rangeLabel')}
+      value={active}
+      onChange={onChange}
+      options={RANGES.map(({ key, days }) => ({ value: days, key, label: t(`admin.analytics.ranges.${key}`) }))}
+    />
   )
 }
 

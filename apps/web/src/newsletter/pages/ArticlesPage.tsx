@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EmptyState, ErrorState, LoadingRegion } from '@/components/ui'
+import { EmptyState, ErrorState, LoadingRegion, ToggleGroup } from '@/components/ui'
 import ArticleCard from '../components/ArticleCard'
 import SkeletonCard from '../components/SkeletonCard'
 import WriteForNewsletter from '../components/WriteForNewsletter'
@@ -97,27 +97,16 @@ function FilterBar({ categories, active, onChange }: FilterBarProps) {
   const { t } = useTranslation()
   const label = useCategoryLabel()
   return (
-    <nav aria-label={t('articles.filter.label')}>
-      <ul className="flex flex-wrap gap-2 list-none m-0 p-0" role="list">
-        {[null, ...categories].map((cat) => (
-          <li key={cat ?? 'all'}>
-            <button
-              type="button"
-              onClick={() => onChange(cat)}
-              aria-pressed={active === cat}
-              className={[
-                'min-h-[44px] px-4 py-2 rounded-sm font-mono text-label uppercase tracking-widest transition-colors duration-150',
-                active === cat
-                  ? 'bg-primary text-surface'
-                  : 'bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-secondary hover:border-primary hover:text-primary',
-              ].join(' ')}
-            >
-              {cat ? label(cat) : t('categories.all')}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <ToggleGroup
+      label={t('articles.filter.label')}
+      value={active}
+      onChange={onChange}
+      options={[null, ...categories].map((cat) => ({
+        value: cat,
+        key: cat ?? 'all',
+        label: cat ? label(cat) : t('categories.all'),
+      }))}
+    />
   )
 }
 

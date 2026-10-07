@@ -14,7 +14,7 @@ export function TableCard({ children, minWidth = 'min-w-[640px]' }: { children: 
 
 export function Th({ children, className = '' }: { children?: ReactNode; className?: string }) {
   return (
-    <th scope="col" className={`px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted ${className}`}>
+    <th scope="col" className={`px-4 py-3 text-left whitespace-nowrap font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted ${className}`}>
       {children}
     </th>
   )
