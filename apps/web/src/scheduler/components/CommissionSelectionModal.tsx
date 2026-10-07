@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import BaseModal from './BaseModal'
+import { Button, Modal } from '@/components/ui'
 import CorrectionStatus from './corrections/CorrectionStatus'
 import SuggestCorrectionModal from './corrections/SuggestCorrectionModal'
 import { Subject } from '../hooks/useSubjects'
@@ -27,14 +27,12 @@ const turnsForCommission = (c: Commission): Set<Turn> => {
 // Selection and turn filters start fresh on mount: render it only while
 // open and key it by subject so each subject gets a clean modal.
 interface CommissionSelectionModalProps {
-  isOpen: boolean
   onClose: () => void
   subject: Subject
   onAddCommissions: (commissions: string[]) => void
 }
 
 const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
-  isOpen,
   onClose,
   subject,
   onAddCommissions,
@@ -101,7 +99,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
   }
 
   const suggestCommission = suggestFor ? subject.commissions.find((c) => c.name === suggestFor) : undefined
-  if (isOpen && suggestCommission) {
+  if (suggestCommission) {
     return (
       <SuggestCorrectionModal
         subject={subject}
@@ -111,11 +109,24 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
     )
   }
 
+  const noneSelected = selectedCommissions.length === 0
+
   return (
-    <BaseModal
-      isOpen={isOpen}
+    <Modal
       onClose={onClose}
       title={t('commission.title')}
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('ui.cancel')}</Button>
+          <Button variant="outline" onClick={handleSelectAll} disabled={visibleCommissions.length === 0}>
+            {t('commission.addAll')}
+          </Button>
+          <Button onClick={handleAddCommissions} disabled={noneSelected}>
+            {noneSelected ? t('commission.addSelectedNone') : t('commission.addSelected', { count: selectedCommissions.length })}
+          </Button>
+        </>
+      }
     >
       <div className="space-y-4">
         <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
@@ -133,19 +144,15 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
           {ALL_TURNS.map((turn) => {
             const active = activeTurns.has(turn)
             return (
-              <button
+              <Button
                 key={turn}
-                type="button"
+                size="sm"
+                variant={active ? 'primary' : 'outline'}
                 onClick={() => toggleTurn(turn)}
                 aria-pressed={active}
-                className={`px-2.5 py-1 rounded-sm font-mono text-label uppercase tracking-widest border transition-colors ${
-                  active
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-surface dark:bg-night-bg text-ink-secondary dark:text-night-muted border-border dark:border-night-border hover:border-primary'
-                }`}
               >
                 {t(`commission.turn_${turn}`)}
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -184,7 +191,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
                     )}
                   </div>
                   <div className={`font-mono text-label mt-1 whitespace-pre-line ${
-                    selected ? "text-white/80" : "text-ink-secondary"
+                    selected ? "text-white/80" : "text-ink-secondary dark:text-night-muted"
                   }`}>
                     {formatSchedule(commission.schedule)}
                   </div>
@@ -200,27 +207,8 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
           })}
         </div>
 
-        <div className="flex justify-between items-center gap-3 pt-4 border-t border-border dark:border-night-border">
-          <button
-            onClick={handleSelectAll}
-            className="px-4 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted hover:text-primary rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150"
-          >
-            {t('commission.addAll')}
-          </button>
-          <button
-            onClick={handleAddCommissions}
-            disabled={selectedCommissions.length === 0}
-            className={`min-h-[44px] px-4 py-2 rounded-sm font-body font-semibold text-body-sm transition-colors duration-150 ${
-              selectedCommissions.length === 0
-                ? "bg-border dark:bg-night-border text-ink-secondary dark:text-night-muted cursor-not-allowed"
-                : "bg-primary text-surface hover:bg-primary-600"
-            }`}
-          >
-            {t('commission.addSelected', { count: selectedCommissions.length })}
-          </button>
-        </div>
       </div>
-    </BaseModal>
+    </Modal>
   )
 }
 

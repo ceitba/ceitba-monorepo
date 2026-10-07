@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useBeginSignIn } from '../../context/signInContext'
+import { Button } from '@/components/ui'
 
 // Short explanation + Google sign-in that comes back to this same page
 // (career and plan included, they live in the path and query; inside the
@@ -10,17 +11,14 @@ export default function SignInPrompt({ message, compact = false }: { message: st
   return (
     <div className={`flex ${compact ? 'flex-wrap items-center gap-x-3 gap-y-1' : 'flex-col gap-3'}`}>
       <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{message}</p>
-      <button
-        type="button"
+      <Button
         onClick={beginSignIn}
-        className={
-          compact
-            ? 'font-body text-body-sm font-semibold text-primary dark:text-primary-300 hover:underline underline-offset-2'
-            : 'self-start min-h-[44px] px-4 py-2 rounded-sm bg-primary text-surface font-body font-semibold text-body-sm hover:bg-primary-600 transition-colors duration-150'
-        }
+        variant={compact ? 'outline' : 'primary'}
+        size={compact ? 'sm' : 'md'}
+        className="self-start"
       >
         {t('corrections.signIn')}
-      </button>
+      </Button>
     </div>
   )
 }

@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import BaseModal from './BaseModal'
+import { Button, Modal } from '@/components/ui'
 
-interface SaveModalProps {
-  isOpen: boolean
+interface ExportModalProps {
   onClose: () => void
   onSaveAsPDF: () => void
   onSaveAsImage: () => void
@@ -11,8 +10,10 @@ interface SaveModalProps {
   onShareLink: () => void
 }
 
-const SaveModal: React.FC<SaveModalProps> = ({
-  isOpen,
+// "Descargar o compartir": file downloads (PDF, image, wallpaper), the
+// calendar export and the share link. Not to be confused with saving the
+// schedule to the account (SaveScheduleDialog).
+const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   onSaveAsPDF,
   onSaveAsImage,
@@ -88,22 +89,23 @@ const SaveModal: React.FC<SaveModalProps> = ({
   }
 
   return (
-    <BaseModal
-      isOpen={isOpen}
+    <Modal
       onClose={onClose}
       title={t('save.title')}
+      footer={<Button variant="ghost" onClick={onClose}>{t('ui.close')}</Button>}
     >
       <div className="space-y-2">
         {options.map((option) => (
           <button
             key={option.title}
+            type="button"
             onClick={() => {
               option.onClick()
               onClose()
             }}
-            className="w-full flex items-center gap-4 p-3 rounded-card border border-border dark:border-night-border hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary transition-colors duration-150 text-left group"
+            className="w-full min-h-[44px] flex items-center gap-4 p-3 rounded-card border border-border dark:border-night-border hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary transition-colors duration-150 text-left group"
           >
-            <span className="text-ink-secondary dark:text-night-muted group-hover:text-primary transition-colors duration-150 flex-shrink-0">
+            <span className="text-ink-secondary dark:text-night-muted group-hover:text-primary dark:group-hover:text-primary-300 transition-colors duration-150 flex-shrink-0">
               {option.icon}
             </span>
             <div>
@@ -113,8 +115,8 @@ const SaveModal: React.FC<SaveModalProps> = ({
           </button>
         ))}
       </div>
-    </BaseModal>
+    </Modal>
   )
 }
 
-export default SaveModal
+export default ExportModal

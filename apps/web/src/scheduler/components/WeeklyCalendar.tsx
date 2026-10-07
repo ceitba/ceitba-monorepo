@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TimeBlock } from '../types/scheduler'
-import BaseModal from './BaseModal'
+import { WEEKDAYS } from '../services/time'
+import { Button, Field, Modal, inputClass, selectClass, toast } from '@/components/ui'
 
 // Controlled: the blocks live in the parent (CareerPage) so a restored
 // saved schedule shows up here and edits never drop blocks the parent has.
@@ -14,226 +15,294 @@ interface WeeklyCalendarProps {
 // when an old saved payload has no id.
 const blockKey = (block: TimeBlock) => block.id ?? `${block.day}-${block.from}-${block.to}`
 
-interface EditModalProps {
-  block: TimeBlock
-  onSave: (block: TimeBlock) => void
-  onClose: () => void
-  onDelete: () => void
-}
+const FIRST_HOUR = 8
+const LAST_HOUR = 22
+const CELL = 32 // px per hour
+const HOURS = LAST_HOUR - FIRST_HOUR
+// Touch: holding this long without moving starts a drag; moving first
+// scrolls the page as usual.
+const LONG_PRESS_MS = 300
+const MOVE_SLOP_PX = 10
+
+const hh = (hour: number) => `${hour.toString().padStart(2, '0')}:00`
+const hourOf = (time: string) => parseInt(time.split(':')[0], 10)
 
 interface SelectionState {
   day: string
   startHour: number
-  endHour: number | null
+  endHour: number
 }
 
-const EditModal: React.FC<EditModalProps> = ({ block, onSave, onClose, onDelete }) => {
+// The block a drag (or a click/tap) stands for: one hour from where it
+// started, or the whole dragged range.
+const rangeOf = (sel: SelectionState) => {
+  if (Math.abs(sel.endHour - sel.startHour) <= 1) {
+    const from = Math.min(sel.startHour, LAST_HOUR - 1)
+    return { from, to: from + 1 }
+  }
+  return { from: Math.min(sel.startHour, sel.endHour), to: Math.max(sel.startHour, sel.endHour) }
+}
+
+const overlapsAny = (blocks: TimeBlock[], day: string, from: number, to: number, except?: TimeBlock) =>
+  blocks.some((b) => {
+    if (b.day !== day || (except && blockKey(b) === blockKey(except))) return false
+    return from < hourOf(b.to) && to > hourOf(b.from)
+  })
+
+const getHourFromPosition = (y: number): number => {
+  if (y >= HOURS * CELL - CELL / 2) return LAST_HOUR
+  const hour = Math.floor(y / CELL) + FIRST_HOUR
+  return Math.min(Math.max(hour, FIRST_HOUR), LAST_HOUR - 1)
+}
+
+// Add (no `block`) or edit a blocked time without dragging: day, from, to
+// and an optional title.
+const BlockFormModal: React.FC<{
+  block: TimeBlock | null
+  blocks: TimeBlock[]
+  onSave: (block: TimeBlock) => void
+  onDelete?: () => void
+  onClose: () => void
+}> = ({ block, blocks, onSave, onDelete, onClose }) => {
   const { t } = useTranslation()
-  const [label, setLabel] = useState(block.label || '')
+  const [day, setDay] = useState(block?.day ?? WEEKDAYS[0])
+  const [from, setFrom] = useState(block?.from ?? hh(FIRST_HOUR))
+  const [to, setTo] = useState(block?.to ?? hh(FIRST_HOUR + 1))
+  const [label, setLabel] = useState(block?.label ?? '')
+  const [submitted, setSubmitted] = useState(false)
+
+  const hours = Array.from({ length: HOURS + 1 }, (_, i) => hh(FIRST_HOUR + i))
+  // Keep a non-hour value from an older payload selectable.
+  const withValue = (list: string[], value: string) => (list.includes(value) ? list : [value, ...list])
+  const fromOptions = withValue(hours.slice(0, -1), from)
+  const toOptions = withValue(hours.slice(1), to)
+
+  const error = from >= to
+    ? t('settings.errors.order')
+    : overlapsAny(blocks, day, hourOf(from), hourOf(to), block ?? undefined)
+      ? t('settings.errors.overlap')
+      : null
+
+  const submit = () => {
+    setSubmitted(true)
+    if (error) return
+    onSave({ ...(block ?? {}), id: block?.id ?? crypto.randomUUID(), day, from, to, label: label.trim() || undefined })
+  }
 
   return (
-    <BaseModal isOpen={true} onClose={onClose} title={t('settings.editBlock')}>
-      <div className="space-y-4">
-        <div>
-          <label className="block font-body text-body-sm font-medium text-ink-primary dark:text-night-text mb-2">{t('settings.blockLabel')}</label>
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            className="w-full px-3 py-2 border border-border dark:border-night-border rounded-sm bg-surface dark:bg-night-bg text-ink-primary dark:text-night-text font-body text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-            placeholder={t('settings.blockLabelPlaceholder')}
-          />
+    <Modal
+      title={block ? t('settings.editBlock') : t('settings.addBlockedTime')}
+      onClose={onClose}
+      size="sm"
+      footer={
+        <>
+          {onDelete && <Button variant="dangerGhost" onClick={onDelete} className="mr-auto">{t('settings.delete')}</Button>}
+          <Button variant="ghost" onClick={onClose}>{t('ui.cancel')}</Button>
+          <Button type="submit" form="blocked-time-form">{t('settings.save')}</Button>
+        </>
+      }
+    >
+      <form
+        id="blocked-time-form"
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(e) => { e.preventDefault(); submit() }}
+      >
+        <Field label={t('settings.day')}>
+          {(p) => (
+            <select {...p} value={day} onChange={(e) => setDay(e.target.value)} className={selectClass()}>
+              {WEEKDAYS.map((d) => <option key={d} value={d}>{t(`daysFull.${d}`)}</option>)}
+            </select>
+          )}
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('settings.from')}>
+            {(p) => (
+              <select {...p} value={from} onChange={(e) => setFrom(e.target.value)} className={selectClass({ invalid: submitted && !!error })}>
+                {fromOptions.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            )}
+          </Field>
+          <Field label={t('settings.to')}>
+            {(p) => (
+              <select {...p} value={to} onChange={(e) => setTo(e.target.value)} className={selectClass({ invalid: submitted && !!error })}>
+                {toOptions.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            )}
+          </Field>
         </div>
-        <div className="font-mono text-label text-ink-secondary dark:text-night-muted">
-          {t(`days.${block.day}`)} {block.from} - {block.to}
-        </div>
-        <div className="flex justify-end gap-3 pt-2 border-t border-border dark:border-night-border">
-          <button
-            onClick={() => onDelete()}
-            className="px-4 py-2 font-body text-body-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm transition-colors duration-150"
-          >
-            {t('settings.delete')}
-          </button>
-          <button
-            onClick={() => onSave({ ...block, label })}
-            className="min-h-[44px] px-4 py-2 bg-primary text-surface font-body font-semibold text-body-sm rounded-sm hover:bg-primary-600 transition-colors duration-150"
-          >
-            {t('settings.save')}
-          </button>
-        </div>
-      </div>
-    </BaseModal>
+        {submitted && error && (
+          <p role="alert" className="-mt-2 font-body text-label text-red-600 dark:text-red-400">{error}</p>
+        )}
+        <Field label={t('settings.blockLabel')} hint={t('settings.blockLabelHint')}>
+          {(p) => (
+            <input
+              {...p}
+              type="text"
+              value={label}
+              maxLength={60}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={t('settings.blockLabelPlaceholder')}
+              className={inputClass()}
+            />
+          )}
+        </Field>
+      </form>
+    </Modal>
   )
 }
 
 const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks, onChange }) => {
   const { t } = useTranslation()
-  const [editingBlock, setEditingBlock] = useState<TimeBlock | null>(null)
-  const [selection, setSelection] = useState<SelectionState | null>(null)
-  const [isSelecting, setIsSelecting] = useState(false)
+  // null: closed; { block: null }: adding; { block }: editing that block.
+  const [form, setForm] = useState<{ block: TimeBlock | null } | null>(null)
+  const [selection, setSelectionState] = useState<SelectionState | null>(null)
+  // Mirror of `selection` for the release handlers, which commit outside
+  // of a state updater (updaters must stay pure).
+  const selectionRef = useRef<SelectionState | null>(null)
+  const setSelection = (next: SelectionState | null) => {
+    selectionRef.current = next
+    setSelectionState(next)
+  }
   const calendarRef = useRef<HTMLDivElement>(null)
+  // A touch on a day column: becomes a drag after a long press, or is
+  // dropped (the page scrolls) if the finger moves first.
+  const touchRef = useRef<{ day: string; x: number; y: number; el: HTMLElement; timer: number; dragging: boolean } | null>(null)
 
-  const dayKeys = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
-  const dayNames = {
-    short: dayKeys.map(d => t(`days.${d}`)),
-    full: dayKeys
-  }
+  const timeSlots = Array.from({ length: HOURS }, (_, i) => hh(i + FIRST_HOUR))
 
-  const timeSlots = Array.from({ length: 14 }, (_, i) => {
-    const hour = i + 8
-    return `${hour.toString().padStart(2, '0')}:00`
-  })
+  const getBlocksForDay = (day: string): TimeBlock[] =>
+    selectedBlocks.filter(block => block.day === day).sort((a, b) => hourOf(a.from) - hourOf(b.from))
 
-  const getBlocksForDay = (day: string): TimeBlock[] => {
-    return selectedBlocks.filter(block => block.day === day)
-      .sort((a, b) => parseInt(a.from) - parseInt(b.from))
-  }
+  const selectionRange = selection ? rangeOf(selection) : null
+  const selectionOverlaps = !!(selection && selectionRange &&
+    overlapsAny(selectedBlocks, selection.day, selectionRange.from, selectionRange.to))
 
-  const getBlockHeight = (from: string, to: string): number => {
-    const fromHour = parseInt(from.split(':')[0])
-    const toHour = parseInt(to.split(':')[0])
-    return (toHour - fromHour) * 32
-  }
+  // Adds the block a finished drag/click stands for, unless it would
+  // overlap an existing one (then says so).
+  const commit = useCallback((sel: SelectionState) => {
+    const { from, to } = rangeOf(sel)
+    if (overlapsAny(selectedBlocks, sel.day, from, to)) {
+      toast.info(t('settings.overlapNotAdded'))
+      return
+    }
+    onChange([...selectedBlocks, { id: crypto.randomUUID(), day: sel.day, from: hh(from), to: hh(to) }])
+  }, [selectedBlocks, onChange, t])
 
-  const getBlockTop = (from: string): number => {
-    const fromHour = parseInt(from.split(':')[0])
-    return (fromHour - 8) * 32
-  }
+  const hourAt = (el: HTMLElement, clientY: number) => getHourFromPosition(clientY - el.getBoundingClientRect().top)
 
-  const getHourFromPosition = (y: number): number => {
-    const cellHeight = 32
-    const gridHeight = cellHeight * 14
-
-    if (y >= gridHeight - cellHeight / 2) return 22
-
-    const hour = Math.floor(y / cellHeight) + 8
-    return Math.min(Math.max(hour, 8), 21)
-  }
-
-  const handleMouseDown = (day: string, e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const relativeY = e.clientY - rect.top
-    const hour = getHourFromPosition(relativeY)
-
-    setIsSelecting(true)
+  // Mouse: press on a column, drag, release anywhere.
+  const handleMouseDown = (day: string, e: React.MouseEvent<HTMLElement>) => {
+    if (e.button !== 0) return
+    const hour = hourAt(e.currentTarget, e.clientY)
     setSelection({ day, startHour: hour, endHour: hour })
   }
 
-  const handleMouseMove = useCallback(
-    (day: string, e: React.MouseEvent) => {
-      if (isSelecting && selection && day === selection.day) {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const relativeY = e.clientY - rect.top
-        const hour = getHourFromPosition(relativeY)
+  // On the column (not the overlay) so moving over an existing block keeps
+  // updating the selection.
+  const handleMouseMove = (day: string, e: React.MouseEvent<HTMLElement>) => {
+    const sel = selectionRef.current
+    if (!sel || touchRef.current || day !== sel.day) return
+    const hour = hourAt(e.currentTarget, e.clientY)
+    if (hour !== sel.endHour) setSelection({ ...sel, endHour: hour })
+  }
 
-        setSelection(prev => {
-          if (!prev) return null
-          return { ...prev, endHour: hour }
-        })
-      }
-    },
-    [isSelecting, selection]
-  )
+  const finishSelection = useCallback(() => {
+    const sel = selectionRef.current
+    if (!sel) return
+    selectionRef.current = null
+    setSelectionState(null)
+    commit(sel)
+  }, [commit])
 
   const handleMouseUp = useCallback(() => {
-    if (selection) {
-      const { day, startHour, endHour } = selection
-
-      const hasOverlap = (newBlock: TimeBlock): boolean => {
-        return selectedBlocks.some(block => {
-          if (block.day !== newBlock.day) return false
-          const newStart = parseInt(newBlock.from)
-          const newEnd = parseInt(newBlock.to)
-          const blockStart = parseInt(block.from)
-          const blockEnd = parseInt(block.to)
-          return (newStart < blockEnd && newEnd > blockStart)
-        })
-      }
-
-      if (endHour && (Math.abs(endHour - startHour) <= 1)) {
-        const newBlock: TimeBlock = {
-          id: crypto.randomUUID(),
-          day,
-          from: `${startHour.toString().padStart(2, '0')}:00`,
-          to: `${(startHour + 1).toString().padStart(2, '0')}:00`
-        }
-        if (!hasOverlap(newBlock)) {
-          onChange([...selectedBlocks, newBlock])
-        }
-      } else if (endHour && Math.abs(endHour - startHour) > 1) {
-        const [start, end] = [Math.min(startHour, endHour), Math.max(startHour, endHour)]
-        const newBlock: TimeBlock = {
-          id: crypto.randomUUID(),
-          day,
-          from: `${start.toString().padStart(2, '0')}:00`,
-          to: `${end.toString().padStart(2, '0')}:00`
-        }
-        if (!hasOverlap(newBlock)) {
-          onChange([...selectedBlocks, newBlock])
-        }
-      }
-    }
-    setIsSelecting(false)
-    setSelection(null)
-  }, [selection, selectedBlocks, onChange])
+    if (!touchRef.current) finishSelection()
+  }, [finishSelection])
 
   useEffect(() => {
     window.addEventListener('mouseup', handleMouseUp)
     return () => window.removeEventListener('mouseup', handleMouseUp)
   }, [handleMouseUp])
 
-  const handleSaveBlock = (updatedBlock: TimeBlock) => {
-    const newBlocks = selectedBlocks.map(block =>
-      blockKey(block) === blockKey(updatedBlock) ? updatedBlock : block
-    )
-    onChange(newBlocks)
-    setEditingBlock(null)
-  }
-
-  const handleDeleteBlock = () => {
-    if (editingBlock) {
-      const newBlocks = selectedBlocks.filter(block => blockKey(block) !== blockKey(editingBlock))
-      onChange(newBlocks)
-      setEditingBlock(null)
-    }
-  }
-
+  // React's touchmove listeners are passive, so the page scroll can only be
+  // stopped from a native listener, and only while a drag is in progress.
   useEffect(() => {
     const calendar = calendarRef.current
     if (!calendar) return
-
-    const preventScroll = (e: TouchEvent) => { e.preventDefault() }
+    const preventScroll = (e: TouchEvent) => { if (touchRef.current?.dragging) e.preventDefault() }
     calendar.addEventListener('touchmove', preventScroll, { passive: false })
     return () => calendar.removeEventListener('touchmove', preventScroll)
   }, [])
 
-  const handleTouchStart = (day: string, e: React.TouchEvent) => {
-    e.preventDefault()
-    const touch = e.touches[0]
-    const rect = e.currentTarget.getBoundingClientRect()
-    const relativeY = touch.clientY - rect.top
-    const hour = getHourFromPosition(relativeY)
+  useEffect(() => () => { if (touchRef.current) window.clearTimeout(touchRef.current.timer) }, [])
 
-    setIsSelecting(true)
-    setSelection({ day, startHour: hour, endHour: hour })
+  const handleTouchStart = (day: string, e: React.TouchEvent<HTMLElement>) => {
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const el = e.currentTarget
+    const y = touch.clientY
+    const timer = window.setTimeout(() => {
+      const current = touchRef.current
+      if (!current) return
+      current.dragging = true
+      const hour = hourAt(el, current.y)
+      setSelection({ day, startHour: hour, endHour: hour })
+      navigator.vibrate?.(10)
+    }, LONG_PRESS_MS)
+    touchRef.current = { day, x: touch.clientX, y, el, timer, dragging: false }
   }
 
-  const handleTouchMove = (day: string, e: React.TouchEvent) => {
-    if (isSelecting && selection && day === selection.day) {
-      e.preventDefault()
-      const touch = e.touches[0]
-      const rect = e.currentTarget.getBoundingClientRect()
-      const relativeY = touch.clientY - rect.top
-      const hour = getHourFromPosition(relativeY)
+  const handleTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    const current = touchRef.current
+    if (!current) return
+    const touch = e.touches[0]
+    if (!current.dragging) {
+      if (Math.hypot(touch.clientX - current.x, touch.clientY - current.y) > MOVE_SLOP_PX) {
+        // A scroll, not a drag.
+        window.clearTimeout(current.timer)
+        touchRef.current = null
+      }
+      return
+    }
+    const hour = hourAt(current.el, touch.clientY)
+    const sel = selectionRef.current
+    if (sel && sel.endHour !== hour) setSelection({ ...sel, endHour: hour })
+  }
 
-      setSelection(prev => {
-        if (!prev) return null
-        return { ...prev, endHour: hour }
-      })
+  const handleTouchEnd = (e: React.TouchEvent<HTMLElement>) => {
+    const current = touchRef.current
+    touchRef.current = null
+    if (!current) return
+    window.clearTimeout(current.timer)
+    // Handled here: keep the browser from also firing mouse events.
+    e.preventDefault()
+    if (current.dragging) {
+      finishSelection()
+    } else {
+      // A tap blocks one hour, like a click.
+      const hour = hourAt(current.el, current.y)
+      commit({ day: current.day, startHour: hour, endHour: hour })
     }
   }
 
-  const handleTouchEnd = () => { handleMouseUp() }
+  const handleTouchCancel = () => {
+    if (touchRef.current) window.clearTimeout(touchRef.current.timer)
+    touchRef.current = null
+    setSelection(null)
+  }
+
+  const saveBlock = (saved: TimeBlock) => {
+    const editing = form?.block
+    onChange(editing
+      ? selectedBlocks.map(block => (blockKey(block) === blockKey(editing) ? saved : block))
+      : [...selectedBlocks, saved])
+    setForm(null)
+  }
+
+  const deleteBlock = (target: TimeBlock) => {
+    onChange(selectedBlocks.filter(block => blockKey(block) !== blockKey(target)))
+    setForm(null)
+  }
 
   const getBlockColor = (key: string) => {
     const index = (selectedBlocks.findIndex(b => blockKey(b) === key) % 10) + 1
@@ -242,9 +311,14 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
 
   return (
     <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border px-4 py-4">
-      <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text pb-2">
-        {t('settings.blockedTimes')}
-      </h2>
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-2">
+        <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text">
+          {t('settings.blockedTimes')}
+        </h2>
+        <Button variant="outline" size="sm" onClick={() => setForm({ block: null })}>
+          + {t('settings.addBlockedTime')}
+        </Button>
+      </div>
       <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">
         {t('settings.blockedTimesDescription')}
         <div className="space-y-2 mt-3">
@@ -254,7 +328,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             ['settings.blockedReason3Title', 'settings.blockedReason3Desc'],
           ] as const).map(([titleKey, descKey]) => (
             <div key={titleKey} className="flex items-start gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" className="flex-shrink-0 mt-0.5" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
@@ -265,21 +339,22 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             </div>
           ))}
         </div>
+        <p className="mt-3">{t('settings.howToBlock')}</p>
       </div>
 
-      <div className="w-full select-none" ref={calendarRef}>
+      <div className="w-full select-none [-webkit-touch-callout:none]" ref={calendarRef}>
         <div className="w-full">
           {/* Header */}
           <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-0.5 mb-0.5">
             <div className="h-8 flex items-center justify-start font-mono text-label text-ink-secondary dark:text-night-muted min-w-[40px]">
               {t('settings.hour')}
             </div>
-            {dayNames.short.map((day) => (
+            {WEEKDAYS.map((day) => (
               <div
                 key={day}
                 className="h-8 flex items-center text-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-sm"
               >
-                {day}
+                {t(`days.${day}`)}
               </div>
             ))}
           </div>
@@ -296,75 +371,59 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             </div>
 
             {/* Day columns */}
-            {dayNames.full.map((day) => (
-              <div key={day} className="relative h-[448px] bg-surface dark:bg-night-bg rounded-sm">
+            {WEEKDAYS.map((day) => (
+              <div
+                key={day}
+                className="relative bg-surface dark:bg-night-bg rounded-sm"
+                style={{ height: HOURS * CELL }}
+                onMouseMove={(e) => handleMouseMove(day, e)}
+              >
                 {timeSlots.map((_, index) => (
                   <div
                     key={index}
                     className="absolute w-full border-b border-border/50 dark:border-night-border/50"
-                    style={{ top: `${index * 32}px`, height: '32px' }}
+                    style={{ top: `${index * CELL}px`, height: `${CELL}px` }}
                   />
                 ))}
 
-                {selection && selection.day === day && selection.endHour && (
-                  <div
-                    className="absolute select-none inset-x-0 bg-primary-100 flex flex-col items-center justify-center transition-all duration-75"
-                    style={{
-                      top: `${(Math.min(selection.startHour, selection.endHour) - 8) * 32}px`,
-                      height: `${Math.abs(selection.endHour - selection.startHour) * 32}px`,
-                    }}
-                  >
-                    {Math.abs(selection.endHour - selection.startHour) >= 1 && (
-                      <span className="font-mono text-label text-ink-primary text-center select-none">
-                        {`${Math.min(selection.startHour, selection.endHour)}:00 - ${Math.max(selection.startHour, selection.endHour)}:00`}
-                      </span>
-                    )}
-                  </div>
-                )}
-
                 <div
-                  className="absolute inset-0 cursor-pointer touch-none"
+                  className="absolute inset-0 cursor-pointer"
+                  aria-hidden="true"
                   onMouseDown={(e) => handleMouseDown(day, e)}
-                  onMouseMove={(e) => handleMouseMove(day, e)}
                   onTouchStart={(e) => handleTouchStart(day, e)}
-                  onTouchMove={(e) => handleTouchMove(day, e)}
+                  onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchCancel}
                 />
 
                 {getBlocksForDay(day).map((block) => {
-                  const height = getBlockHeight(block.from, block.to)
-                  const top = getBlockTop(block.from)
-                  const colorClass = getBlockColor(blockKey(block))
-
+                  const top = (hourOf(block.from) - FIRST_HOUR) * CELL
+                  const height = (hourOf(block.to) - hourOf(block.from)) * CELL
+                  const range = `${block.from} - ${block.to}`
                   return (
+                    // Pastel subject colors in both themes, so the text stays ink.
                     <button
                       key={blockKey(block)}
-                      onClick={() => setEditingBlock(block)}
-                      className={`absolute inset-x-0 flex flex-col items-center justify-center hover:brightness-90 text-[#1c1c1e] cursor-pointer group/block transition-all px-2 z-10 select-none ${colorClass}`}
+                      type="button"
+                      onClick={() => setForm({ block })}
+                      aria-label={t('settings.editBlockAria', { day: t(`daysFull.${block.day}`), range, label: block.label ?? '' })}
+                      className={`absolute inset-x-0 flex items-center justify-center gap-1 hover:brightness-95 text-ink-primary cursor-pointer transition-[filter] px-1 z-10 select-none ${getBlockColor(blockKey(block))}`}
                       style={{
                         top: `${top}px`,
                         height: `${height}px`,
-                        borderRadius: top === 0 ? '6px 6px 0 0' : top + height === 448 ? '0 0 6px 6px' : '0'
+                        borderRadius: top === 0 ? '6px 6px 0 0' : top + height === HOURS * CELL ? '0 0 6px 6px' : '0'
                       }}
                     >
-                      {block.label ? (
-                        <div className="flex flex-col items-center justify-center w-full h-full p-1">
+                      <span className="flex flex-col items-center justify-center min-w-0 flex-1">
+                        {block.label && (
                           <span className="font-body text-body-sm font-semibold truncate w-full text-center">{block.label}</span>
-                          <span className="font-mono text-label text-[#374151] w-full text-center">
-                            {block.from} - {block.to}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center w-full h-full">
-                          <span className="font-mono text-label text-[#374151] w-full text-center">
-                            {block.from} - {block.to}
-                          </span>
-                        </div>
-                      )}
+                        )}
+                        <span className="font-mono text-label text-ink-primary/80 w-full text-center">{range}</span>
+                      </span>
                       <svg
                         width="14" height="14" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                        className="absolute right-2 opacity-0 group-hover/block:opacity-100 text-[#374151]"
+                        className="flex-shrink-0 text-ink-primary/70"
                         aria-hidden="true"
                       >
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -373,18 +432,37 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
                     </button>
                   )
                 })}
+
+                {selection && selectionRange && selection.day === day && (
+                  <div
+                    aria-hidden="true"
+                    className={`absolute inset-x-0 z-20 pointer-events-none flex flex-col items-center justify-center text-center rounded-sm ${
+                      selectionOverlaps
+                        ? 'bg-red-100/90 border-2 border-dashed border-red-400 text-red-800'
+                        : 'bg-primary-100 text-ink-primary'
+                    }`}
+                    style={{
+                      top: `${(selectionRange.from - FIRST_HOUR) * CELL}px`,
+                      height: `${(selectionRange.to - selectionRange.from) * CELL}px`,
+                    }}
+                  >
+                    <span className="font-mono text-label">{`${hh(selectionRange.from)} - ${hh(selectionRange.to)}`}</span>
+                    {selectionOverlaps && <span className="font-body text-label font-semibold">{t('settings.overlapsBlock')}</span>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {editingBlock && (
-        <EditModal
-          block={editingBlock}
-          onSave={handleSaveBlock}
-          onClose={() => setEditingBlock(null)}
-          onDelete={handleDeleteBlock}
+      {form && (
+        <BlockFormModal
+          block={form.block}
+          blocks={selectedBlocks}
+          onSave={saveBlock}
+          onDelete={form.block ? () => deleteBlock(form.block!) : undefined}
+          onClose={() => setForm(null)}
         />
       )}
     </div>

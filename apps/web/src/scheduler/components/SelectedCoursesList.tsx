@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useTranslation } from 'react-i18next'
+import { EmptyState, IconButton } from "@/components/ui"
 import type { ConflictReport, SubjectConflictStatus } from "../services/conflicts"
 
 interface SelectedCourse extends Subject {
@@ -38,7 +39,7 @@ interface GroupedSchedule {
 
 const STATUS_DOT: Record<SubjectConflictStatus["level"], string> = {
   none: "bg-border dark:bg-night-border",
-  clear: "bg-green-500",
+  clear: "bg-emerald-500",
   partial: "bg-amber-500",
   all: "bg-red-500",
 }
@@ -51,11 +52,11 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
   const statusKey: SubjectConflictStatus["level"] =
     status.level === "none" ? "clear" : status.level
   const statusLabel = t(`conflicts.status_${statusKey}`)
-  const conflictTooltip = status.conflictsWith.length
-    ? t("conflicts.conflictsWith", {
+  const conflictText = status.conflictsWith.length
+    ? t(status.level === "all" ? "conflicts.alwaysClashesWith" : "conflicts.mayClashWith", {
         names: status.conflictsWith.map((c) => c.subjectName).join(", "),
       })
-    : statusLabel
+    : null
 
   const orderedSelectedCommissions = course.selectedCommissions.slice().sort()
 
@@ -104,9 +105,9 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
       className="flex flex-col p-3 bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card space-y-2 select-none"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 min-w-0">
+        <div className="flex items-start gap-3 min-w-0">
           <div
-            className="cursor-grab active:cursor-grabbing flex-shrink-0"
+            className="cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5"
             {...attributes}
             {...listeners}
             aria-label={t('courses.reorderAria', { name: course.name })}
@@ -121,9 +122,9 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
             </svg>
           </div>
           <span
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`}
+            role="img"
+            className={`mt-2 w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`}
             aria-label={statusLabel}
-            title={conflictTooltip}
           />
           <div className="min-w-0">
             <span className="font-body text-body-sm text-ink-primary dark:text-night-text">
@@ -137,22 +138,31 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
                 {schedule.classrooms.join(", ")}
               </div>
             ))}
+            {conflictText && (
+              <p
+                className={`font-body text-label ${
+                  status.level === "all" ? "text-red-700 dark:text-red-300" : "text-amber-800 dark:text-amber-300"
+                }`}
+              >
+                {conflictText}
+              </p>
+            )}
           </div>
         </div>
-        <div className="flex items-center space-x-4 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           <span className="font-mono text-label text-ink-secondary dark:text-night-muted text-end hidden sm:block">
             {commissionLabel()}
           </span>
-          <button
+          <IconButton
+            size="sm"
             onClick={() => onRemove(course.subject_id)}
-            className="text-ink-secondary dark:text-night-muted hover:text-red-500 transition-colors duration-150"
             aria-label={t('courses.removeAria', { name: course.name })}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <polyline points="3 6 5 6 21 6" />
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
             </svg>
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>
@@ -199,9 +209,7 @@ const SelectedCoursesList: React.FC<SelectedCoursesListProps> = ({
   return (
     <div>
       {courses.length === 0 && (
-        <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted text-center py-4">
-          {t('courses.noneSelected')}
-        </div>
+        <EmptyState compact title={t('courses.noneSelected')} body={t('courses.noneSelectedBody')} />
       )}
       <DndContext
         sensors={sensors}

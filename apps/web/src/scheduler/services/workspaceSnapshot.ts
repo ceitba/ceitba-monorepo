@@ -11,6 +11,10 @@ export interface SavedSchedulePayload {
   selectedCourses: { subject_id: string; selectedCommissions: string[] }[]
   options: SchedulerOptions
   blockedTimes: TimeBlock[]
+  // The combination that was on screen when saving: one commission per
+  // subject. Optional (older payloads and saves made before generating
+  // don't have it); the comparison view shows it instead of guessing.
+  shownCombination?: { subject_id: string; commission: string }[]
 }
 
 // The career workspace lives only in React state, so signing in (a full
@@ -58,6 +62,11 @@ export function parsePayload(raw: unknown): SavedSchedulePayload | null {
   if (!Array.isArray(courses) || !Array.isArray(blocks)) return null
   if (!courses.every((c) => isObject(c) && typeof c.subject_id === 'string' && isStringArray(c.selectedCommissions))) return null
   if (!blocks.every((b) => isObject(b) && typeof b.day === 'string' && typeof b.from === 'string' && typeof b.to === 'string')) return null
+  // Optional; a malformed one is dropped rather than rejecting the payload.
+  const rawShown = raw.shownCombination
+  const shown = Array.isArray(rawShown) && rawShown.every((c) => isObject(c) && typeof c.subject_id === 'string' && typeof c.commission === 'string')
+    ? (rawShown as Record<string, unknown>[]).map((c) => ({ subject_id: c.subject_id as string, commission: c.commission as string }))
+    : null
   return {
     version: 1,
     selectedCourses: (courses as Record<string, unknown>[]).map((c) => ({
@@ -72,6 +81,7 @@ export function parsePayload(raw: unknown): SavedSchedulePayload | null {
       to: b.to as string,
       ...(typeof b.label === 'string' ? { label: b.label } : {}),
     })),
+    ...(shown ? { shownCombination: shown } : {}),
   }
 }
 

@@ -1,14 +1,12 @@
-import React, { useMemo, useState } from "react"
+import React, { useState } from "react"
 import { useTranslation } from "react-i18next"
 import SearchBox from "./SearchBox"
 import { type Subject } from "../hooks/useSubjects"
 import SelectedCoursesList from "./SelectedCoursesList"
 import AvailableCoursesList from "./AvailableCoursesList"
-import LoadingDots from "./LoadingDots"
-import ErrorView from "./ErrorView"
 import { useParams } from "react-router-dom"
-import BaseModal from "./BaseModal"
-import { detectConflicts } from "../services/conflicts"
+import type { ConflictReport } from "../services/conflicts"
+import { Button, ErrorState, LoadingRegion, Modal, Skeleton } from "@/components/ui"
 
 interface SelectedCourse extends Subject {
   selectedCommissions: string[]
@@ -17,42 +15,46 @@ interface SelectedCourse extends Subject {
 interface CourseViewProps {
   subjects: Subject[]
   loading: boolean
-  error: string | null
+  error: boolean
+  onRetry: () => void
   selectedCourses: SelectedCourse[]
+  conflictReport: ConflictReport
   onCommissionSelect: (course: Subject) => void
   onAddCourse: (course: Subject, commissions: string[]) => void
   onRemoveCourse: (courseId: string) => void
   onReorderCourses: (courses: SelectedCourse[]) => void
+  // Generates the combinations and opens the Calendario tab.
+  onViewCombinations: () => void
 }
 
-interface NoScheduleModalProps {
-  isOpen: boolean
-  onClose: () => void
-  subjectName: string
-}
-
-const NoScheduleModal: React.FC<NoScheduleModalProps> = ({
-  isOpen,
-  onClose,
-  subjectName,
-}) => {
+const NoScheduleModal: React.FC<{ onClose: () => void; subjectName: string }> = ({ onClose, subjectName }) => {
   const { t } = useTranslation()
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} title={t('courses.noScheduleTitle')}>
-      <div className="space-y-4">
-        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-          {t('courses.noScheduleMessage', { name: subjectName })}
-        </p>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="min-h-[44px] px-4 py-2 bg-primary text-surface font-body font-semibold text-body-sm rounded-sm hover:bg-primary-600 transition-colors duration-150"
-          >
-            {t('courses.understood')}
-          </button>
+    <Modal
+      onClose={onClose}
+      title={t('courses.noScheduleTitle')}
+      size="sm"
+      footer={<Button onClick={onClose}>{t('courses.understood')}</Button>}
+    >
+      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+        {t('courses.noScheduleMessage', { name: subjectName })}
+      </p>
+    </Modal>
+  )
+}
+
+// Catalog-shaped placeholder: search box, then the two columns of cards.
+function CourseViewSkeleton() {
+  return (
+    <LoadingRegion className="max-w-7xl mx-auto">
+      <Skeleton className="h-11 w-full" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4" aria-hidden="true">
+        <Skeleton className="hidden md:block h-64 rounded-card" />
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-card" />)}
         </div>
       </div>
-    </BaseModal>
+    </LoadingRegion>
   )
 }
 
@@ -60,11 +62,14 @@ const CourseView: React.FC<CourseViewProps> = ({
   subjects,
   loading,
   error,
+  onRetry,
   selectedCourses,
+  conflictReport,
   onCommissionSelect,
   onAddCourse,
   onRemoveCourse,
   onReorderCourses,
+  onViewCombinations,
 }) => {
   const { t } = useTranslation()
   const { career } = useParams()
@@ -74,9 +79,8 @@ const CourseView: React.FC<CourseViewProps> = ({
     0
   )
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [showNoScheduleModal, setShowNoScheduleModal] = useState(false)
-  const [currentSubject, setCurrentSubject] = useState<string>("")
-  const conflictReport = useMemo(() => detectConflicts(selectedCourses), [selectedCourses])
+  // Name of the subject whose "no schedules" notice is open.
+  const [noScheduleSubject, setNoScheduleSubject] = useState<string | null>(null)
 
   const subjectsByYear = isExchange
     ? {
@@ -132,8 +136,7 @@ const CourseView: React.FC<CourseViewProps> = ({
       subject.commissions.every((comm) => !comm.schedule?.length)
 
     if (hasNoSchedules) {
-      setCurrentSubject(subject.name)
-      setShowNoScheduleModal(true)
+      setNoScheduleSubject(subject.name)
       return
     }
 
@@ -154,17 +157,13 @@ const CourseView: React.FC<CourseViewProps> = ({
     onCommissionSelect(subject)
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <LoadingDots size="lg" />
-      </div>
-    )
-  }
+  if (loading) return <CourseViewSkeleton />
 
   if (error) {
-    return <ErrorView message={error} className="h-64" />
+    return <ErrorState title={t('courses.loadFailedTitle')} message={t('courses.loadFailed')} onRetry={onRetry} />
   }
+
+  const summary = t('courses.selectedSummary', { count: selectedCourses.length, credits: totalCredits })
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -179,7 +178,7 @@ const CourseView: React.FC<CourseViewProps> = ({
               </h2>
               {totalCredits > 0 && (
                 <div className="font-mono text-label text-ink-secondary dark:text-night-muted">
-                  <span className="font-semibold">{totalCredits}</span> {t('courses.credits')}
+                  {t('courses.creditCount', { count: totalCredits })}
                 </div>
               )}
             </div>
@@ -206,7 +205,9 @@ const CourseView: React.FC<CourseViewProps> = ({
         {selectedCourses.length > 0 && (
           <div className="bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card mt-4">
             <button
+              type="button"
               onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+              aria-expanded={isPreviewOpen}
               className="w-full flex items-center justify-between px-4 border-b border-border dark:border-night-border h-20"
             >
               <div className="flex flex-col items-start justify-between w-full">
@@ -214,14 +215,14 @@ const CourseView: React.FC<CourseViewProps> = ({
                   {t('courses.selected')}
                 </div>
                 <div className="font-mono text-label text-ink-secondary dark:text-night-muted">
-                  {selectedCourses.length} {selectedCourses.length !== 1 ? t('courses.courses') : t('courses.course')} · {totalCredits} {t('courses.credits')}
+                  {summary}
                 </div>
               </div>
               <div>
                 <svg
                   width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                  className={`text-ink-secondary transition-transform duration-150 ${isPreviewOpen ? 'rotate-180' : ''}`}
+                  className={`text-ink-secondary dark:text-night-muted transition-transform duration-150 ${isPreviewOpen ? 'rotate-180' : ''}`}
                   aria-hidden="true"
                 >
                   <polyline points="6 9 12 15 18 9" />
@@ -230,7 +231,7 @@ const CourseView: React.FC<CourseViewProps> = ({
             </button>
 
             {isPreviewOpen && (
-              <div className="border-b border-border p-3">
+              <div className="border-b border-border dark:border-night-border p-3">
                 <SelectedCoursesList
                   courses={selectedCourses}
                   onRemove={onRemoveCourse}
@@ -251,11 +252,23 @@ const CourseView: React.FC<CourseViewProps> = ({
         </div>
       </div>
 
-      <NoScheduleModal
-        isOpen={showNoScheduleModal}
-        onClose={() => setShowNoScheduleModal(false)}
-        subjectName={currentSubject}
-      />
+      {/* The main step once subjects are picked; sticks to the bottom of
+          the screen while scrolling the catalog. */}
+      {selectedCourses.length > 0 && (
+        <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card-hover">
+          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+            {summary}
+            {conflictReport.totalConflicts > 0 && (
+              <> · <span className="text-amber-800 dark:text-amber-300">{t('courses.conflictCount', { count: conflictReport.totalConflicts })}</span></>
+            )}
+          </p>
+          <Button onClick={onViewCombinations}>{t('courses.viewCombinations')}</Button>
+        </div>
+      )}
+
+      {noScheduleSubject !== null && (
+        <NoScheduleModal onClose={() => setNoScheduleSubject(null)} subjectName={noScheduleSubject} />
+      )}
     </div>
   )
 }

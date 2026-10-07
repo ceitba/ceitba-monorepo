@@ -101,20 +101,22 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
     return colorClass
   }
 
+  // Class blocks use the pastel subject colors in both themes, so their
+  // text stays ink (no dark: variant).
   const renderBlock = (slot: GroupedSlot) => {
     const content = (
       <>
-        <div className="font-body font-semibold text-[#1c1c1e] text-center truncate sm:overflow-visible sm:whitespace-normal mb-1">
+        <div className="font-body font-semibold text-ink-primary text-center truncate sm:overflow-visible sm:whitespace-normal mb-1">
           {slot.subject}
         </div>
-        <div className="space-y-0.5 text-[#374151] text-center text-[9px] lg:text-[11px]">
+        <div className="space-y-0.5 text-ink-primary/80 text-center text-[11px]">
           <div>{t('courses.commissionAbbr')} {slot.commission}</div>
           <div>{formatRooms(slot.rooms)}</div>
           <div>{slot.timeFrom.slice(0, 5)} - {slot.timeTo.slice(0, 5)}</div>
         </div>
       </>
     )
-    const layout = "w-full h-full justify-center flex flex-col gap-0.5 text-[10px] lg:text-xs"
+    const layout = "w-full h-full justify-center flex flex-col gap-0.5 text-[11px] lg:text-xs"
     if (!corrections?.findCommission(slot.subject_id, slot.commission)) {
       return <div className={layout}>{content}</div>
     }
@@ -246,7 +248,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
                             style={{ top: `${labelTop - top}px`, height: '48px' }}
                           >
                             {block.label && (
-                              <div className="font-body font-semibold text-ink-primary dark:text-night-text text-center break-words text-[10px] lg:text-xs pt-2">
+                              <div className="font-body font-semibold text-ink-primary dark:text-night-text text-center break-words text-[11px] lg:text-xs pt-2">
                                 {block.label}
                               </div>
                             )}
