@@ -21,8 +21,8 @@ interface FollowersResponse {
 // Followers expose names and emails: the API serves them only to staff and
 // to the org's admins (membership role 'admin'), so plain members get the
 // no-access screen instead of a request that would 403.
-export default function AdminOrganizationFollowersPage() {
-  // The route is /admin/org/:slug, so the param is always there.
+export default function OrgFollowersPage() {
+  // The route is /mine/org/:slug, so the param is always there.
   const { slug = '' } = useParams()
   const { t, i18n } = useTranslation()
   const { profile } = useAuthSession()
@@ -50,7 +50,7 @@ export default function AdminOrganizationFollowersPage() {
     return () => { cancelled = true }
   }, [slug, allowed, reloadKey])
 
-  const back = { to: newsletterPath(`/admin/org/${slug}`), label: t('admin.followers.backToProfile') }
+  const back = { to: newsletterPath(`/mine/org/${slug}`), label: t('admin.followers.backToProfile') }
 
   if (!allowed || error === 'forbidden') {
     return (

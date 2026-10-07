@@ -99,10 +99,6 @@ export default function AuthMenu() {
     .join('')
     .toUpperCase()
   const avatarUrl = safeHttpUrl(profile.avatarUrl)
-  // Staff and organization members manage the newsletter; everyone else
-  // writes independent articles there.
-  const organizations = isStaff || (profile.organizations?.length ?? 0) > 0
-
   return (
     <div className="relative" ref={ref}>
       {/* 44px hit area around the 36px avatar. */}
@@ -183,11 +179,21 @@ export default function AuthMenu() {
           <button
             type="button"
             role="menuitem"
-            onClick={() => { setOpen(false); navigate('/newsletter/admin/articles') }}
+            onClick={() => { setOpen(false); navigate('/newsletter/mine') }}
             className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
           >
-            {t(organizations ? 'auth.newsletterAdmin' : 'auth.myArticles')}
+            {t('auth.myPosts')}
           </button>
+          {isStaff && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { setOpen(false); navigate('/newsletter/admin') }}
+              className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
+            >
+              {t('auth.newsletterAdmin')}
+            </button>
+          )}
           {isStaff && (
             <button
               type="button"

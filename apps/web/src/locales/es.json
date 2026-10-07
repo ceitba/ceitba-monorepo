@@ -412,8 +412,8 @@
     "myApuntes": "Mis apuntes",
     "accountMenu": "Menú de cuenta",
     "savedSchedules": "Mis horarios guardados",
-    "newsletterAdmin": "Panel del newsletter",
-    "myArticles": "Mis artículos"
+    "myPosts": "Mis publicaciones",
+    "newsletterAdmin": "Administrar newsletter"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",

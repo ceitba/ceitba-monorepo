@@ -4,16 +4,18 @@ import { useTranslation } from 'react-i18next'
 import PageFallback from '@/components/PageFallback'
 import { Button, EmptyState, buttonClass } from '@/components/ui'
 import { startGoogleSignIn } from '@/store/authStore'
-import { canAccessAdmin } from '../store/authStore'
+import { isStaff } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
-import { newsletterPath } from '@/newsletter/paths'
+import { MINE_PATH } from '@/newsletter/paths'
 
-// Cookie auth is HttpOnly, so wait for /me before deciding. Like the site's
-// AuthGuard, anonymous visitors get a sign-in prompt that brings them back to
-// the page they asked for; signed-in users without access are told why
-// instead of being bounced away. Subscribes to the session, so signing out
-// from the navbar swaps the admin for the prompt right away.
-export default function AdminAuthGuard({ children }: { children: ReactNode }) {
+// Guards the newsletter's signed-in areas: Mis publicaciones (anyone signed
+// in) and, with `staffOnly`, the admin. Cookie auth is HttpOnly, so wait for
+// /me before deciding. Like the site's AuthGuard, anonymous visitors get a
+// sign-in prompt that brings them back to the page they asked for;
+// signed-in users without access are told why instead of being bounced
+// away. Subscribes to the session, so signing out from the navbar swaps the
+// area for the prompt right away.
+export default function AreaAuthGuard({ staffOnly = false, children }: { staffOnly?: boolean; children: ReactNode }) {
   const { t } = useTranslation()
   const location = useLocation()
   const { profile, loading } = useAuthSession()
@@ -26,8 +28,8 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
     return (
       <main id="main-content" className="container-content py-section-mobile lg:py-section">
         <EmptyState
-          title={<span role="heading" aria-level={1}>{t('admin.guard.signInTitle')}</span>}
-          body={t('admin.guard.signInBody')}
+          title={<span role="heading" aria-level={1}>{staffOnly ? t('admin.guard.signInTitle') : t('mine.guard.signInTitle')}</span>}
+          body={staffOnly ? t('admin.guard.signInBody') : t('mine.guard.signInBody')}
           action={
             <div className="flex flex-col items-center gap-2">
               <Button onClick={() => startGoogleSignIn(returnTo)}>{t('admin.guard.signIn')}</Button>
@@ -43,15 +45,15 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!canAccessAdmin(profile)) {
+  if (staffOnly && !isStaff(profile)) {
     return (
       <main id="main-content" className="container-content py-section-mobile lg:py-section">
         <EmptyState
           title={<span role="heading" aria-level={1}>{t('admin.guard.deniedTitle')}</span>}
           body={t('admin.guard.deniedBody')}
           action={
-            <Link to={newsletterPath('/')} className={buttonClass({ variant: 'outline' })}>
-              {t('admin.guard.backToNewsletter')}
+            <Link to={MINE_PATH} className={buttonClass({ variant: 'outline' })}>
+              {t('admin.guard.toMine')}
             </Link>
           }
         />

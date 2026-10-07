@@ -10,7 +10,7 @@ import { canViewFollowers, getOrganizations, isStaff } from '../../store/authSto
 import { useAuthSession } from '../../hooks/useAuthSession'
 import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
-import { newsletterPath } from '@/newsletter/paths'
+import { MY_ARTICLES_PATH, newsletterPath } from '@/newsletter/paths'
 import type { Organization } from '../../types'
 
 // The editable profile fields, as strings for the inputs ('' = empty).
@@ -62,8 +62,8 @@ const sameForm = (a: OrgForm, b: OrgForm) => (Object.keys(a) as (keyof OrgForm)[
 
 // The one organization profile editor, for the org's members and for staff
 // (who reach any org from /manage → Organizaciones).
-export default function AdminOrganizationProfilePage() {
-  // The route is /admin/org/:slug, so the param is always there.
+export default function OrgProfilePage() {
+  // The route is /mine/org/:slug, so the param is always there.
   const { slug = '' } = useParams()
   const { t } = useTranslation()
   const { profile } = useAuthSession()
@@ -124,7 +124,7 @@ export default function AdminOrganizationProfilePage() {
         title={t('admin.orgProfile.noAccessTitle')}
         body={t('admin.orgProfile.noAccess')}
         action={
-          <Link to={newsletterPath('/admin/articles')} className={buttonClass({ variant: 'outline' })}>
+          <Link to={MY_ARTICLES_PATH} className={buttonClass({ variant: 'outline' })}>
             {t('admin.orgProfile.backToPanel')}
           </Link>
         }
@@ -148,7 +148,7 @@ export default function AdminOrganizationProfilePage() {
         title={notFound ? t('admin.orgProfile.notFoundTitle') : t('admin.orgProfile.loadError')}
         message={notFound ? t('admin.orgProfile.notFound') : undefined}
         onRetry={notFound ? undefined : () => setReloadKey((k) => k + 1)}
-        backTo={newsletterPath('/admin/articles')}
+        backTo={MY_ARTICLES_PATH}
         backLabel={t('admin.orgProfile.backToPanel')}
       />
     )
@@ -201,7 +201,7 @@ export default function AdminOrganizationProfilePage() {
         // Staff come here from /manage → Organizaciones.
         back={staff ? { to: '/manage', label: t('admin.orgProfile.backToManage') } : undefined}
         action={showFollowers ? (
-          <Link to={newsletterPath(`/admin/org/${slug}/followers`)} className={buttonClass({ variant: 'outline' })}>
+          <Link to={newsletterPath(`/mine/org/${slug}/followers`)} className={buttonClass({ variant: 'outline' })}>
             {t('admin.followers.link')}
           </Link>
         ) : undefined}

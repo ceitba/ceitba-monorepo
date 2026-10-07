@@ -15,7 +15,7 @@ import type { NewsEvent } from '../../types'
 
 const COLS = 6
 
-export default function AdminEventsPage() {
+export default function MyEventsPage() {
   const { t, i18n } = useTranslation()
   const { profile } = useAuthSession()
   const { orgName } = useAdminContext()
@@ -86,7 +86,7 @@ export default function AdminEventsPage() {
         <td className="px-4 py-3">
           <div className="flex items-center gap-1 justify-end">
             <Link
-              to={newsletterPath(`/admin/events/${event.id}/edit`)}
+              to={newsletterPath(`/mine/events/${event.id}/edit`)}
               className={buttonClass({ variant: 'ghost', size: 'sm' })}
               aria-label={t('admin.events.editAria', { title: event.title })}
             >
@@ -115,7 +115,7 @@ export default function AdminEventsPage() {
         title={t('admin.events.title')}
         subtitle={status === 'success' ? t('admin.events.count', { count: events.length }) : undefined}
         action={
-          <Link to={newsletterPath('/admin/events/new')} className={buttonClass()}>
+          <Link to={newsletterPath('/mine/events/new')} className={buttonClass()}>
             <PlusIcon /> {t('admin.events.new')}
           </Link>
         }

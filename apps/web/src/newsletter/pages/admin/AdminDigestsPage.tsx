@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createDigest, fetchDigests } from '../../api/digests'
-import { isStaff } from '../../store/authStore'
 import { Alert, Button, EmptyState, ErrorState, Field, LoadingRegion, Skeleton, inputClass } from '@/components/ui'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
@@ -26,7 +25,6 @@ interface MailResult {
 // STAFF-only list of weekly digest issues ("La semana en ITBA").
 export default function AdminDigestsPage() {
   const { t, i18n } = useTranslation()
-  const staff = isStaff()
   const [digests, setDigests] = useState<DigestSummary[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [quotaKey, setQuotaKey] = useState(0)
@@ -38,7 +36,6 @@ export default function AdminDigestsPage() {
   // result, strip the params (a reload must not repeat it) and refresh the
   // sender and quota.
   useEffect(() => {
-    if (!staff) return
     const params = new URLSearchParams(location.search)
     const mail = params.get('mail')
     if (mail !== 'connected' && mail !== 'error') return
@@ -48,7 +45,7 @@ export default function AdminDigestsPage() {
     const rest = params.toString()
     navigate({ pathname: location.pathname, search: rest ? `?${rest}` : '' }, { replace: true })
     setQuotaKey((k) => k + 1)
-  }, [staff, location.pathname, location.search, navigate])
+  }, [location.pathname, location.search, navigate])
 
   // Only the response of the latest request is applied, so a slow poll can't
   // overwrite newer data.
@@ -61,7 +58,7 @@ export default function AdminDigestsPage() {
       .catch(() => { if (!quiet && req === reqRef.current) setStatus('error') })
   }, [])
 
-  useEffect(() => { if (staff) load() }, [staff, load])
+  useEffect(() => { load() }, [load])
 
   // Keep the counts moving while an issue is going out.
   const anySending = digests.some((d) => d.status === 'sending')
@@ -73,8 +70,6 @@ export default function AdminDigestsPage() {
     }, SENDING_POLL_MS)
     return () => clearInterval(id)
   }, [anySending, load])
-
-  if (!staff) return <Navigate to={newsletterPath('/admin/articles')} replace />
 
   const header = <AdminSectionHeader title={t('admin.digests.title')} subtitle={t('admin.digests.subtitle')} />
 
