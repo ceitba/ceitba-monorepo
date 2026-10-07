@@ -4,6 +4,7 @@ import {
   COST_STAGES, MODEL_STAGES, costPairs, rowKey, fetchCostSummary, fetchCosts, fetchRuns, fetchSettings,
   type KbSettings,
 } from '../../../api/kbAdmin'
+import { Badge, Button } from '@/components/ui'
 import CostChart from './CostChart'
 import Forecast from './Forecast'
 import QuotaCard from './QuotaCard'
@@ -53,18 +54,21 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
       <Panel
         title={t('manage.wikiAi.overview.weekly')}
         actions={
-          <div role="group" aria-label={t('manage.wikiAi.overview.groupBy')} className="flex rounded-sm border border-border dark:border-night-border overflow-hidden">
-            {(['stage', 'model'] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={by === k}
-                onClick={() => setBy(k)}
-                className={`px-3 py-1 font-mono text-label uppercase tracking-widest ${by === k ? 'bg-primary text-white' : 'text-ink-secondary dark:text-night-muted hover:text-primary'}`}
-              >
-                {t(`manage.wikiAi.overview.by.${k}`)}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <span id="wikiai-groupby" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.overview.groupBy')}</span>
+            <div role="group" aria-labelledby="wikiai-groupby" className="flex rounded-sm border border-border dark:border-night-border overflow-hidden">
+              {(['stage', 'model'] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={by === k}
+                  onClick={() => setBy(k)}
+                  className={`min-h-[44px] sm:min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150 ${by === k ? 'bg-primary text-white' : 'bg-white dark:bg-night-surface text-ink-secondary dark:text-night-muted hover:text-primary'}`}
+                >
+                  {t(`manage.wikiAi.overview.by.${k}`)}
+                </button>
+              ))}
+            </div>
           </div>
         }
       >
@@ -73,7 +77,7 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
             <CostChart
               rows={rows}
               order={by === 'stage' ? COST_STAGES : undefined}
-              labelOf={(k) => (by === 'stage' ? t(`manage.wikiAi.stages.${k.toUpperCase()}`, { defaultValue: k }) : k)}
+              labelOf={(k) => (by === 'stage' ? t(`manage.wikiAi.stages.${k.toUpperCase()}`, { defaultValue: t('manage.wikiAi.stages.other') }) : k)}
             />
           )}
         </ViewState>
@@ -121,17 +125,17 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
                 <div className="flex flex-col gap-2 font-body text-body-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill status={run.status} />
-                    {run.stage && <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{run.stage}</span>}
-                    {run.dryRun && <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.runs.dry')}</span>}
+                    {run.stage && <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t(`manage.wikiAi.stages.${run.stage.toUpperCase()}`, { defaultValue: t('manage.wikiAi.stages.other') })}</span>}
+                    {run.dryRun && <Badge>{t('manage.wikiAi.runs.dry')}</Badge>}
                   </div>
                   <p className="text-ink-secondary dark:text-night-muted">
                     {run.startedAt ? new Date(run.startedAt).toLocaleString(i18n.language) : '—'} · {duration(run.startedAt, run.finishedAt)}
                   </p>
-                  <p>{t('manage.wikiAi.runs.subjectsN', { count: run.subjects?.length ?? 0 })} · {tokens(run.tokensIn + run.tokensOut)} tokens · {usd(run.costUsd ?? run.costEstimate, 2)}</p>
+                  <p>{t('manage.wikiAi.runs.subjectsN', { count: run.subjects?.length ?? 0 })} · {t('manage.wikiAi.tokensN', { tokens: tokens(run.tokensIn + run.tokensOut) })} · {usd(run.costUsd ?? run.costEstimate, 2)}</p>
                   {run.error && <p className="text-red-600 dark:text-red-400">{run.error}</p>}
-                  <button type="button" onClick={() => onOpenRun(run.id)} className="self-start font-mono text-label uppercase tracking-widest text-primary hover:underline">
-                    {t('manage.wikiAi.runs.details')} →
-                  </button>
+                  <Button variant="outline" size="sm" className="self-start" onClick={() => onOpenRun(run.id)}>
+                    {t('manage.wikiAi.runs.details')}
+                  </Button>
                 </div>
               )
             }}
@@ -142,7 +146,7 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
       {summary.data && costPairs(summary.data.byStage).length > 0 && (
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           {t('manage.wikiAi.overview.split30')}{' '}
-          {costPairs(summary.data.byStage).map(([k, v]) => `${t(`manage.wikiAi.stages.${k.toUpperCase()}`, { defaultValue: k })} ${usd(v, 2)}`).join(' · ')}
+          {costPairs(summary.data.byStage).map(([k, v]) => `${t(`manage.wikiAi.stages.${k.toUpperCase()}`, { defaultValue: t('manage.wikiAi.stages.other') })} ${usd(v, 2)}`).join(' · ')}
         </p>
       )}
     </div>
@@ -151,9 +155,10 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-4" title={hint}>
+    <div className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-4">
       <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{label}</p>
-      <p className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mt-1 tabular-nums">{value}</p>
+      <p className="font-display font-bold text-h4 sm:text-h3 text-ink-primary dark:text-night-text mt-1 tabular-nums">{value}</p>
+      {hint && <p className="mt-1 font-body text-label text-ink-secondary dark:text-night-muted">{hint}</p>}
     </div>
   )
 }
@@ -171,7 +176,7 @@ function ModelsAtGlance({ s }: { s: KbSettings }) {
       ))}
       <div className="contents">
         <dt className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.mode')}</dt>
-        <dd>{t(`manage.wikiAi.settings.modes.${s.executionMode}`, { defaultValue: s.executionMode })}</dd>
+        <dd>{t(`manage.wikiAi.settings.modes.${s.executionMode}`, { defaultValue: t('manage.wikiAi.status.other') })}</dd>
       </div>
       <div className="contents">
         <dt className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.weekly')}</dt>

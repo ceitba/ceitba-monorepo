@@ -27,7 +27,6 @@
     "cancel": "Cancel",
     "edit": "Edit",
     "delete": "Delete",
-    "empty": "No data",
     "tabs": {
       "staff": "Staff",
       "benefits": "Benefits",
@@ -44,20 +43,25 @@
       "add": "Add member",
       "addTitle": "New member",
       "editTitle": "Edit member",
-      "noneForYear": "No members loaded for this year.",
+      "noneForYear": "No members for {{year}} yet",
       "confirmDelete": "Delete this member?",
       "col": {
         "name": "Name",
         "role": "Role",
         "order": "Order",
-        "department": "Department"
+        "department": "Department",
+        "actions": "Actions"
       },
       "deleteBody": "{{name}} will be removed from the {{year}} staff. This can't be undone.",
       "roleEs": "Role (ES)",
       "roleEn": "Role (EN)",
       "email": "Email",
       "photoUrl": "Photo URL",
-      "linkedinUrl": "LinkedIn URL"
+      "linkedinUrl": "LinkedIn URL",
+      "yearsError": "We couldn't load the list of years: for now you can only see the current year.",
+      "editAria": "Edit {{name}}",
+      "deleteAria": "Delete {{name}}",
+      "noneForYearHint": "The members you add here appear in the site's Staff section, grouped by department."
     },
     "benefits": {
       "tabs": {
@@ -65,11 +69,26 @@
         "categories": "Categories"
       },
       "categories": {
-        "help": "Categories are the chips users filter benefits by. Edit their name, color and order here.",
-        "colorVar": "Color variable",
+        "help": "Categories are the \"chips\" used to filter benefits. Edit their name, color and order here.",
         "order": "Order",
         "nameEs": "Name (ES)",
-        "nameEn": "Name (EN)"
+        "nameEn": "Name (EN)",
+        "color": "Color",
+        "colors": {
+          "it": "Sky blue",
+          "media": "Pink",
+          "infra": "Green",
+          "nautica": "Teal",
+          "deportes": "Orange",
+          "direct": "Lavender",
+          "custom": "Custom",
+          "none": "No color"
+        },
+        "noChanges": "No changes to save",
+        "saved": "Category saved.",
+        "loadFailed": "We couldn't load the categories.",
+        "empty": "There are no benefit categories yet.",
+        "emptyHint": "You'll be able to edit each category's name, color and order here. CEITBA's tech team creates them."
       },
       "cards": {
         "filter": "Category",
@@ -78,7 +97,7 @@
         "addTitle": "New benefit card",
         "editTitle": "Edit card",
         "confirmDelete": "Delete this card?",
-        "empty": "No cards yet.",
+        "empty": "There are no benefit cards yet.",
         "titleEs": "Title (ES)",
         "titleEn": "Title (EN)",
         "summaryEs": "Description (ES)",
@@ -94,9 +113,19 @@
           "title": "Title",
           "category": "Category",
           "price": "Price",
-          "order": "Order"
+          "order": "Order",
+          "actions": "Actions"
         },
-        "deleteBody": "The card \"{{title}}\" will be deleted. This can't be undone."
+        "deleteBody": "The card \"{{title}}\" will be deleted. This can't be undone.",
+        "saved": "Card saved.",
+        "deleted": "Card deleted.",
+        "deleteConfirm": "Yes, delete",
+        "loadFailed": "We couldn't load the benefit cards.",
+        "emptyFiltered": "There are no cards in this category.",
+        "emptyHint": "The cards shown in the site's Benefits section will appear here.",
+        "needsCategory": "Every card needs a category and there are none yet, so you can't add cards. CEITBA's tech team creates categories: ask them for one and come back here.",
+        "goToCategories": "See categories",
+        "titlesRequired": "Fill in the Spanish and English titles to save."
       },
       "tabsAria": "Manage benefits"
     },
@@ -109,11 +138,11 @@
       "staffOn": "STAFF",
       "staffOff": "Make STAFF",
       "unassign": "Unassign",
-      "unassignTitle": "Remove STAFF?",
-      "unassignBody": "{{name}} will lose STAFF access, including this dashboard, right away. You can assign them again later.",
-      "unassignConfirm": "Unassign",
-      "addOrg": "+ organization",
-      "noOrgs": "—",
+      "unassignTitle": "Remove STAFF from {{name}}?",
+      "unassignBody": "{{name}} will lose STAFF access, including this panel, right away. You can assign it again later.",
+      "unassignConfirm": "Yes, remove STAFF",
+      "addOrg": "Add to an organization…",
+      "noOrgs": "No organizations",
       "searchPlaceholder": "Search by name or email…",
       "sort": {
         "newest": "Newest first",
@@ -124,23 +153,35 @@
       "prev": "‹ Prev",
       "next": "Next ›",
       "removeOrgAria": "Remove {{name}} from {{org}}",
-      "removeOrgTitle": "Remove from organization?",
-      "removeOrgBody": "{{name}} will no longer be a member of {{org}}. You can add them back later.",
-      "removeOrgConfirm": "Remove",
-      "orgAdmin": "admin",
-      "orgMember": "member",
-      "makeOrgAdmin": "Make admin of {{org}}",
-      "makeOrgMember": "Remove admin of {{org}}",
-      "demoteOrgTitle": "Remove admin?",
-      "demoteOrgBody": "{{name}} will stay a member of {{org}}, but without admin access (e.g. the followers list).",
-      "demoteOrgConfirm": "Remove admin",
-      "noOrgMembers": "{{org}} has no members yet.",
+      "orgAdmin": "Admin",
+      "orgMember": "Member",
+      "makeOrgAdmin": "Make admin",
+      "makeOrgMember": "Remove admin",
+      "noOrgMembers": "{{org}} has no members yet",
       "addingBanner": "Adding members to {{org}} — search for the person and tap “Add to {{org}}”.",
       "addingDone": "Done",
       "addToOrg": "Add to {{org}}",
       "addToOrgAria": "Add {{name}} to {{org}}",
       "addingToOrg": "Adding…",
-      "addMembers": "Add members"
+      "addMembers": "Add members",
+      "assignAria": "Make {{name}} STAFF",
+      "unassignAria": "Remove STAFF from {{name}}",
+      "assignTitle": "Give {{name}} STAFF access?",
+      "assignBody": "{{name}} will be able to open this panel and manage the whole site: staff, benefits, users, organizations, notes and the AI Wiki, including granting and removing STAFF for other people. Access lasts one year.",
+      "assignConfirm": "Yes, give STAFF access",
+      "orgsLoadError": "We couldn't load the organizations: names and the organization filter may be missing.",
+      "searchAria": "Search users",
+      "sortAria": "Sort users",
+      "filterOrgAria": "Filter by organization",
+      "addOrgAria": "Add {{name}} to an organization",
+      "makeOrgAdminAria": "Make {{name}} an admin of {{org}}",
+      "makeOrgMemberAria": "Remove {{name}}'s admin role in {{org}}",
+      "removedFromOrg": "You removed {{name}} from {{org}}.",
+      "noOrgMembersHint": "Add the people who will post on ITBA News on behalf of the organization.",
+      "empty": "No users yet",
+      "emptyHint": "People show up here the first time they sign in to the site.",
+      "noResults": "No users match that search",
+      "noResultsHint": "Try another part of the name or email."
     },
     "organizations": {
       "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
@@ -188,7 +229,10 @@
         "slugRequired": "Enter an address.",
         "slugFormat": "Use 2 to {{max}} characters: lowercase letters, digits and single hyphens, not at the start or end.",
         "duplicate": "An organization with that address already exists."
-      }
+      },
+      "emptyHint": "Create the first one so its members can post on ITBA News.",
+      "editProfile": "Edit profile",
+      "editProfileAria": "Edit {{name}}'s profile on ITBA News"
     },
     "tabsAria": "Manage sections",
     "corrections": {
@@ -257,7 +301,12 @@
         "SUPERSEDED": "No superseded corrections."
       },
       "emptyHint": "This is where schedules that students propose to fix from the Schedule Builder will show up. Normally you don't need to do anything: each correction applies on its own once enough other students confirm it.",
-      "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections"
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections",
+      "loadFailed": "We couldn't load the corrections.",
+      "rowLabel": "{{subject}} · Commission {{commission}}",
+      "slot": "{{day}} {{from}}–{{to}}",
+      "prev": "Previous",
+      "next": "Next"
     },
     "capabilities": {
       "intro": "Enable features in testing for everyone, for specific people (by email, even if they've never signed in) or for whole organizations. Staff always have all of them.",
@@ -294,8 +343,23 @@
         "add": "Add",
         "empty": "No organization has access yet.",
         "members_one": "{{count}} member",
-        "members_other": "{{count}} members"
-      }
+        "members_other": "{{count}} members",
+        "meta": "{{members}} · {{granted}}"
+      },
+      "loadFailed": "We couldn't load the capabilities.",
+      "grantsLoadFailed": "We couldn't load this capability's access list.",
+      "emptyHint": "Features in testing that you can enable for everyone or for specific people and organizations will appear here."
+    },
+    "errors": {
+      "generic": "We couldn't complete the action. Try again in a moment.",
+      "network": "Can't reach the server. Check your connection and try again.",
+      "unauthorized": "Your session expired. Sign in again.",
+      "forbidden": "You don't have permission to do this.",
+      "notFound": "We couldn't find it: someone may have deleted it. Reload the page.",
+      "conflict": "Someone changed this in the meantime. Reload and try again.",
+      "invalid": "Check the data: the server didn't accept something.",
+      "tooMany": "Too many requests in a row. Wait a moment and try again.",
+      "loadFailed": "We couldn't load this section."
     }
   },
   "profile": {

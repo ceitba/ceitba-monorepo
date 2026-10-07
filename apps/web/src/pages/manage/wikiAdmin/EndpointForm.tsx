@@ -1,10 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createEndpoint, updateEndpoint, type KbEndpoint, type KbEndpointInput } from '../../../api/kbAdmin'
-import ErrorBanner from '../../../components/ErrorBanner'
-import Modal from '../../../components/Modal'
-import { apuntesErrorMessage } from '../../../utils/apuntes'
-import { BTN_PRI, FIELD } from './styles'
+import { Alert, Button, Field, Modal, inputClass } from '@/components/ui'
+import { apuntesAdminErrorMessage } from '../adminErrors'
 
 // Create / edit form for an own LLM endpoint. The stored token is never
 // shown: on edit, blank keeps it and "quitar token" removes it.
@@ -39,13 +37,11 @@ export default function EndpointForm({ endpoint, onSaved, onClose }: {
     try {
       onSaved(endpoint ? await updateEndpoint(endpoint.id, body) : await createEndpoint(body))
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesAdminErrorMessage(e, t))
       setBusy(false)
     }
   }
 
-  const label = 'flex flex-col gap-1 font-body text-body-sm'
-  const span = 'font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted'
   return (
     <Modal
       title={endpoint ? t('manage.wikiAi.endpoints.formEdit') : t('manage.wikiAi.endpoints.formCreate')}
@@ -53,32 +49,26 @@ export default function EndpointForm({ endpoint, onSaved, onClose }: {
       busy={busy}
       footer={
         <>
-          <button type="button" onClick={onClose} disabled={busy} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.cancel')}</button>
-          <button type="submit" form="endpoint-form" disabled={busy} className={BTN_PRI}>{busy ? '…' : t('manage.wikiAi.endpoints.save')}</button>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>{t('manage.cancel')}</Button>
+          <Button type="submit" form="endpoint-form" loading={busy}>{t('manage.wikiAi.endpoints.save')}</Button>
         </>
       }
     >
       <form id="endpoint-form" onSubmit={submit} className="flex flex-col gap-3">
-        {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
-        <label className={label}>
-          <span className={span}>{t('manage.wikiAi.endpoints.name')}</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className={FIELD} autoComplete="off" />
-        </label>
-        <label className={label}>
-          <span className={span}>{t('manage.wikiAi.endpoints.baseUrl')}</span>
-          <input required type="url" inputMode="url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder={t('manage.wikiAi.endpoints.baseUrlPlaceholder')} className={`${FIELD} font-mono`} autoComplete="off" />
-        </label>
+        {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
+        <Field label={t('manage.wikiAi.endpoints.name')} required>
+          {(p) => <input {...p} value={name} onChange={(e) => setName(e.target.value)} className={inputClass()} autoComplete="off" />}
+        </Field>
+        <Field label={t('manage.wikiAi.endpoints.baseUrl')} required>
+          {(p) => <input {...p} type="url" inputMode="url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder={t('manage.wikiAi.endpoints.baseUrlPlaceholder')} className={inputClass({ className: 'font-mono' })} autoComplete="off" />}
+        </Field>
         <div className="flex flex-col gap-1 font-body text-body-sm">
-          <label className={label}>
-            <span className={span}>{t('manage.wikiAi.endpoints.token')}</span>
-            <input type="password" value={apiKey} onChange={(e) => { setApiKey(e.target.value); if (e.target.value) setRemoveKey(false) }} disabled={removeKey} autoComplete="new-password" className={FIELD} />
-          </label>
+          <Field label={t('manage.wikiAi.endpoints.token')} hint={endpoint?.hasKey ? (removeKey ? t('manage.wikiAi.endpoints.tokenWillRemove') : t('manage.wikiAi.endpoints.tokenKeep')) : undefined}>
+            {(p) => <input {...p} type="password" value={apiKey} onChange={(e) => { setApiKey(e.target.value); if (e.target.value) setRemoveKey(false) }} disabled={removeKey} autoComplete="new-password" className={inputClass()} />}
+          </Field>
           {endpoint?.hasKey && (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[0.75rem] text-ink-secondary dark:text-night-muted">
-                {removeKey ? t('manage.wikiAi.endpoints.tokenWillRemove') : t('manage.wikiAi.endpoints.tokenKeep')}
-              </span>
-              <label className="inline-flex items-center gap-1.5 cursor-pointer text-[0.78rem]">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex items-center gap-2 min-h-[44px] cursor-pointer text-body-sm text-ink-primary dark:text-night-text">
                 <input type="checkbox" checked={removeKey} onChange={(e) => { setRemoveKey(e.target.checked); if (e.target.checked) setApiKey('') }} className="h-4 w-4 accent-primary" />
                 {t('manage.wikiAi.endpoints.tokenRemove')}
               </label>
@@ -86,20 +76,18 @@ export default function EndpointForm({ endpoint, onSaved, onClose }: {
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className={label}>
-            <span className={span}>{t('manage.wikiAi.endpoints.maxConcurrency')}</span>
-            <input type="number" min={1} max={64} required value={maxConcurrency} onChange={(e) => setMaxConcurrency(e.target.value)} className={`${FIELD} tabular-nums`} />
-          </label>
-          <label className={label}>
-            <span className={span}>{t('manage.wikiAi.endpoints.timeoutSec')}</span>
-            <input type="number" min={1} required value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} className={`${FIELD} tabular-nums`} />
-          </label>
+          <Field label={t('manage.wikiAi.endpoints.maxConcurrency')} required>
+            {(p) => <input {...p} type="number" min={1} max={64} value={maxConcurrency} onChange={(e) => setMaxConcurrency(e.target.value)} className={inputClass({ className: 'tabular-nums' })} />}
+          </Field>
+          <Field label={t('manage.wikiAi.endpoints.timeoutSec')} required>
+            {(p) => <input {...p} type="number" min={1} value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} className={inputClass({ className: 'tabular-nums' })} />}
+          </Field>
         </div>
-        <label className="inline-flex items-center gap-2 cursor-pointer font-body text-body-sm">
+        <label className="inline-flex items-center gap-2 min-h-[44px] cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4 accent-primary" />
           {t('manage.wikiAi.endpoints.enabledField')}
         </label>
-        <p className="px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg font-body text-[0.78rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.formNote')}</p>
+        <p className="px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.formNote')}</p>
       </form>
     </Modal>
   )

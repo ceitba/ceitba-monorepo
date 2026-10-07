@@ -27,7 +27,6 @@
     "cancel": "Cancelar",
     "edit": "Editar",
     "delete": "Eliminar",
-    "empty": "Sin datos",
     "tabs": {
       "staff": "Staff",
       "benefits": "Beneficios",
@@ -44,20 +43,25 @@
       "add": "Agregar miembro",
       "addTitle": "Nuevo miembro",
       "editTitle": "Editar miembro",
-      "noneForYear": "No hay miembros cargados para este año.",
-      "confirmDelete": "¿Eliminar este miembro?",
+      "noneForYear": "No hay miembros cargados para {{year}}",
+      "confirmDelete": "¿Eliminar a este miembro?",
       "col": {
         "name": "Nombre",
         "role": "Rol",
         "order": "Orden",
-        "department": "Departamento"
+        "department": "Departamento",
+        "actions": "Acciones"
       },
       "deleteBody": "{{name}} se va a eliminar del staff {{year}}. Esta acción no se puede deshacer.",
       "roleEs": "Rol (ES)",
       "roleEn": "Rol (EN)",
       "email": "Email",
       "photoUrl": "URL de foto",
-      "linkedinUrl": "URL de LinkedIn"
+      "linkedinUrl": "URL de LinkedIn",
+      "yearsError": "No pudimos cargar la lista de años: por ahora solo podés ver el año actual.",
+      "editAria": "Editar a {{name}}",
+      "deleteAria": "Eliminar a {{name}}",
+      "noneForYearHint": "Los miembros que cargues acá aparecen en la sección Staff del sitio, agrupados por departamento."
     },
     "benefits": {
       "tabs": {
@@ -66,10 +70,25 @@
       },
       "categories": {
         "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su nombre, color y orden acá.",
-        "colorVar": "Variable de color",
         "order": "Orden",
         "nameEs": "Nombre (ES)",
-        "nameEn": "Nombre (EN)"
+        "nameEn": "Nombre (EN)",
+        "color": "Color",
+        "colors": {
+          "it": "Celeste",
+          "media": "Rosa",
+          "infra": "Verde",
+          "nautica": "Turquesa",
+          "deportes": "Naranja",
+          "direct": "Lavanda",
+          "custom": "Personalizado",
+          "none": "Sin color"
+        },
+        "noChanges": "Sin cambios para guardar",
+        "saved": "Guardaste la categoría.",
+        "loadFailed": "No pudimos cargar las categorías.",
+        "empty": "Todavía no hay categorías de beneficios.",
+        "emptyHint": "Acá vas a poder editar el nombre, el color y el orden de cada categoría. Las crea el equipo técnico del CEITBA."
       },
       "cards": {
         "filter": "Categoría",
@@ -78,7 +97,7 @@
         "addTitle": "Nueva tarjeta de beneficio",
         "editTitle": "Editar tarjeta",
         "confirmDelete": "¿Eliminar esta tarjeta?",
-        "empty": "No hay tarjetas cargadas todavía.",
+        "empty": "Todavía no hay tarjetas de beneficios.",
         "titleEs": "Título (ES)",
         "titleEn": "Título (EN)",
         "summaryEs": "Descripción (ES)",
@@ -94,9 +113,19 @@
           "title": "Título",
           "category": "Categoría",
           "price": "Precio",
-          "order": "Orden"
+          "order": "Orden",
+          "actions": "Acciones"
         },
-        "deleteBody": "La tarjeta «{{title}}» se va a eliminar. Esta acción no se puede deshacer."
+        "deleteBody": "La tarjeta «{{title}}» se va a eliminar. Esta acción no se puede deshacer.",
+        "saved": "Guardaste la tarjeta.",
+        "deleted": "Eliminaste la tarjeta.",
+        "deleteConfirm": "Sí, eliminar",
+        "loadFailed": "No pudimos cargar las tarjetas de beneficios.",
+        "emptyFiltered": "No hay tarjetas en esta categoría.",
+        "emptyHint": "Acá van a aparecer las tarjetas que se muestran en la sección Beneficios del sitio.",
+        "needsCategory": "Cada tarjeta necesita una categoría y todavía no hay ninguna, así que no podés agregar tarjetas. Las categorías las crea el equipo técnico del CEITBA: pediles una y después volvé acá.",
+        "goToCategories": "Ver categorías",
+        "titlesRequired": "Completá el título en español y en inglés para guardar."
       },
       "tabsAria": "Administrar beneficios"
     },
@@ -109,11 +138,11 @@
       "staffOn": "STAFF",
       "staffOff": "Asignar STAFF",
       "unassign": "Quitar",
-      "unassignTitle": "¿Quitar STAFF?",
+      "unassignTitle": "¿Quitarle STAFF a {{name}}?",
       "unassignBody": "{{name}} va a perder el acceso STAFF, incluido este panel, de inmediato. Podés volver a asignarlo más adelante.",
-      "unassignConfirm": "Quitar STAFF",
-      "addOrg": "+ organización",
-      "noOrgs": "—",
+      "unassignConfirm": "Sí, quitar STAFF",
+      "addOrg": "Agregar a una organización…",
+      "noOrgs": "Sin organizaciones",
       "searchPlaceholder": "Buscar por nombre o email…",
       "sort": {
         "newest": "Más recientes",
@@ -124,23 +153,35 @@
       "prev": "‹ Anterior",
       "next": "Siguiente ›",
       "removeOrgAria": "Quitar a {{name}} de {{org}}",
-      "removeOrgTitle": "¿Quitar de la organización?",
-      "removeOrgBody": "{{name}} va a dejar de ser miembro de {{org}}. Podés volver a agregarlo más adelante.",
-      "removeOrgConfirm": "Quitar",
-      "orgAdmin": "admin",
-      "orgMember": "miembro",
-      "makeOrgAdmin": "Hacer admin de {{org}}",
-      "makeOrgMember": "Quitar admin de {{org}}",
-      "demoteOrgTitle": "¿Quitar admin?",
-      "demoteOrgBody": "{{name}} va a seguir siendo miembro de {{org}}, pero sin acceso de admin (por ejemplo, la lista de seguidores).",
-      "demoteOrgConfirm": "Quitar admin",
-      "noOrgMembers": "{{org}} todavía no tiene miembros.",
+      "orgAdmin": "Admin",
+      "orgMember": "Miembro",
+      "makeOrgAdmin": "Hacer admin",
+      "makeOrgMember": "Quitar admin",
+      "noOrgMembers": "{{org}} todavía no tiene miembros",
       "addingBanner": "Agregando miembros a {{org}} — buscá a la persona y tocá «Agregar a {{org}}».",
       "addingDone": "Listo",
       "addToOrg": "Agregar a {{org}}",
       "addToOrgAria": "Agregar a {{name}} a {{org}}",
       "addingToOrg": "Agregando…",
-      "addMembers": "Agregar miembros"
+      "addMembers": "Agregar miembros",
+      "assignAria": "Asignar STAFF a {{name}}",
+      "unassignAria": "Quitar STAFF a {{name}}",
+      "assignTitle": "¿Dar acceso STAFF a {{name}}?",
+      "assignBody": "{{name}} va a poder entrar a este panel y administrar todo el sitio: staff, beneficios, usuarios, organizaciones, apuntes y la Wiki IA, incluido dar y quitar STAFF a otras personas. El acceso dura un año.",
+      "assignConfirm": "Sí, dar acceso STAFF",
+      "orgsLoadError": "No pudimos cargar las organizaciones: los nombres y el filtro por organización pueden faltar.",
+      "searchAria": "Buscar usuarios",
+      "sortAria": "Ordenar usuarios",
+      "filterOrgAria": "Filtrar por organización",
+      "addOrgAria": "Agregar a {{name}} a una organización",
+      "makeOrgAdminAria": "Hacer a {{name}} admin de {{org}}",
+      "makeOrgMemberAria": "Quitarle a {{name}} el rol de admin de {{org}}",
+      "removedFromOrg": "Quitaste a {{name}} de {{org}}.",
+      "noOrgMembersHint": "Agregá a las personas que van a publicar en ITBA News en nombre de la organización.",
+      "empty": "Todavía no hay usuarios",
+      "emptyHint": "Las personas aparecen acá la primera vez que inician sesión en el sitio.",
+      "noResults": "No encontramos usuarios con esa búsqueda",
+      "noResultsHint": "Probá con otra parte del nombre o del email."
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
@@ -188,7 +229,10 @@
         "slugRequired": "Ingresá una dirección.",
         "slugFormat": "Usá entre 2 y {{max}} caracteres: minúsculas, números y guiones simples, sin guion al principio ni al final.",
         "duplicate": "Ya existe una organización con esa dirección."
-      }
+      },
+      "emptyHint": "Creá la primera para que sus miembros puedan publicar en ITBA News.",
+      "editProfile": "Editar perfil",
+      "editProfileAria": "Editar el perfil de {{name}} en ITBA News"
     },
     "tabsAria": "Secciones de administración",
     "corrections": {
@@ -257,7 +301,12 @@
         "SUPERSEDED": "No hay correcciones reemplazadas."
       },
       "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
-      "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones",
+      "loadFailed": "No pudimos cargar las correcciones.",
+      "rowLabel": "{{subject}} · Comisión {{commission}}",
+      "slot": "{{day}} {{from}}–{{to}}",
+      "prev": "Anterior",
+      "next": "Siguiente"
     },
     "capabilities": {
       "intro": "Habilitá funciones en prueba para todos, para personas puntuales (por email, aunque nunca hayan entrado) o para organizaciones enteras. El staff siempre tiene todas.",
@@ -294,8 +343,23 @@
         "add": "Agregar",
         "empty": "Ninguna organización tiene acceso todavía.",
         "members_one": "{{count}} miembro",
-        "members_other": "{{count}} miembros"
-      }
+        "members_other": "{{count}} miembros",
+        "meta": "{{members}} · {{granted}}"
+      },
+      "loadFailed": "No pudimos cargar las capacidades.",
+      "grantsLoadFailed": "No pudimos cargar los accesos de esta capacidad.",
+      "emptyHint": "Acá van a aparecer las funciones en prueba que podés habilitar para todos o para personas y organizaciones puntuales."
+    },
+    "errors": {
+      "generic": "No pudimos completar la acción. Probá de nuevo en un rato.",
+      "network": "No hay conexión con el servidor. Revisá tu conexión y probá de nuevo.",
+      "unauthorized": "Tu sesión venció. Volvé a iniciar sesión.",
+      "forbidden": "No tenés permiso para hacer esto.",
+      "notFound": "No encontramos lo que buscabas: puede que alguien lo haya borrado. Recargá la página.",
+      "conflict": "Alguien cambió esto mientras tanto. Recargá y probá de nuevo.",
+      "invalid": "Revisá los datos: hay algo que el servidor no aceptó.",
+      "tooMany": "Hiciste demasiados pedidos seguidos. Esperá un momento y probá de nuevo.",
+      "loadFailed": "No pudimos cargar esta sección."
     }
   },
   "profile": {

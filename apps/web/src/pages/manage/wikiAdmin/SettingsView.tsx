@@ -6,14 +6,15 @@ import {
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
-import { apuntesErrorMessage } from '../../../utils/apuntes'
+import { ApiError } from '../../../api/client'
+import { Alert, Button, EmptyState, inputClass, selectClass, toast } from '@/components/ui'
+import { apuntesAdminErrorMessage } from '../adminErrors'
 import ReasoningSelect from './ReasoningSelect'
 import PriceTag from './PriceTag'
 import { priceText } from './prices'
-import ConfirmDialog from '../../../components/ConfirmDialog'
 import { CostImpactDialog, Panel, ViewState } from './shared'
 import { usd } from './format'
-import { BTN, BTN_DANGER, BTN_PRI, FIELD, TD, TH } from './styles'
+import { TD, TH } from './styles'
 import { isUnavailable, useLoad } from './useLoad'
 
 const STAGE_FIELD: Record<ModelStage, 'modelDigest' | 'modelPlan' | 'modelWrite' | 'modelRetry'> = {
@@ -66,7 +67,7 @@ export function ModelSelect({ value, models, onChange, allowDefault, label, mode
         aria-label={label}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
-        className={`${FIELD} w-full`}
+        className={selectClass()}
       >
         {allowDefault && <option value="">{t('manage.wikiAi.settings.useDefault')}</option>}
         {!allowDefault && !current && value && <option value={value}>{value}</option>}
@@ -90,7 +91,7 @@ export function ModelBadges({ m, mode, estimate }: { m: KbModel; mode?: Executio
   const { t } = useTranslation()
   const ok = probeOk(m)
   return (
-    <span className="flex flex-wrap items-center gap-1.5 font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">
+    <span className="flex flex-wrap items-center gap-1.5 font-mono text-label text-ink-secondary dark:text-night-muted">
       <PriceTag m={m} mode={mode} estimate={estimate} />
       <span className={ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
         {ok ? `✓ ${t('manage.wikiAi.models.probed')}` : `! ${t('manage.wikiAi.models.notProbed')}`}
@@ -128,9 +129,8 @@ export default function SettingsView() {
   const history = useLoad(fetchSettingsHistory)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [restoreBusy, setRestoreBusy] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const [restoring, setRestoring] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const [rawCron, setRawCron] = useState(false)
 
   useEffect(() => { if (settings.data) { setDraft(settings.data); setRawCron(!parseCron(settings.data.cron)) } }, [settings.data])
@@ -183,8 +183,8 @@ export default function SettingsView() {
       forecastFor(body()).catch(() => null),
     ])
     const p = await preview
-    // Validation problems found by the preview are shown in the dialog.
-    if (p?.errors?.length) throw new Error(p.errors.join(' · '))
+    // Validation problems found by the preview surface in the dialog as "check the data".
+    if (p?.errors?.length) throw new ApiError(p.errors.join(' · '), 400, 'VALIDATION_ERROR')
     if (proposed) return impactFrom(current, proposed)
     return normalizeImpact(p?.costImpact)
   }, [body])
@@ -196,18 +196,20 @@ export default function SettingsView() {
     return normalizeImpact(saved.costImpact)
   }
 
+  // Restoring is reversible (the previous configuration stays in the
+  // history), so it doesn't ask first.
   async function restore(id: string) {
     setRestoreError(null)
-    setRestoreBusy(true)
+    setRestoring(id)
     try {
       const restored = await restoreSettings(id)
       settings.setData(() => restored)
       history.reload()
-      setRestoring(null)
+      toast.success(t('manage.wikiAi.settings.restored'))
     } catch (e) {
-      setRestoreError(`${t('manage.wikiAi.settings.restoreFailed')} ${apuntesErrorMessage(e, t)}`)
+      setRestoreError(apuntesAdminErrorMessage(e, t))
     } finally {
-      setRestoreBusy(false)
+      setRestoring(null)
     }
   }
 
@@ -228,7 +230,7 @@ export default function SettingsView() {
                       {t(`manage.wikiAi.stages.${st.toUpperCase()}`)}
                       {draft.source?.[STAGE_FIELD[st]] && <span className="ml-2 normal-case tracking-normal">({t(`manage.wikiAi.settings.source.${draft.source[STAGE_FIELD[st]]}`)})</span>}
                     </span>
-                    <div className="grid grid-cols-[1fr_8.5rem] gap-2 items-start">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_9rem] gap-2 items-start">
                       <ModelSelect
                         label={t(`manage.wikiAi.stages.${st.toUpperCase()}`)}
                         value={draft[STAGE_FIELD[st]]}
@@ -239,7 +241,7 @@ export default function SettingsView() {
                         onChange={(id) => id && set(STAGE_FIELD[st], id)}
                       />
                       <ReasoningSelect
-                        label={`${t(`manage.wikiAi.stages.${st.toUpperCase()}`)} · ${t('manage.wikiAi.reasoning.label')}`}
+                        label={t('manage.wikiAi.reasoning.aria', { stage: t(`manage.wikiAi.stages.${st.toUpperCase()}`) })}
                         model={catalog.find((m) => m.id === draft[STAGE_FIELD[st]])}
                         value={draft.reasoningEffort?.[st] ?? null}
                         onChange={(v) => set('reasoningEffort', { ...(draft.reasoningEffort ?? {}), [st]: v })}
@@ -249,7 +251,7 @@ export default function SettingsView() {
                 ))}
               </div>
               {catalog.some((m) => m.supportsReasoningEffort) && (
-                <p className="mt-3 font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.reasoning.hint')}</p>
+                <p className="mt-3 font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.reasoning.hint')}</p>
               )}
             </Panel>
 
@@ -257,35 +259,38 @@ export default function SettingsView() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.mode')}</span>
-                  <select value={draft.executionMode} onChange={(e) => set('executionMode', e.target.value as ExecutionMode)} className={FIELD}>
+                  <select value={draft.executionMode} onChange={(e) => set('executionMode', e.target.value as ExecutionMode)} className={selectClass()}>
                     {(['auto', 'batch', 'sync'] as const).map((m) => <option key={m} value={m}>{t(`manage.wikiAi.settings.modes.${m}`)}</option>)}
                   </select>
                 </label>
-                <label className="flex items-center gap-2 self-end min-h-[40px] cursor-pointer font-body text-body-sm">
+                <label className="flex items-center gap-2 self-end min-h-[44px] cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text">
                   <input type="checkbox" checked={draft.enabled} onChange={(e) => set('enabled', e.target.checked)} className="h-4 w-4 accent-primary" />
                   {t('manage.wikiAi.settings.weeklyOn')}
                 </label>
-                <label className="flex items-center gap-2 self-end min-h-[40px] cursor-pointer font-body text-body-sm">
+                <label className="flex items-center gap-2 self-end min-h-[44px] cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text">
                   <input type="checkbox" checked={draft.retryRejected} onChange={(e) => set('retryRejected', e.target.checked)} className="h-4 w-4 accent-primary" />
                   {t('manage.wikiAi.settings.retryRejected')}
                 </label>
                 {typeof draft.autoRefreshPrices === 'boolean' && (
-                  <label className="flex items-center gap-2 self-end min-h-[40px] cursor-pointer font-body text-body-sm" title={t('manage.wikiAi.settings.autoRefreshHint')}>
-                    <input type="checkbox" checked={draft.autoRefreshPrices} onChange={(e) => set('autoRefreshPrices', e.target.checked)} className="h-4 w-4 accent-primary" />
-                    {t('manage.wikiAi.settings.autoRefreshPrices')}
-                  </label>
+                  <div className="flex flex-col self-end">
+                    <label className="flex items-center gap-2 min-h-[44px] cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text">
+                      <input type="checkbox" checked={draft.autoRefreshPrices} onChange={(e) => set('autoRefreshPrices', e.target.checked)} className="h-4 w-4 accent-primary" />
+                      {t('manage.wikiAi.settings.autoRefreshPrices')}
+                    </label>
+                    <span className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.autoRefreshHint')}</span>
+                  </div>
                 )}
                 <div className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.schedule')}</span>
                   {rawCron ? (
-                    <input value={draft.cron} onChange={(e) => set('cron', e.target.value)} className={`${FIELD} font-mono`} aria-label={t('manage.wikiAi.settings.cron')} />
+                    <input value={draft.cron} onChange={(e) => set('cron', e.target.value)} className={inputClass({ className: 'font-mono' })} aria-label={t('manage.wikiAi.settings.cron')} />
                   ) : (
                     <div className="flex gap-2">
                       <select
                         aria-label={t('manage.wikiAi.settings.day')}
                         value={parseCron(draft.cron)?.day ?? 0}
                         onChange={(e) => set('cron', toCron(Number(e.target.value), parseCron(draft.cron)?.time ?? '03:00', parseCron(draft.cron)?.seconds ?? true))}
-                        className={`${FIELD} flex-1`}
+                        className={selectClass({ className: 'flex-1' })}
                       >
                         {DAYS.map((d) => (
                           <option key={d} value={d}>
@@ -298,29 +303,29 @@ export default function SettingsView() {
                         aria-label={t('manage.wikiAi.settings.time')}
                         value={parseCron(draft.cron)?.time ?? '03:00'}
                         onChange={(e) => set('cron', toCron(parseCron(draft.cron)?.day ?? 0, e.target.value || '03:00', parseCron(draft.cron)?.seconds ?? true))}
-                        className={FIELD}
+                        className={inputClass({ className: 'w-auto' })}
                       />
                     </div>
                   )}
-                  <span className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">
-                    {t('manage.wikiAi.settings.tz')} · <code className="font-mono">{draft.cron}</code> ·{' '}
-                    <button type="button" className="underline" onClick={() => setRawCron((v) => !v)}>
+                  <span className="flex flex-wrap items-center gap-x-2 font-body text-label text-ink-secondary dark:text-night-muted">
+                    {t('manage.wikiAi.settings.tz')} · <code className="font-mono">{draft.cron}</code>
+                    <Button variant="ghost" size="sm" onClick={() => setRawCron((v) => !v)}>
                       {rawCron ? t('manage.wikiAi.settings.simpleCron') : t('manage.wikiAi.settings.rawCron')}
-                    </button>
+                    </Button>
                   </span>
                 </div>
                 {draft.runCostBudgetUsd !== undefined && (
                   <label className="flex flex-col gap-1">
                     <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costBudget')}</span>
-                    <input type="number" min={0.1} max={100} step={0.1} value={draft.runCostBudgetUsd} onChange={(e) => set('runCostBudgetUsd', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!costBudgetValid(draft.runCostBudgetUsd)} className={FIELD} />
-                    {!costBudgetValid(draft.runCostBudgetUsd) && <span role="alert" className="font-body text-[0.75rem] text-red-700 dark:text-red-300">{t('manage.wikiAi.settings.costBudgetInvalid')}</span>}
-                    <span className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costBudgetHint')}</span>
+                    <input type="number" min={0.1} max={100} step={0.1} value={draft.runCostBudgetUsd} onChange={(e) => set('runCostBudgetUsd', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!costBudgetValid(draft.runCostBudgetUsd)} className={inputClass({ invalid: !costBudgetValid(draft.runCostBudgetUsd) })} />
+                    {!costBudgetValid(draft.runCostBudgetUsd) && <span role="alert" className="font-body text-label text-red-700 dark:text-red-300">{t('manage.wikiAi.settings.costBudgetInvalid')}</span>}
+                    <span className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costBudgetHint')}</span>
                   </label>
                 )}
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.budget')}</span>
-                  <input type="number" min={0} step={10000} value={draft.runTokenBudget ?? ''} onChange={(e) => set('runTokenBudget', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!budgetValid(draft.runTokenBudget)} className={FIELD} />
-                  {!budgetValid(draft.runTokenBudget) && <span role="alert" className="font-body text-[0.75rem] text-red-700 dark:text-red-300">{t('manage.wikiAi.settings.budgetRequired')}</span>}
+                  <input type="number" min={0} step={10000} value={draft.runTokenBudget ?? ''} onChange={(e) => set('runTokenBudget', e.target.value === '' ? '' : Number(e.target.value))} aria-invalid={!budgetValid(draft.runTokenBudget)} className={inputClass({ invalid: !budgetValid(draft.runTokenBudget) })} />
+                  {!budgetValid(draft.runTokenBudget) && <span role="alert" className="font-body text-label text-red-700 dark:text-red-300">{t('manage.wikiAi.settings.budgetRequired')}</span>}
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.costLimit')}</span>
@@ -331,7 +336,7 @@ export default function SettingsView() {
                     value={draft.weeklyCostLimitUsd ?? ''}
                     placeholder={t('manage.wikiAi.settings.noLimit')}
                     onChange={(e) => set('weeklyCostLimitUsd', e.target.value === '' ? null : Number(e.target.value))}
-                    className={FIELD}
+                    className={inputClass()}
                   />
                 </label>
               </div>
@@ -344,26 +349,31 @@ export default function SettingsView() {
             />
 
             <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 py-3 bg-page-bg/95 dark:bg-night-bg/95 border-t border-border dark:border-night-border">
-              {dirty && <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.unsaved')}</span>}
-              <button type="button" disabled={!dirty} onClick={() => setDraft(settings.data)} className={BTN}>{t('manage.wikiAi.settings.discard')}</button>
-              <button type="button" disabled={!dirty || !valid} onClick={() => setConfirming(true)} className={BTN_PRI}>{t('manage.save')}</button>
+              <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+                {!dirty ? t('manage.wikiAi.settings.noChanges') : !valid ? t('manage.wikiAi.settings.fixErrors') : t('manage.wikiAi.settings.unsaved')}
+              </span>
+              <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDraft(settings.data)}>{t('manage.wikiAi.settings.discard')}</Button>
+              <Button size="sm" disabled={!dirty || !valid} onClick={() => setConfirming(true)}>{t('manage.save')}</Button>
             </div>
           </>
         )}
       </ViewState>
 
       <Panel title={t('manage.wikiAi.settings.history')}>
+        {restoreError && (
+          <Alert tone="error" title={t('manage.wikiAi.settings.restoreFailed')} onDismiss={() => setRestoreError(null)} className="mb-3">{restoreError}</Alert>
+        )}
         <ViewState state={history} skeleton="rows" empty={(h) => h.length === 0} emptyText={t('manage.wikiAi.settings.noHistory')}>
           {(h) => (
             <ul className="flex flex-col divide-y divide-border dark:divide-night-border">
               {h.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-center gap-3 py-2 font-body text-body-sm">
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.changedAt).toLocaleString(i18n.language)}</span>
-                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted" title={e.changedBy ?? undefined}>{e.changedByName ?? (e.changedBy ? e.changedBy.slice(0, 8) : '—')}</span>
-                  <span className="flex-1 min-w-0 text-ink-secondary dark:text-night-muted truncate">
-                    {e.note ? `“${e.note}”` : ''} {e.settings.modelWrite && <code className="font-mono text-[0.7rem]">write={e.settings.modelWrite}</code>}
+                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{e.changedByName ?? '—'}</span>
+                  <span className="flex-1 min-w-0 text-ink-secondary dark:text-night-muted break-words">
+                    {e.note ? `“${e.note}”` : ''} {e.settings.modelWrite && <span className="font-mono text-label">{t('manage.wikiAi.settings.historyWrite', { model: e.settings.modelWrite })}</span>}
                   </span>
-                  <button type="button" onClick={() => setRestoring(e.id)} className={BTN}>{t('manage.wikiAi.settings.restore')}</button>
+                  <Button variant="outline" size="sm" onClick={() => void restore(e.id)} disabled={restoring !== null} loading={restoring === e.id}>{t('manage.wikiAi.settings.restore')}</Button>
                 </li>
               ))}
             </ul>
@@ -378,20 +388,6 @@ export default function SettingsView() {
           loadImpact={loadImpact}
           onConfirm={save}
           onCancel={() => setConfirming(false)}
-        />
-      )}
-      {restoring && (
-        <ConfirmDialog
-          title={t('manage.wikiAi.settings.restoreTitle')}
-          body={<>
-            {t('manage.wikiAi.settings.restoreBody')}
-            {restoreError && <span role="alert" className="mt-2 block text-red-700 dark:text-red-300">{restoreError}</span>}
-          </>}
-          confirmLabel={t('manage.wikiAi.settings.restore')}
-          danger={false}
-          busy={restoreBusy}
-          onConfirm={() => void restore(restoring)}
-          onCancel={() => { setRestoring(null); setRestoreError(null) }}
         />
       )}
     </div>
@@ -423,16 +419,16 @@ function Overrides({ overrides, models, onChange }: {
   return (
     <Panel title={t('manage.wikiAi.settings.overrides')}>
       <div className="flex flex-col sm:flex-row gap-3 mb-3">
-        <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('manage.wikiAi.settings.filterOverrides')} aria-label={t('manage.wikiAi.settings.filterOverrides')} className={`${FIELD} sm:w-64`} />
+        <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('manage.wikiAi.settings.filterOverrides')} aria-label={t('manage.wikiAi.settings.filterOverrides')} className={inputClass({ className: 'sm:w-64' })} />
         <div className="relative sm:w-80">
-          <input type="search" value={adding} onChange={(e) => setAdding(e.target.value)} placeholder={t('manage.wikiAi.settings.addOverride')} aria-label={t('manage.wikiAi.settings.addOverride')} className={`${FIELD} w-full`} />
+          <input type="search" value={adding} onChange={(e) => setAdding(e.target.value)} placeholder={t('manage.wikiAi.settings.addOverride')} aria-label={t('manage.wikiAi.settings.addOverride')} className={inputClass()} />
           {suggestions.length > 0 && (
             <ul className="absolute z-20 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card-hover">
               {suggestions.map((s) => (
                 <li key={s.subjectId}>
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-2 font-body text-body-sm hover:bg-primary-50 dark:hover:bg-primary-900"
+                    className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
                     onClick={() => { onChange({ ...overrides, [s.subjectId]: overrides[s.subjectId] ?? {} }); setAdding(''); setSuggestions([]) }}
                   >
                     <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-1.5">{s.subjectId}</span>{s.subjectName}
@@ -444,7 +440,7 @@ function Overrides({ overrides, models, onChange }: {
         </div>
       </div>
       {rows.length === 0 ? (
-        <p className="py-4 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.noOverrides')}</p>
+        <EmptyState compact title={t('manage.wikiAi.settings.noOverrides')} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full font-body text-body-sm">
@@ -460,22 +456,24 @@ function Overrides({ overrides, models, onChange }: {
                 <tr key={id} className="border-t border-border dark:border-night-border">
                   <td className={`${TD} font-mono`}>{id}</td>
                   <td className={`${TD} min-w-[14rem]`}>
-                    <ModelSelect allowDefault label={`${id} ${t('manage.wikiAi.stages.PLAN')}`} value={o.modelPlan ?? null} models={models} onChange={(v) => update(id, { modelPlan: v })} />
+                    <ModelSelect allowDefault label={t('manage.wikiAi.settings.overrideAria', { subject: id, stage: t('manage.wikiAi.stages.PLAN') })} value={o.modelPlan ?? null} models={models} onChange={(v) => update(id, { modelPlan: v })} />
                   </td>
                   <td className={`${TD} min-w-[14rem]`}>
-                    <ModelSelect allowDefault label={`${id} ${t('manage.wikiAi.stages.WRITE')}`} value={o.modelWrite ?? null} models={models} onChange={(v) => update(id, { modelWrite: v })} />
+                    <ModelSelect allowDefault label={t('manage.wikiAi.settings.overrideAria', { subject: id, stage: t('manage.wikiAi.stages.WRITE') })} value={o.modelWrite ?? null} models={models} onChange={(v) => update(id, { modelWrite: v })} />
                   </td>
                   <td className={TD}>
-                    <input type="checkbox" aria-label={`${id} ${t('manage.wikiAi.settings.paused')}`} checked={!!o.paused} onChange={(e) => update(id, { paused: e.target.checked })} className="h-4 w-4 accent-primary" />
+                    <label className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] cursor-pointer">
+                      <input type="checkbox" aria-label={t('manage.wikiAi.settings.pausedAria', { subject: id })} checked={!!o.paused} onChange={(e) => update(id, { paused: e.target.checked })} className="h-4 w-4 accent-primary" />
+                    </label>
                   </td>
-                  <td className={TD}><button type="button" onClick={() => remove(id)} className={BTN_DANGER}>{t('manage.delete')}</button></td>
+                  <td className={TD}><Button variant="dangerGhost" size="sm" onClick={() => remove(id)}>{t('manage.wikiAi.settings.removeOverride')}</Button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-      <p className="mt-2 font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.overridesHint')}</p>
+      <p className="mt-2 font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.settings.overridesHint')}</p>
     </Panel>
   )
 }
