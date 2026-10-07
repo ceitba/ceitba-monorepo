@@ -3,17 +3,27 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchAllEvents, deleteEvent } from '../../api/events'
 import { isStaff } from '../../store/authStore'
+import { useAuthSession } from '../../hooks/useAuthSession'
 import CategoryBadge from '../../components/CategoryBadge'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
+import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
+import { useAdminContext } from '../../admin/adminContext'
 import { formatDate, todayISO } from '../../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import { Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, buttonClass } from '@/components/ui'
 import type { NewsEvent } from '../../types'
+
+const COLS = 6
 
 export default function AdminEventsPage() {
   const { t, i18n } = useTranslation()
-  const staff = isStaff()
+  const { profile } = useAuthSession()
+  const { orgName } = useAdminContext()
+  const staff = isStaff(profile)
   const [events, setEvents]     = useState<NewsEvent[]>([])
   const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [toDelete, setToDelete] = useState<NewsEvent | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
   // Every event, all pages: the API caps a page at `limit` (default 50)
@@ -22,164 +32,152 @@ export default function AdminEventsPage() {
     setStatus('loading')
     fetchAllEvents()
       .then((data) => { setEvents(data); setStatus('success') })
-      .catch(() => setStatus('error'))
+      .catch((err: unknown) => { console.error('newsletter admin: events', err); setStatus('error') })
   }
 
   useEffect(load, [])
 
-  async function handleDelete(id: string) {
+  async function handleDelete() {
+    if (!toDelete) return
+    setDeleting(true)
     setDeleteError('')
     try {
-      await deleteEvent(id)
-      setEvents((prev) => prev.filter((e) => e.id !== id))
-    } catch {
+      await deleteEvent(toDelete.id)
+      setEvents((prev) => prev.filter((e) => e.id !== toDelete.id))
+      setToDelete(null)
+    } catch (err) {
+      console.error('newsletter admin: delete event', err)
       setDeleteError(t('admin.events.deleteError'))
+    } finally {
+      setDeleting(false)
     }
-    setConfirmId(null)
   }
 
-  if (status === 'loading') {
+  // Upcoming first (soonest on top), then past events, most recent first.
+  const today = todayISO()
+  const byDateTime = (a: NewsEvent, b: NewsEvent) => `${a.date} ${a.time ?? ''}`.localeCompare(`${b.date} ${b.time ?? ''}`)
+  const upcoming = events.filter((e) => e.date >= today).sort(byDateTime)
+  const past = events.filter((e) => e.date < today).sort((a, b) => byDateTime(b, a))
+
+  function renderRow(event: NewsEvent, isPast: boolean): ReactNode {
+    const text = isPast ? 'text-ink-secondary dark:text-night-muted' : 'text-ink-primary dark:text-night-text'
     return (
-      <div className="flex items-center justify-center py-32" aria-busy="true">
-        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.events.loading')}</p>
-      </div>
+      <tr key={event.id} className={rowClass}>
+        <td className="px-4 py-3">
+          <span className={`font-body text-body-sm font-semibold line-clamp-2 ${text}`}>{event.title}</span>
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex flex-col gap-0.5 whitespace-nowrap">
+            <time className={`font-mono text-label ${text}`} dateTime={event.date}>
+              {formatDate(event.date, i18n.language)}
+            </time>
+            <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
+              {t('events.timeRange', { start: (event.time ?? '').slice(0, 5), end: (event.endTime ?? '').slice(0, 5) })}
+            </span>
+          </div>
+        </td>
+        <td className="px-4 py-3"><CategoryBadge category={event.category} /></td>
+        <td className="px-4 py-3">
+          <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted line-clamp-2">{event.location}</span>
+        </td>
+        <td className="px-4 py-3">
+          <span className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{orgName(event.organization)}</span>
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1 justify-end">
+            <Link
+              to={newsletterPath(`/admin/events/${event.id}/edit`)}
+              className={buttonClass({ variant: 'ghost', size: 'sm' })}
+              aria-label={t('admin.events.editAria', { title: event.title })}
+            >
+              {t('admin.common.edit')}
+            </Link>
+            {/* DELETE /news/events/{id} is STAFF-only on the API. */}
+            {staff && (
+              <Button
+                variant="dangerGhost"
+                size="sm"
+                onClick={() => { setDeleteError(''); setToDelete(event) }}
+                aria-label={t('admin.events.deleteAria', { title: event.title })}
+              >
+                {t('admin.common.delete')}
+              </Button>
+            )}
+          </div>
+        </td>
+      </tr>
     )
   }
-
-  if (status === 'error') {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-        <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.events.loadError')}</p>
-        <button type="button" onClick={load} className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
-          {t('admin.common.retry')}
-        </button>
-      </div>
-    )
-  }
-
-  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date))
-  const today  = todayISO()
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.events.title')}</h1>
-          <p className="font-body text-body-sm text-ink-secondary mt-0.5">
-            {t('admin.events.count', { count: events.length })}
-          </p>
-        </div>
-        <Link
-          to={newsletterPath('/admin/events/new')}
-          className="inline-flex items-center gap-2 min-h-[44px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
-        >
-          <PlusIcon /> {t('admin.events.new')}
-        </Link>
-      </div>
+      <AdminSectionHeader
+        title={t('admin.events.title')}
+        subtitle={status === 'success' ? t('admin.events.count', { count: events.length }) : undefined}
+        action={
+          <Link to={newsletterPath('/admin/events/new')} className={buttonClass()}>
+            <PlusIcon /> {t('admin.events.new')}
+          </Link>
+        }
+      />
 
-      {deleteError && (
-        <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">
-          {deleteError}
-        </p>
+      {status === 'loading' && <SkeletonTable rows={6} cols={COLS} />}
+
+      {status === 'error' && <ErrorState title={t('admin.events.loadError')} onRetry={load} />}
+
+      {status === 'success' && events.length === 0 && (
+        <EmptyState title={t('admin.events.emptyTitle')} body={t('admin.events.emptyMessage')} />
       )}
 
-      {sorted.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="bg-white rounded-card border border-border shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead>
-                <tr className="border-b border-border bg-surface">
-                  <Th>{t('admin.events.columns.title')}</Th>
-                  <Th>{t('admin.events.columns.dateTime')}</Th>
-                  <Th>{t('admin.events.columns.category')}</Th>
-                  <Th>{t('admin.events.columns.location')}</Th>
-                  <Th>{t('admin.events.columns.organization')}</Th>
-                  <Th><span className="sr-only">{t('admin.common.actions')}</span></Th>
+      {status === 'success' && events.length > 0 && (
+        <>
+          {!staff && (
+            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('admin.events.deleteStaffOnly')}</p>
+          )}
+          <TableCard>
+            <thead>
+              <tr className={theadRowClass}>
+                <Th>{t('admin.events.columns.title')}</Th>
+                <Th>{t('admin.events.columns.dateTime')}</Th>
+                <Th>{t('admin.events.columns.category')}</Th>
+                <Th>{t('admin.events.columns.location')}</Th>
+                <Th>{t('admin.events.columns.organization')}</Th>
+                <Th><span className="sr-only">{t('admin.common.actions')}</span></Th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcoming.length === 0 && (
+                <tr className="border-b border-border dark:border-night-border">
+                  <td colSpan={COLS} className="px-4 py-4 font-body text-body-sm text-ink-secondary dark:text-night-muted">
+                    {t('admin.events.noUpcoming')}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {sorted.map((event) => {
-                  const isPast = event.date < today
-                  return (
-                    <tr
-                      key={event.id}
-                      className={['border-b border-border last:border-b-0 transition-colors duration-100', isPast ? 'opacity-50 bg-surface hover:opacity-70' : 'hover:bg-surface'].join(' ')}
-                    >
-                      <td className="px-4 py-3">
-                        <span className="font-body text-body-sm font-semibold text-ink-primary line-clamp-1">{event.title}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-0.5">
-                          <time className="font-mono text-label text-ink-primary" dateTime={event.date}>
-                            {formatDate(event.date, i18n.language)}
-                          </time>
-                          <span className="font-mono text-label text-ink-secondary">{t('events.timeRange', { start: event.time, end: event.endTime })}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3"><CategoryBadge category={event.category} /></td>
-                      <td className="px-4 py-3">
-                        <span className="font-body text-body-sm text-ink-secondary line-clamp-1">{event.location}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">{event.organization}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 justify-end">
-                          <Link to={newsletterPath(`/admin/events/${event.id}/edit`)} className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 rounded-sm transition-colors duration-150">
-                            {t('admin.common.edit')}
-                          </Link>
-                          {/* DELETE /news/events/{id} is STAFF-only on the API. */}
-                          {staff && (confirmId === event.id ? (
-                            <span className="flex items-center gap-1.5">
-                              <button type="button" onClick={() => handleDelete(event.id)} className="min-h-[36px] px-3 font-body text-body-sm text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150">
-                                {t('admin.common.confirm')}
-                              </button>
-                              <button type="button" onClick={() => setConfirmId(null)} className="min-h-[36px] px-2 font-body text-body-sm text-ink-secondary hover:bg-surface rounded-sm transition-colors duration-150">
-                                {t('admin.common.cancel')}
-                              </button>
-                            </span>
-                          ) : (
-                            <button type="button" onClick={() => setConfirmId(event.id)} className="min-h-[36px] px-3 font-body text-body-sm text-ink-secondary hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150">
-                              {t('admin.common.delete')}
-                            </button>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              )}
+              {upcoming.map((e) => renderRow(e, false))}
+              {past.length > 0 && (
+                <tr className="border-b border-border dark:border-night-border bg-page-bg dark:bg-night-raised">
+                  <th scope="rowgroup" colSpan={COLS} className="px-4 py-2 text-left font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+                    {t('admin.events.past')}
+                  </th>
+                </tr>
+              )}
+              {past.map((e) => renderRow(e, true))}
+            </tbody>
+          </TableCard>
+        </>
       )}
-    </div>
-  )
-}
 
-interface ThProps {
-  children: ReactNode
-}
-
-function Th({ children }: ThProps) {
-  return <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">{children}</th>
-}
-
-function EmptyState() {
-  const { t } = useTranslation()
-  return (
-    <div className="bg-white rounded-card border border-border shadow-card flex flex-col items-center justify-center py-20 gap-4 text-center">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full bg-primary-50" />
-        <div className="absolute top-3 left-3 w-8 h-8 rotate-45 bg-accent-100" />
-      </div>
-      <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.events.emptyTitle')}</p>
-      <p className="font-body text-body-sm text-ink-secondary">{t('admin.events.emptyMessage')}</p>
-      <Link to={newsletterPath('/admin/events/new')} className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
-        <PlusIcon /> {t('admin.events.new')}
-      </Link>
+      {toDelete && (
+        <ConfirmDialog
+          title={t('admin.events.deleteDialog.title')}
+          body={t('admin.events.deleteDialog.body', { title: toDelete.title })}
+          confirmLabel={t('admin.events.deleteDialog.confirm')}
+          busy={deleting}
+          error={deleteError || undefined}
+          onConfirm={handleDelete}
+          onCancel={() => setToDelete(null)}
+        />
+      )}
     </div>
   )
 }

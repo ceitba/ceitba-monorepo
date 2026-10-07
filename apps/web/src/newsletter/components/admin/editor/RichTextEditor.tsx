@@ -14,6 +14,7 @@ import EditorToolbar from './EditorToolbar'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, uploadViaSignedUrl } from '../../../api/media'
 import { looksLikeMarkdown } from '../../../utils/articleBody'
 import { ApiError } from '@/api/client'
+import { Alert } from '@/components/ui'
 
 // The fence must be longer than any backtick run inside the code, or a
 // ``` line in the code would end the block early.
@@ -229,7 +230,7 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }: 
   }
 
   return (
-    <div className={['article-editor-shell rounded-card border bg-white shadow-card', invalid ? 'border-red-400' : 'border-border'].join(' ')}>
+    <div className={['article-editor-shell rounded-card border bg-white dark:bg-night-surface shadow-card', invalid ? 'border-red-400 dark:border-red-500' : 'border-border dark:border-night-border'].join(' ')}>
       <EditorToolbar
         editor={editor}
         mode={mode}
@@ -239,27 +240,27 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }: 
         onPickImages={(files) => uploadImages(files)}
       />
       {uploadError && (
-        <p role="alert" className="mx-4 mt-3 font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{uploadError}</p>
+        <Alert tone="error" className="mx-4 mt-3" onDismiss={() => setUploadError('')}>{uploadError}</Alert>
       )}
       {mode === 'visual' ? (
         <EditorContent editor={editor} className="px-5 sm:px-8 py-6" />
       ) : (
         <div className="px-5 sm:px-8 py-6">
-          <p className="mb-3 font-mono text-label text-ink-secondary">{t('editor.markdownHint')}</p>
+          <p className="mb-3 font-mono text-label text-ink-secondary dark:text-night-muted">{t('editor.markdownHint')}</p>
           <textarea
             value={source}
             onChange={(e) => { setSource(e.target.value); onChangeRef.current(e.target.value) }}
             spellCheck
             aria-label={t('editor.markdownSource')}
-            className="w-full min-h-[28rem] font-mono text-body-sm text-ink-primary bg-transparent focus:outline-none resize-y"
+            className="w-full min-h-[28rem] font-mono text-body-sm text-ink-primary dark:text-night-text bg-transparent focus:outline-none resize-y"
           />
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 px-5 sm:px-8 py-2 border-t border-border">
-        <span className="font-mono text-label text-ink-secondary">
+      <div className="flex items-center justify-between gap-3 px-5 sm:px-8 py-2 border-t border-border dark:border-night-border">
+        <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
           {t('editor.words', { count: mode === 'visual' ? counts?.words ?? 0 : (source.trim() ? source.trim().split(/\s+/).length : 0) })}
         </span>
-        <span className="font-mono text-label text-ink-secondary hidden sm:inline">{t('editor.pasteHint')}</span>
+        <span className="font-mono text-label text-ink-secondary dark:text-night-muted hidden sm:inline">{t('editor.pasteHint')}</span>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useParams, useNavigate, useBlocker, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -6,23 +6,27 @@ import {
   createArticle,
   updateArticle,
 } from '../../api/articles'
-import { fetchOrganizations } from '../../api/organizations'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 import { allowNextNavigation, setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
-import { useDialogFocus } from '../../hooks/useDialogFocus'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import ImageUploader from '../../components/ImageUploader'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
-import LoadErrorState from '../../components/admin/LoadErrorState'
+import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import RichTextEditor from '../../components/admin/editor/RichTextEditor'
+import { useAdminContext } from '../../admin/adminContext'
 import { formatDate, todayISO } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
 import { newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
+import {
+  Alert, Button, ConfirmDialog, EmptyState, ErrorState, Field, LoadingRegion, Modal, Skeleton, SkeletonForm, Switch,
+  buttonClass, iconButtonClass, inputClass, selectClass,
+} from '@/components/ui'
 import type { UserProfile } from '@/store/authStore'
-import type { ArticleInput, ArticleStatus, Organization } from '../../types'
+import type { ArticleInput, ArticleStatus } from '../../types'
 
 const COLOR_SCHEMES = [
   { value: 'blue',   bg: 'bg-primary-500' },
@@ -118,6 +122,7 @@ export default function AdminArticleFormPage() {
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
   const { profile } = useAuthSession()
+  const { orgs } = useAdminContext()
 
   // The id of the article being edited. A new article gets one on its first
   // save (draft or publish); the URL then switches to /edit without
@@ -127,7 +132,6 @@ export default function AdminArticleFormPage() {
   // Bumped on every edit, so a save only marks the form clean when nothing
   // changed while the request was in flight.
   const editVersionRef = useRef(0)
-  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isEdit = Boolean(articleId)
 
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
@@ -139,7 +143,6 @@ export default function AdminArticleFormPage() {
   const [savedStatus, setSavedStatus] = useState<ArticleStatus | null>(null) // null = never saved
   const [autoReading, setAutoReading] = useState(true)
   const [editorKey, setEditorKey]     = useState(0)    // remounts the editor with loaded content
-  const [orgs, setOrgs]               = useState<Organization[]>([])
   const [errors, setErrors]           = useState<ArticleFormErrors>({})
   const [attempted, setAttempted]     = useState<ArticleStatus | null>(null) // status of a failed save attempt
   const [originalOrg, setOriginalOrg] = useState<string | null>(null) // organization when loaded (null = independent)
@@ -149,14 +152,6 @@ export default function AdminArticleFormPage() {
   const [doneStatus, setDoneStatus]   = useState<ArticleStatus | null>(null) // 'published' | 'pending_review' once sent
   const [apiError, setApiError]       = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
-
-  useEffect(() => {
-    fetchOrganizations()
-      // Cast: GET /organizations answers { data: [...] } (OrganizationController.list),
-      // not the bare array api/organizations declares.
-      .then(({ data }) => setOrgs(data ?? []))
-      .catch(() => {})
-  }, [])
 
   // The session can arrive after the page mounted: default the byline to
   // whoever is writing, unless they already typed authors.
@@ -217,8 +212,10 @@ export default function AdminArticleFormPage() {
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
     currentLocation.pathname !== nextLocation.pathname && shouldBlockNavigation())
 
-  const stayHere = useCallback(() => blocker.reset?.(), [blocker])
-  const closePreview = useCallback(() => setPreviewOpen(false), [])
+  // Only one dialog at a time: a link inside the preview can trigger the
+  // leave confirmation, so the preview closes first.
+  const blocked = blocker.state === 'blocked'
+  useEffect(() => { if (blocked) setPreviewOpen(false) }, [blocked])
 
   useEffect(() => {
     setUnsavedChanges(dirty)
@@ -238,8 +235,6 @@ export default function AdminArticleFormPage() {
     // validate only reads form/autoReading and the translations.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, autoReading, attempted])
-
-  useEffect(() => () => clearTimeout(redirectTimerRef.current), [])
 
   // Leaving the editor for a new article (e.g. a future "Nuevo" link while
   // editing) reuses this instance: start over instead of editing the old one.
@@ -320,49 +315,69 @@ export default function AdminArticleFormPage() {
         allowNextNavigation()
         navigate(newsletterPath(`/admin/articles/${saved.id}/edit`), { replace: true })
       }
-      if (status === 'published' || status === 'pending_review') {
-        setDoneStatus(status)
-        redirectTimerRef.current = setTimeout(() => { allowNextNavigation(); navigate(newsletterPath('/admin/articles')) }, 1200)
-      }
-    } catch {
+      // A confirmation with what to do next (no auto-redirect).
+      if (status === 'published' || status === 'pending_review') setDoneStatus(status)
+    } catch (err) {
+      console.error('newsletter admin: save article', err)
       setApiError(t('admin.articleForm.saveError'))
     } finally {
       setSaving(null)
     }
   }
 
+  const back = { to: newsletterPath('/admin/articles'), label: t('admin.articleForm.back') }
+
   if (loadState === 'loading') {
     return (
-      <div className="flex items-center justify-center py-32" aria-busy="true">
-        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.articleForm.loading')}</p>
+      <div className="flex flex-col gap-6">
+        <AdminSectionHeader title={t('admin.articleForm.editDraftTitle')} back={back} />
+        <div className="flex flex-col lg:flex-row gap-8">
+          <LoadingRegion className="flex-1 flex flex-col gap-4 max-w-3xl">
+            <Skeleton className="h-12 w-3/4" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-96 w-full rounded-card" />
+          </LoadingRegion>
+          <SkeletonForm fields={4} className="lg:w-80" />
+        </div>
       </div>
     )
   }
 
   if (loadState === 'notFound' || loadState === 'error') {
+    const notFound = loadState === 'notFound'
     return (
-      <LoadErrorState
-        notFound={loadState === 'notFound'}
-        backTo="/admin/articles"
-        backLabel={t('admin.articleForm.back')}
-        onRetry={() => setReloadKey((k) => k + 1)}
+      <ErrorState
+        title={notFound ? t('admin.form.notFoundTitle') : t('admin.form.loadErrorTitle')}
+        message={notFound ? t('admin.form.notFoundMessage') : t('admin.form.loadErrorMessage')}
+        onRetry={notFound ? undefined : () => setReloadKey((k) => k + 1)}
+        backTo={back.to}
+        backLabel={back.label}
       />
     )
   }
 
   if (doneStatus) {
+    const published = doneStatus === 'published'
     return (
-      <div className="flex flex-col items-center justify-center py-32 gap-3 animate-fade-in">
-        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <p className="font-display text-h5 font-bold text-ink-primary">
-          {doneStatus === 'pending_review' ? t('admin.articleForm.submittedDone') : t('admin.articleForm.publishedDone')}
-        </p>
-        {doneStatus === 'pending_review' && (
-          <p className="font-body text-body-sm text-ink-secondary max-w-sm text-center">{t('admin.articleForm.submittedHint')}</p>
-        )}
-      </div>
+      <EmptyState
+        title={published ? t('admin.articleForm.publishedDone') : t('admin.articleForm.submittedDone')}
+        body={published ? t('admin.articleForm.publishedHint') : t('admin.articleForm.submittedHint')}
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            {published && articleId && (
+              <Link to={newsletterPath(`/articles/${articleId}`)} className={buttonClass()}>
+                {t('admin.articleForm.viewArticle')}
+              </Link>
+            )}
+            <Link to={back.to} className={buttonClass({ variant: 'outline' })}>
+              {t('admin.articleForm.backToList')}
+            </Link>
+            <Button variant="ghost" onClick={() => setDoneStatus(null)}>
+              {t('admin.articleForm.keepEditing')}
+            </Button>
+          </div>
+        }
+      />
     )
   }
 
@@ -403,24 +418,18 @@ export default function AdminArticleFormPage() {
     : t('admin.articleForm.statusHelp.new')
 
   return (
-    <div className="flex flex-col gap-6 max-w-[80rem]">
+    <div className="flex flex-col gap-6">
       {/* Header: where you are, what state the article is in, and actions */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex flex-col gap-2 min-w-0">
-          <Link to={newsletterPath('/admin/articles')} className="self-start font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2">
-            {t('admin.articleForm.back')}
-          </Link>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-display text-h4 font-bold text-ink-primary">
-              {!isEdit
-                ? t('admin.articleForm.newTitle')
-                : isPublished ? t('admin.articleForm.editPublishedTitle')
-                : isPending ? t('admin.articleForm.editPendingTitle')
-                : t('admin.articleForm.editDraftTitle')}
-            </h1>
-            <StatusPill status={savedStatus} />
-          </div>
-          <p className="font-mono text-label text-ink-secondary" aria-live="polite">
+      <AdminSectionHeader
+        back={back}
+        title={!isEdit
+          ? t('admin.articleForm.newTitle')
+          : isPublished ? t('admin.articleForm.editPublishedTitle')
+          : isPending ? t('admin.articleForm.editPendingTitle')
+          : t('admin.articleForm.editDraftTitle')}
+        badge={<ArticleStatusBadge status={savedStatus} />}
+        subtitle={
+          <span className="font-mono text-label" aria-live="polite">
             {saving
               ? t('admin.form.saving')
               : dirty
@@ -428,39 +437,38 @@ export default function AdminArticleFormPage() {
                 : lastSaved
                   ? t('admin.articleForm.savedAt', { time: formatTime(lastSaved, i18n.language) })
                   : isEdit ? t('admin.articleForm.upToDate') : t('admin.articleForm.notSavedYet')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            className="min-h-[40px] px-3 flex items-center gap-2 rounded-sm border border-border text-ink-secondary font-body text-body-sm font-semibold hover:border-primary hover:text-primary transition-colors duration-150"
-          >
-            <IconEye /> {t('admin.articleForm.preview')}
-          </button>
-          <button
-            type="button"
-            onClick={() => save(secondaryAction.status)}
-            disabled={Boolean(saving) || lockedForAuthor}
-            className="min-h-[40px] px-4 bg-white border border-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 disabled:opacity-60"
-          >
-            {saving === secondaryAction.status ? t('admin.form.saving') : secondaryAction.label}
-          </button>
-          <button
-            type="button"
-            onClick={() => save(primaryAction.status)}
-            disabled={Boolean(saving) || lockedForAuthor}
-            className="min-h-[40px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60"
-          >
-            {saving === primaryAction.status ? t('admin.form.saving') : primaryAction.label}
-          </button>
-        </div>
-      </div>
+          </span>
+        }
+        action={
+          <>
+            <Button variant="ghost" onClick={() => setPreviewOpen(true)}>
+              <IconEye /> {t('admin.articleForm.preview')}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => save(secondaryAction.status)}
+              loading={saving === secondaryAction.status}
+              loadingLabel={t('admin.form.saving')}
+              disabled={Boolean(saving) || lockedForAuthor}
+            >
+              {secondaryAction.label}
+            </Button>
+            <Button
+              onClick={() => save(primaryAction.status)}
+              loading={saving === primaryAction.status}
+              loadingLabel={t('admin.form.saving')}
+              disabled={Boolean(saving) || lockedForAuthor}
+            >
+              {primaryAction.label}
+            </Button>
+          </>
+        }
+      />
+
+      {lockedForAuthor && <Alert tone="info">{t('admin.articleForm.statusHelp.lockedForAuthor')}</Alert>}
 
       {(apiError || errorCount > 0) && (
-        <div role="alert" className="font-body text-body-sm text-red-700 bg-red-50 border border-red-200 rounded-sm px-4 py-3">
-          {apiError || t('admin.articleForm.fixErrors', { count: errorCount })}
-        </div>
+        <Alert tone="error">{apiError || t('admin.articleForm.fixErrors', { count: errorCount })}</Alert>
       )}
 
       <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
@@ -472,7 +480,8 @@ export default function AdminArticleFormPage() {
               onChange={(v) => set('title', v.replace(/\n/g, ' '))}
               placeholder={t('admin.articleForm.titlePlaceholder')}
               ariaLabel={t('admin.articleForm.title')}
-              className="font-display text-h3 sm:text-h2 font-bold text-ink-primary leading-tight"
+              invalid={Boolean(errors.title)}
+              className="font-display text-h3 sm:text-h2 font-bold text-ink-primary dark:text-night-text leading-tight"
             />
             {errors.title && <FieldError>{errors.title}</FieldError>}
           </div>
@@ -483,22 +492,23 @@ export default function AdminArticleFormPage() {
               onChange={(v) => set('excerpt', v.replace(/\n/g, ' '))}
               placeholder={t('admin.articleForm.excerptPlaceholder')}
               ariaLabel={t('admin.articleForm.excerpt')}
-              className="font-body text-body-lg text-ink-secondary leading-relaxed"
+              invalid={Boolean(errors.excerpt)}
+              className="font-body text-body-lg text-ink-secondary dark:text-night-muted leading-relaxed"
             />
             <ExcerptMeter value={form.excerpt} featured={form.featured} />
             {errors.excerpt && <FieldError>{errors.excerpt}</FieldError>}
           </div>
 
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-5 border-b border-border font-body text-body-sm text-ink-secondary">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-5 border-b border-border dark:border-night-border font-body text-body-sm text-ink-secondary dark:text-night-muted">
             <span>
               {t('articles.meta.by')}{' '}
-              <strong className="text-ink-primary font-semibold">
+              <strong className="text-ink-primary dark:text-night-text font-semibold">
                 {form.authors.filter(Boolean).join(', ') || t('admin.articleForm.noAuthors')}
               </strong>
             </span>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span aria-hidden="true">·</span>
             <span className="font-mono text-label">{formatDate(form.date, i18n.language)}</span>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span aria-hidden="true">·</span>
             <span className="font-mono text-label">{t('articles.meta.readingTime', { time: readingTime || '—' })}</span>
           </p>
 
@@ -515,84 +525,85 @@ export default function AdminArticleFormPage() {
         </div>
 
         {/* Settings */}
-        <aside className="lg:w-80 flex-shrink-0 flex flex-col gap-4 lg:sticky lg:top-20">
+        <aside className="lg:w-80 flex-shrink-0 flex flex-col gap-4 lg:sticky lg:top-24">
           <SidebarCard title={t('admin.articleForm.publication')}>
-            <p className="font-body text-body-sm text-ink-secondary leading-relaxed">
+            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted leading-relaxed mb-3">
               {statusHelp}
             </p>
-            <div className="mt-3" data-field="date">
-              <FieldLabel>{t('admin.articleForm.date')}</FieldLabel>
-              <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass(errors.date)} />
-              {errors.date && <FieldError>{errors.date}</FieldError>}
+            <div data-field="date">
+              <Field label={t('admin.articleForm.date')} error={errors.date}>
+                {(p) => <input {...p} type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass({ invalid: !!errors.date })} />}
+              </Field>
             </div>
           </SidebarCard>
 
           <SidebarCard title={t('admin.articleForm.placement')}>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               <div data-field="category">
-                <FieldLabel>{t('admin.form.category')}</FieldLabel>
-                <select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass()}>
-                  {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
-                </select>
-                {errors.category && <FieldError>{errors.category}</FieldError>}
+                <Field label={t('admin.form.category')} error={errors.category}>
+                  {(p) => (
+                    <select {...p} value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass({ invalid: !!errors.category })}>
+                      {categoryOptions(form.category).map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+                    </select>
+                  )}
+                </Field>
               </div>
-              <div>
-                <FieldLabel>{t('admin.form.organization')}</FieldLabel>
-                <select value={form.organization} onChange={(e) => set('organization', e.target.value)} disabled={orgLocked} className={selectClass()}>
-                  {canBeIndependent && <option value="">{t('admin.articleForm.independent')}</option>}
-                  {orgMissing && <option value={form.organization}>{form.organization}</option>}
-                  {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-                </select>
-                {moderated && (
-                  <p className="mt-1.5 font-body text-body-sm text-ink-secondary">{t('admin.articleForm.independentHint')}</p>
+              <Field
+                label={t('admin.form.organization')}
+                hint={moderated ? t('admin.articleForm.independentHint') : orgLocked ? t('admin.articleForm.orgLocked') : undefined}
+              >
+                {(p) => (
+                  <select {...p} value={form.organization} onChange={(e) => set('organization', e.target.value)} disabled={orgLocked} className={selectClass()}>
+                    {canBeIndependent && <option value="">{t('admin.articleForm.independent')}</option>}
+                    {orgMissing && <option value={form.organization}>{form.organization}</option>}
+                    {visibleOrgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+                  </select>
                 )}
-              </div>
-              {!moderated && (<>
-              <label className="flex items-center gap-3 cursor-pointer pt-1">
-                <span className="relative">
-                  <input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} className="sr-only peer" />
-                  <span className="block w-10 h-5 bg-border rounded-full peer-checked:bg-primary transition-colors duration-150" />
-                  <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-150 peer-checked:translate-x-5" />
-                </span>
-                <span className="font-body text-body-sm text-ink-primary">{t('admin.articleForm.featured')}</span>
-              </label>
-              {form.featured && (
-                <p className="font-mono text-label text-ink-secondary leading-relaxed">{t('admin.articleForm.featuredHint')}</p>
+              </Field>
+              {!moderated && (
+                <Switch
+                  checked={form.featured}
+                  onChange={(v) => set('featured', v)}
+                  label={t('admin.articleForm.featured')}
+                  hint={form.featured ? t('admin.articleForm.featuredHint') : undefined}
+                />
               )}
-              </>)}
             </div>
           </SidebarCard>
 
           <SidebarCard title={t('admin.articleForm.byline')}>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               <div data-field="authors">
-                <FieldLabel>{t('admin.articleForm.authors')}</FieldLabel>
-                <AuthorsInput value={form.authors} onChange={(v) => set('authors', v)} invalid={Boolean(errors.authors)} />
-                {errors.authors && <FieldError>{errors.authors}</FieldError>}
+                <Field label={t('admin.articleForm.authors')} error={errors.authors} hint={t('admin.articleForm.authorsHint')}>
+                  {(p) => <AuthorsInput inputProps={p} value={form.authors} onChange={(v) => set('authors', v)} invalid={Boolean(errors.authors)} />}
+                </Field>
               </div>
-              <div data-field="readingTime">
-                <div className="flex items-baseline justify-between gap-2">
-                  <FieldLabel>{t('admin.articleForm.readingTime')}</FieldLabel>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!autoReading) { setAutoReading(true); editVersionRef.current += 1; setDirty(true) }
-                      else { setAutoReading(false); set('readingTime', computedReading) }
-                    }}
-                    className="font-mono text-label text-primary underline underline-offset-2"
-                  >
-                    {autoReading ? t('admin.articleForm.readingTimeEdit') : t('admin.articleForm.readingTimeAuto')}
-                  </button>
-                </div>
+              <div data-field="readingTime" className="flex flex-col gap-1.5">
                 {autoReading ? (
-                  <p className="font-body text-body-sm text-ink-primary">
-                    {computedReading}
-                    <span className="text-ink-secondary"> · {t('admin.articleForm.readingTimeComputed')}</span>
-                  </p>
+                  <>
+                    <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('admin.articleForm.readingTime')}</p>
+                    <p className="font-body text-body-sm text-ink-primary dark:text-night-text">
+                      {t('admin.articleForm.readingTimeAutoValue', { time: computedReading })}
+                    </p>
+                  </>
                 ) : (
-                  <input type="text" value={form.readingTime} onChange={(e) => set('readingTime', e.target.value)} placeholder={t('admin.articleForm.readingTimePlaceholder')} className={inputClass(errors.readingTime)} />
+                  <Field label={t('admin.articleForm.readingTime')} error={errors.readingTime}>
+                    {(p) => (
+                      <input {...p} type="text" value={form.readingTime} onChange={(e) => set('readingTime', e.target.value)} placeholder={t('admin.articleForm.readingTimePlaceholder')} className={inputClass({ invalid: !!errors.readingTime })} />
+                    )}
+                  </Field>
                 )}
-                {errors.readingTime && <FieldError>{errors.readingTime}</FieldError>}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="self-start -ml-3"
+                  onClick={() => {
+                    if (!autoReading) { setAutoReading(true); editVersionRef.current += 1; setDirty(true) }
+                    else { setAutoReading(false); set('readingTime', computedReading) }
+                  }}
+                >
+                  {autoReading ? t('admin.articleForm.readingTimeEdit') : t('admin.articleForm.readingTimeAuto')}
+                </Button>
               </div>
             </div>
           </SidebarCard>
@@ -600,85 +611,58 @@ export default function AdminArticleFormPage() {
           <SidebarCard title={t('admin.articleForm.cover')}>
             <ImageUploader value={form.coverImage} onChange={(v) => set('coverImage', v)} />
             {!form.coverImage && (
-              <div className="mt-3">
-                <FieldLabel>{t('admin.articleForm.coverColor')}</FieldLabel>
+              <fieldset className="mt-4">
+                <legend className="mb-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+                  {t('admin.articleForm.coverColor')}
+                </legend>
                 <div className="grid grid-cols-4 gap-2">
                   {COLOR_SCHEMES.map(({ value, bg }) => (
-                    <button key={value} type="button" onClick={() => set('colorScheme', value)} aria-label={t(`admin.articleForm.colors.${value}`)} aria-pressed={form.colorScheme === value} className={['h-9 rounded-sm transition-all duration-150 relative', bg, form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-70 hover:opacity-100'].join(' ')}>
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => set('colorScheme', value)}
+                      aria-label={t(`admin.colors.${value}`)}
+                      aria-pressed={form.colorScheme === value}
+                      className={[
+                        'h-11 rounded-sm transition-shadow duration-150 relative',
+                        bg,
+                        form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary dark:ring-primary-300 dark:ring-offset-night-surface' : '',
+                      ].join(' ')}
+                    >
                       {form.colorScheme === value && (
-                        <svg className="absolute inset-0 m-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg className="absolute inset-0 m-auto text-white" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                       )}
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             )}
           </SidebarCard>
         </aside>
       </div>
 
       {previewOpen && (
-        <PreviewDialog onClose={closePreview}>
+        <Modal
+          title={t('admin.articleForm.previewTitle')}
+          size="4xl"
+          onClose={() => setPreviewOpen(false)}
+          footer={<Button variant="outline" onClick={() => setPreviewOpen(false)}>{t('admin.articleForm.closePreview')}</Button>}
+        >
           <ArticleLivePreview article={previewArticle} orgs={orgs} />
-        </PreviewDialog>
+        </Modal>
       )}
 
-      {/* After the preview so it stacks above it (a link in the preview
-          can trigger it). */}
-      {blocker.state === 'blocked' && (
-        <LeaveDialog
-          onStay={stayHere}
-          onLeave={() => { setPreviewOpen(false); blocker.proceed() }}
+      {blocked && (
+        <ConfirmDialog
+          title={t('admin.articleForm.leave.title')}
+          body={t('admin.articleForm.leave.body')}
+          confirmLabel={t('admin.articleForm.leave.discard')}
+          cancelLabel={t('admin.articleForm.leave.stay')}
+          onConfirm={() => blocker.proceed?.()}
+          onCancel={() => blocker.reset?.()}
         />
       )}
     </div>
-  )
-}
-
-interface LeaveDialogProps {
-  onStay: () => void
-  onLeave: () => void
-}
-
-function LeaveDialog({ onStay, onLeave }: LeaveDialogProps) {
-  const { t } = useTranslation()
-  const stayRef = useRef<HTMLButtonElement>(null)
-  useDialogFocus(stayRef, onStay)
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={(e) => { if (e.target === e.currentTarget) onStay() }}>
-      <div role="alertdialog" aria-modal="true" aria-labelledby="leave-title" aria-describedby="leave-body" className="w-full max-w-sm bg-white rounded-card shadow-card-hover p-6 flex flex-col gap-3">
-        <h2 id="leave-title" className="font-display text-h5 font-bold text-ink-primary">{t('admin.articleForm.leave.title')}</h2>
-        <p id="leave-body" className="font-body text-body-sm text-ink-secondary leading-relaxed">{t('admin.articleForm.leave.body')}</p>
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onLeave} className="min-h-[40px] px-4 rounded-sm font-body text-body-sm font-semibold text-red-600 hover:bg-red-50">
-            {t('admin.articleForm.leave.discard')}
-          </button>
-          <button ref={stayRef} type="button" onClick={onStay} className="min-h-[40px] px-4 bg-primary text-surface rounded-sm font-body text-body-sm font-semibold hover:bg-primary-600">
-            {t('admin.articleForm.leave.stay')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface StatusPillProps {
-  status: ArticleStatus | null
-}
-
-function StatusPill({ status }: StatusPillProps) {
-  const { t } = useTranslation()
-  const styles: Record<string, string> = {
-    published:      'bg-emerald-50 text-emerald-700',
-    draft:          'bg-amber-50 text-amber-700',
-    pending_review: 'bg-primary-50 text-primary',
-  }
-  const dot: Record<string, string> = { published: 'bg-emerald-600', draft: 'bg-amber-500', pending_review: 'bg-accent' }
-  return (
-    <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest', styles[status ?? ''] ?? 'bg-surface text-ink-secondary border border-border'].join(' ')}>
-      <span className={['w-1.5 h-1.5 rounded-full', dot[status ?? ''] ?? 'bg-border'].join(' ')} aria-hidden="true" />
-      {status ? t(`admin.status.${status}`, { defaultValue: status }) : t('admin.articleForm.unsavedStatus')}
-    </span>
   )
 }
 
@@ -693,23 +677,24 @@ function ExcerptMeter({ value, featured }: ExcerptMeterProps) {
   const limit = featured ? EXCERPT_FEATURED_CHARS : EXCERPT_CARD_CHARS
   const over = length > limit
   return (
-    <p className={['mt-1 font-mono text-label', over ? 'text-amber-700' : 'text-ink-secondary'].join(' ')} aria-live="polite">
-      {length}/{limit}
-      {' · '}
+    <p className={['mt-1 font-mono text-label', over ? 'text-amber-800 dark:text-amber-300' : 'text-ink-secondary dark:text-night-muted'].join(' ')} aria-live="polite">
       {over
-        ? t('admin.articleForm.excerptTruncated', { shown: value.trim().slice(0, limit).trimEnd() })
-        : t('admin.articleForm.excerptHint')}
+        ? t('admin.articleForm.excerptTruncated', { length, limit, shown: value.trim().slice(0, limit).trimEnd() })
+        : t('admin.articleForm.excerptHint', { length, limit })}
     </p>
   )
 }
 
 interface AuthorsInputProps {
+  inputProps: { id: string; 'aria-describedby'?: string; 'aria-invalid'?: boolean }
   value: string[]
   onChange: (authors: string[]) => void
   invalid: boolean
 }
 
-function AuthorsInput({ value, onChange, invalid }: AuthorsInputProps) {
+// Author chips plus a text box: Enter or comma adds, Backspace on an empty
+// box removes the last one.
+function AuthorsInput({ inputProps, value, onChange, invalid }: AuthorsInputProps) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState('')
 
@@ -721,21 +706,25 @@ function AuthorsInput({ value, onChange, invalid }: AuthorsInputProps) {
   }
 
   return (
-    <div className={['flex flex-wrap items-center gap-1.5 p-1.5 border rounded-sm bg-white', invalid ? 'border-red-400' : 'border-border focus-within:border-primary'].join(' ')}>
+    <div className={[
+      'flex flex-wrap items-center gap-1.5 p-1.5 border rounded-sm bg-white dark:bg-night-surface',
+      invalid ? 'border-red-400 dark:border-red-500' : 'border-border dark:border-night-border focus-within:border-primary',
+    ].join(' ')}>
       {value.map((name) => (
-        <span key={name} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-sm bg-primary-50 text-primary font-body text-body-sm">
+        <span key={name} className="inline-flex items-center gap-0.5 pl-2 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 font-body text-body-sm">
           {name}
           <button
             type="button"
             onClick={() => onChange(value.filter((a) => a !== name))}
             aria-label={t('admin.articleForm.removeAuthor', { name })}
-            className="w-5 h-5 flex items-center justify-center rounded-sm hover:bg-primary-100"
+            className={iconButtonClass({ size: 'sm', className: '!text-current hover:!bg-primary-100 dark:hover:!bg-primary-800' })}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </span>
       ))}
       <input
+        {...inputProps}
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -745,8 +734,7 @@ function AuthorsInput({ value, onChange, invalid }: AuthorsInputProps) {
         }}
         onBlur={add}
         placeholder={value.length ? t('admin.articleForm.addAuthor') : t('admin.articleForm.authorPlaceholder')}
-        aria-label={t('admin.articleForm.addAuthor')}
-        className="flex-1 min-w-[8rem] min-h-[30px] px-1.5 font-body text-body-sm text-ink-primary bg-transparent focus:outline-none"
+        className="flex-1 min-w-[8rem] min-h-[36px] px-1.5 font-body text-body-sm text-ink-primary dark:text-night-text placeholder:text-ink-secondary dark:placeholder:text-night-muted bg-transparent focus:outline-none"
       />
     </div>
   )
@@ -757,10 +745,11 @@ interface AutoGrowTextareaProps {
   onChange: (value: string) => void
   placeholder: string
   ariaLabel: string
+  invalid: boolean
   className: string
 }
 
-function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }: AutoGrowTextareaProps) {
+function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, invalid, className }: AutoGrowTextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const el = ref.current
@@ -776,40 +765,9 @@ function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      className={['w-full resize-none overflow-hidden bg-transparent border-0 p-0 focus:outline-none focus:ring-0 placeholder:text-ink-secondary/50', className].join(' ')}
+      aria-invalid={invalid || undefined}
+      className={['w-full resize-none overflow-hidden bg-transparent border-0 p-0 focus:outline-none focus:ring-0 placeholder:text-ink-secondary/60 dark:placeholder:text-night-muted/70', className].join(' ')}
     />
-  )
-}
-
-interface PreviewDialogProps {
-  onClose: () => void
-  children: ReactNode
-}
-
-function PreviewDialog({ onClose, children }: PreviewDialogProps) {
-  const { t } = useTranslation()
-  const closeRef = useRef<HTMLButtonElement>(null)
-  useDialogFocus(closeRef, onClose)
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
-  return (
-    <div className="fixed inset-0 z-50 flex justify-center items-start bg-black/50 p-3 sm:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div role="dialog" aria-modal="true" aria-label={t('admin.articleForm.preview')} className="w-full max-w-4xl max-h-full flex flex-col bg-surface rounded-card shadow-card-hover">
-        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
-          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-accent" aria-hidden="true" />
-            {t('admin.articleForm.previewTitle')}
-          </p>
-          <button ref={closeRef} type="button" onClick={onClose} className="min-h-[36px] px-3 rounded-sm border border-border font-body text-body-sm text-ink-secondary hover:border-primary hover:text-primary">
-            {t('admin.articleForm.closePreview')}
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-8">{children}</div>
-      </div>
-    </div>
   )
 }
 
@@ -822,33 +780,13 @@ interface SidebarCardProps {
 
 function SidebarCard({ title, children }: SidebarCardProps) {
   return (
-    <section className="bg-white rounded-card border border-border shadow-card p-4">
-      <h2 className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-3">{title}</h2>
+    <section className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-4">
+      <h3 className="font-display text-h5 font-bold text-ink-primary dark:text-night-text mb-3">{title}</h3>
       {children}
     </section>
   )
 }
 
-interface FieldLabelProps {
-  children: ReactNode
-}
-
-function FieldLabel({ children }: FieldLabelProps) {
-  return <span className="block mb-1.5 font-body text-body-sm font-semibold text-ink-primary">{children}</span>
-}
-
-interface FieldErrorProps {
-  children: ReactNode
-}
-
-function FieldError({ children }: FieldErrorProps) {
-  return <span role="alert" className="mt-1.5 block font-body text-body-sm text-red-600">{children}</span>
-}
-
-function inputClass(error: string | undefined) {
-  return ['w-full min-h-[40px] px-3 py-2 border rounded-sm font-body text-body-sm text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
-}
-
-function selectClass() {
-  return 'w-full min-h-[40px] px-3 py-2 border border-border rounded-sm font-body text-body-sm text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors duration-150 disabled:opacity-70'
+function FieldError({ children }: { children: ReactNode }) {
+  return <span className="mt-1.5 block font-body text-body-sm text-red-600 dark:text-red-400">{children}</span>
 }

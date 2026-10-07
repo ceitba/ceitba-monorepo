@@ -14,8 +14,8 @@ export default function DigestRates({ openRate, clickRate }: DigestRatesProps) {
     <dl className="flex gap-5 sm:gap-6 flex-shrink-0">
       {([['opens', openRate], ['clicks', clickRate]] as const).map(([key, value]) => (
         <div key={key} className="flex flex-col">
-          <dt className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t(`admin.digests.rates.${key}`)}</dt>
-          <dd className="font-display text-h5 font-bold text-primary">{formatRate(value, i18n.language)}</dd>
+          <dt className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">{t(`admin.digests.rates.${key}`)}</dt>
+          <dd className="font-display text-h5 font-bold text-primary dark:text-primary-300">{formatRate(value, i18n.language)}</dd>
         </div>
       ))}
     </dl>

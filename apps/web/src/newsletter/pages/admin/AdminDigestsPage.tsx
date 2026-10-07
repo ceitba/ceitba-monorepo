@@ -3,6 +3,8 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createDigest, fetchDigests } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
+import { Alert, Button, EmptyState, ErrorState, Field, LoadingRegion, Skeleton, inputClass } from '@/components/ui'
+import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
 import DigestCounts from '../../components/admin/DigestCounts'
 import DigestQuotaBar from '../../components/admin/DigestQuotaBar'
@@ -74,31 +76,33 @@ export default function AdminDigestsPage() {
 
   if (!staff) return <Navigate to={newsletterPath('/admin/articles')} replace />
 
+  const header = <AdminSectionHeader title={t('admin.digests.title')} subtitle={t('admin.digests.subtitle')} />
+
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center py-32" aria-busy="true">
-        <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.digests.loading')}</p>
+      <div className="flex flex-col gap-6">
+        {header}
+        <LoadingRegion className="flex flex-col gap-3">
+          <Skeleton className="h-28 w-full rounded-card" />
+          <Skeleton className="h-20 w-full rounded-card" />
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-card" />)}
+        </LoadingRegion>
       </div>
     )
   }
 
   if (status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-        <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.digests.loadError')}</p>
-        <button type="button" onClick={() => load()} className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
-          {t('admin.common.retry')}
-        </button>
+      <div className="flex flex-col gap-6">
+        {header}
+        <ErrorState title={t('admin.digests.loadError')} onRetry={() => load()} />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-h3 font-bold text-ink-primary">{t('admin.digests.title')}</h1>
-        <p className="font-body text-body-sm text-ink-secondary mt-0.5 max-w-2xl">{t('admin.digests.subtitle')}</p>
-      </div>
+      {header}
 
       {mailResult && <MailResultBanner result={mailResult} onDismiss={() => setMailResult(null)} />}
 
@@ -109,34 +113,27 @@ export default function AdminDigestsPage() {
       <NewDigestForm digests={digests} />
 
       {digests.length === 0 ? (
-        <div className="bg-white rounded-card border border-border shadow-card flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
-          <div className="relative w-16 h-16" aria-hidden="true">
-            <div className="absolute inset-0 rounded-full bg-primary-50" />
-            <div className="absolute top-3 left-3 w-8 h-8 rotate-45 bg-accent-100" />
-          </div>
-          <p className="font-display text-h5 font-bold text-ink-primary">{t('admin.digests.emptyTitle')}</p>
-          <p className="font-body text-body-sm text-ink-secondary max-w-sm">{t('admin.digests.emptyMessage')}</p>
-        </div>
+        <EmptyState title={t('admin.digests.emptyTitle')} body={t('admin.digests.emptyMessage')} />
       ) : (
         <ul className="flex flex-col gap-3 list-none m-0 p-0">
           {digests.map((d) => (
             <li key={d.id}>
               <Link
                 to={newsletterPath(`/admin/digests/${d.id}`)}
-                className="group block bg-white rounded-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-150 p-4 sm:p-5"
+                className="group block bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card hover:shadow-card-hover transition-shadow duration-150 p-4 sm:p-5"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-6">
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-mono text-label text-ink-secondary uppercase tracking-widest">
+                      <span className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">
                         {formatWeekRange(d.weekStart, d.weekEnd, i18n.language)}
                       </span>
                       <DigestStatusBadge status={d.status} />
                     </div>
-                    <p className="font-display text-h5 font-bold text-ink-primary group-hover:text-primary transition-colors duration-150 line-clamp-2">
+                    <p className="font-display text-h5 font-bold text-ink-primary dark:text-night-text group-hover:text-primary dark:group-hover:text-primary-300 transition-colors duration-150 line-clamp-2">
                       {d.subject || t('admin.digests.noSubject')}
                     </p>
-                    <p className={`font-body text-body-sm ${d.status === 'draft' && d.autoSendAt && isPastInstant(d.autoSendAt) ? 'text-accent-700' : 'text-ink-secondary'}`}>
+                    <p className={`font-body text-body-sm ${d.status === 'draft' && d.autoSendAt && isPastInstant(d.autoSendAt) ? 'text-amber-800 dark:text-amber-300' : 'text-ink-secondary dark:text-night-muted'}`}>
                       {d.status === 'sent' && d.sentAt
                         ? t('admin.digests.sentAt', { when: formatArtDateTime(d.sentAt, i18n.language) })
                         : d.status === 'draft'
@@ -148,12 +145,12 @@ export default function AdminDigestsPage() {
                           : null}
                     </p>
                     {d.status === 'sending' && d.resumeAt && (
-                      <p className="font-body text-body-sm text-accent-700">
+                      <p className="font-body text-body-sm text-amber-800 dark:text-amber-300">
                         {t('admin.digests.resumesAt', { when: formatArtDateTime(d.resumeAt, i18n.language) })}
                       </p>
                     )}
                     {d.status === 'sending' && d.estimatedFinishAt && (
-                      <p className="font-body text-body-sm text-ink-secondary">
+                      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
                         {t('admin.digests.finishesAt', { when: formatArtDateTime(d.estimatedFinishAt, i18n.language) })}
                       </p>
                     )}
@@ -190,22 +187,9 @@ function MailResultBanner({ result, onDismiss }: MailResultBannerProps) {
     ? t('admin.digests.sender.result.connected')
     : t(`admin.digests.sender.result.${MAIL_REASONS.has(result.reason) ? result.reason : 'unknown'}`)
   return (
-    <div
-      role={result.ok ? 'status' : 'alert'}
-      className={`flex items-start gap-3 px-4 py-3 rounded-card border font-body text-body-sm ${
-        result.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-600'
-      }`}
-    >
-      <p className="flex-1 min-w-0">{message}</p>
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label={t('admin.digests.sender.result.dismiss')}
-        className="min-w-[44px] min-h-[44px] -m-3 flex items-center justify-center text-lg leading-none"
-      >
-        ×
-      </button>
-    </div>
+    <Alert tone={result.ok ? 'success' : 'error'} onDismiss={onDismiss}>
+      {message}
+    </Alert>
   )
 }
 
@@ -242,42 +226,38 @@ function NewDigestForm({ digests }: NewDigestFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-card border border-border shadow-card p-4 sm:p-5 flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-4 sm:p-5 flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-        <label className="flex flex-col gap-1.5 flex-1 sm:max-w-xs">
-          <span className="font-body text-body-sm font-semibold text-ink-primary">{t('admin.digests.new.weekLabel')}</span>
-          <input
-            type="date"
-            value={day}
-            onChange={(e) => { setDay(e.target.value); setError(null) }}
-            className="w-full min-h-[44px] px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:ring-1 focus:border-primary focus:ring-primary/30"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={busy || !weekStart || Boolean(existing)}
-          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60"
-        >
+        <Field label={t('admin.digests.new.weekLabel')} className="flex-1 sm:max-w-xs">
+          {(p) => (
+            <input
+              {...p}
+              type="date"
+              value={day}
+              onChange={(e) => { setDay(e.target.value); setError(null) }}
+              className={inputClass()}
+            />
+          )}
+        </Field>
+        <Button type="submit" loading={busy} loadingLabel={t('admin.digests.new.creating')} disabled={!weekStart || Boolean(existing)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          {busy ? t('admin.digests.new.creating') : t('admin.digests.new.submit')}
-        </button>
+          {t('admin.digests.new.submit')}
+        </Button>
       </div>
       {weekStart && (
-        <p className="font-body text-body-sm text-ink-secondary">
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           {t('admin.digests.new.covers', { range: formatWeekRange(weekStart, addDaysISO(weekStart, 6), i18n.language) })}
-          {existing && (
-            <>
-              {' · '}
-              <Link to={newsletterPath(`/admin/digests/${existing.id}`)} className="text-primary underline underline-offset-2">
-                {t('admin.digests.new.alreadyExists')}
-              </Link>
-            </>
-          )}
         </p>
       )}
-      {error && (
-        <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{error}</p>
+      {existing && (
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          {t('admin.digests.new.existsReason')}{' '}
+          <Link to={newsletterPath(`/admin/digests/${existing.id}`)} className="text-primary dark:text-primary-300 font-semibold underline underline-offset-2">
+            {t('admin.digests.new.alreadyExists')}
+          </Link>
+        </p>
       )}
+      {error && <Alert tone="error">{error}</Alert>}
     </form>
   )
 }
