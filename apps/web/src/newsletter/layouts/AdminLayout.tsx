@@ -1,0 +1,323 @@
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import type { UserProfile } from '@/store/authStore'
+import { signOut, getOrganizations, isStaff as isStaffProfile } from '../store/authStore'
+import { useAuthSession } from '../hooks/useAuthSession'
+import { CONTRIBUTIONS_ENABLED } from '../config/features'
+import { allowNextNavigation, hasUnsavedChanges } from '../store/unsavedStore'
+import { newsletterPath, stripNewsletterBase } from '@/newsletter/paths'
+
+interface NavItem {
+  to: string
+  label: string
+  icon: ReactNode
+}
+
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+function buildNav(profile: UserProfile | null, t: TFunction): NavGroup[] {
+  const orgs = getOrganizations(profile)
+  // Suggestions review and analytics are STAFF-only on the API.
+  const isStaff = isStaffProfile(profile)
+
+  const groups: NavGroup[] = []
+  groups.push({
+    label: t('admin.nav.content'),
+    items: [
+      { to: newsletterPath('/admin/articles'), label: t('admin.nav.articles'), icon: <IconDoc /> },
+      // Events always belong to an organization.
+      ...(isStaff || orgs.length > 0
+        ? [{ to: newsletterPath('/admin/events'), label: t('admin.nav.events'), icon: <IconCal /> }]
+        : []),
+      ...(isStaff && CONTRIBUTIONS_ENABLED
+        ? [{ to: newsletterPath('/admin/suggestions'), label: t('admin.nav.suggestions'), icon: <IconInbox /> }]
+        : []),
+    ],
+  })
+  if (orgs.length > 0) {
+    groups.push({
+      label: t('admin.nav.organization'),
+      items: orgs.map(({ slug }) => ({
+        to: newsletterPath(`/admin/org/${slug}`),
+        label: t('admin.nav.orgProfile', { org: slug.toUpperCase() }),
+        icon: <IconOrg />,
+      })),
+    })
+  }
+  if (isStaff) {
+    groups.push({
+      label: t('admin.nav.media'),
+      items: [
+        { to: newsletterPath('/admin/analytics'), label: t('admin.nav.analytics'), icon: <IconChart /> },
+        // Weekly digest email — the /digests API is STAFF-only.
+        { to: newsletterPath('/admin/digests'), label: t('admin.nav.digests'), icon: <IconMail /> },
+      ],
+    })
+  }
+  if (isStaff) {
+    groups.push({
+      label: t('admin.nav.superadmin'),
+      items: [
+        { to: newsletterPath('/admin/organizations'), label: t('admin.nav.allOrganizations'), icon: <IconOrg /> },
+      ],
+    })
+  }
+  return groups
+}
+
+export default function AdminLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { profile: session } = useAuthSession()
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const drawerRef = useRef<HTMLElement>(null)
+
+  // Close drawer on navigation
+  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [sidebarOpen])
+
+  async function handleSignOut() {
+    if (hasUnsavedChanges()) {
+      if (!window.confirm(t('admin.nav.signOutUnsaved'))) return
+      allowNextNavigation()
+    }
+    await signOut()
+    navigate(newsletterPath('/admin/login'), { replace: true })
+  }
+
+  // Mock-backed count (see config/features.js); only loaded when enabled.
+  const [pendingSuggestions, setPendingSuggestions] = useState(0)
+  useEffect(() => {
+    if (!CONTRIBUTIONS_ENABLED) return
+    let active = true
+    Promise.all([import('../store/articleStore'), import('../store/eventStore')])
+      .then(([a, e]) => {
+        if (active) setPendingSuggestions(a.getPendingArticleSuggestionsCount() + e.getPendingEventSuggestionsCount())
+      })
+    return () => { active = false }
+  }, [])
+
+  // Keyed like the nav items' `to` (full app paths).
+  const counts: Record<string, number | null> = {
+    [newsletterPath('/admin/articles')]:    null,
+    [newsletterPath('/admin/events')]:      null,
+    [newsletterPath('/admin/suggestions')]: pendingSuggestions || null,
+    [newsletterPath('/admin/analytics')]:   null,
+  }
+
+  const navGroups = buildNav(session, t)
+
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    [
+      'flex items-center gap-3 px-3 py-2 rounded-sm text-body-sm font-semibold transition-colors duration-150',
+      isActive
+        ? 'bg-primary-700 text-white'
+        : 'text-primary-200 hover:bg-primary-800 hover:text-white',
+    ].join(' ')
+
+  const sidebar = (
+    <nav className="flex flex-col h-full" aria-label={t('admin.nav.label')}>
+      {/* Brand */}
+      <div className="px-5 py-5 border-b border-primary-700">
+        <Link
+          to={newsletterPath('/')}
+          className="flex flex-col leading-none focus-visible:rounded"
+          aria-label={t('admin.nav.backToSite')}
+        >
+          <span className="font-display text-h5 font-bold text-white">ITBA News</span>
+          <span className="font-mono text-label text-primary-400 uppercase tracking-widest mt-0.5">
+            {t('admin.nav.panel')}
+          </span>
+        </Link>
+        <Link
+          to={newsletterPath('/')}
+          className="mt-3 inline-flex items-center gap-1.5 font-mono text-label text-primary-400 hover:text-accent transition-colors duration-150"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+          {t('admin.nav.viewSite')}
+        </Link>
+      </div>
+
+      {/* Nav groups */}
+      <div className="flex-1 px-3 py-4 overflow-y-auto">
+        {navGroups.map(({ label, items }) => (
+          <div key={label} className="mb-6">
+            <p className="font-mono text-label uppercase tracking-widest text-primary-500 px-3 mb-2">
+              {label}
+            </p>
+            <ul className="flex flex-col gap-1 list-none m-0 p-0">
+              {items.map(({ to, label: itemLabel, icon }) => (
+                <li key={to}>
+                  <NavLink to={to} className={linkClass} end={false}>
+                    <span className="w-4 h-4 flex-shrink-0">{icon}</span>
+                    <span className="flex-1">{itemLabel}</span>
+                    {counts[to] != null && (
+                      <span className="font-mono text-label bg-primary-800 text-primary-300 px-1.5 py-0.5 rounded-sm">
+                        {counts[to]}
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* Session footer */}
+      <div className="px-5 py-4 border-t border-primary-700">
+        <p className="font-body text-body-sm text-primary-200 truncate">{session?.name}</p>
+        <p className="font-mono text-label text-primary-500 uppercase tracking-widest mt-0.5">
+          {session?.role === 'user' && getOrganizations(session).length > 0
+            ? t('admin.roles.member')
+            : session?.role ? t(`admin.roles.${session.role}`, { defaultValue: session.role }) : ''}
+        </p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-3 font-mono text-label text-primary-400 hover:text-red-400 transition-colors duration-150 underline underline-offset-2"
+        >
+          {t('auth.signOut')}
+        </button>
+      </div>
+    </nav>
+  )
+
+  return (
+    <div className="min-h-screen flex bg-surface">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 bg-primary-900 fixed inset-y-0 left-0 z-30">
+        {sidebar}
+      </aside>
+
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          aria-hidden="true"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        ref={drawerRef}
+        className={[
+          'fixed inset-y-0 left-0 z-50 w-56 bg-primary-900 flex flex-col lg:hidden',
+          'transition-transform duration-250',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
+        aria-label={t('admin.nav.label')}
+      >
+        {sidebar}
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col lg:ml-56 min-w-0">
+        {/* Topbar */}
+        <header className="sticky top-0 z-20 bg-white border-b border-border h-14 flex items-center px-4 sm:px-6 gap-4">
+          <button
+            type="button"
+            className="lg:hidden w-9 h-9 flex items-center justify-center text-ink-secondary hover:text-ink-primary focus-visible:rounded"
+            aria-label={t('nav.openMenu')}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <IconMenu />
+          </button>
+          <Breadcrumb />
+          <div className="ml-auto">
+            <TopbarAction />
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
+}
+
+// The primary "new …" shortcut follows the section: events get "Nuevo
+// evento", and it is hidden inside an editor, where it only read as the
+// title of the page being edited.
+function TopbarAction() {
+  const pathname = stripNewsletterBase(useLocation().pathname)
+  const { t } = useTranslation()
+  if (/\/(new|edit)$/.test(pathname)) return null
+  // The digest pages have their own "Nuevo resumen" form.
+  if (pathname.startsWith('/admin/digests')) return null
+  const events = pathname.startsWith('/admin/events')
+  return (
+    <Link
+      to={newsletterPath(events ? '/admin/events/new' : '/admin/articles/new')}
+      className="hidden sm:inline-flex items-center gap-2 min-h-[36px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      {events ? t('admin.events.new') : t('admin.articles.new')}
+    </Link>
+  )
+}
+
+function Breadcrumb() {
+  const pathname = stripNewsletterBase(useLocation().pathname)
+  const { t } = useTranslation()
+  const segments: Record<string, string> = {
+    '/admin/articles':       t('admin.nav.articles'),
+    '/admin/articles/new':   `${t('admin.nav.articles')} / ${t('admin.nav.new')}`,
+    '/admin/events':         t('admin.nav.events'),
+    '/admin/events/new':     `${t('admin.nav.events')} / ${t('admin.nav.new')}`,
+    '/admin/suggestions':    t('admin.nav.suggestions'),
+    '/admin/analytics':      t('admin.nav.analytics'),
+    '/admin/digests':        t('admin.nav.digests'),
+  }
+  const label = segments[pathname]
+    ?? (pathname.startsWith('/admin/digests/') ? `${t('admin.nav.digests')} / ${t('admin.nav.edit')}`
+      : pathname.includes('/admin/suggestions/') ? `${t('admin.nav.suggestions')} / ${t('admin.nav.review')}`
+      : pathname.includes('/edit')
+        ? `${pathname.includes('articles') ? t('admin.nav.articles') : t('admin.nav.events')} / ${t('admin.nav.edit')}`
+      : '')
+
+  return (
+    <span className="font-body text-body-sm text-ink-secondary">{label}</span>
+  )
+}
+
+function IconDoc() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+}
+function IconCal() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+}
+function IconInbox() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+}
+function IconChart() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+}
+function IconMail() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 6 12 13 2 6"/></svg>
+}
+function IconMenu() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+}
+function IconOrg() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><line x1="9" y1="9" x2="9" y2="9.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="9" y1="15" x2="9" y2="15.01"/><line x1="9" y1="18" x2="9" y2="18.01"/></svg>
+}

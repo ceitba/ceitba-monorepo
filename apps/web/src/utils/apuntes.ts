@@ -71,6 +71,4 @@ export function apuntesErrorMessage(e: unknown, t: TFunction): string {
 }
 
 // Only same-app paths are valid post-login destinations (no open redirects).
-export function isSafeReturnPath(path: string | null | undefined): path is string {
-  return !!path && path.startsWith('/') && !path.startsWith('//') && !path.startsWith('/\\')
-}
+export { isSafeReturnPath } from '../store/authStore'

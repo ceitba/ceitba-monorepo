@@ -1,22 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCapability } from '../hooks/useCapability'
 import { signOut, startGoogleSignIn } from '../store/authStore'
 import { safeHttpUrl } from '../utils/url'
+import DigestToggle from './DigestToggle'
 
 // Renders one of three states in the navbar slot:
 //   loading  -> nothing (avoid flicker before /me resolves)
-//   anon     -> "Iniciar sesión" button that bounces to Google
-//   authed   -> avatar + dropdown with Manage (if staff) and Sign out
+//   anon     -> "Iniciar sesión" button that bounces to Google and back here
+//   authed   -> avatar + dropdown with every section's personal pages
 export default function AuthMenu() {
   const { t } = useTranslation()
   const { profile, loading, isStaff } = useAuth()
   const { enabled: apuntesEnabled } = useCapability('apuntes')
+  // Behind the resumen_semanal capability; a 403 CAPABILITY_REQUIRED hides it too.
+  const { enabled: digestEnabled } = useCapability('resumen_semanal')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!open) return
@@ -47,7 +51,7 @@ export default function AuthMenu() {
         )}
         <button
           type="button"
-          onClick={() => startGoogleSignIn()}
+          onClick={() => startGoogleSignIn(location.pathname + location.search)}
           className="min-h-[36px] px-3 font-mono text-label uppercase tracking-widest text-primary border border-primary rounded-sm hover:bg-primary hover:text-white transition-colors duration-150"
         >
           {t('auth.signIn')}
@@ -64,6 +68,9 @@ export default function AuthMenu() {
     .join('')
     .toUpperCase()
   const avatarUrl = safeHttpUrl(profile.avatarUrl)
+  // Staff and organization members manage the newsletter; everyone else
+  // writes independent articles there.
+  const organizations = isStaff || (profile.organizations?.length ?? 0) > 0
 
   return (
     <div className="relative" ref={ref}>
@@ -72,6 +79,7 @@ export default function AuthMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={t('auth.accountMenu')}
         className="w-9 h-9 rounded-full overflow-hidden border border-border dark:border-night-border bg-primary-100 dark:bg-primary-900 flex items-center justify-center hover:border-primary transition-colors duration-150"
       >
         {avatarUrl ? (
@@ -84,7 +92,7 @@ export default function AuthMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover py-1 z-50"
+          className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover py-1 z-50"
         >
           <div className="px-3 py-2 border-b border-border dark:border-night-border">
             <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text truncate">
@@ -122,6 +130,23 @@ export default function AuthMenu() {
               </button>
             </>
           )}
+          {digestEnabled && <DigestToggle />}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); navigate('/scheduler/saved') }}
+            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+          >
+            {t('auth.savedSchedules')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); navigate('/newsletter/admin/articles') }}
+            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+          >
+            {t(organizations ? 'auth.newsletterAdmin' : 'auth.myArticles')}
+          </button>
           {isStaff && (
             <button
               type="button"
