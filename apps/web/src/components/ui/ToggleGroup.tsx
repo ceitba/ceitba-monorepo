@@ -49,10 +49,10 @@ export default function ToggleGroup<T extends string | number | null>({
             onClick={() => onChange(opt.value)}
             className={[
               'inline-flex items-center justify-center min-h-[44px] sm:min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150',
-              joined ? 'flex-1 border-l first:border-l-0 border-border dark:border-night-border' : 'rounded-sm border',
+              joined ? 'flex-1 border-l first:border-l-0' : 'rounded-sm border',
               active
                 ? 'bg-primary text-white border-primary'
-                : `text-ink-secondary dark:text-night-muted hover:text-primary dark:hover:text-primary-300 ${joined ? 'bg-white dark:bg-night-surface hover:bg-primary-50 dark:hover:bg-night-raised' : 'border-border dark:border-night-border hover:border-primary'}`,
+                : `text-ink-secondary dark:text-night-muted hover:text-primary dark:hover:text-primary-300 border-border dark:border-night-border ${joined ? 'bg-white dark:bg-night-surface hover:bg-primary-50 dark:hover:bg-night-raised' : 'hover:border-primary'}`,
             ].join(' ')}
           >
             {opt.label}

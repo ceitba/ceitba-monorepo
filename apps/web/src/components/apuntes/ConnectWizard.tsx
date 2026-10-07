@@ -139,6 +139,7 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
             {(p) => (
               <input
                 {...p}
+                aria-invalid={(touched && folderUrl.trim() !== '' && !urlLooksValid) || undefined}
                 type="url"
                 inputMode="url"
                 autoComplete="off"
