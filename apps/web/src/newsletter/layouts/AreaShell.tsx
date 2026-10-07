@@ -19,15 +19,19 @@ export default function AreaShell({
   tabsLabel,
   tabs,
   context,
+  embedded = false,
 }: {
   title: ReactNode
   subtitle: ReactNode
   tabsLabel: string
   tabs: AreaTab[]
   context: AdminOutletContext
+  // Inside another page's <main> (the Newsletter area of /manage): no
+  // <main> or page container of its own.
+  embedded?: boolean
 }) {
   return (
-    <main id="main-content" className="container-content py-section-mobile lg:py-section">
+    <Shell embedded={embedded}>
       <header className="mb-6">
         <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{title}</h1>
         <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">{subtitle}</p>
@@ -69,6 +73,11 @@ export default function AreaShell({
       )}
 
       <Outlet context={context} />
-    </main>
+    </Shell>
   )
+}
+
+function Shell({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  if (embedded) return <div>{children}</div>
+  return <main id="main-content" className="container-content py-section-mobile lg:py-section">{children}</main>
 }

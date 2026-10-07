@@ -18,7 +18,7 @@ import {
   SENDING_POLL_MS, artInputToInstant, defaultAutoSendInput, digestErrorMessage, formatArtDateTime,
   formatWeekRange, instantToArtInput, nowArtInput, shortTime,
 } from '../../utils/digest'
-import { newsletterPath } from '@/newsletter/paths'
+import { DIGESTS_PATH } from '@/newsletter/paths'
 import type { DigestDetail } from '../../types'
 
 // The editable part of a digest, shaped for the inputs.
@@ -64,7 +64,7 @@ function isDirty(form: DigestForm, base: DigestForm): boolean {
 const panel = 'bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card'
 
 export default function AdminDigestEditorPage() {
-  // The route is /admin/digests/:id, so the param is always there.
+  // The route is /manage/newsletter/digests/:id, so the param is always there.
   const { id = '' } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -148,7 +148,7 @@ export default function AdminDigestEditorPage() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
 
-  const back = { to: newsletterPath('/admin/digests'), label: t('admin.digests.back') }
+  const back = { to: DIGESTS_PATH, label: t('admin.digests.back') }
 
   if (loadState === 'loading') {
     return (
@@ -300,7 +300,7 @@ export default function AdminDigestEditorPage() {
       // Unsaved edits of a deleted issue must not hold the navigation back.
       setUnsavedChanges(false)
       toast.success(t('admin.digests.editor.deleted'))
-      navigate(newsletterPath('/admin/digests'), { replace: true })
+      navigate(DIGESTS_PATH, { replace: true })
     } catch (err) {
       setDialogError(digestErrorMessage(err, t, 'admin.digests.errors.delete'))
       await refreshAfterConflict(err)

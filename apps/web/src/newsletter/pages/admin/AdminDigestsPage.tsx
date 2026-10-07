@@ -13,7 +13,7 @@ import { addDaysISO, todayISO } from '../../utils/dates'
 import {
   SENDING_POLL_MS, digestErrorMessage, formatArtDateTime, formatWeekRange, isPastInstant, mondayOf,
 } from '../../utils/digest'
-import { newsletterPath } from '@/newsletter/paths'
+import { digestPath } from '@/newsletter/paths'
 import type { DigestSummary } from '../../types'
 
 // Outcome of the Google consent round-trip (?mail=connected | ?mail=error&reason=<code>).
@@ -114,7 +114,7 @@ export default function AdminDigestsPage() {
           {digests.map((d) => (
             <li key={d.id}>
               <Link
-                to={newsletterPath(`/admin/digests/${d.id}`)}
+                to={digestPath(d.id)}
                 className="group block bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card hover:shadow-card-hover transition-shadow duration-150 p-4 sm:p-5"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-6">
@@ -213,7 +213,7 @@ function NewDigestForm({ digests }: NewDigestFormProps) {
     setError(null)
     try {
       const created = await createDigest(weekStart)
-      navigate(newsletterPath(`/admin/digests/${created.id}`))
+      navigate(digestPath(created.id))
     } catch (err) {
       setError(digestErrorMessage(err, t))
       setBusy(false)
@@ -247,7 +247,7 @@ function NewDigestForm({ digests }: NewDigestFormProps) {
       {existing && (
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           {t('admin.digests.new.existsReason')}{' '}
-          <Link to={newsletterPath(`/admin/digests/${existing.id}`)} className="text-primary dark:text-primary-300 font-semibold underline underline-offset-2">
+          <Link to={digestPath(existing.id)} className="text-primary dark:text-primary-300 font-semibold underline underline-offset-2">
             {t('admin.digests.new.alreadyExists')}
           </Link>
         </p>

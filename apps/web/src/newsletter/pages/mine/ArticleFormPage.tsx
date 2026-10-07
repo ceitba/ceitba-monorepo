@@ -19,7 +19,7 @@ import RichTextEditor from '../../components/admin/editor/RichTextEditor'
 import { useAdminContext } from '../../admin/adminContext'
 import { formatDate, todayISO } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
-import { MY_ARTICLES_PATH, REVIEW_PATH, articleEditPath, newsletterPath, stripNewsletterBase } from '@/newsletter/paths'
+import { ADMIN_PATH, MY_ARTICLES_PATH, REVIEW_PATH, articleEditPath, newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
 import {
   Alert, Button, ConfirmDialog, EmptyState, ErrorState, Field, LoadingRegion, Modal, Skeleton, SkeletonForm, Switch,
@@ -117,13 +117,14 @@ function formatTime(date: Date, lang: string) {
 }
 
 // One editor, two entry points: Mis publicaciones (/mine/articles/new,
-// /mine/articles/:id/edit) and the staff review queue (/admin/review/:id).
+// /mine/articles/:id/edit) and the staff review queue
+// (/manage/newsletter/review/:id).
 // "Volver" leads back to wherever it was opened from.
 export default function ArticleFormPage() {
   const { id: routeId } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const fromReview = stripNewsletterBase(pathname).startsWith('/admin/')
+  const fromReview = pathname.startsWith(`${ADMIN_PATH}/`)
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
   const { profile } = useAuthSession()

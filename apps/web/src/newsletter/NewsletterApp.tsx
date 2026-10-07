@@ -4,11 +4,10 @@ import { I18nextProvider } from 'react-i18next'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import PageFallback from '@/components/PageFallback'
 import i18n from './i18nNewsletter'
-import { MY_ARTICLES_PATH, REVIEW_PATH, newsletterPath } from './paths'
+import { ADMIN_PATH, MY_ARTICLES_PATH, newsletterPath } from './paths'
 import './newsletter.css'
 import PublicLayout from './layouts/PublicLayout'
 import WriterLayout from './layouts/WriterLayout'
-import StaffAdminLayout from './layouts/StaffAdminLayout'
 import AreaAuthGuard from './admin/AreaAuthGuard'
 import { CONTRIBUTIONS_ENABLED } from './config/features'
 
@@ -23,8 +22,6 @@ import MyEventsPage        from './pages/mine/MyEventsPage'
 import EventFormPage       from './pages/mine/EventFormPage'
 import OrgProfilePage      from './pages/mine/OrgProfilePage'
 import OrgFollowersPage    from './pages/mine/OrgFollowersPage'
-import AdminReviewPage     from './pages/admin/AdminReviewPage'
-import AdminAnalyticsPage  from './pages/admin/AdminAnalyticsPage'
 import UnsubscribePage     from './pages/UnsubscribePage'
 import CorrectionVotePage  from './pages/CorrectionVotePage'
 
@@ -35,11 +32,6 @@ const ContributorLayout             = lazy(() => import('./layouts/ContributorLa
 const ContributorAuthGuard          = lazy(() => import('./admin/ContributorAuthGuard'))
 // The article editor bundles TipTap; keep it out of the public chunk.
 const ArticleFormPage               = lazy(() => import('./pages/mine/ArticleFormPage'))
-// Weekly digest admin (STAFF only) — rarely visited, keep it lazy.
-const AdminDigestsPage              = lazy(() => import('./pages/admin/AdminDigestsPage'))
-const AdminDigestEditorPage         = lazy(() => import('./pages/admin/AdminDigestEditorPage'))
-const AdminSuggestionsPage          = lazy(() => import('./pages/admin/AdminSuggestionsPage'))
-const AdminSuggestionReviewPage     = lazy(() => import('./pages/admin/AdminSuggestionReviewPage'))
 const ContributorSuggestionsPage    = lazy(() => import('./pages/contributor/ContributorSuggestionsPage'))
 const ContributorSuggestArticlePage = lazy(() => import('./pages/contributor/ContributorSuggestArticlePage'))
 const ContributorSuggestEventPage   = lazy(() => import('./pages/contributor/ContributorSuggestEventPage'))
@@ -53,6 +45,15 @@ const editor = <Suspense fallback={<PageFallback />}><ArticleFormPage /></Suspen
 function RedirectToMine() {
   const { pathname, search } = useLocation()
   return <Navigate to={pathname.replace(newsletterPath('/admin/'), newsletterPath('/mine/')) + search} replace />
+}
+
+// The staff admin (review queue, weekly digest, analytics) moved into the
+// site's Administración, at /manage/newsletter. Old links, including the
+// Google mail-consent redirect back to /admin/digests?mail=…, keep working.
+function RedirectToManage() {
+  const { pathname, search } = useLocation()
+  const rest = pathname.slice(newsletterPath('/admin').length)
+  return <Navigate to={ADMIN_PATH + (rest === '/login' ? '' : rest) + search} replace />
 }
 
 // The student newsletter, mounted at /newsletter/* by App.tsx and loaded on
@@ -84,37 +85,11 @@ export default function NewsletterApp() {
           <Route path="*"                    element={<Navigate to={MY_ARTICLES_PATH} replace />} />
         </Route>
 
-        {/* ── Admin (staff) ───────────────────────────────── */}
-        {/* The old admin sign-in page: sign-in now happens in place. */}
-        <Route path="admin/login"    element={<Navigate to={newsletterPath('/admin')} replace />} />
+        {/* ── Old /admin links ─────────────────────────────── */}
         <Route path="admin/articles/*" element={<RedirectToMine />} />
         <Route path="admin/events/*"   element={<RedirectToMine />} />
         <Route path="admin/org/*"      element={<RedirectToMine />} />
-
-        <Route
-          path="admin"
-          element={
-            <AreaAuthGuard staffOnly>
-              <StaffAdminLayout />
-            </AreaAuthGuard>
-          }
-        >
-          <Route index                                 element={<Navigate to={REVIEW_PATH} replace />} />
-          <Route path="review"                         element={<AdminReviewPage />} />
-          <Route path="review/:id"                     element={editor} />
-          <Route path="digests"                        element={<Suspense fallback={<PageFallback />}><AdminDigestsPage /></Suspense>} />
-          <Route path="digests/:id"                    element={<Suspense fallback={<PageFallback />}><AdminDigestEditorPage /></Suspense>} />
-          <Route path="analytics"                      element={<AdminAnalyticsPage />} />
-          {CONTRIBUTIONS_ENABLED && (
-            <>
-              <Route path="suggestions"                element={<Suspense fallback={<PageFallback />}><AdminSuggestionsPage /></Suspense>} />
-              <Route path="suggestions/:type/:id"      element={<Suspense fallback={<PageFallback />}><AdminSuggestionReviewPage /></Suspense>} />
-            </>
-          )}
-          {/* The staff list of every organization lives in /manage. */}
-          <Route path="organizations"                  element={<Navigate to="/manage" replace />} />
-          <Route path="*"                              element={<Navigate to={REVIEW_PATH} replace />} />
-        </Route>
+        <Route path="admin/*"          element={<RedirectToManage />} />
 
         <Route element={<Outlet />}>
           {/* ── Contributor portal ────────────────────────── */}

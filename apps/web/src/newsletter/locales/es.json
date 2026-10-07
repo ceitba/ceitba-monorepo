@@ -601,8 +601,8 @@
       }
     },
     "layout": {
-      "title": "Administración del newsletter",
-      "subtitle": "Revisá los artículos enviados, prepará el resumen semanal y mirá las estadísticas.",
+      "title": "Newsletter",
+      "subtitle": "Aprobá lo que mandan los estudiantes y prepará el mail del lunes.",
       "tabsAria": "Secciones de la administración del newsletter"
     },
     "guard": {

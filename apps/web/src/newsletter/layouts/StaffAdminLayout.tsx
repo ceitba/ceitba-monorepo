@@ -2,14 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchArticles } from '../api/articles'
-import { newsletterPath, REVIEW_PATH } from '@/newsletter/paths'
+import { ANALYTICS_PATH, DIGESTS_PATH, REVIEW_PATH } from '@/newsletter/paths'
 import { useOrgDirectory } from '../hooks/useOrgDirectory'
 import AreaShell, { type AreaTab } from './AreaShell'
 
 const PENDING_STATUS = 'pending_review'
 
-// The staff newsletter admin: the review queue of articles sent by
-// independent authors, the weekly digest and the analytics.
+// The Newsletter area of the site's Administración (/manage/newsletter): the
+// review queue of articles sent by independent authors, the weekly digest
+// and the analytics. Rendered inside /manage's rail layout, so it brings no
+// <main> or page container of its own.
 export default function StaffAdminLayout() {
   const { t } = useTranslation()
   const { pathname } = useLocation()
@@ -31,8 +33,8 @@ export default function StaffAdminLayout() {
 
   const tabs: AreaTab[] = [
     { to: REVIEW_PATH, label: t('admin.nav.review'), count: pending },
-    { to: newsletterPath('/admin/digests'), label: t('admin.nav.digests') },
-    { to: newsletterPath('/admin/analytics'), label: t('admin.nav.analytics') },
+    { to: DIGESTS_PATH, label: t('admin.nav.digests') },
+    { to: ANALYTICS_PATH, label: t('admin.nav.analytics') },
   ]
 
   return (
@@ -42,6 +44,7 @@ export default function StaffAdminLayout() {
       tabsLabel={t('admin.layout.tabsAria')}
       tabs={tabs}
       context={context}
+      embedded
     />
   )
 }

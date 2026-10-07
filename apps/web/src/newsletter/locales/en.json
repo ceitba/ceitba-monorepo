@@ -601,8 +601,8 @@
       }
     },
     "layout": {
-      "title": "Newsletter admin",
-      "subtitle": "Review submitted articles, prepare the weekly digest and check the analytics.",
+      "title": "Newsletter",
+      "subtitle": "Approve what students send in and prepare Monday's email.",
       "tabsAria": "Newsletter admin sections"
     },
     "guard": {
