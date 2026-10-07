@@ -35,14 +35,19 @@
     "error": {
       "title": "Algo salió mal",
       "message": "No pudimos cargar los artículos. Revisá tu conexión e intentá de nuevo.",
-      "retry": "Reintentar"
+      "articleMessage": "No pudimos cargar el artículo. Revisá tu conexión e intentá de nuevo."
     },
     "meta": {
       "by": "por",
       "readingTime": "{{time}} de lectura"
     },
     "backToArticles": "← Volver a artículos",
-    "moreFrom": "Más de {{category}}"
+    "moreFrom": "Más de {{category}}",
+    "notFound": {
+      "title": "No encontramos este artículo",
+      "message": "Puede que lo hayan despublicado o que el enlace esté mal."
+    },
+    "backToList": "Ver todos los artículos"
   },
   "events": {
     "pageTitle": "Eventos",
@@ -55,12 +60,13 @@
     "noEventsOnDay": "Nada agendado para este día.",
     "noEvents": "No hay eventos programados.",
     "timeRange": "{{start}}–{{end}}",
-    "error": "No pudimos cargar los eventos. Revisá tu conexión e intentá de nuevo."
+    "error": "No pudimos cargar los eventos. Revisá tu conexión e intentá de nuevo.",
+    "monthError": "No pudimos cargar los eventos de ese mes.",
+    "noEventsHint": "Cuando las organizaciones publiquen eventos, van a aparecer acá."
   },
   "orgs": {
     "pageTitle": "Organizaciones",
     "pageSubtitle": "Conocé los espacios estudiantiles del ITBA.",
-    "followers": "{{count}} seguidores",
     "follow": "Seguir",
     "unfollow": "Dejar de seguir",
     "following": "Siguiendo",
@@ -73,7 +79,18 @@
     "error": {
       "title": "Organización no encontrada",
       "message": "El portal que buscás no existe o fue removido."
-    }
+    },
+    "followers_one": "{{formatted}} seguidor",
+    "followers_other": "{{formatted}} seguidores",
+    "followersLabel_one": "seguidor",
+    "followersLabel_other": "seguidores",
+    "loadError": "No pudimos cargar las organizaciones. Revisá tu conexión e intentá de nuevo.",
+    "portalLoadError": "No pudimos cargar esta organización. Revisá tu conexión e intentá de nuevo.",
+    "empty": {
+      "title": "Todavía no hay organizaciones",
+      "message": "Cuando se sumen agrupaciones al newsletter, las vas a ver acá."
+    },
+    "backToList": "Ver organizaciones"
   },
   "categories": {
     "Académico": "Académico",
@@ -84,11 +101,6 @@
     "General": "General",
     "all": "Todos",
     "Organizaciones": "Organizaciones"
-  },
-  "common": {
-    "loading": "Cargando…",
-    "backHome": "Volver al inicio",
-    "notFound": "Página no encontrada"
   },
   "auth": {
     "signIn": "Iniciar sesión",
@@ -612,7 +624,9 @@
       "forbidden": "No tenés permiso para subir imágenes. Pegá una URL de imagen.",
       "url": "Ingresá una URL válida que empiece con https://",
       "load": "La imagen no se pudo cargar."
-    }
+    },
+    "source": "Origen de la imagen",
+    "urlLabel": "URL de la imagen"
   },
   "votes": {
     "groupLabel": "¿Te resultó útil este artículo?",
@@ -683,15 +697,13 @@
     "intro": "Cualquier estudiante puede escribir en el newsletter. Las agrupaciones publican directo; los artículos independientes los revisa el staff de CEITBA antes de publicarse.",
     "signedOut": "Iniciá sesión con tu cuenta @itba.edu.ar y vas a poder escribir desde un editor visual.",
     "signIn": "Iniciar sesión con Google",
-    "organizations": "Ver organizaciones",
-    "close": "Cerrar"
+    "organizations": "Ver organizaciones"
   },
   "digest": {
     "name": "La semana en ITBA",
     "toggle": "Recibir 'La semana en ITBA' por mail",
     "toggleError": "No pudimos guardar el cambio.",
     "unsubscribe": {
-      "loading": "Procesando tu baja…",
       "doneTitle": "Listo, no vas a recibir más el resumen semanal",
       "doneHint": "Si cambiás de idea, podés volver a activarlo desde el menú de tu cuenta, arriba a la derecha (tenés que iniciar sesión).",
       "invalidTitle": "Este enlace no es válido",
@@ -701,11 +713,11 @@
       "confirmTitle": "¿Dejar de recibir el resumen semanal?",
       "confirmHint": "Vas a dejar de recibir 'La semana en ITBA' por mail. Confirmá para darte de baja.",
       "confirm": "Confirmar baja",
-      "confirming": "Procesando tu baja…"
+      "confirming": "Procesando tu baja…",
+      "errorHint": "Revisá tu conexión y probá de nuevo."
     },
     "correction": {
       "kicker": "Horario por confirmar",
-      "loading": "Cargando la corrección…",
       "title": "¿{{subject}} (com. {{commission}}) se dicta así?",
       "lead": "Alguien reportó que el horario del SGA no es el real. Tu respuesta es anónima: con 3 confirmaciones, el horario corregido se usa en el combinador.",
       "proposed": "Lo que reportaron",
@@ -734,8 +746,22 @@
       "errorTitle": "No pudimos cargar la corrección",
       "voteError": "No pudimos registrar tu voto. Probá de nuevo.",
       "openScheduler": "Ir al combinador de horarios",
-      "backHome": "Ir al newsletter"
+      "backHome": "Ir al newsletter",
+      "errorHint": "Revisá tu conexión y probá de nuevo."
     },
     "toggleHint": "Al activarlo, también seguís a CEITBA."
+  },
+  "contributor": {
+    "brand": "Contribuir",
+    "nav": {
+      "mine": "Mis sugerencias",
+      "article": "+ Artículo",
+      "event": "+ Evento"
+    },
+    "notifications": "Notificaciones",
+    "notificationsUnread_one": "Notificaciones ({{count}} sin leer)",
+    "notificationsUnread_other": "Notificaciones ({{count}} sin leer)",
+    "markAllRead": "Marcar todas como leídas",
+    "noNotifications": "No tenés notificaciones"
   }
 }

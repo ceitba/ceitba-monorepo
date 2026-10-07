@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+import { Button, EmptyState, ErrorState, LoadingRegion, Skeleton, toast } from '@/components/ui'
+import { ApiError } from '@/api/client'
 import ArticleCard from '../components/ArticleCard'
 import EventCard from '../components/EventCard'
 import { fetchOrganizationBySlug } from '../api/organizations'
@@ -9,7 +10,7 @@ import { fetchArticles } from '../api/articles'
 import { fetchEvents } from '../api/events'
 import { followOrganization, unfollowOrganization } from '../api/follows'
 import { getSession, isFollowing, refreshFollows } from '../store/authStore'
-import { todayISO } from '../utils/dates'
+import { localeFor, todayISO } from '../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
 import type { Article, NewsEvent, Organization } from '../types'
 
@@ -23,16 +24,16 @@ const GEO_BG: Record<string, string> = {
 export default function OrgPortalPage() {
   // The route always defines :slug.
   const { slug = '' } = useParams()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [org, setOrg]         = useState<Organization | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
   const [events, setEvents]     = useState<NewsEvent[]>([])
-  const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus]     = useState<'loading' | 'success' | 'notFound' | 'error'>('loading')
+  const [reloadKey, setReloadKey] = useState(0)
   const [authed, setAuthed]     = useState(false)
   const [following, setFollowing] = useState(false)
   const [followBusy, setFollowBusy] = useState(false)
-  const [followError, setFollowError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -51,12 +52,12 @@ export default function OrgPortalPage() {
         setEvents(eventsRes.data.filter((e) => e.date >= today).slice(0, 4))
         setStatus('success')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err: unknown) => {
+        if (!cancelled) setStatus(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error')
       })
 
     return () => { cancelled = true }
-  }, [slug])
+  }, [slug, reloadKey])
 
   useEffect(() => {
     let cancelled = false
@@ -72,7 +73,6 @@ export default function OrgPortalPage() {
 
   async function toggleFollow() {
     setFollowBusy(true)
-    setFollowError('')
     const previously = following
     setFollowing(!previously)
     try {
@@ -84,23 +84,48 @@ export default function OrgPortalPage() {
         const updated = await fetchOrganizationBySlug(slug)
         setOrg(updated)
       } catch { /* keep stale count on error */ }
-    } catch {
+    } catch (err) {
+      console.error(err)
       setFollowing(previously)
-      setFollowError(t('orgs.followError'))
+      toast.error(t('orgs.followError'))
     } finally {
       setFollowBusy(false)
     }
   }
 
   if (status === 'loading') return <PortalSkeleton />
-  if (status === 'error' || !org) return <ErrorState t={t} />
+  if (status === 'notFound' || (status === 'success' && !org)) {
+    return (
+      <div className="container-content py-section-mobile lg:py-section">
+        <ErrorState
+          title={t('orgs.error.title')}
+          message={t('orgs.error.message')}
+          backTo={newsletterPath('/organizations')}
+          backLabel={t('orgs.backToList')}
+        />
+      </div>
+    )
+  }
+  if (status === 'error' || !org) {
+    return (
+      <div className="container-content py-section-mobile lg:py-section">
+        <ErrorState
+          message={t('orgs.portalLoadError')}
+          onRetry={() => setReloadKey((k) => k + 1)}
+          backTo={newsletterPath('/organizations')}
+          backLabel={t('orgs.backToList')}
+        />
+      </div>
+    )
+  }
 
   const heroBg = GEO_BG[org.color ?? ''] ?? GEO_BG.blue
   const featured  = articles.find((a) => a.featured)
   const secondary = articles.filter((a) => !a.featured)
+  const followers = org.followerCount ?? 0
 
   return (
-    <div className="animate-fade-in">
+    <div>
       {/* Hero band */}
       <div className={['relative h-52 lg:h-64 overflow-hidden', heroBg].join(' ')}>
         <div className="absolute inset-0 opacity-20">
@@ -121,23 +146,10 @@ export default function OrgPortalPage() {
             {org.fullName}
           </p>
           {authed && (
-            <div className="mt-4 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={toggleFollow}
-                disabled={followBusy}
-                className={[
-                  'inline-flex items-center gap-2 min-h-[36px] px-4 font-body text-body-sm font-semibold rounded-sm transition-colors duration-150 disabled:opacity-60',
-                  following
-                    ? 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
-                    : 'bg-white text-ink-primary hover:bg-white/90',
-                ].join(' ')}
-              >
+            <div className="mt-4">
+              <Button variant="outline" onClick={toggleFollow} disabled={followBusy} aria-pressed={following}>
                 {following ? t('orgs.unfollow') : t('orgs.follow')}
-              </button>
-              {followError && (
-                <span className="font-mono text-label text-red-200">{followError}</span>
-              )}
+              </Button>
             </div>
           )}
         </div>
@@ -151,7 +163,7 @@ export default function OrgPortalPage() {
               {org.description}
             </p>
             <div className="flex sm:flex-col gap-6 sm:gap-3 flex-shrink-0 sm:text-right">
-              <Stat label={t('orgs.followers', { count: '' }).trim()} value={(org.followerCount ?? 0).toLocaleString()} />
+              <Stat label={t('orgs.followersLabel', { count: followers })} value={followers.toLocaleString(localeFor(i18n.language))} />
             </div>
           </div>
 
@@ -159,7 +171,7 @@ export default function OrgPortalPage() {
           <section aria-labelledby="org-articles-heading">
             <SectionHeader id="org-articles-heading" label={t('orgs.latestArticles')} />
             {articles.length === 0 ? (
-              <EmptySection message={t('orgs.noArticles')} />
+              <EmptyState compact title={t('orgs.noArticles')} />
             ) : (
               <div className="flex flex-col gap-6">
                 {featured && <ArticleCard article={featured} featured />}
@@ -177,11 +189,11 @@ export default function OrgPortalPage() {
             <SectionHeader
               id="org-events-heading"
               label={t('orgs.upcomingEvents')}
-              linkTo="/events"
+              linkTo={newsletterPath('/events')}
               linkLabel={t('orgs.viewAll')}
             />
             {events.length === 0 ? (
-              <EmptySection message={t('orgs.noEvents')} />
+              <EmptyState compact title={t('orgs.noEvents')} />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {events.map((e) => <EventCard key={e.id} event={e} />)}
@@ -217,14 +229,14 @@ interface SectionHeaderProps {
 
 function SectionHeader({ id, label, linkTo, linkLabel }: SectionHeaderProps) {
   return (
-    <div className="flex items-baseline justify-between mb-6 border-b border-border pb-3">
+    <div className="flex items-center justify-between gap-4 mb-6 border-b border-border dark:border-night-border pb-3">
       <h2 id={id} className="font-display text-h3 font-bold text-ink-primary">
         {label}
       </h2>
       {linkTo && (
         <Link
           to={linkTo}
-          className="font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2"
+          className="inline-flex items-center min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2"
         >
           {linkLabel}
         </Link>
@@ -233,50 +245,17 @@ function SectionHeader({ id, label, linkTo, linkLabel }: SectionHeaderProps) {
   )
 }
 
-interface EmptySectionProps {
-  message: string
-}
-
-function EmptySection({ message }: EmptySectionProps) {
-  return (
-    <p className="font-body text-body text-ink-secondary py-8 text-center border border-dashed border-border rounded-card">
-      {message}
-    </p>
-  )
-}
-
 function PortalSkeleton() {
   return (
-    <div aria-busy="true">
-      <div className="skeleton h-52 lg:h-64" />
+    <LoadingRegion>
+      <div className="skeleton h-52 lg:h-64" aria-hidden="true" />
       <div className="py-section-mobile lg:py-section">
         <div className="container-content flex flex-col gap-8">
-          <div className="skeleton h-5 w-2/3 rounded" />
-          <div className="skeleton h-5 w-1/2 rounded" />
-          <div className="skeleton h-5 w-3/4 rounded" />
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-5 w-3/4" />
         </div>
       </div>
-    </div>
-  )
-}
-
-interface ErrorStateProps {
-  t: TFunction
-}
-
-function ErrorState({ t }: ErrorStateProps) {
-  return (
-    <div role="alert" className="flex flex-col items-center justify-center py-32 gap-6 text-center">
-      <div>
-        <p className="font-display text-h4 font-bold text-ink-primary">{t('orgs.error.title')}</p>
-        <p className="font-body text-body text-ink-secondary mt-1">{t('orgs.error.message')}</p>
-      </div>
-      <Link
-        to={newsletterPath('/organizations')}
-        className="min-h-[44px] px-6 py-2.5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded inline-flex items-center"
-      >
-        {t('common.backHome')}
-      </Link>
-    </div>
+    </LoadingRegion>
   )
 }

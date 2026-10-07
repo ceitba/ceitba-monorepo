@@ -29,7 +29,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
 
   if (compact) {
     return (
-      <article className="group flex gap-4 py-4 border-b border-border last:border-b-0 animate-fade-in">
+      <article className="group flex gap-4 py-4 border-b border-border dark:border-night-border last:border-b-0">
         {/* Date block */}
         <div className="flex-shrink-0 w-12 flex flex-col items-center justify-start pt-0.5">
           <span className="font-mono text-label text-ink-secondary uppercase">
@@ -53,7 +53,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
             <time className="font-mono text-label text-ink-secondary" dateTime={`${date}T${time}`}>
               {timeRange}
             </time>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
             <span className="font-body text-body-sm text-ink-secondary truncate">
               {location}
             </span>
@@ -64,11 +64,11 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
   }
 
   return (
-    <article className="group rounded-card border border-border bg-white p-5 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col gap-3 animate-fade-in">
+    <article className="group rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-5 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col gap-3">
       <div className="flex items-start gap-3">
         {/* Date stamp */}
-        <div className="flex-shrink-0 w-14 h-14 rounded-sm bg-primary-50 flex flex-col items-center justify-center border border-primary-100">
-          <span className="font-mono text-label text-primary-500 uppercase">
+        <div className="flex-shrink-0 w-14 h-14 rounded-sm bg-primary-50 dark:bg-primary-800 flex flex-col items-center justify-center border border-primary-100 dark:border-primary-800">
+          <span className="font-mono text-label text-primary-500 dark:text-primary-300 uppercase">
             {monthShort}
           </span>
           <span className="font-display text-h4 font-bold text-primary leading-none tabular-nums">

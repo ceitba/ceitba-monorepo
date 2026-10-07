@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconButton } from '@/components/ui'
+import { localeFor } from '../utils/dates'
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import type { UserProfile } from '@/store/authStore'
 import { getSession, signOut } from '../store/authStore'
@@ -12,6 +15,7 @@ import {
 import { newsletterPath } from '@/newsletter/paths'
 
 export default function ContributorLayout() {
+  const { t, i18n } = useTranslation()
   const [session, setSession] = useState<UserProfile | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
@@ -75,74 +79,74 @@ export default function ContributorLayout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface">
+    <div className="min-h-screen flex flex-col bg-surface dark:bg-night-bg">
       {/* Top bar */}
-      <header className="sticky top-0 z-20 bg-white border-b border-border h-14 flex items-center px-4 sm:px-6 gap-4">
+      <header className="sticky top-0 z-20 bg-white dark:bg-night-surface border-b border-border dark:border-night-border h-14 flex items-center px-4 sm:px-6 gap-4">
         {/* Brand */}
         <Link to={newsletterPath('/')} className="flex items-baseline gap-2 focus-visible:rounded">
           <span className="font-display text-h5 font-bold text-primary">ITBA News</span>
           <span className="font-mono text-label text-accent-500 uppercase tracking-widest hidden sm:inline">
-            Contribuir
+            {t('contributor.brand')}
           </span>
         </Link>
 
         {/* Nav links */}
-        <nav className="hidden sm:flex items-center gap-1 ml-4">
-          <ContribNavLink to={newsletterPath('/contribute')}>Mis sugerencias</ContribNavLink>
-          <ContribNavLink to={newsletterPath('/contribute/suggest/article')}>+ Artículo</ContribNavLink>
-          <ContribNavLink to={newsletterPath('/contribute/suggest/event')}>+ Evento</ContribNavLink>
+        <nav aria-label={t('contributor.brand')} className="hidden sm:flex items-center gap-1 ml-4">
+          <ContribNavLink to={newsletterPath('/contribute')}>{t('contributor.nav.mine')}</ContribNavLink>
+          <ContribNavLink to={newsletterPath('/contribute/suggest/article')}>{t('contributor.nav.article')}</ContribNavLink>
+          <ContribNavLink to={newsletterPath('/contribute/suggest/event')}>{t('contributor.nav.event')}</ContribNavLink>
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
           {/* Notification bell */}
           <div ref={bellRef} className="relative">
-            <button
-              type="button"
+            <IconButton
               onClick={openNotifs}
-              className="relative w-9 h-9 flex items-center justify-center text-ink-secondary hover:text-ink-primary rounded-sm focus-visible:rounded transition-colors duration-150"
-              aria-label={`Notificaciones${unread > 0 ? ` (${unread} sin leer)` : ''}`}
+              aria-expanded={notifOpen}
+              className="relative"
+              aria-label={unread > 0 ? t('contributor.notificationsUnread', { count: unread }) : t('contributor.notifications')}
             >
               <IconBell />
               {unread > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent text-white font-mono text-[9px] font-bold flex items-center justify-center leading-none">
+                <span aria-hidden="true" className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-ink-primary font-mono text-label font-bold flex items-center justify-center leading-none">
                   {unread > 9 ? '9+' : unread}
                 </span>
               )}
-            </button>
+            </IconButton>
 
             {notifOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-card border border-border shadow-lg z-50 overflow-hidden animate-fade-in">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <p className="font-body text-body-sm font-semibold text-ink-primary">Notificaciones</p>
+              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border dark:border-night-border">
+                  <p className="font-body text-body-sm font-semibold text-ink-primary">{t('contributor.notifications')}</p>
                   {unread > 0 && (
                     <button
                       type="button"
                       onClick={handleMarkAllRead}
-                      className="font-mono text-label text-primary hover:underline"
+                      className="min-h-[44px] px-2 font-mono text-label text-primary hover:underline"
                     >
-                      Marcar todas leídas
+                      {t('contributor.markAllRead')}
                     </button>
                   )}
                 </div>
-                <ul className="max-h-72 overflow-y-auto divide-y divide-border">
+                <ul className="max-h-72 overflow-y-auto divide-y divide-border dark:divide-night-border">
                   {notifications.length === 0 ? (
                     <li className="px-4 py-6 text-center font-body text-body-sm text-ink-secondary">
-                      Sin notificaciones
+                      {t('contributor.noNotifications')}
                     </li>
                   ) : (
                     notifications.map((n) => (
-                      <li key={n.id} className={['transition-colors duration-100', !n.read ? 'bg-primary-50' : ''].join(' ')}>
+                      <li key={n.id} className={['transition-colors duration-100', !n.read ? 'bg-primary-50 dark:bg-primary-800' : ''].join(' ')}>
                         <Link
                           to={notifLink(n)}
                           onClick={() => handleMarkRead(n.id)}
-                          className="block px-4 py-3 hover:bg-surface"
+                          className="block px-4 py-3 hover:bg-surface dark:hover:bg-night-bg"
                         >
                           <div className="flex items-start gap-2">
                             <NotifIcon type={n.type} />
                             <div className="flex-1 min-w-0">
                               <p className="font-body text-body-sm text-ink-primary line-clamp-2">{n.message}</p>
                               <p className="font-mono text-label text-ink-secondary mt-1">
-                                {new Date(n.createdAt).toLocaleDateString('es-AR', {
+                                {new Date(n.createdAt).toLocaleDateString(localeFor(i18n.language), {
                                   day: 'numeric', month: 'short',
                                 })}
                               </p>
@@ -168,9 +172,9 @@ export default function ContributorLayout() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="font-mono text-label text-ink-secondary hover:text-red-500 transition-colors duration-150 underline underline-offset-2"
+              className="min-h-[44px] px-2 font-mono text-label text-ink-secondary hover:text-ink-primary transition-colors duration-150 underline underline-offset-2"
             >
-              Salir
+              {t('auth.signOut')}
             </button>
           </div>
         </div>
@@ -195,10 +199,10 @@ function ContribNavLink({ to, children }: ContribNavLinkProps) {
       to={to}
       end={to === newsletterPath('/contribute')}
       className={({ isActive }) => [
-        'px-3 py-1.5 rounded-sm font-body text-body-sm font-semibold transition-colors duration-150',
+        'inline-flex items-center min-h-[44px] px-3 rounded-sm font-body text-body-sm font-semibold transition-colors duration-150',
         isActive
-          ? 'bg-primary-50 text-primary'
-          : 'text-ink-secondary hover:text-ink-primary hover:bg-surface',
+          ? 'bg-primary-50 dark:bg-primary-800 text-primary'
+          : 'text-ink-secondary hover:text-ink-primary hover:bg-surface dark:hover:bg-night-bg',
       ].join(' ')}
     >
       {children}
@@ -213,21 +217,21 @@ interface NotifIconProps {
 function NotifIcon({ type }: NotifIconProps) {
   if (type === 'approved') {
     return (
-      <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-emerald-600 dark:text-emerald-400" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
       </span>
     )
   }
   if (type === 'rejected') {
     return (
-      <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <span className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center flex-shrink-0">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-600 dark:text-red-400" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </span>
     )
   }
   return (
-    <span className="w-6 h-6 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span className="w-6 h-6 rounded-full bg-accent-100 dark:bg-accent-900 flex items-center justify-center flex-shrink-0">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-amber-600 dark:text-amber-400" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     </span>
   )
 }

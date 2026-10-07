@@ -35,14 +35,19 @@
     "error": {
       "title": "Something went wrong",
       "message": "We couldn't load the articles. Check your connection and try again.",
-      "retry": "Try again"
+      "articleMessage": "We couldn't load the article. Check your connection and try again."
     },
     "meta": {
       "by": "by",
       "readingTime": "{{time}} read"
     },
     "backToArticles": "← Back to articles",
-    "moreFrom": "More from {{category}}"
+    "moreFrom": "More from {{category}}",
+    "notFound": {
+      "title": "We couldn't find this article",
+      "message": "It may have been unpublished, or the link is wrong."
+    },
+    "backToList": "See all articles"
   },
   "events": {
     "pageTitle": "Events",
@@ -55,12 +60,13 @@
     "noEventsOnDay": "Nothing scheduled for this day.",
     "noEvents": "No events scheduled.",
     "timeRange": "{{start}}–{{end}}",
-    "error": "We couldn't load the events. Check your connection and try again."
+    "error": "We couldn't load the events. Check your connection and try again.",
+    "monthError": "We couldn't load that month's events.",
+    "noEventsHint": "When organizations publish events, they will show up here."
   },
   "orgs": {
     "pageTitle": "Organizations",
     "pageSubtitle": "Explore the student spaces at ITBA.",
-    "followers": "{{count}} followers",
     "follow": "Follow",
     "unfollow": "Unfollow",
     "following": "Following",
@@ -73,7 +79,18 @@
     "error": {
       "title": "Organization not found",
       "message": "The portal you're looking for doesn't exist or was removed."
-    }
+    },
+    "followers_one": "{{formatted}} follower",
+    "followers_other": "{{formatted}} followers",
+    "followersLabel_one": "follower",
+    "followersLabel_other": "followers",
+    "loadError": "We couldn't load the organizations. Check your connection and try again.",
+    "portalLoadError": "We couldn't load this organization. Check your connection and try again.",
+    "empty": {
+      "title": "No organizations yet",
+      "message": "When student groups join the newsletter, you will see them here."
+    },
+    "backToList": "See organizations"
   },
   "categories": {
     "Académico": "Academic",
@@ -84,11 +101,6 @@
     "General": "General",
     "all": "All",
     "Organizaciones": "Organizations"
-  },
-  "common": {
-    "loading": "Loading…",
-    "backHome": "Back to home",
-    "notFound": "Page not found"
   },
   "auth": {
     "signIn": "Sign in",
@@ -612,7 +624,9 @@
       "forbidden": "You don't have permission to upload images. Paste an image URL instead.",
       "url": "Enter a valid URL starting with https://",
       "load": "The image couldn't be loaded."
-    }
+    },
+    "source": "Image source",
+    "urlLabel": "Image URL"
   },
   "votes": {
     "groupLabel": "Was this article helpful?",
@@ -683,15 +697,13 @@
     "intro": "Any student can write for the newsletter. Student groups publish directly; independent articles are reviewed by CEITBA staff before they go out.",
     "signedOut": "Sign in with your @itba.edu.ar account and you'll be able to write in a visual editor.",
     "signIn": "Sign in with Google",
-    "organizations": "See organizations",
-    "close": "Close"
+    "organizations": "See organizations"
   },
   "digest": {
     "name": "La semana en ITBA",
     "toggle": "Get 'La semana en ITBA' by email",
     "toggleError": "We couldn't save that change.",
     "unsubscribe": {
-      "loading": "Unsubscribing…",
       "doneTitle": "Done, you won't get the weekly digest anymore",
       "doneHint": "If you change your mind, you can turn it back on from your account menu, top right (you'll need to sign in).",
       "invalidTitle": "This link is not valid",
@@ -701,11 +713,11 @@
       "confirmTitle": "Stop receiving the weekly digest?",
       "confirmHint": "You'll stop getting 'La semana en ITBA' by email. Confirm to unsubscribe.",
       "confirm": "Confirm unsubscribe",
-      "confirming": "Unsubscribing…"
+      "confirming": "Unsubscribing…",
+      "errorHint": "Check your connection and try again."
     },
     "correction": {
       "kicker": "Schedule to confirm",
-      "loading": "Loading the correction…",
       "title": "Is {{subject}} (com. {{commission}}) taught like this?",
       "lead": "Someone reported that the SGA schedule is not the real one. Your answer is anonymous: with 3 confirmations, the corrected schedule is used in the schedule builder.",
       "proposed": "What was reported",
@@ -734,8 +746,22 @@
       "errorTitle": "We couldn't load the correction",
       "voteError": "We couldn't record your vote. Please try again.",
       "openScheduler": "Go to the schedule builder",
-      "backHome": "Go to the newsletter"
+      "backHome": "Go to the newsletter",
+      "errorHint": "Check your connection and try again."
     },
     "toggleHint": "Turning it on also follows CEITBA."
+  },
+  "contributor": {
+    "brand": "Contribute",
+    "nav": {
+      "mine": "My suggestions",
+      "article": "+ Article",
+      "event": "+ Event"
+    },
+    "notifications": "Notifications",
+    "notificationsUnread_one": "Notifications ({{count}} unread)",
+    "notificationsUnread_other": "Notifications ({{count}} unread)",
+    "markAllRead": "Mark all as read",
+    "noNotifications": "You have no notifications"
   }
 }
