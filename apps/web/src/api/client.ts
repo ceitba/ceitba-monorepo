@@ -69,12 +69,21 @@ export function onCapabilityRequired(fn: (capability: string | null) => void): (
   return () => { _capabilityListeners.delete(fn) }
 }
 
+// The API's CAPABILITY_REQUIRED body doesn't name the capability, so tell
+// which one from the endpoint: the weekly digest's, or else Apuntes (the
+// only other gated feature).
+function capabilityForUrl(url: string): string {
+  const digests = new URL(BASE_URL + '/digests', location.origin).href
+  return url.startsWith(digests) ? 'resumen_semanal' : 'apuntes'
+}
+
 // Builds an ApiError from the API's `{ error, message }` error body.
 export async function toError(res: Response): Promise<ApiError> {
   let body: { error?: string; code?: string; message?: string; capability?: string } | null = null
   try { body = await res.json() } catch { /* non-JSON */ }
   if (res.status === 403 && body?.error === CAPABILITY_REQUIRED) {
-    _capabilityListeners.forEach((fn) => fn(body?.capability ?? null))
+    const capability = body.capability ?? capabilityForUrl(res.url)
+    _capabilityListeners.forEach((fn) => fn(capability))
   }
   return new ApiError(
     body?.message ?? `Request failed (${res.status})`,
