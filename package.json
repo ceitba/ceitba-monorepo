@@ -4,11 +4,14 @@
   "workspaces": [
     "apps/web",
     "apps/scheduler",
-    "apps/newsletter"
+    "apps/newsletter",
+    "apps/mcp",
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun run --filter '@ceitba/*' dev",
     "build": "bun run --filter '@ceitba/*' build",
-    "lint": "bun run --filter '@ceitba/*' lint"
+    "lint": "bun run --filter '@ceitba/*' lint",
+    "test": "bun run --filter '@ceitba/*' test"
   }
 }
