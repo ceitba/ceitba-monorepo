@@ -20,11 +20,14 @@ const TONES: Record<BadgeTone, string> = {
   neutral: 'bg-border/60 text-ink-secondary dark:bg-night-border dark:text-night-muted',
 }
 
-export default function Badge({ tone = 'neutral', children, title, className = '' }: { tone?: BadgeTone; children: ReactNode; title?: string; className?: string }) {
+// `tone={null}` drops the tone colors so `className` can carry a color pair
+// that isn't a status (e.g. the newsletter's per-category colors); include
+// its dark: variants there.
+export default function Badge({ tone = 'neutral', children, title, className = '' }: { tone?: BadgeTone | null; children: ReactNode; title?: string; className?: string }) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest ${TONES[tone]} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest ${tone ? TONES[tone] : ''} ${className}`}
     >
       {children}
     </span>

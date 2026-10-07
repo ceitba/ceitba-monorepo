@@ -8,7 +8,7 @@ import { newsletterPath } from '@/newsletter/paths'
 export default function PublicLayout() {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col bg-surface">
+    <div className="flex flex-col bg-surface dark:bg-night-bg">
       <SectionHeader title={t('nav.home')} subtitle={t('nav.tagline')} to={newsletterPath('/')}>
         <nav aria-label={t('nav.home')} className="flex items-center gap-6">
           <NavLink to={newsletterPath('/')} end className={sectionLinkClass}>{t('nav.articles')}</NavLink>

@@ -64,12 +64,12 @@ function VoteButton({ type, active, onVote, label, disabled }: VoteButtonProps) 
       aria-label={label}
       aria-pressed={active}
       className={[
-        'w-10 h-10 flex items-center justify-center rounded-sm border transition-all duration-150 focus-visible:rounded',
+        'w-11 h-11 flex items-center justify-center rounded-sm border transition-colors duration-150 disabled:opacity-60',
         active
           ? isUp
             ? 'bg-primary text-white border-primary'
-            : 'bg-red-500 text-white border-red-500'
-          : 'bg-white border-border text-ink-secondary hover:border-primary hover:text-primary',
+            : 'bg-ink-primary text-white border-ink-primary dark:bg-night-text dark:text-night-bg dark:border-night-text'
+          : 'bg-white dark:bg-night-surface border-border dark:border-night-border text-ink-secondary hover:border-primary hover:text-primary',
       ].join(' ')}
     >
       {isUp ? <ThumbUp /> : <ThumbDown />}

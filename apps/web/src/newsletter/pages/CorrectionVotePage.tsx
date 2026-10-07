@@ -5,6 +5,7 @@ import { fetchCorrectionVote, sendCorrectionVote } from '../api/digests'
 import { localeFor } from '../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
+import { Alert, Button, LoadingRegion, Skeleton, SkeletonText, buttonClass } from '@/components/ui'
 import type { CorrectionVote, CorrectionVoteValue, CorrectionVoteView, DigestSlot } from '../types'
 
 type ErrorState = 'invalid' | 'expired' | 'notFound' | 'closed' | 'notAllowed'
@@ -44,7 +45,7 @@ interface SlotListProps {
 
 function SlotList({ title, slots, lang, emptyLabel, highlight }: SlotListProps) {
   return (
-    <div className={`rounded-sm border p-4 ${highlight ? 'border-primary bg-primary-50' : 'border-border bg-surface'}`}>
+    <div className={`rounded-sm border p-4 ${highlight ? 'border-primary bg-primary-50 dark:bg-primary-800' : 'border-border dark:border-night-border bg-surface dark:bg-night-bg'}`}>
       <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">{title}</p>
       {slots.length === 0 ? (
         <p className="font-body text-body-sm text-ink-secondary">{emptyLabel}</p>
@@ -123,7 +124,7 @@ export default function CorrectionVotePage() {
 
   return (
     <section className="max-w-content mx-auto px-4 sm:px-6 py-section-mobile lg:py-section">
-      <div className="max-w-xl mx-auto bg-white rounded-card border border-border shadow-card overflow-hidden">
+      <div className="max-w-xl mx-auto bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card overflow-hidden">
         <div className="relative h-20 bg-primary-900 overflow-hidden" aria-hidden="true">
           <div className="absolute top-[-40%] right-[-10%] w-1/2 h-[180%] rounded-full bg-primary-700/50" />
           <div className="absolute bottom-[-60%] left-[10%] w-1/3 h-full rotate-12 bg-accent/30" />
@@ -134,7 +135,14 @@ export default function CorrectionVotePage() {
           </p>
 
           {state === 'loading' && (
-            <p className="font-body text-body text-ink-secondary" aria-busy="true">{t('digest.correction.loading')}</p>
+            <LoadingRegion className="flex flex-col gap-4">
+              <Skeleton className="h-8 w-4/5" />
+              <SkeletonText lines={2} />
+              <div className="grid gap-3 sm:grid-cols-2" aria-hidden="true">
+                <Skeleton className="h-24" />
+                <Skeleton className="h-24" />
+              </div>
+            </LoadingRegion>
           )}
 
           {correction && (state === 'ready' || state === 'done' || state === 'closed') && (
@@ -165,32 +173,30 @@ export default function CorrectionVotePage() {
                   const preselected = suggested === choice
                   const current = correction.myVote === choice.toUpperCase()
                   return (
-                    <button
+                    <Button
                       key={choice}
-                      type="button"
+                      variant={preselected || (!suggested && choice === 'confirm') ? 'primary' : 'outline'}
                       onClick={() => vote(choice)}
                       disabled={busy !== null}
+                      loading={busy === choice}
+                      loadingLabel={t('digest.correction.sending')}
                       aria-pressed={current}
-                      className={`min-h-[44px] px-5 font-body text-body-sm font-semibold rounded-sm transition-colors duration-150 disabled:opacity-60 ${
-                        preselected || (!suggested && choice === 'confirm')
-                          ? 'bg-primary text-surface hover:bg-primary-600'
-                          : 'bg-white border border-border text-ink-primary hover:border-primary hover:text-primary'
-                      } ${current ? 'ring-2 ring-accent ring-offset-2' : ''}`}
+                      className={current ? 'ring-2 ring-accent ring-offset-2 dark:ring-offset-night-surface' : ''}
                     >
-                      {busy === choice ? t('digest.correction.sending') : t(`digest.correction.${choice}`)}
-                    </button>
+                      {t(`digest.correction.${choice}`)}
+                    </Button>
                   )
                 })}
               </div>
               {voteError && (
-                <p role="alert" className="font-body text-body-sm text-red-600">{t('digest.correction.voteError')}</p>
+                <Alert tone="error" onDismiss={() => setVoteError(false)}>{t('digest.correction.voteError')}</Alert>
               )}
             </div>
           )}
 
           {state === 'done' && correction && (
             <div className="flex flex-col gap-2">
-              <p className="font-display text-h5 font-bold text-emerald-700">{t('digest.correction.doneTitle')}</p>
+              <p className="font-display text-h5 font-bold text-emerald-700 dark:text-emerald-400">{t('digest.correction.doneTitle')}</p>
               {result?.previousVote && (
                 <p className="font-body text-body-sm text-ink-secondary">
                   {result.previousVote === correction.myVote ? t('digest.correction.doneUnchanged') : t('digest.correction.doneChanged')}
@@ -200,13 +206,9 @@ export default function CorrectionVotePage() {
                 <p className="font-body text-body-sm text-ink-secondary">{t('digest.correction.applied')}</p>
               )}
               {correction.open && (
-                <button
-                  type="button"
-                  onClick={() => setState('ready')}
-                  className="self-start font-body text-body-sm font-semibold text-primary hover:underline underline-offset-2"
-                >
+                <Button variant="outline" onClick={() => setState('ready')} className="self-start">
                   {t('digest.correction.changeVote')}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -223,7 +225,7 @@ export default function CorrectionVotePage() {
             <>
               {title('digest.correction.expiredTitle')}
               {hint('digest.correction.expiredHint')}
-              <a href={SCHEDULER_URL} className="self-start font-body text-body-sm font-semibold text-primary hover:underline underline-offset-2">
+              <a href={SCHEDULER_URL} className={buttonClass({ variant: 'outline', className: 'self-start' })}>
                 {t('digest.correction.openScheduler')}
               </a>
             </>
@@ -242,17 +244,14 @@ export default function CorrectionVotePage() {
           {state === 'error' && (
             <>
               {title('digest.correction.errorTitle')}
-              <button
-                type="button"
-                onClick={() => setAttempt((a) => a + 1)}
-                className="self-start min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
-              >
-                {t('admin.common.retry')}
-              </button>
+              {hint('digest.correction.errorHint')}
+              <Button onClick={() => setAttempt((a) => a + 1)} className="self-start">
+                {t('errors.retry')}
+              </Button>
             </>
           )}
 
-          <Link to={newsletterPath('/')} className="self-start font-body text-body-sm font-semibold text-primary hover:underline underline-offset-2">
+          <Link to={newsletterPath('/')} className={buttonClass({ variant: 'ghost', className: 'self-start' })}>
             {t('digest.correction.backHome')}
           </Link>
         </div>
