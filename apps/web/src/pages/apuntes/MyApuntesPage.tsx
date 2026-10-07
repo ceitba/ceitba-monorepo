@@ -12,15 +12,13 @@ import {
   type DriveSource,
 } from '../../api/drive'
 import { ApiError } from '../../api/client'
-import { apuntesErrorMessage, formatDateTime } from '../../utils/apuntes'
+import { formatDateTime } from '../../utils/apuntes'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ErrorBanner from '../../components/ErrorBanner'
-import Notice from '../../components/Notice'
+import { Alert, Button, EmptyState, ErrorState, SkeletonCards, Switch } from '../../components/ui'
 import ConnectWizard from '../../components/apuntes/ConnectWizard'
-import EmptyState from '../../components/apuntes/EmptyState'
 import SourceTreeView from '../../components/apuntes/SourceTreeView'
 import { SourceStatusBadge } from '../../components/apuntes/Badges'
-import { BTN_DANGER_LINK, BTN_OUTLINE, BTN_PRIMARY } from '../../components/apuntes/buttons'
+import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
 
 // /apuntes/mis-apuntes — the student's connected Drive folders ("sources"):
 // connect a new one, sync, toggle anonymous, disconnect, and assign subjects
@@ -40,6 +38,7 @@ export default function MyApuntesPage() {
   const [busy, setBusy] = useState<string | null>(null) // `${action}:${sourceId}`
   const [wizardOpen, setWizardOpen] = useState(false)
   const [disconnecting, setDisconnecting] = useState<DriveSource | null>(null)
+  const [disconnectError, setDisconnectError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,11 +56,11 @@ export default function MyApuntesPage() {
       setUnconfigured(true)
       setSources([])
     } else {
-      setLoadError(apuntesErrorMessage(sourcesRes.reason, t))
+      setLoadError(apuntesErrorCopy(sourcesRes.reason, t))
     }
     if (infoRes.status === 'rejected' && sourcesRes.status === 'fulfilled' &&
         !(infoRes.reason instanceof ApiError && infoRes.reason.code === 'DRIVE_SYNC_UNCONFIGURED')) {
-      setLoadError(apuntesErrorMessage(infoRes.reason, t))
+      setLoadError(apuntesErrorCopy(infoRes.reason, t))
     }
     setLoading(false)
   }, [t])
@@ -85,7 +84,7 @@ export default function MyApuntesPage() {
       await syncSource(s.id)
       setNotice(t('apuntes.mine.syncQueued', { name: s.rootName }))
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesErrorCopy(e, t))
     } finally {
       setBusy(null)
     }
@@ -96,7 +95,7 @@ export default function MyApuntesPage() {
     try {
       replaceSource(await patchSource(s.id, { anonymous: !s.anonymous }))
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesErrorCopy(e, t))
     } finally {
       setBusy(null)
     }
@@ -105,16 +104,17 @@ export default function MyApuntesPage() {
   async function confirmDisconnect() {
     if (!disconnecting) return
     const s = disconnecting
-    setError(null); setNotice(null); setBusy(`delete:${s.id}`)
+    setError(null); setNotice(null); setDisconnectError(null); setBusy(`delete:${s.id}`)
     try {
       await deleteSource(s.id)
       setSources((list) => list && list.filter((x) => x.id !== s.id))
       if (selectedId === s.id) select(null)
       setNotice(t('apuntes.mine.disconnected', { name: s.rootName }))
-    } catch (e) {
-      setError(apuntesErrorMessage(e, t))
-    } finally {
       setDisconnecting(null)
+    } catch (e) {
+      // Keep the dialog open so the student can retry from where they were.
+      setDisconnectError(apuntesErrorCopy(e, t))
+    } finally {
       setBusy(null)
     }
   }
@@ -128,6 +128,11 @@ export default function MyApuntesPage() {
 
   const list = sources ?? []
   const selected = list.find((s) => s.id === selectedId) ?? null
+  // The wizard needs the Drive service account from /drive/info.
+  const canConnect = info != null && !unconfigured
+  const connectBlockedReason = canConnect
+    ? null
+    : t(unconfigured ? 'apuntes.mine.connectBlockedUnconfigured' : 'apuntes.mine.connectBlockedInfo')
 
   return (
     <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
@@ -146,43 +151,47 @@ export default function MyApuntesPage() {
             {t('apuntes.mine.subtitle')}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setWizardOpen(true)}
-          disabled={!info || unconfigured}
-          className={BTN_PRIMARY}
-        >
-          {t('apuntes.mine.connect')}
-        </button>
+        {/* Hidden while loading and while the empty state carries the
+            same action; when connecting isn't possible it says why. */}
+        {!loading && list.length > 0 && (
+          <div className="flex flex-col items-start sm:items-end gap-1 max-w-xs">
+            <Button onClick={() => setWizardOpen(true)} disabled={!canConnect}>
+              {t('apuntes.mine.connect')}
+            </Button>
+            {connectBlockedReason && (
+              <p className="font-body text-label text-ink-secondary dark:text-night-muted sm:text-right">{connectBlockedReason}</p>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="flex flex-col gap-3 mb-6 empty:hidden">
-        {unconfigured && <ErrorBanner>{t('apuntes.errors.DRIVE_SYNC_UNCONFIGURED')}</ErrorBanner>}
-        {loadError && (
-          <ErrorBanner>
-            {loadError}{' '}
-            <button type="button" onClick={() => void load()} className="underline font-semibold">{t('errors.retry')}</button>
-          </ErrorBanner>
+        {unconfigured && <Alert tone="warning">{t('apuntes.errors.DRIVE_SYNC_UNCONFIGURED')}</Alert>}
+        {loadError && sources != null && (
+          <Alert tone="error" action={<Button variant="outline" size="sm" onClick={() => void load()}>{t('errors.retry')}</Button>}>
+            {loadError}
+          </Alert>
         )}
-        {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
-        {notice && <Notice onDismiss={() => setNotice(null)}>{notice}</Notice>}
+        {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
+        {notice && <Alert tone="success" onDismiss={() => setNotice(null)}>{notice}</Alert>}
       </div>
 
-      {loading && sources == null && (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-hidden="true">
-          {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-32 rounded-card skeleton" />)}
-        </div>
-      )}
+      {loading && sources == null && <SkeletonCards count={2} className="flex flex-col gap-3" cardClassName="h-32" />}
+
+      {!loading && loadError && sources == null && <ErrorState message={loadError} onRetry={() => void load()} />}
 
       {!loading && sources != null && list.length === 0 && !unconfigured && (
         <EmptyState
           title={t('apuntes.mine.emptyTitle')}
           body={t('apuntes.mine.emptyBody')}
-          action={info ? (
-            <button type="button" onClick={() => setWizardOpen(true)} className={BTN_PRIMARY}>
-              {t('apuntes.mine.connect')}
-            </button>
-          ) : undefined}
+          action={
+            <div className="flex flex-col items-center gap-1">
+              <Button onClick={() => setWizardOpen(true)} disabled={!canConnect}>{t('apuntes.mine.connect')}</Button>
+              {connectBlockedReason && (
+                <p className="font-body text-label text-ink-secondary dark:text-night-muted">{connectBlockedReason}</p>
+              )}
+            </div>
+          }
         />
       )}
 
@@ -219,9 +228,11 @@ export default function MyApuntesPage() {
                           {t(`apuntes.mine.statusHint.${s.status}`, { defaultValue: '' })}
                         </p>
                       )}
-                      {s.lastError && (
+                      {/* The raw sync error is internal; non-ACTIVE sources
+                          already explain themselves through statusHint. */}
+                      {s.lastError && s.status === 'ACTIVE' && (
                         <p className="font-body text-body-sm text-red-600 dark:text-red-400 mt-2">
-                          {t('apuntes.mine.lastError', { error: s.lastError })}
+                          {t('apuntes.mine.lastError')}
                         </p>
                       )}
                     </div>
@@ -233,40 +244,32 @@ export default function MyApuntesPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border dark:border-night-border">
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
                       onClick={() => select(isSelected ? null : s.id)}
                       aria-expanded={isSelected}
-                      className={isSelected ? BTN_PRIMARY : BTN_OUTLINE}
                     >
                       {isSelected ? t('apuntes.mine.hideFiles') : t('apuntes.mine.showFiles')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => sync(s)}
-                      disabled={busy === `sync:${s.id}`}
-                      className={BTN_OUTLINE}
-                    >
-                      {busy === `sync:${s.id}` ? '…' : t('apuntes.mine.syncNow')}
-                    </button>
-                    <label className="inline-flex items-center gap-2 min-h-[40px] px-2 cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-                      <input
-                        type="checkbox"
+                    </Button>
+                    <Button variant="outline" onClick={() => sync(s)} loading={busy === `sync:${s.id}`}>
+                      {t('apuntes.mine.syncNow')}
+                    </Button>
+                    <div className="px-2">
+                      <Switch
                         checked={s.anonymous}
                         disabled={busy === `anon:${s.id}`}
-                        onChange={() => toggleAnonymous(s)}
-                        className="h-4 w-4 accent-primary"
+                        onChange={() => void toggleAnonymous(s)}
+                        label={t('apuntes.mine.anonymousToggle')}
                       />
-                      {t('apuntes.mine.anonymousToggle')}
-                    </label>
-                    <button
-                      type="button"
+                    </div>
+                    <Button
+                      variant="dangerGhost"
                       onClick={() => setDisconnecting(s)}
                       disabled={busy === `delete:${s.id}`}
-                      className={`${BTN_DANGER_LINK} sm:ml-auto`}
+                      className="sm:ml-auto"
                     >
                       {t('apuntes.mine.disconnect')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -298,8 +301,9 @@ export default function MyApuntesPage() {
           confirmLabel={t('apuntes.mine.disconnectConfirm')}
           danger
           busy={busy === `delete:${disconnecting.id}`}
+          error={disconnectError}
           onConfirm={confirmDisconnect}
-          onCancel={() => setDisconnecting(null)}
+          onCancel={() => { setDisconnecting(null); setDisconnectError(null) }}
         />
       )}
     </main>

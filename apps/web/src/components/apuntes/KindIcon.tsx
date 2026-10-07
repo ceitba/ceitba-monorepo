@@ -1,15 +1,16 @@
 import type { FileKind } from '../../api/drive'
 
 // Inline file-kind glyphs (no icon library, per the editorial system).
-// Colour hints the kind the way Drive does, but muted.
+// Colour hints the kind the way Drive does, muted and limited to the site's
+// tones (primary, accent, amber, emerald, red, ink).
 const COLORS: Record<FileKind, string> = {
   FOLDER:  'text-accent-600 dark:text-accent-300',
   DOC:     'text-primary-400 dark:text-primary-300',
   SLIDES:  'text-amber-600 dark:text-amber-400',
   SHEET:   'text-emerald-700 dark:text-emerald-400',
-  DRAWING: 'text-violet-600 dark:text-violet-400',
+  DRAWING: 'text-accent-600 dark:text-accent-300',
   PDF:     'text-red-600 dark:text-red-400',
-  IMAGE:   'text-sky-700 dark:text-sky-400',
+  IMAGE:   'text-primary-500 dark:text-primary-300',
   OFFICE:  'text-primary-600 dark:text-primary-300',
   OTHER:   'text-ink-secondary dark:text-night-muted',
 }

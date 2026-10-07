@@ -309,7 +309,6 @@
     "language": "Language",
     "career": "Career",
     "plan": "Plan",
-    "fileNumber": "File number",
     "unset": "Not set",
     "pickCareerFirst": "Pick a career to see available plans.",
     "fileNumberValue": "Student ID: {{number}}",

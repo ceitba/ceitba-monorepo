@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '../Modal'
-import ErrorBanner from '../ErrorBanner'
+import { Alert, Button, Field, inputClass } from '../ui'
 import { createSource, type DriveInfo, type DriveSource } from '../../api/drive'
-import { apuntesErrorMessage } from '../../utils/apuntes'
-import { BTN_OUTLINE, BTN_PRIMARY, INPUT } from './buttons'
+import { apuntesErrorCopy } from './errorCopy'
 
 interface Props {
   info: DriveInfo
@@ -69,7 +68,7 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
       })
       onConnected(source)
     } catch (err) {
-      setError(apuntesErrorMessage(err, t))
+      setError(apuntesErrorCopy(err, t))
     } finally {
       setBusy(false)
     }
@@ -108,57 +107,52 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
                 >
                   {info.botEmail}
                 </code>
-                <button type="button" onClick={copyEmail} className={BTN_OUTLINE}>
+                <Button variant="outline" onClick={copyEmail}>
                   {copied ? t('apuntes.wizard.copied') : t('apuntes.wizard.copy')}
-                </button>
+                </Button>
               </div>
             </li>
             <li>{t('apuntes.wizard.step1Viewer')}</li>
           </ol>
-          <div className="px-3 py-3 rounded-sm border border-accent-200 bg-accent-50 dark:bg-accent-900/30 dark:border-accent-800 text-accent-800 dark:text-accent-200">
-            <p className="font-semibold">{t('apuntes.wizard.warningTitle')}</p>
-            <p className="mt-1">{t('apuntes.wizard.warningBody')}</p>
-          </div>
+          <Alert tone="warning" title={t('apuntes.wizard.warningTitle')}>{t('apuntes.wizard.warningBody')}</Alert>
           <p className="text-ink-secondary dark:text-night-muted">{t('apuntes.wizard.step1Scope')}</p>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-              {t('manage.cancel')}
-            </button>
-            <button type="button" onClick={() => setStep(2)} className={BTN_PRIMARY}>
-              {t('apuntes.wizard.shared')}
-            </button>
+            <Button variant="ghost" onClick={onClose}>{t('ui.cancel')}</Button>
+            <Button onClick={() => setStep(2)}>{t('apuntes.wizard.shared')}</Button>
           </div>
         </div>
       )}
 
       {step === 2 && (
         <form onSubmit={submit} className="flex flex-col gap-5 font-body text-body-sm text-ink-primary dark:text-night-text" noValidate>
-          {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+          {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
 
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-              {t('apuntes.wizard.folderUrl')}
-            </span>
-            <input
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              value={folderUrl}
-              onChange={(e) => setFolderUrl(e.target.value)}
-              onBlur={() => setTouched(true)}
-              placeholder="https://drive.google.com/drive/folders/…"
-              className={INPUT}
-              aria-invalid={touched && folderUrl.trim() !== '' && !urlLooksValid}
-              autoFocus
-            />
-            {touched && folderUrl.trim() !== '' && !urlLooksValid ? (
-              <span className="text-amber-700 dark:text-amber-300">{t('apuntes.wizard.folderUrlWarn')}</span>
-            ) : (
-              <span className="text-ink-secondary dark:text-night-muted">{t('apuntes.wizard.folderUrlHint')}</span>
+          {/* A doubtful link is only a warning (amber): the API decides. */}
+          <Field
+            label={t('apuntes.wizard.folderUrl')}
+            hint={
+              touched && folderUrl.trim() !== '' && !urlLooksValid
+                ? <span className="text-amber-700 dark:text-amber-300">{t('apuntes.wizard.folderUrlWarn')}</span>
+                : t('apuntes.wizard.folderUrlHint')
+            }
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                value={folderUrl}
+                onChange={(e) => setFolderUrl(e.target.value)}
+                onBlur={() => setTouched(true)}
+                placeholder="https://drive.google.com/drive/folders/…"
+                className={inputClass({ invalid: touched && folderUrl.trim() !== '' && !urlLooksValid })}
+                autoFocus
+              />
             )}
-          </label>
+          </Field>
 
-          <label className="flex items-start gap-3 cursor-pointer">
+          <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
             <input
               type="checkbox"
               checked={anonymous}
@@ -178,7 +172,7 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
             <div className="max-h-48 overflow-y-auto px-3 py-2 rounded-sm border border-border dark:border-night-border bg-page-bg dark:bg-night-bg whitespace-pre-line text-ink-secondary dark:text-night-muted">
               {info.consentText}
             </div>
-            <label className="flex items-start gap-3 cursor-pointer">
+            <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
               <input
                 type="checkbox"
                 checked={consent}
@@ -189,13 +183,20 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
             </label>
           </div>
 
-          <div className="flex flex-wrap justify-between gap-2 pt-2">
-            <button type="button" disabled={busy} onClick={() => setStep(1)} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted disabled:opacity-50">
-              ← {t('apuntes.wizard.back')}
-            </button>
-            <button type="submit" disabled={!canSubmit} className={BTN_PRIMARY}>
-              {busy ? t('apuntes.wizard.connecting') : t('apuntes.wizard.connect')}
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            <Button variant="ghost" disabled={busy} onClick={() => setStep(1)}>
+              <span aria-hidden="true">←</span> {t('apuntes.wizard.back')}
+            </Button>
+            <div className="flex flex-col items-end gap-1">
+              <Button type="submit" disabled={!canSubmit} loading={busy} loadingLabel={t('apuntes.wizard.connecting')}>
+                {t('apuntes.wizard.connect')}
+              </Button>
+              {!busy && !canSubmit && (
+                <p className="font-body text-label text-ink-secondary dark:text-night-muted text-right">
+                  {t(folderUrl.trim() === '' ? 'apuntes.wizard.needUrl' : 'apuntes.wizard.needConsent')}
+                </p>
+              )}
+            </div>
           </div>
         </form>
       )}

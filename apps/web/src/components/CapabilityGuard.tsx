@@ -2,6 +2,8 @@ import type { ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import AuthGuard from './AuthGuard'
+import { buttonClass } from './ui'
+import PageFallback from './PageFallback'
 import { useCapability } from '../hooks/useCapability'
 
 // Logged-in pages behind a feature capability (today: Apuntes). Anonymous
@@ -20,11 +22,11 @@ function CapabilityCheck({ capability, children }: { capability: string; childre
   const { t } = useTranslation()
   const { enabled, loading } = useCapability(capability)
 
-  if (loading) return null
+  if (loading) return <PageFallback />
   if (enabled) return children
 
   return (
-    <main id="main-content" className="container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
       <div className="max-w-lg mx-auto flex flex-col items-center text-center gap-5 py-12 animate-fade-in">
         <div className="relative w-20 h-20" aria-hidden="true">
           <div className="absolute inset-0 rounded-full bg-accent-50 dark:bg-accent-900" />
@@ -39,7 +41,7 @@ function CapabilityCheck({ capability, children }: { capability: string; childre
         </p>
         <Link
           to="/"
-          className="min-h-[44px] inline-flex items-center px-6 py-2.5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
+          className={buttonClass()}
         >
           {t('capabilityGuard.home')}
         </Link>

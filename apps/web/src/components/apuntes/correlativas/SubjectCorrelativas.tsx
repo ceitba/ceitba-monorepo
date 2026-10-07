@@ -26,7 +26,7 @@ export default function SubjectCorrelativas({ subjectId }: { subjectId: string }
   const links = (ids: string[]) => ids.map((id, i) => (
     <span key={id}>
       {i > 0 && ', '}
-      <Link to={`/apuntes/${encodeURIComponent(id)}`} title={model.nodes.get(id)?.name} className="text-primary hover:underline">
+      <Link to={`/apuntes/${encodeURIComponent(id)}`} className="text-primary dark:text-primary-300 hover:underline">
         <span className="font-mono text-label mr-1">{id}</span>{model.nodes.get(id)?.name}
       </Link>
     </span>

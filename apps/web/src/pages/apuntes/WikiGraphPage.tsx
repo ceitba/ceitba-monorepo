@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchKbGraph, fetchKbPage, fetchSubjectKb, kbPagePath, type KbGraph } from '../../api/kb'
-import { apuntesErrorMessage } from '../../utils/apuntes'
-import EmptyState from '../../components/apuntes/EmptyState'
+import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
+import { EmptyState, ErrorState, LoadingRegion, Skeleton } from '../../components/ui'
 import GraphView, { type GraphNode } from '../../components/apuntes/graph/GraphView'
 
 const TYPE_COLOR: Record<string, string> = {
@@ -25,18 +25,20 @@ export default function WikiGraphPage() {
   const [graph, setGraph] = useState<KbGraph | null>(null)
   const [subjectName, setSubjectName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     setGraph(null); setError(null)
     fetchKbGraph(subjectId)
       .then((g) => { if (!cancelled) setGraph({ nodes: g.nodes ?? [], edges: g.edges ?? [] }) })
-      .catch((e) => { if (!cancelled) setError(apuntesErrorMessage(e, t)) })
+      .catch((e) => { if (!cancelled) setError(apuntesErrorCopy(e, t)) })
+    // Only feeds the breadcrumb; the subject code stands in if it fails.
     fetchSubjectKb(subjectId)
       .then((kb) => { if (!cancelled) setSubjectName(kb.subjectName) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [subjectId, t])
+  }, [subjectId, t, tick])
 
   const nodes = useMemo<GraphNode[]>(() => (graph?.nodes ?? []).map((n) => ({
     id: n.id, subjectId: n.subjectId, slug: n.slug, title: n.title, type: n.type, muted: n.external,
@@ -65,8 +67,19 @@ export default function WikiGraphPage() {
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{t('wiki.graphHint')}</p>
       </header>
 
-      {error && <p role="alert" className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>}
-      {!graph && !error && <div className="flex-1 min-h-[60vh] rounded-card skeleton" aria-busy="true" />}
+      {error && (
+        <ErrorState
+          message={error}
+          onRetry={() => setTick((n) => n + 1)}
+          backTo={`/apuntes/${encodeURIComponent(subjectId)}?vista=wiki`}
+          backLabel={t('wiki.backToSubject')}
+        />
+      )}
+      {!graph && !error && (
+        <LoadingRegion className="flex-1 flex flex-col">
+          <Skeleton className="flex-1 min-h-[60vh] !rounded-card" />
+        </LoadingRegion>
+      )}
       {graph && graph.nodes.length === 0 && <EmptyState title={t('wiki.emptyTitle')} body={t('wiki.emptyBody')} />}
       {graph && nodes.length > 0 && (
         <GraphView

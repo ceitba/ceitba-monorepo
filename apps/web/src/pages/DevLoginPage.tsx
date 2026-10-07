@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { devLogin } from '../api/drive'
 import { getSession } from '../store/authStore'
-import { apuntesErrorMessage, isSafeReturnPath } from '../utils/apuntes'
+import { isSafeReturnPath } from '../utils/apuntes'
+import { apuntesErrorCopy } from '../components/apuntes/errorCopy'
 import { Alert, Button, Field, inputClass } from '../components/ui'
 
 // Local-only sign-in against CEITBA-API's POST /v1/auth/dev-login (API `dev`
@@ -35,7 +36,7 @@ export default function DevLoginPage() {
       const returnTo = params.get('returnTo')
       navigate(isSafeReturnPath(returnTo) ? returnTo : '/apuntes', { replace: true })
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesErrorCopy(e, t))
     } finally {
       setBusy(false)
     }

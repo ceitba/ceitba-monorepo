@@ -309,7 +309,6 @@
     "language": "Idioma",
     "career": "Carrera",
     "plan": "Plan",
-    "fileNumber": "Legajo",
     "unset": "Sin definir",
     "pickCareerFirst": "Elegí una carrera para ver los planes disponibles.",
     "fileNumberValue": "Legajo: {{number}}",

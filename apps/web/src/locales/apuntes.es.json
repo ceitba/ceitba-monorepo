@@ -21,6 +21,7 @@
       "CAPABILITY_REQUIRED": "Apuntes todavía no está habilitado para tu cuenta."
     },
     "sourceStatus": {
+      "unknown": "Otro estado",
       "PENDING_REVIEW": "En revisión",
       "ACTIVE": "Activa",
       "BLOCKED": "Bloqueada",
@@ -29,6 +30,7 @@
       "ERROR": "Con errores"
     },
     "publication": {
+      "unknown": "Otro estado",
       "PRIVATE": "Privado",
       "NEEDS_REVIEW": "En revisión",
       "PUBLISHED": "Publicado",
@@ -60,6 +62,8 @@
       "allSubjects": "Todas las materias"
     },
     "tree": {
+      "emptyTitle": "Todavía no hay archivos",
+      "useSuggestionNamed": "Usar la sugerida: {{name}}",
       "intro": "Elegí la materia de cada carpeta o archivo: lo que pongas en una carpeta lo heredan sus archivos. Solo se publican los archivos con materia que no ocultes.",
       "acceptAll": "Aceptar sugerencias ({{count}})",
       "acceptedNotice_one": "Aplicamos {{count}} sugerencia.",
@@ -71,10 +75,8 @@
       "notMine": "No es tuyo",
       "notMineHint": "Lo creó otra persona: CEITBA lo revisa antes de publicarlo.",
       "hiddenLabel": "Oculto",
-      "syncError": "No pudimos sincronizarlo: {{error}}",
+      "syncError": "No pudimos sincronizar este archivo. Probá «Sincronizar ahora» en unos minutos.",
       "subjectFor": "Materia de {{name}}",
-      "useSuggestion": "Usar la materia sugerida",
-      "suggestion": "Sugerida: {{name}}",
       "hide": "Ocultar",
       "inMyPlan": "de tu plan",
       "recompute": "Recalcular sugerencias",
@@ -85,6 +87,8 @@
       "inheritedSuggestion": "Hereda la sugerencia de la carpeta: {{name}}"
     },
     "wizard": {
+      "needConsent": "Aceptá las condiciones para conectar.",
+      "needUrl": "Pegá el link de la carpeta para seguir.",
       "title": "Conectar una carpeta de Drive",
       "stepsAria": "Pasos",
       "step1Label": "1 · Compartir",
@@ -111,6 +115,7 @@
       "connecting": "Conectando…"
     },
     "report": {
+      "needReason": "Elegí un motivo para enviar la denuncia.",
       "title": "Denunciar archivo",
       "intro": "Contanos qué pasa con «{{name}}». Con varias denuncias el archivo se oculta hasta que CEITBA lo revise.",
       "reason": "Motivo",
@@ -128,6 +133,7 @@
       "thanks": "Gracias, recibimos tu denuncia. CEITBA la va a revisar."
     },
     "home": {
+      "mineFailed": "No pudimos cargar las materias de tu plan.",
       "eyebrow": "Apoyo académico",
       "title": "Apuntes",
       "subtitle": "Resúmenes, guías y finales que comparten estudiantes del ITBA desde su Google Drive, ordenados por materia.",
@@ -172,6 +178,8 @@
       "notFoundBody": "Puede que lo hayan quitado, ocultado o que ya no esté publicado."
     },
     "mine": {
+      "connectBlockedInfo": "No pudimos cargar lo necesario para conectar. Reintentá en el aviso de arriba.",
+      "connectBlockedUnconfigured": "Por ahora no se pueden conectar carpetas: falta configurar Google Drive.",
       "title": "Mis apuntes",
       "subtitle": "Las carpetas de Drive que compartiste con CEITBA. Asigná materias, ocultá lo que no quieras publicar y sincronizá cuando quieras.",
       "connect": "Conectar carpeta",
@@ -183,7 +191,7 @@
       "anonymousOn": "Anónimo",
       "lastSync": "Última sincronización: {{date}}",
       "neverSynced": "Todavía no se sincronizó",
-      "lastError": "Último error: {{error}}",
+      "lastError": "La última sincronización tuvo un problema. Probá «Sincronizar ahora» en unos minutos.",
       "statusHint": {
         "PENDING_REVIEW": "CEITBA está revisando tu carpeta. Mientras tanto podés ir asignando materias: se publican cuando la aprueben.",
         "BLOCKED": "CEITBA bloqueó esta carpeta y sus archivos no se muestran. Escribinos a ceitba@itba.edu.ar si creés que es un error.",
@@ -239,15 +247,16 @@
       "subjectCount_other": "{{count}} materias"
     },
     "pins": {
+      "unpinNamed": "Desfijar {{name}}",
+      "pinNamed": "Fijar {{name}}",
       "title": "Fijadas",
-      "pin": "Fijar",
-      "unpin": "Desfijar",
       "wiki": "Wiki",
       "hint": "Fijá materias con el botón del pin para tenerlas a mano acá.",
       "limit": "Llegaste al máximo de {{limit}} materias fijadas. Desfijá alguna para sumar otra.",
       "failed": "No pudimos actualizar tus materias fijadas. Probá de nuevo."
     },
     "year": {
+      "estimatedLegend": "≈ antes del año: estimado según la fecha del archivo en Drive.",
       "source": {
         "USER": "Elegido por quien compartió el apunte",
         "NAME": "Detectado en el nombre del archivo",
@@ -266,6 +275,9 @@
       "sortFolder": "Por carpeta"
     },
     "corr": {
+      "miniFailed": "No pudimos dibujar la vista previa de tu plan. El mapa completo sigue disponible.",
+      "requiresList": "Correlativas: {{list}}",
+      "emptyBody": "Cuando el plan tenga materias cargadas, las vas a ver acá con sus correlativas.",
       "title": "Mapa de correlatividades",
       "open": "Ver mapa",
       "seeMap": "Ver mapa de correlatividades",
@@ -338,6 +350,9 @@
       "reportSource": "Fuente [{{n}}]: {{name}}"
     },
     "graphUi": {
+      "resetShort": "Restablecer",
+      "fitShort": "Ajustar",
+      "zoomAria": "Zoom",
       "search": "Buscar en el grafo…",
       "matches_one": "{{count}} resultado",
       "matches_other": "{{count}} resultados",
@@ -944,6 +959,8 @@
     }
   },
   "devLogin": {
+    "presetStaff": "{{user}} (staff)",
+    "email": "Email",
     "link": "Dev login",
     "eyebrow": "Solo desarrollo local",
     "title": "Dev login",
