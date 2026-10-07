@@ -12,6 +12,19 @@
 5. Feature PRs merge into `dev` with a merge commit. Releases are one reviewed `dev` → `main` PR; every push to
    `main` deploys the apps it changed.
 
+## Local checks
+
+`bun install` at the root installs the git hooks (lefthook):
+
+| Hook | Runs |
+|---|---|
+| pre-commit | gitleaks on staged changes (if installed: `brew install gitleaks`), ESLint on staged SPA files, and the repo checks matching the staged files |
+| commit-msg | Conventional Commits (`scripts/checks/commit-msg.mjs`) |
+| pre-push | `bun run check` (locales, migrations, workflows, agents; living docs as a warning) |
+
+CI runs the same scripts, so skipping a hook only moves the failure to the PR. The API tests are not in a hook
+(they need Docker and take minutes): run `./mvnw -B -ntp verify` in `apps/api` before pushing API changes.
+
 ## Coding standards
 
 These are the standards sources reviews (human and `/code-review`) check against:

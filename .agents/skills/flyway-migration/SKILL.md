@@ -29,7 +29,7 @@ Paths (under `apps/api/src`):
    `String[]` (not `List<String>`) for `text[]` columns (see `ListStringMappingOrderIT`), `@IdClass` for composite
    keys.
 7. **Verify**: `./mvnw -B -ntp verify` from `apps/api` (or at least the ITs touching the entity plus
-   `ProdMigrationsIT` and `SchemaValidationIT`). `node scripts/checks/migrations.mjs` checks steps 1–5 when present.
+   `ProdMigrationsIT` and `SchemaValidationIT`). `node scripts/checks/migrations.mjs` checks steps 1–5.
 
 Done when: the prod file exists, DDL has a registered mirror with the bumped target, and `verify` is green.
 

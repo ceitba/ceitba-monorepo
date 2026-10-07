@@ -38,8 +38,12 @@ included) updates the mapped doc in the same PR, or the PR states "No spec impac
 - Commits and PR titles follow Conventional Commits: `type(scope): imperative summary`. Types: `feat`, `fix`,
   `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`, `style`. Scopes are the app or area:
   `api`, `web`, `scheduler`, `newsletter`, `infra`, `ci`, `deps`, `agents`, or a feature area (`wiki`, `digest`,
-  `apuntes`, ...).
+  `apuntes`, ...). `scripts/checks/commit-msg.mjs` is the source of truth.
 - PR bodies follow the `pr` skill: Summary, Evidence, Merge Danger, plus the living-docs status.
+- Guardrails are enforced, not advisory: lefthook git hooks (`lefthook.yml`, installed by `bun install`) and agent
+  hooks (`.claude/settings.json`, `.codex/hooks.json`, `.kiro/hooks/`, all calling `scripts/agent-hooks/`) block
+  pushes to `main`/`dev`, `--no-verify`, force pushes, edits to merged migrations, env files, `bun.lock` and
+  generated agent files, and run the repo checks before an agent stops. When a hook blocks you, fix the cause.
 
 ## CI
 
@@ -65,11 +69,14 @@ actions pinned to full commit SHAs with a `# vX.Y.Z` comment.
 ## Commands
 
 ```
-bun install                                  # web deps (repo root)
+bun install                                  # web deps + git hooks (repo root)
 bun run dev | build | lint                   # all web apps; --filter @ceitba/<app> for one
 cd apps/api && ./mvnw -B -ntp verify         # API unit + integration tests (needs Docker)
-node scripts/agents/sync.mjs [--check]       # regenerate per-tool subagent files from .agents/agents/
+bun run check                                # repo checks: locales, migrations, workflows, agents, living docs
+bun run agents:sync                          # regenerate per-tool subagent files from .agents/agents/
 ```
+
+The bun version is pinned once, in `packageManager` of the root `package.json`; CI reads it from there.
 
 ## Agent skills
 

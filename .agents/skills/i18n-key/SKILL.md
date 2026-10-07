@@ -25,6 +25,6 @@ Every user-facing string goes through `t()`; Spanish is the primary locale and b
 4. Dates and numbers: `toLocaleDateString(i18n.language === 'es' ? 'es-AR' : 'en-US', …)`. Newsletter dates are
    `YYYY-MM-DD` strings parsed with `src/utils/dates.js`.
 5. Removing a string: delete the key from both files once no code references it (search for the key).
-6. Verify: `node scripts/checks/locales.mjs` (key parity, when present) and `bun run --filter @ceitba/<app> lint`.
+6. Verify: `node scripts/checks/locales.mjs` (key parity) and `bun run --filter @ceitba/<app> lint`.
 
 Done when the component renders only `t()` output and both locale files have the same key set.
