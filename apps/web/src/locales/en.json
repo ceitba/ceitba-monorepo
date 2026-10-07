@@ -1,0 +1,466 @@
+{
+  "nav": {
+    "skipToContent": "Skip to content",
+    "tagline": "ITBA Student Center",
+    "homeAria": "CEITBA home",
+    "langToggleLabel": "ES",
+    "langToggleAria": "Switch to Spanish",
+    "themeToggleLight": "Switch to light mode",
+    "themeToggleDark": "Switch to dark mode",
+    "apuntes": "Notes"
+  },
+  "tabs": {
+    "home": "Home",
+    "departments": "Departments",
+    "benefits": "Benefits",
+    "staff": "Staff",
+    "aria": "Page sections"
+  },
+  "manage": {
+    "title": "Manage",
+    "subtitle": "Run the CEITBA roster, benefits and permissions.",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "empty": "No data",
+    "tabs": {
+      "staff": "Staff",
+      "benefits": "Benefits",
+      "users": "Users",
+      "organizations": "Organizations",
+      "corrections": "Schedule corrections",
+      "drive": "Notes",
+      "wikiAi": "Wiki AI",
+      "wikiAiUnseen": "{{count}} updates in Wiki AI",
+      "capabilities": "Capabilities"
+    },
+    "staff": {
+      "year": "Year",
+      "add": "Add member",
+      "addTitle": "New member",
+      "editTitle": "Edit member",
+      "noneForYear": "No members loaded for this year.",
+      "confirmDelete": "Delete this member?",
+      "col": {
+        "name": "Name",
+        "role": "Role",
+        "order": "Order",
+        "department": "Department"
+      },
+      "deleteBody": "{{name}} will be removed from the {{year}} staff. This can't be undone.",
+      "roleEs": "Role (ES)",
+      "roleEn": "Role (EN)",
+      "email": "Email",
+      "photoUrl": "Photo URL",
+      "linkedinUrl": "LinkedIn URL"
+    },
+    "benefits": {
+      "tabs": {
+        "cards": "Cards",
+        "categories": "Categories"
+      },
+      "categories": {
+        "help": "Categories are the chips users filter benefits by. Edit their name, color and order here.",
+        "colorVar": "Color variable",
+        "order": "Order",
+        "nameEs": "Name (ES)",
+        "nameEn": "Name (EN)"
+      },
+      "cards": {
+        "filter": "Category",
+        "allCategories": "All",
+        "add": "Add card",
+        "addTitle": "New benefit card",
+        "editTitle": "Edit card",
+        "confirmDelete": "Delete this card?",
+        "empty": "No cards yet.",
+        "titleEs": "Title (ES)",
+        "titleEn": "Title (EN)",
+        "summaryEs": "Description (ES)",
+        "summaryEn": "Description (EN)",
+        "imageUrl": "Image URL",
+        "ctaUrl": "CTA URL",
+        "ctaLabelEs": "Button label (ES)",
+        "ctaLabelEn": "Button label (EN)",
+        "price": "Price",
+        "bulletsEs": "Bullets (ES) — one per line",
+        "bulletsEn": "Bullets (EN) — one per line",
+        "col": {
+          "title": "Title",
+          "category": "Category",
+          "price": "Price",
+          "order": "Order"
+        },
+        "deleteBody": "The card \"{{title}}\" will be deleted. This can't be undone."
+      },
+      "tabsAria": "Manage benefits"
+    },
+    "users": {
+      "col": {
+        "user": "User",
+        "staff": "Staff",
+        "organizations": "Organizations"
+      },
+      "staffOn": "STAFF",
+      "staffOff": "Make STAFF",
+      "unassign": "Unassign",
+      "unassignTitle": "Remove STAFF?",
+      "unassignBody": "{{name}} will lose STAFF access, including this dashboard, right away. You can assign them again later.",
+      "unassignConfirm": "Unassign",
+      "addOrg": "+ organization",
+      "noOrgs": "—",
+      "searchPlaceholder": "Search by name or email…",
+      "sort": {
+        "newest": "Newest first",
+        "oldest": "Oldest first"
+      },
+      "filterAllOrgs": "All organizations",
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} users",
+      "prev": "‹ Prev",
+      "next": "Next ›",
+      "removeOrgAria": "Remove {{name}} from {{org}}",
+      "removeOrgTitle": "Remove from organization?",
+      "removeOrgBody": "{{name}} will no longer be a member of {{org}}. You can add them back later.",
+      "removeOrgConfirm": "Remove",
+      "orgAdmin": "admin",
+      "orgMember": "member",
+      "makeOrgAdmin": "Make admin of {{org}}",
+      "makeOrgMember": "Remove admin of {{org}}",
+      "demoteOrgTitle": "Remove admin?",
+      "demoteOrgBody": "{{name}} will stay a member of {{org}}, but without admin access (e.g. the followers list).",
+      "demoteOrgConfirm": "Remove admin",
+      "noOrgMembers": "{{org}} has no members yet.",
+      "addingBanner": "Adding members to {{org}} — search for the person and tap “Add to {{org}}”.",
+      "addingDone": "Done",
+      "addToOrg": "Add to {{org}}",
+      "addToOrgAria": "Add {{name}} to {{org}}",
+      "addingToOrg": "Adding…",
+      "addMembers": "Add members"
+    },
+    "organizations": {
+      "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
+      "add": "New organization",
+      "createTitle": "New organization",
+      "create": "Create organization",
+      "creating": "Creating…",
+      "createdNotice": "You created {{name}}. Now add members so they can post on ITBA News.",
+      "newBadge": "New",
+      "addMembers": "Add members",
+      "addMembersAria": "Add members to {{name}}",
+      "empty": "No organizations yet.",
+      "col": {
+        "organization": "Organization",
+        "slug": "Address",
+        "category": "Category",
+        "actions": "Actions"
+      },
+      "fields": {
+        "name": "Name",
+        "nameHint": "Short, the name it goes by. E.g. IEEE",
+        "fullName": "Full name",
+        "fullNameHint": "E.g. IEEE ITBA Student Branch",
+        "slug": "ITBA News address",
+        "slugPlaceholder": "name",
+        "slugHint": "Generated from the name. It can't be changed after creation.",
+        "slugHintManual": "Lowercase letters, digits and hyphens. It can't be changed after creation.",
+        "slugEditAria": "Edit the ITBA News address",
+        "description": "Description",
+        "optional": "(optional)",
+        "category": "Category",
+        "noCategory": "No category",
+        "color": "Color",
+        "colorHint": "The organization's cover color on ITBA News."
+      },
+      "colors": {
+        "blue": "Blue",
+        "amber": "Amber",
+        "green": "Green",
+        "violet": "Violet"
+      },
+      "errors": {
+        "nameRequired": "Enter the name.",
+        "fullNameRequired": "Enter the full name.",
+        "slugRequired": "Enter an address.",
+        "slugFormat": "Use 2 to {{max}} characters: lowercase letters, digits and single hyphens, not at the start or end.",
+        "duplicate": "An organization with that address already exists."
+      }
+    },
+    "tabsAria": "Manage sections",
+    "corrections": {
+      "intro": "Schedule corrections are suggested by students and apply on their own once they reach 3 confirmations and more confirmations than rejections. This panel is a safety net: you can apply a pending one right away or reject one (if it was applied, it reverts to the SGA schedule). Corrections are anonymous.",
+      "filterLabel": "Status",
+      "filter": {
+        "PENDING": "Pending",
+        "APPLIED": "Applied",
+        "REJECTED": "Rejected",
+        "RESOLVED": "Resolved",
+        "SUPERSEDED": "Superseded"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "APPLIED": "Applied",
+        "appliedByVotes": "Applied by votes",
+        "appliedByStaff": "Applied by staff",
+        "REJECTED": "Rejected",
+        "rejectedByStaff": "Rejected by staff",
+        "RESOLVED": "Resolved (the SGA already fixed it)",
+        "SUPERSEDED": "Superseded (the SGA changed or another correction was applied)"
+      },
+      "col": {
+        "commission": "Subject and commission",
+        "sga": "SGA schedule",
+        "proposed": "Proposed schedule",
+        "votes": "Votes",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "commission": "Commission {{name}}",
+      "created": "Suggested on {{date}}",
+      "reviewed": "Reviewed on {{date}}",
+      "votes": "{{confirms}} confirm · {{rejects}} reject",
+      "noSlots": "No slots",
+      "days": {
+        "MONDAY": "Mon",
+        "TUESDAY": "Tue",
+        "WEDNESDAY": "Wed",
+        "THURSDAY": "Thu",
+        "FRIDAY": "Fri",
+        "SATURDAY": "Sat",
+        "SUNDAY": "Sun"
+      },
+      "apply": "Apply",
+      "reject": "Reject",
+      "revert": "Revert",
+      "applyAria": "Apply the correction for {{label}}",
+      "rejectAria": "Reject the correction for {{label}}",
+      "revertAria": "Revert the correction for {{label}}",
+      "rejectTitle": "Reject this correction?",
+      "rejectBody": "The correction for {{subject}} · Commission {{commission}} will be rejected and won't apply even if it keeps getting votes.",
+      "rejectConfirm": "Reject",
+      "revertTitle": "Revert this correction?",
+      "revertBody": "{{subject}} · Commission {{commission}} will go back to showing the SGA schedule in the Schedule Builder. The correction is rejected and won't re-apply by votes.",
+      "revertConfirm": "Revert",
+      "appliedNotice": "Done: the correction for {{subject}} · Commission {{commission}} is now used in the Schedule Builder.",
+      "rejectedNotice": "Done: you rejected the correction for {{subject}} · Commission {{commission}}.",
+      "revertedNotice": "Done: {{subject}} · Commission {{commission}} is back on the SGA schedule.",
+      "conflict": "This correction changed state in the meantime (votes, the SGA sync or another staff member). The list was reloaded with its current state.",
+      "empty": {
+        "PENDING": "No pending corrections.",
+        "APPLIED": "No applied corrections.",
+        "REJECTED": "No rejected corrections.",
+        "RESOLVED": "No resolved corrections.",
+        "SUPERSEDED": "No superseded corrections."
+      },
+      "emptyHint": "This is where schedules that students propose to fix from the Schedule Builder will show up. Normally you don't need to do anything: each correction applies on its own once enough other students confirm it.",
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections"
+    },
+    "capabilities": {
+      "intro": "Enable features in testing for everyone, for specific people (by email, even if they've never signed in) or for whole organizations. Staff always have all of them.",
+      "empty": "No capabilities defined.",
+      "enabledForAll": "Enabled for everyone",
+      "everyone": "Enabled for everyone",
+      "everyoneNote": "This capability is enabled for everyone: the grants below are kept for when you restrict it again.",
+      "counts": "{{users}} · {{orgs}}",
+      "userCount_one": "{{count}} person",
+      "userCount_other": "{{count}} people",
+      "orgCount_one": "{{count}} organization",
+      "orgCount_other": "{{count}} organizations",
+      "manageGrants": "Manage access",
+      "hideGrants": "Hide access",
+      "confirmTitle": "Enable {{label}} for everyone?",
+      "confirmBody": "Anyone who signs in will be able to use {{label}}. You can restrict it again at any time.",
+      "confirmCta": "Enable for everyone",
+      "grantedOn": "Granted on {{date}}",
+      "grantedBy": "Granted on {{date}} by {{name}}",
+      "remove": "Remove",
+      "removeAria": "Remove access for {{name}}",
+      "users": {
+        "title": "People",
+        "help": "Paste one or more emails, separated by commas or new lines.",
+        "placeholder": "name@itba.edu.ar, other@itba.edu.ar",
+        "invalid": "These emails aren't valid: {{emails}}",
+        "grant": "Grant access",
+        "empty": "No one has individual access yet.",
+        "neverLoggedIn": "Not signed in yet"
+      },
+      "orgs": {
+        "title": "Organizations",
+        "pick": "Pick an organization…",
+        "add": "Add",
+        "empty": "No organization has access yet.",
+        "members_one": "{{count}} member",
+        "members_other": "{{count}} members"
+      }
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "subtitle": "Your academic info and preferences, shared across every CEITBA site.",
+    "appearance": "Appearance",
+    "academics": "Academics",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "language": "Language",
+    "career": "Career",
+    "plan": "Plan",
+    "fileNumber": "File number",
+    "unset": "Not set",
+    "pickCareerFirst": "Pick a career to see available plans."
+  },
+  "auth": {
+    "profile": "My profile",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "manage": "Manage",
+    "errors": {
+      "unauthorized": "Only @itba.edu.ar accounts can sign in.",
+      "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
+      "unverified_email": "Your Google email isn't verified yet.",
+      "auth_failed": "We couldn't complete sign-in. Please try again.",
+      "invalid_state": "Your sign-in session expired or was invalid. Please try signing in again.",
+      "access_denied": "You cancelled the Google sign-in."
+    },
+    "apuntes": "Notes",
+    "myApuntes": "My notes"
+  },
+  "hero": {
+    "eyebrow": "Student Center",
+    "title": "CEITBA",
+    "subtitle": "The voice and executive arm of students at the Instituto Tecnológico de Buenos Aires.",
+    "description": "We work to improve the university experience for every ITBA student, representing their interests, organizing activities, and building tools that make academic life easier."
+  },
+  "home": {
+    "departments": {
+      "eyebrow": "Who powers CEITBA",
+      "title": "The teams behind every initiative",
+      "subtitle": "Six departments coordinate everything CEITBA does for the ITBA community: from technology and communications to sports and student representation.",
+      "seeAll": "Meet every department",
+      "tileAria": "View the {{name}} department"
+    },
+    "benefits": {
+      "eyebrow": "What we offer members",
+      "title": "Benefits designed for your time at ITBA",
+      "subtitle": "Access to sports, exclusive discounts, events, academic support and student representation. Filter by category in the Benefits tab.",
+      "seeAll": "See every benefit"
+    },
+    "cta": {
+      "eyebrow": "Get involved with CEITBA",
+      "title": "Want to be part of it?",
+      "body": "Whether you'd like to join a team, pitch a project, or raise a topic that matters to you — get in touch. CEITBA is open to the whole ITBA community.",
+      "contact": "Get in touch",
+      "follow": "Follow on Instagram"
+    }
+  },
+  "apps": {
+    "sectionTitle": "Our tools",
+    "sectionSubtitle": "Platforms developed by the CEITBA IT team for the student community.",
+    "scheduler": {
+      "label": "Schedule Builder",
+      "description": "Generate all possible schedule combinations for your courses and find the perfect arrangement for your semester.",
+      "cta": "Open"
+    },
+    "newsletter": {
+      "label": "ITBA Newsletter",
+      "description": "Stay up to date with everything happening at ITBA: events, academic news, job opportunities and CEITBA activities.",
+      "cta": "Open"
+    },
+    "apuntes": {
+      "label": "Notes",
+      "description": "Notes, summaries and past exams other students share from their Google Drive, organized by subject.",
+      "cta": "Open"
+    }
+  },
+  "departments": {
+    "sectionTitle": "Departments",
+    "sectionSubtitle": "The teams that keep CEITBA running.",
+    "it": {
+      "name": "IT",
+      "description": "Develops and maintains CEITBA's digital platforms: schedule builder, newsletter, institutional website, and more."
+    },
+    "media": {
+      "name": "Media",
+      "description": "Manages institutional communication, social media, and audiovisual content production for CEITBA."
+    },
+    "infraestructura": {
+      "name": "Infrastructure & Projects",
+      "description": "Manages and improves physical spaces, equipment, and infrastructure initiatives of the student center."
+    },
+    "nautica": {
+      "name": "Nautics",
+      "description": "Organizes nautical activities, regattas, and water sports programs for the ITBA community."
+    },
+    "deportes": {
+      "name": "Sports",
+      "description": "Coordinates inter-major leagues, tournaments, sports activities, and access to facilities for all students."
+    },
+    "directivos": {
+      "name": "Board",
+      "description": "CEITBA leadership, student representation before university authorities, and strategic management."
+    }
+  },
+  "benefits": {
+    "sectionTitle": "Benefits",
+    "sectionSubtitle": "What CEITBA offers its members and the entire student community.",
+    "deportes": {
+      "name": "Sports",
+      "description": "Access to soccer, basketball, volleyball fields and other sports facilities. Leagues, tournaments, and recreational activities throughout the year."
+    },
+    "membresias": {
+      "name": "Memberships & Discounts",
+      "description": "Exclusive discounts at restaurants, bookstores, gyms, digital platforms, and brands associated with CEITBA."
+    },
+    "eventos": {
+      "name": "Events & Culture",
+      "description": "Talks with industry leaders, workshops, cultural activities, shows, and social events organized throughout the year."
+    },
+    "academico": {
+      "name": "Academic Support",
+      "description": "Collaborative notes, study groups, and academic resources shared among students from all degree programs."
+    },
+    "representacion": {
+      "name": "Student Representation",
+      "description": "Active voice and participation in decisions affecting ITBA students, with presence in governance bodies."
+    },
+    "filterLabel": "Filter by category",
+    "all": "All",
+    "empty": "No benefits in this category yet.",
+    "learnMore": "Learn more"
+  },
+  "staff": {
+    "sectionTitle": "Our team",
+    "sectionSubtitle": "The people behind CEITBA.",
+    "comingSoon": "Coming soon",
+    "comingSoonMessage": "We're working on introducing you to the full team. Check back soon!",
+    "yearLabel": "Filter by year",
+    "linkedinAria": "{{name}} on LinkedIn"
+  },
+  "footer": {
+    "itTeam": "CEITBA IT Team",
+    "github": "GitHub",
+    "contact": "Contact",
+    "rights": "All rights reserved.",
+    "navAria": "Footer links"
+  },
+  "errors": {
+    "somethingWrong": "Something went wrong",
+    "retry": "Retry",
+    "dismiss": "Dismiss"
+  },
+  "authGuard": {
+    "title": "Sign in to continue",
+    "body": "Notes are for the ITBA community. Sign in with your @itba.edu.ar account to read them and share yours.",
+    "signIn": "Sign in with Google"
+  },
+  "capabilityGuard": {
+    "title": "Notes isn't enabled for your account yet",
+    "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu.",
+    "home": "Back to home",
+    "apuntes": {
+      "title": "Notes isn't enabled for your account yet",
+      "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu."
+    }
+  }
+}

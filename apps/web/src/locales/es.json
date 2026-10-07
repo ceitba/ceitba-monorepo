@@ -1,0 +1,466 @@
+{
+  "nav": {
+    "skipToContent": "Ir al contenido",
+    "tagline": "Centro de Estudiantes ITBA",
+    "homeAria": "Inicio CEITBA",
+    "langToggleLabel": "EN",
+    "langToggleAria": "Cambiar a inglés",
+    "themeToggleLight": "Cambiar a modo claro",
+    "themeToggleDark": "Cambiar a modo oscuro",
+    "apuntes": "Apuntes"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "departments": "Departamentos",
+    "benefits": "Beneficios",
+    "staff": "Staff",
+    "aria": "Secciones de la página"
+  },
+  "manage": {
+    "title": "Administrar",
+    "subtitle": "Gestioná staff, beneficios y permisos del CEITBA.",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "empty": "Sin datos",
+    "tabs": {
+      "staff": "Staff",
+      "benefits": "Beneficios",
+      "users": "Usuarios",
+      "organizations": "Organizaciones",
+      "corrections": "Correcciones de horario",
+      "drive": "Apuntes",
+      "wikiAi": "Wiki IA",
+      "wikiAiUnseen": "{{count}} novedades en Wiki IA",
+      "capabilities": "Capacidades"
+    },
+    "staff": {
+      "year": "Año",
+      "add": "Agregar miembro",
+      "addTitle": "Nuevo miembro",
+      "editTitle": "Editar miembro",
+      "noneForYear": "No hay miembros cargados para este año.",
+      "confirmDelete": "¿Eliminar este miembro?",
+      "col": {
+        "name": "Nombre",
+        "role": "Rol",
+        "order": "Orden",
+        "department": "Departamento"
+      },
+      "deleteBody": "{{name}} se va a eliminar del staff {{year}}. Esta acción no se puede deshacer.",
+      "roleEs": "Rol (ES)",
+      "roleEn": "Rol (EN)",
+      "email": "Email",
+      "photoUrl": "URL de foto",
+      "linkedinUrl": "URL de LinkedIn"
+    },
+    "benefits": {
+      "tabs": {
+        "cards": "Tarjetas",
+        "categories": "Categorías"
+      },
+      "categories": {
+        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su nombre, color y orden acá.",
+        "colorVar": "Variable de color",
+        "order": "Orden",
+        "nameEs": "Nombre (ES)",
+        "nameEn": "Nombre (EN)"
+      },
+      "cards": {
+        "filter": "Categoría",
+        "allCategories": "Todas",
+        "add": "Agregar tarjeta",
+        "addTitle": "Nueva tarjeta de beneficio",
+        "editTitle": "Editar tarjeta",
+        "confirmDelete": "¿Eliminar esta tarjeta?",
+        "empty": "No hay tarjetas cargadas todavía.",
+        "titleEs": "Título (ES)",
+        "titleEn": "Título (EN)",
+        "summaryEs": "Descripción (ES)",
+        "summaryEn": "Descripción (EN)",
+        "imageUrl": "URL de imagen",
+        "ctaUrl": "URL del CTA",
+        "ctaLabelEs": "Texto del botón (ES)",
+        "ctaLabelEn": "Texto del botón (EN)",
+        "price": "Precio",
+        "bulletsEs": "Bullets (ES) — uno por línea",
+        "bulletsEn": "Bullets (EN) — uno por línea",
+        "col": {
+          "title": "Título",
+          "category": "Categoría",
+          "price": "Precio",
+          "order": "Orden"
+        },
+        "deleteBody": "La tarjeta «{{title}}» se va a eliminar. Esta acción no se puede deshacer."
+      },
+      "tabsAria": "Administrar beneficios"
+    },
+    "users": {
+      "col": {
+        "user": "Usuario",
+        "staff": "Staff",
+        "organizations": "Organizaciones"
+      },
+      "staffOn": "STAFF",
+      "staffOff": "Asignar STAFF",
+      "unassign": "Quitar",
+      "unassignTitle": "¿Quitar STAFF?",
+      "unassignBody": "{{name}} va a perder el acceso STAFF, incluido este panel, de inmediato. Podés volver a asignarlo más adelante.",
+      "unassignConfirm": "Quitar STAFF",
+      "addOrg": "+ organización",
+      "noOrgs": "—",
+      "searchPlaceholder": "Buscar por nombre o email…",
+      "sort": {
+        "newest": "Más recientes",
+        "oldest": "Más antiguos"
+      },
+      "filterAllOrgs": "Todas las organizaciones",
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} usuarios",
+      "prev": "‹ Anterior",
+      "next": "Siguiente ›",
+      "removeOrgAria": "Quitar a {{name}} de {{org}}",
+      "removeOrgTitle": "¿Quitar de la organización?",
+      "removeOrgBody": "{{name}} va a dejar de ser miembro de {{org}}. Podés volver a agregarlo más adelante.",
+      "removeOrgConfirm": "Quitar",
+      "orgAdmin": "admin",
+      "orgMember": "miembro",
+      "makeOrgAdmin": "Hacer admin de {{org}}",
+      "makeOrgMember": "Quitar admin de {{org}}",
+      "demoteOrgTitle": "¿Quitar admin?",
+      "demoteOrgBody": "{{name}} va a seguir siendo miembro de {{org}}, pero sin acceso de admin (por ejemplo, la lista de seguidores).",
+      "demoteOrgConfirm": "Quitar admin",
+      "noOrgMembers": "{{org}} todavía no tiene miembros.",
+      "addingBanner": "Agregando miembros a {{org}} — buscá a la persona y tocá «Agregar a {{org}}».",
+      "addingDone": "Listo",
+      "addToOrg": "Agregar a {{org}}",
+      "addToOrgAria": "Agregar a {{name}} a {{org}}",
+      "addingToOrg": "Agregando…",
+      "addMembers": "Agregar miembros"
+    },
+    "organizations": {
+      "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
+      "add": "Nueva organización",
+      "createTitle": "Nueva organización",
+      "create": "Crear organización",
+      "creating": "Creando…",
+      "createdNotice": "Creaste {{name}}. Ahora agregale miembros para que puedan publicar en ITBA News.",
+      "newBadge": "Nueva",
+      "addMembers": "Agregar miembros",
+      "addMembersAria": "Agregar miembros a {{name}}",
+      "empty": "Todavía no hay organizaciones.",
+      "col": {
+        "organization": "Organización",
+        "slug": "Dirección",
+        "category": "Categoría",
+        "actions": "Acciones"
+      },
+      "fields": {
+        "name": "Nombre",
+        "nameHint": "Corto, como se la conoce. Ej.: IEEE",
+        "fullName": "Nombre completo",
+        "fullNameHint": "Ej.: IEEE ITBA Student Branch",
+        "slug": "Dirección en ITBA News",
+        "slugPlaceholder": "nombre",
+        "slugHint": "Se genera a partir del nombre. No se puede cambiar después de crearla.",
+        "slugHintManual": "Minúsculas, números y guiones. No se puede cambiar después de crearla.",
+        "slugEditAria": "Editar la dirección en ITBA News",
+        "description": "Descripción",
+        "optional": "(opcional)",
+        "category": "Categoría",
+        "noCategory": "Sin categoría",
+        "color": "Color",
+        "colorHint": "Es el color de la portada de la organización en ITBA News."
+      },
+      "colors": {
+        "blue": "Azul",
+        "amber": "Ámbar",
+        "green": "Verde",
+        "violet": "Violeta"
+      },
+      "errors": {
+        "nameRequired": "Ingresá el nombre.",
+        "fullNameRequired": "Ingresá el nombre completo.",
+        "slugRequired": "Ingresá una dirección.",
+        "slugFormat": "Usá entre 2 y {{max}} caracteres: minúsculas, números y guiones simples, sin guion al principio ni al final.",
+        "duplicate": "Ya existe una organización con esa dirección."
+      }
+    },
+    "tabsAria": "Secciones de administración",
+    "corrections": {
+      "intro": "Las correcciones de horario las sugieren los estudiantes y se aplican solas cuando suman 3 confirmaciones y más confirmaciones que rechazos. Este panel es una red de seguridad: podés aplicar una pendiente ya mismo o rechazar una (si estaba aplicada, se revierte al horario del SGA). Las correcciones son anónimas.",
+      "filterLabel": "Estado",
+      "filter": {
+        "PENDING": "Pendientes",
+        "APPLIED": "Aplicadas",
+        "REJECTED": "Rechazadas",
+        "RESOLVED": "Resueltas",
+        "SUPERSEDED": "Reemplazadas"
+      },
+      "status": {
+        "PENDING": "Pendiente",
+        "APPLIED": "Aplicada",
+        "appliedByVotes": "Aplicada por votos",
+        "appliedByStaff": "Aplicada por staff",
+        "REJECTED": "Rechazada",
+        "rejectedByStaff": "Rechazada por staff",
+        "RESOLVED": "Resuelta (el SGA ya lo corrigió)",
+        "SUPERSEDED": "Reemplazada (el SGA cambió u otra corrección se aplicó)"
+      },
+      "col": {
+        "commission": "Materia y comisión",
+        "sga": "Horario SGA",
+        "proposed": "Horario propuesto",
+        "votes": "Votos",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "commission": "Comisión {{name}}",
+      "created": "Sugerida el {{date}}",
+      "reviewed": "Revisada el {{date}}",
+      "votes": "{{confirms}} confirman · {{rejects}} rechazan",
+      "noSlots": "Sin horarios",
+      "days": {
+        "MONDAY": "Lun",
+        "TUESDAY": "Mar",
+        "WEDNESDAY": "Mié",
+        "THURSDAY": "Jue",
+        "FRIDAY": "Vie",
+        "SATURDAY": "Sáb",
+        "SUNDAY": "Dom"
+      },
+      "apply": "Aplicar",
+      "reject": "Rechazar",
+      "revert": "Revertir",
+      "applyAria": "Aplicar la corrección de {{label}}",
+      "rejectAria": "Rechazar la corrección de {{label}}",
+      "revertAria": "Revertir la corrección de {{label}}",
+      "rejectTitle": "¿Rechazar la corrección?",
+      "rejectBody": "La corrección de {{subject}} · Comisión {{commission}} se va a rechazar y no se va a aplicar aunque siga sumando votos.",
+      "rejectConfirm": "Rechazar",
+      "revertTitle": "¿Revertir la corrección?",
+      "revertBody": "{{subject}} · Comisión {{commission}} va a volver a mostrar el horario del SGA en el Combinador. La corrección queda rechazada y no se vuelve a aplicar por votos.",
+      "revertConfirm": "Revertir",
+      "appliedNotice": "Listo: la corrección de {{subject}} · Comisión {{commission}} ya se usa en el Combinador.",
+      "rejectedNotice": "Listo: rechazaste la corrección de {{subject}} · Comisión {{commission}}.",
+      "revertedNotice": "Listo: {{subject}} · Comisión {{commission}} vuelve a usar el horario del SGA.",
+      "conflict": "Esta corrección cambió de estado mientras tanto (por votos, por la sincronización con el SGA u otro miembro del staff). Recargamos la lista con su estado actual.",
+      "empty": {
+        "PENDING": "No hay correcciones pendientes.",
+        "APPLIED": "No hay correcciones aplicadas.",
+        "REJECTED": "No hay correcciones rechazadas.",
+        "RESOLVED": "No hay correcciones resueltas.",
+        "SUPERSEDED": "No hay correcciones reemplazadas."
+      },
+      "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+    },
+    "capabilities": {
+      "intro": "Habilitá funciones en prueba para todos, para personas puntuales (por email, aunque nunca hayan entrado) o para organizaciones enteras. El staff siempre tiene todas.",
+      "empty": "No hay capacidades definidas.",
+      "enabledForAll": "Habilitado para todos",
+      "everyone": "Habilitado para todos",
+      "everyoneNote": "Esta capacidad está habilitada para todos: los accesos de abajo se conservan para cuando la vuelvas a restringir.",
+      "counts": "{{users}} · {{orgs}}",
+      "userCount_one": "{{count}} persona",
+      "userCount_other": "{{count}} personas",
+      "orgCount_one": "{{count}} organización",
+      "orgCount_other": "{{count}} organizaciones",
+      "manageGrants": "Gestionar accesos",
+      "hideGrants": "Ocultar accesos",
+      "confirmTitle": "¿Habilitar {{label}} para todos?",
+      "confirmBody": "Cualquier persona que inicie sesión va a poder usar {{label}}. Podés volver a restringirlo cuando quieras.",
+      "confirmCta": "Habilitar para todos",
+      "grantedOn": "Otorgado el {{date}}",
+      "grantedBy": "Otorgado el {{date}} por {{name}}",
+      "remove": "Quitar",
+      "removeAria": "Quitar acceso a {{name}}",
+      "users": {
+        "title": "Personas",
+        "help": "Pegá uno o más emails, separados por coma o salto de línea.",
+        "placeholder": "nombre@itba.edu.ar, otra@itba.edu.ar",
+        "invalid": "Estos emails no son válidos: {{emails}}",
+        "grant": "Otorgar acceso",
+        "empty": "Nadie tiene acceso individual todavía.",
+        "neverLoggedIn": "Sin ingresar"
+      },
+      "orgs": {
+        "title": "Organizaciones",
+        "pick": "Elegí una organización…",
+        "add": "Agregar",
+        "empty": "Ninguna organización tiene acceso todavía.",
+        "members_one": "{{count}} miembro",
+        "members_other": "{{count}} miembros"
+      }
+    }
+  },
+  "profile": {
+    "title": "Mi perfil",
+    "subtitle": "Tus datos académicos y preferencias compartidas en todos los sitios CEITBA.",
+    "appearance": "Apariencia",
+    "academics": "Académico",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "language": "Idioma",
+    "career": "Carrera",
+    "plan": "Plan",
+    "fileNumber": "Legajo",
+    "unset": "Sin definir",
+    "pickCareerFirst": "Elegí una carrera para ver los planes disponibles."
+  },
+  "auth": {
+    "profile": "Mi perfil",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "manage": "Administrar",
+    "errors": {
+      "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
+      "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
+      "unverified_email": "Tu correo de Google aún no está verificado.",
+      "auth_failed": "No pudimos completar el inicio de sesión. Probá de nuevo.",
+      "invalid_state": "La sesión de inicio expiró o no es válida. Probá iniciar sesión de nuevo.",
+      "access_denied": "Cancelaste el inicio de sesión con Google."
+    },
+    "apuntes": "Apuntes",
+    "myApuntes": "Mis apuntes"
+  },
+  "hero": {
+    "eyebrow": "Centro de Estudiantes",
+    "title": "CEITBA",
+    "subtitle": "La voz y el brazo ejecutor de los estudiantes del Instituto Tecnológico de Buenos Aires.",
+    "description": "Trabajamos para mejorar la experiencia universitaria de cada estudiante ITBA, representando sus intereses, organizando actividades y gestionando herramientas que hacen la vida académica más fácil."
+  },
+  "home": {
+    "departments": {
+      "eyebrow": "Quiénes hacemos al CEITBA",
+      "title": "Equipos detrás de cada iniciativa",
+      "subtitle": "Seis departamentos coordinan todo lo que el CEITBA hace por la comunidad ITBA: desde tecnología y comunicación hasta deportes y representación estudiantil.",
+      "seeAll": "Conocer todos los departamentos",
+      "tileAria": "Ver el departamento {{name}}"
+    },
+    "benefits": {
+      "eyebrow": "Lo que ofrecemos a los socios",
+      "title": "Beneficios pensados para tu paso por el ITBA",
+      "subtitle": "Acceso a deportes, descuentos exclusivos, eventos, apoyo académico y representación estudiantil. Filtrá por categoría dentro de la sección Beneficios.",
+      "seeAll": "Ver todos los beneficios"
+    },
+    "cta": {
+      "eyebrow": "Sumate al CEITBA",
+      "title": "¿Querés ser parte?",
+      "body": "Si te interesa formar parte de un equipo, proponer un proyecto o tenés algún tema que te gustaría llevar adelante, escribinos. El CEITBA está abierto a toda la comunidad ITBA.",
+      "contact": "Escribinos",
+      "follow": "Seguinos en Instagram"
+    }
+  },
+  "apps": {
+    "sectionTitle": "Nuestras herramientas",
+    "sectionSubtitle": "Plataformas desarrolladas por el equipo IT de CEITBA para la comunidad estudiantil.",
+    "scheduler": {
+      "label": "Combinador de horarios",
+      "description": "Generá todas las combinaciones posibles de horarios para tus materias y encontrá el arreglo perfecto para tu cuatrimestre.",
+      "cta": "Abrir"
+    },
+    "newsletter": {
+      "label": "Newsletter ITBA",
+      "description": "Enterate de todo lo que pasa en ITBA: eventos, novedades académicas, oportunidades laborales y actividades del CEITBA.",
+      "cta": "Abrir"
+    },
+    "apuntes": {
+      "label": "Apuntes",
+      "description": "Apuntes, resúmenes y finales que comparten otros estudiantes desde su Google Drive, ordenados por materia.",
+      "cta": "Abrir"
+    }
+  },
+  "departments": {
+    "sectionTitle": "Departamentos",
+    "sectionSubtitle": "Los equipos que hacen funcionar al CEITBA.",
+    "it": {
+      "name": "IT",
+      "description": "Desarrolla y mantiene las plataformas digitales de CEITBA: combinador de horarios, newsletter, sitio institucional y más."
+    },
+    "media": {
+      "name": "Media",
+      "description": "Gestiona la comunicación institucional, las redes sociales y la producción de contenido audiovisual del CEITBA."
+    },
+    "infraestructura": {
+      "name": "Infraestructura y Proyectos",
+      "description": "Administra y mejora los espacios físicos, equipamientos e iniciativas de infraestructura del centro de estudiantes."
+    },
+    "nautica": {
+      "name": "Náutica",
+      "description": "Organiza actividades náuticas, regatas y programas relacionados con los deportes acuáticos para la comunidad ITBA."
+    },
+    "deportes": {
+      "name": "Deportes",
+      "description": "Coordina ligas intercarreras, torneos, actividades deportivas y el acceso a instalaciones para todos los estudiantes."
+    },
+    "directivos": {
+      "name": "Directivos",
+      "description": "Conducción del CEITBA, representación estudiantil ante las autoridades de la universidad y gestión estratégica."
+    }
+  },
+  "benefits": {
+    "sectionTitle": "Beneficios",
+    "sectionSubtitle": "Lo que CEITBA ofrece a sus socios y a toda la comunidad estudiantil.",
+    "deportes": {
+      "name": "Deportes",
+      "description": "Acceso a canchas de fútbol, básquet, vóley y otras instalaciones deportivas. Ligas, torneos y actividades recreativas durante el año."
+    },
+    "membresias": {
+      "name": "Membresías y Descuentos",
+      "description": "Descuentos exclusivos en locales gastronómicos, librerías, gimnasios, plataformas digitales y marcas asociadas al CEITBA."
+    },
+    "eventos": {
+      "name": "Eventos y Cultura",
+      "description": "Charlas con referentes de la industria, workshops, actividades culturales, shows y eventos sociales organizados durante el año."
+    },
+    "academico": {
+      "name": "Apoyo Académico",
+      "description": "Apuntes colaborativos, grupos de estudio y recursos académicos compartidos entre estudiantes de todas las carreras."
+    },
+    "representacion": {
+      "name": "Representación Estudiantil",
+      "description": "Voz y participación activa en las decisiones que afectan a los estudiantes de ITBA, con presencia en los órganos de gobierno."
+    },
+    "filterLabel": "Filtrar por categoría",
+    "all": "Todos",
+    "empty": "No hay beneficios cargados para esta categoría todavía.",
+    "learnMore": "Ver más"
+  },
+  "staff": {
+    "sectionTitle": "Nuestro equipo",
+    "sectionSubtitle": "Las personas detrás del CEITBA.",
+    "comingSoon": "Próximamente",
+    "comingSoonMessage": "Estamos trabajando para presentarte al equipo completo. ¡Volvé pronto!",
+    "yearLabel": "Filtrar por año",
+    "linkedinAria": "LinkedIn de {{name}}"
+  },
+  "footer": {
+    "itTeam": "IT Team CEITBA",
+    "github": "GitHub",
+    "contact": "Contacto",
+    "rights": "Todos los derechos reservados.",
+    "navAria": "Enlaces del pie de página"
+  },
+  "errors": {
+    "somethingWrong": "Algo salió mal",
+    "retry": "Reintentar",
+    "dismiss": "Cerrar"
+  },
+  "authGuard": {
+    "title": "Iniciá sesión para seguir",
+    "body": "Los apuntes son para la comunidad ITBA. Entrá con tu cuenta @itba.edu.ar para verlos y compartir los tuyos.",
+    "signIn": "Iniciar sesión con Google"
+  },
+  "capabilityGuard": {
+    "title": "Apuntes todavía no está habilitado para tu cuenta",
+    "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú.",
+    "home": "Volver al inicio",
+    "apuntes": {
+      "title": "Apuntes todavía no está habilitado para tu cuenta",
+      "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
+    }
+  }
+}

@@ -1,0 +1,34 @@
+import { useCallback, useEffect, useState } from 'react'
+import { readLocalTheme, syncPrefToServer, writeLocalTheme, type Theme } from '../store/prefsStore'
+
+export function useTheme() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = readLocalTheme()
+    if (saved) return saved
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+    writeLocalTheme(theme)
+  }, [theme])
+
+  // Side effects stay out of the state updater: StrictMode double-invokes
+  // updaters, which used to fire two PATCH /me/preferences per click.
+  const toggle = () => {
+    const next: Theme = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    void syncPrefToServer({ theme: next })
+  }
+
+  // External writes (auth-hydration callback) bypass the toggle path. Stable
+  // identity so ThemeProvider binds the auth hydration exactly once.
+  const applyExternal = useCallback((next: Theme) => setTheme(next), [])
+
+  return { theme, toggle, applyExternal }
+}
