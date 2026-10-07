@@ -188,16 +188,6 @@ export default function AuthMenu() {
             <button
               type="button"
               role="menuitem"
-              onClick={() => { setOpen(false); navigate('/newsletter/admin') }}
-              className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
-            >
-              {t('auth.newsletterAdmin')}
-            </button>
-          )}
-          {isStaff && (
-            <button
-              type="button"
-              role="menuitem"
               onClick={() => { setOpen(false); navigate('/manage') }}
               className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
             >

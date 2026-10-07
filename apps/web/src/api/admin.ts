@@ -94,6 +94,11 @@ export function createOrganization(payload: CreateOrganizationPayload): Promise<
   return apiSend('POST', '/organizations', payload)
 }
 
+// Everyone with STAFF right now (GET /v1/staff).
+export function fetchActiveStaff(): Promise<StaffGrant[]> {
+  return apiGet<StaffGrant[]>('/staff')
+}
+
 export function assignStaff(payload: {
   email: string
   branch: string

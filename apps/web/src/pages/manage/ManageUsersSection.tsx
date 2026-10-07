@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   addUserOrganization,
   assignStaff,
+  fetchActiveStaff,
   fetchOrganizations,
   fetchUsers,
   removeUserOrganization,
@@ -17,7 +18,7 @@ import {
 import { getCachedSession, getSession } from '../../store/authStore'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import {
-  Alert, Badge, Button, CloseIcon, EmptyState, ErrorState, IconButton, SkeletonRows,
+  Alert, Badge, Button, CloseIcon, EmptyState, ErrorState, IconButton, SkeletonRows, ToggleGroup,
   inputClass, selectClass, toast,
 } from '../../components/ui'
 import { adminErrorMessage } from './adminErrors'
@@ -37,8 +38,28 @@ function defaultStaffRange() {
 }
 
 type SortKey = 'newest' | 'oldest'
+type Scope = 'all' | 'staff'
 
-// `initialAddingTo` opens the tab in "adding members to <org>" mode (from
+// Personas → Staff: the API lists active staff on its own endpoint (without
+// organizations), so each one is looked up in the users list by email.
+// Staff is a handful of people; search and the org filter apply here.
+async function fetchStaffUsers(q: string, orgSlug: string): Promise<UsersPage> {
+  const grants = await fetchActiveStaff()
+  const emails = [...new Set(grants.map((g) => g.email.toLowerCase()))]
+  const found = await Promise.all(emails.map((email) =>
+    fetchUsers({ q: email, limit: 5 }).then((r) => r.data.find((u) => u.email.toLowerCase() === email) ?? null)))
+  const needle = q.toLowerCase()
+  const data = found
+    .filter((u): u is AdminUser => u != null)
+    .filter((u) => !needle || u.email.toLowerCase().includes(needle) || (u.name ?? '').toLowerCase().includes(needle))
+    .filter((u) => !orgSlug || u.organizations.some((m) => m.slug === orgSlug))
+    .sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email))
+  return { data, meta: { total: data.length, page: 1, limit: Math.max(1, data.length) } }
+}
+
+// Personas: everyone who signed in to the site (Staff and Usuarios used to
+// be two tabs over the same people). `initialAddingTo` opens it in "adding
+// members to <org>" mode (from
 // "Agregar miembros" in the Organizations tab): every user is listed, as
 // usual, and each row that isn't in that org gets a one-click
 // "Agregar a <org>" button. A new org has no members, so filtering by it
@@ -62,6 +83,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   const [q, setQ]             = useState('')
   const [sort, setSort]       = useState<SortKey>('newest')
   const [orgSlug, setOrgSlug] = useState('')
+  const [scope, setScope]     = useState<Scope>('all')
   const [pageNum, setPageNum] = useState(1)
   const [addingTo, setAddingTo] = useState<OrganizationSummary | null>(initialAddingTo ?? null)
 
@@ -112,7 +134,8 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   useEffect(() => {
     const id = ++reqIdRef.current
     setLoading(true)
-    fetchUsers(params)
+    const request = scope === 'staff' ? fetchStaffUsers(q, orgSlug) : fetchUsers(params)
+    request
       .then((res) => {
         if (reqIdRef.current !== id) return
         setPage(res)
@@ -129,7 +152,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
       .finally(() => {
         if (reqIdRef.current === id) setLoading(false)
       })
-  }, [params, refreshTick, t])
+  }, [params, scope, q, orgSlug, refreshTick, t])
 
   function reload() {
     setRefreshTick((n) => n + 1)
@@ -238,6 +261,18 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
         </Alert>
       )}
 
+      <ToggleGroup<Scope>
+        joined
+        className="self-start"
+        label={t('manage.users.scopeAria')}
+        value={scope}
+        onChange={(next) => { setScope(next); setPageNum(1) }}
+        options={[
+          { value: 'all', label: t('manage.users.scope.all') },
+          { value: 'staff', label: t('manage.users.scope.staff') },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           ref={searchRef}
@@ -248,6 +283,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           aria-label={t('manage.users.searchAria')}
           className={inputClass({ className: 'flex-1 min-w-[200px] !w-auto' })}
         />
+        {scope === 'all' && (
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value as SortKey); setPageNum(1) }}
@@ -257,6 +293,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           <option value="newest">{t('manage.users.sort.newest')}</option>
           <option value="oldest">{t('manage.users.sort.oldest')}</option>
         </select>
+        )}
         <select
           value={orgSlug}
           onChange={(e) => { setOrgSlug(e.target.value); setPageNum(1) }}
@@ -426,6 +463,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
             </table>
           </div>
 
+          {scope === 'all' && (
           <div className="flex flex-wrap items-center justify-between gap-2 font-body text-body-sm">
             <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('manage.users.pageStatus', { page: pageNum, pages: totalPages, total })}
@@ -439,6 +477,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
               </Button>
             </div>
           </div>
+          )}
         </>
       )}
 

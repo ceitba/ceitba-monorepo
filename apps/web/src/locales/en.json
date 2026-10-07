@@ -14,48 +14,13 @@
     "benefits": "Benefits"
   },
   "manage": {
-    "title": "Manage",
-    "subtitle": "Run the CEITBA roster, benefits and permissions.",
     "loading": "Loading…",
     "save": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
     "delete": "Delete",
     "tabs": {
-      "staff": "Staff",
-      "benefits": "Benefits",
-      "users": "Users",
-      "organizations": "Organizations",
-      "corrections": "Schedule corrections",
-      "drive": "Notes",
-      "wikiAi": "Wiki AI",
-      "wikiAiUnseen": "{{count}} updates in Wiki AI",
-      "capabilities": "Capabilities"
-    },
-    "staff": {
-      "year": "Year",
-      "add": "Add member",
-      "addTitle": "New member",
-      "editTitle": "Edit member",
-      "noneForYear": "No members for {{year}} yet",
-      "confirmDelete": "Delete this member?",
-      "col": {
-        "name": "Name",
-        "role": "Role",
-        "order": "Order",
-        "department": "Department",
-        "actions": "Actions"
-      },
-      "deleteBody": "{{name}} will be removed from the {{year}} staff. This can't be undone.",
-      "roleEs": "Role (ES)",
-      "roleEn": "Role (EN)",
-      "email": "Email",
-      "photoUrl": "Photo URL",
-      "linkedinUrl": "LinkedIn URL",
-      "yearsError": "We couldn't load the list of years: for now you can only see the current year.",
-      "editAria": "Edit {{name}}",
-      "deleteAria": "Delete {{name}}",
-      "noneForYearHint": "The members you add here appear in the site's Staff section, grouped by department."
+      "wikiAiUnseen": "{{count}} updates in Wiki AI"
     },
     "benefits": {
       "tabs": {
@@ -195,7 +160,12 @@
       "empty": "No users yet",
       "emptyHint": "People show up here the first time they sign in to the site.",
       "noResults": "No users match that search",
-      "noResultsHint": "Try another part of the name or email."
+      "noResultsHint": "Try another part of the name or email.",
+      "scopeAria": "Show",
+      "scope": {
+        "all": "Everyone",
+        "staff": "Staff"
+      }
     },
     "organizations": {
       "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
@@ -248,7 +218,6 @@
       "editProfile": "Edit profile",
       "editProfileAria": "Edit {{name}}'s profile on ITBA News"
     },
-    "tabsAria": "Manage sections",
     "corrections": {
       "intro": "Schedule corrections are suggested by students and apply on their own once they reach 3 confirmations and more confirmations than rejections. This panel is a safety net: you can apply a pending one right away or reject one (if it was applied, it reverts to the SGA schedule). Corrections are anonymous.",
       "filterLabel": "Status",
@@ -374,6 +343,137 @@
       "invalid": "Check the data: the server didn't accept something.",
       "tooMany": "Too many requests in a row. Wait a moment and try again.",
       "loadFailed": "We couldn't load this section."
+    },
+    "rail": {
+      "aria": "Admin areas",
+      "eyebrow": "Admin",
+      "areas": "Areas",
+      "back": "Admin",
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending",
+      "groups": {
+        "content": "Content",
+        "community": "Community",
+        "academic": "Academic",
+        "system": "System"
+      }
+    },
+    "areas": {
+      "review": {
+        "label": "To review"
+      },
+      "newsletter": {
+        "label": "Newsletter"
+      },
+      "benefits": {
+        "label": "Benefits",
+        "subtitle": "The benefit cards students see, and their categories."
+      },
+      "people": {
+        "label": "People",
+        "subtitle": "Everyone who signed in to the site. Grant or remove staff access and add people to organizations."
+      },
+      "organizations": {
+        "label": "Organizations"
+      },
+      "corrections": {
+        "label": "Schedule corrections"
+      },
+      "apuntes": {
+        "label": "Notes"
+      },
+      "wiki": {
+        "label": "AI Wiki"
+      },
+      "capabilities": {
+        "label": "Capabilities"
+      }
+    },
+    "review": {
+      "title": "To review",
+      "checking": "Checking what is waiting for a decision…",
+      "pending_zero": "Nothing left to review.",
+      "pending_one": "1 item is waiting for a staff decision. Oldest first.",
+      "pending_other": "{{count}} items are waiting for a staff decision. Oldest first.",
+      "filterAria": "Filter by type",
+      "filters": {
+        "all": "All · {{count}}",
+        "articles": "Articles · {{count}}",
+        "corrections": "Corrections · {{count}}",
+        "apuntes": "Notes · {{count}}",
+        "wiki": "AI Wiki · {{count}}"
+      },
+      "types": {
+        "article": "Article",
+        "correction": "Schedule correction",
+        "source": "Drive folder",
+        "fileReview": "File to review",
+        "fileReported": "Reported file",
+        "wiki": "AI Wiki"
+      },
+      "sources": {
+        "articles": "articles",
+        "corrections": "corrections",
+        "sources": "Drive folders",
+        "needsReview": "files to review",
+        "reported": "reported files",
+        "wiki": "AI Wiki"
+      },
+      "sourceFailed": "We couldn't load: {{sources}}. Everything else is up to date.",
+      "articleMeta": "{{authors}} · independent · sent {{when}}",
+      "unknownAuthor": "No name",
+      "community": "Community archive",
+      "correctionMeta": "Proposes {{proposed}} · SGA today: {{sga}} · {{votes}}",
+      "sourceMeta_one": "{{owner}} · {{count}} file · connected {{when}}",
+      "sourceMeta_other": "{{owner}} · {{count}} files · connected {{when}}",
+      "fileReviewMeta": "{{subject}} · shared by {{sharer}}, who isn't the Drive owner",
+      "fileReportedMeta_one": "{{subject}} · {{count}} report: {{reason}}",
+      "fileReportedMeta_other": "{{subject}} · {{count}} reports, the first: {{reason}}",
+      "noSubject": "No subject",
+      "wikiBlockedTitle": "An AI Wiki run is waiting for you to approve its cost",
+      "wikiBlockedMeta": "Started {{when}}",
+      "wikiFailedTitle": "The latest AI Wiki run finished with errors",
+      "wikiFailedMeta": "Finished {{when}}",
+      "wikiReviewCost": "Review cost",
+      "wikiOpen": "Open in AI Wiki",
+      "open": "Review",
+      "publish": "Publish",
+      "publishAria": "Publish “{{title}}”",
+      "articlePublished": "You published “{{title}}”.",
+      "conflict": "This changed while you were looking (another staff member or a sync). We refreshed the list.",
+      "emptyTitle": "All caught up",
+      "emptyBody": "Nothing is waiting on staff. New items (submitted articles, corrections, folders and reports) show up here as soon as they arrive.",
+      "truncated": {
+        "corrections": "Showing {{shown}} of {{total}} pending corrections.",
+        "sources": "Showing {{shown}} of {{total}} folders to approve.",
+        "needsReview": "Showing {{shown}} of {{total}} files to review.",
+        "reported": "Showing {{shown}} of {{total}} reported files."
+      },
+      "seeAll": "See all",
+      "digest": {
+        "title": "Weekly digest",
+        "week": "Week of {{date}}",
+        "sendsAt": "Goes out {{when}}",
+        "notScheduled": "Not scheduled",
+        "articles_one": "{{count}} article",
+        "articles_other": "{{count}} articles",
+        "edit": "Edit digest",
+        "none": "No digest is being prepared.",
+        "open": "Go to Weekly digest",
+        "loadError": "We couldn't load the weekly digest.",
+        "status": {
+          "draft": "Draft",
+          "sending": "Sending",
+          "sent": "Sent",
+          "cancelled": "Withdrawn"
+        }
+      },
+      "quick": {
+        "title": "Shortcuts",
+        "benefit": "New benefit card",
+        "org": "Add someone to an organization",
+        "staff": "Grant staff access"
+      }
     }
   },
   "profile": {
@@ -399,7 +499,7 @@
     "profile": "My profile",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "manage": "Manage",
+    "manage": "Admin",
     "errors": {
       "unauthorized": "Only @itba.edu.ar accounts can sign in.",
       "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
@@ -412,8 +512,7 @@
     "myApuntes": "My notes",
     "accountMenu": "Account menu",
     "savedSchedules": "My saved schedules",
-    "myPosts": "My posts",
-    "newsletterAdmin": "Manage newsletter"
+    "myPosts": "My posts"
   },
   "hero": {
     "eyebrow": "Student Center",
@@ -550,6 +649,7 @@
     "back": "Back",
     "close": "Close",
     "loading": "Loading",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "undo": "Undo"
   }
 }

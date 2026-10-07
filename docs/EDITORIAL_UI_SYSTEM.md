@@ -426,8 +426,12 @@ header:
 - **A choice inside a tab** (Tarjetas / Categorías, Wiki IA views, a status
   filter, the upload source) is a `ToggleGroup` (segmented control or chips),
   never a second underline tab strip.
-- Low-traffic pages (Nosotros) are linked from the footer and from the home
-  preview that leads to them.
+- **The one exception: Administración** (`/manage`, staff only) has a side
+  rail of areas grouped by job (Contenido, Comunidad, Académico, Sistema),
+  each with its pending count. An admin has too many areas for a tab strip
+  and staff jump between them all day. The rail is not sticky; on phones it
+  becomes the list of areas under the home queue, and inside an area it
+  gives way to a "← Administración" link.
 
 ---
 
@@ -663,14 +667,24 @@ The admin is a different context but stays in the same brand family.
 
 ### Layout
 
-One admin language for `/manage` (STAFF), the newsletter admin
-(`/newsletter/admin`, STAFF: review queue, weekly digest, stats) and the
-writers' area (`/newsletter/mine`, "Mis publicaciones", anyone signed in): both render inside the
-site's Navbar and Footer, with a Fraunces page title and a `Tabs` strip of
-sections whose URL is the source of truth (reload and deep links keep the
-tab). No separate sidebar, breadcrumb bar, sign-in page or sign-out: the site
-account menu handles the session. Users who can't access an admin area get an
+One admin language: Administración (`/manage/:area`, staff) and the writers'
+area (`/newsletter/mine`, "Mis publicaciones", anyone signed in) render inside
+the site's Navbar and Footer with a Fraunces page title. The URL is the
+source of truth (reload and deep links keep the place). No separate sign-in
+page or sign-out: the site account menu handles the session, with one
+"Administración" entry for staff. Users who can't access an area get an
 in-place explanation, never a silent redirect.
+
+- **Home = Para revisar.** One queue of everything waiting on a staff
+  decision, gathered from every area (articles sent for review, schedule
+  corrections, Drive folders and files, reported files, Wiki IA runs that
+  need a look), oldest first, with the decision on the row. Each source
+  loads on its own: one that fails shows an error with retry and never
+  blanks the rest. A decision the API can take back offers "Deshacer" in
+  the toast; one that can't asks first with `ConfirmDialog`.
+- **Areas by job** in the rail (§6): Newsletter (Revisión, Resumen semanal,
+  Estadísticas) and Beneficios; Personas (everyone, with a Staff filter) and
+  Organizaciones; Correcciones de horario, Apuntes and Wiki IA; Capacidades.
 
 ### Admin color shifts
 

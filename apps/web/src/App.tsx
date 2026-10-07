@@ -6,7 +6,6 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
 import BenefitsPage from './pages/BenefitsPage'
-import ManagePage from './pages/ManagePage'
 import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
@@ -26,6 +25,8 @@ const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
 const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 
 // Sections that used to be separate SPAs, each in its own chunk.
+// Administración (staff only): its own chunk, with the queue and its areas.
+const ManagePage = lazy(() => import('./pages/ManagePage'))
 const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
 const NewsletterApp = lazy(() => import('./newsletter/NewsletterApp'))
 
@@ -80,7 +81,7 @@ function Layout() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/benefits" element={<BenefitsPage />} />
-          <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
+          <Route path="/manage/*" element={<StaffGuard><Suspense fallback={<PageFallback />}><ManagePage /></Suspense></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />

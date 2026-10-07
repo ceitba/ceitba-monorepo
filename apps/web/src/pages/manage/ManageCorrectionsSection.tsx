@@ -187,7 +187,7 @@ export default function ManageCorrectionsSection() {
             value={status}
             onChange={(e) => {
               // Drop the previous filter's rows (and their action buttons) while
-              // the new status loads, like ManageStaffSection does per year.
+              // the new status loads.
               setPage(null)
               setStatus(e.target.value as StatusFilter); setPageNum(1); setNotice(null)
             }}

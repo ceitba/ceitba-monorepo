@@ -14,48 +14,13 @@
     "benefits": "Beneficios"
   },
   "manage": {
-    "title": "Administrar",
-    "subtitle": "Gestioná staff, beneficios y permisos del CEITBA.",
     "loading": "Cargando…",
     "save": "Guardar",
     "cancel": "Cancelar",
     "edit": "Editar",
     "delete": "Eliminar",
     "tabs": {
-      "staff": "Staff",
-      "benefits": "Beneficios",
-      "users": "Usuarios",
-      "organizations": "Organizaciones",
-      "corrections": "Correcciones de horario",
-      "drive": "Apuntes",
-      "wikiAi": "Wiki IA",
-      "wikiAiUnseen": "{{count}} novedades en Wiki IA",
-      "capabilities": "Capacidades"
-    },
-    "staff": {
-      "year": "Año",
-      "add": "Agregar miembro",
-      "addTitle": "Nuevo miembro",
-      "editTitle": "Editar miembro",
-      "noneForYear": "No hay miembros cargados para {{year}}",
-      "confirmDelete": "¿Eliminar a este miembro?",
-      "col": {
-        "name": "Nombre",
-        "role": "Rol",
-        "order": "Orden",
-        "department": "Departamento",
-        "actions": "Acciones"
-      },
-      "deleteBody": "{{name}} se va a eliminar del staff {{year}}. Esta acción no se puede deshacer.",
-      "roleEs": "Rol (ES)",
-      "roleEn": "Rol (EN)",
-      "email": "Email",
-      "photoUrl": "URL de foto",
-      "linkedinUrl": "URL de LinkedIn",
-      "yearsError": "No pudimos cargar la lista de años: por ahora solo podés ver el año actual.",
-      "editAria": "Editar a {{name}}",
-      "deleteAria": "Eliminar a {{name}}",
-      "noneForYearHint": "Los miembros que cargues acá aparecen en la sección Staff del sitio, agrupados por departamento."
+      "wikiAiUnseen": "{{count}} novedades en Wiki IA"
     },
     "benefits": {
       "tabs": {
@@ -195,7 +160,12 @@
       "empty": "Todavía no hay usuarios",
       "emptyHint": "Las personas aparecen acá la primera vez que inician sesión en el sitio.",
       "noResults": "No encontramos usuarios con esa búsqueda",
-      "noResultsHint": "Probá con otra parte del nombre o del email."
+      "noResultsHint": "Probá con otra parte del nombre o del email.",
+      "scopeAria": "Mostrar",
+      "scope": {
+        "all": "Todas",
+        "staff": "Staff"
+      }
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
@@ -248,7 +218,6 @@
       "editProfile": "Editar perfil",
       "editProfileAria": "Editar el perfil de {{name}} en ITBA News"
     },
-    "tabsAria": "Secciones de administración",
     "corrections": {
       "intro": "Las correcciones de horario las sugieren los estudiantes y se aplican solas cuando suman 3 confirmaciones y más confirmaciones que rechazos. Este panel es una red de seguridad: podés aplicar una pendiente ya mismo o rechazar una (si estaba aplicada, se revierte al horario del SGA). Las correcciones son anónimas.",
       "filterLabel": "Estado",
@@ -374,6 +343,137 @@
       "invalid": "Revisá los datos: hay algo que el servidor no aceptó.",
       "tooMany": "Hiciste demasiados pedidos seguidos. Esperá un momento y probá de nuevo.",
       "loadFailed": "No pudimos cargar esta sección."
+    },
+    "rail": {
+      "aria": "Áreas de administración",
+      "eyebrow": "Administración",
+      "areas": "Áreas",
+      "back": "Administración",
+      "pending_one": "{{count}} pendiente",
+      "pending_other": "{{count}} pendientes",
+      "groups": {
+        "content": "Contenido",
+        "community": "Comunidad",
+        "academic": "Académico",
+        "system": "Sistema"
+      }
+    },
+    "areas": {
+      "review": {
+        "label": "Para revisar"
+      },
+      "newsletter": {
+        "label": "Newsletter"
+      },
+      "benefits": {
+        "label": "Beneficios",
+        "subtitle": "Las tarjetas de beneficios que ven los estudiantes y sus categorías."
+      },
+      "people": {
+        "label": "Personas",
+        "subtitle": "Todos los que entraron al sitio. Desde acá das o sacás acceso de staff y los sumás a organizaciones."
+      },
+      "organizations": {
+        "label": "Organizaciones"
+      },
+      "corrections": {
+        "label": "Correcciones de horario"
+      },
+      "apuntes": {
+        "label": "Apuntes"
+      },
+      "wiki": {
+        "label": "Wiki IA"
+      },
+      "capabilities": {
+        "label": "Capacidades"
+      }
+    },
+    "review": {
+      "title": "Para revisar",
+      "checking": "Revisando qué espera una decisión…",
+      "pending_zero": "No queda nada pendiente.",
+      "pending_one": "1 cosa espera una decisión del staff. Lo más viejo, primero.",
+      "pending_other": "{{count}} cosas esperan una decisión del staff. Lo más viejo, primero.",
+      "filterAria": "Filtrar por tipo",
+      "filters": {
+        "all": "Todo · {{count}}",
+        "articles": "Artículos · {{count}}",
+        "corrections": "Correcciones · {{count}}",
+        "apuntes": "Apuntes · {{count}}",
+        "wiki": "Wiki IA · {{count}}"
+      },
+      "types": {
+        "article": "Artículo",
+        "correction": "Corrección de horario",
+        "source": "Carpeta de Drive",
+        "fileReview": "Archivo para revisar",
+        "fileReported": "Archivo denunciado",
+        "wiki": "Wiki IA"
+      },
+      "sources": {
+        "articles": "artículos",
+        "corrections": "correcciones",
+        "sources": "carpetas de Drive",
+        "needsReview": "archivos para revisar",
+        "reported": "archivos denunciados",
+        "wiki": "Wiki IA"
+      },
+      "sourceFailed": "No pudimos cargar: {{sources}}. Lo demás está al día.",
+      "articleMeta": "{{authors}} · independiente · enviado {{when}}",
+      "unknownAuthor": "Sin nombre",
+      "community": "Archivo comunitario",
+      "correctionMeta": "Propone {{proposed}} · hoy en el SGA: {{sga}} · {{votes}}",
+      "sourceMeta_one": "{{owner}} · {{count}} archivo · conectada {{when}}",
+      "sourceMeta_other": "{{owner}} · {{count}} archivos · conectada {{when}}",
+      "fileReviewMeta": "{{subject}} · lo compartió {{sharer}}, que no es el dueño en Drive",
+      "fileReportedMeta_one": "{{subject}} · {{count}} denuncia: {{reason}}",
+      "fileReportedMeta_other": "{{subject}} · {{count}} denuncias, la primera: {{reason}}",
+      "noSubject": "Sin materia",
+      "wikiBlockedTitle": "Una ejecución de la Wiki IA espera que apruebes su costo",
+      "wikiBlockedMeta": "Iniciada el {{when}}",
+      "wikiFailedTitle": "La última ejecución de la Wiki IA terminó con errores",
+      "wikiFailedMeta": "Terminó el {{when}}",
+      "wikiReviewCost": "Revisar costo",
+      "wikiOpen": "Ver en Wiki IA",
+      "open": "Revisar",
+      "publish": "Publicar",
+      "publishAria": "Publicar «{{title}}»",
+      "articlePublished": "Publicaste «{{title}}».",
+      "conflict": "Esto cambió mientras lo mirabas (otra persona del staff o una sincronización). Actualizamos la lista.",
+      "emptyTitle": "Todo al día",
+      "emptyBody": "No queda nada esperando al staff. Lo nuevo (artículos enviados, correcciones, carpetas y denuncias) aparece acá apenas llega.",
+      "truncated": {
+        "corrections": "Mostramos {{shown}} de {{total}} correcciones pendientes.",
+        "sources": "Mostramos {{shown}} de {{total}} carpetas para aprobar.",
+        "needsReview": "Mostramos {{shown}} de {{total}} archivos para revisar.",
+        "reported": "Mostramos {{shown}} de {{total}} archivos denunciados."
+      },
+      "seeAll": "Ver todas",
+      "digest": {
+        "title": "Resumen semanal",
+        "week": "Semana del {{date}}",
+        "sendsAt": "Sale el {{when}}",
+        "notScheduled": "Sin envío programado",
+        "articles_one": "{{count}} artículo",
+        "articles_other": "{{count}} artículos",
+        "edit": "Editar resumen",
+        "none": "No hay un resumen en preparación.",
+        "open": "Ir a Resumen semanal",
+        "loadError": "No pudimos cargar el resumen semanal.",
+        "status": {
+          "draft": "Borrador",
+          "sending": "Enviándose",
+          "sent": "Enviado",
+          "cancelled": "Anulado"
+        }
+      },
+      "quick": {
+        "title": "Accesos rápidos",
+        "benefit": "Nueva tarjeta de beneficio",
+        "org": "Sumar a alguien a una organización",
+        "staff": "Dar acceso de staff"
+      }
     }
   },
   "profile": {
@@ -399,7 +499,7 @@
     "profile": "Mi perfil",
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",
-    "manage": "Administrar",
+    "manage": "Administración",
     "errors": {
       "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
       "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
@@ -412,8 +512,7 @@
     "myApuntes": "Mis apuntes",
     "accountMenu": "Menú de cuenta",
     "savedSchedules": "Mis horarios guardados",
-    "myPosts": "Mis publicaciones",
-    "newsletterAdmin": "Administrar newsletter"
+    "myPosts": "Mis publicaciones"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
@@ -550,6 +649,7 @@
     "back": "Volver",
     "close": "Cerrar",
     "loading": "Cargando",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "undo": "Deshacer"
   }
 }
