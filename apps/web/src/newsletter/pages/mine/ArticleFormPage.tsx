@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { useParams, useNavigate, useBlocker, Link } from 'react-router-dom'
+import { useParams, useNavigate, useBlocker, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   fetchArticleById,
   createArticle,
   updateArticle,
 } from '../../api/articles'
-import { getOrganizations, isStaff } from '../../store/authStore'
+import { STAFF_DEFAULT_ORG, getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 import { allowNextNavigation, setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
@@ -19,7 +19,7 @@ import RichTextEditor from '../../components/admin/editor/RichTextEditor'
 import { useAdminContext } from '../../admin/adminContext'
 import { formatDate, todayISO } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
-import { newsletterPath } from '@/newsletter/paths'
+import { MY_ARTICLES_PATH, REVIEW_PATH, articleEditPath, newsletterPath, stripNewsletterBase } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
 import {
   Alert, Button, ConfirmDialog, EmptyState, ErrorState, Field, LoadingRegion, Modal, Skeleton, SkeletonForm, Switch,
@@ -83,7 +83,7 @@ function buildEmptyForm(profile: UserProfile | null): ArticleForm {
     category:     DEFAULT_CATEGORY,
     // '' = independent (no organization): the default for writers who
     // don't belong to one.
-    organization: myOrgs[0]?.slug ?? (isStaff(profile) ? 'ceitba' : ''),
+    organization: myOrgs[0]?.slug ?? (isStaff(profile) ? STAFF_DEFAULT_ORG : ''),
     authors:      profile?.name ? [profile.name] : [],
     date:         todayISO(),
     readingTime:  '',
@@ -116,9 +116,14 @@ function formatTime(date: Date, lang: string) {
   return date.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function AdminArticleFormPage() {
+// One editor, two entry points: Mis publicaciones (/mine/articles/new,
+// /mine/articles/:id/edit) and the staff review queue (/admin/review/:id).
+// "Volver" leads back to wherever it was opened from.
+export default function ArticleFormPage() {
   const { id: routeId } = useParams()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const fromReview = stripNewsletterBase(pathname).startsWith('/admin/')
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
   const { profile } = useAuthSession()
@@ -313,7 +318,7 @@ export default function AdminArticleFormPage() {
         loadedIdRef.current = saved.id
         setArticleId(saved.id)
         allowNextNavigation()
-        navigate(newsletterPath(`/admin/articles/${saved.id}/edit`), { replace: true })
+        navigate(articleEditPath(saved.id), { replace: true })
       }
       // A confirmation with what to do next (no auto-redirect).
       if (status === 'published' || status === 'pending_review') setDoneStatus(status)
@@ -325,7 +330,9 @@ export default function AdminArticleFormPage() {
     }
   }
 
-  const back = { to: newsletterPath('/admin/articles'), label: t('admin.articleForm.back') }
+  const back = fromReview
+    ? { to: REVIEW_PATH, label: t('admin.articleForm.backToReview') }
+    : { to: MY_ARTICLES_PATH, label: t('admin.articleForm.back') }
 
   if (loadState === 'loading') {
     return (
@@ -370,7 +377,7 @@ export default function AdminArticleFormPage() {
               </Link>
             )}
             <Link to={back.to} className={buttonClass({ variant: 'outline' })}>
-              {t('admin.articleForm.backToList')}
+              {fromReview ? t('admin.articleForm.backToReviewList') : t('admin.articleForm.backToList')}
             </Link>
             <Button variant="ghost" onClick={() => setDoneStatus(null)}>
               {t('admin.articleForm.keepEditing')}

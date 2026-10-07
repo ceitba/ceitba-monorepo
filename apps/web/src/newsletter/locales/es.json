@@ -106,7 +106,6 @@
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",
     "myProfile": "Mi perfil",
-    "adminPanel": "Panel admin",
     "contribute": "Contribuir",
     "accountMenu": "Menú de cuenta",
     "verifying": "Verificando sesión…",
@@ -151,7 +150,6 @@
       "loadError": "No se pudieron cargar los artículos",
       "featured": "Destacado",
       "emptyTitle": "Sin artículos",
-      "emptyMessage": "Cuando escribas el primero, va a aparecer acá. Empezá con «Nuevo artículo».",
       "deleteError": "No se pudo eliminar el artículo. Intentá de nuevo.",
       "columns": {
         "title": "Título",
@@ -162,13 +160,10 @@
         "votes": "Votos ({{count}} días)"
       },
       "independent": "Independiente",
-      "pendingReview_one": "Hay {{count}} artículo independiente esperando revisión: abrilo y publicalo si está bien.",
-      "pendingReview_other": "Hay {{count}} artículos independientes esperando revisión: abrilos y publicalos si están bien.",
       "filters": {
         "all": "Todos",
         "label": "Filtrar artículos por estado"
       },
-      "showPending": "Ver pendientes",
       "editAria": "Editar «{{title}}»",
       "deleteAria": "Eliminar «{{title}}»",
       "noVotes": "Sin votos",
@@ -303,7 +298,9 @@
       "keepEditing": "Seguir editando",
       "orgLocked": "La organización de este artículo no se puede cambiar.",
       "authorsHint": "Escribí un nombre y apretá Enter para agregarlo.",
-      "readingTimeAutoValue": "{{time}} · calculado del texto"
+      "readingTimeAutoValue": "{{time}} · calculado del texto",
+      "backToReview": "← Revisión",
+      "backToReviewList": "Volver a la revisión"
     },
     "eventForm": {
       "back": "← Eventos",
@@ -383,8 +380,7 @@
       "searchLabel": "Buscar"
     },
     "nav": {
-      "articles": "Artículos",
-      "events": "Eventos",
+      "review": "Revisión",
       "analytics": "Estadísticas",
       "digests": "Resumen semanal"
     },
@@ -605,18 +601,17 @@
       }
     },
     "layout": {
-      "title": "Newsletter · Administración",
-      "subtitle": "Escribí artículos y gestioná los eventos y el perfil de tu organización.",
-      "subtitleStaff": "Artículos, eventos, organizaciones, estadísticas y el resumen semanal de ITBA News.",
+      "title": "Administración del newsletter",
+      "subtitle": "Revisá los artículos enviados, prepará el resumen semanal y mirá las estadísticas.",
       "tabsAria": "Secciones de la administración del newsletter"
     },
     "guard": {
       "signInTitle": "Iniciá sesión para administrar el newsletter",
-      "signInBody": "Entrá con tu cuenta @itba.edu.ar para escribir artículos y gestionar los eventos de tu organización.",
+      "signInBody": "La administración del newsletter es para el equipo del CEITBA. Entrá con tu cuenta @itba.edu.ar.",
       "signIn": "Iniciar sesión con Google",
       "deniedTitle": "No tenés acceso a la administración del newsletter",
-      "deniedBody": "Pedile acceso a tu organización o al CEITBA.",
-      "backToNewsletter": "Volver al newsletter"
+      "deniedBody": "La revisión de artículos y el resumen semanal son del equipo del CEITBA. Tus artículos, tus borradores y los de tu organización están en Mis publicaciones.",
+      "toMine": "Ir a Mis publicaciones"
     },
     "colors": {
       "blue": "Azul",
@@ -669,6 +664,53 @@
         "discard": "Salir sin guardar",
         "stay": "Seguir editando"
       }
+    },
+    "review": {
+      "title": "Artículos para revisar",
+      "allTitle": "Todos los artículos",
+      "count_one": "{{count}} artículo esperando revisión",
+      "count_other": "{{count}} artículos esperando revisión",
+      "views": {
+        "label": "Qué artículos mostrar",
+        "pending": "Pendientes",
+        "all": "Todos los artículos"
+      },
+      "columns": {
+        "author": "Autor",
+        "submitted": "Enviado"
+      },
+      "loadError": "No se pudieron cargar los artículos",
+      "emptyTitle": "No hay artículos para revisar",
+      "emptyBody": "Cuando alguien envíe un artículo a revisión, va a aparecer acá.",
+      "allEmptyBody": "Cuando alguien escriba un artículo, va a aparecer acá.",
+      "review": "Revisar",
+      "reviewAria": "Revisar «{{title}}»",
+      "publish": "Publicar",
+      "publishAria": "Publicar «{{title}}»",
+      "publishing": "Publicando…",
+      "published": "Publicaste «{{title}}».",
+      "publishError": "No se pudo publicar «{{title}}». Intentá de nuevo."
+    }
+  },
+  "mine": {
+    "layout": {
+      "title": "Mis publicaciones",
+      "subtitle": "Tus artículos: borradores, enviados a revisión y publicados.",
+      "subtitleMember": "Tus artículos y los de tus organizaciones, sus eventos y su perfil.",
+      "tabsAria": "Secciones de Mis publicaciones"
+    },
+    "nav": {
+      "articles": "Artículos",
+      "events": "Eventos"
+    },
+    "guard": {
+      "signInTitle": "Iniciá sesión para escribir en el newsletter",
+      "signInBody": "Entrá con tu cuenta @itba.edu.ar para escribir artículos, guardar borradores y, si sos de una organización, gestionar sus eventos."
+    },
+    "articles": {
+      "emptyTitle": "Todavía no escribiste nada",
+      "emptyBody": "Tus borradores solo los ves vos hasta que los envíes a revisión. Cuando el CEITBA los apruebe, se publican en el newsletter.",
+      "write": "Escribir un artículo"
     }
   },
   "imageUploader": {

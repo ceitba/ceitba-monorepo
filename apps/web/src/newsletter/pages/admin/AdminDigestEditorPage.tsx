@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, Navigate, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import {
@@ -8,7 +8,6 @@ import {
 import {
   cancelDigest, deleteDigest, fetchDigest, fetchDigestQuota, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
 } from '../../api/digests'
-import { isStaff } from '../../store/authStore'
 import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import DigestStatusBadge from '../../components/admin/DigestStatusBadge'
@@ -68,7 +67,6 @@ export default function AdminDigestEditorPage() {
   // The route is /admin/digests/:id, so the param is always there.
   const { id = '' } = useParams()
   const { t, i18n } = useTranslation()
-  const staff = isStaff()
   const navigate = useNavigate()
 
   const [loadState, setLoadState] = useState<LoadState>('loading')
@@ -99,7 +97,6 @@ export default function AdminDigestEditorPage() {
   }, [])
 
   useEffect(() => {
-    if (!staff) return
     let cancelled = false
     const seq = ++seqRef.current
     setLoadState('loading')
@@ -107,7 +104,7 @@ export default function AdminDigestEditorPage() {
       .then((d) => { if (!cancelled && seq === seqRef.current) { applyDigest(d); setLoadState('ready') } })
       .catch((err: unknown) => { if (!cancelled && seq === seqRef.current) setLoadState(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error') })
     return () => { cancelled = true }
-  }, [id, staff, reloadKey, applyDigest])
+  }, [id, reloadKey, applyDigest])
 
   // While sending, refresh progress. The form is read-only then, so
   // overwriting it with the server copy loses nothing.
@@ -124,13 +121,12 @@ export default function AdminDigestEditorPage() {
   }, [sending, id, applyDigest])
 
   useEffect(() => {
-    if (!staff) return
     let cancelled = false
     fetchDigestQuota()
       .then((q) => { if (!cancelled) setSenderStatus(q?.senderStatus ?? null) })
       .catch((err: unknown) => console.error('newsletter admin: sender status (notice skipped)', err))
     return () => { cancelled = true }
-  }, [staff, id])
+  }, [id])
 
   const base = useMemo(() => (digest ? formFrom(digest) : null), [digest])
   const dirty = form && base ? isDirty(form, base) : false
@@ -151,8 +147,6 @@ export default function AdminDigestEditorPage() {
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
-
-  if (!staff) return <Navigate to={newsletterPath('/admin/articles')} replace />
 
   const back = { to: newsletterPath('/admin/digests'), label: t('admin.digests.back') }
 

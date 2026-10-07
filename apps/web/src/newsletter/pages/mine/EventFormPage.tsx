@@ -43,7 +43,7 @@ function buildEmptyForm(): EventForm {
   }
 }
 
-export default function AdminEventFormPage() {
+export default function EventFormPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const isEdit   = Boolean(id)
@@ -121,7 +121,7 @@ export default function AdminEventFormPage() {
         await createEvent(form)
       }
       toast.success(isEdit ? t('admin.eventForm.updated') : t('admin.eventForm.created'))
-      navigate(newsletterPath('/admin/events'))
+      navigate(newsletterPath('/mine/events'))
     } catch (err) {
       console.error('newsletter admin: save event', err)
       setApiError(t('admin.eventForm.saveError'))
@@ -129,7 +129,7 @@ export default function AdminEventFormPage() {
     }
   }
 
-  const back = { to: newsletterPath('/admin/events'), label: t('admin.eventForm.back') }
+  const back = { to: newsletterPath('/mine/events'), label: t('admin.eventForm.back') }
   const title = isEdit ? t('admin.eventForm.editTitle') : t('admin.eventForm.newTitle')
 
   if (loadState === 'loading') {

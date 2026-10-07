@@ -13,3 +13,19 @@ export function stripNewsletterBase(pathname: string): string {
   if (pathname === NEWSLETTER_BASE) return '/'
   return pathname.startsWith(NEWSLETTER_BASE + '/') ? pathname.slice(NEWSLETTER_BASE.length) : pathname
 }
+
+// The two signed-in areas: "Mis publicaciones" (every writer: articles,
+// drafts, their organizations' events and profiles) and the staff admin
+// (review queue, weekly digest, analytics).
+export const MINE_PATH = newsletterPath('/mine')
+export const ADMIN_PATH = newsletterPath('/admin')
+export const MY_ARTICLES_PATH = newsletterPath('/mine/articles')
+export const NEW_ARTICLE_PATH = newsletterPath('/mine/articles/new')
+export const REVIEW_PATH = newsletterPath('/admin/review')
+
+// Where an article opens in the editor: from the review queue staff stay in
+// the admin (so "Volver" leads back to it); everyone else edits it in Mis
+// publicaciones.
+export function articleEditPath(id: string, from: 'mine' | 'admin' = 'mine'): string {
+  return from === 'admin' ? `${REVIEW_PATH}/${id}` : `${MY_ARTICLES_PATH}/${id}/edit`
+}

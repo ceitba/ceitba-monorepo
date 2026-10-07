@@ -106,7 +106,6 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "myProfile": "My profile",
-    "adminPanel": "Admin panel",
     "contribute": "Contribute",
     "accountMenu": "Account menu",
     "verifying": "Verifying session…",
@@ -151,7 +150,6 @@
       "loadError": "Couldn't load the articles",
       "featured": "Featured",
       "emptyTitle": "No articles",
-      "emptyMessage": "Once you write the first one it will show up here. Start with “New article”.",
       "deleteError": "Couldn't delete the article. Please try again.",
       "columns": {
         "title": "Title",
@@ -162,13 +160,10 @@
         "votes": "Votes ({{count}} days)"
       },
       "independent": "Independent",
-      "pendingReview_one": "{{count}} independent article is waiting for review: open it and publish it if it's fine.",
-      "pendingReview_other": "{{count}} independent articles are waiting for review: open them and publish them if they're fine.",
       "filters": {
         "all": "All",
         "label": "Filter articles by status"
       },
-      "showPending": "Show pending",
       "editAria": "Edit “{{title}}”",
       "deleteAria": "Delete “{{title}}”",
       "noVotes": "No votes",
@@ -303,7 +298,9 @@
       "keepEditing": "Keep editing",
       "orgLocked": "This article's organization can't be changed.",
       "authorsHint": "Type a name and press Enter to add it.",
-      "readingTimeAutoValue": "{{time}} · worked out from the text"
+      "readingTimeAutoValue": "{{time}} · worked out from the text",
+      "backToReview": "← Review",
+      "backToReviewList": "Back to review"
     },
     "eventForm": {
       "back": "← Events",
@@ -383,9 +380,8 @@
       "searchLabel": "Search"
     },
     "nav": {
-      "articles": "Articles",
-      "events": "Events",
-      "analytics": "Statistics",
+      "review": "Review",
+      "analytics": "Analytics",
       "digests": "Weekly digest"
     },
     "digests": {
@@ -605,18 +601,17 @@
       }
     },
     "layout": {
-      "title": "Newsletter · Admin",
-      "subtitle": "Write articles and manage your organization's events and profile.",
-      "subtitleStaff": "Articles, events, organizations, analytics and the ITBA News weekly digest.",
+      "title": "Newsletter admin",
+      "subtitle": "Review submitted articles, prepare the weekly digest and check the analytics.",
       "tabsAria": "Newsletter admin sections"
     },
     "guard": {
       "signInTitle": "Sign in to manage the newsletter",
-      "signInBody": "Sign in with your @itba.edu.ar account to write articles and manage your organization's events.",
+      "signInBody": "The newsletter admin is for the CEITBA team. Sign in with your @itba.edu.ar account.",
       "signIn": "Sign in with Google",
       "deniedTitle": "You don't have access to the newsletter admin",
-      "deniedBody": "Ask your organization or CEITBA for access.",
-      "backToNewsletter": "Back to the newsletter"
+      "deniedBody": "Reviewing articles and the weekly digest are the CEITBA team's job. Your articles, your drafts and your organization's are in My posts.",
+      "toMine": "Go to My posts"
     },
     "colors": {
       "blue": "Blue",
@@ -669,6 +664,53 @@
         "discard": "Leave without saving",
         "stay": "Keep editing"
       }
+    },
+    "review": {
+      "title": "Articles to review",
+      "allTitle": "All articles",
+      "count_one": "{{count}} article waiting for review",
+      "count_other": "{{count}} articles waiting for review",
+      "views": {
+        "label": "Which articles to show",
+        "pending": "Pending",
+        "all": "All articles"
+      },
+      "columns": {
+        "author": "Author",
+        "submitted": "Sent"
+      },
+      "loadError": "Couldn't load the articles",
+      "emptyTitle": "No articles to review",
+      "emptyBody": "When someone sends an article for review, it will show up here.",
+      "allEmptyBody": "When someone writes an article, it will show up here.",
+      "review": "Review",
+      "reviewAria": "Review “{{title}}”",
+      "publish": "Publish",
+      "publishAria": "Publish “{{title}}”",
+      "publishing": "Publishing…",
+      "published": "You published “{{title}}”.",
+      "publishError": "Couldn't publish “{{title}}”. Try again."
+    }
+  },
+  "mine": {
+    "layout": {
+      "title": "My posts",
+      "subtitle": "Your articles: drafts, sent for review and published.",
+      "subtitleMember": "Your articles and your organizations' articles, events and profile.",
+      "tabsAria": "My posts sections"
+    },
+    "nav": {
+      "articles": "Articles",
+      "events": "Events"
+    },
+    "guard": {
+      "signInTitle": "Sign in to write for the newsletter",
+      "signInBody": "Sign in with your @itba.edu.ar account to write articles, keep drafts and, if you're in an organization, manage its events."
+    },
+    "articles": {
+      "emptyTitle": "You haven't written anything yet",
+      "emptyBody": "Only you can see your drafts until you send them for review. Once CEITBA approves them, they are published in the newsletter.",
+      "write": "Write an article"
     }
   },
   "imageUploader": {
