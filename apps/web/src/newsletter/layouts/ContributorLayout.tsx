@@ -1,21 +1,24 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import type { UserProfile } from '@/store/authStore'
 import { getSession, signOut } from '../store/authStore'
 import {
   getNotificationsForUser,
   markNotificationRead,
   markAllReadForUser,
+  type ContributorNotification,
+  type NotificationType,
 } from '../store/notificationStore'
 import { newsletterPath } from '@/newsletter/paths'
 
 export default function ContributorLayout() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState<UserProfile | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const [notifOpen, setNotifOpen] = useState(false)
-  const [notifications, setNotifications] = useState([])
+  const [notifications, setNotifications] = useState<ContributorNotification[]>([])
   const unread = notifications.filter((n) => !n.read).length
-  const bellRef = useRef(null)
+  const bellRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getSession().then((s) => {
@@ -27,9 +30,10 @@ export default function ContributorLayout() {
   useEffect(() => { setNotifOpen(false) }, [location.pathname])
 
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') setNotifOpen(false) }
-    function onClickOutside(e) {
-      if (bellRef.current && !bellRef.current.contains(e.target)) setNotifOpen(false)
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setNotifOpen(false) }
+    function onClickOutside(e: MouseEvent) {
+      // Cast: mousedown on the document always targets a DOM node.
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setNotifOpen(false)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onClickOutside)
@@ -51,7 +55,7 @@ export default function ContributorLayout() {
     setNotifOpen((v) => !v)
   }
 
-  function handleMarkRead(id) {
+  function handleMarkRead(id: string) {
     markNotificationRead(id)
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
   }
@@ -63,11 +67,11 @@ export default function ContributorLayout() {
     }
   }
 
-  function notifLink(n) {
+  function notifLink(n: ContributorNotification) {
     if (n.type === 'changes_requested') {
-      return `/contribute/review/${n.resourceType}/${n.resourceId}`
+      return newsletterPath(`/contribute/review/${n.resourceType}/${n.resourceId}`)
     }
-    return '/contribute'
+    return newsletterPath('/contribute')
   }
 
   return (
@@ -180,11 +184,16 @@ export default function ContributorLayout() {
   )
 }
 
-function ContribNavLink({ to, children }) {
+interface ContribNavLinkProps {
+  to: string
+  children: ReactNode
+}
+
+function ContribNavLink({ to, children }: ContribNavLinkProps) {
   return (
     <NavLink
       to={to}
-      end={to === '/contribute'}
+      end={to === newsletterPath('/contribute')}
       className={({ isActive }) => [
         'px-3 py-1.5 rounded-sm font-body text-body-sm font-semibold transition-colors duration-150',
         isActive
@@ -197,7 +206,11 @@ function ContribNavLink({ to, children }) {
   )
 }
 
-function NotifIcon({ type }) {
+interface NotifIconProps {
+  type: NotificationType
+}
+
+function NotifIcon({ type }: NotifIconProps) {
   if (type === 'approved') {
     return (
       <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">

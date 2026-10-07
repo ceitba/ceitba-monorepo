@@ -3,13 +3,13 @@
 // calls take absolute paths, so build them with newsletterPath('/events') etc.
 export const NEWSLETTER_BASE = '/newsletter'
 
-export function newsletterPath(path) {
+export function newsletterPath(path: string): string {
   return path === '/' ? NEWSLETTER_BASE : NEWSLETTER_BASE + path
 }
 
 // The inverse, for code that inspects location.pathname: "/newsletter/admin"
 // -> "/admin".
-export function stripNewsletterBase(pathname) {
+export function stripNewsletterBase(pathname: string): string {
   if (pathname === NEWSLETTER_BASE) return '/'
   return pathname.startsWith(NEWSLETTER_BASE + '/') ? pathname.slice(NEWSLETTER_BASE.length) : pathname
 }

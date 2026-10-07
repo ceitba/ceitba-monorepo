@@ -1,39 +1,54 @@
 import { apiGet, apiSend } from '@/api/client'
+import type { Article, ArticleInput, ArticleResponse, IsoDate, Page } from '../types'
 
-function normalize(a) {
+export interface ArticleFilters {
+  category?: string
+  organization?: string
+  status?: string
+  mine?: boolean
+  page?: number
+  limit?: number
+}
+
+// Tolerates an already-normalized article (`date` set, no publishedAt).
+type ArticleLike = ArticleResponse & { date?: IsoDate | null }
+
+function normalize(a: ArticleLike): Article {
   if (!a) return a
   return { ...a, date: a.publishedAt ?? a.date }
 }
 
-export async function fetchArticles({ category, organization, status, mine, page = 1, limit = 20 } = {}) {
-  const params = new URLSearchParams({ page, limit })
+export async function fetchArticles(
+  { category, organization, status, mine, page = 1, limit = 20 }: ArticleFilters = {},
+): Promise<Page<Article>> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (category) params.set('category', category)
   if (organization) params.set('organization', organization)
   if (status) params.set('status', status)
   // Only the caller's own articles, any status (independent authors).
   if (mine) params.set('mine', 'true')
 
-  const json = await apiGet(`/articles?${params}`)
+  const json = await apiGet<Page<ArticleResponse>>(`/articles?${params}`)
   return { ...json, data: json.data.map(normalize) }
 }
 
-export async function fetchArticleById(id) {
-  return normalize(await apiGet(`/articles/${encodeURIComponent(id)}`))
+export async function fetchArticleById(id: string): Promise<Article> {
+  return normalize(await apiGet<ArticleResponse>(`/articles/${encodeURIComponent(id)}`))
 }
 
-export async function createArticle(data) {
+export async function createArticle(data: ArticleInput): Promise<Article> {
   const { date, ...rest } = data
-  return normalize(await apiSend('POST', '/articles', { ...rest, publishedAt: date }))
+  return normalize(await apiSend<ArticleResponse>('POST', '/articles', { ...rest, publishedAt: date }))
 }
 
-export async function updateArticle(id, data) {
-  const payload = { ...data }
+export async function updateArticle(id: string, data: ArticleInput): Promise<Article> {
+  const payload: ArticleInput & { publishedAt?: IsoDate | null } = { ...data }
   if (payload.date) { payload.publishedAt = payload.date; delete payload.date }
-  return normalize(await apiSend('PATCH', `/articles/${encodeURIComponent(id)}`, payload))
+  return normalize(await apiSend<ArticleResponse>('PATCH', `/articles/${encodeURIComponent(id)}`, payload))
 }
 
-export async function deleteArticle(id) {
-  await apiSend('DELETE', `/articles/${encodeURIComponent(id)}`)
+export async function deleteArticle(id: string): Promise<void> {
+  await apiSend<void>('DELETE', `/articles/${encodeURIComponent(id)}`)
 }
 
 // `?status=all` lists every status. The API honours it (and `draft`) for
@@ -51,8 +66,11 @@ export const ALL_STATUSES = 'all'
 // keyed by id (first occurrence wins, keeping the API order) so the table
 // never renders duplicate React keys or an inflated count. pageSize must
 // not exceed the API's MAX_LIMIT (100), or a full page would look short.
-export async function fetchAllArticles(filters = {}, { pageSize = 100, maxPages = 50 } = {}) {
-  const byId = new Map()
+export async function fetchAllArticles(
+  filters: Omit<ArticleFilters, 'page' | 'limit'> = {},
+  { pageSize = 100, maxPages = 50 }: { pageSize?: number; maxPages?: number } = {},
+): Promise<Article[]> {
+  const byId = new Map<string, Article>()
   for (let page = 1; page <= maxPages; page++) {
     const { data, meta } = await fetchArticles({ ...filters, page, limit: pageSize })
     for (const a of data) if (!byId.has(a.id)) byId.set(a.id, a)

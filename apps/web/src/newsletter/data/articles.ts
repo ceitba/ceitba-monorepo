@@ -1,4 +1,21 @@
-export const ARTICLES = [
+import type { IsoDate } from '../types'
+
+// Seed rows for the localStorage mock (store/articleStore).
+export interface SeedArticle {
+  id: string
+  title: string
+  excerpt: string
+  body: string[]
+  category: string
+  organization: string | null
+  authors: string[]
+  date: IsoDate
+  readingTime: string
+  featured: boolean
+  colorScheme: string
+}
+
+export const ARTICLES: SeedArticle[] = [
   {
     id: 'a1',
     title: 'ITBA abre convocatoria para las Becas de Investigación 2025',

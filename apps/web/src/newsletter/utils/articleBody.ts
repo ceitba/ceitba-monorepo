@@ -3,14 +3,14 @@
 // as a single element, and articles written with the old one-textarea-per-
 // paragraph editor are a list of plain paragraphs. Joining with a blank line
 // reads both the same way — each old paragraph becomes a Markdown paragraph.
-export function bodyToMarkdown(body) {
+export function bodyToMarkdown(body: unknown): string {
   if (!Array.isArray(body)) return typeof body === 'string' ? body : ''
   return body.filter((p) => typeof p === 'string' && p.trim()).join('\n\n')
 }
 
 // Markdown → roughly what a reader reads: no fences, images, link targets or
 // syntax characters. Only used for counting words and building fallbacks.
-export function markdownToPlainText(markdown) {
+export function markdownToPlainText(markdown: string | null | undefined): string {
   return (markdown ?? '')
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
@@ -23,7 +23,7 @@ export function markdownToPlainText(markdown) {
     .trim()
 }
 
-export function countWords(text) {
+export function countWords(text: string | null | undefined): number {
   const trimmed = (text ?? '').trim()
   return trimmed ? trimmed.split(/\s+/).length : 0
 }
@@ -32,7 +32,7 @@ const WORDS_PER_MINUTE = 200
 
 // "N min", never less than one minute. Matches the format editors typed by
 // hand ("4 min"), which the article page shows as-is.
-export function readingTimeFor(markdown) {
+export function readingTimeFor(markdown: string | null | undefined): string {
   const minutes = Math.max(1, Math.round(countWords(markdownToPlainText(markdown)) / WORDS_PER_MINUTE))
   return `${minutes} min`
 }
@@ -51,6 +51,6 @@ const MARKDOWN_HINTS = [
   /^\s*\|.+\|\s*$/m,
 ]
 
-export function looksLikeMarkdown(text) {
+export function looksLikeMarkdown(text: string | null | undefined): boolean {
   return MARKDOWN_HINTS.some((re) => re.test(text ?? ''))
 }

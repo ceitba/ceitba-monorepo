@@ -1,4 +1,19 @@
-export const EVENTS = [
+import type { IsoDate, IsoTime } from '../types'
+
+// Seed rows for the localStorage mock (store/eventStore).
+export interface SeedEvent {
+  id: string
+  title: string
+  date: IsoDate
+  time: IsoTime
+  endTime: IsoTime
+  location: string
+  category: string
+  organization: string | null
+  description: string
+}
+
+export const EVENTS: SeedEvent[] = [
   {
     id: 'e1',
     title: 'Simposio Anual de Ingeniería',

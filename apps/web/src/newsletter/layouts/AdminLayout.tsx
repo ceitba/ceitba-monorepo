@@ -1,18 +1,31 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import type { UserProfile } from '@/store/authStore'
 import { signOut, getOrganizations, isStaff as isStaffProfile } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
 import { allowNextNavigation, hasUnsavedChanges } from '../store/unsavedStore'
 import { newsletterPath, stripNewsletterBase } from '@/newsletter/paths'
 
-function buildNav(profile, t) {
+interface NavItem {
+  to: string
+  label: string
+  icon: ReactNode
+}
+
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+function buildNav(profile: UserProfile | null, t: TFunction): NavGroup[] {
   const orgs = getOrganizations(profile)
   // Suggestions review and analytics are STAFF-only on the API.
   const isStaff = isStaffProfile(profile)
 
-  const groups = []
+  const groups: NavGroup[] = []
   groups.push({
     label: t('admin.nav.content'),
     items: [
@@ -63,13 +76,13 @@ export default function AdminLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const drawerRef = useRef(null)
+  const drawerRef = useRef<HTMLElement>(null)
 
   // Close drawer on navigation
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setSidebarOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false) }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
@@ -100,16 +113,17 @@ export default function AdminLayout() {
     return () => { active = false }
   }, [])
 
-  const counts = {
-    '/admin/articles':    null,
-    '/admin/events':      null,
-    '/admin/suggestions': pendingSuggestions || null,
-    '/admin/analytics':   null,
+  // Keyed like the nav items' `to` (full app paths).
+  const counts: Record<string, number | null> = {
+    [newsletterPath('/admin/articles')]:    null,
+    [newsletterPath('/admin/events')]:      null,
+    [newsletterPath('/admin/suggestions')]: pendingSuggestions || null,
+    [newsletterPath('/admin/analytics')]:   null,
   }
 
   const navGroups = buildNav(session, t)
 
-  const linkClass = ({ isActive }) =>
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
     [
       'flex items-center gap-3 px-3 py-2 rounded-sm text-body-sm font-semibold transition-colors duration-150',
       isActive
@@ -265,7 +279,7 @@ function TopbarAction() {
 function Breadcrumb() {
   const pathname = stripNewsletterBase(useLocation().pathname)
   const { t } = useTranslation()
-  const segments = {
+  const segments: Record<string, string> = {
     '/admin/articles':       t('admin.nav.articles'),
     '/admin/articles/new':   `${t('admin.nav.articles')} / ${t('admin.nav.new')}`,
     '/admin/events':         t('admin.nav.events'),

@@ -1,6 +1,7 @@
 import { apiGet } from '@/api/client'
+import type { AnalyticsSummary } from '../types'
 
-export async function fetchAnalyticsSummary(days = 30) {
+export async function fetchAnalyticsSummary(days: number = 30): Promise<AnalyticsSummary> {
   const params = days ? `?days=${days}` : ''
-  return apiGet(`/analytics/summary${params}`)
+  return apiGet<AnalyticsSummary>(`/analytics/summary${params}`)
 }

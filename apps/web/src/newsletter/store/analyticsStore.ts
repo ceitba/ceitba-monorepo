@@ -1,12 +1,13 @@
 import { apiRequest } from '@/api/client'
+import type { AnalyticsEvent } from '../types'
 
 const SESSION_KEY  = 'itbanews_session_id'
 const FLUSH_MS     = 10_000
 const MAX_BATCH    = 50
 
-let _queue = []
+const _queue: AnalyticsEvent[] = []
 
-function getSessionId() {
+function getSessionId(): string {
   let id = sessionStorage.getItem(SESSION_KEY)
   if (!id) {
     id = Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -15,7 +16,10 @@ function getSessionId() {
   return id
 }
 
-export function trackEvent(type, extra = {}) {
+export function trackEvent(
+  type: string,
+  extra: Partial<Omit<AnalyticsEvent, 'type' | 'sessionId'>> = {},
+): void {
   _queue.push({ type, sessionId: getSessionId(), timestamp: Date.now(), ...extra })
 }
 
@@ -27,8 +31,8 @@ export function trackEvent(type, extra = {}) {
 // far above a 50-event batch.
 // All batches are dispatched synchronously so none is lost when the page
 // goes away mid-flush.
-function flush({ keepalive = false } = {}) {
-  const sends = []
+function flush({ keepalive = false }: { keepalive?: boolean } = {}): Promise<unknown[]> {
+  const sends: Promise<unknown>[] = []
   while (_queue.length > 0) {
     const batch = _queue.splice(0, MAX_BATCH)
     sends.push(

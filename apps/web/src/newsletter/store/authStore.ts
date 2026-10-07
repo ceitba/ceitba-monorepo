@@ -4,6 +4,8 @@ import {
   isStaff,
   patchCachedSession,
   startGoogleSignIn as startSharedSignIn,
+  type UserMembership,
+  type UserProfile,
 } from '@/store/authStore'
 import { fetchMyFollows } from '../api/follows'
 import { newsletterPath } from '../paths'
@@ -23,12 +25,12 @@ export {
 // `returnTo` is an app path (e.g. location.pathname, or
 // newsletterPath('/contribute')); without one the user lands on the admin
 // area, which every signed-in user may enter.
-export function startGoogleSignIn({ returnTo } = {}) {
+export function startGoogleSignIn({ returnTo }: { returnTo?: string } = {}): void {
   startSharedSignIn(returnTo ?? newsletterPath('/admin'))
 }
 
 // Feature gates (API docs/CAPABILITIES.md): /auth/me lists the effective keys.
-export function hasCapability(key, profile = getCachedSession()) {
+export function hasCapability(key: string, profile: UserProfile | null = getCachedSession()): boolean {
   return hasCapabilityFor(profile, key)
 }
 
@@ -37,49 +39,49 @@ export function hasCapability(key, profile = getCachedSession()) {
 // takes an optional profile so React code can pass the one from
 // useAuthSession(); without it they read the cached session.
 
-export function getOrganizations(profile = getCachedSession()) {
+export function getOrganizations(profile: UserProfile | null = getCachedSession()): UserMembership[] {
   return profile?.organizations ?? []
 }
 
-export function isOrgMember(profile = getCachedSession()) {
+export function isOrgMember(profile: UserProfile | null = getCachedSession()): boolean {
   return getOrganizations(profile).length > 0
 }
 
 // Membership role 'admin' (set by staff from the CEITBA dashboard), as
 // opposed to a plain 'member'.
-export function isOrgAdmin(slug, profile = getCachedSession()) {
+export function isOrgAdmin(slug: string, profile: UserProfile | null = getCachedSession()): boolean {
   return getOrganizations(profile).some((m) => m.slug === slug && m.role === 'admin')
 }
 
 // The followers list exposes names and emails: the API only serves it to
 // staff and to that org's admins, so plain members don't get the link.
-export function canViewFollowers(slug, profile = getCachedSession()) {
+export function canViewFollowers(slug: string, profile: UserProfile | null = getCachedSession()): boolean {
   return isStaff(profile) || isOrgAdmin(slug, profile)
 }
 
 // Who may enter /admin: anyone signed in. Staff and organization members
 // manage their org's content; everyone else writes independent articles
 // (no organization) that staff review before publishing.
-export function canAccessAdmin(profile = getCachedSession()) {
+export function canAccessAdmin(profile: UserProfile | null = getCachedSession()): boolean {
   return profile != null
 }
 
 // Staff and org members publish directly; independent authors submit.
-export function canManageOrganizations(profile = getCachedSession()) {
+export function canManageOrganizations(profile: UserProfile | null = getCachedSession()): boolean {
   return isStaff(profile) || isOrgMember(profile)
 }
 
 // ── Follows ─────────────────────────────────────────────────────────────────
 
-export function getFollows() {
+export function getFollows(): string[] {
   return getCachedSession()?.follows ?? []
 }
 
-export function isFollowing(slug) {
+export function isFollowing(slug: string): boolean {
   return getFollows().includes(slug)
 }
 
-export async function refreshFollows() {
+export async function refreshFollows(): Promise<string[]> {
   if (!getCachedSession()) return getFollows()
   try {
     const list = await fetchMyFollows()

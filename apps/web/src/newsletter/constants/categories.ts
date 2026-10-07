@@ -16,7 +16,7 @@ export const CATEGORIES = [
 
 export const DEFAULT_CATEGORY = 'Académico'
 
-export function isCanonicalCategory(value) {
+export function isCanonicalCategory(value: string): boolean {
   return CATEGORIES.includes(value)
 }
 
@@ -24,6 +24,6 @@ export function isCanonicalCategory(value) {
 // value if it is something else (a row the migration could not map), so
 // editing shows it instead of silently replacing it; the form then asks
 // for a canonical value before saving, since the API would reject it.
-export function categoryOptions(current) {
+export function categoryOptions(current: string | null | undefined): string[] {
   return current && !CATEGORIES.includes(current) ? [...CATEGORIES, current] : CATEGORIES
 }
