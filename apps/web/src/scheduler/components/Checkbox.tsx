@@ -30,7 +30,7 @@ export default function Checkbox({ id, checked, onChange, label, isTooltip, tool
           flex items-center justify-center w-5 h-5 rounded-sm border transition-colors duration-150 flex-shrink-0
           ${checked
             ? 'bg-primary border-primary'
-            : 'bg-white dark:bg-[#27272a] border-border dark:border-[#3f3f46] hover:border-primary'
+            : 'bg-white dark:bg-night-surface border-border dark:border-night-border hover:border-primary'
           }
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
@@ -44,7 +44,7 @@ export default function Checkbox({ id, checked, onChange, label, isTooltip, tool
       </button>
 
       <label
-        className={`font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] select-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`font-body text-body-sm text-ink-primary dark:text-night-text select-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         onClick={() => !disabled && onChange(!checked)}
       >
         {label}
@@ -56,7 +56,7 @@ export default function Checkbox({ id, checked, onChange, label, isTooltip, tool
             type="button"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
-            className="w-4 h-4 rounded-full bg-primary-50 dark:bg-[#3f3f46] text-primary dark:text-[#a1a1aa] flex items-center justify-center font-mono text-label"
+            className="w-4 h-4 rounded-full bg-primary-50 dark:bg-night-border text-primary dark:text-night-muted flex items-center justify-center font-mono text-label"
             aria-label={t('common.moreInfo')}
           >
             ?

@@ -35,11 +35,11 @@ type Phase =
   | { kind: 'done'; message: string }
 
 const field =
-  'min-h-[40px] px-2 py-1.5 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] text-ink-primary dark:text-[#f4f4f5] font-body text-body-sm'
+  'min-h-[40px] px-2 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface text-ink-primary dark:text-night-text font-body text-body-sm'
 const primaryBtn =
   'min-h-[44px] px-4 py-2 rounded-sm bg-primary text-surface font-body font-semibold text-body-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-50'
 const secondaryBtn =
-  'min-h-[44px] px-4 py-2 rounded-sm font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] hover:text-primary hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150'
+  'min-h-[44px] px-4 py-2 rounded-sm font-body text-body-sm text-ink-secondary dark:text-night-muted hover:text-primary hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150'
 
 // Form to suggest a commission's real days/times, prefilled with what the
 // app shows now. Rooms are read-only context (v1 only corrects day/time).
@@ -110,8 +110,8 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
   }
 
   const header = (
-    <div className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-      <div className="font-semibold text-ink-primary dark:text-[#f4f4f5] text-body">
+    <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+      <div className="font-semibold text-ink-primary dark:text-night-text text-body">
         <span className="font-mono text-label">({subject.subject_id})</span> {subject.name}
       </div>
       <div>{t('corrections.detailCommission', { name: commission.name })}</div>
@@ -129,7 +129,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
     body = (
       <div className="space-y-4">
         {header}
-        <h4 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5]">{t('corrections.signInTitle')}</h4>
+        <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text">{t('corrections.signInTitle')}</h4>
         <SignInPrompt message={t('corrections.signInBody')} />
       </div>
     )
@@ -137,8 +137,8 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
     body = (
       <div className="space-y-4" role="status">
         {header}
-        <h4 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5]">{t('corrections.doneTitle')}</h4>
-        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">{phase.message}</p>
+        <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text">{t('corrections.doneTitle')}</h4>
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{phase.message}</p>
         <div className="flex justify-end pt-2">
           <button type="button" onClick={onClose} className={primaryBtn}>{t('corrections.done')}</button>
         </div>
@@ -148,12 +148,12 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
     body = (
       <div className="space-y-4">
         {header}
-        <p className="font-body text-body text-ink-primary dark:text-[#f4f4f5]">{t('corrections.duplicate')}</p>
-        <p className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">
+        <p className="font-body text-body text-ink-primary dark:text-night-text">{t('corrections.duplicate')}</p>
+        <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
           {formatSlots(phase.correction.schedule, dayLabel)}
         </p>
         {errorBox}
-        <div className="flex justify-end gap-2 pt-2 border-t border-border dark:border-[#3f3f46]">
+        <div className="flex justify-end gap-2 pt-2 border-t border-border dark:border-night-border">
           <button type="button" onClick={onClose} className={secondaryBtn}>{t('corrections.cancel')}</button>
           <button type="button" onClick={() => confirmDuplicate(phase.correction)} disabled={busy} className={primaryBtn}>
             {busy ? t('corrections.sending') : t('corrections.confirmDuplicate')}
@@ -169,10 +169,10 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
         onSubmit={(e) => { e.preventDefault(); submit() }}
       >
         {header}
-        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           {t('corrections.suggestIntro', { threshold: APPLY_THRESHOLD })}
         </p>
-        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           <span className="font-mono text-label uppercase tracking-widest">{t('corrections.sgaLabel')}:</span>{' '}
           {formatSlots(sga, dayLabel)}
         </p>
@@ -183,7 +183,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
             const slotError = showErrors ? validation.slotErrors[i] : null
             return (
               <li key={i} className="flex flex-col gap-1">
-                <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+                <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                   {t('corrections.slotLabel', { n })}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
@@ -225,7 +225,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
                     type="button"
                     onClick={() => removeSlot(i)}
                     aria-label={t('corrections.removeSlot', { n })}
-                    className="p-2 rounded-sm text-ink-secondary dark:text-[#a1a1aa] hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150"
+                    className="p-2 rounded-sm text-ink-secondary dark:text-night-muted hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -233,7 +233,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
                     </svg>
                   </button>
                 </div>
-                <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">
+                <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
                   {slot.classroom ? t('corrections.classroom', { classroom: slot.classroom }) : t('corrections.noClassroom')}
                 </span>
                 {slotError && (
@@ -262,7 +262,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
         )}
         {errorBox}
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-border dark:border-[#3f3f46]">
+        <div className="flex justify-end gap-2 pt-4 border-t border-border dark:border-night-border">
           <button type="button" onClick={onClose} className={secondaryBtn}>{t('corrections.cancel')}</button>
           <button type="submit" disabled={busy} className={primaryBtn}>
             {busy ? t('corrections.sending') : t('corrections.submit')}

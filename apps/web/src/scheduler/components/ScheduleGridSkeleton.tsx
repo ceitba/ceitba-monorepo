@@ -37,7 +37,7 @@ export default function ScheduleGridSkeleton() {
             {Array.from({ length: hours }).map((_, hourIndex) => (
               <div
                 key={hourIndex}
-                className="absolute w-full h-12 bg-surface dark:bg-[#18181b] border-b border-border/50 dark:border-[#3f3f46]/50"
+                className="absolute w-full h-12 bg-surface dark:bg-night-bg border-b border-border/50 dark:border-night-border/50"
                 style={{ top: hourIndex * hourHeight }}
               />
             ))}

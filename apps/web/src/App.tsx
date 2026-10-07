@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import './i18n'
-import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, matchPath, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -55,7 +55,20 @@ function AuthCallback() {
   return null
 }
 
+// Pages with their own full-screen chrome instead of the app's Navbar and
+// Footer: the newsletter's admin dashboard and its sign-in page.
+const CHROMELESS = ['/newsletter/admin/*', '/newsletter/contribute/*']
+
 function Layout() {
+  const { pathname } = useLocation()
+  if (CHROMELESS.some((pattern) => matchPath(pattern, pathname))) {
+    return (
+      <Routes>
+        <Route path="/newsletter/*" element={<Suspense fallback={<PageFallback />}><NewsletterApp /></Suspense>} />
+      </Routes>
+    )
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-page-bg">
       <Navbar />
@@ -72,6 +85,8 @@ function Layout() {
           <Route path="/apuntes/:subjectId" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><SubjectFilesPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/:subjectId/wiki/:slug" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><WikiPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/:subjectId/grafo" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><WikiGraphPage /></Suspense></CapabilityGuard>} />
+          <Route path="/scheduler/*" element={<Suspense fallback={<PageFallback />}><SchedulerApp /></Suspense>} />
+          <Route path="/newsletter/*" element={<Suspense fallback={<PageFallback />}><NewsletterApp /></Suspense>} />
           {DevLoginPage && (
             <Route path="/dev-login" element={<Suspense fallback={null}><DevLoginPage /></Suspense>} />
           )}
@@ -91,13 +106,10 @@ function Root() {
   return (
     <Routes>
       <Route path="/auth/callback" element={<AuthCallback />} />
-      {/* OAuth redirect URI of the old standalone scheduler; sign-ins
-          started before the merge can still land here. */}
+      {/* OAuth redirect URIs of the old standalone scheduler and newsletter;
+          sign-ins started before the merge can still land there. */}
       <Route path="/scheduler/auth/callback" element={<AuthCallback />} />
-      <Route path="/scheduler/*" element={<Suspense fallback={<PageFallback />}><SchedulerApp /></Suspense>} />
-      {/* Same for the old standalone newsletter. */}
       <Route path="/newsletter/admin/callback" element={<AuthCallback />} />
-      <Route path="/newsletter/*" element={<Suspense fallback={<PageFallback />}><NewsletterApp /></Suspense>} />
       <Route path="/*" element={<Layout />} />
     </Routes>
   )

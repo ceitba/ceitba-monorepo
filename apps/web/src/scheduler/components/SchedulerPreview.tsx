@@ -136,7 +136,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2 font-mono text-label text-ink-secondary">
-          <div className="w-5 h-5 border-2 border-dashed border-ink-secondary/30 dark:border-[#a1a1aa]/30 bg-surface dark:bg-[#18181b]"></div>
+          <div className="w-5 h-5 border-2 border-dashed border-ink-secondary/30 dark:border-night-muted/30 bg-surface dark:bg-night-bg"></div>
           <span>{t('scheduler.blockedTime')}</span>
         </div>
       </div>
@@ -217,7 +217,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
 
   return (
     <div className="flex flex-col">
-      <div className="bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] px-4 py-4">
+      <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border px-4 py-4">
         <div className="flex flex-col md:flex-row md:flex-wrap gap-4 justify-end mb-4">
           <Checkbox
             id="allowOverlap"
@@ -247,16 +247,16 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
           />
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border dark:border-[#3f3f46] mb-4">
+        <div className="flex items-center justify-between pt-4 border-t border-border dark:border-night-border mb-4">
           <div className="flex items-center gap-4">
             <h2 className="font-body font-semibold text-body text-ink-primary">{t('scheduler.title')}</h2>
             {hasSubjects && hasSchedules && (
-              <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] whitespace-nowrap flex-shrink-0">
+              <span className="font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap flex-shrink-0">
                 {t('scheduler.option')} {currentIndex + 1} {t('scheduler.of')} {schedules.length}
               </span>
             )}
             {hasSubjects && schedules.length > 1 && (
-              <span className="hidden lg:inline font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+              <span className="hidden lg:inline font-body text-body-sm text-ink-secondary dark:text-night-muted">
                 {t('scheduler.rankingHint')}
               </span>
             )}
@@ -269,7 +269,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
                   <>
                     <button
                       onClick={handlePrevSchedule}
-                      className="p-2 text-ink-secondary dark:text-[#a1a1aa] hover:bg-surface dark:hover:bg-[#18181b] hover:text-primary rounded-sm transition-colors duration-150"
+                      className="p-2 text-ink-secondary dark:text-night-muted hover:bg-surface dark:hover:bg-night-bg hover:text-primary rounded-sm transition-colors duration-150"
                       title={t('scheduler.prevOption')}
                       aria-label={t('scheduler.prevOption')}
                     >
@@ -281,7 +281,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
                     </button>
                     <button
                       onClick={handleNextSchedule}
-                      className="p-2 text-ink-secondary dark:text-[#a1a1aa] hover:bg-surface dark:hover:bg-[#18181b] hover:text-primary rounded-sm transition-colors duration-150"
+                      className="p-2 text-ink-secondary dark:text-night-muted hover:bg-surface dark:hover:bg-night-bg hover:text-primary rounded-sm transition-colors duration-150"
                       title={t('scheduler.nextOption')}
                       aria-label={t('scheduler.nextOption')}
                     >
@@ -329,7 +329,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
             />
           ) : generating ? (
             <>
-              <div className="mb-3 flex items-center gap-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+              <div className="mb-3 flex items-center gap-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                 <LoadingDots size="sm" />
                 <span>{t('scheduler.generating')}</span>
               </div>
@@ -344,7 +344,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
             </>
           ) : !generated && liveSlots.length > 0 ? (
             <>
-              <div className="mb-3 flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+              <div className="mb-3 flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                 <div className={`w-2 h-2 rounded-full ${liveConflictCount > 0 ? 'bg-red-500' : 'bg-amber-500'}`} />
                 <span>
                   {liveConflictCount > 0
@@ -377,12 +377,12 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
         <div
           role={toast.kind === "error" ? "alert" : "status"}
           aria-live="polite"
-          className={`fixed bottom-4 right-4 z-50 max-w-sm bg-white dark:bg-[#27272a] border rounded-card shadow-card-hover p-4 flex items-start gap-3 animate-slide-up ${
-            toast.kind === "error" ? "border-red-300 dark:border-red-800" : "border-border dark:border-[#3f3f46]"
+          className={`fixed bottom-4 right-4 z-50 max-w-sm bg-white dark:bg-night-surface border rounded-card shadow-card-hover p-4 flex items-start gap-3 animate-slide-up ${
+            toast.kind === "error" ? "border-red-300 dark:border-red-800" : "border-border dark:border-night-border"
           }`}
         >
           <p className={`flex-1 min-w-0 break-words font-body text-body-sm ${
-            toast.kind === "error" ? "text-red-700 dark:text-red-300" : "text-ink-primary dark:text-[#f4f4f5]"
+            toast.kind === "error" ? "text-red-700 dark:text-red-300" : "text-ink-primary dark:text-night-text"
           }`}>
             {toast.message}
           </p>
@@ -390,7 +390,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
             type="button"
             onClick={() => setToast(null)}
             aria-label={t('save.toastDismiss')}
-            className="text-ink-secondary dark:text-[#a1a1aa] hover:text-ink-primary"
+            className="text-ink-secondary dark:text-night-muted hover:text-ink-primary"
           >
             ×
           </button>

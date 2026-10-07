@@ -118,16 +118,16 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
       title={t('commission.title')}
     >
       <div className="space-y-4">
-        <div className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
-          <div className="font-semibold text-ink-primary dark:text-[#f4f4f5] text-body mb-1">
-            <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">({subject.subject_id})</span>{' '}
+        <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          <div className="font-semibold text-ink-primary dark:text-night-text text-body mb-1">
+            <span className="font-mono text-label text-ink-secondary dark:text-night-muted">({subject.subject_id})</span>{' '}
             {subject.name}
           </div>
           <p>{t('commission.selectHint')}</p>
         </div>
 
         <div className="flex flex-wrap gap-2 items-center" role="group" aria-label={t('commission.turnFilterLabel')}>
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] mr-1">
+          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mr-1">
             {t('commission.turnFilterLabel')}
           </span>
           {ALL_TURNS.map((turn) => {
@@ -141,7 +141,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
                 className={`px-2.5 py-1 rounded-sm font-mono text-label uppercase tracking-widest border transition-colors ${
                   active
                     ? 'bg-primary text-white border-primary'
-                    : 'bg-surface dark:bg-[#18181b] text-ink-secondary dark:text-[#a1a1aa] border-border dark:border-[#3f3f46] hover:border-primary'
+                    : 'bg-surface dark:bg-night-bg text-ink-secondary dark:text-night-muted border-border dark:border-night-border hover:border-primary'
                 }`}
               >
                 {t(`commission.turn_${turn}`)}
@@ -152,7 +152,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
 
         <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
           {visibleCommissions.length === 0 && (
-            <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] py-4 text-center">
+            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted py-4 text-center">
               {t('commission.noMatchTurns')}
             </p>
           )}
@@ -162,7 +162,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
               <div
                 key={commission.name}
                 className={`rounded-card border overflow-hidden transition-colors duration-150 ${
-                  selected ? "border-primary" : "border-border dark:border-[#3f3f46]"
+                  selected ? "border-primary" : "border-border dark:border-night-border"
                 }`}
               >
                 <button
@@ -172,7 +172,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
                   className={`w-full px-4 py-3 text-left transition-colors duration-150 flex flex-col ${
                     selected
                       ? "bg-primary text-white"
-                      : "bg-surface dark:bg-[#18181b] hover:bg-primary-50 dark:hover:bg-primary-900"
+                      : "bg-surface dark:bg-night-bg hover:bg-primary-50 dark:hover:bg-primary-900"
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
@@ -190,7 +190,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
                   </div>
                 </button>
                 <CorrectionStatus
-                  className="px-4 py-2.5 bg-white dark:bg-[#27272a] border-t border-border dark:border-[#3f3f46]"
+                  className="px-4 py-2.5 bg-white dark:bg-night-surface border-t border-border dark:border-night-border"
                   subject={subject}
                   commission={commission}
                   onSuggest={() => setSuggestFor(commission.name)}
@@ -200,10 +200,10 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
           })}
         </div>
 
-        <div className="flex justify-between items-center gap-3 pt-4 border-t border-border dark:border-[#3f3f46]">
+        <div className="flex justify-between items-center gap-3 pt-4 border-t border-border dark:border-night-border">
           <button
             onClick={handleSelectAll}
-            className="px-4 py-2 font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] hover:text-primary rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150"
+            className="px-4 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted hover:text-primary rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150"
           >
             {t('commission.addAll')}
           </button>
@@ -212,7 +212,7 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
             disabled={selectedCommissions.length === 0}
             className={`min-h-[44px] px-4 py-2 rounded-sm font-body font-semibold text-body-sm transition-colors duration-150 ${
               selectedCommissions.length === 0
-                ? "bg-border dark:bg-[#3f3f46] text-ink-secondary dark:text-[#a1a1aa] cursor-not-allowed"
+                ? "bg-border dark:bg-night-border text-ink-secondary dark:text-night-muted cursor-not-allowed"
                 : "bg-primary text-surface hover:bg-primary-600"
             }`}
           >

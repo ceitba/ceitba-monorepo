@@ -35,19 +35,19 @@ const EditModal: React.FC<EditModalProps> = ({ block, onSave, onClose, onDelete 
     <BaseModal isOpen={true} onClose={onClose} title={t('settings.editBlock')}>
       <div className="space-y-4">
         <div>
-          <label className="block font-body text-body-sm font-medium text-ink-primary dark:text-[#f4f4f5] mb-2">{t('settings.blockLabel')}</label>
+          <label className="block font-body text-body-sm font-medium text-ink-primary dark:text-night-text mb-2">{t('settings.blockLabel')}</label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            className="w-full px-3 py-2 border border-border dark:border-[#3f3f46] rounded-sm bg-surface dark:bg-[#18181b] text-ink-primary dark:text-[#f4f4f5] font-body text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+            className="w-full px-3 py-2 border border-border dark:border-night-border rounded-sm bg-surface dark:bg-night-bg text-ink-primary dark:text-night-text font-body text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
             placeholder={t('settings.blockLabelPlaceholder')}
           />
         </div>
-        <div className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">
+        <div className="font-mono text-label text-ink-secondary dark:text-night-muted">
           {t(`days.${block.day}`)} {block.from} - {block.to}
         </div>
-        <div className="flex justify-end gap-3 pt-2 border-t border-border dark:border-[#3f3f46]">
+        <div className="flex justify-end gap-3 pt-2 border-t border-border dark:border-night-border">
           <button
             onClick={() => onDelete()}
             className="px-4 py-2 font-body text-body-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm transition-colors duration-150"
@@ -241,11 +241,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
   }
 
   return (
-    <div className="bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] px-4 py-4">
-      <h2 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5] pb-2">
+    <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border px-4 py-4">
+      <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text pb-2">
         {t('settings.blockedTimes')}
       </h2>
-      <div className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] mb-4">
+      <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">
         {t('settings.blockedTimesDescription')}
         <div className="space-y-2 mt-3">
           {([
@@ -259,8 +259,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
               <div>
-                <span className="font-semibold text-ink-primary dark:text-[#f4f4f5]">{t(titleKey)}</span>
-                <span className="text-ink-secondary dark:text-[#a1a1aa]"> — {t(descKey)}</span>
+                <span className="font-semibold text-ink-primary dark:text-night-text">{t(titleKey)}</span>
+                <span className="text-ink-secondary dark:text-night-muted"> — {t(descKey)}</span>
               </div>
             </div>
           ))}
@@ -271,13 +271,13 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
         <div className="w-full">
           {/* Header */}
           <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-0.5 mb-0.5">
-            <div className="h-8 flex items-center justify-start font-mono text-label text-ink-secondary dark:text-[#a1a1aa] min-w-[40px]">
+            <div className="h-8 flex items-center justify-start font-mono text-label text-ink-secondary dark:text-night-muted min-w-[40px]">
               {t('settings.hour')}
             </div>
             {dayNames.short.map((day) => (
               <div
                 key={day}
-                className="h-8 flex items-center text-center justify-center font-mono text-label text-ink-secondary dark:text-[#a1a1aa] bg-surface dark:bg-[#18181b] rounded-sm"
+                className="h-8 flex items-center text-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-sm"
               >
                 {day}
               </div>
@@ -289,7 +289,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             {/* Time labels */}
             <div>
               {timeSlots.map((time) => (
-                <div key={time} className="h-8 flex items-center font-mono text-label text-ink-secondary dark:text-[#a1a1aa] min-w-[40px]">
+                <div key={time} className="h-8 flex items-center font-mono text-label text-ink-secondary dark:text-night-muted min-w-[40px]">
                   {time}
                 </div>
               ))}
@@ -297,11 +297,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
 
             {/* Day columns */}
             {dayNames.full.map((day) => (
-              <div key={day} className="relative h-[448px] bg-surface dark:bg-[#18181b] rounded-sm">
+              <div key={day} className="relative h-[448px] bg-surface dark:bg-night-bg rounded-sm">
                 {timeSlots.map((_, index) => (
                   <div
                     key={index}
-                    className="absolute w-full border-b border-border/50 dark:border-[#3f3f46]/50"
+                    className="absolute w-full border-b border-border/50 dark:border-night-border/50"
                     style={{ top: `${index * 32}px`, height: '32px' }}
                   />
                 ))}

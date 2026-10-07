@@ -10,7 +10,7 @@ import ScheduleGrid from '../components/ScheduleGrid'
 import ScheduleGridSkeleton from '../components/ScheduleGridSkeleton'
 import LoadingDots from '../components/LoadingDots'
 import ErrorView from '../components/ErrorView'
-import SimpleHeader from '../components/SimpleHeader'
+import SchedulerHeader from '../components/SchedulerHeader'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
 
 interface SavedSchedulePayload {
@@ -99,22 +99,22 @@ export default function ComparisonPage() {
   if (!profile) return <Navigate to={SCHEDULER_BASE} replace />
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface dark:bg-[#18181b]">
-      <SimpleHeader />
+    <div className="flex flex-col bg-surface dark:bg-night-bg">
+      <SchedulerHeader />
 
       <main className="flex-1 container-content py-section-mobile lg:py-section">
         <header className="mb-6 flex items-baseline gap-4">
           <div className="flex-1">
-            <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+            <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('compare.label')}
             </p>
-            <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-[#f4f4f5]">
+            <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">
               {t('compare.heading', { count: items.length })}
             </h1>
           </div>
           <Link
             to={schedulerPath('/saved')}
-            className="px-3 py-1.5 rounded-sm border border-border dark:border-[#3f3f46] text-ink-primary dark:text-[#f4f4f5] font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary"
+            className="px-3 py-1.5 rounded-sm border border-border dark:border-night-border text-ink-primary dark:text-night-text font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary"
           >
             {t('compare.back')}
           </Link>
@@ -141,13 +141,13 @@ export default function ComparisonPage() {
               return (
                 <section
                   key={s.id}
-                  className="bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] p-4 flex flex-col gap-3 min-w-0"
+                  className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border p-4 flex flex-col gap-3 min-w-0"
                 >
                   <header>
-                    <p className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5] truncate">
+                    <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text truncate">
                       {s.name}
                     </p>
-                    <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+                    <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                       {s.careerId ?? '—'} · {s.plan ?? '—'}
                     </p>
                   </header>

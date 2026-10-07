@@ -99,13 +99,13 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
   return (
     <div className="w-full">
       <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-0.5 mb-0.5">
-        <div className="h-8 flex items-center justify-center text-xs min-w-[50px] font-mono text-ink-secondary dark:text-[#a1a1aa]">
+        <div className="h-8 flex items-center justify-center text-xs min-w-[50px] font-mono text-ink-secondary dark:text-night-muted">
           {t('settings.hour')}
         </div>
         {DAYS.map((day) => (
           <div
             key={day}
-            className="h-8 flex items-center justify-center font-mono text-label text-ink-secondary dark:text-[#a1a1aa] bg-surface dark:bg-[#18181b] rounded-sm"
+            className="h-8 flex items-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-sm"
           >
             {t(`days.${day}`)}
           </div>
@@ -117,7 +117,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
           {timeLabels.map((time) => (
             <div
               key={time}
-              className="h-12 flex items-start justify-center font-mono text-label text-ink-secondary dark:text-[#a1a1aa] pt-0.5"
+              className="h-12 flex items-start justify-center font-mono text-label text-ink-secondary dark:text-night-muted pt-0.5"
             >
               {time}
             </div>
@@ -131,7 +131,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
               {timeLabels.map((time, i) => (
                 <div
                   key={time}
-                  className="absolute w-full h-12 bg-surface dark:bg-[#18181b] border-b border-border/50 dark:border-[#3f3f46]/50"
+                  className="absolute w-full h-12 bg-surface dark:bg-night-bg border-b border-border/50 dark:border-night-border/50"
                   style={{ top: i * HOUR_HEIGHT }}
                 />
               ))}
@@ -184,20 +184,20 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
                     )}
                     {isHovered && (
                       <div
-                        className="absolute left-full ml-2 z-50 min-w-[12rem] max-w-[18rem] p-2 bg-white dark:bg-[#27272a] border border-border dark:border-[#3f3f46] rounded-card shadow-card-hover pointer-events-none"
+                        className="absolute left-full ml-2 z-50 min-w-[12rem] max-w-[18rem] p-2 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover pointer-events-none"
                         style={{ top: 0, color: '#1C1C1E' }}
                       >
-                        <div className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+                        <div className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                           {formatMinute(b.fromMinute)} – {formatMinute(b.toMinute)} · {t(`days.${day}`)}
                         </div>
-                        <div className="font-body font-semibold text-body-sm text-ink-primary dark:text-[#f4f4f5] mt-1">
+                        <div className="font-body font-semibold text-body-sm text-ink-primary dark:text-night-text mt-1">
                           {overlapCount} / {model.participantCount}
                         </div>
                         <ul className="mt-1 space-y-0.5">
                           {b.overlapUserIds.map((uid) => (
                             <li
                               key={uid}
-                              className="font-body text-body-sm text-ink-primary dark:text-[#f4f4f5]"
+                              className="font-body text-body-sm text-ink-primary dark:text-night-text"
                             >
                               {namesByUserId.get(uid) ?? uid}
                               {uid === b.userId && (

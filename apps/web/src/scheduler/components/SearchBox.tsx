@@ -49,7 +49,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ subjects, onSelectSubject }) => {
     <div ref={wrapperRef} className="relative">
       <div className="relative">
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-ink-secondary dark:text-[#a1a1aa] pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-ink-secondary dark:text-night-muted pointer-events-none"
           width="20" height="20" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2" strokeLinecap="round"
           aria-hidden="true"
@@ -66,13 +66,13 @@ const SearchBox: React.FC<SearchBoxProps> = ({ subjects, onSelectSubject }) => {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={t('courses.searchPlaceholder')}
-          className="w-full pl-10 pr-4 py-2.5 rounded-sm bg-white dark:bg-[#27272a] font-body text-body text-ink-primary dark:text-[#f4f4f5] placeholder:text-ink-secondary dark:placeholder:text-[#a1a1aa] border border-border dark:border-[#3f3f46] focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-colors"
+          className="w-full pl-10 pr-4 py-2.5 rounded-sm bg-white dark:bg-night-surface font-body text-body text-ink-primary dark:text-night-text placeholder:text-ink-secondary dark:placeholder:text-night-muted border border-border dark:border-night-border focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-colors"
         />
       </div>
 
       {/* Dropdown results */}
       {isOpen && query.length > 0 && (
-        <div className="absolute w-full mt-1 bg-white dark:bg-[#27272a] rounded-card shadow-card border border-border dark:border-[#3f3f46] max-h-60 overflow-y-auto z-50">
+        <div className="absolute w-full mt-1 bg-white dark:bg-night-surface rounded-card shadow-card border border-border dark:border-night-border max-h-60 overflow-y-auto z-50">
           {filteredSubjects.length > 0 ? (
             filteredSubjects.map((subject) => (
               <button
@@ -84,12 +84,12 @@ const SearchBox: React.FC<SearchBoxProps> = ({ subjects, onSelectSubject }) => {
                 }}
                 className="w-full px-4 py-2.5 text-left hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150"
               >
-                <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] mr-2">({subject.subject_id})</span>
-                <span className="font-body text-body-sm text-ink-primary dark:text-[#f4f4f5]">{subject.name}</span>
+                <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-2">({subject.subject_id})</span>
+                <span className="font-body text-body-sm text-ink-primary dark:text-night-text">{subject.name}</span>
               </button>
             ))
           ) : (
-            <div className="px-4 py-3 font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+            <div className="px-4 py-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">
               {t('courses.noResults')}
             </div>
           )}

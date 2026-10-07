@@ -30,13 +30,13 @@ export default function ClassDetailModal({ subjectId, commissionName, onClose }:
   return (
     <BaseModal isOpen onClose={onClose} title={subject.name}>
       <div className="space-y-4">
-        <div className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+        <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           <span className="font-mono text-label">({subject.subject_id})</span>{' '}
-          <span className="font-semibold text-ink-primary dark:text-[#f4f4f5]">
+          <span className="font-semibold text-ink-primary dark:text-night-text">
             {t('corrections.detailCommission', { name: commission.name })}
           </span>
         </div>
-        <ul className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] space-y-1">
+        <ul className="font-mono text-label text-ink-secondary dark:text-night-muted space-y-1">
           {sortSlots(commission.schedule).map((s, i) => (
             <li key={i}>
               {formatSlot(s, (d) => t(`days.${d}`))}
@@ -45,7 +45,7 @@ export default function ClassDetailModal({ subjectId, commissionName, onClose }:
             </li>
           ))}
         </ul>
-        <div className="pt-4 border-t border-border dark:border-[#3f3f46]">
+        <div className="pt-4 border-t border-border dark:border-night-border">
           <CorrectionStatus subject={subject} commission={commission} onSuggest={() => setSuggesting(true)} />
         </div>
       </div>

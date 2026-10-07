@@ -4,8 +4,7 @@ import TabView from '../components/TabView'
 import CourseView from '../components/CourseView'
 import { SettingsView } from '../components/SettingsView'
 import { SchedulerPreview } from '../components/SchedulerPreview'
-import Navbar from '../components/Navbar'
-import Footer from '../components/Footer'
+import SchedulerHeader from '../components/SchedulerHeader'
 import CommissionSelectionModal from '../components/CommissionSelectionModal'
 import SaveScheduleDialog from '../components/SaveScheduleDialog'
 import ClassDetailModal from '../components/corrections/ClassDetailModal'
@@ -450,8 +449,8 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   return (
     <SignInContext.Provider value={beginSignIn}>
     <CorrectionsContext.Provider value={correctionsContext}>
-      <div className="flex flex-col min-h-screen bg-surface dark:bg-[#18181b]">
-        <Navbar currentPlan={plan || ''} />
+      <div className="flex flex-col bg-surface dark:bg-night-bg">
+        <SchedulerHeader currentPlan={plan || ''} />
 
         <main id="main-content" className="flex-1">
           <div className="container-content py-6">
@@ -488,7 +487,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
           <div
             role="status"
             aria-live="polite"
-            className="fixed bottom-4 right-4 z-50 max-w-sm bg-white dark:bg-[#27272a] border border-border dark:border-[#3f3f46] rounded-card shadow-card-hover p-4 flex items-center gap-3 animate-slide-up"
+            className="fixed bottom-4 right-4 z-50 max-w-sm bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover p-4 flex items-center gap-3 animate-slide-up"
           >
             <div className="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center flex-shrink-0" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
@@ -496,7 +495,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-[#f4f4f5] truncate">
+              <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text truncate">
                 {t('saved.toastSavedTitle', { name: saveSuccess })}
               </p>
               <button
@@ -511,14 +510,13 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
               type="button"
               onClick={() => setSaveSuccess(null)}
               aria-label={t('saved.toastDismiss')}
-              className="text-ink-secondary dark:text-[#a1a1aa] hover:text-ink-primary"
+              className="text-ink-secondary dark:text-night-muted hover:text-ink-primary"
             >
               ×
             </button>
           </div>
         )}
 
-        <Footer />
 
         {modalOpen && selectedCourseForModal && (
           <CommissionSelectionModal
@@ -544,14 +542,14 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
             <div className="fixed inset-0 bg-ink-primary/25 dark:bg-black/50 backdrop-blur-sm z-[100]" />
             <div
               ref={calendarPanelRef}
-              className="fixed inset-y-0 right-0 w-full sm:w-[28rem] bg-white dark:bg-[#27272a] border-l border-border dark:border-[#3f3f46] overflow-y-auto z-[101] shadow-card-hover animate-slide-in"
+              className="fixed inset-y-0 right-0 w-full sm:w-[28rem] bg-white dark:bg-night-surface border-l border-border dark:border-night-border overflow-y-auto z-[101] shadow-card-hover animate-slide-in"
             >
               <div className="p-5">
                 <div className="flex justify-between items-center mb-5">
-                  <h3 className="font-display text-h4 font-bold text-ink-primary dark:text-[#f4f4f5]">{t('calendar.title')}</h3>
+                  <h3 className="font-display text-h4 font-bold text-ink-primary dark:text-night-text">{t('calendar.title')}</h3>
                   <button
                     onClick={() => setIsCalendarPanelOpen(false)}
-                    className="p-2 hover:bg-surface dark:hover:bg-[#18181b] rounded-sm transition-colors duration-150"
+                    className="p-2 hover:bg-surface dark:hover:bg-night-bg rounded-sm transition-colors duration-150"
                     aria-label={t('calendar.closePanel')}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -561,12 +559,12 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
                   </button>
                 </div>
 
-                <div className="mb-5 p-4 rounded-card border border-border dark:border-[#3f3f46] bg-surface dark:bg-[#18181b]">
-                  <h4 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5] mb-2">{t('calendar.option1Title')}</h4>
-                  <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] mb-4">
+                <div className="mb-5 p-4 rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-bg">
+                  <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-2">{t('calendar.option1Title')}</h4>
+                  <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">
                     {t('calendar.option1Description')}
                   </p>
-                  <ol className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] space-y-1.5 mb-4">
+                  <ol className="font-body text-body-sm text-ink-secondary dark:text-night-muted space-y-1.5 mb-4">
                     <li>1. {t('calendar.option1Step1')}</li>
                     <li>2. {t('calendar.option1Step2')}: <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google Calendar</a></li>
                     <li>3. {t('calendar.option1Step3')}</li>
@@ -590,8 +588,8 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
                   </button>
                 </div>
 
-                <div className="p-4 rounded-card border border-border dark:border-[#3f3f46] bg-surface dark:bg-[#18181b]">
-                  <h4 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5] mb-3">{t('calendar.option2Title')}</h4>
+                <div className="p-4 rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-bg">
+                  <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-3">{t('calendar.option2Title')}</h4>
                   <div className="space-y-2">
                     {remainingCalendarUrls.map((event, i) => (
                       <button
@@ -600,7 +598,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
                           window.open(event.url, '_blank')
                           setRemainingCalendarUrls(prev => prev.filter((_, idx) => idx !== i))
                         }}
-                        className="w-full flex items-center gap-3 min-h-[44px] px-3 py-2 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary text-left transition-colors duration-150 group"
+                        className="w-full flex items-center gap-3 min-h-[44px] px-3 py-2 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary text-left transition-colors duration-150 group"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary flex-shrink-0" aria-hidden="true">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -608,7 +606,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
                           <line x1="8" y1="2" x2="8" y2="6" />
                           <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
-                        <span className="font-body text-body-sm text-ink-primary dark:text-[#f4f4f5] line-clamp-1">
+                        <span className="font-body text-body-sm text-ink-primary dark:text-night-text line-clamp-1">
                           {event.title}{event.commission && ` · ${t('calendar.commission')} ${event.commission}`}
                         </span>
                       </button>

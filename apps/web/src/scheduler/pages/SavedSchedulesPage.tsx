@@ -11,7 +11,7 @@ import {
 } from '../api/schedules'
 import { createShareSession } from '../api/share'
 import { normalizePlanId } from '../utils/planUtils'
-import SimpleHeader from '../components/SimpleHeader'
+import SchedulerHeader from '../components/SchedulerHeader'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
 
 // Read-only list of the user's saved schedules with rename + delete +
@@ -108,14 +108,14 @@ export default function SavedSchedulesPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface dark:bg-[#18181b]">
-      <SimpleHeader />
+    <div className="flex flex-col bg-surface dark:bg-night-bg">
+      <SchedulerHeader />
 
       <main className="flex-1 container-content py-section-mobile lg:py-section">
         <header className="mb-6 flex items-baseline gap-4">
           <div className="flex-1">
-            <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-[#f4f4f5]">{t('saved.pageTitle')}</h1>
-            <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa] mt-1">
+            <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{t('saved.pageTitle')}</h1>
+            <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">
               {t('saved.usage', { count: list.length, max: MAX_SAVED_SCHEDULES })}
             </p>
           </div>
@@ -136,11 +136,11 @@ export default function SavedSchedulesPage() {
         )}
 
         {list.length === 0 ? (
-          <p className="text-ink-secondary dark:text-[#a1a1aa] font-body">{t('saved.empty')}</p>
+          <p className="text-ink-secondary dark:text-night-muted font-body">{t('saved.empty')}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {list.map((s) => (
-              <li key={s.id} className="p-4 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] flex flex-col sm:flex-row sm:items-center gap-3">
+              <li key={s.id} className="p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface flex flex-col sm:flex-row sm:items-center gap-3">
                 <button
                   type="button"
                   role="checkbox"
@@ -150,7 +150,7 @@ export default function SavedSchedulesPage() {
                   className={`flex items-center justify-center w-5 h-5 rounded-sm border transition-colors duration-150 flex-shrink-0 ${
                     comparing.has(s.id)
                       ? 'bg-primary border-primary'
-                      : 'bg-white dark:bg-[#27272a] border-border dark:border-[#3f3f46] hover:border-primary'
+                      : 'bg-white dark:bg-night-surface border-border dark:border-night-border hover:border-primary'
                   }`}
                 >
                   {comparing.has(s.id) && (
@@ -166,12 +166,12 @@ export default function SavedSchedulesPage() {
                       value={renaming.name}
                       onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
                       onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null) }}
-                      className="w-full px-2 py-1 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-body text-body"
+                      className="w-full px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body"
                     />
                   ) : (
-                    <p className="font-display font-bold text-h5 text-ink-primary dark:text-[#f4f4f5] truncate">{s.name}</p>
+                    <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text truncate">{s.name}</p>
                   )}
-                  <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] mt-0.5">
+                  <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mt-0.5">
                     {s.careerId ?? '—'} · {s.plan ?? '—'} · {new Date(s.updatedAt).toLocaleDateString()}
                   </p>
                 </div>

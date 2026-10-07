@@ -9,7 +9,7 @@ export default function SignInPrompt({ message, compact = false }: { message: st
   const beginSignIn = useBeginSignIn()
   return (
     <div className={`flex ${compact ? 'flex-wrap items-center gap-x-3 gap-y-1' : 'flex-col gap-3'}`}>
-      <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">{message}</p>
+      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{message}</p>
       <button
         type="button"
         onClick={beginSignIn}

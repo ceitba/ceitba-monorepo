@@ -58,11 +58,11 @@ export default function CorrectionStatus({ subject, commission, onSuggest, class
             <span className="inline-flex px-1.5 py-0.5 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary dark:text-primary-200 font-mono text-label uppercase tracking-widest">
               {t('corrections.appliedBadge')}
             </span>
-            <span className="text-ink-secondary dark:text-[#a1a1aa]">
+            <span className="text-ink-secondary dark:text-night-muted">
               {t('corrections.sga', { schedule: sgaText })}
             </span>
           </div>
-          <p className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-mono text-label text-ink-secondary dark:text-night-muted">
             {t('corrections.appliedConfirms', { count: applied.confirms })}
             {applied.rejects > 0 && <> · {t('corrections.rejects', { count: applied.rejects })}</>}
           </p>
@@ -72,13 +72,13 @@ export default function CorrectionStatus({ subject, commission, onSuggest, class
 
       {visiblePending.map((c) => (
         <div key={c.id} className="flex flex-col gap-1.5">
-          <p className="text-ink-primary dark:text-[#f4f4f5]">
+          <p className="text-ink-primary dark:text-night-text">
             {t('corrections.pendingSummary', { count: c.confirms, schedule: formatSlots(c.schedule, dayLabel) })}
             {!applied && (
-              <span className="text-ink-secondary dark:text-[#a1a1aa]"> · {t('corrections.sga', { schedule: sgaText })}</span>
+              <span className="text-ink-secondary dark:text-night-muted"> · {t('corrections.sga', { schedule: sgaText })}</span>
             )}
             {c.rejects > 0 && (
-              <span className="text-ink-secondary dark:text-[#a1a1aa]"> · {t('corrections.rejects', { count: c.rejects })}</span>
+              <span className="text-ink-secondary dark:text-night-muted"> · {t('corrections.rejects', { count: c.rejects })}</span>
             )}
           </p>
           {votes(c)}
@@ -90,14 +90,14 @@ export default function CorrectionStatus({ subject, commission, onSuggest, class
           type="button"
           onClick={() => setShowAll((v) => !v)}
           aria-expanded={showAll}
-          className="self-start text-ink-secondary dark:text-[#a1a1aa] hover:text-primary underline-offset-2 hover:underline"
+          className="self-start text-ink-secondary dark:text-night-muted hover:text-primary underline-offset-2 hover:underline"
         >
           {showAll ? t('corrections.less') : t('corrections.more', { count: pending.length - 1 })}
         </button>
       )}
 
       {ended && (applied || pending.length > 0) && (
-        <p className="text-ink-secondary dark:text-[#a1a1aa]">{t('corrections.ended')}</p>
+        <p className="text-ink-secondary dark:text-night-muted">{t('corrections.ended')}</p>
       )}
 
       {onSuggest && !ended && (

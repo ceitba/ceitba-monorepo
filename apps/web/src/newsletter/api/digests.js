@@ -87,13 +87,8 @@ export async function deleteDigest(id) {
 
 // ── Subscriber side ─────────────────────────────────────────────────────────
 
-export async function fetchDigestSubscription() {
-  return apiGet('/digests/subscription')
-}
-
-export async function setDigestSubscription(enabled) {
-  return apiSend('PUT', '/digests/subscription', { enabled })
-}
+// fetchDigestSubscription / setDigestSubscription live in
+// src/api/digestSubscription.ts: the account menu (every section) uses them.
 
 // One-click unsubscribe from the email link. Public; 204 on success,
 // 400 INVALID_TOKEN for a bad or tampered token. Idempotent.

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import i18n from './i18nNewsletter'
 import { newsletterPath } from './paths'
 import './newsletter.css'
@@ -48,6 +49,7 @@ const ContributorReviewChangesPage  = lazy(() => import('./pages/contributor/Con
 // the "newsletter" i18n namespace, and the .newsletter-scope wrapper scopes
 // its dark-mode overrides (newsletter.css).
 export default function NewsletterApp() {
+  useDocumentTitle('ITBA News | CEITBA')
   return (
     <I18nextProvider i18n={i18n} defaultNS="newsletter">
       <div className="newsletter-scope">

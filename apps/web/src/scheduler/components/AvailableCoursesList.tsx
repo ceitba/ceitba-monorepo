@@ -26,7 +26,7 @@ const QuarterSection: React.FC<{
   return (
     <div className="space-y-2">
       {showTitle && (
-        <h3 className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] pt-2">{title}</h3>
+        <h3 className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted pt-2">{title}</h3>
       )}
       <div className={`space-y-2 ${showTitle ? 'ml-2' : ''}`}>
         {subjects.map((course) => {
@@ -60,7 +60,7 @@ const AvailableCoursesList: React.FC<AvailableCoursesListProps> = ({
     const exchangeSubjects = Object.values(courses)[0]?.subjects['1'] || []
     return (
       <div className="rounded-card flex flex-col">
-        <h2 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5] p-4 pb-2">
+        <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text p-4 pb-2">
           {t('courses.available')}
         </h2>
         <div className="overflow-y-auto flex-1 px-4 pb-4">
@@ -78,7 +78,7 @@ const AvailableCoursesList: React.FC<AvailableCoursesListProps> = ({
 
   return (
     <div className="rounded-card flex flex-col">
-      <h2 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5] p-4 pb-2">
+      <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text p-4 pb-2">
         {t('courses.available')}
       </h2>
       <div className="overflow-y-auto flex-1 px-4 pb-4">

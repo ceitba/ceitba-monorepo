@@ -37,7 +37,7 @@ interface GroupedSchedule {
 }
 
 const STATUS_DOT: Record<SubjectConflictStatus["level"], string> = {
-  none: "bg-border dark:bg-[#3f3f46]",
+  none: "bg-border dark:bg-night-border",
   clear: "bg-green-500",
   partial: "bg-amber-500",
   all: "bg-red-500",
@@ -101,7 +101,7 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col p-3 bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] shadow-card space-y-2 select-none"
+      className="flex flex-col p-3 bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card space-y-2 select-none"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 min-w-0">
@@ -111,7 +111,7 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
             {...listeners}
             aria-label={t('courses.reorderAria', { name: course.name })}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-ink-secondary dark:text-[#a1a1aa]" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-ink-secondary dark:text-night-muted" aria-hidden="true">
               <line x1="8" y1="6" x2="21" y2="6" />
               <line x1="8" y1="12" x2="21" y2="12" />
               <line x1="8" y1="18" x2="21" y2="18" />
@@ -126,12 +126,12 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
             title={conflictTooltip}
           />
           <div className="min-w-0">
-            <span className="font-body text-body-sm text-ink-primary dark:text-[#f4f4f5]">
-              <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">({course.subject_id})</span>{' '}
+            <span className="font-body text-body-sm text-ink-primary dark:text-night-text">
+              <span className="font-mono text-label text-ink-secondary dark:text-night-muted">({course.subject_id})</span>{' '}
               {course.name}
             </span>
             {Object.values(groupedSchedule).map((schedule, i) => (
-              <div key={i} className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa]">
+              <div key={i} className="font-mono text-label text-ink-secondary dark:text-night-muted">
                 {t(`days.${schedule.day}`)} {schedule.timeFrom?.slice(0, 5) || ""}{" "}
                 - {schedule.timeTo?.slice(0, 5) || ""} |{" "}
                 {schedule.classrooms.join(", ")}
@@ -140,12 +140,12 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
           </div>
         </div>
         <div className="flex items-center space-x-4 flex-shrink-0 ml-2">
-          <span className="font-mono text-label text-ink-secondary dark:text-[#a1a1aa] text-end hidden sm:block">
+          <span className="font-mono text-label text-ink-secondary dark:text-night-muted text-end hidden sm:block">
             {commissionLabel()}
           </span>
           <button
             onClick={() => onRemove(course.subject_id)}
-            className="text-ink-secondary dark:text-[#a1a1aa] hover:text-red-500 transition-colors duration-150"
+            className="text-ink-secondary dark:text-night-muted hover:text-red-500 transition-colors duration-150"
             aria-label={t('courses.removeAria', { name: course.name })}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -199,7 +199,7 @@ const SelectedCoursesList: React.FC<SelectedCoursesListProps> = ({
   return (
     <div>
       {courses.length === 0 && (
-        <div className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] text-center py-4">
+        <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted text-center py-4">
           {t('courses.noneSelected')}
         </div>
       )}

@@ -101,14 +101,14 @@ const SaveModal: React.FC<SaveModalProps> = ({
               option.onClick()
               onClose()
             }}
-            className="w-full flex items-center gap-4 p-3 rounded-card border border-border dark:border-[#3f3f46] hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary transition-colors duration-150 text-left group"
+            className="w-full flex items-center gap-4 p-3 rounded-card border border-border dark:border-night-border hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary transition-colors duration-150 text-left group"
           >
-            <span className="text-ink-secondary dark:text-[#a1a1aa] group-hover:text-primary transition-colors duration-150 flex-shrink-0">
+            <span className="text-ink-secondary dark:text-night-muted group-hover:text-primary transition-colors duration-150 flex-shrink-0">
               {option.icon}
             </span>
             <div>
-              <div className="font-body font-semibold text-body-sm text-ink-primary dark:text-[#f4f4f5]">{option.title}</div>
-              <div className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">{option.description}</div>
+              <div className="font-body font-semibold text-body-sm text-ink-primary dark:text-night-text">{option.title}</div>
+              <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{option.description}</div>
             </div>
           </button>
         ))}

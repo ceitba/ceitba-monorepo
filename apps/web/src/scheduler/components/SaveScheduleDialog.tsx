@@ -27,10 +27,10 @@ export default function SaveScheduleDialog({ open, count, max, defaultName = '',
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] p-5 flex flex-col gap-4">
+      <div className="w-full max-w-sm bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border p-5 flex flex-col gap-4">
         <div>
-          <h3 className="font-display font-bold text-h4 text-ink-primary dark:text-[#f4f4f5]">{t('saved.dialogTitle')}</h3>
-          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa] mt-0.5">
+          <h3 className="font-display font-bold text-h4 text-ink-primary dark:text-night-text">{t('saved.dialogTitle')}</h3>
+          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mt-0.5">
             {t('saved.usage', { count, max })}
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function SaveScheduleDialog({ open, count, max, defaultName = '',
         )}
 
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('saved.nameLabel')}
           </span>
           <input
@@ -52,7 +52,7 @@ export default function SaveScheduleDialog({ open, count, max, defaultName = '',
             disabled={atLimit}
             maxLength={120}
             placeholder={t('saved.namePlaceholder')}
-            className="px-3 py-1.5 rounded-sm border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-body text-body-sm disabled:opacity-50"
+            className="px-3 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm disabled:opacity-50"
           />
         </label>
 
@@ -61,7 +61,7 @@ export default function SaveScheduleDialog({ open, count, max, defaultName = '',
         )}
 
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('saved.cancel')}
           </button>
           <button

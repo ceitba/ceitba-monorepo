@@ -19,8 +19,8 @@ export default function ErrorView({ message, className = '', onRetry }: ErrorVie
         </svg>
       </div>
       <div>
-        <p className="font-display text-h4 font-bold text-ink-primary dark:text-[#f4f4f5]">{t('errors.somethingWrong')}</p>
-        <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa] mt-1">{message}</p>
+        <p className="font-display text-h4 font-bold text-ink-primary dark:text-night-text">{t('errors.somethingWrong')}</p>
+        <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">{message}</p>
       </div>
       {onRetry && (
         <button

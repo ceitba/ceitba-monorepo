@@ -58,7 +58,7 @@ export default function CorrectionNotices() {
           key={n.id}
           role="status"
           aria-live="polite"
-          className="bg-white dark:bg-[#27272a] border border-border dark:border-[#3f3f46] rounded-card shadow-card-hover p-4 flex items-start gap-3 animate-slide-up"
+          className="bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover p-4 flex items-start gap-3 animate-slide-up"
         >
           <div className="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center flex-shrink-0" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary dark:text-primary-200">
@@ -66,16 +66,16 @@ export default function CorrectionNotices() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-[#f4f4f5]">
+            <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text">
               {t('corrections.noticeTitle', { subject: n.subjectName, commission: n.commissionName })}
             </p>
-            <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">{t('corrections.noticeBody')}</p>
+            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('corrections.noticeBody')}</p>
           </div>
           <button
             type="button"
             onClick={() => dismiss(n.id)}
             aria-label={t('corrections.noticeDismiss')}
-            className="text-ink-secondary dark:text-[#a1a1aa] hover:text-ink-primary"
+            className="text-ink-secondary dark:text-night-muted hover:text-ink-primary"
           >
             ×
           </button>

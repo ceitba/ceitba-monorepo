@@ -18,7 +18,7 @@ interface Props {
 const base =
   'min-h-[32px] px-2.5 py-1 rounded-sm font-mono text-label uppercase tracking-widest border transition-colors duration-150 disabled:opacity-50'
 const idle =
-  'bg-white dark:bg-[#27272a] text-ink-secondary dark:text-[#a1a1aa] border-border dark:border-[#3f3f46] hover:border-primary hover:text-primary'
+  'bg-white dark:bg-night-surface text-ink-secondary dark:text-night-muted border-border dark:border-night-border hover:border-primary hover:text-primary'
 const active = 'bg-primary text-white border-primary'
 
 // [Confirmar] [No es así]. The caller's vote shows pressed; pressing it

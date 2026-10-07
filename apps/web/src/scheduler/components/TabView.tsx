@@ -26,7 +26,7 @@ export default function TabView({ tabs, activeTab: controlledTab, onActiveTabCha
   return (
     <div className="w-full">
       <div
-        className="flex gap-0 border-b border-border dark:border-[#3f3f46]"
+        className="flex gap-0 border-b border-border dark:border-night-border"
         role="tablist"
         aria-label={t('career.tabsAria')}
       >
@@ -43,7 +43,7 @@ export default function TabView({ tabs, activeTab: controlledTab, onActiveTabCha
               relative px-5 py-3 font-body font-semibold text-body-sm transition-colors duration-150 select-none min-h-[44px]
               ${activeTab === index
                 ? 'text-primary border-b-2 border-accent -mb-px'
-                : 'text-ink-secondary dark:text-[#a1a1aa] hover:text-ink-primary dark:hover:text-[#f4f4f5]'
+                : 'text-ink-secondary dark:text-night-muted hover:text-ink-primary dark:hover:text-night-text'
               }
             `}
           >

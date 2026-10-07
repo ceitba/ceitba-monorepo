@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import i18n from './i18nScheduler'
 import HomePage from './pages/HomePage'
 import CareerPage from './pages/CareerPage'
@@ -13,6 +14,7 @@ import { SCHEDULER_BASE } from './paths'
 // loaded on demand. Route paths here are relative to /scheduler; its strings
 // live in the "scheduler" i18n namespace.
 export default function SchedulerApp() {
+  useDocumentTitle('CEITBA | Combinador de Horarios')
   return (
     <I18nextProvider i18n={i18n} defaultNS="scheduler">
       <CorrectionNotices />

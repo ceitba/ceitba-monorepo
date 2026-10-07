@@ -16,7 +16,7 @@ import { useBeginSignIn } from '../context/signInContext'
 import HeatmapGrid from '../components/HeatmapGrid'
 import LoadingDots from '../components/LoadingDots'
 import ErrorView from '../components/ErrorView'
-import SimpleHeader from '../components/SimpleHeader'
+import SchedulerHeader from '../components/SchedulerHeader'
 import { buildHeatmap } from '../services/heatmap'
 import { SCHEDULER_BASE } from '../paths'
 
@@ -175,8 +175,8 @@ export default function SharePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface dark:bg-[#18181b]">
-      <SimpleHeader />
+    <div className="flex flex-col bg-surface dark:bg-night-bg">
+      <SchedulerHeader />
 
       <main className="flex-1 container-content py-section-mobile lg:py-section">
         {loading ? (
@@ -188,13 +188,13 @@ export default function SharePage() {
         ) : session && heatmap ? (
           <>
             <header className="mb-6">
-              <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-[#a1a1aa]">
+              <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                 {t('share.heatmap.label')}
               </p>
-              <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-[#f4f4f5]">
+              <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">
                 {session.name ?? t('share.untitledSession')}
               </h1>
-              <p className="font-body text-body text-ink-secondary dark:text-[#a1a1aa] mt-1">
+              <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">
                 {t('share.participantCount', { count: session.participants.length })}
                 {session.creatorDisplayName && ` · ${t('share.createdBy', { name: session.creatorDisplayName })}`}
               </p>
@@ -209,7 +209,7 @@ export default function SharePage() {
             <div className="flex flex-wrap gap-2 mb-6">
               <button
                 onClick={copyLink}
-                className="px-3 py-1.5 rounded-sm border border-border dark:border-[#3f3f46] text-ink-primary dark:text-[#f4f4f5] font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
+                className="px-3 py-1.5 rounded-sm border border-border dark:border-night-border text-ink-primary dark:text-night-text font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
               >
                 {copied ? t('save.linkCopied') : t('share.copyLink')}
               </button>
@@ -249,19 +249,19 @@ export default function SharePage() {
               )}
             </div>
 
-            <section className="bg-white dark:bg-[#27272a] rounded-card border border-border dark:border-[#3f3f46] px-4 py-4">
+            <section className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border px-4 py-4">
               <HeatmapGrid model={heatmap} />
             </section>
 
             <section className="mt-6">
-              <h2 className="font-body font-semibold text-body text-ink-primary dark:text-[#f4f4f5] mb-2">
+              <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-2">
                 {t('share.participantsHeading')}
               </h2>
               <ul className="flex flex-wrap gap-2">
                 {session.participants.map((p) => (
                   <li
                     key={p.userId}
-                    className="px-3 py-1.5 rounded-card border border-border dark:border-[#3f3f46] bg-white dark:bg-[#27272a] font-mono text-label text-ink-primary dark:text-[#f4f4f5]"
+                    className="px-3 py-1.5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface font-mono text-label text-ink-primary dark:text-night-text"
                   >
                     {p.displayName}
                     {p.isCreator && (
@@ -270,7 +270,7 @@ export default function SharePage() {
                       </span>
                     )}
                     {!p.payload && (
-                      <span className="ml-2 text-ink-secondary dark:text-[#a1a1aa] uppercase tracking-widest">
+                      <span className="ml-2 text-ink-secondary dark:text-night-muted uppercase tracking-widest">
                         · {t('share.scheduleRemoved')}
                       </span>
                     )}
@@ -310,15 +310,15 @@ function JoinDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-primary/30 dark:bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md p-5 bg-white dark:bg-[#27272a] border border-border dark:border-[#3f3f46] rounded-card shadow-card-hover">
-        <h3 className="font-display text-h4 font-bold text-ink-primary dark:text-[#f4f4f5] mb-3">
+      <div className="w-full max-w-md p-5 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover">
+        <h3 className="font-display text-h4 font-bold text-ink-primary dark:text-night-text mb-3">
           {t('share.join.title')}
         </h3>
-        <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa] mb-3">
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-3">
           {t('share.join.hint')}
         </p>
         {savedList.length === 0 ? (
-          <p className="font-body text-body-sm text-ink-secondary dark:text-[#a1a1aa]">
+          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {t('share.join.noSaved')}
           </p>
         ) : (
@@ -330,7 +330,7 @@ function JoinDialog({
                   className={`w-full px-3 py-2 rounded-card border text-left transition-colors ${
                     picked === s.id
                       ? 'border-primary bg-primary text-white'
-                      : 'border-border dark:border-[#3f3f46] bg-surface dark:bg-[#18181b] text-ink-primary dark:text-[#f4f4f5] hover:border-primary'
+                      : 'border-border dark:border-night-border bg-surface dark:bg-night-bg text-ink-primary dark:text-night-text hover:border-primary'
                   }`}
                 >
                   <div className="font-body font-semibold text-body-sm">{s.name}</div>
@@ -342,7 +342,7 @@ function JoinDialog({
             ))}
           </ul>
         )}
-        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-border dark:border-[#3f3f46]">
+        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-border dark:border-night-border">
           <button
             onClick={onClose}
             className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary"
