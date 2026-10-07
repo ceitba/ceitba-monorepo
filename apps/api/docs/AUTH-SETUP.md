@@ -293,13 +293,13 @@ API keys let scripts and integrations authenticate without a browser login. They
 
 ### Create a key
 
-Requires an active session (JWT or another API key).
+Requires an active session (JWT, or a full-power API key: scoped keys cannot create or revoke keys).
 
 ```bash
 curl -X POST https://api.ceitba.org.ar/api/v1/auth/api-keys \
   -H "Authorization: Bearer <your-jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"name": "ci-pipeline", "ttlDays": 365}'
+  -d '{"name": "ci-pipeline", "ttlDays": 365, "scopes": ["read"]}'
 ```
 
 ```json
@@ -307,13 +307,38 @@ curl -X POST https://api.ceitba.org.ar/api/v1/auth/api-keys \
   "id": "a1b2c3d4-...",
   "name": "ci-pipeline",
   "key": "ceitba_abc123...",
-  "expiresAt": "2027-05-02T12:00:00Z"
+  "expiresAt": "2027-05-02T12:00:00Z",
+  "scopes": ["read"]
 }
 ```
 
 **The raw key is returned once and never stored. Save it immediately.**
 
 Default expiry is **365 days**. `ttlDays` is optional; omit it to use the default.
+
+### Scopes
+
+`scopes` narrows what the key can do (`V54__api_key_scopes.sql`, `service/auth/ApiKeyScope`,
+enforced in `web/auth/ApiKeyFilter`). Scopes only take power away; a key never has more than its owner.
+
+| Scope | Effect |
+|---|---|
+| `read` | Always present. Safe methods (GET/HEAD) plus read-style POSTs (`/v1/classrooms/conflicts`). |
+| `write` | Non-safe methods (POST/PUT/PATCH/DELETE). Without it they answer `403 INSUFFICIENT_SCOPE`. |
+| `staff` | Keeps the owner's `ROLE_STAFF` / `ROLE_MODERATOR`. Without it the key acts as a plain USER. |
+
+- Omitting `scopes` (or `[]`) creates a full-power key (`read`, `write`, `staff`), the behaviour before scopes
+  existed. Existing keys were migrated to full power.
+- Unknown scope names → `400 ValidationError`.
+- A key that is not full power cannot `POST`/`DELETE` `/v1/auth/api-keys` (so it cannot mint a stronger key),
+  but **any key may revoke itself** with `DELETE /v1/auth/api-keys/{its own id}`, even a read-only one.
+- The key's owner must pass the same email allowlist as a JWT session; removing an email from the allowlist also
+  disables their keys (`403`).
+- Known limit: a few services decide *visibility* with a direct staff lookup (e.g. hidden wiki pages and
+  unpublished Drive files in `DriveAccess.isStaff`), so a staff user's key without `staff` still sees those in
+  reads. Writes and every role-gated route follow the scopes.
+
+The MCP server (`apps/mcp`) mints `["read"]` keys for students and `["read", "staff", "write"]` keys for staff.
 
 ### Use the key
 
@@ -336,7 +361,8 @@ curl https://api.ceitba.org.ar/api/v1/auth/api-keys \
     "name": "ci-pipeline",
     "createdAt": "2026-05-02T12:00:00Z",
     "expiresAt": "2027-05-02T12:00:00Z",
-    "lastUsedAt": "2026-05-02T15:30:00Z"
+    "lastUsedAt": "2026-05-02T15:30:00Z",
+    "scopes": ["read"]
   }
 ]
 ```

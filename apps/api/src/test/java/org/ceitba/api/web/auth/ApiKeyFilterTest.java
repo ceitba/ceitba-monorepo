@@ -1,12 +1,16 @@
 package org.ceitba.api.web.auth;
 
 import org.ceitba.api.config.AuthProperties;
+import org.ceitba.api.service.auth.ApiKeyScope;
+import org.ceitba.api.service.auth.ApiKeyService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,5 +57,40 @@ class ApiKeyFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         call(filter(null), "anything");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    private static ApiKeyService.ValidatedKey key(ApiKeyScope... scopes) {
+        return new ApiKeyService.ValidatedKey(null, null, ApiKeyScope.normalize(List.of(scopes)));
+    }
+
+    @Test
+    void anyKeyMayRevokeItselfButNoOtherKey() {
+        var id = java.util.UUID.randomUUID();
+        var self = new ApiKeyService.ValidatedKey(id, null, ApiKeyScope.normalize(List.of(ApiKeyScope.READ)));
+        assertThat(ApiKeyFilter.scopeDenial(self, "DELETE", "/v1/auth/api-keys/" + id)).isNull();
+        assertThat(ApiKeyFilter.scopeDenial(self, "DELETE", "/v1/auth/api-keys/" + java.util.UUID.randomUUID()))
+            .isNotNull();
+    }
+
+    @Test
+    void readOnlyKeysOnlyPassSafeMethodsAndReadStyleQueries() {
+        var read = key(ApiKeyScope.READ);
+        assertThat(ApiKeyFilter.scopeDenial(read, "GET", "/v1/me/schedules")).isNull();
+        assertThat(ApiKeyFilter.scopeDenial(read, "HEAD", "/v1/articles")).isNull();
+        assertThat(ApiKeyFilter.scopeDenial(read, "POST", "/v1/classrooms/conflicts")).isNull();
+        for (String m : new String[] {"POST", "PUT", "PATCH", "DELETE"}) {
+            assertThat(ApiKeyFilter.scopeDenial(read, m, "/v1/me/schedules")).as(m).isNotNull();
+        }
+        assertThat(ApiKeyFilter.scopeDenial(key(ApiKeyScope.WRITE), "POST", "/v1/me/schedules")).isNull();
+    }
+
+    @Test
+    void onlyFullPowerKeysManageKeys() {
+        var scoped = key(ApiKeyScope.READ, ApiKeyScope.WRITE);
+        assertThat(ApiKeyFilter.scopeDenial(scoped, "POST", "/v1/auth/api-keys")).isNotNull();
+        assertThat(ApiKeyFilter.scopeDenial(scoped, "DELETE", "/v1/auth/api-keys/abc")).isNotNull();
+        assertThat(ApiKeyFilter.scopeDenial(scoped, "GET", "/v1/auth/api-keys")).isNull();
+        var full = key();
+        assertThat(ApiKeyFilter.scopeDenial(full, "POST", "/v1/auth/api-keys")).isNull();
     }
 }

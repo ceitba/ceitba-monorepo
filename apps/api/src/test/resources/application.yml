@@ -33,7 +33,7 @@ spring:
     # V4.2+, so the entity layer can validate against the full schema without
     # the seeds. Every new DDL migration in db/migration MUST get a mirror here
     # and this target bumped — see src/test/resources/db/test-migration/README.md.
-    target: '4.43'
+    target: '4.44'
     locations: classpath:db/migration,classpath:db/test-migration
 
 # Rate limiting is off by default in tests so ITs can hammer /v1/auth/**;

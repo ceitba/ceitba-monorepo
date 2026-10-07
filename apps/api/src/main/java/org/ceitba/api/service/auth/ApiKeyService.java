@@ -1,5 +1,6 @@
 package org.ceitba.api.service.auth;
 
+import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.config.ReviewLoginProperties;
 import org.ceitba.api.domain.ApiKey;
 import org.ceitba.api.domain.User;
@@ -15,8 +16,10 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -39,10 +42,18 @@ public class ApiKeyService {
 
     @Transactional
     public ApiKeyCreatedResponse create(User user, String name, Integer ttlDays) {
-        // API keys skip the allowlist, so a key would outlive disabling review login.
+        return create(user, name, ttlDays, null);
+    }
+
+    // scopeKeys: subset of read/write/staff; null/empty → all (full power).
+    @Transactional
+    public ApiKeyCreatedResponse create(User user, String name, Integer ttlDays, List<String> scopeKeys) {
+        // Keep the review account keyless: a key is a long-lived credential and
+        // the account only exists for store review.
         if (reviewLogin.isReviewEmail(user.getEmail())) {
             throw new ReviewAccountRestrictedException("The review account cannot create API keys");
         }
+        Set<ApiKeyScope> scopes = parseScopes(scopeKeys);
         int days = (ttlDays != null && ttlDays > 0) ? ttlDays : DEFAULT_TTL_DAYS;
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
@@ -52,10 +63,11 @@ public class ApiKeyService {
             user.getId(),
             name,
             sha256hex(rawKey),
-            OffsetDateTime.now().plusDays(days)
+            OffsetDateTime.now().plusDays(days),
+            ApiKeyScope.serialize(scopes)
         );
         apiKeyRepository.save(apiKey);
-        return new ApiKeyCreatedResponse(apiKey.getId(), name, rawKey, apiKey.getExpiresAt());
+        return new ApiKeyCreatedResponse(apiKey.getId(), name, rawKey, apiKey.getExpiresAt(), keys(scopes));
     }
 
     @Transactional(readOnly = true)
@@ -63,7 +75,8 @@ public class ApiKeyService {
         return apiKeyRepository.findActiveByUserId(user.getId(), OffsetDateTime.now())
             .stream()
             .map(k -> new ApiKeyResponse(k.getId(), k.getName(),
-                                         k.getCreatedAt(), k.getExpiresAt(), k.getLastUsedAt()))
+                                         k.getCreatedAt(), k.getExpiresAt(), k.getLastUsedAt(),
+                                         keys(ApiKeyScope.parse(k.getScopes()))))
             .toList();
     }
 
@@ -72,17 +85,41 @@ public class ApiKeyService {
         return apiKeyRepository.deleteByIdAndUserId(keyId, user.getId()) > 0;
     }
 
-    // Validates a raw key passed in X-Api-Key. Returns the owning User if valid and not expired.
+    // A validated X-Api-Key: its id, owner and the scopes the key carries.
+    public record ValidatedKey(UUID keyId, User user, Set<ApiKeyScope> scopes) {
+        public boolean has(ApiKeyScope scope) { return scopes.contains(scope); }
+        public boolean isFullPower()         { return scopes.containsAll(ApiKeyScope.ALL); }
+    }
+
+    // Validates a raw key passed in X-Api-Key. Returns the owner and scopes if valid and not expired.
     @Transactional
-    public Optional<User> validate(String rawKey) {
+    public Optional<ValidatedKey> validate(String rawKey) {
         if (!rawKey.startsWith(PREFIX)) return Optional.empty();
         String hash = sha256hex(rawKey);
         return apiKeyRepository.findByKeyHash(hash)
             .filter(k -> !k.isExpired())
             .flatMap(k -> {
                 k.markUsed();
-                return userRepository.findById(k.getUserId());
+                return userRepository.findById(k.getUserId())
+                    .map(u -> new ValidatedKey(k.getId(), u, ApiKeyScope.parse(k.getScopes())));
             });
+    }
+
+    private static Set<ApiKeyScope> parseScopes(List<String> scopeKeys) {
+        if (scopeKeys == null || scopeKeys.isEmpty()) return ApiKeyScope.normalize(null);
+        var parsed = EnumSet.noneOf(ApiKeyScope.class);
+        for (String k : scopeKeys) {
+            try {
+                parsed.add(ApiKeyScope.fromKey(k == null ? "" : k));
+            } catch (IllegalArgumentException e) {
+                throw new ValidationException("scopes", k, "must be one of read, write, staff");
+            }
+        }
+        return ApiKeyScope.normalize(parsed);
+    }
+
+    private static List<String> keys(Set<ApiKeyScope> scopes) {
+        return scopes.stream().sorted().map(ApiKeyScope::key).toList();
     }
 
     static String sha256hex(String input) {
