@@ -25,6 +25,19 @@ bun run dev
 
 The web app reads its API URL from `apps/web/.env.local` (copy its `.env.example`).
 
+### Fake data and dev login
+
+To click through everything without real ITBA data or a Google login:
+
+1. In `apps/api/.env` set `SPRING_PROFILES_ACTIVE=dev`, `AUTH_DEV_LOGIN_ENABLED=true`, `ITBA_API_USE_FAKE=true` and
+   `ITBA_API_FAKE_FROM_DB=true`, then `docker compose up -d` and wait for `/api/actuator/health`.
+2. `apps/api/scripts/dev-seed.sh` loads fake users, newsletter articles and events, the staff page, benefits and
+   scheduler plans/commissions. Dates are relative to today; re-run it any time to re-anchor them.
+3. In `apps/web/.env.local` set `VITE_API_URL=/api/v1`, `VITE_DEV_LOGIN=true` and run the dev server with
+   `DEV_API_PROXY=http://localhost:8080` so the page and the API share one origin (the session cookie needs it).
+4. Use "Dev login" in the navbar with one of the emails listed at the top of `apps/api/scripts/dev-seed.sql`
+   (e.g. `dev-staff@itba.edu.ar` for staff, `estudiante@itba.edu.ar` for a student).
+
 ## Repository layout
 
 ```
