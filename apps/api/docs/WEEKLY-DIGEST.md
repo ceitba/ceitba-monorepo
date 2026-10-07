@@ -364,6 +364,7 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | POST | `/v1/digests/{id}/test` | → `{sentTo}`; any status; `409 MAIL_DISABLED`; `429 MAIL_QUOTA_EXHAUSTED` `{…, resumeAt}` + `Retry-After`; `409 MAIL_SENDER_NOT_CONNECTED` when the Gmail sender is missing or broken |
 | POST | `/v1/digests/{id}/send` | → 202 detail (`sending`); draft only; `409 DIGEST_EMPTY` with nothing to send; `409 MAIL_DISABLED` |
 | POST | `/v1/digests/{id}/cancel` | From `draft` or `sending` |
+| DELETE | `/v1/digests/{id}` | → 204; any status but `sending` (`409 DIGEST_SENDING`: stop it first); deletes the issue with its deliveries and tracking rows (stats included). Deleting the current week's scheduled draft inside the draft window (Mon 00:05 – Tue 00:00 ART) lets the job recreate it: cancel it instead |
 | GET/PUT | `/v1/digests/subscription` | Any signed-in user; `{enabled}` = flag AND follows `ceitba`; PUT true also follows CEITBA |
 | POST | `/v1/digests/unsubscribe?token=` | Public; 204; `400 INVALID_TOKEN`; accepts the RFC 8058 form body |
 | GET | `/v1/digests/correction-vote?token=` | Public; the correction (subject, commission, `proposed`/`sga` slots, `status`, `open`, counts, `myVote`, `expiresAt`); never writes |

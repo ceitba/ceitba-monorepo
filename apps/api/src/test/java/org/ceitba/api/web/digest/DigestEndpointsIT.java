@@ -40,6 +40,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -317,6 +318,31 @@ class DigestEndpointsIT {
         mvc.perform(post("/v1/digests/" + id + "/cancel").with(staff()))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error").value("DIGEST_NOT_EDITABLE"));
+    }
+
+    @Test
+    void deleteRemovesTheIssueAndItsDeliveriesButNotWhileSending() throws Exception {
+        String id = create();
+        mvc.perform(post("/v1/digests/" + id + "/send").with(staff())).andExpect(status().isAccepted());
+
+        // Sending: stop it first.
+        mvc.perform(delete("/v1/digests/" + id).with(staff()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("DIGEST_SENDING"));
+        mvc.perform(delete("/v1/digests/" + id).with(user())).andExpect(status().isForbidden());
+
+        sender.runPending();   // sent
+        assertThat(deliveries.findAll()).isNotEmpty();
+
+        mvc.perform(delete("/v1/digests/" + id).with(staff())).andExpect(status().isNoContent());
+        mvc.perform(get("/v1/digests/" + id).with(staff())).andExpect(status().isNotFound());
+        assertThat(deliveries.findAll()).isEmpty();
+        mvc.perform(delete("/v1/digests/" + id).with(staff())).andExpect(status().isNotFound());
+
+        // The week is free again.
+        mvc.perform(post("/v1/digests").with(staff())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"weekStart\":\"" + WEEK + "\"}"))
+            .andExpect(status().isCreated());
     }
 
     @Test
