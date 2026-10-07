@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useBlocker, useParams } from 'react-router-dom'
+import { Link, Navigate, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  cancelDigest, fetchDigest, fetchDigestQuota, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
+  cancelDigest, deleteDigest, fetchDigest, fetchDigestQuota, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
 } from '../../api/digests'
 import { isStaff } from '../../store/authStore'
 import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
@@ -45,14 +45,15 @@ export default function AdminDigestEditorPage() {
   const { id } = useParams()
   const { t, i18n } = useTranslation()
   const staff = isStaff()
+  const navigate = useNavigate()
 
   const [loadState, setLoadState] = useState('loading')
   const [reloadKey, setReloadKey] = useState(0)
   const [digest, setDigest] = useState(null)
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [busyAction, setBusyAction] = useState(null) // 'test' | 'send' | 'cancel'
-  const [dialog, setDialog] = useState(null)         // 'send' | 'cancel'
+  const [busyAction, setBusyAction] = useState(null) // 'test' | 'send' | 'cancel' | 'delete'
+  const [dialog, setDialog] = useState(null)         // 'send' | 'cancel' | 'delete'
   const [error, setError] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
@@ -259,6 +260,23 @@ export default function AdminDigestEditorPage() {
     }
   }
 
+  async function handleDelete() {
+    setBusyAction('delete')
+    setError('')
+    nextSeq()
+    try {
+      await deleteDigest(id)
+      // Unsaved edits of a deleted issue must not hold the navigation back.
+      setUnsavedChanges(false)
+      navigate('/admin/digests', { replace: true })
+    } catch (err) {
+      setError(digestErrorMessage(err, t, 'admin.digests.errors.delete'))
+      await refreshAfterConflict(err)
+      setBusyAction(null)
+      setDialog(null)
+    }
+  }
+
   const includedArticles = digest.articles.filter((a) => !form.excludedArticleIds.includes(a.id)).length
   const includedEvents = digest.events.filter((e) => !form.excludedEventIds.includes(e.id)).length
   const actionsLocked = saving || busyAction != null
@@ -321,6 +339,18 @@ export default function AdminDigestEditorPage() {
             {t(`admin.digests.editor.readOnly.${digest.status}`, { defaultValue: t('admin.digests.editor.readOnly.cancelled') })}
           </p>
           <DigestCounts counts={digest.counts} />
+          <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
+            {!sending && (
+              <button type="button" onClick={handleTest} disabled={actionsLocked} className={secondaryBtn}>
+                {busyAction === 'test' ? t('admin.digests.editor.testing') : t('admin.digests.editor.test')}
+              </button>
+            )}
+            {!sending && (
+              <button type="button" onClick={() => setDialog('delete')} disabled={actionsLocked} className={dangerBtn}>
+                {t('admin.digests.editor.delete')}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -437,6 +467,9 @@ export default function AdminDigestEditorPage() {
                 <button type="button" onClick={() => setDialog('cancel')} disabled={actionsLocked} className={dangerBtn}>
                   {t('admin.digests.editor.cancel')}
                 </button>
+                <button type="button" onClick={() => setDialog('delete')} disabled={actionsLocked} className={dangerBtn}>
+                  {t('admin.digests.editor.delete')}
+                </button>
               </div>
               {empty && (
                 <p role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm">
@@ -490,6 +523,20 @@ export default function AdminDigestEditorPage() {
           onClose={() => setDialog(null)}
         >
           {sending ? t('admin.digests.editor.cancelDialog.bodySending') : t('admin.digests.editor.cancelDialog.body')}
+        </ConfirmDialog>
+      )}
+
+      {dialog === 'delete' && (
+        <ConfirmDialog
+          tone="danger"
+          title={t('admin.digests.editor.deleteDialog.title')}
+          confirmLabel={busyAction === 'delete' ? t('admin.digests.editor.deleteDialog.deleting') : t('admin.digests.editor.deleteDialog.confirm')}
+          cancelLabel={t('admin.digests.editor.deleteDialog.keep')}
+          busy={busyAction === 'delete'}
+          onConfirm={handleDelete}
+          onClose={() => setDialog(null)}
+        >
+          {t(`admin.digests.editor.deleteDialog.body_${digest.status === 'sent' ? 'sent' : 'other'}`)}
         </ConfirmDialog>
       )}
 
