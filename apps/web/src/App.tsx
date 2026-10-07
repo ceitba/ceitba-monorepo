@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import './i18n'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, matchPath, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -11,8 +11,7 @@ import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
-import { getSession, takeReturnTo } from './store/authStore'
-import { isSafeReturnPath } from './utils/apuntes'
+import { getSession, isSafeReturnPath, takeReturnTo } from './store/authStore'
 
 // Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
 // load on demand so the home page bundle stays lean.
@@ -23,6 +22,10 @@ const MyApuntesPage = lazy(() => import('./pages/apuntes/MyApuntesPage'))
 const WikiPage = lazy(() => import('./pages/apuntes/WikiPage'))
 const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
 const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
+
+// Sections that used to be separate SPAs, each in its own chunk.
+const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
+const NewsletterApp = lazy(() => import('./newsletter/NewsletterApp'))
 
 // Local dev-only sign-in (CEITBA-API POST /v1/auth/dev-login). Both env
 // checks are inlined so Vite folds them to `false` in production builds and
@@ -52,10 +55,19 @@ function AuthCallback() {
   return null
 }
 
+// Pages with their own full-screen chrome instead of the app's Navbar and
+// Footer: the newsletter's admin dashboard and its sign-in page.
+const CHROMELESS = ['/newsletter/admin/*', '/newsletter/contribute/*']
+
 function Layout() {
-  // Hydrate the session once at boot so the navbar and any guards have
-  // data after the first /me round-trip resolves.
-  useEffect(() => { getSession() }, [])
+  const { pathname } = useLocation()
+  if (CHROMELESS.some((pattern) => matchPath(pattern, pathname))) {
+    return (
+      <Routes>
+        <Route path="/newsletter/*" element={<Suspense fallback={<PageFallback />}><NewsletterApp /></Suspense>} />
+      </Routes>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-page-bg">
@@ -64,7 +76,6 @@ function Layout() {
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
@@ -74,6 +85,8 @@ function Layout() {
           <Route path="/apuntes/:subjectId" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><SubjectFilesPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/:subjectId/wiki/:slug" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><WikiPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/:subjectId/grafo" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><WikiGraphPage /></Suspense></CapabilityGuard>} />
+          <Route path="/scheduler/*" element={<Suspense fallback={<PageFallback />}><SchedulerApp /></Suspense>} />
+          <Route path="/newsletter/*" element={<Suspense fallback={<PageFallback />}><NewsletterApp /></Suspense>} />
           {DevLoginPage && (
             <Route path="/dev-login" element={<Suspense fallback={null}><DevLoginPage /></Suspense>} />
           )}
@@ -85,12 +98,33 @@ function Layout() {
   )
 }
 
+function Root() {
+  // Hydrate the session once at boot so the navbar and any guards have
+  // data after the first /me round-trip resolves.
+  useEffect(() => { getSession() }, [])
+
+  return (
+    <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      {/* OAuth redirect URIs of the old standalone scheduler and newsletter;
+          sign-ins started before the merge can still land there. */}
+      <Route path="/scheduler/auth/callback" element={<AuthCallback />} />
+      <Route path="/newsletter/admin/callback" element={<AuthCallback />} />
+      <Route path="/*" element={<Layout />} />
+    </Routes>
+  )
+}
+
+// A data router (rather than BrowserRouter) so pages can use useBlocker: the
+// newsletter's article editor asks before any in-app navigation, back/forward
+// included, drops unsaved changes. Routes are still declared with <Routes>,
+// rendered under one catch-all route.
+const router = createBrowserRouter([{ path: '*', element: <Root /> }], { basename: import.meta.env.BASE_URL })
+
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Layout />
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </ThemeProvider>
   )
 }

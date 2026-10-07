@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Stop hook shared by Claude Code, Codex and Kiro. When the agent tries to finish
-// with uncommitted changes, runs the repo checks and ESLint for each touched web
-// app; on failure it prints {"decision":"block","reason":...} so the agent keeps
+// with uncommitted changes, runs the repo checks and ESLint on the touched web
+// files; on failure it prints {"decision":"block","reason":...} so the agent keeps
 // going and fixes them. Runs at most once per stop (stop_hook_active), so it can
 // never loop.
 import { readFileSync } from 'node:fs';
@@ -28,7 +28,7 @@ const run = (label, cmd, args, cwd = ROOT) => {
 };
 
 run('repo checks (node scripts/checks/run-all.mjs)', process.execPath, [join(ROOT, 'scripts', 'checks', 'run-all.mjs')]);
-for (const app of ['web', 'scheduler', 'newsletter']) {
+for (const app of ['web']) {
   const files = changed.filter((f) => f.startsWith(`apps/${app}/`) && /\.(tsx?|jsx?)$/.test(f))
     .map((f) => f.slice(`apps/${app}/`.length));
   if (files.length) run(`eslint (apps/${app})`, 'bunx', ['eslint', '--max-warnings', '0', '--no-warn-ignored', ...files], join(ROOT, 'apps', app));

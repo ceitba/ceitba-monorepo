@@ -3,8 +3,8 @@ name: CI
 # Checks for PRs (and pushes to dev). Only the apps a change touches run:
 #   - api: Maven unit + integration tests, on PRs into dev only. The dev -> main
 #     release is tested again by the push to main it produces (deploy.yml).
-#   - web / scheduler / newsletter: lint + production build (the only gate the
-#     SPAs have; there is no JS test runner).
+#   - web (the site, scheduler and newsletter, one app): lint + production
+#     build (its only gate; there is no JS test runner).
 # Runs with no secrets: fork PRs must never reach deploy credentials.
 on:
   pull_request:
@@ -47,12 +47,6 @@ jobs:
               - '.github/workflows/ci.yml'
             web:
               - 'apps/web/**'
-              - *shared
-            scheduler:
-              - 'apps/scheduler/**'
-              - *shared
-            newsletter:
-              - 'apps/newsletter/**'
               - *shared
       - id: spas
         env:
