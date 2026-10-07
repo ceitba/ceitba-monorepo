@@ -13,18 +13,8 @@ pre-commit:
       glob: "*.{ts,tsx,js,jsx}"
       run: bunx eslint --max-warnings 0 --no-warn-ignored {staged_files}
 
-    - name: eslint scheduler
-      root: apps/scheduler/
-      glob: "*.{ts,tsx,js,jsx}"
-      run: bunx eslint --max-warnings 0 --no-warn-ignored {staged_files}
-
-    - name: eslint newsletter
-      root: apps/newsletter/
-      glob: "*.{js,jsx}"
-      run: bunx eslint --max-warnings 0 --no-warn-ignored {staged_files}
-
     - name: locales
-      glob: "apps/*/src/locales/*.json"
+      glob: "apps/*/src/**/locales/*.json"
       run: node scripts/checks/locales.mjs
 
     - name: migrations

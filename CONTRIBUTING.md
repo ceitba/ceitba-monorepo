@@ -18,7 +18,7 @@
 
 | Hook | Runs |
 |---|---|
-| pre-commit | gitleaks on staged changes (if installed: `brew install gitleaks`), ESLint on staged SPA files, and the repo checks matching the staged files |
+| pre-commit | gitleaks on staged changes (if installed: `brew install gitleaks`), ESLint on staged `apps/web` files, and the repo checks matching the staged files |
 | commit-msg | Conventional Commits (`scripts/checks/commit-msg.mjs`) |
 | pre-push | `bun run check` (locales, migrations, workflows, agents; living docs as a warning) |
 
@@ -29,8 +29,8 @@ CI runs the same scripts, so skipping a hook only moves the failure to the PR. T
 
 `.github/workflows/pr-checks.yml` runs on every PR (and when its title or body is edited): the repo checks above,
 the PR title as a Conventional Commit, the living-docs check (into `dev` only; tick "No spec impact" with a reason
-in the template to opt out) and a gitleaks scan of the PR's commits. `ci.yml` still runs lint + build for touched
-web apps and the API tests. Dependabot opens grouped weekly updates against `dev`; security updates go to `main`.
+in the template to opt out) and a gitleaks scan of the PR's commits. `ci.yml` still runs lint + build for the web app
+and the API tests when they are touched. Dependabot opens grouped weekly updates against `dev`; security updates go to `main`.
 
 ## Coding standards
 
@@ -38,7 +38,7 @@ These are the standards sources reviews (human and `/code-review`) check against
 
 - `AGENTS.md`: cross-app rules (auth, hosting, secrets, CI pinning, docs language).
 - `apps/api/AGENTS.md`: API layering, exceptions, transactions, Flyway, tests.
-- `docs/agents/web-apps.md` and `apps/<app>/AGENTS.md`: SPA patterns (API client, stores, i18n, base path).
+- `apps/web/AGENTS.md`: web app patterns (sections, shared API client and stores, i18n namespaces).
 - `docs/EDITORIAL_UI_SYSTEM.md`: the binding UI system for every web app.
 - `GLOSSARY.md`: names for domain concepts in code, UI copy and docs.
 - `docs/adr/`: decisions that new code must not silently contradict.

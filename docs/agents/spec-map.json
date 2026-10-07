@@ -7,12 +7,19 @@
         "apps/api/src/main/java/org/ceitba/api/config/SecurityConfig.java",
         "apps/api/src/main/java/org/ceitba/api/**/auth/**"
       ],
-      "docs": ["apps/api/docs/AUTH-AND-ROLES.md", "apps/api/docs/AUTH-SETUP.md"]
+      "docs": [
+        "apps/api/docs/AUTH-AND-ROLES.md",
+        "apps/api/docs/AUTH-SETUP.md"
+      ]
     },
     {
       "name": "capabilities",
-      "paths": ["apps/api/src/main/java/org/ceitba/api/**/capability/**"],
-      "docs": ["apps/api/docs/CAPABILITIES.md"]
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/capability/**"
+      ],
+      "docs": [
+        "apps/api/docs/CAPABILITIES.md"
+      ]
     },
     {
       "name": "apuntes (drive sync)",
@@ -20,30 +27,47 @@
         "apps/api/src/main/java/org/ceitba/api/**/drive/**",
         "apps/api/src/main/java/org/ceitba/api/scheduling/DriveSyncJob.java"
       ],
-      "docs": ["apps/api/docs/DRIVE-SYNC.md"]
+      "docs": [
+        "apps/api/docs/DRIVE-SYNC.md"
+      ]
     },
     {
       "name": "itba gateway",
-      "paths": ["apps/api/src/main/java/org/ceitba/api/external/itba/**"],
-      "docs": ["apps/api/docs/ITBA-GATEWAY.md"]
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/external/itba/**"
+      ],
+      "docs": [
+        "apps/api/docs/ITBA-GATEWAY.md"
+      ]
     },
     {
       "name": "object storage",
-      "paths": ["apps/api/src/main/java/org/ceitba/api/**/media/**"],
-      "docs": ["apps/api/docs/OBJECT-STORAGE.md"]
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/media/**"
+      ],
+      "docs": [
+        "apps/api/docs/OBJECT-STORAGE.md"
+      ]
     },
     {
       "name": "push notifications",
-      "paths": ["apps/api/src/main/java/org/ceitba/api/**/push/**"],
-      "docs": ["apps/api/docs/PUSH-NOTIFICATIONS.md"]
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/push/**"
+      ],
+      "docs": [
+        "apps/api/docs/PUSH-NOTIFICATIONS.md"
+      ]
     },
     {
       "name": "schedule corrections",
       "paths": [
         "apps/api/src/main/java/org/ceitba/api/**/correction/**",
-        "apps/scheduler/src/api/corrections.ts"
+        "apps/web/src/scheduler/api/corrections.ts",
+        "apps/web/src/api/corrections.ts"
       ],
-      "docs": ["apps/api/docs/SCHEDULE-CORRECTIONS.md"]
+      "docs": [
+        "apps/api/docs/SCHEDULE-CORRECTIONS.md"
+      ]
     },
     {
       "name": "subject wiki",
@@ -68,21 +92,42 @@
         "apps/api/src/main/java/org/ceitba/api/scheduling/DigestJob.java",
         "apps/api/src/main/java/org/ceitba/api/scheduling/MailRetentionJob.java"
       ],
-      "docs": ["apps/api/docs/WEEKLY-DIGEST.md"]
+      "docs": [
+        "apps/api/docs/WEEKLY-DIGEST.md"
+      ]
     },
     {
       "name": "hosting and CI",
-      "paths": ["infra/**", ".github/workflows/**", ".github/spa-apps.json"],
-      "docs": ["AGENTS.md", "README.md", "CONTRIBUTING.md"]
+      "paths": [
+        "infra/**",
+        ".github/workflows/**",
+        ".github/spa-apps.json"
+      ],
+      "docs": [
+        "AGENTS.md",
+        "apps/web/AGENTS.md",
+        "README.md",
+        "CONTRIBUTING.md"
+      ]
     },
     {
       "name": "ui system",
       "paths": [
         "apps/web/tailwind.config.*",
-        "apps/scheduler/tailwind.config.*",
-        "apps/newsletter/tailwind.config.*"
+        "apps/web/src/index.css"
       ],
-      "docs": ["docs/EDITORIAL_UI_SYSTEM.md"]
+      "docs": [
+        "docs/EDITORIAL_UI_SYSTEM.md"
+      ]
+    },
+    {
+      "name": "newsletter digest admin",
+      "paths": [
+        "apps/web/src/newsletter/pages/admin/AdminDigest*"
+      ],
+      "docs": [
+        "apps/api/docs/WEEKLY-DIGEST.md"
+      ]
     }
   ]
 }

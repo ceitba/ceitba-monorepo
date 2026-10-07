@@ -6,14 +6,12 @@ before changing that app.
 
 ## Repository layout
 
-One repo, four apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
+One repo, two apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
 
 | Dir | What | Stack |
 |---|---|---|
 | `apps/api` | Backend for everything below | Spring Boot 3, Java 21, Postgres, Maven (not part of the JS workspace) |
-| `apps/web` | Main CEITBA site + `/manage` staff admin (benefits, users, orgs), served at `/` | React 18 + Vite + TS |
-| `apps/scheduler` | "Combinador de Horarios": schedule builder, saved schedules, share sessions, served at `/scheduler/` | React 18 + Vite + TS |
-| `apps/newsletter` | Student newsletter (articles, events, org follows, admin area), served at `/newsletter/` | React 18 + Vite, **plain JS (JSX)** |
+| `apps/web` | The whole frontend, one SPA: main site + `/manage` staff admin + Apuntes at `/`, the "Combinador de Horarios" at `/scheduler`, the student newsletter at `/newsletter` | React 18 + Vite + TS |
 
 `infra/caddy/` is the production reverse proxy. Domain vocabulary is in `GLOSSARY.md`; lasting decisions are in
 `docs/adr/`.
@@ -48,23 +46,23 @@ included) updates the mapped doc in the same PR, or the PR states "No spec impac
 ## CI
 
 `.github/workflows/ci.yml` runs on PRs and `dev` pushes; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
-to run only the apps a change touches (`packages/**`, the root `package.json`/`bun.lock` and
-`.github/spa-apps.json` count for every web app). The API deploys before the web apps in the same push. Keep
-actions pinned to full commit SHAs with a `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks,
-the Conventional Commits PR title, the living-docs check against the PR body and a gitleaks scan.
-Dependabot (`.github/dependabot.yml`) opens weekly version updates against `dev`.
+to run only what a change touches (`packages/**`, the root `package.json`/`bun.lock` and `.github/spa-apps.json`
+count for web). The API deploys before the web app in the same push. Keep actions pinned to full commit SHAs with a
+`# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
+living-docs check against the PR body and a gitleaks scan. Dependabot (`.github/dependabot.yml`) opens weekly
+version updates against `dev`.
 
 ## Cross-app rules
 
 - **Specs and docs are written in English** unless a doc says otherwise. Only UI copy is bilingual (es/en).
-- **UI work in any web app**: read `docs/EDITORIAL_UI_SYSTEM.md` first. It is binding.
-- **Auth is shared**: every app authenticates against the API with an **HttpOnly session cookie** (the API-issued
-  JWT). Login = redirect to `${API}/auth/google?redirect_uri=<VITE_GOOGLE_REDIRECT_URI>`; session =
-  `GET /auth/me`; logout = `POST /auth/logout`. Apps never read/write tokens in JS; every fetch uses
-  `credentials: 'include'`.
-- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/scheduler*` → `/var/www/scheduler`,
-  `/newsletter*` → `/var/www/itbanews` (`/itbanews*` 301s to `/newsletter`), everything else → `/var/www/main`
-  (web). All apps use `try_files … /index.html` fallback. Production build env lives in `.github/spa-apps.json`.
+- **UI work**: read `docs/EDITORIAL_UI_SYSTEM.md` first. It is binding.
+- **Auth**: the web app authenticates against the API with an **HttpOnly session cookie** (the API-issued JWT);
+  JS never reads or writes tokens and every fetch uses `credentials: 'include'`. Details in `apps/web/AGENTS.md`;
+  the mobile app uses the token endpoints in `apps/api/docs/AUTH-SETUP.md`.
+- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/itbanews*` 301s to `/newsletter`,
+  everything else → `/var/www/main` with `try_files … /index.html`. Until the Caddy cutover ships (it must land in a
+  release *after* the merged app is live), `/scheduler*` and `/newsletter*` still serve the old standalone builds
+  from `/var/www/scheduler` and `/var/www/itbanews`. Production build env lives in `.github/spa-apps.json`.
 - **Secrets** never enter the repo: `.env`/`.env.local` stay local, `.env.example` gets placeholders only.
   `.gitleaks.toml` is the scanner config; rotate a leaked secret rather than allowlisting it.
 
@@ -72,7 +70,7 @@ Dependabot (`.github/dependabot.yml`) opens weekly version updates against `dev`
 
 ```
 bun install                                  # web deps + git hooks (repo root)
-bun run dev | build | lint                   # all web apps; --filter @ceitba/<app> for one
+bun run dev | build | lint                   # the web app (apps/web)
 cd apps/api && ./mvnw -B -ntp verify         # API unit + integration tests (needs Docker)
 bun run check                                # repo checks: locales, migrations, workflows, agents, living docs
 bun run agents:sync                          # regenerate per-tool subagent files from .agents/agents/
@@ -84,7 +82,7 @@ The bun version is pinned once, in `packageManager` of the root `package.json`; 
 
 Skills live in `.agents/skills/` (symlinked into `.claude/skills/` and `.kiro/skills/`). Community skills come
 from `mattpocock/skills` (pinned in `skills-lock.json`, update with `npx skills update`); project skills are
-`flyway-migration`, `api-endpoint`, `i18n-key`, `spa-app`, `kb-wiki`, `release` and `spec-sync`. Reviewer
+`flyway-migration`, `api-endpoint`, `i18n-key`, `web-section`, `kb-wiki`, `release` and `spec-sync`. Reviewer
 subagents are defined once in `.agents/agents/` and generated for each tool by `node scripts/agents/sync.mjs`.
 
 ### Issue tracker

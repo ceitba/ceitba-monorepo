@@ -14,6 +14,9 @@ i18n
     },
     lng: savedLang,
     fallbackLng: 'es',
+    // Sections (scheduler, newsletter) add their own namespace and make it
+    // the default for their subtree; shared keys still resolve from here.
+    fallbackNS: 'translation',
     interpolation: { escapeValue: false },
   })
 

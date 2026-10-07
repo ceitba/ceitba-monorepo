@@ -155,6 +155,9 @@ itba:
     token: ${ITBA_API_TOKEN:}
     timeout-millis: ${ITBA_API_TIMEOUT:30000}
     use-fake: ${ITBA_API_USE_FAKE:false}
+    # Local dev only, with use-fake: plans nobody stubbed come from the local
+    # plan_subject table (load it with scripts/dev-seed.sql).
+    fake-from-db: ${ITBA_API_FAKE_FROM_DB:false}
 
 sync:
   enabled: ${SYNC_ENABLED:false}

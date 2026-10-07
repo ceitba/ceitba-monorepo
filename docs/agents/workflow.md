@@ -10,7 +10,7 @@ A **spec** (a GitHub issue written by `/to-spec`, labelled `spec`) is required f
 - a new feature or a new user-visible behaviour,
 - a schema change (new Flyway migration with DDL),
 - an auth, roles, `SecurityConfig` or permission change,
-- a change spanning more than one app (e.g. API endpoint + SPA screen).
+- a change spanning the API and the web app, or more than one web section (e.g. API endpoint + screen).
 
 Exempt: bug fixes, refactors without behaviour change, chores, dependency bumps, CI, docs-only changes. Exempt work
 still keeps the living docs in sync (below).
@@ -27,10 +27,10 @@ straight to `/implement`, but link or create an issue that records the decision.
    tickets (sub-issues with blocking edges).
 3. Branch from `dev` (`feat/<slug>`), then `/implement` the spec or one ticket. It works test-first via `/tdd` at the
    seams agreed in the spec.
-4. Use the project skills where they apply: `flyway-migration`, `api-endpoint`, `i18n-key`, `spa-app`.
+4. Use the project skills where they apply: `flyway-migration`, `api-endpoint`, `i18n-key`, `web-section`.
 5. Review: `/code-review` against `dev`, plus the reviewer subagents that match the diff (`api-architecture-reviewer`
    for `apps/api`, `migration-reviewer` for migrations, `security-reviewer` for auth/permissions/secrets,
-   `ui-reviewer` for SPA UI). Fix findings before opening the PR.
+   `ui-reviewer` for web UI). Fix findings before opening the PR.
 6. `spec-sync`: update the living docs for the behaviour you changed.
 7. `/pr`: write the PR body (template in `.github/pull_request_template.md`), PR into `dev`, `Closes #<ticket>`.
 

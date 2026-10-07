@@ -12,7 +12,7 @@ const PATTERN = new RegExp(`^(${TYPES.join('|')})(\\([a-z0-9][a-z0-9./-]*\\))?(!
 const MAX = 120;
 
 // Subjects git or GitHub write themselves; never rejected.
-const EXEMPT = [/^Merge (branch|pull request|remote-tracking branch|tag) /, /^Revert ".*"$/, /^(fixup|squash|amend)! /];
+const EXEMPT = [/^Merge /, /^Revert ".*"$/, /^(fixup|squash|amend)! /];
 
 export function checkSubject(subject) {
   if (EXEMPT.some((re) => re.test(subject))) return null;

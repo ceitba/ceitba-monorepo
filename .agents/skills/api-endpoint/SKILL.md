@@ -1,6 +1,6 @@
 ---
 name: api-endpoint
-description: "Add or change a REST endpoint in apps/api end to end: controller, DTO records, service, repository, exceptions, security matcher, integration test, docs and the SPA client. Use for any new route or a change to a route's request, response, status codes or access."
+description: "Add or change a REST endpoint in apps/api end to end: controller, DTO records, service, repository, exceptions, security matcher, integration test, docs and the web client. Use for any new route or a change to a route's request, response, status codes or access."
 ---
 
 # Add or change an API endpoint
@@ -32,10 +32,10 @@ before the code exists. `<feature>` is the package name shared across layers (e.
    `security-reviewer` subagent.
 8. **Living docs** (`spec-sync`): update the feature doc in `apps/api/docs/` and the endpoint table in
    `apps/api/README.md` if the route is listed there.
-9. **SPA client**: add the call to the consuming app's `src/api/<feature>.ts|js` on top of `apiGet`/`apiSend`, with
+9. **Web client**: add the call to `apps/web/src/api/<feature>.ts` (or `src/<section>/api/<feature>.ts` for a section) on top of `apiGet`/`apiSend` from `@/api/client`, with
    `ApiError` codes matching the API's `error` values. Mobile parity lives in `ceitba/CEITBApp`: open an issue there
    if the app needs it.
-10. **Verify**: `./mvnw -B -ntp verify`; for the SPA, `bun run --filter @ceitba/<app> lint` and `build`.
+10. **Verify**: `./mvnw -B -ntp verify`; for the web app, `bun run lint` and `bun run build`.
 
 Done when the IT is green, every new error has a handler, access is explicit, docs and client are updated.
 
