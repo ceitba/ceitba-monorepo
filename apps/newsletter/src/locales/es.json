@@ -419,6 +419,8 @@
         "test": "No pudimos enviar la prueba.",
         "send": "No pudimos iniciar el envío.",
         "cancel": "No pudimos cancelar el resumen.",
+        "delete": "No pudimos eliminar el resumen.",
+        "DIGEST_SENDING": "El resumen se está enviando: detené el envío antes de eliminarlo.",
         "DIGEST_EMPTY": "No se puede enviar un resumen sin artículos ni eventos.",
         "MAIL_QUOTA_EXHAUSTED": "Se usó todo el cupo diario de envío de la cuenta (las pruebas también cuentan). Vas a poder volver a probar ~{{when}} (hora de Argentina).",
         "MAIL_QUOTA_EXHAUSTED_noWhen": "Se usó todo el cupo diario de envío de la cuenta (las pruebas también cuentan). Probá más tarde.",
@@ -451,6 +453,7 @@
         "sending": "Enviando…",
         "sendStarted": "El envío empezó. El progreso se actualiza solo.",
         "cancel": "Cancelar resumen",
+        "delete": "Eliminar resumen",
         "stopSending": "Detener envío",
         "cancelled": "Resumen cancelado.",
         "errors": {
@@ -472,6 +475,14 @@
             "missing": "Todavía no hay una cuenta de envío conectada: el envío queda en espera y empieza recién cuando alguien la conecte.",
             "broken": "La cuenta de envío necesita reconectarse: el envío queda en espera y sigue recién cuando alguien la reconecte."
           }
+        },
+        "deleteDialog": {
+          "title": "¿Eliminar este resumen?",
+          "body_sent": "Se borra para siempre, junto con sus estadísticas (aperturas, clics y envíos). Los mails que ya salieron no se pueden recuperar.",
+          "body_other": "Se borra para siempre. Después podés crear uno nuevo para esa semana.",
+          "confirm": "Sí, eliminar",
+          "deleting": "Eliminando…",
+          "keep": "Volver"
         },
         "cancelDialog": {
           "title": "¿Cancelar este resumen?",
