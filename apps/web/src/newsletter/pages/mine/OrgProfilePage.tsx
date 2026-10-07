@@ -12,6 +12,7 @@ import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedSto
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import { MY_ARTICLES_PATH, newsletterPath } from '@/newsletter/paths'
 import type { Organization } from '../../types'
+import { areaPath } from '@/pages/manage/areas'
 
 // The editable profile fields, as strings for the inputs ('' = empty).
 interface OrgForm {
@@ -199,7 +200,7 @@ export default function OrgProfilePage() {
         title={t('admin.orgProfile.title')}
         subtitle={form.name || base?.name}
         // Staff come here from /manage → Organizaciones.
-        back={staff ? { to: '/manage', label: t('admin.orgProfile.backToManage') } : undefined}
+        back={staff ? { to: areaPath('organizations'), label: t('admin.orgProfile.backToManage') } : undefined}
         action={showFollowers ? (
           <Link to={newsletterPath(`/mine/org/${slug}/followers`)} className={buttonClass({ variant: 'outline' })}>
             {t('admin.followers.link')}

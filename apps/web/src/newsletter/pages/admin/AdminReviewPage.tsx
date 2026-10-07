@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ALL_STATUSES, fetchAllArticles, updateArticle } from '../../api/articles'
+import { ALL_STATUSES, fetchAllArticles } from '../../api/articles'
+import { ApiError } from '@/api/client'
+import { usePublishArticle } from '@/pages/manage/review/usePublishArticle'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import ArticlesTable from '../../components/admin/ArticlesTable'
 import DeleteArticleDialog from '../../components/admin/DeleteArticleDialog'
 import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
 import { useAdminContext } from '../../admin/adminContext'
-import { todayISO } from '../../utils/dates'
 import { articleEditPath } from '@/newsletter/paths'
 import { Button, EmptyState, ErrorState, SkeletonTable, ToggleGroup, buttonClass, toast } from '@/components/ui'
 import type { Article, VoteCounts } from '../../types'
@@ -42,6 +43,7 @@ export default function AdminReviewPage() {
   const [publishing, setPublishing] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<Article | null>(null)
   const [votes, setVotes] = useState<Record<string, VoteCounts>>({})
+  const publishArticle = usePublishArticle()
 
   useEffect(() => {
     let cancelled = false
@@ -81,18 +83,28 @@ export default function AdminReviewPage() {
     setParams(p, { replace: true })
   }
 
-  // Publishing is reversible (the editor unpublishes), so no confirmation.
-  // An article sent without a date gets today's.
+  // Publishing is reversible (Deshacer in the toast), so no confirmation.
+  // The shared helper also updates the review queue behind the counts.
   async function publish(article: Article) {
     setPublishing(article.id)
+    const drop = () => setArticles((prev) => prev.filter((a) => a.id !== article.id))
     try {
-      await updateArticle(article.id, { status: 'published', ...(article.date ? {} : { date: todayISO() }) })
-      setArticles((prev) => prev.filter((a) => a.id !== article.id))
-      toast.success(t('admin.review.published', { title: article.title }))
-      refreshPending?.()
+      await publishArticle(article, {
+        published: t('admin.review.published', { title: article.title }),
+        undo: t('admin.review.undo'),
+        undoFailed: () => t('admin.review.undoError', { title: article.title }),
+      }, () => setReloadKey((k) => k + 1))
+      drop()
     } catch (err) {
-      console.error('newsletter admin: publish article', err)
-      toast.error(t('admin.review.publishError', { title: article.title }))
+      if (err instanceof ApiError && err.status === 409) {
+        // Someone already handled it: not an error.
+        drop()
+        refreshPending?.()
+        toast.info(t('admin.review.alreadyHandled', { title: article.title }))
+      } else {
+        console.error('newsletter admin: publish article', err)
+        toast.error(t('admin.review.publishError', { title: article.title }))
+      }
     } finally {
       setPublishing(null)
     }

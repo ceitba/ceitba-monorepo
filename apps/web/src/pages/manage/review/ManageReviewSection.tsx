@@ -11,10 +11,8 @@ import {
 } from '../../../api/drive'
 import type { KbRun } from '../../../api/kbAdmin'
 import { isBlockedStatus } from '../../../api/kbAdmin'
-import { updateArticle } from '../../../newsletter/api/articles'
 import type { Article } from '../../../newsletter/types'
 import { articleEditPath } from '../../../newsletter/paths'
-import { todayISO } from '../../../newsletter/utils/dates'
 import {
   Alert, Badge, Button, ConfirmDialog, EmptyState, LoadingRegion, Skeleton, ToggleGroup,
   buttonClass, toast, type BadgeTone,
@@ -24,6 +22,7 @@ import { areaPath } from '../areas'
 import { useQueue } from './queueContext'
 import type { QueueKind, SourceId } from './useReviewQueue'
 import DigestCard from './DigestCard'
+import { usePublishArticle } from './usePublishArticle'
 
 type Filter = 'all' | QueueKind
 
@@ -47,6 +46,8 @@ interface RowAction {
 
 interface Row {
   key: string
+  // The item's id in its source (what queue.remove takes).
+  id: string
   source: SourceId
   kind: QueueKind
   typeLabel: string
@@ -105,6 +106,15 @@ export default function ManageReviewSection() {
   const [pendingBusy, setPendingBusy] = useState(false)
   const [pendingError, setPendingError] = useState<string | null>(null)
   const lang = i18n.language
+  const publishArticle = usePublishArticle()
+
+  // 409: someone (another staff member, a sync, votes) already decided it.
+  // Not an error: the row leaves and the source reloads to confirm.
+  function alreadyHandled(row: Row) {
+    queue.remove(row.source, row.id)
+    queue.reloadSource(row.source)
+    toast.info(t('manage.review.conflict'))
+  }
 
   // Runs a decision that applies right away: the row leaves the list, a
   // toast says what happened (with Deshacer only where the API can truly
@@ -115,8 +125,7 @@ export default function ManageReviewSection() {
       await work()
     } catch (e) {
       if (isConflict(e)) {
-        toast.error(t('manage.review.conflict'))
-        queue.reloadSource(row.source)
+        alreadyHandled(row)
       } else {
         toast.error(onError(e))
       }
@@ -139,8 +148,7 @@ export default function ManageReviewSection() {
         } catch (e) {
           if (isConflict(e)) {
             setPending(null)
-            toast.error(t('manage.review.conflict'))
-            queue.reloadSource(p.row.source)
+            alreadyHandled(p.row)
           } else {
             setPendingError(p.onError(e))
           }
@@ -160,6 +168,7 @@ export default function ManageReviewSection() {
       const authors = (a.authors ?? []).filter(Boolean).join(', ')
       const row: Row = {
         key: `article-${a.id}`,
+        id: a.id,
         source: 'articles',
         kind: 'articles',
         typeLabel: t('manage.review.types.article'),
@@ -172,18 +181,11 @@ export default function ManageReviewSection() {
         secondary: { label: t('manage.review.open'), to: articleEditPath(a.id, 'admin') },
         primary: { label: t('manage.review.publish'), aria: t('manage.review.publishAria', { title: a.title }) },
       }
-      row.primary.run = () => decide(row, async () => {
-        await updateArticle(a.id, { status: 'published', ...(a.date ? {} : { date: todayISO() }) })
-        queue.remove('articles', a.id)
-        toast.success(t('manage.review.articlePublished', { title: a.title }), {
-          label: t('ui.undo'),
-          onClick: () => {
-            updateArticle(a.id, { status: 'pending_review' })
-              .then(() => queue.reloadSource('articles'))
-              .catch((e) => toast.error(adminErr(e)))
-          },
-        })
-      }, adminErr)
+      row.primary.run = () => decide(row, () => publishArticle(a, {
+        published: t('manage.review.articlePublished', { title: a.title }),
+        undo: t('ui.undo'),
+        undoFailed: adminErr,
+      }), adminErr)
       list.push(row)
     }
 
@@ -191,6 +193,7 @@ export default function ManageReviewSection() {
       const label = `${c.subjectName} · ${t('manage.corrections.commission', { name: c.commissionName })}`
       const row: Row = {
         key: `correction-${c.id}`,
+        id: c.id,
         source: 'corrections',
         kind: 'corrections',
         typeLabel: t('manage.review.types.correction'),
@@ -230,6 +233,7 @@ export default function ManageReviewSection() {
       const owner = s.ownerName || s.ownerEmail || t('manage.review.community')
       const row: Row = {
         key: `source-${s.id}`,
+        id: s.id,
         source: 'sources',
         kind: 'apuntes',
         typeLabel: t('manage.review.types.source'),
@@ -266,6 +270,7 @@ export default function ManageReviewSection() {
       const subject = f.effectiveSubjectName || t('manage.review.noSubject')
       const row: Row = {
         key: `${source}-${f.id}`,
+        id: f.id,
         source,
         kind: 'apuntes',
         typeLabel: t(reported ? 'manage.review.types.fileReported' : 'manage.review.types.fileReview'),
@@ -313,6 +318,7 @@ export default function ManageReviewSection() {
       const when = ms(r.finishedAt ?? r.startedAt)
       list.push({
         key: `wiki-${r.id}`,
+        id: r.id,
         source: 'wiki',
         kind: 'wiki',
         typeLabel: t('manage.review.types.wiki'),

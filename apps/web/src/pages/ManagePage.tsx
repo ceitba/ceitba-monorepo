@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { SkeletonTable } from '../components/ui'
@@ -70,6 +70,11 @@ function LegacyRedirect() {
 function AreaLayout() {
   const { area } = useParams()
   const { t } = useTranslation()
+  const { pathname } = useLocation()
+  const { revalidate } = useQueue()
+  // Safety net for decisions the areas don't report (e.g. made in another
+  // tab): moving around Administración refreshes a queue that's gone stale.
+  useEffect(() => { revalidate() }, [pathname, revalidate])
   if (!isArea(area)) return <Navigate to={areaPath(HOME_AREA)} replace />
   const home = area === HOME_AREA
 

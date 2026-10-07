@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchAllEvents, deleteEvent } from '../../api/events'
-import { isStaff } from '../../store/authStore'
+import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 import CategoryBadge from '../../components/CategoryBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
@@ -28,14 +28,22 @@ export default function MyEventsPage() {
 
   // Every event, all pages: the API caps a page at `limit` (default 50)
   // and the old single request silently dropped everything after it.
+  // Staff manage every organization's events; members only see (and can
+  // only edit) their own organizations' ones.
   function load() {
     setStatus('loading')
+    const mine = new Set(getOrganizations(profile).map((m) => m.slug))
     fetchAllEvents()
-      .then((data) => { setEvents(data); setStatus('success') })
+      .then((data) => {
+        setEvents(staff ? data : data.filter((e) => e.organization != null && mine.has(e.organization)))
+        setStatus('success')
+      })
       .catch((err: unknown) => { console.error('newsletter admin: events', err); setStatus('error') })
   }
 
-  useEffect(load, [])
+  // Re-runs if the session (and so the user's organizations) changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [profile?.id, staff])
 
   async function handleDelete() {
     if (!toDelete) return

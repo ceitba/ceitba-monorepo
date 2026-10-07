@@ -32,9 +32,10 @@ export function areaPath(area: Area, rest = ''): string {
 }
 
 // The old tab strip kept the section in ?tab=; those links still land on
-// the matching area (Staff and Usuarios are now one: Personas).
+// the matching area. ?tab=staff was the yearly team roster editor, which is
+// gone (nothing public shows the roster any more): it lands on the home.
 export const LEGACY_TABS: Record<string, Area> = {
-  staff: 'people',
+  staff: 'review',
   users: 'people',
   benefits: 'benefits',
   organizations: 'organizations',

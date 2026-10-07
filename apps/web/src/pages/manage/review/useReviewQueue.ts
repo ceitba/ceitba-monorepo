@@ -19,6 +19,9 @@ export type QueueKind = 'articles' | 'corrections' | 'apuntes' | 'wiki'
 // How many rows of each paged source the queue shows; the area has the rest.
 export const QUEUE_PAGE = 50
 
+// revalidate() skips the reload when the queue loaded this recently.
+const REVALIDATE_AFTER_MS = 15_000
+
 export interface QueueData {
   articles: Article[]
   corrections: StaffCorrection[]
@@ -70,6 +73,9 @@ export interface ReviewQueue {
   loading: boolean
   reload: () => void
   reloadSource: (id: SourceId) => void
+  // Reloads everything unless it was loaded a moment ago (navigation and
+  // window focus call it as a safety net for changes made elsewhere).
+  revalidate: () => void
   // Drops a row right away after a decision (the next reload confirms it).
   remove: (source: SourceId, id: string) => void
 }
@@ -124,9 +130,24 @@ export function useReviewQueue(): ReviewQueue {
     }
   }, [])
 
-  const reload = useCallback(() => { ALL_SOURCES.forEach(load) }, [load])
+  const loadedAt = useRef(0)
+  const reload = useCallback(() => { loadedAt.current = Date.now(); ALL_SOURCES.forEach(load) }, [load])
+  const revalidate = useCallback(() => {
+    if (Date.now() - loadedAt.current > REVALIDATE_AFTER_MS) reload()
+  }, [reload])
 
   useEffect(() => { reload() }, [reload])
+
+  // Another tab or staff member may have decided meanwhile.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') revalidate() }
+    window.addEventListener('focus', revalidate)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', revalidate)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [revalidate])
 
   const remove = useCallback((source: SourceId, id: string) => {
     setData((d) => {
@@ -154,5 +175,5 @@ export function useReviewQueue(): ReviewQueue {
 
   const loading = ALL_SOURCES.some((s) => status[s] === 'loading')
 
-  return { data, status, counts, loading, reload, reloadSource: load, remove }
+  return { data, status, counts, loading, reload, reloadSource: load, revalidate, remove }
 }

@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import PageFallback from '@/components/PageFallback'
+import { useAuth } from '@/hooks/useAuth'
+import { areaPath } from '@/pages/manage/areas'
 import i18n from './i18nNewsletter'
 import { ADMIN_PATH, MY_ARTICLES_PATH, newsletterPath } from './paths'
 import './newsletter.css'
@@ -49,10 +51,17 @@ function RedirectToMine() {
 
 // The staff admin (review queue, weekly digest, analytics) moved into the
 // site's Administración, at /manage/newsletter. Old links, including the
-// Google mail-consent redirect back to /admin/digests?mail=…, keep working.
+// Google mail-consent redirect back to /admin/digests?mail=…, keep working
+// for staff. Everyone else who followed an old /admin link (a bookmark, or a
+// sign-in started before the move, whose return path was /admin) was a
+// writer: they land on Mis publicaciones, not on a staff-only page.
 function RedirectToManage() {
   const { pathname, search } = useLocation()
+  const { loading, isStaff } = useAuth()
+  if (loading) return <PageFallback />
+  if (!isStaff) return <Navigate to={MY_ARTICLES_PATH} replace />
   const rest = pathname.slice(newsletterPath('/admin').length)
+  if (rest === '/organizations' || rest.startsWith('/organizations/')) return <Navigate to={areaPath('organizations')} replace />
   return <Navigate to={ADMIN_PATH + (rest === '/login' ? '' : rest) + search} replace />
 }
 

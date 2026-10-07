@@ -9,7 +9,8 @@ export interface AdminOutletContext {
   orgs: Organization[]
   // Falls back to the slug only while the list is loading or if it failed.
   orgName: (slug: string | null | undefined) => string
-  // Staff admin only: re-counts the review queue shown on the Revisión tab.
+  // Staff admin only: reloads the articles of the shared review queue (the
+  // Revisión tab and the rail count both read it).
   refreshPending?: () => void
 }
 

@@ -39,6 +39,7 @@ import { PublicationBadge, SourceStatusBadge } from '../../components/apuntes/Ba
 import CommunityBadge from '../../components/apuntes/CommunityBadge'
 import { formatDate, formatDateTime } from '../../utils/apuntes'
 import { apuntesAdminErrorMessage } from './adminErrors'
+import { useQueueOptional } from './review/queueContext'
 
 const PAGE_SIZE = 20
 const SOURCE_STATUSES: (SourceStatus | '')[] = ['PENDING_REVIEW', 'ACTIVE', 'ERROR', 'BLOCKED', 'REVOKED', 'DISCONNECTED', '']
@@ -194,6 +195,7 @@ function isConflict(e: unknown) {
 // ── Sources ─────────────────────────────────────────────────────────────────
 
 function SourcesView() {
+  const queue = useQueueOptional()
   const { t, i18n } = useTranslation()
   const [status, setStatus] = useState<SourceStatus | ''>('PENDING_REVIEW')
   const { data, setData, page, setPage, loading, loadError, reload } =
@@ -211,6 +213,7 @@ function SourcesView() {
     setBusyId(s.id)
     try {
       replaceRow(await approveSource(s.id))
+      queue?.reloadSource('sources')
       toast.success(t('manage.drive.sources.approvedNotice', { name: s.rootName }))
     } catch (e) {
       if (isConflict(e)) { toast.error(t('manage.drive.conflict')); reload() }
@@ -226,6 +229,7 @@ function SourcesView() {
     setBlockError(null); setBusyId(s.id)
     try {
       replaceRow(await blockSource(s.id, comment.trim() || undefined))
+      queue?.reloadSource('sources')
       toast.success(t('manage.drive.sources.blockedNotice', { name: s.rootName }))
       setBlocking(null)
     } catch (e) {
@@ -364,6 +368,7 @@ function SourcesView() {
 type FileAction = 'publish' | 'remove' | 'restore'
 
 function FilesView() {
+  const reviewQueue = useQueueOptional()
   const { t, i18n } = useTranslation()
   const [queue, setQueue] = useState<StaffFileQueue>('NEEDS_REVIEW')
   const { data, setData, page, setPage, loading, loadError, reload } =
@@ -381,6 +386,7 @@ function FilesView() {
     try {
       const fn = action === 'publish' ? publishStaffFile : action === 'remove' ? removeStaffFile : restoreStaffFile
       replaceRow(await fn(f.id))
+      reviewQueue?.reloadSource('needsReview'); reviewQueue?.reloadSource('reported')
       toast.success(t(`manage.drive.files.${action}Notice`, { name: f.name }))
       setRemoving(null)
     } catch (e) {

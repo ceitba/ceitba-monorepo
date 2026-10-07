@@ -294,7 +294,9 @@
       "rowLabel": "{{subject}} · Comisión {{commission}}",
       "slot": "{{day}} {{from}}–{{to}}",
       "prev": "Anterior",
-      "next": "Siguiente"
+      "next": "Siguiente",
+      "pageLoadFailed": "No pudimos cargar la página {{page}}. Seguís viendo la anterior.",
+      "reloadFailed": "No pudimos actualizar la lista: puede estar desactualizada."
     },
     "capabilities": {
       "intro": "Funciones en prueba: activalas para todos, para personas puntuales o para organizaciones. El staff siempre las tiene.",
@@ -445,7 +447,7 @@
       "publish": "Publicar",
       "publishAria": "Publicar «{{title}}»",
       "articlePublished": "Publicaste «{{title}}».",
-      "conflict": "Esto cambió mientras lo mirabas (otra persona del staff o una sincronización). Actualizamos la lista.",
+      "conflict": "Alguien ya se ocupó de esto (otra persona del staff o una sincronización). Lo sacamos de la lista.",
       "emptyTitle": "Todo al día",
       "emptyBody": "No queda nada esperando al staff. Lo nuevo (artículos enviados, correcciones, carpetas y denuncias) aparece acá apenas llega.",
       "truncated": {

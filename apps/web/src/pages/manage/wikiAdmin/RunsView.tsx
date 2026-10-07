@@ -17,6 +17,7 @@ import { statusLabel } from './status'
 import { duration, tokens, usd } from './format'
 import { TD, TH } from './styles'
 import { useLoad } from './useLoad'
+import { useQueueOptional } from '../review/queueContext'
 
 const PIPELINE: string[] = ['DETECT', 'DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK', 'VALIDATE', 'PUBLISH']
 
@@ -24,6 +25,7 @@ const PIPELINE: string[] = ['DETECT', 'DIGEST', 'PLAN', 'WRITE', 'RETRY', 'LINK'
 // approve cost for BLOCKED_BY_COST_LIMIT runs. A real run spends money, so
 // it asks first; a simulation costs nothing and starts right away.
 export default function RunsView({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
+  const queue = useQueueOptional()
   const { t, i18n } = useTranslation()
   const runs = useLoad(() => fetchRuns(30))
   // Keep RUNNING rows moving: refresh the list every 10 s while any run is
@@ -48,6 +50,7 @@ export default function RunsView({ openId, onOpen }: { openId: string | null; on
     setError(null); setBusy(dry ? 'dry' : 'start')
     try {
       const run = await startRun(dry)
+      queue?.reloadSource('wiki')
       toast.success(dry ? t('manage.wikiAi.runs.dryStarted') : t('manage.wikiAi.runs.started'))
       setConfirmRun(false)
       runs.reload()
@@ -200,6 +203,7 @@ function asList(v: unknown): { slug?: string; errors?: string[]; title?: string 
 }
 
 function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const queue = useQueueOptional()
   const { t, i18n } = useTranslation()
   const run = useLoad(() => fetchRun(id), [id])
   const live = useLiveProgress({ active: isActiveStatus(run.data?.status ?? ''), fetchProgress: () => fetchRunProgress(id), refreshDetail: run.reload })
@@ -213,6 +217,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
     setError(null); setBusy(kind)
     try {
       const r = kind === 'cancel' ? await cancelRun(id) : await approveRunCost(id)
+      queue?.reloadSource('wiki')
       if (r?.id) run.setData(() => r)
       else run.reload()
       setConfirmCancel(false)

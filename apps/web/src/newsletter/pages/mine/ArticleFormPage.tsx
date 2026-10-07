@@ -27,6 +27,7 @@ import {
 } from '@/components/ui'
 import type { UserProfile } from '@/store/authStore'
 import type { ArticleInput, ArticleStatus } from '../../types'
+import { useQueueOptional } from '@/pages/manage/review/queueContext'
 
 const COLOR_SCHEMES = [
   { value: 'blue',   bg: 'bg-primary-500' },
@@ -121,6 +122,7 @@ function formatTime(date: Date, lang: string) {
 // (/manage/newsletter/review/:id).
 // "Volver" leads back to wherever it was opened from.
 export default function ArticleFormPage() {
+  const reviewQueue = useQueueOptional()
   const { id: routeId } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -304,6 +306,8 @@ export default function ArticleFormPage() {
 
       // Non-null: isEdit means articleId is set.
       const saved = isEdit ? await updateArticle(articleId!, payload) : await createArticle(payload)
+      // Inside Administración: publishing or re-filing changes the review queue.
+      reviewQueue?.reloadSource('articles')
       setSavedStatus(saved?.status ?? status)
       if (editVersionRef.current === versionAtSave) setDirty(false)
       setAttempted(null)

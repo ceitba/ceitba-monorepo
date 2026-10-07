@@ -294,7 +294,9 @@
       "rowLabel": "{{subject}} · Commission {{commission}}",
       "slot": "{{day}} {{from}}–{{to}}",
       "prev": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "pageLoadFailed": "We couldn't load page {{page}}. You're still seeing the previous one.",
+      "reloadFailed": "We couldn't refresh the list: it may be out of date."
     },
     "capabilities": {
       "intro": "Features in testing: turn them on for everyone, for specific people or for organizations. Staff always have them.",
@@ -445,7 +447,7 @@
       "publish": "Publish",
       "publishAria": "Publish “{{title}}”",
       "articlePublished": "You published “{{title}}”.",
-      "conflict": "This changed while you were looking (another staff member or a sync). We refreshed the list.",
+      "conflict": "Someone already took care of this (another staff member or a sync). We removed it from the list.",
       "emptyTitle": "All caught up",
       "emptyBody": "Nothing is waiting on staff. New items (submitted articles, corrections, folders and reports) show up here as soon as they arrive.",
       "truncated": {

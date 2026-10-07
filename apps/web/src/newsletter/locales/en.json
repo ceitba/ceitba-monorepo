@@ -653,7 +653,7 @@
       "noAccessTitle": "No access",
       "noAccess": "Only the organization's members and CEITBA staff can edit its profile.",
       "backToPanel": "Back to articles",
-      "backToManage": "← Manage",
+      "backToManage": "← Organizations",
       "errors": {
         "save": "Couldn't save the profile. Please try again.",
         "forbidden": "You don't have permission to edit this organization."
@@ -689,7 +689,10 @@
       "publishAria": "Publish “{{title}}”",
       "publishing": "Publishing…",
       "published": "You published “{{title}}”.",
-      "publishError": "Couldn't publish “{{title}}”. Try again."
+      "publishError": "Couldn't publish “{{title}}”. Try again.",
+      "undo": "Undo",
+      "undoError": "Couldn't undo publishing «{{title}}». Try again from the editor.",
+      "alreadyHandled": "Another staff member had already handled «{{title}}». We removed it from the list."
     }
   },
   "mine": {

@@ -23,6 +23,7 @@ import {
   type BadgeTone,
 } from '../../components/ui'
 import { adminErrorMessage } from './adminErrors'
+import { useQueueOptional } from './review/queueContext'
 
 const PAGE_SIZE = 20
 const STATUS_TONE: Record<CorrectionStatus, BadgeTone> = {
@@ -49,6 +50,7 @@ type StatusFilter = CorrectionStatus
 
 export default function ManageCorrectionsSection() {
   const { t, i18n } = useTranslation()
+  const queue = useQueueOptional()
   const [page, setPage]       = useState<StaffCorrectionsPage | null>(null)
   // Kept apart: a successful list fetch clears loadError but must not wipe
   // the message of the action that triggered it (e.g. the 409 reload).
@@ -62,6 +64,9 @@ export default function ManageCorrectionsSection() {
 
   const [status, setStatus]   = useState<StatusFilter>('PENDING')
   const [pageNum, setPageNum] = useState(1)
+  // The page whose rows are on screen. A failed page change leaves them (and
+  // the pager) where they were, with an error above them.
+  const [shownPage, setShownPage] = useState(1)
 
   // Out-of-order guard: only the latest request may write state.
   const reqIdRef = useRef(0)
@@ -75,6 +80,7 @@ export default function ManageCorrectionsSection() {
         if (reqIdRef.current !== id) return
         setPage(res)
         setLoadFailed(false)
+        setShownPage(pageNum)
         const lastPage = Math.max(1, Math.ceil(res.meta.total / PAGE_SIZE))
         if (pageNum > lastPage) setPageNum(lastPage)
       })
@@ -117,6 +123,7 @@ export default function ManageCorrectionsSection() {
     try {
       const updated = await applyCorrection(c.id)
       replaceRow(updated)
+      queue?.reloadSource('corrections')
       setNotice(t('manage.corrections.appliedNotice', { subject: c.subjectName, commission: c.commissionName }))
     } catch (e) {
       handleActionError(e)
@@ -134,6 +141,7 @@ export default function ManageCorrectionsSection() {
       const updated = await rejectCorrection(c.id)
       setRejecting(null)
       replaceRow(updated)
+      queue?.reloadSource('corrections')
       setNotice(t(wasApplied ? 'manage.corrections.revertedNotice' : 'manage.corrections.rejectedNotice',
         { subject: c.subjectName, commission: c.commissionName }))
     } catch (e) {
@@ -199,6 +207,14 @@ export default function ManageCorrectionsSection() {
           </select>
         )}
       </Field>
+
+      {loadFailed && rows.length > 0 && (
+        <Alert tone="error" action={<Button size="sm" variant="outline" onClick={reload}>{t('errors.retry')}</Button>}>
+          {pageNum !== shownPage
+            ? t('manage.corrections.pageLoadFailed', { page: pageNum })
+            : t('manage.corrections.reloadFailed')}
+        </Alert>
+      )}
 
       {loadFailed && rows.length === 0 ? (
         <ErrorState message={t('manage.corrections.loadFailed')} onRetry={reload} />
@@ -303,22 +319,22 @@ export default function ManageCorrectionsSection() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 font-body text-body-sm">
         <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-          {t('manage.corrections.pageStatus', { page: pageNum, pages: totalPages, total })}
+          {t('manage.corrections.pageStatus', { page: shownPage, pages: totalPages, total })}
         </span>
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
-            disabled={pageNum <= 1 || loading}
-            onClick={() => setPageNum((n) => Math.max(1, n - 1))}
+            disabled={shownPage <= 1 || loading}
+            onClick={() => setPageNum(Math.max(1, shownPage - 1))}
           >
             {t('manage.corrections.prev')}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            disabled={pageNum >= totalPages || loading}
-            onClick={() => setPageNum((n) => Math.min(totalPages, n + 1))}
+            disabled={shownPage >= totalPages || loading}
+            onClick={() => setPageNum(Math.min(totalPages, shownPage + 1))}
           >
             {t('manage.corrections.next')}
           </Button>

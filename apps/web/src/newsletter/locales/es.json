@@ -653,7 +653,7 @@
       "noAccessTitle": "Sin acceso",
       "noAccess": "Solo los miembros de la organización y el staff del CEITBA pueden editar su perfil.",
       "backToPanel": "Volver a artículos",
-      "backToManage": "← Gestión",
+      "backToManage": "← Organizaciones",
       "errors": {
         "save": "No pudimos guardar el perfil. Probá de nuevo.",
         "forbidden": "No tenés permiso para editar esta organización."
@@ -689,7 +689,10 @@
       "publishAria": "Publicar «{{title}}»",
       "publishing": "Publicando…",
       "published": "Publicaste «{{title}}».",
-      "publishError": "No se pudo publicar «{{title}}». Intentá de nuevo."
+      "publishError": "No se pudo publicar «{{title}}». Intentá de nuevo.",
+      "undo": "Deshacer",
+      "undoError": "No se pudo deshacer la publicación de «{{title}}». Volvé a intentarlo desde el editor.",
+      "alreadyHandled": "«{{title}}» ya lo había resuelto otra persona del staff. Lo sacamos de la lista."
     }
   },
   "mine": {
