@@ -11,8 +11,7 @@
     "sectionsAria": "Sections",
     "scheduler": "Schedules",
     "newsletter": "Newsletter",
-    "benefits": "Benefits",
-    "about": "About us"
+    "benefits": "Benefits"
   },
   "manage": {
     "title": "Manage",
@@ -403,13 +402,6 @@
     "description": "We work to improve the university experience for every ITBA student, representing their interests, organizing activities, and building tools that make academic life easier."
   },
   "home": {
-    "departments": {
-      "eyebrow": "Who powers CEITBA",
-      "title": "The teams behind every initiative",
-      "subtitle": "Six departments coordinate everything CEITBA does for the ITBA community: from technology and communications to sports and student representation.",
-      "seeAll": "Meet every department",
-      "tileAria": "View the {{name}} department"
-    },
     "benefits": {
       "eyebrow": "What we offer members",
       "title": "Benefits designed for your time at ITBA",
@@ -502,14 +494,6 @@
     "emptyFilteredTitle": "No benefits in this category",
     "emptyFiltered": "Try another category or see all benefits.",
     "showAll": "See all benefits"
-  },
-  "staff": {
-    "sectionTitle": "Our team",
-    "sectionSubtitle": "The people behind CEITBA.",
-    "comingSoon": "Coming soon",
-    "comingSoonMessage": "We're working on introducing you to the full team. Check back soon!",
-    "yearLabel": "Filter by year",
-    "linkedinAria": "{{name}} on LinkedIn"
   },
   "footer": {
     "itTeam": "CEITBA IT Team",

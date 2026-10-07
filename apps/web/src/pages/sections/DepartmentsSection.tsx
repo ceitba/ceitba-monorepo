@@ -53,9 +53,9 @@ export default function DepartmentsSection() {
     <section className="py-section-mobile lg:py-section" aria-labelledby="departments-heading">
       <div className="container-content">
         <div className="mb-8">
-          <h1 id="departments-heading" className="font-display font-bold text-h2 text-ink-primary dark:text-night-text mb-2">
+          <h2 id="departments-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mb-2">
             {t('departments.sectionTitle')}
-          </h1>
+          </h2>
           <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('departments.sectionSubtitle')}
           </p>

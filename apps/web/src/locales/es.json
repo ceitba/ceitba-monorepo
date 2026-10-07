@@ -11,8 +11,7 @@
     "sectionsAria": "Secciones",
     "scheduler": "Horarios",
     "newsletter": "Newsletter",
-    "benefits": "Beneficios",
-    "about": "Nosotros"
+    "benefits": "Beneficios"
   },
   "manage": {
     "title": "Administrar",
@@ -403,13 +402,6 @@
     "description": "Trabajamos para mejorar la experiencia universitaria de cada estudiante ITBA, representando sus intereses, organizando actividades y gestionando herramientas que hacen la vida académica más fácil."
   },
   "home": {
-    "departments": {
-      "eyebrow": "Quiénes hacemos al CEITBA",
-      "title": "Equipos detrás de cada iniciativa",
-      "subtitle": "Seis departamentos coordinan todo lo que el CEITBA hace por la comunidad ITBA: desde tecnología y comunicación hasta deportes y representación estudiantil.",
-      "seeAll": "Conocer todos los departamentos",
-      "tileAria": "Ver el departamento {{name}}"
-    },
     "benefits": {
       "eyebrow": "Lo que ofrecemos a los socios",
       "title": "Beneficios pensados para tu paso por el ITBA",
@@ -502,14 +494,6 @@
     "emptyFilteredTitle": "No hay beneficios en esta categoría",
     "emptyFiltered": "Probá con otra categoría o mirá todos los beneficios.",
     "showAll": "Ver todos los beneficios"
-  },
-  "staff": {
-    "sectionTitle": "Nuestro equipo",
-    "sectionSubtitle": "Las personas detrás del CEITBA.",
-    "comingSoon": "Próximamente",
-    "comingSoonMessage": "Estamos trabajando para presentarte al equipo completo. ¡Volvé pronto!",
-    "yearLabel": "Filtrar por año",
-    "linkedinAria": "LinkedIn de {{name}}"
   },
   "footer": {
     "itTeam": "IT Team CEITBA",

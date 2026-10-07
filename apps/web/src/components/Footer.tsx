@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 const SOCIALS = [
@@ -71,12 +70,6 @@ export default function Footer() {
 
           {/* Text links */}
           <nav className="flex flex-wrap items-center justify-center gap-x-6" aria-label={t('footer.navAria')}>
-            <Link
-              to="/about"
-              className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
-            >
-              {t('nav.about')}
-            </Link>
             <a
               href="https://github.com/ceitba"
               target="_blank"
