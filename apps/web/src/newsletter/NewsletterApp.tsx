@@ -45,9 +45,7 @@ const ContributorReviewChangesPage  = lazy(() => import('./pages/contributor/Con
 
 // The student newsletter, mounted at /newsletter/* by App.tsx and loaded on
 // demand. Route paths here are relative to /newsletter; its strings live in
-// the "newsletter" i18n namespace. The .newsletter-scope wrapper (and its
-// dark-mode overrides in newsletter.css) only wraps the public and
-// contributor pages: the admin uses the site's kit and its own dark: classes.
+// the "newsletter" i18n namespace.
 export default function NewsletterApp() {
   useDocumentTitle('ITBA News | CEITBA')
   return (
@@ -89,7 +87,7 @@ export default function NewsletterApp() {
           <Route path="organizations"                  element={<Navigate to="/manage" replace />} />
         </Route>
 
-        <Route element={<div className="newsletter-scope"><Outlet /></div>}>
+        <Route element={<Outlet />}>
           {/* ── Contributor portal ────────────────────────── */}
           {CONTRIBUTIONS_ENABLED ? (
             <Route

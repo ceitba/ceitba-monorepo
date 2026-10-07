@@ -1,32 +1,6 @@
-/* Newsletter section styles, loaded with its lazy chunk. The shared base,
-   component and dark-mode remaps live in src/index.css. */
-
-/* === Legacy dark-mode remaps ===
-   Legacy dark-mode remaps kept only for the admin area until it's migrated;
-   delete when no file depends on them. Every other newsletter file uses
-   dark: classes with the night-* tokens instead. Each rule is scoped to
-   .newsletter-scope (NewsletterApp) so nothing leaks into the rest of the
-   app; only classes the admin files still use are listed. */
-
-.dark .newsletter-scope .bg-white { background-color: #27272a; }
-.dark .newsletter-scope .bg-surface { background-color: #18181b; }
-.dark .newsletter-scope .hover\:bg-surface:hover { background-color: #18181b; }
-.dark .newsletter-scope .border-border { border-color: #3f3f46; }
-.dark .newsletter-scope .divide-border > :not([hidden]) ~ :not([hidden]) { border-color: #3f3f46; }
-.dark .newsletter-scope .bg-border { background-color: #3f3f46; }
-.dark .newsletter-scope .text-border { color: #71717a; }
-.dark .newsletter-scope .bg-primary-50 { background-color: #0e2243; }
-.dark .newsletter-scope .hover\:bg-primary-50:hover { background-color: #0e2243; }
-html.dark .newsletter-scope .text-primary-500 { color: #7FA1D4; }
-.dark .newsletter-scope .bg-primary-100 { background-color: #122b52; }
-html.dark .newsletter-scope .focus\:ring-primary\/30:focus { --tw-ring-color: rgba(127, 161, 212, 0.3); }
-.dark .newsletter-scope .bg-accent-50,
-.dark .newsletter-scope .bg-accent-100 { background-color: #341f01; }
-.dark .newsletter-scope .bg-emerald-50 { background-color: #064e3b; }
-.dark .newsletter-scope .text-emerald-700 { color: #34d399; }
-.dark .newsletter-scope .bg-red-50 { background-color: #450a0a; }
-.dark .newsletter-scope .hover\:bg-red-50:hover { background-color: #450a0a; }
-.dark .newsletter-scope .bg-amber-50 { background-color: #451a03; }
+/* Newsletter section styles, loaded with its lazy chunk: the article body
+   shared by the reader, the editor preview and the editor. Dark mode is
+   dark: classes in the components, like the rest of the app. */
 
 /* === Article body ===
    One stylesheet for the published article (ArticleBody), the editor
