@@ -663,8 +663,9 @@ The admin is a different context but stays in the same brand family.
 
 ### Layout
 
-One admin language for `/manage` (STAFF) and the newsletter admin
-(`/newsletter/admin`, STAFF and organization members): both render inside the
+One admin language for `/manage` (STAFF), the newsletter admin
+(`/newsletter/admin`, STAFF: review queue, weekly digest, stats) and the
+writers' area (`/newsletter/mine`, "Mis publicaciones", anyone signed in): both render inside the
 site's Navbar and Footer, with a Fraunces page title and a `Tabs` strip of
 sections whose URL is the source of truth (reload and deep links keep the
 tab). No separate sidebar, breadcrumb bar, sign-in page or sign-out: the site

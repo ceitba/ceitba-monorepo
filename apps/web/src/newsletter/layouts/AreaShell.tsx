@@ -33,6 +33,8 @@ export default function AreaShell({
         <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">{subtitle}</p>
       </header>
 
+      {/* A single tab is not navigation: hide the strip until there's a choice. */}
+      {tabs.length > 1 && (
       <nav
         aria-label={tabsLabel}
         className="flex overflow-x-auto scrollbar-none border-b border-border dark:border-night-border mb-8"
@@ -64,6 +66,7 @@ export default function AreaShell({
           </NavLink>
         ))}
       </nav>
+      )}
 
       <Outlet context={context} />
     </main>

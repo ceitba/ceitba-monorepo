@@ -158,7 +158,7 @@ export default function ManageOrganizationsSection({ onAddMembers }: { onAddMemb
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap justify-end gap-2">
                           <Link
-                            to={newsletterPath(`/admin/org/${encodeURIComponent(o.slug)}`)}
+                            to={newsletterPath(`/mine/org/${encodeURIComponent(o.slug)}`)}
                             aria-label={t('manage.organizations.editProfileAria', { name: o.name })}
                             className={buttonClass({ variant: 'ghost', size: 'sm' })}
                           >
