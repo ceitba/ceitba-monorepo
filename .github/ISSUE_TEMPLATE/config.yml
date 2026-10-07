@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Mobile app issues
+    url: https://github.com/ceitba/CEITBApp/issues
+    about: Bugs and requests for the CEITBA mobile app go to its own repo.

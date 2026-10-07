@@ -1,0 +1,31 @@
+name: Feature request
+description: A new capability or a change in behaviour. It gets grilled into a spec before anyone builds it.
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem, not the solution. Maintainers turn accepted requests into a spec issue
+        (`/grill-with-docs` → `/to-spec`, see `docs/agents/workflow.md`).
+  - type: dropdown
+    id: apps
+    attributes:
+      label: Apps involved
+      multiple: true
+      options: [API, Web, Scheduler, Newsletter, Mobile app (CEITBApp), Not sure]
+    validations: { required: true }
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who has it (students, staff, an organization) and what they cannot do today.
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea (optional)
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope (optional)
+      description: Anything this should explicitly not do.

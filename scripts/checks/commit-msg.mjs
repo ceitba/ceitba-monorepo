@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 
 export const TYPES = ['feat', 'fix', 'perf', 'refactor', 'docs', 'test', 'build', 'ci', 'chore', 'revert', 'style'];
 const PATTERN = new RegExp(`^(${TYPES.join('|')})(\\([a-z0-9][a-z0-9./-]*\\))?(!)?: (\\S.*)$`);
-const MAX = 100;
+const MAX = 120;
 
 // Subjects git or GitHub write themselves; never rejected.
 const EXEMPT = [/^Merge (branch|pull request|remote-tracking branch|tag) /, /^Revert ".*"$/, /^(fixup|squash|amend)! /];

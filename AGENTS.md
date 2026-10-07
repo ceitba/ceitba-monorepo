@@ -50,7 +50,9 @@ included) updates the mapped doc in the same PR, or the PR states "No spec impac
 `.github/workflows/ci.yml` runs on PRs and `dev` pushes; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
 to run only the apps a change touches (`packages/**`, the root `package.json`/`bun.lock` and
 `.github/spa-apps.json` count for every web app). The API deploys before the web apps in the same push. Keep
-actions pinned to full commit SHAs with a `# vX.Y.Z` comment.
+actions pinned to full commit SHAs with a `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks,
+the Conventional Commits PR title, the living-docs check against the PR body and a gitleaks scan.
+Dependabot (`.github/dependabot.yml`) opens weekly version updates against `dev`.
 
 ## Cross-app rules
 

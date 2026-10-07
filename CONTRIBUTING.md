@@ -25,6 +25,13 @@
 CI runs the same scripts, so skipping a hook only moves the failure to the PR. The API tests are not in a hook
 (they need Docker and take minutes): run `./mvnw -B -ntp verify` in `apps/api` before pushing API changes.
 
+## PR checks
+
+`.github/workflows/pr-checks.yml` runs on every PR (and when its title or body is edited): the repo checks above,
+the PR title as a Conventional Commit, the living-docs check (into `dev` only; tick "No spec impact" with a reason
+in the template to opt out) and a gitleaks scan of the PR's commits. `ci.yml` still runs lint + build for touched
+web apps and the API tests. Dependabot opens grouped weekly updates against `dev`; security updates go to `main`.
+
 ## Coding standards
 
 These are the standards sources reviews (human and `/code-review`) check against:
