@@ -377,7 +377,7 @@
   },
   "manage": {
     "drive": {
-      "intro": "Moderate the notes students share from Google Drive: approve new folders, review files that need a decision and see what was shared with the CEITBA account without being connected.",
+      "intro": "Approve new folders, decide on reported or pending files, and see what was shared with CEITBA without being connected.",
       "viewsAria": "Notes moderation views",
       "views": {
         "sources": "Folders",

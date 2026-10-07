@@ -86,7 +86,6 @@ export default function AdminAnalyticsPage() {
 
   const header = (
     <AdminSectionHeader
-      title={t('admin.analytics.title')}
       subtitle={t('admin.analytics.subtitle')}
       action={<RangePicker active={days} onChange={setDays} />}
     />

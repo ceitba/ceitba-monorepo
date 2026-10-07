@@ -112,7 +112,6 @@ export default function MyEventsPage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminSectionHeader
-        title={t('admin.events.title')}
         subtitle={status === 'success' ? t('admin.events.count', { count: events.length }) : undefined}
         action={
           <Link to={newsletterPath('/mine/events/new')} className={buttonClass()}>

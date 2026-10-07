@@ -25,7 +25,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
   const { title, date, time, endTime, location, category, description } = event
   const day = parseLocalDate(date)
   const monthShort = formatDate(date, i18n.language, { month: 'short' })
-  const timeRange = t('events.timeRange', { start: time, end: endTime })
+  const timeRange = t('events.timeRange', { start: (time ?? '').slice(0, 5), end: (endTime ?? '').slice(0, 5) })
 
   if (compact) {
     return (

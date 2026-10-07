@@ -386,7 +386,7 @@
     },
     "digests": {
       "title": "La semana en ITBA",
-      "subtitle": "CEITBA's weekly email digest: last week's articles and next week's events from every organization. Everyone gets the same email; it goes to people who follow CEITBA with the email turned on. Every Monday at 00:05 a draft for the previous week is created, and it goes out automatically at 12:00 (Argentina time) unless you cancel it or turn auto-send off.",
+      "subtitle": "The Monday email with last week's articles and next week's events. The draft builds itself on Monday at 00:05 and goes out at 12:00 unless you cancel it.",
       "loadError": "We couldn't load the digests.",
       "back": "← Digests",
       "noSubject": "No subject",

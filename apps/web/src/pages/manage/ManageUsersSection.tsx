@@ -18,7 +18,7 @@ import {
 import { getCachedSession, getSession } from '../../store/authStore'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import {
-  Alert, Badge, Button, CloseIcon, EmptyState, ErrorState, IconButton, SkeletonRows, ToggleGroup,
+  Alert, Badge, Button, CloseIcon, EmptyState, ErrorState, Field, IconButton, Modal, SkeletonRows, ToggleGroup,
   inputClass, selectClass, toast,
 } from '../../components/ui'
 import { adminErrorMessage } from './adminErrors'
@@ -76,6 +76,9 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   // Granting and revoking STAFF change who can use this panel: both confirm.
   const [staffChange, setStaffChange] = useState<{ user: AdminUser; grant: boolean } | null>(null)
   const [staffError, setStaffError]   = useState<string | null>(null)
+  // "+ Organización" opens one small dialog instead of a dropdown on every row.
+  const [orgPicker, setOrgPicker] = useState<{ user: AdminUser; options: OrganizationSummary[] } | null>(null)
+  const [pickedOrg, setPickedOrg] = useState('')
 
   // Filters / paging state. `query` is the input value; `q` is the debounced
   // value that actually drives requests, so we don't fire one fetch per keystroke.
@@ -186,8 +189,9 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
     }
   }
 
-  async function addOrg(u: AdminUser, slug: string) {
-    if (!slug) return
+  // Resolves true when the membership was added (the picker closes only then).
+  async function addOrg(u: AdminUser, slug: string): Promise<boolean> {
+    if (!slug) return false
     setBusyId(u.id)
     try {
       const m = await addUserOrganization(u.id, slug, 'member')
@@ -201,8 +205,10 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           : x)),
       })
       reload()
+      return true
     } catch (e) {
       toast.error(adminErrorMessage(e, t))
+      return false
     } finally {
       setBusyId(null)
     }
@@ -411,16 +417,15 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
                           <p className="mb-2 text-ink-secondary dark:text-night-muted">{t('manage.users.noOrgs')}</p>
                         )}
                         {orgOptions.length > 0 && (
-                          <select
-                            value=""
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             disabled={busy}
-                            onChange={(e) => addOrg(u, e.target.value)}
+                            onClick={() => { setPickedOrg(orgOptions[0]?.slug ?? ''); setOrgPicker({ user: u, options: orgOptions }) }}
                             aria-label={t('manage.users.addOrgAria', { name: userName(u) })}
-                            className={selectClass({ className: '!w-auto max-w-full' })}
                           >
-                            <option value="">{t('manage.users.addOrg')}</option>
-                            {orgOptions.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-                          </select>
+                            {t('manage.users.addOrgButton')}
+                          </Button>
                         )}
                       </td>
                     </tr>
@@ -479,6 +484,34 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           </div>
           )}
         </>
+      )}
+
+      {orgPicker && (
+        <Modal
+          title={t('manage.users.addOrgTitle', { name: userName(orgPicker.user) })}
+          onClose={() => setOrgPicker(null)}
+          busy={busyId === orgPicker.user.id}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setOrgPicker(null)} disabled={busyId === orgPicker.user.id}>{t('ui.cancel')}</Button>
+              <Button
+                loading={busyId === orgPicker.user.id}
+                disabled={!pickedOrg}
+                onClick={async () => { if (await addOrg(orgPicker.user, pickedOrg)) setOrgPicker(null) }}
+              >
+                {t('manage.users.addOrgConfirm')}
+              </Button>
+            </>
+          }
+        >
+          <Field label={t('manage.users.addOrgField')} hint={t('manage.users.addOrgHint')}>
+            {(p) => (
+              <select {...p} value={pickedOrg} onChange={(e) => setPickedOrg(e.target.value)} className={selectClass()}>
+                {orgPicker.options.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+              </select>
+            )}
+          </Field>
+        </Modal>
       )}
 
       {staffChange && (

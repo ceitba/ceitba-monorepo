@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CAREERS, CAREER_METADATA, EXCHANGE_CAREER, getLatestPlan } from '../types/careers'
+import { CAREERS, EXCHANGE_CAREER, getLatestPlan } from '../types/careers'
 import { normalizePlanId } from '../utils/planUtils'
 import { schedulerPath } from '../paths'
 import { Alert } from '@/components/ui'
@@ -14,7 +14,6 @@ const AUTH_ERROR_CODES = ['unauthorized', 'unauthorized_workspace', 'unverified_
 function CareerCard({ id, name }: { id: string; name: string }) {
   const { t } = useTranslation()
   const planParam = normalizePlanId(getLatestPlan(id))
-  const icon = CAREER_METADATA[id]?.icon
 
   return (
     <Link
@@ -22,10 +21,7 @@ function CareerCard({ id, name }: { id: string; name: string }) {
       className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col p-5 group"
       aria-label={`${t('home.viewSchedules')} ${name}`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{id}</span>
-        {icon && <span className="text-lg leading-none" aria-hidden="true">{icon}</span>}
-      </div>
+      <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mb-2">{id}</span>
       <h2 className="font-display text-h5 font-bold text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 leading-snug flex-1">
         {name}
       </h2>
@@ -68,7 +64,7 @@ export default function HomePage() {
             </Alert>
           )}
           <div className="mb-10">
-            <h1 className="font-display text-h1 lg:text-display font-bold text-ink-primary dark:text-night-text leading-tight mb-3">
+            <h1 className="font-display text-h2 sm:text-h1 lg:text-display font-bold text-ink-primary dark:text-night-text [overflow-wrap:anywhere] hyphens-auto leading-tight mb-3">
               {t('home.title')}
             </h1>
             <p className="font-body text-body-lg text-ink-secondary dark:text-night-muted max-w-xl">
@@ -88,7 +84,6 @@ export default function HomePage() {
               className="inline-flex items-center gap-4 rounded-card border border-dashed border-primary/40 hover:border-primary bg-white dark:bg-night-surface px-6 py-4 transition-colors duration-150 group"
               aria-label={t('home.viewSchedules')}
             >
-              {EXCHANGE_CAREER.icon && <span className="text-2xl leading-none flex-shrink-0" aria-hidden="true">{EXCHANGE_CAREER.icon}</span>}
               <div>
                 <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted block mb-0.5">{EXCHANGE_CAREER.id}</span>
                 <p className="font-display text-h5 font-bold text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150">

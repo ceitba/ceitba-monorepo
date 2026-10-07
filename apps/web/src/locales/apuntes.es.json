@@ -377,7 +377,7 @@
   },
   "manage": {
     "drive": {
-      "intro": "Moderá los apuntes que los estudiantes comparten desde Google Drive: aprobá carpetas nuevas, revisá archivos que necesitan una decisión y mirá qué se compartió con la cuenta de CEITBA sin conectar.",
+      "intro": "Aprobá carpetas nuevas, decidí sobre archivos reportados o en revisión y mirá qué se compartió con CEITBA sin conectar.",
       "viewsAria": "Vistas de moderación de apuntes",
       "views": {
         "sources": "Carpetas",

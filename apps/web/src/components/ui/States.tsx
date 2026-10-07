@@ -4,6 +4,13 @@ import { Link } from 'react-router-dom'
 import Button from './Button'
 import { buttonClass } from './buttonClass'
 
+// State titles are headings, and headings don't end with a period (many
+// locale strings double as body copy and carry one): drop a single trailing
+// "." but keep an ellipsis.
+function headingText(title: ReactNode): ReactNode {
+  return typeof title === 'string' ? title.replace(/([^.])\.$/, '$1') : title
+}
+
 // Geometric empty state from the editorial system (no stock illustration).
 // Always say what will appear here and, when there is one, offer the first
 // step as `action`.
@@ -33,7 +40,7 @@ export function EmptyState({
           ? 'font-body text-body-sm font-semibold text-ink-secondary dark:text-night-muted'
           : 'font-display font-bold text-h4 text-ink-primary dark:text-night-text'}
         >
-          {title}
+          {headingText(title)}
         </p>
         {body && <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{body}</div>}
       </div>
@@ -74,7 +81,7 @@ export function ErrorState({
         </svg>
       </div>
       <div className="max-w-md">
-        <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{title ?? t('errors.somethingWrong')}</p>
+        <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{headingText(title ?? t('errors.somethingWrong'))}</p>
         {message && <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{message}</p>}
       </div>
       {(onRetry || backTo) && (

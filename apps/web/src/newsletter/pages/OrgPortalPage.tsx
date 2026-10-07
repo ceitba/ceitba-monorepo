@@ -139,7 +139,7 @@ export default function OrgPortalPage() {
           <p className="font-mono text-label text-white/70 uppercase tracking-widest mb-1">
             {t('nav.organizations')}
           </p>
-          <h1 className="font-display text-h1 lg:text-display font-bold text-white leading-tight">
+          <h1 className="font-display text-h2 sm:text-h1 lg:text-display font-bold text-white leading-tight [overflow-wrap:anywhere] hyphens-auto">
             {org.name}
           </h1>
           <p className="font-body text-body text-white/80 mt-1 max-w-xl">

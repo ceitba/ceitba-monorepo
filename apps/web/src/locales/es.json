@@ -165,7 +165,12 @@
       "scope": {
         "all": "Todas",
         "staff": "Staff"
-      }
+      },
+      "addOrgButton": "+ Organización",
+      "addOrgTitle": "Sumar a {{name}} a una organización",
+      "addOrgField": "Organización",
+      "addOrgHint": "Entra como miembro. Después podés hacerlo admin desde su fila.",
+      "addOrgConfirm": "Sumar"
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
@@ -219,7 +224,7 @@
       "editProfileAria": "Editar el perfil de {{name}} en ITBA News"
     },
     "corrections": {
-      "intro": "Las correcciones de horario las sugieren los estudiantes y se aplican solas cuando suman 3 confirmaciones y más confirmaciones que rechazos. Este panel es una red de seguridad: podés aplicar una pendiente ya mismo o rechazar una (si estaba aplicada, se revierte al horario del SGA). Las correcciones son anónimas.",
+      "intro": "Se aplican solas con 3 confirmaciones y más confirmaciones que rechazos. Acá podés aplicarlas antes o rechazarlas (si ya estaba aplicada, vuelve al horario del SGA).",
       "filterLabel": "Estado",
       "filter": {
         "PENDING": "Pendientes",
@@ -292,7 +297,7 @@
       "next": "Siguiente"
     },
     "capabilities": {
-      "intro": "Habilitá funciones en prueba para todos, para personas puntuales (por email, aunque nunca hayan entrado) o para organizaciones enteras. El staff siempre tiene todas.",
+      "intro": "Funciones en prueba: activalas para todos, para personas puntuales o para organizaciones. El staff siempre las tiene.",
       "empty": "No hay capacidades definidas.",
       "enabledForAll": "Habilitado para todos",
       "everyone": "Habilitado para todos",
@@ -651,5 +656,10 @@
     "loading": "Cargando",
     "cancel": "Cancelar",
     "undo": "Deshacer"
+  },
+  "staffGuard": {
+    "title": "Esta página es del staff del CEITBA",
+    "body": "La administración la usa el equipo del CEITBA. Si sos parte del staff y no la ves, pedile a alguien del equipo que te dé acceso.",
+    "home": "Ir al inicio"
   }
 }

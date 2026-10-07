@@ -96,7 +96,6 @@ export default function MyArticlesPage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminSectionHeader
-        title={t('admin.articles.title')}
         subtitle={status === 'success' && !empty ? t('admin.articles.count', { count: articles.length }) : undefined}
         // The empty state carries the one primary action instead.
         action={empty ? undefined : (

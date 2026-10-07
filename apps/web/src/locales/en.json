@@ -165,7 +165,12 @@
       "scope": {
         "all": "Everyone",
         "staff": "Staff"
-      }
+      },
+      "addOrgButton": "+ Organization",
+      "addOrgTitle": "Add {{name}} to an organization",
+      "addOrgField": "Organization",
+      "addOrgHint": "They join as a member. You can make them an admin from their row afterwards.",
+      "addOrgConfirm": "Add"
     },
     "organizations": {
       "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
@@ -219,7 +224,7 @@
       "editProfileAria": "Edit {{name}}'s profile on ITBA News"
     },
     "corrections": {
-      "intro": "Schedule corrections are suggested by students and apply on their own once they reach 3 confirmations and more confirmations than rejections. This panel is a safety net: you can apply a pending one right away or reject one (if it was applied, it reverts to the SGA schedule). Corrections are anonymous.",
+      "intro": "They apply on their own with 3 confirmations and more confirmations than rejections. Here you can apply one sooner or reject it (if it was applied, the SGA schedule comes back).",
       "filterLabel": "Status",
       "filter": {
         "PENDING": "Pending",
@@ -292,7 +297,7 @@
       "next": "Next"
     },
     "capabilities": {
-      "intro": "Enable features in testing for everyone, for specific people (by email, even if they've never signed in) or for whole organizations. Staff always have all of them.",
+      "intro": "Features in testing: turn them on for everyone, for specific people or for organizations. Staff always have them.",
       "empty": "No capabilities defined.",
       "enabledForAll": "Enabled for everyone",
       "everyone": "Enabled for everyone",
@@ -651,5 +656,10 @@
     "loading": "Loading",
     "cancel": "Cancel",
     "undo": "Undo"
+  },
+  "staffGuard": {
+    "title": "This page is for CEITBA staff",
+    "body": "Administration is used by the CEITBA team. If you are on the staff and can't see it, ask someone on the team to give you access.",
+    "home": "Go home"
   }
 }
