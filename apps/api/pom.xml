@@ -25,7 +25,7 @@
              shrinks the default code cache to 48 MB, which this suite fills
              (the JIT then switches off and requests fail with "Out of space
              in CodeCache"), so restore the tiered default of 240 MB. -->
-        <it.argLine>-XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=240m -XX:+UseParallelGC</it.argLine>
+        <it.argLine></it.argLine>
         <java.version>21</java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.21.3</testcontainers.version>
