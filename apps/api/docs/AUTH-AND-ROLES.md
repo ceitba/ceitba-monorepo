@@ -301,7 +301,7 @@ Token endpoint errors use the standard error body with a machine code in `error`
 
 **JWT claims**: `sub` (user id), `email`, `name`, `iat`, `exp`, `iss` (`AUTH_JWT_ISSUER`, default `https://ceitba.org.ar/api`), `aud` = `ceitba-api`, `jti`. Access tokens are stateless: logout, logout-all and account deletion revoke refresh tokens, but an already-issued access JWT stays valid until `exp`.
 
-**`iss`/`aud` phase-in (follow-up with a date).** JWTs issued before B1 have neither claim and live up to 7 days in web cookies. While `AUTH_JWT_ENFORCE_ISS_AUD=false` (default), `IssuerAudienceValidator` checks each claim only when it is present. **Follow-up:** 7 days after B1 reaches production (B1 deploy date + `AUTH_JWT_TTL_DAYS`), set `AUTH_JWT_ENFORCE_ISS_AUD=true` in prod so both claims become mandatory, then consider removing the flag.
+**`iss`/`aud` enforcement.** `IssuerAudienceValidator` requires both claims on every JWT (`AUTH_JWT_ENFORCE_ISS_AUD=true`, the default since 2026-10-05). History: JWTs issued before B1 (in production 2026-09-27) carried neither claim and lived up to 7 days (`AUTH_JWT_TTL_DAYS`) in web cookies, so B1 shipped with a phase-in (`false`: each claim checked only when present). The last pre-B1 token expired on 2026-10-04, and the default was flipped after that. Setting `false` brings the phase-in back; it isn't needed anymore, and the flag can be removed in a later cleanup.
 
 ---
 

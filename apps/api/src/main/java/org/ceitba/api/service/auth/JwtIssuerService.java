@@ -23,8 +23,8 @@ import java.util.UUID;
 // which expired after 1 hour with no way to refresh server-side.
 //
 // Claims: sub (user id), email, name, iat, exp, plus iss (auth.jwt.issuer),
-// aud ("ceitba-api") and a random jti. SecurityConfig validates iss/aud (see
-// IssuerAudienceValidator for the phase-in).
+// aud ("ceitba-api") and a random jti. SecurityConfig requires both iss and
+// aud (see IssuerAudienceValidator).
 //
 // Required env: AUTH_JWT_SECRET=<base64-encoded 32+ byte secret>
 // Generate with: openssl rand -base64 32
