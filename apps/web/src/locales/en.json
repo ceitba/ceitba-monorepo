@@ -309,9 +309,13 @@
     "language": "Language",
     "career": "Career",
     "plan": "Plan",
-    "fileNumber": "File number",
     "unset": "Not set",
-    "pickCareerFirst": "Pick a career to see available plans."
+    "pickCareerFirst": "Pick a career to see available plans.",
+    "fileNumberValue": "Student ID: {{number}}",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveError": "We couldn't save that change. Try again.",
+    "loadError": "We couldn't load your academic details."
   },
   "auth": {
     "profile": "My profile",
@@ -433,8 +437,12 @@
     },
     "filterLabel": "Filter by category",
     "all": "All",
-    "empty": "No benefits in this category yet.",
-    "learnMore": "Learn more"
+    "empty": "When CEITBA adds benefits, you'll see them here.",
+    "learnMore": "Learn more",
+    "emptyTitle": "No benefits yet",
+    "emptyFilteredTitle": "No benefits in this category",
+    "emptyFiltered": "Try another category or see all benefits.",
+    "showAll": "See all benefits"
   },
   "staff": {
     "sectionTitle": "Our team",

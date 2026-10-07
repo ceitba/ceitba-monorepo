@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import TabBar, { TabId } from '../components/TabBar'
+import TabBar, { HOME_TABS_ID, TabId } from '../components/TabBar'
 import HeroSection from './sections/HeroSection'
 import AppsSection from './sections/AppsSection'
 import DepartmentsSection from './sections/DepartmentsSection'
@@ -16,18 +16,24 @@ export default function HomePage() {
     <>
       <TabBar active={activeTab} onChange={setActiveTab} />
       <main id="main-content" tabIndex={-1} className="outline-none">
-        {activeTab === 'home' && (
-          <>
-            <HeroSection />
-            <AppsSection />
-            <HomeDepartmentsPreview onSeeAll={() => setActiveTab('departments')} />
-            <HomeBenefitsPreview onSeeAll={() => setActiveTab('benefits')} />
-            <HomeJoinCTA />
-          </>
-        )}
-        {activeTab === 'departments' && <DepartmentsSection />}
-        {activeTab === 'benefits' && <BenefitsSection />}
-        {activeTab === 'staff' && <StaffSection />}
+        <div
+          role="tabpanel"
+          id={`${HOME_TABS_ID}-panel-${activeTab}`}
+          aria-labelledby={`${HOME_TABS_ID}-tab-${activeTab}`}
+        >
+          {activeTab === 'home' && (
+            <>
+              <HeroSection />
+              <AppsSection />
+              <HomeDepartmentsPreview onSeeAll={() => setActiveTab('departments')} />
+              <HomeBenefitsPreview onSeeAll={() => setActiveTab('benefits')} />
+              <HomeJoinCTA />
+            </>
+          )}
+          {activeTab === 'departments' && <DepartmentsSection />}
+          {activeTab === 'benefits' && <BenefitsSection />}
+          {activeTab === 'staff' && <StaffSection />}
+        </div>
       </main>
     </>
   )

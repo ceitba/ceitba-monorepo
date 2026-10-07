@@ -21,6 +21,7 @@
       "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet."
     },
     "sourceStatus": {
+      "unknown": "Other status",
       "PENDING_REVIEW": "In review",
       "ACTIVE": "Active",
       "BLOCKED": "Blocked",
@@ -29,6 +30,7 @@
       "ERROR": "Errors"
     },
     "publication": {
+      "unknown": "Other status",
       "PRIVATE": "Private",
       "NEEDS_REVIEW": "In review",
       "PUBLISHED": "Published",
@@ -60,6 +62,8 @@
       "allSubjects": "All subjects"
     },
     "tree": {
+      "emptyTitle": "No files yet",
+      "useSuggestionNamed": "Use suggested: {{name}}",
       "intro": "Pick the subject of each folder or file: whatever you set on a folder is inherited by its files. Only files with a subject that you don't hide get published.",
       "acceptAll": "Accept suggestions ({{count}})",
       "acceptedNotice_one": "Applied {{count}} suggestion.",
@@ -71,10 +75,8 @@
       "notMine": "Not yours",
       "notMineHint": "Someone else created it: CEITBA reviews it before publishing.",
       "hiddenLabel": "Hidden",
-      "syncError": "We couldn't sync it: {{error}}",
+      "syncError": "We couldn't sync this file. Try “Sync now” in a few minutes.",
       "subjectFor": "Subject for {{name}}",
-      "useSuggestion": "Use the suggested subject",
-      "suggestion": "Suggested: {{name}}",
       "hide": "Hide",
       "inMyPlan": "your plan",
       "recompute": "Recompute suggestions",
@@ -85,6 +87,8 @@
       "inheritedSuggestion": "Inherits the folder's suggestion: {{name}}"
     },
     "wizard": {
+      "needConsent": "Accept the terms to connect.",
+      "needUrl": "Paste the folder link to continue.",
       "title": "Connect a Drive folder",
       "stepsAria": "Steps",
       "step1Label": "1 · Share",
@@ -111,6 +115,7 @@
       "connecting": "Connecting…"
     },
     "report": {
+      "needReason": "Pick a reason to send the report.",
       "title": "Report file",
       "intro": "Tell us what's wrong with “{{name}}”. After several reports the file is hidden until CEITBA reviews it.",
       "reason": "Reason",
@@ -128,6 +133,7 @@
       "thanks": "Thanks, we got your report. CEITBA will review it."
     },
     "home": {
+      "mineFailed": "We couldn't load your plan's subjects.",
       "eyebrow": "Academic support",
       "title": "Notes",
       "subtitle": "Summaries, guides and past exams ITBA students share from their Google Drive, organized by subject.",
@@ -172,6 +178,8 @@
       "notFoundBody": "It may have been removed, hidden or unpublished."
     },
     "mine": {
+      "connectBlockedInfo": "We couldn't load what's needed to connect. Retry from the notice above.",
+      "connectBlockedUnconfigured": "Folders can't be connected yet: Google Drive isn't set up.",
       "title": "My notes",
       "subtitle": "The Drive folders you shared with CEITBA. Assign subjects, hide what you don't want published and sync whenever you want.",
       "connect": "Connect folder",
@@ -183,7 +191,7 @@
       "anonymousOn": "Anonymous",
       "lastSync": "Last sync: {{date}}",
       "neverSynced": "Not synced yet",
-      "lastError": "Last error: {{error}}",
+      "lastError": "The last sync ran into a problem. Try “Sync now” in a few minutes.",
       "statusHint": {
         "PENDING_REVIEW": "CEITBA is reviewing your folder. Meanwhile you can assign subjects: they're published once it's approved.",
         "BLOCKED": "CEITBA blocked this folder and its files aren't shown. Write to ceitba@itba.edu.ar if you think it's a mistake.",
@@ -239,15 +247,16 @@
       "subjectCount_other": "{{count}} subjects"
     },
     "pins": {
+      "unpinNamed": "Unpin {{name}}",
+      "pinNamed": "Pin {{name}}",
       "title": "Pinned",
-      "pin": "Pin",
-      "unpin": "Unpin",
       "wiki": "Wiki",
       "hint": "Pin subjects with the pin button to keep them handy here.",
       "limit": "You've reached the maximum of {{limit}} pinned subjects. Unpin one to add another.",
       "failed": "We couldn't update your pinned subjects. Please try again."
     },
     "year": {
+      "estimatedLegend": "≈ before the year: estimated from the file's date in Drive.",
       "source": {
         "USER": "Set by whoever shared the notes",
         "NAME": "Detected in the file name",
@@ -266,6 +275,9 @@
       "sortFolder": "By folder"
     },
     "corr": {
+      "miniFailed": "We couldn't draw your plan's preview. The full map is still available.",
+      "requiresList": "Prerequisites: {{list}}",
+      "emptyBody": "Once the plan has subjects, you'll see them here with their prerequisites.",
       "title": "Prerequisite map",
       "open": "View map",
       "seeMap": "View prerequisite map",
@@ -338,6 +350,9 @@
       "reportSource": "Source [{{n}}]: {{name}}"
     },
     "graphUi": {
+      "resetShort": "Reset",
+      "fitShort": "Fit",
+      "zoomAria": "Zoom",
       "search": "Search the graph…",
       "matches_one": "{{count}} match",
       "matches_other": "{{count}} matches",
@@ -944,6 +959,8 @@
     }
   },
   "devLogin": {
+    "presetStaff": "{{user}} (staff)",
+    "email": "Email",
     "link": "Dev login",
     "eyebrow": "Local development only",
     "title": "Dev login",

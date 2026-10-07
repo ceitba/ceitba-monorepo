@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import PageFallback from './PageFallback'
 
 // Cookie auth is HttpOnly so we can't tell synchronously whether the visitor
 // is staff: wait for /me, then gate on profile.role === 'staff'. useAuth
@@ -9,7 +10,7 @@ import { useAuth } from '../hooks/useAuth'
 // leaving an admin UI whose every action 401s.
 export default function StaffGuard({ children }: { children: ReactElement }) {
   const { loading, isStaff } = useAuth()
-  if (loading) return null
+  if (loading) return <PageFallback />
   if (!isStaff) return <Navigate to="/" replace />
   return children
 }

@@ -14,8 +14,9 @@ export default function PinButton({ subject, size = 'sm', className = '' }: {
   const { pins } = usePins()
   const [busy, setBusy] = useState(false)
   const pinned = !!pins?.some((p) => p.subjectId === subject.subjectId)
-  const label = pinned ? t('apuntes.pins.unpin') : t('apuntes.pins.pin')
-  const dim = size === 'md' ? 'w-10 h-10' : 'w-8 h-8'
+  const label = t(pinned ? 'apuntes.pins.unpinNamed' : 'apuntes.pins.pinNamed', { name: subject.subjectName })
+  // 44px on touch screens; the compact size only where a pointer is the norm.
+  const dim = size === 'md' ? 'w-11 h-11' : 'w-11 h-11 sm:w-8 sm:h-8'
 
   async function onClick(e: React.MouseEvent) {
     e.preventDefault()
@@ -36,8 +37,7 @@ export default function PinButton({ subject, size = 'sm', className = '' }: {
       type="button"
       onClick={onClick}
       aria-pressed={pinned}
-      aria-label={`${label}: ${subject.subjectName}`}
-      title={label}
+      aria-label={label}
       disabled={pins == null}
       className={`${dim} flex-shrink-0 inline-flex items-center justify-center rounded-full transition-colors duration-150 disabled:opacity-40 ${
         pinned

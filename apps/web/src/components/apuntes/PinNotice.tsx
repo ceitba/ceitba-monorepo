@@ -4,24 +4,21 @@ import { ApiError } from '../../api/client'
 import { PIN_LIMIT } from '../../api/pins'
 import { usePins } from '../../hooks/usePins'
 import { clearPinError } from '../../store/pinsStore'
-import ErrorBanner from '../ErrorBanner'
+import { toast } from '../ui'
 
-// Floating notice for failed pin toggles (limit reached, network...).
+// Turns a failed pin toggle (limit reached, network...) into an error toast.
+// Renders nothing; mount it once on pages with pin buttons.
 export default function PinNotice() {
   const { t } = useTranslation()
   const { lastError } = usePins()
   useEffect(() => {
     if (!lastError) return
-    const id = window.setTimeout(clearPinError, 8000)
-    return () => window.clearTimeout(id)
-  }, [lastError])
-  if (!lastError) return null
-  const message = lastError instanceof ApiError && lastError.code === 'BOOKMARK_LIMIT'
-    ? t('apuntes.pins.limit', { limit: PIN_LIMIT })
-    : t('apuntes.pins.failed')
-  return (
-    <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-6 sm:max-w-sm z-50 animate-slide-up shadow-card-hover">
-      <ErrorBanner onDismiss={clearPinError}>{message}</ErrorBanner>
-    </div>
-  )
+    toast.error(
+      lastError instanceof ApiError && lastError.code === 'BOOKMARK_LIMIT'
+        ? t('apuntes.pins.limit', { limit: PIN_LIMIT })
+        : t('apuntes.pins.failed'),
+    )
+    clearPinError()
+  }, [lastError, t])
+  return null
 }

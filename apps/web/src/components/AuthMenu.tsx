@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -6,6 +6,13 @@ import { useCapability } from '../hooks/useCapability'
 import { signOut, startGoogleSignIn } from '../store/authStore'
 import { safeHttpUrl } from '../utils/url'
 import DigestToggle from './DigestToggle'
+import { buttonClass } from './ui'
+
+// Enabled items of the account menu, in DOM order.
+function menuItems(menu: HTMLElement | null) {
+  return Array.from(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemcheckbox"]') ?? [])
+    .filter((el) => !el.disabled)
+}
 
 // Renders one of three states in the navbar slot:
 //   loading  -> nothing (avoid flicker before /me resolves)
@@ -22,12 +29,19 @@ export default function AuthMenu() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
+    // Move focus into the menu so arrow keys work right away.
+    menuItems(menuRef.current)[0]?.focus()
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); setOpen(false); triggerRef.current?.focus() }
+    }
     document.addEventListener('mousedown', onClick)
     document.addEventListener('keydown', onKey)
     return () => {
@@ -36,7 +50,24 @@ export default function AuthMenu() {
     }
   }, [open])
 
-  if (loading) return <div className="w-9 h-9" aria-hidden="true" />
+  // Arrow keys / Home / End move between items (WAI-ARIA menu button);
+  // Tab leaves the menu and closes it.
+  function onMenuKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    const list = menuItems(menuRef.current)
+    if (list.length === 0) return
+    const i = list.indexOf(document.activeElement as HTMLButtonElement)
+    let next = -1
+    if (e.key === 'ArrowDown') next = (i + 1) % list.length
+    else if (e.key === 'ArrowUp') next = i <= 0 ? list.length - 1 : i - 1
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = list.length - 1
+    else if (e.key === 'Tab') { setOpen(false); return }
+    if (next < 0) return
+    e.preventDefault()
+    list[next].focus()
+  }
+
+  if (loading) return <div className="w-11 h-11" aria-hidden="true" />
 
   if (!profile) {
     return (
@@ -44,7 +75,7 @@ export default function AuthMenu() {
         {import.meta.env.DEV && import.meta.env.VITE_DEV_LOGIN === 'true' && (
           <Link
             to="/dev-login"
-            className="min-h-[36px] inline-flex items-center px-2 font-mono text-label uppercase tracking-widest text-accent-600 dark:text-accent-300 border border-dashed border-accent-400 rounded-sm hover:bg-accent-50 dark:hover:bg-accent-900/30"
+            className="min-h-[44px] inline-flex items-center px-2 font-mono text-label uppercase tracking-widest text-accent-600 dark:text-accent-300 border border-dashed border-accent-400 rounded-sm hover:bg-accent-50 dark:hover:bg-accent-900/30"
           >
             {t('devLogin.link', { defaultValue: 'Dev login' })}
           </Link>
@@ -52,7 +83,7 @@ export default function AuthMenu() {
         <button
           type="button"
           onClick={() => startGoogleSignIn(location.pathname + location.search)}
-          className="min-h-[36px] px-3 font-mono text-label uppercase tracking-widest text-primary border border-primary rounded-sm hover:bg-primary hover:text-white transition-colors duration-150"
+          className={buttonClass({ variant: 'outline' })}
         >
           {t('auth.signIn')}
         </button>
@@ -74,24 +105,34 @@ export default function AuthMenu() {
 
   return (
     <div className="relative" ref={ref}>
+      {/* 44px hit area around the 36px avatar. */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => { if (e.key === 'ArrowDown' && !open) { e.preventDefault(); setOpen(true) } }}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? 'account-menu' : undefined}
         aria-label={t('auth.accountMenu')}
-        className="w-9 h-9 rounded-full overflow-hidden border border-border dark:border-night-border bg-primary-100 dark:bg-primary-900 flex items-center justify-center hover:border-primary transition-colors duration-150"
+        className="group w-11 h-11 flex items-center justify-center rounded-full"
       >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={profile.name ?? profile.email} className="w-full h-full object-cover" />
-        ) : (
-          <span className="font-display font-bold text-label text-primary">{initials}</span>
-        )}
+        <span className="w-9 h-9 rounded-full overflow-hidden border border-border dark:border-night-border bg-primary-100 dark:bg-primary-900 flex items-center justify-center group-hover:border-primary transition-colors duration-150">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-display font-bold text-label text-primary dark:text-primary-200" aria-hidden="true">{initials}</span>
+          )}
+        </span>
       </button>
 
       {open && (
         <div
+          ref={menuRef}
+          id="account-menu"
           role="menu"
+          aria-label={t('auth.accountMenu')}
+          onKeyDown={onMenuKeyDown}
           className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover py-1 z-50"
         >
           <div className="px-3 py-2 border-b border-border dark:border-night-border">
@@ -106,7 +147,7 @@ export default function AuthMenu() {
             type="button"
             role="menuitem"
             onClick={() => { setOpen(false); navigate('/profile') }}
-            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+            className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
           >
             {t('auth.profile')}
           </button>
@@ -116,7 +157,7 @@ export default function AuthMenu() {
                 type="button"
                 role="menuitem"
                 onClick={() => { setOpen(false); navigate('/apuntes') }}
-                className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+                className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
               >
                 {t('auth.apuntes')}
               </button>
@@ -124,7 +165,7 @@ export default function AuthMenu() {
                 type="button"
                 role="menuitem"
                 onClick={() => { setOpen(false); navigate('/apuntes/mis-apuntes') }}
-                className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+                className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
               >
                 {t('auth.myApuntes')}
               </button>
@@ -135,7 +176,7 @@ export default function AuthMenu() {
             type="button"
             role="menuitem"
             onClick={() => { setOpen(false); navigate('/scheduler/saved') }}
-            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+            className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
           >
             {t('auth.savedSchedules')}
           </button>
@@ -143,7 +184,7 @@ export default function AuthMenu() {
             type="button"
             role="menuitem"
             onClick={() => { setOpen(false); navigate('/newsletter/admin/articles') }}
-            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+            className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
           >
             {t(organizations ? 'auth.newsletterAdmin' : 'auth.myArticles')}
           </button>
@@ -152,7 +193,7 @@ export default function AuthMenu() {
               type="button"
               role="menuitem"
               onClick={() => { setOpen(false); navigate('/manage') }}
-              className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900"
+              className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
             >
               {t('auth.manage')}
             </button>
@@ -161,7 +202,7 @@ export default function AuthMenu() {
             type="button"
             role="menuitem"
             onClick={async () => { await signOut(); setOpen(false) }}
-            className="w-full text-left px-3 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted hover:bg-primary-50 dark:hover:bg-primary-900"
+            className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
           >
             {t('auth.signOut')}
           </button>

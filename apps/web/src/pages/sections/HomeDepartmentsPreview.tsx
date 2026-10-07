@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useDepartments } from '../../hooks/useContent'
-import LoadError from '../../components/LoadError'
+import SeeAllButton from '../../components/SeeAllButton'
+import { ErrorState, SkeletonCards } from '../../components/ui'
 
 const ICONS: Record<string, React.ReactNode> = {
   it: (
@@ -74,23 +75,17 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
         </div>
 
         {error && !loading ? (
-          <LoadError onRetry={() => void reload()} />
+          <ErrorState onRetry={() => void reload()} />
+        ) : loading ? (
+          <SkeletonCards count={6} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" cardClassName="h-28" />
         ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-28 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface skeleton"
-                />
-              ))
-            : departments.map((dept, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 animate-fade-in">
+          {departments.map((dept) => (
                 <button
                   key={dept.slug}
                   type="button"
                   onClick={onSeeAll}
-                  className="group flex flex-col items-start gap-2.5 p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="group flex flex-col items-start gap-2.5 p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 text-left"
                   aria-label={t('home.departments.tileAria', { name: t(`departments.${dept.slug}.name`) })}
                 >
                   <span
@@ -109,31 +104,5 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
         )}
       </div>
     </section>
-  )
-}
-
-function SeeAllButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold hover:gap-2.5 transition-all duration-150 self-start sm:self-auto"
-    >
-      {label}
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <line x1="5" y1="12" x2="19" y2="12" />
-        <polyline points="12 5 19 12 12 19" />
-      </svg>
-    </button>
   )
 }

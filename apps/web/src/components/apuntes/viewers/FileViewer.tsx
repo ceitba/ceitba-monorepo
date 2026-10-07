@@ -4,7 +4,7 @@ import { fetchOriginal, fileDownloadUrl, FileTooLargeError, type FileDetail } fr
 import { formatSize } from '../../../utils/apuntes'
 import { safeHttpUrl } from '../../../utils/url'
 import KindIcon from '../KindIcon'
-import { BTN_OUTLINE, BTN_PRIMARY } from '../buttons'
+import { buttonClass } from '../../ui'
 import DocxViewer, { ViewerLoading } from './DocxViewer'
 import SheetViewer from './SheetViewer'
 import TextViewer from './TextViewer'
@@ -147,12 +147,12 @@ export function DownloadCard({ file, reason }: { file: FileDetail; reason: CardR
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {canDownload && (
-          <a href={fileDownloadUrl(file.id, variant, 'attachment')} className={BTN_PRIMARY}>
+          <a href={fileDownloadUrl(file.id, variant, 'attachment')} className={buttonClass()}>
             {t('apuntes.viewer.download')}
           </a>
         )}
         {driveUrl && (
-          <a href={driveUrl} target="_blank" rel="noopener noreferrer" className={BTN_OUTLINE}>
+          <a href={driveUrl} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: 'outline' })}>
             {t('apuntes.viewer.openInDrive')}
           </a>
         )}

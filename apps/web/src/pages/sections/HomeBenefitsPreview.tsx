@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useBenefits } from '../../hooks/useContent'
-import LoadError from '../../components/LoadError'
+import SeeAllButton from '../../components/SeeAllButton'
+import { ErrorState, SkeletonCards } from '../../components/ui'
 import { benefitCategoryName } from '../../utils/benefits'
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -60,37 +61,21 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
               {t('home.benefits.subtitle')}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onSeeAll}
-            className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold hover:gap-2.5 transition-all duration-150 self-start sm:self-auto"
-          >
-            {t('home.benefits.seeAll')}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
+          <SeeAllButton onClick={onSeeAll} label={t('home.benefits.seeAll')} />
         </div>
 
         {error && !loading ? (
-          <LoadError onRetry={() => void reload()} />
+          <ErrorState onRetry={() => void reload()} />
+        ) : loading ? (
+          <SkeletonCards count={5} cardClassName="h-40" />
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading
-            ? Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-40 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface skeleton"
-                />
-              ))
-            : categories.map((cat, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+          {categories.map((cat) => (
                 <button
                   key={cat.slug}
                   type="button"
                   onClick={onSeeAll}
-                  className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface hover:border-primary hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 text-left"
                 >
                   <div className="flex items-center gap-3">
                     <span

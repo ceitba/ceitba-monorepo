@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { KB_REPORT_REASONS, kbPagePath, reportKbPage, type KbPage, type KbPageSummary } from '../../../api/kb'
 import { authorName, formatDate, isCommunity } from '../../../utils/apuntes'
-import Notice from '../../Notice'
+import { Alert, Button, LoadingRegion, SkeletonText } from '../../ui'
 import ReportDialog from '../ReportDialog'
 import KindIcon from '../KindIcon'
 import YearBadge from '../YearBadge'
@@ -73,14 +73,15 @@ export default function WikiArticle({
             <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
               {t('wiki.generatedBy', { generator: page.generator, date: formatDate(page.generatedAt, i18n.language) })}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
               onClick={() => setReporting({ comment: '', partial: false })}
               disabled={reported}
-              className="ml-auto font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 disabled:hover:text-ink-secondary"
             >
               {reported ? t('apuntes.file.alreadyReported') : t('wiki.report')}
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -90,9 +91,9 @@ export default function WikiArticle({
           </p>
         )}
 
-        {notice && <Notice className="mb-6" onDismiss={() => setNotice(null)}>{notice}</Notice>}
+        {notice && <Alert tone="success" className="mb-6" onDismiss={() => setNotice(null)}>{notice}</Alert>}
 
-        <Suspense fallback={<div aria-busy="true" className="flex flex-col gap-3 max-w-[70ch]">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-4 rounded-sm skeleton" />)}</div>}>
+        <Suspense fallback={<LoadingRegion className="max-w-[70ch]"><SkeletonText lines={6} /></LoadingRegion>}>
           <WikiMarkdown page={page} />
         </Suspense>
       </article>
@@ -233,7 +234,6 @@ export function PagesPanel({ subjectId, pages, currentSlug, title }: {
                   <Link
                     to={kbPagePath(subjectId, p.slug)}
                     aria-current={p.slug === currentSlug ? 'page' : undefined}
-                    title={p.summary}
                     className={`font-body text-body-sm hover:text-primary ${p.slug === currentSlug ? 'text-primary font-semibold' : 'text-ink-secondary dark:text-night-muted'}`}
                   >
                     {p.title}

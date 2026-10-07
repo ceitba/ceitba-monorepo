@@ -53,7 +53,7 @@ export default function Footer() {
 
         <div className="flex flex-col sm:flex-row items-center gap-6">
           {/* Social icons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1">
             {SOCIALS.map(({ id, href, label, icon }) => (
               <a
                 key={id}
@@ -61,7 +61,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+                className="inline-flex items-center justify-center w-11 h-11 rounded-sm text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
               >
                 {icon}
               </a>
@@ -74,13 +74,13 @@ export default function Footer() {
               href="https://github.com/ceitba"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+              className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
             >
               {t('footer.github')}
             </a>
             <a
               href="mailto:ceitba@itba.edu.ar"
-              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+              className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
             >
               {t('footer.contact')}
             </a>
