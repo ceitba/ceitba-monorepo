@@ -256,6 +256,11 @@ services:
       # Email + weekly digest (docs/WEEKLY-DIGEST.md). MAIL_ENABLED=false = sending refused.
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
       MAIL_LOG_SENDS: ${MAIL_LOG_SENDS:-false}
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-gmail-api}
+      # "Conectar cuenta de envío" (Gmail OAuth): without the key the connect
+      # endpoint answers 501; the redirect URI must be registered on the Google client.
+      MAIL_TOKEN_ENCRYPTION_KEY: ${MAIL_TOKEN_ENCRYPTION_KEY:-}
+      GOOGLE_MAIL_REDIRECT_URI: ${GOOGLE_MAIL_REDIRECT_URI:-http://localhost:8080/api/v1/mail/accounts/oauth/callback}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
