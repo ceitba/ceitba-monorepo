@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -119,6 +120,14 @@ public class DigestController {
     @PreAuthorize("hasRole('STAFF')")
     public DigestDtos.Detail cancel(@PathVariable UUID id) {
         return service.cancel(id);
+    }
+
+    // Any status but sending (409 DIGEST_SENDING); takes its deliveries and stats with it.
+    @DeleteMapping(ID)
+    @PreAuthorize("hasRole('STAFF')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/subscription")

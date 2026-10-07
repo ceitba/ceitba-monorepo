@@ -259,6 +259,23 @@ public class DigestService {
         return detail(issue);
     }
 
+    // Removes the issue for good, in any status but sending (stop it first).
+    // Its deliveries and tracking rows go with it (ON DELETE CASCADE), so its
+    // stats are gone too. The row lock waits for an email being sent right now.
+    // Deleting the scheduled draft of the current week inside the draft window
+    // lets the job recreate it; cancel it instead to keep it from coming back.
+    @Transactional
+    public void delete(UUID id) {
+        var issue = loadForUpdate(id);
+        if (DigestIssue.SENDING.equals(issue.getStatus())) {
+            throw new DigestException(DigestException.Reason.DIGEST_SENDING,
+                "Digest is sending: stop the send before deleting it");
+        }
+        issues.delete(issue);
+        issues.flush();
+        log.info("Digest {} ({}) deleted", issue.getWeekStart(), issue.getStatus());
+    }
+
     // ------------------------------------------------------------ jobs
 
     // The draft for the week that just ended, auto-sent Monday 12:00 ART.
