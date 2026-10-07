@@ -200,7 +200,7 @@ export default function SharePage() {
     <div className="flex flex-col bg-surface dark:bg-night-bg">
       <SchedulerHeader />
 
-      <main className="flex-1 container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
         {loading ? (
           <LoadingRegion className="flex flex-col gap-3">
             <Skeleton className="h-3 w-40" />

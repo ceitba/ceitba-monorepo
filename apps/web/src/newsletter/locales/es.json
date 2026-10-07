@@ -113,9 +113,6 @@
     "errorTitle": "No pudimos iniciar sesión",
     "tryAgain": "Intentar de nuevo",
     "back": "Volver",
-    "adminSubtitle": "Panel de Administración",
-    "googleButton": "Ingresar con Google (ITBA)",
-    "requiresAccount": "Requiere cuenta <1>@itba.edu.ar</1>",
     "errors": {
       "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
       "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",

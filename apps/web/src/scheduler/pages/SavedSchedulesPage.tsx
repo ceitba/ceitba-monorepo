@@ -150,7 +150,7 @@ export default function SavedSchedulesPage() {
     <div className="flex flex-col bg-surface dark:bg-night-bg">
       <SchedulerHeader />
 
-      <main className="flex-1 container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
         <header className="mb-6 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[14rem]">
             <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{t('saved.pageTitle')}</h1>

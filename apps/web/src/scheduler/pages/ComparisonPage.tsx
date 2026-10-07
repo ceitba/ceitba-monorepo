@@ -189,7 +189,7 @@ export default function ComparisonPage() {
     <div className="flex flex-col bg-surface dark:bg-night-bg">
       <SchedulerHeader />
 
-      <main className="flex-1 container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
         <header className="mb-6 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[12rem]">
             <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">

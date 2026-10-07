@@ -55,7 +55,8 @@
       "deleteFailed": "We couldn't delete the schedule. Try again.",
       "renameFailed": "We couldn't rename the schedule. Try again.",
       "shareFailed": "We couldn't create the shared session. Try again."
-    }
+    },
+    "viewSaved": "View saved"
   },
   "compare": {
     "label": "Comparison",
@@ -110,7 +111,7 @@
     "or": "or",
     "add": "Add",
     "remove": "Remove",
-    "removed": "Removed {{name}}. If that was a mistake, tap it again in the list.",
+    "removed": "Removed {{name}}.",
     "creditCount_one": "{{count}} credit",
     "creditCount_other": "{{count}} credits",
     "selectedSummary_one": "{{count}} course · {{credits}} credits",
@@ -120,7 +121,8 @@
     "viewCombinations": "See combinations",
     "noneSelectedBody": "Search or tap courses in the list to add them.",
     "loadFailedTitle": "We couldn't load the courses",
-    "loadFailed": "Check your connection and try again."
+    "loadFailed": "Check your connection and try again.",
+    "undo": "Undo"
   },
   "commission": {
     "title": "Select commission",

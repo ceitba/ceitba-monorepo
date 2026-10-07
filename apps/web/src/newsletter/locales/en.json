@@ -113,9 +113,6 @@
     "errorTitle": "We couldn't sign you in",
     "tryAgain": "Try again",
     "back": "Go back",
-    "adminSubtitle": "Admin Panel",
-    "googleButton": "Sign in with Google (ITBA)",
-    "requiresAccount": "Requires an <1>@itba.edu.ar</1> account",
     "errors": {
       "unauthorized": "Only @itba.edu.ar accounts can sign in.",
       "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",

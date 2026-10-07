@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CloseIcon } from './Button'
-import { iconButtonClass } from './buttonClass'
+import { buttonClass, iconButtonClass } from './buttonClass'
 import { dismiss, subscribeToasts, toastSnapshot, type ToastTone } from './toastStore'
 
 const BORDER: Record<ToastTone, string> = {
@@ -22,6 +22,15 @@ export function Toaster() {
           className={`pointer-events-auto flex items-start gap-2 pl-4 pr-1 py-1 rounded-sm border border-border border-l-4 dark:border-night-border bg-white dark:bg-night-surface shadow-card animate-fade-in ${BORDER[it.tone]}`}
         >
           <p className="flex-1 py-2.5 font-body text-body-sm text-ink-primary dark:text-night-text">{it.message}</p>
+          {it.action && (
+            <button
+              type="button"
+              onClick={() => { it.action?.onClick(); dismiss(it.id) }}
+              className={buttonClass({ variant: 'ghost', size: 'sm', className: '!text-primary dark:!text-primary-300' })}
+            >
+              {it.action.label}
+            </button>
+          )}
           <button type="button" onClick={() => dismiss(it.id)} aria-label={t('ui.close')} className={iconButtonClass({ size: 'sm' })}>
             <CloseIcon size={16} />
           </button>

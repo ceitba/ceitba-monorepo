@@ -59,7 +59,7 @@ const RETURN_TO_KEY = 'auth.returnTo'
 
 // OAuth callback routes: /auth/callback, plus the redirect URIs of the old
 // standalone scheduler and newsletter apps (still routed, see App.tsx).
-const CALLBACK_PATHS = ['/auth/', '/scheduler/auth/', '/newsletter/admin/callback', '/newsletter/admin/login']
+const CALLBACK_PATHS = ['/auth/', '/scheduler/auth/', '/newsletter/admin/callback']
 
 // Only in-app paths are valid post-login destinations (no open redirects,
 // no bouncing back into a callback).

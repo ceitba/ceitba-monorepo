@@ -385,7 +385,10 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       })
       setSavedCount((c) => c + 1)
       setSaveOpen(false)
-      toast.success(t('saved.toastSaved', { name: saved.name }))
+      toast.success(t('saved.toastSaved', { name: saved.name }), {
+        label: t('saved.viewSaved'),
+        onClick: () => navigate(schedulerPath('/saved')),
+      })
     } catch (e) {
       setSaveError(isLimitReached(e)
         ? t('saved.limitReached', { max: MAX_SAVED_SCHEDULES })
@@ -459,9 +462,23 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
           updateSelectedCourses([...selectedCourses, { ...course, selectedCommissions: commissions }])
         }}
         onRemoveCourse={courseId => {
-          const removed = selectedCourses.find(c => c.subject_id === courseId)
-          updateSelectedCourses(selectedCourses.filter(c => c.subject_id !== courseId))
-          if (removed) toast.info(t('courses.removed', { name: removed.name }))
+          const before = selectedCourses
+          const removed = before.find(c => c.subject_id === courseId)
+          updateSelectedCourses(before.filter(c => c.subject_id !== courseId))
+          if (removed) {
+            toast.info(t('courses.removed', { name: removed.name }), {
+              label: t('courses.undo'),
+              // Puts it back where it was, unless it was re-added meanwhile.
+              onClick: () => {
+                clearSchedules()
+                setSelectedCourses(current => {
+                  if (current.some(c => c.subject_id === courseId)) return current
+                  const at = Math.min(before.indexOf(removed), current.length)
+                  return [...current.slice(0, at), removed, ...current.slice(at)]
+                })
+              },
+            })
+          }
         }}
         onReorderCourses={updateSelectedCourses}
         onViewCombinations={viewCombinations}

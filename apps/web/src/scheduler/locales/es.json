@@ -55,7 +55,8 @@
       "deleteFailed": "No pudimos eliminar el horario. Probá de nuevo.",
       "renameFailed": "No pudimos renombrar el horario. Probá de nuevo.",
       "shareFailed": "No pudimos crear la sesión compartida. Probá de nuevo."
-    }
+    },
+    "viewSaved": "Ver guardados"
   },
   "compare": {
     "label": "Comparación",
@@ -107,7 +108,7 @@
     "or": "o",
     "add": "Agregar",
     "remove": "Quitar",
-    "removed": "Quitaste {{name}}. Si fue sin querer, tocala de nuevo en la lista.",
+    "removed": "Quitaste {{name}}.",
     "creditCount_one": "{{count}} crédito",
     "creditCount_other": "{{count}} créditos",
     "selectedSummary_one": "{{count}} materia · {{credits}} créditos",
@@ -117,7 +118,8 @@
     "viewCombinations": "Ver combinaciones",
     "noneSelectedBody": "Buscá o tocá materias de la lista para sumarlas.",
     "loadFailedTitle": "No pudimos cargar las materias",
-    "loadFailed": "Revisá tu conexión y probá de nuevo."
+    "loadFailed": "Revisá tu conexión y probá de nuevo.",
+    "undo": "Deshacer"
   },
   "commission": {
     "title": "Seleccionar comisión",

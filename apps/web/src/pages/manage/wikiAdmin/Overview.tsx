@@ -4,7 +4,7 @@ import {
   COST_STAGES, MODEL_STAGES, costPairs, rowKey, fetchCostSummary, fetchCosts, fetchRuns, fetchSettings,
   type KbSettings,
 } from '../../../api/kbAdmin'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button, ToggleGroup } from '@/components/ui'
 import CostChart from './CostChart'
 import Forecast from './Forecast'
 import QuotaCard from './QuotaCard'
@@ -56,19 +56,13 @@ export default function Overview({ onOpenRun }: { onOpenRun: (id: string) => voi
         actions={
           <div className="flex items-center gap-2">
             <span id="wikiai-groupby" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.overview.groupBy')}</span>
-            <div role="group" aria-labelledby="wikiai-groupby" className="flex rounded-sm border border-border dark:border-night-border overflow-hidden">
-              {(['stage', 'model'] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={by === k}
-                  onClick={() => setBy(k)}
-                  className={`min-h-[44px] sm:min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150 ${by === k ? 'bg-primary text-white' : 'bg-white dark:bg-night-surface text-ink-secondary dark:text-night-muted hover:text-primary'}`}
-                >
-                  {t(`manage.wikiAi.overview.by.${k}`)}
-                </button>
-              ))}
-            </div>
+            <ToggleGroup
+              joined
+              labelledBy="wikiai-groupby"
+              value={by}
+              onChange={setBy}
+              options={(['stage', 'model'] as const).map((k) => ({ value: k, label: t(`manage.wikiAi.overview.by.${k}`) }))}
+            />
           </div>
         }
       >
