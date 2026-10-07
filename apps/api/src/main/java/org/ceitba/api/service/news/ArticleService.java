@@ -104,9 +104,10 @@ public class ArticleService {
     // primitive: null means the request omitted it and it stays unchanged.
     // `independentAuthor` is the caller's id when they act only as the author
     // of an independent article (not STAFF, not an org member), else null.
+    // `clearPublishedAt` empties the date (a null in `patch` means unchanged).
     @Transactional
     public Article update(String id, Article patch, Boolean featured, String organizationSlug,
-                          UUID independentAuthor) {
+                          UUID independentAuthor, boolean clearPublishedAt) {
         var article = lockedForWrite(id, independentAuthor);
         if (patch.getTitle()      != null) article.setTitle(patch.getTitle());
         if (patch.getExcerpt()    != null) article.setExcerpt(patch.getExcerpt());
@@ -114,6 +115,7 @@ public class ArticleService {
         if (patch.getCategory()   != null) article.setCategory(patch.getCategory());
         if (patch.getAuthors()    != null) article.setAuthors(patch.getAuthors());
         if (patch.getPublishedAt()!= null) article.setPublishedAt(patch.getPublishedAt());
+        else if (clearPublishedAt)         article.setPublishedAt(null);
         if (patch.getReadingTime()!= null) article.setReadingTime(patch.getReadingTime());
         if (patch.getColorScheme()!= null) article.setColorScheme(patch.getColorScheme());
         if (patch.getCoverImage() != null) article.setCoverImage(patch.getCoverImage());

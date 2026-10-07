@@ -4,6 +4,7 @@ import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Career;
 import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.CareerRepository;
+import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.repository.news.UserOrganizationRepository;
@@ -44,10 +45,12 @@ class UserEndpointsIT {
     @Autowired CareerRepository careerRepository;
     @Autowired OrganizationRepository organizationRepository;
     @Autowired UserOrganizationRepository userOrganizationRepository;
+    @Autowired CeitbaStaffRepository staffRepository;
 
     @BeforeEach
     void seed() {
         userOrganizationRepository.deleteAll();
+        staffRepository.deleteAll();
         organizationRepository.deleteAll();
         userRepository.deleteAll();
         careerRepository.deleteAll();
@@ -208,6 +211,48 @@ class UserEndpointsIT {
             .andExpect(jsonPath("$.data.length()").value(3))
             .andExpect(jsonPath("$.meta.page").value(1))
             .andExpect(jsonPath("$.meta.limit").value(100));
+    }
+
+    @Test
+    void listUsersFiltersByActiveStaff() throws Exception {
+        // Emails that share a substring, the case the old client-side lookup
+        // (search by email, capped) could get wrong.
+        for (var u : new String[][] {
+                {"jo@itba.edu.ar",    "Jo"},
+                {"pajo@itba.edu.ar",  "Pajo"},
+                {"majo@itba.edu.ar",  "Majo"} }) {
+            mvc.perform(post("/v1/users/create").with(staff())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"" + u[0] + "\",\"name\":\"" + u[1] + "\"}"))
+                .andExpect(status().isCreated());
+        }
+        String now = java.time.OffsetDateTime.now().minusDays(1).toString();
+        String later = java.time.OffsetDateTime.now().plusDays(30).toString();
+        String past = java.time.OffsetDateTime.now().minusDays(60).toString();
+        String expired = java.time.OffsetDateTime.now().minusDays(30).toString();
+        mvc.perform(post("/v1/staff").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"jo@itba.edu.ar\",\"branch\":\"IT\",\"role\":\"MEMBER\",\"start\":\"" + now + "\",\"end\":\"" + later + "\"}"))
+            .andExpect(status().is2xxSuccessful());
+        // An expired grant doesn't count.
+        mvc.perform(post("/v1/staff").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"majo@itba.edu.ar\",\"branch\":\"IT\",\"role\":\"MEMBER\",\"start\":\"" + past + "\",\"end\":\"" + expired + "\"}"))
+            .andExpect(status().is2xxSuccessful());
+
+        mvc.perform(get("/v1/users?staff=true").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].email").value("jo@itba.edu.ar"))
+            .andExpect(jsonPath("$.data[0].isStaff").value(true))
+            .andExpect(jsonPath("$.meta.total").value(1));
+        // Combines with search.
+        mvc.perform(get("/v1/users?staff=true&q=pajo").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(0));
+        mvc.perform(get("/v1/users").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.meta.total").value(3));
     }
 
     @Test
