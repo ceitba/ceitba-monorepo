@@ -38,11 +38,11 @@ mkdir -p "$M2_CACHE"
 
 exec docker run --rm \
   --network host \
-  -v "$PROJECT_ROOT":/app \
+  -v "$PROJECT_ROOT/../..":/repo \
   -v "$M2_CACHE":/root/.m2 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e TESTCONTAINERS_HOST_OVERRIDE=localhost \
   -e DOCKER_HOST=unix:///var/run/docker.sock \
-  -w /app \
+  -w /repo/apps/api \
   eclipse-temurin:21-jdk \
   ./mvnw "$@"

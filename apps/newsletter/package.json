@@ -1,10 +1,10 @@
 {
-  "name": "itba-news",
+  "name": "@ceitba/newsletter",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5175 --strictPort",
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview"

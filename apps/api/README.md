@@ -115,7 +115,7 @@ docker compose down -v && docker compose up -d postgres
 
 Pushes to `main` that pass CI deploy via `.github/workflows/main.yml`: it
 copies `docker-compose.yml` to `~/CEITBA-API/` and
-`infrastructure/caddy/{docker-compose.yml,Caddyfile}` to `~/infra/` (never
+`infra/caddy/{docker-compose.yml,Caddyfile}` to `~/infra/` (never
 `.env`), checks that `~/CEITBA-API/.env` satisfies the compose file, restarts
 Caddy if its Caddyfile changed, then pulls and restarts the API stack. Caddy
 serves `https://ceitba.org.ar`, proxies `/api/*` to the API and

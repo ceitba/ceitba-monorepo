@@ -1,10 +1,10 @@
 {
-  "name": "scheduler",
+  "name": "@ceitba/scheduler",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5174 --strictPort",
     "build": "tsc -p tsconfig.app.json && tsc -p tsconfig.worker.json && vite build",
     "preview": "vite preview",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0"

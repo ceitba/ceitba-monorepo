@@ -57,7 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 //
 // The MinIO and mc images and the bucket/user setup script are read from the
 // repo's docker-compose.yml (minio, minio-init), and the Caddy route is the
-// `handle /ceitba-media/*` block of infrastructure/caddy/Caddyfile, so this
+// `handle /ceitba-media/*` block of infra/caddy/Caddyfile, so this
 // test breaks if either drifts. The API signs for the proxy's address
 // (localhost:<mapped port>) while MinIO listens as ceitba-minio:9000: the
 // signature validates only because Caddy forwards the client's Host header
@@ -83,7 +83,7 @@ class MinioPresignedUploadIT {
     static {
         var compose = service(Path.of("docker-compose.yml"), "minio");
         var init = service(Path.of("docker-compose.yml"), "minio-init");
-        var caddyImage = (String) service(Path.of("infrastructure/caddy/docker-compose.yml"), "caddy").get("image");
+        var caddyImage = (String) service(Path.of("../../infra/caddy/docker-compose.yml"), "caddy").get("image");
 
         MINIO = new GenericContainer<>((String) compose.get("image"))
             .withNetwork(NET)
@@ -370,7 +370,7 @@ class MinioPresignedUploadIT {
     // The `handle /ceitba-media/* { ... }` block of the prod Caddyfile.
     static String caddyMediaBlock() {
         try {
-            var caddyfile = Files.readString(Path.of("infrastructure/caddy/Caddyfile"));
+            var caddyfile = Files.readString(Path.of("../../infra/caddy/Caddyfile"));
             var m = Pattern.compile("(?ms)^(\\s*)handle /ceitba-media/\\* \\{.*?^\\1\\}").matcher(caddyfile);
             assertThat(m.find()).as("handle /ceitba-media/* block in the Caddyfile").isTrue();
             return m.group();

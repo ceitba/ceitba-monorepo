@@ -108,13 +108,13 @@ rewriting to `https://ceitba.org.ar/ceitba-media/…`.
    Remove any `R2_*` and the obsolete `AUTH_JWT_AUDIENCE`. Keep a copy of
    both secrets in the team's password manager.
 
-2. **Caddy.** The deploy workflow copies `infrastructure/caddy/Caddyfile` to
+2. **Caddy.** The deploy workflow copies `infra/caddy/Caddyfile` to
    `~/infra/Caddyfile` and, when it changed, validates it and restarts
    `ceitba-caddy` (the single-file bind mount does not see a replaced file
    otherwise). No manual step is needed, but if you deploy by hand:
 
    ```sh
-   cp infrastructure/caddy/Caddyfile ~/infra/Caddyfile
+   cp infra/caddy/Caddyfile ~/infra/Caddyfile
    cd ~/infra
    docker compose run --rm --no-deps -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
    docker compose restart caddy
