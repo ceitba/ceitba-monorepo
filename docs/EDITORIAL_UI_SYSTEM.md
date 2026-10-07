@@ -41,7 +41,7 @@ does the heavy lifting. Color is used for meaning, not decoration.
 | Token | Hex | Usage |
 |---|---|---|
 | `primary` | `#1A3C6E` | Brand color. Buttons, active nav, headings on hover, dark backgrounds |
-| `primary-900` | `#091633` | Admin sidebar, dark footer |
+| `primary-900` | `#091633` | Dark footer, deep brand surfaces |
 | `primary-50` | `#EEF3FA` | Hover backgrounds, tag backgrounds |
 | `accent` | `#F5A623` | Active indicators, highlights, CTAs that need warmth |
 | `accent-50` | `#FEF8EC` | Tag backgrounds, light highlights |
@@ -63,7 +63,6 @@ white against cards also looks flat — the slight contrast between `surface` an
 Primary uses:
   - Primary buttons: bg-primary text-surface
   - Active nav underline: border-b-2 border-accent
-  - Admin sidebar: bg-primary-900
   - Article card hover: text-primary (headline color shift)
   - Focus rings: outline-accent (via *:focus-visible)
 
@@ -406,53 +405,68 @@ Not background-based, not bold-weight — just a precise accent line.
   ${open ? 'translate-x-0 animate-slide-in' : 'translate-x-full'}">
 ```
 
-### Admin sidebar
+### Admin section tabs
 
-```
-Width: w-56 (224px) fixed
-Background: bg-primary-900
-Position: fixed inset-y-0 left-0 (desktop), slide-in drawer from left (mobile)
-```
-
-**Nav item active state:** `bg-primary-700 text-white` (lighter on dark background).
-**Inactive:** `text-primary-200 hover:bg-primary-800 hover:text-white`.
-**Section labels:** `font-mono text-label uppercase tracking-widest text-primary-500`.
-**Badges (count):** `bg-primary-800 text-primary-300` — dark on dark, readable.
+Admin areas don't have a sidebar: they use the public navbar plus a `Tabs`
+strip under the page title (see §11). Tabs carry live counts when they filter
+a list, and a small amber dot when something new waits behind them.
 
 ---
 
 ## 7. Interactive element patterns
 
+### The shared kit (apps/web)
+
+Every section of the site (home, apuntes, `/manage`, the scheduler, the
+newsletter and its admin) builds on `src/components/ui` (`import { … } from
+'@/components/ui'`). Don't write button, input, tab, badge, dialog, empty,
+error or loading markup by hand. If the kit lacks something, extend the kit
+with a backwards-compatible prop; don't fork it locally.
+
+| Need | Use |
+|---|---|
+| Button / link that looks like one | `<Button variant size loading>` / `buttonClass()` |
+| Icon-only control (×, arrows, zoom) | `<IconButton aria-label>` + `CloseIcon` |
+| Form field | `<Field label hint error>` + `inputClass/selectClass/textareaClass` |
+| Inline message | `<Alert tone action onDismiss>` |
+| Transient feedback | `toast.success/error/info()` (one stack, mounted in Layout) |
+| Tabs | `<Tabs>` (WAI-ARIA keyboard tabs, optional counts and a "new" dot) |
+| Status pill | `<Badge tone>` |
+| Dialog | `Modal` · irreversible confirm: `ConfirmDialog` |
+| Loading | `Skeleton*` |
+| Nothing to show / failed to load | `EmptyState` / `ErrorState` |
+| On/off setting | `<Switch>` |
+
 ### Buttons
 
-```jsx
-// Primary action
-<button className="min-h-[44px] px-4 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded">
+Mono uppercase labels (`font-mono text-label uppercase tracking-widest`),
+`rounded-sm`, 44px tall. Variants:
 
-// Secondary / ghost
-<button className="min-h-[44px] px-4 bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded">
-
-// Destructive (only after confirmation)
-<button className="min-h-[36px] px-3 font-body text-body-sm text-red-600 hover:bg-red-50 rounded-sm transition-colors duration-150">
-```
+| Variant | For |
+|---|---|
+| `primary` | The one main action of a view. Never two in the same view. |
+| `outline` | Secondary actions. |
+| `ghost` | Cancel and low-emphasis actions. |
+| `dangerGhost` | Entry point to a destructive action (opens the confirmation). |
+| `danger` | Confirming an irreversible action, inside `ConfirmDialog` only. |
+| `accent` | Rare warm call to action (e.g. sending the digest). |
 
 Rules:
-- **Minimum touch target: 44px height** on all interactive elements. Non-negotiable on mobile.
+- **Minimum touch target: 44px** on all interactive elements. `size="sm"` is
+  for dense admin tables and toolbars: still 44px on touch, 36px from `sm:` up.
 - Use `rounded-sm` (2px) not `rounded` (4px) or `rounded-lg`. Subtle rounding is editorial, heavy rounding is SaaS.
-- `duration-150` for color transitions, `duration-200` for shadow/transform transitions.
-- `disabled:opacity-60 disabled:cursor-not-allowed` — always, never remove disabled styling.
+- Busy buttons show "…" (`loading`) and are disabled; that's the only place a
+  loading indicator isn't a skeleton.
+- A disabled button always has visible text nearby saying why (never only a
+  `title` tooltip).
+- Icon-only buttons only for universally understood icons; everything else
+  carries a text label.
 
 ### Form inputs
 
-```jsx
-<input className="w-full min-h-[44px] px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors duration-150" />
-```
-
-Error state:
-```jsx
-// Replace border-border and ring with red:
-"border-red-400 focus:border-red-500 focus:ring-red-300"
-```
+`inputClass({ invalid })`: 44px, white field, `border-border`, primary border +
+ring on focus, red border when invalid. Wrap in `<Field>` so label, hint and
+error are wired to the control (`aria-describedby`, `aria-invalid`).
 
 Never use `:focus` — always `:focus-visible` (keyboard-only ring). Exception:
 inputs, where `:focus` is appropriate since keyboard and mouse users both need
@@ -480,70 +494,44 @@ the edges, creating a single unified component feel.
 
 Every component that loads data must handle all three states. No exceptions.
 
-### Loading — skeleton shimmer
+### Loading — skeletons, always
 
-```css
-/* In @layer base or a global CSS file */
-.skeleton {
-  background: linear-gradient(90deg, #e9e9e7 25%, #f0f0ee 50%, #e9e9e7 75%);
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
-}
+Every surface that fetches data shows skeletons shaped like what's coming
+(`SkeletonRows` in a table body, `SkeletonTable`, `SkeletonCards`,
+`SkeletonForm`, `SkeletonText`, or `Skeleton` for custom shapes). No
+"Cargando…" lines, no lone spinners, no blank `Suspense` fallbacks: lazily
+loaded pages use `PageFallback`. Skeletons make the wait feel shorter and keep
+the layout from jumping when the data lands.
 
-@keyframes shimmer {
-  0%   { background-position: -400px 0 }
-  100% { background-position:  400px 0 }
-}
-```
-
-Skeleton shapes must approximate the real content's bounding box. Heights:
+The `.skeleton` shimmer lives in `src/index.css` (with its dark variant).
+Shapes approximate the real content's bounding box:
 - Headline: `h-6` or `h-10` (depending on scale)
 - Body line: `h-4`
 - Image area: `h-44` or `h-56`
 - Badge: `h-4 w-16`
 - Meta: `h-3 w-24`
 
-Always add `aria-busy="true"` and `aria-hidden="true"` to the skeleton container.
+`LoadingRegion` wraps them with `role="status"` and a screen-reader "Cargando".
 
 ### Empty state
 
-```jsx
-// Geometric illustration — no icons from a library, no stock illustrations
-<div className="flex flex-col items-center justify-center py-24 gap-6 text-center animate-fade-in">
-  <div className="relative w-24 h-24">
-    <div className="absolute inset-0 rounded-full bg-primary-50" />
-    <div className="absolute top-3 left-3 w-10 h-10 rotate-45 bg-accent-100" />
-    <div className="absolute bottom-4 right-3 w-6 h-6 rounded-full bg-primary-200" />
-  </div>
-  <p className="font-display text-h4 font-bold text-ink-primary">Título del estado vacío</p>
-  <p className="font-body text-body text-ink-secondary mt-1">Mensaje explicativo breve.</p>
-</div>
-```
-
-The layered geometric shapes echo the card cover fills — the empty state feels
-like part of the system, not an afterthought.
+`<EmptyState title body action />`: the geometric illustration (layered
+shapes echoing the card cover fills, no stock art), what will appear here, and
+the first step as `action` whenever there is one. `compact` for table bodies
+and side panels.
 
 ### Error state
 
-```jsx
-<div role="alert" className="flex flex-col items-center justify-center py-24 gap-6 text-center">
-  <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-    {/* inline SVG warning icon — no library */}
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  </div>
-  <div>
-    <p className="font-display text-h4 font-bold text-ink-primary">Algo salió mal</p>
-    <p className="font-body text-body text-ink-secondary mt-1">Mensaje de error accionable.</p>
-  </div>
-  <button className="min-h-[44px] px-6 py-2.5 bg-primary text-surface font-body font-semibold rounded-sm ...">
-    Reintentar
-  </button>
-</div>
-```
+`<ErrorState message onRetry backTo />`. A failed load never looks like an
+empty list, and the user is never left without a way forward: always a retry,
+a way back, or both. Copy is ours, in plain language — never a raw server
+message or `e.message` (log those to the console instead).
+
+- **Action failed** (save, delete, export): keep the user where they were.
+  Inside a dialog, show the error in the dialog (`ConfirmDialog error`, an
+  `Alert`) and let them retry; elsewhere `toast.error`. A failure that only
+  reaches `console.error` is a bug.
+- **Disabled because of state**: say why, visibly, next to the control.
 
 ---
 
@@ -657,21 +645,24 @@ The admin is a different context but stays in the same brand family.
 
 ### Layout
 
-```
-Fixed sidebar (w-56, bg-primary-900) + scrollable main content area.
-Main content has its own topbar (h-14, bg-white, border-b).
-Content padding: p-4 sm:p-6 lg:p-8.
-```
+One admin language for `/manage` (STAFF) and the newsletter admin
+(`/newsletter/admin`, STAFF and organization members): both render inside the
+site's Navbar and Footer, with a Fraunces page title and a `Tabs` strip of
+sections whose URL is the source of truth (reload and deep links keep the
+tab). No separate sidebar, breadcrumb bar, sign-in page or sign-out: the site
+account menu handles the session. Users who can't access an admin area get an
+in-place explanation, never a silent redirect.
 
 ### Admin color shifts
 
-- Background: `bg-surface` (same as public — admin isn't a different world)
-- Cards/panels: `bg-white rounded-card border border-border shadow-card` (same)
-- Sidebar: `bg-primary-900` — deepest brand blue
-- Status badges:
-  - Published: `bg-emerald-50 text-emerald-700`
-  - Draft: `bg-amber-50 text-amber-700`
-  - Past events: `opacity-50` on the row
+- Background: `bg-page-bg` (same as public — admin isn't a different world)
+- Cards/panels: `bg-white dark:bg-night-surface rounded-card border border-border` (same)
+- Status badges: `Badge` with one tone per meaning — success (published,
+  sent, active), warning (pending review), info (scheduled, changes
+  requested, running), danger (failed, rejected, removed), neutral (draft,
+  private). Backend enums are always mapped to a translated label.
+- Past items: muted text and grouped under a "Pasados" divider — not
+  `opacity-50` on the whole row (contrast).
 
 ### Tables
 
@@ -687,18 +678,25 @@ Content padding: p-4 sm:p-6 lg:p-8.
 
 ### Destructive actions (delete)
 
-Always require two clicks:
-1. First click: show "Confirmar / Cancelar" inline — no modal
-2. Second click: execute
+Confirm only what can't be undone (delete, send, revoke access), always with
+`ConfirmDialog`: the title asks the question ("¿Eliminar el artículo?"), the
+confirm button names the consequence ("Sí, eliminar"), Cancel gets initial
+focus, and a failure shows inside the dialog with retry. Reversible changes
+(role toggles, simulations, filters) don't ask. Never `window.confirm`, never
+inline "Confirmar / Cancelar" swaps.
 
-```jsx
-{confirmId === row.id ? (
-  <span className="flex items-center gap-1.5">
-    <button onClick={() => handleDelete(row.id)} className="text-red-600 hover:bg-red-50 ...">Confirmar</button>
-    <button onClick={() => setConfirmId(null)} className="text-ink-secondary ...">Cancelar</button>
-  </span>
-) : (
-  <button onClick={() => setConfirmId(row.id)} className="text-ink-secondary hover:text-red-600 ...">Eliminar</button>
+```tsx
+<Button variant="dangerGhost" size="sm" onClick={() => setPending(row)}>{t('delete')}</Button>
+{pending && (
+  <ConfirmDialog
+    title={t('confirmDeleteTitle')}
+    body={t('confirmDeleteBody', { name: pending.title })}
+    confirmLabel={t('confirmDelete')}
+    busy={busy}
+    error={error}
+    onConfirm={remove}
+    onCancel={() => setPending(null)}
+  />
 )}
 ```
 
@@ -766,6 +764,11 @@ These are failure modes that will make the design feel generic or wrong.
 | No centered hero-only homepage layout | Content flows editorially — asymmetric grid, not a billboard. |
 | No `hover:scale-105` on cards | Scale transforms feel SaaS. Use shadow transitions only. |
 | No staggered entrance animations | One clean `fade-in` per page load. Not per-item. |
+| No hover-only actions or info | Touch and keyboard users can't hover. Actions are always visible; info isn't hidden in `title`. |
+| No raw internal values in the UI | Slugs, enums, ids, `true/false`, CSS variable names, server error text. Show names and translated labels. |
+| No `window.confirm` / `alert` | Use `ConfirmDialog`, `Alert` or `toast`. |
+| No hand-rolled primitives | Buttons, inputs, dialogs, tabs, badges, empty/error/loading states come from `src/components/ui`. |
+| No parallel theming | Dark mode is `dark:` classes with the `night-*` tokens; no global CSS remaps per section. |
 | No mega menus | Navigation is flat: max one level deep. |
 | No full-width colored section bands | Use the editorial flow — same background, content creates the rhythm. |
 
