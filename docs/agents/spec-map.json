@@ -1,0 +1,88 @@
+{
+  "$comment": "Living-docs map (docs/agents/workflow.md). A PR that changes a file matching an area's `paths` must also change one of its `docs`, or tick 'No spec impact' in the PR body. Globs: ** = any depth, * = one segment. Add an area when a new feature gets its doc.",
+  "areas": [
+    {
+      "name": "auth",
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/config/SecurityConfig.java",
+        "apps/api/src/main/java/org/ceitba/api/**/auth/**"
+      ],
+      "docs": ["apps/api/docs/AUTH-AND-ROLES.md", "apps/api/docs/AUTH-SETUP.md"]
+    },
+    {
+      "name": "capabilities",
+      "paths": ["apps/api/src/main/java/org/ceitba/api/**/capability/**"],
+      "docs": ["apps/api/docs/CAPABILITIES.md"]
+    },
+    {
+      "name": "apuntes (drive sync)",
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/drive/**",
+        "apps/api/src/main/java/org/ceitba/api/scheduling/DriveSyncJob.java"
+      ],
+      "docs": ["apps/api/docs/DRIVE-SYNC.md"]
+    },
+    {
+      "name": "itba gateway",
+      "paths": ["apps/api/src/main/java/org/ceitba/api/external/itba/**"],
+      "docs": ["apps/api/docs/ITBA-GATEWAY.md"]
+    },
+    {
+      "name": "object storage",
+      "paths": ["apps/api/src/main/java/org/ceitba/api/**/media/**"],
+      "docs": ["apps/api/docs/OBJECT-STORAGE.md"]
+    },
+    {
+      "name": "push notifications",
+      "paths": ["apps/api/src/main/java/org/ceitba/api/**/push/**"],
+      "docs": ["apps/api/docs/PUSH-NOTIFICATIONS.md"]
+    },
+    {
+      "name": "schedule corrections",
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/correction/**",
+        "apps/scheduler/src/api/corrections.ts"
+      ],
+      "docs": ["apps/api/docs/SCHEDULE-CORRECTIONS.md"]
+    },
+    {
+      "name": "subject wiki",
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/kb/**",
+        "apps/api/src/main/java/org/ceitba/api/external/llm/**",
+        "apps/api/src/main/java/org/ceitba/api/scheduling/Kb*.java",
+        "apps/api/scripts/kb/**",
+        "apps/api/scripts/kb-import.sh"
+      ],
+      "docs": [
+        "apps/api/docs/SUBJECT-WIKI.md",
+        "apps/api/docs/SUBJECT-WIKI-PIPELINE.md",
+        "apps/api/docs/SUBJECT-WIKI-ADMIN.md"
+      ]
+    },
+    {
+      "name": "weekly digest",
+      "paths": [
+        "apps/api/src/main/java/org/ceitba/api/**/digest/**",
+        "apps/api/src/main/java/org/ceitba/api/**/mail/**",
+        "apps/api/src/main/java/org/ceitba/api/scheduling/DigestJob.java",
+        "apps/api/src/main/java/org/ceitba/api/scheduling/MailRetentionJob.java"
+      ],
+      "docs": ["apps/api/docs/WEEKLY-DIGEST.md"]
+    },
+    {
+      "name": "hosting and CI",
+      "paths": ["infra/**", ".github/workflows/**", ".github/spa-apps.json"],
+      "docs": ["AGENTS.md", "README.md", "CONTRIBUTING.md"]
+    },
+    {
+      "name": "ui system",
+      "paths": [
+        "apps/web/tailwind.config.*",
+        "apps/scheduler/tailwind.config.*",
+        "apps/newsletter/tailwind.config.*"
+      ],
+      "docs": ["docs/EDITORIAL_UI_SYSTEM.md"]
+    }
+  ]
+}
