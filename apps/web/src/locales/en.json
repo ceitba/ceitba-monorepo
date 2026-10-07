@@ -63,7 +63,7 @@
         "categories": "Categories"
       },
       "categories": {
-        "help": "Categories are the \"chips\" used to filter benefits. Edit their name, color and order here.",
+        "help": "Categories are the chips used to filter benefits. Create new categories and edit their name, color and order here.",
         "order": "Order",
         "nameEs": "Name (ES)",
         "nameEn": "Name (EN)",
@@ -82,7 +82,27 @@
         "saved": "Category saved.",
         "loadFailed": "We couldn't load the categories.",
         "empty": "There are no benefit categories yet.",
-        "emptyHint": "You'll be able to edit each category's name, color and order here. CEITBA's tech team creates them."
+        "emptyHint": "Categories group the benefit cards and let people filter them on the site. Create the first one to start adding benefits.",
+        "create": "New category",
+        "createTitle": "New benefit category",
+        "createSubmit": "Create category",
+        "created": "Category created.",
+        "nameEsRequired": "Enter the Spanish name.",
+        "nameEnHint": "Optional. If you leave it empty, the English site shows the Spanish name.",
+        "slug": "Identifier",
+        "slugHint": "Built from the name and can't be changed later. Lowercase letters, numbers and hyphens only.",
+        "slugErrors": {
+          "required": "Enter an identifier.",
+          "format": "Use 2 to 40 characters: lowercase letters without accents, numbers and single hyphens (for example, \"mental-health\").",
+          "taken": "A category with that identifier already exists. Pick another one."
+        },
+        "confirmDelete": "Delete this category?",
+        "deleteBody_zero": "The category “{{name}}” will be deleted. It has no cards. This can't be undone.",
+        "deleteBody_one": "The category “{{name}}” will be deleted along with its card. This can't be undone.",
+        "deleteBody_other": "The category “{{name}}” will be deleted along with its {{count}} cards. This can't be undone.",
+        "deleteBodyUnknown": "The category “{{name}}” will be deleted along with all its cards. This can't be undone.",
+        "deleteConfirm": "Yes, delete",
+        "deleted": "Category deleted."
       },
       "cards": {
         "filter": "Category",
@@ -117,7 +137,7 @@
         "loadFailed": "We couldn't load the benefit cards.",
         "emptyFiltered": "There are no cards in this category.",
         "emptyHint": "The cards shown in the site's Benefits section will appear here.",
-        "needsCategory": "Every card needs a category and there are none yet, so you can't add cards. CEITBA's tech team creates categories: ask them for one and come back here.",
+        "needsCategory": "Every card needs a category and there are none yet. Create one under Categories, then come back here.",
         "goToCategories": "See categories",
         "titlesRequired": "Fill in the Spanish and English titles to save."
       },
