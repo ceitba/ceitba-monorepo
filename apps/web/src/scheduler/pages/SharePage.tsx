@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   type ShareSession,
@@ -14,11 +14,25 @@ import { usePlanCatalogs } from '../hooks/usePlanCatalogs'
 import { useAuth } from '@/hooks/useAuth'
 import { useBeginSignIn } from '../context/signInContext'
 import HeatmapGrid from '../components/HeatmapGrid'
-import LoadingDots from '../components/LoadingDots'
-import ErrorView from '../components/ErrorView'
+import ScheduleGridSkeleton from '../components/ScheduleGridSkeleton'
 import SchedulerHeader from '../components/SchedulerHeader'
 import { buildHeatmap } from '../services/heatmap'
+import { errorMessageKey } from '../services/apiErrors'
+import { careerPlanLabel } from '../utils/careerLabel'
 import { SCHEDULER_BASE } from '../paths'
+import {
+  Alert,
+  Badge,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  LoadingRegion,
+  Modal,
+  Skeleton,
+  buttonClass,
+  toast,
+} from '@/components/ui'
 
 // How often an open share page refetches the session so new participants
 // show up without a reload. Paused while the tab is hidden.
@@ -32,15 +46,20 @@ export default function SharePage() {
   const { profile } = useAuth()
 
   const [session, setSession] = useState<ShareSession | null>(null)
-  // Token whose initial load has finished; while it differs from `token`
+  // Token (and attempt) whose initial load has finished; while it differs
   // the page shows its loading state.
-  const [loadedToken, setLoadedToken] = useState<string | null>(null)
-  const loading = loadedToken !== token
-  const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const loadKey = `${token}#${attempt}`
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
+  const loading = loadedKey !== loadKey
+  // i18n key of why the session couldn't be loaded, or null.
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showJoin, setShowJoin] = useState(false)
-  const [savedList, setSavedList] = useState<SavedSchedule[]>([])
+  const [joinError, setJoinError] = useState<string | null>(null)
+  // null until loaded (the join dialog waits for it).
+  const [savedList, setSavedList] = useState<SavedSchedule[] | null>(null)
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [deleting, setDeleting] = useState<{ busy: boolean; error: string | null } | null>(null)
   // Bumped by every fetch and by join/leave, so a slower, older response
   // never overwrites a newer session.
   const sessionSeq = useRef(0)
@@ -59,16 +78,17 @@ export default function SharePage() {
         const next = await getShareSession(token)
         if (cancelled || seq !== sessionSeq.current) return
         setSession((prev) => (prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
-        if (initial) setError(null)
+        if (initial) setLoadError(null)
       } catch (e) {
         if (cancelled || seq !== sessionSeq.current) return
         // Background failures are transient unless the session is gone.
-        if (initial || (e instanceof ApiError && e.status === 404)) {
+        const gone = e instanceof ApiError && e.status === 404
+        if (initial || gone) {
           if (!initial) setSession(null)
-          setError((e as Error).message)
+          setLoadError(gone ? 'share.notFound' : errorMessageKey(e, 'share.loadFailed'))
         }
       } finally {
-        if (initial && !cancelled) setLoadedToken(token)
+        if (initial && !cancelled) setLoadedKey(loadKey)
       }
     }
 
@@ -91,7 +111,7 @@ export default function SharePage() {
       stop()
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [token])
+  }, [token, loadKey])
 
   // Subject catalog for every distinct plan present in the session so the
   // heatmap can resolve commission times. Plans missing from the map
@@ -105,7 +125,11 @@ export default function SharePage() {
 
   useEffect(() => {
     if (!profile) return
-    listSavedSchedules().then(setSavedList).catch(() => undefined)
+    listSavedSchedules().then(setSavedList).catch((e) => {
+      console.error(e)
+      // The join dialog then offers to save one first.
+      setSavedList([])
+    })
   }, [profile])
 
   const heatmap = useMemo(
@@ -119,31 +143,32 @@ export default function SharePage() {
   async function handleJoin(savedScheduleId: string) {
     if (!token) return
     setBusy(true)
-    setError(null)
+    setJoinError(null)
     try {
       const updated = await joinShareSession(token, { savedScheduleId })
       sessionSeq.current++
       setSession(updated)
       setShowJoin(false)
+      toast.success(t('share.joined'))
     } catch (e) {
-      setError((e as Error).message)
+      setJoinError(t(errorMessageKey(e, 'share.errors.joinFailed')))
     } finally {
       setBusy(false)
     }
   }
 
+  // Reversible (they can add their schedule again), so no confirmation.
   async function handleLeave() {
     if (!token) return
-    if (!confirm(t('share.confirmLeave'))) return
     setBusy(true)
-    setError(null)
     try {
       await leaveShareSession(token)
       const refreshed = await getShareSession(token)
       sessionSeq.current++
       setSession(refreshed)
+      toast.info(t('share.left'))
     } catch (e) {
-      setError((e as Error).message)
+      toast.error(t(errorMessageKey(e, 'share.errors.leaveFailed')))
     } finally {
       setBusy(false)
     }
@@ -151,15 +176,13 @@ export default function SharePage() {
 
   async function handleDelete() {
     if (!token) return
-    if (!confirm(t('share.confirmDelete'))) return
-    setBusy(true)
-    setError(null)
+    setDeleting({ busy: true, error: null })
     try {
       await deleteShareSession(token)
+      toast.success(t('share.deleted'))
       navigate(SCHEDULER_BASE, { replace: true })
     } catch (e) {
-      setError((e as Error).message)
-      setBusy(false)
+      setDeleting({ busy: false, error: t(errorMessageKey(e, 'share.errors.deleteFailed')) })
     }
   }
 
@@ -167,10 +190,9 @@ export default function SharePage() {
     const url = window.location.href
     try {
       await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      toast.success(t('save.linkCopied'))
     } catch {
-      setError(t('save.linkCopyFailed', { url }))
+      toast.error(t('save.linkCopyFailed', { url }))
     }
   }
 
@@ -180,11 +202,21 @@ export default function SharePage() {
 
       <main className="flex-1 container-content py-section-mobile lg:py-section">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <LoadingDots size="lg" />
-          </div>
-        ) : error && !session ? (
-          <ErrorView message={error} className="h-64" />
+          <LoadingRegion className="flex flex-col gap-3">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-9 w-2/3 max-w-md" />
+            <Skeleton className="h-4 w-48 mb-4" />
+            <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border px-4 py-4">
+              <ScheduleGridSkeleton />
+            </div>
+          </LoadingRegion>
+        ) : loadError && !session ? (
+          <ErrorState
+            message={t(loadError)}
+            onRetry={() => setAttempt((n) => n + 1)}
+            backTo={SCHEDULER_BASE}
+            backLabel={t('share.backToScheduler')}
+          />
         ) : session && heatmap ? (
           <>
             <header className="mb-6">
@@ -200,52 +232,22 @@ export default function SharePage() {
               </p>
             </header>
 
-            {[error, catalogError].map((message) => message && (
-              <p key={message} className="mb-4 px-3 py-2 rounded-sm bg-red-50 text-red-700 font-body text-body-sm border border-red-200">
-                {message}
-              </p>
-            ))}
+            {loadError && <Alert tone="error" className="mb-4">{t(loadError)}</Alert>}
+            {catalogError && <Alert tone="warning" className="mb-4">{catalogError}</Alert>}
 
             <div className="flex flex-wrap gap-2 mb-6">
-              <button
-                onClick={copyLink}
-                className="px-3 py-1.5 rounded-sm border border-border dark:border-night-border text-ink-primary dark:text-night-text font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
-              >
-                {copied ? t('save.linkCopied') : t('share.copyLink')}
-              </button>
-              {!profile && (
-                <button
-                  onClick={beginSignIn}
-                  className="px-3 py-1.5 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600 transition-colors"
-                >
-                  {t('share.signInToJoin')}
-                </button>
-              )}
+              {!profile && <Button onClick={beginSignIn}>{t('share.signInToJoin')}</Button>}
               {profile && !isParticipant && (
-                <button
-                  onClick={() => setShowJoin(true)}
-                  className="px-3 py-1.5 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600 transition-colors"
-                >
-                  {t('share.addMySchedule')}
-                </button>
+                <Button onClick={() => { setJoinError(null); setShowJoin(true) }}>{t('share.addMySchedule')}</Button>
               )}
+              <Button variant="outline" onClick={copyLink}>{t('share.copyLink')}</Button>
               {profile && isParticipant && !isCreator && (
-                <button
-                  onClick={handleLeave}
-                  disabled={busy}
-                  className="px-3 py-1.5 rounded-sm border border-red-200 text-red-600 font-mono text-label uppercase tracking-widest hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  {t('share.leave')}
-                </button>
+                <Button variant="ghost" onClick={handleLeave} loading={busy}>{t('share.leave')}</Button>
               )}
               {isCreator && (
-                <button
-                  onClick={handleDelete}
-                  disabled={busy}
-                  className="px-3 py-1.5 rounded-sm border border-red-200 text-red-600 font-mono text-label uppercase tracking-widest hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
+                <Button variant="dangerGhost" onClick={() => setDeleting({ busy: false, error: null })}>
                   {t('share.deleteSession')}
-                </button>
+                </Button>
               )}
             </div>
 
@@ -261,19 +263,11 @@ export default function SharePage() {
                 {session.participants.map((p) => (
                   <li
                     key={p.userId}
-                    className="px-3 py-1.5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface font-mono text-label text-ink-primary dark:text-night-text"
+                    className="inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm text-ink-primary dark:text-night-text"
                   >
                     {p.displayName}
-                    {p.isCreator && (
-                      <span className="ml-2 text-primary uppercase tracking-widest">
-                        · {t('share.creatorTag')}
-                      </span>
-                    )}
-                    {!p.payload && (
-                      <span className="ml-2 text-ink-secondary dark:text-night-muted uppercase tracking-widest">
-                        · {t('share.scheduleRemoved')}
-                      </span>
-                    )}
+                    {p.isCreator && <Badge tone="info">{t('share.creatorTag')}</Badge>}
+                    {!p.payload && <Badge tone="neutral">{t('share.scheduleRemoved')}</Badge>}
                   </li>
                 ))}
               </ul>
@@ -286,8 +280,21 @@ export default function SharePage() {
         <JoinDialog
           savedList={savedList}
           busy={busy}
+          error={joinError}
           onJoin={handleJoin}
           onClose={() => setShowJoin(false)}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title={t('share.confirmDeleteTitle')}
+          body={t('share.confirmDelete')}
+          confirmLabel={t('share.confirmDeleteAction')}
+          busy={deleting.busy}
+          error={deleting.error}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleting(null)}
         />
       )}
     </div>
@@ -297,67 +304,82 @@ export default function SharePage() {
 function JoinDialog({
   savedList,
   busy,
+  error,
   onJoin,
   onClose,
 }: {
-  savedList: SavedSchedule[]
+  savedList: SavedSchedule[] | null
   busy: boolean
+  error: string | null
   onJoin: (id: string) => void
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const [picked, setPicked] = useState<string | null>(savedList[0]?.id ?? null)
+  const [picked, setPicked] = useState<string | null>(null)
+  const selected = picked ?? savedList?.[0]?.id ?? null
+  const empty = savedList !== null && savedList.length === 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-primary/30 dark:bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md p-5 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover">
-        <h3 className="font-display text-h4 font-bold text-ink-primary dark:text-night-text mb-3">
-          {t('share.join.title')}
-        </h3>
-        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-3">
-          {t('share.join.hint')}
-        </p>
-        {savedList.length === 0 ? (
-          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-            {t('share.join.noSaved')}
-          </p>
+    <Modal
+      title={t('share.join.title')}
+      onClose={onClose}
+      busy={busy}
+      footer={
+        empty ? (
+          <Button variant="ghost" onClick={onClose}>{t('ui.close')}</Button>
         ) : (
-          <ul className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
-            {savedList.map((s) => (
-              <li key={s.id}>
+          <>
+            <Button variant="ghost" onClick={onClose} disabled={busy}>{t('ui.cancel')}</Button>
+            <Button onClick={() => selected && onJoin(selected)} disabled={!selected} loading={busy}>
+              {t('share.join.confirm')}
+            </Button>
+          </>
+        )
+      }
+    >
+      {savedList === null ? (
+        <LoadingRegion className="flex flex-col gap-2">
+          <Skeleton className="h-14 rounded-card" />
+          <Skeleton className="h-14 rounded-card" />
+        </LoadingRegion>
+      ) : empty ? (
+        <EmptyState
+          compact
+          title={t('share.join.noSavedTitle')}
+          body={t('share.join.noSaved')}
+          action={<Link to={SCHEDULER_BASE} className={buttonClass()}>{t('share.join.makeOne')}</Link>}
+        />
+      ) : (
+        <>
+          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+            {t('share.join.hint')}
+          </p>
+          <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+            {savedList.map((s) => {
+              const checked = selected === s.id
+              return (
                 <button
+                  key={s.id}
+                  type="button"
+                  aria-pressed={checked}
                   onClick={() => setPicked(s.id)}
-                  className={`w-full px-3 py-2 rounded-card border text-left transition-colors ${
-                    picked === s.id
-                      ? 'border-primary bg-primary text-white'
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-card border text-left transition-colors ${
+                    checked
+                      ? 'border-primary bg-primary text-white dark:border-primary-400 dark:bg-primary-700'
                       : 'border-border dark:border-night-border bg-surface dark:bg-night-bg text-ink-primary dark:text-night-text hover:border-primary'
                   }`}
                 >
-                  <div className="font-body font-semibold text-body-sm">{s.name}</div>
-                  <div className="font-mono text-label uppercase tracking-widest opacity-80">
-                    {s.careerId ?? '—'} · {s.plan ?? '—'}
-                  </div>
+                  <span className="block font-body font-semibold text-body-sm">{s.name}</span>
+                  <span className="block font-mono text-label uppercase tracking-widest opacity-80">
+                    {careerPlanLabel(t, s.careerId, s.plan)}
+                  </span>
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-border dark:border-night-border">
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary"
-          >
-            {t('saved.cancel')}
-          </button>
-          <button
-            onClick={() => picked && onJoin(picked)}
-            disabled={!picked || busy}
-            className="px-3 py-1.5 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest disabled:opacity-50"
-          >
-            {t('share.join.confirm')}
-          </button>
-        </div>
-      </div>
-    </div>
+              )
+            })}
+          </div>
+          {error && <Alert tone="error">{error}</Alert>}
+        </>
+      )}
+    </Modal>
   )
 }

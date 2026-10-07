@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import SectionHeader from '@/components/SectionHeader'
 import { sectionLinkClass } from '@/components/sectionLinkClass'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
+import { buttonClass } from '@/components/ui'
 
 interface SchedulerHeaderProps {
   // On a career page: the plan being shown, to offer the other plans.
@@ -44,8 +45,9 @@ export default function SchedulerHeader({ currentPlan }: SchedulerHeaderProps) {
       {plans.length > 1 && currentPlan && (
         <div className="relative" ref={dropdownRef}>
           <button
+            type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-1.5 min-h-[36px] px-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted border border-border dark:border-night-border hover:bg-primary-50 dark:hover:bg-primary-900 rounded-sm transition-colors duration-150"
+            className={buttonClass({ variant: 'outline', size: 'sm' })}
             aria-expanded={isDropdownOpen}
             aria-haspopup="listbox"
           >
@@ -64,9 +66,9 @@ export default function SchedulerHeader({ currentPlan }: SchedulerHeaderProps) {
                     onClick={() => handlePlanChange(plan.id)}
                     role="option"
                     aria-selected={currentPlan === plan.id}
-                    className={`block w-full text-left px-4 py-2.5 font-mono text-label uppercase tracking-widest transition-colors duration-100 ${
+                    className={`block w-full min-h-[44px] text-left px-4 py-2.5 font-mono text-label uppercase tracking-widest transition-colors duration-100 ${
                       currentPlan === plan.id
-                        ? 'bg-primary-50 dark:bg-primary-900 text-primary font-bold'
+                        ? 'bg-primary-50 dark:bg-primary-900 text-primary dark:text-primary-200 font-bold'
                         : 'text-ink-secondary dark:text-night-muted hover:bg-surface dark:hover:bg-night-bg'
                     }`}
                   >

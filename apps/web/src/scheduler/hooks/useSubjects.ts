@@ -95,7 +95,9 @@ export function useSubjects(plan: string | null) {
   // Outcome of the last request, tagged with its plan: until the current
   // plan's request settles we report loading and an empty catalog, so a
   // previous plan's subjects are never shown for the new one.
-  const [state, setState] = useState<{ plan: string; subjects: Subject[]; error: string | null } | null>(null)
+  const [state, setState] = useState<{ plan: string; subjects: Subject[]; failed: boolean } | null>(null)
+  // Bumped by refetch() to run the request again after a failure.
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!plan) return
@@ -103,14 +105,19 @@ export function useSubjects(plan: string | null) {
     // overwrite the current plan's catalog.
     let ignore = false
     fetchSubjectsByPlan(plan)
-      .then((subjects) => { if (!ignore) setState({ plan, subjects, error: null }) })
+      .then((subjects) => { if (!ignore) setState({ plan, subjects, failed: false }) })
       .catch((err) => {
         if (ignore) return
-        const error = err instanceof Error ? err.message : 'An error occurred while fetching subjects'
-        setState({ plan, subjects: [], error })
+        console.error('Could not load subjects', err)
+        setState({ plan, subjects: [], failed: true })
       })
     return () => { ignore = true }
-  }, [plan])
+  }, [plan, attempt])
+
+  const refetch = useCallback(() => {
+    setState(null)
+    setAttempt((n) => n + 1)
+  }, [])
 
   // Replaces one commission in place (e.g. after a schedule correction
   // vote) without refetching the whole plan. `update` must be pure.
@@ -135,7 +142,9 @@ export function useSubjects(plan: string | null) {
   return {
     subjects: current?.subjects ?? NO_SUBJECTS,
     loading: current === null,
-    error: current?.error ?? null,
+    // True when the catalog request failed; the UI shows its own copy.
+    error: current?.failed ?? false,
     updateCommission,
+    refetch,
   }
 }

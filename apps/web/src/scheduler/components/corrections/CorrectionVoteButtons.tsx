@@ -6,6 +6,7 @@ import { removeCorrectionVote, toCommissionCorrection, voteCorrection } from '..
 import { correctionErrorKey, nextVoteAction } from '../../services/corrections'
 import type { CommissionCorrection, VoteType } from '../../types/scheduler'
 import SignInPrompt from './SignInPrompt'
+import { Button } from '@/components/ui'
 
 interface Props {
   subjectId: string
@@ -14,12 +15,6 @@ interface Props {
   // Accessible name of the group, e.g. "Vote on the suggestion Tue 08:00–10:00".
   label: string
 }
-
-const base =
-  'min-h-[32px] px-2.5 py-1 rounded-sm font-mono text-label uppercase tracking-widest border transition-colors duration-150 disabled:opacity-50'
-const idle =
-  'bg-white dark:bg-night-surface text-ink-secondary dark:text-night-muted border-border dark:border-night-border hover:border-primary hover:text-primary'
-const active = 'bg-primary text-white border-primary'
 
 // [Confirmar] [No es así]. The caller's vote shows pressed; pressing it
 // again removes it. Anonymous visitors get a sign-in prompt instead.
@@ -56,16 +51,16 @@ export default function CorrectionVoteButtons({ subjectId, commissionName, corre
         {(['CONFIRM', 'REJECT'] as const).map((type) => {
           const pressed = correction.my_vote === type
           return (
-            <button
+            <Button
               key={type}
-              type="button"
+              size="sm"
+              variant={pressed ? 'primary' : 'outline'}
               onClick={() => vote(type)}
               disabled={busy}
               aria-pressed={pressed}
-              className={`${base} ${pressed ? active : idle}`}
             >
               {t(type === 'CONFIRM' ? 'corrections.confirm' : 'corrections.reject')}
-            </button>
+            </Button>
           )
         })}
       </div>

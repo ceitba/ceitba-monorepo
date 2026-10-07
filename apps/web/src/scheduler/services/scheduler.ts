@@ -64,7 +64,19 @@ const getAvailableCommissions = (subject: SchedulerSubject): Commission[] => {
   return selected.length > 0 ? selected : subject.commissions;
 };
 
-const createSlotsFromCommission = (subject: SchedulerSubject, commission: Commission): ScheduleSlot[] =>
+// Subjects none of whose (selected) commissions avoid the blocked times:
+// with any of these, generateSchedules can't return a combination. Used to
+// explain an empty result.
+export const subjectsBlockedOut = (subjects: SchedulerSubject[], blockedTimes: TimeBlock[]): SchedulerSubject[] =>
+  blockedTimes.length === 0
+    ? []
+    : subjects.filter(subject =>
+        getAvailableCommissions(subject).every(commission =>
+          createSlotsFromCommission(subject, commission).some(slot => intersectsBlockedTime(slot, blockedTimes))
+        )
+      );
+
+const createSlotsFromCommission =(subject: SchedulerSubject, commission: Commission): ScheduleSlot[] =>
   commission.schedule.map((slot: CommissionSchedule) => ({
     day: slot.day,
     timeFrom: slot.time_from,

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import BaseModal from '../BaseModal'
+import { Alert, Button, CloseIcon, IconButton, Modal, inputClass } from '@/components/ui'
 import SignInPrompt from './SignInPrompt'
 import { useAuth } from '@/hooks/useAuth'
 import { useCorrections } from '../../context/correctionsContext'
@@ -34,12 +34,8 @@ type Phase =
   | { kind: 'duplicate'; correction: CommissionCorrection }
   | { kind: 'done'; message: string }
 
-const field =
-  'min-h-[40px] px-2 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface text-ink-primary dark:text-night-text font-body text-body-sm'
-const primaryBtn =
-  'min-h-[44px] px-4 py-2 rounded-sm bg-primary text-surface font-body font-semibold text-body-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-50'
-const secondaryBtn =
-  'min-h-[44px] px-4 py-2 rounded-sm font-body text-body-sm text-ink-secondary dark:text-night-muted hover:text-primary hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-150'
+// Day/time controls sit side by side, so they size to their content.
+const field = (invalid: boolean) => inputClass({ invalid, className: '!w-auto' })
 
 // Form to suggest a commission's real days/times, prefilled with what the
 // app shows now. Rooms are read-only context (v1 only corrects day/time).
@@ -118,11 +114,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
     </div>
   )
 
-  const errorBox = error && (
-    <p role="alert" className="px-3 py-2 rounded-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-body text-body-sm border border-red-200 dark:border-red-800">
-      {error}
-    </p>
-  )
+  const errorBox = error && <Alert tone="error">{error}</Alert>
 
   let body
   if (!loading && !profile) {
@@ -140,7 +132,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
         <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text">{t('corrections.doneTitle')}</h4>
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{phase.message}</p>
         <div className="flex justify-end pt-2">
-          <button type="button" onClick={onClose} className={primaryBtn}>{t('corrections.done')}</button>
+          <Button onClick={onClose}>{t('corrections.done')}</Button>
         </div>
       </div>
     )
@@ -154,10 +146,10 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
         </p>
         {errorBox}
         <div className="flex justify-end gap-2 pt-2 border-t border-border dark:border-night-border">
-          <button type="button" onClick={onClose} className={secondaryBtn}>{t('corrections.cancel')}</button>
-          <button type="button" onClick={() => confirmDuplicate(phase.correction)} disabled={busy} className={primaryBtn}>
-            {busy ? t('corrections.sending') : t('corrections.confirmDuplicate')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('corrections.cancel')}</Button>
+          <Button onClick={() => confirmDuplicate(phase.correction)} loading={busy} loadingLabel={t('corrections.sending')}>
+            {t('corrections.confirmDuplicate')}
+          </Button>
         </div>
       </div>
     )
@@ -192,7 +184,7 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
                     onChange={(e) => update(i, { day: e.target.value })}
                     aria-label={t('corrections.dayAria', { n })}
                     aria-invalid={!!slotError}
-                    className={field}
+                    className={field(!!slotError)}
                   >
                     {SUGGESTION_DAYS.map((d) => (
                       <option key={d} value={d}>{t(`daysFull.${d}`)}</option>
@@ -207,9 +199,9 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
                     onChange={(e) => update(i, { from: e.target.value })}
                     aria-label={t('corrections.fromAria', { n })}
                     aria-invalid={!!slotError}
-                    className={field}
+                    className={field(!!slotError)}
                   />
-                  <span aria-hidden="true" className="text-ink-secondary">–</span>
+                  <span aria-hidden="true" className="text-ink-secondary dark:text-night-muted">–</span>
                   <input
                     type="time"
                     value={slot.to}
@@ -219,19 +211,15 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
                     onChange={(e) => update(i, { to: e.target.value })}
                     aria-label={t('corrections.toAria', { n })}
                     aria-invalid={!!slotError}
-                    className={field}
+                    className={field(!!slotError)}
                   />
-                  <button
-                    type="button"
+                  <IconButton
+                    size="sm"
                     onClick={() => removeSlot(i)}
                     aria-label={t('corrections.removeSlot', { n })}
-                    className="p-2 rounded-sm text-ink-secondary dark:text-night-muted hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
+                    <CloseIcon size={16} />
+                  </IconButton>
                 </div>
                 <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
                   {slot.classroom ? t('corrections.classroom', { classroom: slot.classroom }) : t('corrections.noClassroom')}
@@ -246,14 +234,16 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
           })}
         </ol>
 
-        <button
-          type="button"
-          onClick={addSlot}
-          disabled={draft.length >= MAX_SLOTS}
-          className="font-body text-body-sm font-semibold text-primary dark:text-primary-300 underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline"
-        >
-          + {t('corrections.addSlot')}
-        </button>
+        <div className="flex flex-wrap items-center gap-x-3">
+          <Button variant="outline" size="sm" onClick={addSlot} disabled={draft.length >= MAX_SLOTS}>
+            + {t('corrections.addSlot')}
+          </Button>
+          {draft.length >= MAX_SLOTS && (
+            <span className="font-body text-label text-ink-secondary dark:text-night-muted">
+              {t('corrections.formErrors.tooMany', { max: MAX_SLOTS })}
+            </span>
+          )}
+        </div>
 
         {showErrors && validation.formError && (
           <p role="alert" className="font-body text-body-sm text-red-700 dark:text-red-300">
@@ -263,18 +253,18 @@ export default function SuggestCorrectionModal({ subject, commission, onClose }:
         {errorBox}
 
         <div className="flex justify-end gap-2 pt-4 border-t border-border dark:border-night-border">
-          <button type="button" onClick={onClose} className={secondaryBtn}>{t('corrections.cancel')}</button>
-          <button type="submit" disabled={busy} className={primaryBtn}>
-            {busy ? t('corrections.sending') : t('corrections.submit')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('corrections.cancel')}</Button>
+          <Button type="submit" loading={busy} loadingLabel={t('corrections.sending')}>
+            {t('corrections.submit')}
+          </Button>
         </div>
       </form>
     )
   }
 
   return (
-    <BaseModal isOpen onClose={onClose} title={t('corrections.suggestTitle')}>
+    <Modal onClose={onClose} busy={busy} title={t('corrections.suggestTitle')}>
       {body}
-    </BaseModal>
+    </Modal>
   )
 }
