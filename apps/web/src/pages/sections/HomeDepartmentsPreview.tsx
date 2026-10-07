@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDepartments } from '../../hooks/useContent'
 import SeeAllButton from '../../components/SeeAllButton'
@@ -45,7 +46,7 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
-export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => void }) {
+export default function HomeDepartmentsPreview() {
   const { t } = useTranslation()
   const { data, loading, error, reload } = useDepartments()
   const departments = (data ?? []).slice(0, 6)
@@ -71,7 +72,7 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
               {t('home.departments.subtitle')}
             </p>
           </div>
-          <SeeAllButton onClick={onSeeAll} label={t('home.departments.seeAll')} />
+          <SeeAllButton to="/about" label={t('home.departments.seeAll')} />
         </div>
 
         {error && !loading ? (
@@ -81,10 +82,9 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
         ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 animate-fade-in">
           {departments.map((dept) => (
-                <button
+                <Link
+                  to="/about"
                   key={dept.slug}
-                  type="button"
-                  onClick={onSeeAll}
                   className="group flex flex-col items-start gap-2.5 p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 text-left"
                   aria-label={t('home.departments.tileAria', { name: t(`departments.${dept.slug}.name`) })}
                 >
@@ -97,7 +97,7 @@ export default function HomeDepartmentsPreview({ onSeeAll }: { onSeeAll: () => v
                   <span className="font-display font-bold text-body-sm text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150 leading-tight">
                     {t(`departments.${dept.slug}.name`)}
                   </span>
-                </button>
+                </Link>
               ))
           }
         </div>

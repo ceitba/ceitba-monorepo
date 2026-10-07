@@ -4,6 +4,7 @@ import { EmptyState, ErrorState, LoadingRegion, ToggleGroup } from '@/components
 import ArticleCard from '../components/ArticleCard'
 import SkeletonCard from '../components/SkeletonCard'
 import WriteForNewsletter from '../components/WriteForNewsletter'
+import NewsletterPageHeader from '../components/NewsletterPageHeader'
 import { fetchArticles } from '../api/articles'
 import { CATEGORIES } from '../constants/categories'
 import { useCategoryLabel } from '../hooks/useCategoryLabel'
@@ -48,17 +49,12 @@ export default function ArticlesPage() {
   return (
     <div className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <header className="mb-8 lg:mb-12 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="font-display text-h1 lg:text-display font-bold text-ink-primary leading-tight">
-              {t('articles.pageTitle')}
-            </h1>
-            <p className="font-body text-body-lg text-ink-secondary mt-2">
-              {t('articles.pageSubtitle')}
-            </p>
-          </div>
-          <WriteForNewsletter />
-        </header>
+        <NewsletterPageHeader
+          current="articles"
+          title={t('articles.pageTitle')}
+          subtitle={t('articles.pageSubtitle')}
+          action={<WriteForNewsletter />}
+        />
 
         <FilterBar
           categories={CATEGORIES}

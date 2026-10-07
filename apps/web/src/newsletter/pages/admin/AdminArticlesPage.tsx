@@ -13,7 +13,7 @@ import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 import { newsletterPath } from '@/newsletter/paths'
 import {
-  Alert, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, Tabs, buttonClass, type TabItem,
+  Alert, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, ToggleGroup, buttonClass, type TabItem,
 } from '@/components/ui'
 import type { UserProfile } from '@/store/authStore'
 import type { Article, ArticleStatus, VoteCounts } from '../../types'
@@ -184,20 +184,23 @@ export default function AdminArticlesPage() {
           )}
 
           {tabs.length > 2 && (
-            <Tabs
-              items={tabs}
-              active={activeFilter}
+            <ToggleGroup
+              options={tabs.map((it) => ({
+                value: it.id,
+                label: (
+                  <span className="inline-flex items-center gap-2">
+                    {it.label}
+                    {it.count != null && <span className="opacity-70">{it.count}</span>}
+                  </span>
+                ),
+              }))}
+              value={activeFilter}
               onChange={setFilter}
               label={t('admin.articles.filters.label')}
-              idPrefix="admin-articles"
             />
           )}
 
-          <div
-            id={`admin-articles-panel-${activeFilter}`}
-            role={tabs.length > 2 ? 'tabpanel' : undefined}
-            aria-labelledby={tabs.length > 2 ? `admin-articles-tab-${activeFilter}` : undefined}
-          >
+          <div>
             <TableCard>
               <thead>
                 <tr className={theadRowClass}>

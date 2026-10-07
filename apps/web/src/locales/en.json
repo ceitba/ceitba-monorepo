@@ -10,14 +10,9 @@
     "apuntes": "Notes",
     "sectionsAria": "Sections",
     "scheduler": "Schedules",
-    "newsletter": "Newsletter"
-  },
-  "tabs": {
-    "home": "Home",
-    "departments": "Departments",
+    "newsletter": "Newsletter",
     "benefits": "Benefits",
-    "staff": "Staff",
-    "aria": "Page sections"
+    "about": "About us"
   },
   "manage": {
     "title": "Manage",

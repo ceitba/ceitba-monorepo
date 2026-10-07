@@ -1,6 +1,6 @@
 {
   "nav": {
-    "scheduler": "Combinador de Horarios",
+    "scheduler": "Combinador de horarios",
     "skipToContent": "Ir al contenido",
     "langToggleLabel": "EN",
     "langToggleAria": "Cambiar a inglés",
@@ -86,7 +86,9 @@
       "settings": "Adicionales",
       "calendar": "Calendario"
     },
-    "tabsAria": "Secciones del combinador"
+    "tabsAria": "Secciones del combinador",
+    "changeCareer": "Elegir otra carrera",
+    "plan": "Plan"
   },
   "courses": {
     "selected": "Materias seleccionadas",

@@ -405,11 +405,29 @@ Not background-based, not bold-weight — just a precise accent line.
   ${open ? 'translate-x-0 animate-slide-in' : 'translate-x-full'}">
 ```
 
-### Admin section tabs
+### Navigation depth: one bar, then the page
 
-Admin areas don't have a sidebar: they use the public navbar plus a `Tabs`
-strip under the page title (see §11). Tabs carry live counts when they filter
-a list, and a small amber dot when something new waits behind them.
+The site has exactly one navigation bar: the Navbar (sections: Beneficios,
+Horarios, Newsletter, Apuntes; brand → home). Nothing stacks under it — no
+section bars, no sticky sub-tab bars. A page carries its own context in its
+header:
+
+- **Sibling pages** (newsletter: Artículos · Eventos · Organizaciones) are
+  plain links under the page title (`NewsletterPageHeader`), current one in
+  bold. Never a second bar.
+- **Context and switches** (the scheduler's career and plan) live in the page
+  title area: "← Elegir otra carrera", the career as h1, the plan as a
+  segmented control.
+- **Secondary pages** (saved schedules, compare, share) start with a
+  "← Combinador de horarios" back link.
+- **Tabs** (`Tabs`, underline) appear at most once per page and only switch
+  views of the same thing (Materias / Adicionales / Calendario; the
+  `/manage` and newsletter-admin sections, URL-driven).
+- **A choice inside a tab** (Tarjetas / Categorías, Wiki IA views, a status
+  filter, the upload source) is a `ToggleGroup` (segmented control or chips),
+  never a second underline tab strip.
+- Low-traffic pages (Nosotros) are linked from the footer and from the home
+  preview that leads to them.
 
 ---
 

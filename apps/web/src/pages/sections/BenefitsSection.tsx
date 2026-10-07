@@ -64,9 +64,9 @@ export default function BenefitsSection() {
     <section className="py-section-mobile lg:py-section" aria-labelledby="benefits-heading">
       <div className="container-content">
         <div className="mb-8">
-          <h2 id="benefits-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mb-2">
+          <h1 id="benefits-heading" className="font-display font-bold text-h2 text-ink-primary dark:text-night-text mb-2">
             {t('benefits.sectionTitle')}
-          </h2>
+          </h1>
           <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('benefits.sectionSubtitle')}
           </p>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useBenefits } from '../../hooks/useContent'
 import SeeAllButton from '../../components/SeeAllButton'
@@ -34,7 +35,7 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
-export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void }) {
+export default function HomeBenefitsPreview() {
   const { t, i18n } = useTranslation()
   const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
   const { data, loading, error, reload } = useBenefits()
@@ -61,7 +62,7 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
               {t('home.benefits.subtitle')}
             </p>
           </div>
-          <SeeAllButton onClick={onSeeAll} label={t('home.benefits.seeAll')} />
+          <SeeAllButton to="/benefits" label={t('home.benefits.seeAll')} />
         </div>
 
         {error && !loading ? (
@@ -71,10 +72,9 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
           {categories.map((cat) => (
-                <button
+                <Link
+                  to="/benefits"
                   key={cat.slug}
-                  type="button"
-                  onClick={onSeeAll}
                   className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 text-left"
                 >
                   <div className="flex items-center gap-3">
@@ -91,7 +91,7 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
                   <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted line-clamp-3">
                     {t(`benefits.${cat.slug}.description`, { defaultValue: '' })}
                   </p>
-                </button>
+                </Link>
               ))
           }
         </div>

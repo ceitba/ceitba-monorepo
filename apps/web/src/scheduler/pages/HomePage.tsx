@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CAREERS, CAREER_METADATA, EXCHANGE_CAREER, getLatestPlan } from '../types/careers'
 import { normalizePlanId } from '../utils/planUtils'
-import SchedulerHeader from '../components/SchedulerHeader'
 import { schedulerPath } from '../paths'
 import { Alert } from '@/components/ui'
 
@@ -61,8 +60,6 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <SchedulerHeader />
-
       <main id="main-content" className="flex-1">
         <section className="container-content py-section-mobile lg:py-section">
           {authError && (

@@ -10,7 +10,6 @@ import { parsePayload, type SavedSchedulePayload } from '../services/workspaceSn
 import { careerPlanLabel } from '../utils/careerLabel'
 import ScheduleGrid from '../components/ScheduleGrid'
 import ScheduleGridSkeleton from '../components/ScheduleGridSkeleton'
-import SchedulerHeader from '../components/SchedulerHeader'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
 import { Alert, Button, EmptyState, ErrorState, LoadingRegion, Skeleton, buttonClass } from '@/components/ui'
 
@@ -187,8 +186,6 @@ export default function ComparisonPage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <SchedulerHeader />
-
       <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
         <header className="mb-6 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[12rem]">

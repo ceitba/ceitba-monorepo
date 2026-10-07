@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useBeginSignIn } from '../context/signInContext'
 import HeatmapGrid from '../components/HeatmapGrid'
 import ScheduleGridSkeleton from '../components/ScheduleGridSkeleton'
-import SchedulerHeader from '../components/SchedulerHeader'
+import { SchedulerBackLink } from '../components/SchedulerHeader'
 import { buildHeatmap } from '../services/heatmap'
 import { errorMessageKey } from '../services/apiErrors'
 import { careerPlanLabel } from '../utils/careerLabel'
@@ -204,9 +204,8 @@ export default function SharePage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <SchedulerHeader />
-
       <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
+        <SchedulerBackLink />
         {loading ? (
           <LoadingRegion className="flex flex-col gap-3">
             <Skeleton className="h-3 w-40" />

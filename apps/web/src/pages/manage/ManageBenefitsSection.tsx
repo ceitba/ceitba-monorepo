@@ -21,7 +21,7 @@ import {
   Modal,
   SkeletonCards,
   SkeletonTable,
-  Tabs,
+  ToggleGroup,
   inputClass,
   selectClass,
   textareaClass,
@@ -60,17 +60,18 @@ export default function ManageBenefitsSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tabs<Tab>
-        items={[
-          { id: 'cards', label: t('manage.benefits.tabs.cards') },
-          { id: 'categories', label: t('manage.benefits.tabs.categories') },
+      <ToggleGroup<Tab>
+        joined
+        className="self-start"
+        options={[
+          { value: 'cards', label: t('manage.benefits.tabs.cards') },
+          { value: 'categories', label: t('manage.benefits.tabs.categories') },
         ]}
-        active={tab}
+        value={tab}
         onChange={setTab}
         label={t('manage.benefits.tabsAria')}
-        idPrefix="benefits"
       />
-      <div role="tabpanel" id={`benefits-panel-${tab}`} aria-labelledby={`benefits-tab-${tab}`}>
+      <div>
         {tab === 'cards' ? <CardsTab onShowCategories={() => setTab('categories')} /> : <CategoriesTab />}
       </div>
     </div>

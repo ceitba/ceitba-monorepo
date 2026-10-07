@@ -7,6 +7,7 @@ import { iconButtonClass } from './ui'
 
 // The CEITBA app's sections. Home is the brand link.
 const SECTIONS = [
+  { to: '/benefits', label: 'nav.benefits' },
   { to: '/scheduler', label: 'nav.scheduler' },
   { to: '/newsletter', label: 'nav.newsletter' },
   { to: '/apuntes', label: 'nav.apuntes', capability: 'apuntes' },
@@ -22,7 +23,7 @@ function SectionLinks({ className, linkClassName }: { className: string; linkCla
           key={to}
           to={to}
           className={({ isActive }) =>
-            `${linkClassName} min-h-[44px] inline-flex items-center flex-shrink-0 font-mono text-label uppercase tracking-widest transition-colors duration-150 border-b-2 ${
+            `${linkClassName} min-h-[44px] inline-flex items-center flex-shrink-0 font-mono text-label uppercase tracking-wide md:tracking-widest transition-colors duration-150 border-b-2 ${
               isActive
                 ? 'text-primary border-accent'
                 : 'text-ink-secondary dark:text-night-muted hover:text-primary border-transparent'
@@ -114,7 +115,7 @@ export default function Navbar() {
         </div>
       </header>
       <SectionLinks
-        className="md:hidden flex items-center gap-5 overflow-x-auto px-4 border-b border-border dark:border-night-border bg-surface dark:bg-night-bg"
+        className="md:hidden flex flex-wrap items-center gap-x-4 px-4 border-b border-border dark:border-night-border bg-surface dark:bg-night-bg"
         linkClassName=""
       />
     </>

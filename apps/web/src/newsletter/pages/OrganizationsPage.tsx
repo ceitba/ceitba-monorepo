@@ -7,6 +7,7 @@ import { fetchOrganizations } from '../api/organizations'
 import { newsletterPath } from '@/newsletter/paths'
 import { localeFor } from '../utils/dates'
 import type { Organization } from '../types'
+import NewsletterPageHeader from '../components/NewsletterPageHeader'
 
 const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
@@ -33,14 +34,7 @@ export default function OrganizationsPage() {
   return (
     <div className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <header className="mb-10 lg:mb-14">
-          <h1 className="font-display text-h1 lg:text-display font-bold text-ink-primary leading-tight">
-            {t('orgs.pageTitle')}
-          </h1>
-          <p className="font-body text-body-lg text-ink-secondary mt-2">
-            {t('orgs.pageSubtitle')}
-          </p>
-        </header>
+        <NewsletterPageHeader current="organizations" title={t('orgs.pageTitle')} subtitle={t('orgs.pageSubtitle')} />
 
         {status === 'loading' && (
           <LoadingRegion className="grid grid-cols-1 sm:grid-cols-2 gap-6">

@@ -1,8 +1,8 @@
-import { useId, useState, useRef, type DragEvent } from 'react'
+import { useState, useRef, type DragEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ALLOWED_IMAGE_TYPES as ALLOWED_TYPES, MAX_IMAGE_BYTES as MAX_BYTES, uploadViaSignedUrl } from '../api/media'
 import { ApiError } from '@/api/client'
-import { Alert, Button, CloseIcon, IconButton, Tabs, inputClass } from '@/components/ui'
+import { Alert, Button, CloseIcon, IconButton, ToggleGroup, inputClass } from '@/components/ui'
 import { isStaff } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 
@@ -36,7 +36,6 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const tabsId = `img-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`
 
   const hasImage = Boolean(value)
   const activeTab = canUpload ? tab : 'url'
@@ -97,21 +96,21 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
       )}
 
       {canUpload && (
-        <Tabs<Tab>
-          idPrefix={tabsId}
+        <ToggleGroup<Tab>
+          joined
+          className="self-start"
           label={t('imageUploader.source')}
-          active={activeTab}
+          value={activeTab}
           onChange={(key) => { setTab(key); setError('') }}
-          items={[
-            { id: 'upload', label: t('imageUploader.uploadTab') },
-            { id: 'url', label: t('imageUploader.urlTab') },
+          options={[
+            { value: 'upload', label: t('imageUploader.uploadTab') },
+            { value: 'url', label: t('imageUploader.urlTab') },
           ]}
         />
       )}
 
       {activeTab === 'upload' && (
         <div
-          id={`${tabsId}-panel-upload`}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => inputRef.current?.click()}
@@ -144,8 +143,6 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
 
       {activeTab === 'url' && (
         <div
-          id={`${tabsId}-panel-url`}
-          aria-labelledby={canUpload ? `${tabsId}-tab-url` : undefined}
           className="flex gap-2"
         >
           <input

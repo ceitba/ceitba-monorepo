@@ -1,10 +1,10 @@
-// "Ver todo →" link-style button that heads a home preview section and jumps
-// to the full tab.
-export default function SeeAllButton({ onClick, label }: { onClick: () => void; label: string }) {
+import { Link } from 'react-router-dom'
+
+// "Ver todo →" link that heads a home preview section and opens the full page.
+export default function SeeAllButton({ to, label }: { to: string; label: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Link
+      to={to}
       className="inline-flex items-center gap-1.5 min-h-[44px] font-mono text-label uppercase tracking-widest text-primary dark:text-primary-300 font-bold hover:underline underline-offset-4 self-start sm:self-auto"
     >
       {label}
@@ -12,6 +12,6 @@ export default function SeeAllButton({ onClick, label }: { onClick: () => void; 
         <line x1="5" y1="12" x2="19" y2="12" />
         <polyline points="12 5 19 12 12 19" />
       </svg>
-    </button>
+    </Link>
   )
 }

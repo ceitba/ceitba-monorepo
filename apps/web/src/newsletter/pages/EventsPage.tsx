@@ -7,6 +7,7 @@ import { fetchAllEvents } from '../api/events'
 import { formatDate, monthStartISO, todayISO } from '../utils/dates'
 import type { TFunction } from 'i18next'
 import type { NewsEvent } from '../types'
+import NewsletterPageHeader from '../components/NewsletterPageHeader'
 
 interface ViewMonth {
   year: number
@@ -79,14 +80,7 @@ export default function EventsPage() {
   return (
     <div className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <header className="mb-8 lg:mb-12">
-          <h1 className="font-display text-h1 lg:text-display font-bold text-ink-primary leading-tight">
-            {t('events.pageTitle')}
-          </h1>
-          <p className="font-body text-body-lg text-ink-secondary mt-2">
-            {t('events.pageSubtitle')}
-          </p>
-        </header>
+        <NewsletterPageHeader current="events" title={t('events.pageTitle')} subtitle={t('events.pageSubtitle')} />
 
         {status === 'loading' && <LoadingState />}
 

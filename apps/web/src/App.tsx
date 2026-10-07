@@ -5,6 +5,8 @@ import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
+import BenefitsPage from './pages/BenefitsPage'
+import AboutPage from './pages/AboutPage'
 import ManagePage from './pages/ManagePage'
 import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
@@ -78,6 +80,8 @@ function Layout() {
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/benefits" element={<BenefitsPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />

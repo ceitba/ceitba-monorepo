@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import CourseView from '../components/CourseView'
 import { SettingsView } from '../components/SettingsView'
 import { SchedulerPreview, type NoResultReasons } from '../components/SchedulerPreview'
-import SchedulerHeader from '../components/SchedulerHeader'
+import { SchedulerBackLink } from '../components/SchedulerHeader'
 import CommissionSelectionModal from '../components/CommissionSelectionModal'
 import SaveScheduleDialog from '../components/SaveScheduleDialog'
 import ClassDetailModal from '../components/corrections/ClassDetailModal'
@@ -16,7 +16,7 @@ import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, type GenerationResult } 
 import { useScheduleGeneration } from '../hooks/useScheduleGeneration'
 import type { GenerationInputs } from '../workers/protocol'
 import { PossibleSchedule, SchedulerOptions, TimeBlock } from '../types/scheduler'
-import { AVAILABLE_PLANS } from '../types/careers'
+import { AVAILABLE_PLANS, CAREERS } from '../types/careers'
 import { buildIcs, eventsFromSlots, googleCalendarUrl, type CalendarEvent } from '../utils/ics'
 import { createSavedSchedule, isLimitReached, listSavedSchedules, MAX_SAVED_SCHEDULES, type SavedSchedule } from '../api/schedules'
 import { errorMessageKey } from '../services/apiErrors'
@@ -27,7 +27,7 @@ import { SignInContext } from '../context/signInContext'
 import { startGoogleSignIn } from '@/store/authStore'
 import type { CommissionCorrection } from '../types/scheduler'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
-import { Button, Modal, Tabs, buttonClass, toast } from '@/components/ui'
+import { Button, Modal, Tabs, ToggleGroup, buttonClass, toast } from '@/components/ui'
 
 interface SelectedCourse extends Subject {
   selectedCommissions: string[]
@@ -77,6 +77,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const { profile } = useAuth()
   const preselectedSubjectsIds = useRef(searchParams.getAll('code'))
   const plan = denormalizePlanId(normalizedPlan)
+  const careerPlans = AVAILABLE_PLANS[career as keyof typeof AVAILABLE_PLANS] ?? []
   const { subjects, loading: subjectsLoading, error: subjectsError, updateCommission, refetch: refetchSubjects } = useSubjects(plan)
 
   // ALL useState / useRef declarations come first, so the useEffect dep
@@ -175,7 +176,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       onCorrectionChange: handleCorrectionChange,
       openClassDetail: (subjectId, commissionName) => setClassDetail({ subjectId, commissionName }),
     }),
-    [subjectsById, handleCorrectionChange],
+    [subjectsById, handleCorrectionChange, setClassDetail],
   )
 
   const liveSlots = useMemo(() => liveSlotsFromCourses(selectedCourses), [selectedCourses])
@@ -513,18 +514,42 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     <SignInContext.Provider value={beginSignIn}>
     <CorrectionsContext.Provider value={correctionsContext}>
       <div className="flex flex-col bg-surface dark:bg-night-bg">
-        <SchedulerHeader currentPlan={plan || ''} />
-
         <main id="main-content" className="flex-1">
           <div className="container-content py-6">
-            <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 mb-3">
-              {selectedCourses.length === 0 && (
-                <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('saved.saveDisabledHint')}</p>
-              )}
-              <Button variant="outline" size="sm" onClick={openSave} disabled={selectedCourses.length === 0}>
-                {t('saved.saveSchedule')}
-              </Button>
-            </div>
+            <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 mb-4">
+              <div className="flex flex-col min-w-0">
+                <SchedulerBackLink label={t('career.changeCareer')} />
+                <h1 className="font-display text-h3 font-bold text-ink-primary dark:text-night-text leading-tight">
+                  {(career && CAREERS[career]) || career}
+                </h1>
+                {careerPlans.length > 1 && plan ? (
+                  <div className="flex flex-wrap items-center gap-3 mt-2">
+                    <span id="career-plan-label" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+                      {t('career.plan')}
+                    </span>
+                    <ToggleGroup
+                      joined
+                      labelledBy="career-plan-label"
+                      value={plan}
+                      onChange={(id) => navigate(schedulerPath(`/${career}?plan=${normalizePlanId(id)}`))}
+                      options={careerPlans.map((p) => ({ value: p.id, label: p.id }))}
+                    />
+                  </div>
+                ) : plan ? (
+                  <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mt-1">
+                    {t('saved.planLabel', { plan })}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-col items-start sm:items-end gap-1">
+                <Button variant="outline" size="sm" onClick={openSave} disabled={selectedCourses.length === 0}>
+                  {t('saved.saveSchedule')}
+                </Button>
+                {selectedCourses.length === 0 && (
+                  <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('saved.saveDisabledHint')}</p>
+                )}
+              </div>
+            </header>
             <Tabs
               items={TAB_IDS.map((id) => ({ id, label: t(`career.tabs.${id}`) }))}
               active={activeTab}

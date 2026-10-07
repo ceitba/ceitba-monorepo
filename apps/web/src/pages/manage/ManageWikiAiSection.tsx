@@ -1,7 +1,7 @@
 import '../../i18nApuntes'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tabs } from '@/components/ui'
+import { ToggleGroup } from '@/components/ui'
 import Overview from './wikiAdmin/Overview'
 import SettingsView from './wikiAdmin/SettingsView'
 import ModelsView from './wikiAdmin/ModelsView'
@@ -41,19 +41,26 @@ export default function ManageWikiAiSection() {
   return (
     <div className="flex flex-col gap-4">
       <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted max-w-3xl">{t('manage.wikiAi.intro')}</p>
-      <Tabs
-        idPrefix="wikiai"
+      <ToggleGroup
+        joined
+        className="self-start max-w-full overflow-x-auto"
         label={t('manage.wikiAi.viewsAria')}
-        active={view}
+        value={view}
         onChange={(v) => { setView(v); if (v !== 'runs') setRunId(null) }}
-        items={VIEWS.map((v) => ({
-          id: v,
-          label: t(`manage.wikiAi.views.${v}`),
-          dot: (v === 'evals' && unseenCount('eval') > 0) || (v === 'runs' && unseenCount('run') > 0),
-          dotLabel: t('manage.wikiAi.watch.unseen'),
-        }))}
+        options={VIEWS.map((v) => {
+          const unseen = (v === 'evals' && unseenCount('eval') > 0) || (v === 'runs' && unseenCount('run') > 0)
+          return {
+            value: v,
+            label: (
+              <span className="inline-flex items-center gap-2">
+                {t(`manage.wikiAi.views.${v}`)}
+                {unseen && <span className="w-2 h-2 rounded-full bg-accent" role="img" aria-label={t('manage.wikiAi.watch.unseen')} />}
+              </span>
+            ),
+          }
+        })}
       />
-      <div role="tabpanel" id={`wikiai-panel-${view}`} aria-labelledby={`wikiai-tab-${view}`}>
+      <div>
         <ViewBoundary key={view}>
           {view === 'overview' && <Overview onOpenRun={(id) => { setRunId(id); setView('runs') }} />}
           {view === 'settings' && <SettingsView />}

@@ -28,7 +28,7 @@ import {
   Field,
   Modal,
   SkeletonTable,
-  Tabs,
+  ToggleGroup,
   selectClass,
   textareaClass,
   toast,
@@ -68,8 +68,15 @@ export default function ManageDriveSection() {
   return (
     <div className="flex flex-col gap-4">
       <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.drive.intro')}</p>
-      <Tabs items={views} active={view} onChange={setView} label={t('manage.drive.viewsAria')} idPrefix="drive" />
-      <div role="tabpanel" id={`drive-panel-${view}`} aria-labelledby={`drive-tab-${view}`}>
+      <ToggleGroup
+        joined
+        className="self-start max-w-full overflow-x-auto"
+        options={views.map((v) => ({ value: v.id, label: v.label }))}
+        value={view}
+        onChange={setView}
+        label={t('manage.drive.viewsAria')}
+      />
+      <div>
         {view === 'sources' && <SourcesView />}
         {view === 'files' && <FilesView />}
         {view === 'wiki' && <WikiView />}

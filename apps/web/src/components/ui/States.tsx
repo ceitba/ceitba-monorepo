@@ -29,7 +29,12 @@ export function EmptyState({
         </div>
       )}
       <div className="max-w-md">
-        <p className={`font-display font-bold text-ink-primary dark:text-night-text ${compact ? 'text-h5' : 'text-h4'}`}>{title}</p>
+        <p className={compact
+          ? 'font-body text-body-sm font-semibold text-ink-secondary dark:text-night-muted'
+          : 'font-display font-bold text-h4 text-ink-primary dark:text-night-text'}
+        >
+          {title}
+        </p>
         {body && <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{body}</div>}
       </div>
       {action}

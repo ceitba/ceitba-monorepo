@@ -48,7 +48,7 @@ export default function ToggleGroup<T extends string | number | null>({
             aria-pressed={active}
             onClick={() => onChange(opt.value)}
             className={[
-              'inline-flex items-center justify-center min-h-[44px] sm:min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150',
+              'inline-flex items-center justify-center whitespace-nowrap min-h-[44px] sm:min-h-[36px] px-3 font-mono text-label uppercase tracking-widest transition-colors duration-150',
               joined ? 'flex-1 border-l first:border-l-0' : 'rounded-sm border',
               active
                 ? 'bg-primary text-white border-primary'

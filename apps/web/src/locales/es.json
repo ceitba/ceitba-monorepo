@@ -10,14 +10,9 @@
     "apuntes": "Apuntes",
     "sectionsAria": "Secciones",
     "scheduler": "Horarios",
-    "newsletter": "Newsletter"
-  },
-  "tabs": {
-    "home": "Inicio",
-    "departments": "Departamentos",
+    "newsletter": "Newsletter",
     "benefits": "Beneficios",
-    "staff": "Staff",
-    "aria": "Secciones de la página"
+    "about": "Nosotros"
   },
   "manage": {
     "title": "Administrar",

@@ -13,7 +13,7 @@ import { createShareSession } from '../api/share'
 import { normalizePlanId } from '../utils/planUtils'
 import { careerPlanLabel } from '../utils/careerLabel'
 import { errorMessageKey } from '../services/apiErrors'
-import SchedulerHeader from '../components/SchedulerHeader'
+import { SchedulerBackLink } from '../components/SchedulerHeader'
 import Checkbox from '../components/Checkbox'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
 import {
@@ -148,9 +148,8 @@ export default function SavedSchedulesPage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <SchedulerHeader />
-
       <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
+        <SchedulerBackLink />
         <header className="mb-6 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[14rem]">
             <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{t('saved.pageTitle')}</h1>

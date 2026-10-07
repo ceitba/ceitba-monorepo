@@ -1,6 +1,6 @@
 {
   "nav": {
-    "scheduler": "Schedule Builder",
+    "scheduler": "Schedule builder",
     "skipToContent": "Skip to content",
     "langToggleLabel": "ES",
     "langToggleAria": "Switch to Spanish",
@@ -86,7 +86,9 @@
       "settings": "Options",
       "calendar": "Calendar"
     },
-    "tabsAria": "Scheduler sections"
+    "tabsAria": "Scheduler sections",
+    "changeCareer": "Choose another career",
+    "plan": "Plan"
   },
   "courses": {
     "selected": "Selected courses",
