@@ -10,6 +10,8 @@ public class DigestException extends DomainException {
         INVALID_WEEK_START(400),
         DIGEST_EXISTS(409),
         DIGEST_NOT_EDITABLE(409),
+        // Delete refused: stop the send first.
+        DIGEST_SENDING(409),
         DIGEST_EMPTY(409),
         EMAIL_NOT_ALLOWED(422),
         MAIL_DISABLED(409),
