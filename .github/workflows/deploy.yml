@@ -1,0 +1,248 @@
+name: Deploy
+
+# Every push to main deploys the apps it changed, to the same VPS paths as the
+# old per-repo workflows: API image + compose (~/CEITBA-API), Caddy (~/infra),
+# SPAs (/var/www/{main,scheduler,itbanews}). The API ships first; SPA deploys
+# wait for it, so an SPA never goes live ahead of the API it depends on.
+# Deploy credentials live only in the `production` environment.
+#
+# Run it by hand ("Run workflow" on main) to redeploy every app regardless of
+# what changed: the very first deploy (an initial push has no diff base) and
+# rollbacks (run it on main after reverting).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Pushes to main queue instead of racing, and a deploy is never cancelled
+# mid-way, so an older deploy can never finish last and overwrite a newer one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    # A manual run from any other branch must never deploy it.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.api }}
+      spas: ${{ steps.spas.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+        id: filter
+        if: github.event_name == 'push'
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'infra/**'
+            shared: &shared
+              - 'packages/**'
+              - 'package.json'
+              - 'bun.lock'
+              - '.github/spa-apps.json'
+            web:
+              - 'apps/web/**'
+              - *shared
+            scheduler:
+              - 'apps/scheduler/**'
+              - *shared
+            newsletter:
+              - 'apps/newsletter/**'
+              - *shared
+      - id: spas
+        env:
+          # Manual runs deploy every app.
+          CHANGES: ${{ github.event_name == 'workflow_dispatch' && '["web","scheduler","newsletter"]' || steps.filter.outputs.changes }}
+        run: echo "matrix=$(jq -c --argjson changes "$CHANGES" '[.[] | select(.app as $a | $changes | index($a))]' .github/spa-apps.json)" >> "$GITHUB_OUTPUT"
+
+  # main has no required checks, so a PR can merge before CI finishes: test
+  # again here and make main a real gate.
+  api-test:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: apps/api/pom.xml
+      - run: ./mvnw -B -ntp verify
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-reports
+          path: |
+            apps/api/target/surefire-reports/
+            apps/api/target/failsafe-reports/
+
+  api-image:
+    needs: api-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ghcr.io/ceitba/ceitba-api
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: apps/api
+          file: apps/api/infrastructure/docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  api-deploy:
+    needs: api-image
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Sync the compose files and the Caddyfile on every deploy so the VPS
+      # never drifts from the repo. Only these explicit files are copied:
+      # never .env (secrets live only on the VPS).
+      #   ~/infra/docker-compose.yml, ~/infra/Caddyfile (bind-mounted read-only
+      #   at /etc/caddy/Caddyfile in ceitba-caddy), ~/CEITBA-API/docker-compose.yml.
+      - name: Copy infra config to VPS
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infra/caddy/docker-compose.yml,infra/caddy/Caddyfile"
+          target: "~/infra/"
+          strip_components: 2
+
+      - name: Copy API compose to VPS
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "apps/api/docker-compose.yml"
+          target: "~/CEITBA-API/"
+          strip_components: 2
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_TOKEN
+          script: |
+            set -e
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u ceitba --password-stdin
+
+            # Fail before touching anything if ~/CEITBA-API/.env lacks a
+            # required variable (e.g. MINIO_ROOT_*, STORAGE_* on first deploy).
+            cd ~/CEITBA-API
+            docker compose config -q
+
+            # Bring up infra (Caddy) first — creates the ceitba-proxy network
+            cd ~/infra
+            docker compose up -d
+            # The Caddyfile is a single-file bind mount. scp replaces the file
+            # (new inode), which the running container does not see, so a
+            # `caddy reload` would reload the old config. When it changed,
+            # validate the new file in a throwaway container, then restart
+            # Caddy (a second or two of downtime) to re-bind the mount.
+            if ! docker exec ceitba-caddy cat /etc/caddy/Caddyfile | cmp -s - Caddyfile; then
+              docker compose run --rm --no-deps -T caddy \
+                caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+              docker compose restart caddy
+            fi
+
+            # Deploy API — joins ceitba-proxy so Caddy can reach it. minio-init
+            # (re)creates the bucket and service user before the API starts.
+            cd ~/CEITBA-API
+            docker compose pull ceitba-api
+            docker compose up -d
+            docker image prune -f
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  spa-deploy:
+    needs: [changes, api-test, api-image, api-deploy]
+    # Runs when the API was untouched (its jobs are skipped) or deployed fine;
+    # never after an API failure.
+    if: >-
+      always() && !cancelled()
+      && needs.changes.result == 'success'
+      && needs.changes.outputs.spas != '[]'
+      && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.spas) }}
+    name: deploy (${{ matrix.app }})
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2 # the version that wrote bun.lock; bump both together
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter '${{ matrix.package }}' lint
+      - name: Production env
+        env:
+          APP_ENV: ${{ toJSON(matrix.env) }}
+        run: jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$APP_ENV" >> "$GITHUB_ENV"
+      - run: bun run --filter '${{ matrix.package }}' build
+
+      - name: Upload dist to VPS staging
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "${{ matrix.dir }}/dist/"
+          target: "/tmp/${{ matrix.app }}-deploy-${{ github.sha }}"
+          strip_components: 2
+
+      - name: Activate deployment
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            STAGE=/tmp/${{ matrix.app }}-deploy-${{ github.sha }}
+            rsync -r --delete "$STAGE/dist/" /var/www/${{ matrix.www }}/
+            rm -rf "$STAGE"

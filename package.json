@@ -1,0 +1,14 @@
+{
+  "name": "ceitba",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/scheduler",
+    "apps/newsletter"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '@ceitba/*' dev",
+    "build": "bun run --filter '@ceitba/*' build",
+    "lint": "bun run --filter '@ceitba/*' lint"
+  }
+}

@@ -1,0 +1,17 @@
+# gitleaks config for the whole history: `gitleaks git . --log-opts="--all"`.
+# Every allowlist entry below was triaged by hand; add new ones only after the
+# same triage (and rotate anything that was ever real instead of allowlisting it).
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "API test fixtures: keys generated at runtime or fixed test-only secrets"
+paths = ['''^apps/api/src/test/''']
+
+[[allowlists]]
+description = "Documentation placeholders and non-secret identifiers"
+regexes = [
+  '''ceitba_abc123''',
+  '''itbanews_notifications_v1''',
+]
