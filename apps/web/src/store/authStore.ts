@@ -57,12 +57,25 @@ export function subscribe(fn: (p: UserProfile | null) => void): () => void {
 
 const RETURN_TO_KEY = 'auth.returnTo'
 
-// `returnTo` is an in-app path (e.g. "/apuntes") to land on after the OAuth
-// round-trip; AuthCallback reads it back with takeReturnTo().
+// OAuth callback routes: /auth/callback, plus the redirect URIs of the old
+// standalone scheduler and newsletter apps (still routed, see App.tsx).
+const CALLBACK_PATHS = ['/auth/', '/scheduler/auth/', '/newsletter/admin/callback', '/newsletter/admin/login']
+
+// Only in-app paths are valid post-login destinations (no open redirects,
+// no bouncing back into a callback).
+export function isSafeReturnPath(path: unknown): path is string {
+  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//')
+    && !path.startsWith('/\\') && !CALLBACK_PATHS.some((p) => path.startsWith(p))
+}
+
+// `returnTo` is an in-app path (e.g. "/apuntes", "/scheduler/S?plan=...") to
+// land on after the OAuth round-trip; AuthCallback reads it back with
+// takeReturnTo().
 export function startGoogleSignIn(returnTo?: string): void {
-  if (returnTo) {
-    try { sessionStorage.setItem(RETURN_TO_KEY, returnTo) } catch { /* storage blocked */ }
-  }
+  try {
+    if (isSafeReturnPath(returnTo)) sessionStorage.setItem(RETURN_TO_KEY, returnTo)
+    else sessionStorage.removeItem(RETURN_TO_KEY)
+  } catch { /* storage blocked: land on home */ }
   const redirectUri =
     (import.meta.env.VITE_GOOGLE_REDIRECT_URI as string | undefined) ??
     `${window.location.origin}${window.location.pathname}`
@@ -74,7 +87,17 @@ export function takeReturnTo(): string | null {
   try {
     const value = sessionStorage.getItem(RETURN_TO_KEY)
     sessionStorage.removeItem(RETURN_TO_KEY)
-    return value
+    return isSafeReturnPath(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+// Same as takeReturnTo() without clearing it (e.g. for a "try again" link).
+export function peekReturnTo(): string | null {
+  try {
+    const value = sessionStorage.getItem(RETURN_TO_KEY)
+    return isSafeReturnPath(value) ? value : null
   } catch {
     return null
   }
@@ -107,12 +130,26 @@ export function getCachedSession(): UserProfile | null {
   return _profile
 }
 
+// True once the first /me round-trip finished, signed in or not.
+export function isHydrated(): boolean {
+  return _hydrated
+}
+
+// Updates fields of the cached profile after a change the API already
+// accepted (e.g. the newsletter's org follows) and notifies subscribers.
+export function patchCachedSession(patch: Partial<UserProfile>): void {
+  if (!_profile) return
+  // New object so subscribers comparing references re-render.
+  _profile = { ..._profile, ...patch }
+  notify()
+}
+
 export function isAuthenticated(): boolean {
   return _profile != null
 }
 
-export function isStaff(): boolean {
-  return _profile?.role === 'staff'
+export function isStaff(profile: UserProfile | null = _profile): boolean {
+  return profile?.role === 'staff'
 }
 
 export async function signOut(): Promise<void> {

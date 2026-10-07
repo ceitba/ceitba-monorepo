@@ -2,8 +2,7 @@
   "name": "ceitba",
   "private": true,
   "workspaces": [
-    "apps/web",
-    "apps/newsletter"
+    "apps/web"
   ],
   "scripts": {
     "dev": "bun run --filter '@ceitba/*' dev",

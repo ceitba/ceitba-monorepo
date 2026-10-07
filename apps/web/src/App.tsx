@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import './i18n'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -11,8 +11,7 @@ import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
-import { getSession, takeReturnTo } from './store/authStore'
-import { isSafeReturnPath } from './utils/apuntes'
+import { getSession, isSafeReturnPath, takeReturnTo } from './store/authStore'
 
 // Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
 // load on demand so the home page bundle stays lean.
@@ -26,6 +25,7 @@ const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 
 // Sections that used to be separate SPAs, each in its own chunk.
 const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
+const NewsletterApp = lazy(() => import('./newsletter/NewsletterApp'))
 
 // Local dev-only sign-in (CEITBA-API POST /v1/auth/dev-login). Both env
 // checks are inlined so Vite folds them to `false` in production builds and
@@ -95,17 +95,24 @@ function Root() {
           started before the merge can still land here. */}
       <Route path="/scheduler/auth/callback" element={<AuthCallback />} />
       <Route path="/scheduler/*" element={<Suspense fallback={<PageFallback />}><SchedulerApp /></Suspense>} />
+      {/* Same for the old standalone newsletter. */}
+      <Route path="/newsletter/admin/callback" element={<AuthCallback />} />
+      <Route path="/newsletter/*" element={<Suspense fallback={<PageFallback />}><NewsletterApp /></Suspense>} />
       <Route path="/*" element={<Layout />} />
     </Routes>
   )
 }
 
+// A data router (rather than BrowserRouter) so pages can use useBlocker: the
+// newsletter's article editor asks before any in-app navigation, back/forward
+// included, drops unsaved changes. Routes are still declared with <Routes>,
+// rendered under one catch-all route.
+const router = createBrowserRouter([{ path: '*', element: <Root /> }], { basename: import.meta.env.BASE_URL })
+
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Root />
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </ThemeProvider>
   )
 }
