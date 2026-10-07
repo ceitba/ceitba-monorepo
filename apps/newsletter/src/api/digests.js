@@ -79,6 +79,12 @@ export async function cancelDigest(id) {
   return apiSend('POST', `${path(id)}/cancel`)
 }
 
+// 204. Any status but 'sending' (409 DIGEST_SENDING: stop it first). Removes
+// the issue with its deliveries and stats for good.
+export async function deleteDigest(id) {
+  return apiSend('DELETE', path(id))
+}
+
 // ── Subscriber side ─────────────────────────────────────────────────────────
 
 export async function fetchDigestSubscription() {

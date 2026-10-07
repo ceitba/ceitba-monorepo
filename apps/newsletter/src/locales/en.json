@@ -419,6 +419,8 @@
         "test": "We couldn't send the test.",
         "send": "We couldn't start sending.",
         "cancel": "We couldn't cancel the digest.",
+        "delete": "We couldn't delete the digest.",
+        "DIGEST_SENDING": "The digest is being sent: stop the send before deleting it.",
         "DIGEST_EMPTY": "A digest with no articles or events can't be sent.",
         "MAIL_QUOTA_EXHAUSTED": "The account's daily sending quota is used up (test sends count too). You can try again ~{{when}} (Argentina time).",
         "MAIL_QUOTA_EXHAUSTED_noWhen": "The account's daily sending quota is used up (test sends count too). Try again later.",
@@ -451,6 +453,7 @@
         "sending": "Sending…",
         "sendStarted": "Sending has started. Progress updates automatically.",
         "cancel": "Cancel digest",
+        "delete": "Delete digest",
         "stopSending": "Stop sending",
         "cancelled": "Digest cancelled.",
         "errors": {
@@ -472,6 +475,14 @@
             "missing": "No sending account is connected yet: the send will wait and only start once someone connects one.",
             "broken": "The sending account needs to be reconnected: the send will wait and only continue once someone reconnects it."
           }
+        },
+        "deleteDialog": {
+          "title": "Delete this digest?",
+          "body_sent": "It is deleted for good, along with its stats (opens, clicks and deliveries). Emails that already went out can't be recalled.",
+          "body_other": "It is deleted for good. You can create a new one for that week afterwards.",
+          "confirm": "Yes, delete",
+          "deleting": "Deleting…",
+          "keep": "Back"
         },
         "cancelDialog": {
           "title": "Cancel this digest?",
