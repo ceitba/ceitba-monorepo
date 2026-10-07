@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { QuotaMeter } from '../../../api/kbAdmin'
+import { IconButton, LoadingRegion, Skeleton } from '@/components/ui'
 import { ProgressBar } from './ProgressPanel'
 import { ago, tokens } from './format'
 import { count, meterLow, meterPercent } from './quota'
@@ -39,22 +40,17 @@ export default function QuotaCard({ className = '' }: { className?: string }) {
     <section aria-label={t('manage.wikiAi.quota.title')} className={`rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-3 flex flex-col gap-3 ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h3 className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.quota.title')}</h3>
-        <div className="flex items-center gap-2 font-mono text-[0.72rem] text-ink-secondary dark:text-night-muted">
-          {data?.stale && <span title={t('manage.wikiAi.quota.staleHint')}>{t('manage.wikiAi.quota.approx')}</span>}
+        <div className="flex items-center gap-2 font-mono text-label text-ink-secondary dark:text-night-muted">
+          {data?.stale && <span>{t('manage.wikiAi.quota.approx')}</span>}
           <span>{data?.observedAt ? t('manage.wikiAi.quota.updated', { ago: ago(data.observedAt, now, t) }) : data ? t('manage.wikiAi.quota.never') : '…'}</span>
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={refreshing}
-            aria-label={t('manage.wikiAi.quota.refresh')}
-            className="px-2 py-1 rounded-sm border border-border dark:border-night-border uppercase tracking-widest hover:text-primary hover:border-primary disabled:opacity-50"
-          >
-            {refreshing ? '…' : '↻'}
-          </button>
+          <IconButton size="sm" onClick={refresh} disabled={refreshing} aria-busy={refreshing || undefined} aria-label={t('manage.wikiAi.quota.refresh')}>
+            <span aria-hidden="true">{refreshing ? '…' : '↻'}</span>
+          </IconButton>
         </div>
       </div>
+      {data?.stale && <p className="font-body text-label text-amber-700 dark:text-amber-300">{t('manage.wikiAi.quota.staleHint')}</p>}
       {!data ? (
-        <div aria-hidden="true" className="h-16 rounded-sm skeleton" />
+        <LoadingRegion><Skeleton className="h-16" /></LoadingRegion>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
           <div className="flex flex-col gap-2 min-w-0">

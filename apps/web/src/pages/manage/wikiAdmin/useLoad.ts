@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '../../../api/client'
-import { apuntesErrorMessage } from '../../../utils/apuntes'
+import { apuntesAdminErrorMessage } from '../adminErrors'
 
 // Data loading for the "Wiki IA" admin views.
 
@@ -34,7 +34,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []): Loaded<T
       .catch((e) => {
         if (req.current !== id) return
         if (isUnavailable(e)) setUnavailable(true)
-        else setError(apuntesErrorMessage(e, t))
+        else setError(apuntesAdminErrorMessage(e, t))
       })
       .finally(() => { if (req.current === id) setLoading(false) })
   }, [tick, t, ...deps]) // eslint-disable-line react-hooks/exhaustive-deps

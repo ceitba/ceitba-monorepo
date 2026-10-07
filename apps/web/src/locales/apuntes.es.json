@@ -412,7 +412,9 @@
         "blockTitle": "Bloquear carpeta",
         "blockConfirm": "Bloquear",
         "blockBody": "«{{name}}» ({{owner}}) se deja de sincronizar y sus archivos dejan de estar visibles. Podés aprobarla de nuevo más adelante.",
-        "comment": "Motivo (opcional, lo ve el estudiante)"
+        "comment": "Motivo (opcional, lo ve el estudiante)",
+        "syncFailed": "La última sincronización falló. Se reintenta sola; si sigue, pedile al estudiante que vuelva a conectar la carpeta.",
+        "emptyHint": "Cuando un estudiante conecte una carpeta de Drive desde «Mis apuntes», va a aparecer acá según su estado."
       },
       "files": {
         "queue": {
@@ -442,7 +444,11 @@
         },
         "unit": "archivos",
         "removeTitle": "Quitar archivo",
-        "removeBody": "«{{name}}» deja de estar visible para todos y queda así aunque se vuelva a sincronizar. Podés restaurarlo después."
+        "removeBody": "«{{name}}» deja de estar visible para todos y queda así aunque se vuelva a sincronizar. Podés restaurarlo después.",
+        "emptyHint": {
+          "NEEDS_REVIEW": "Acá aparecen los archivos que compartió alguien que no es el dueño en Drive, para que decidas si se publican.",
+          "HIDDEN_REPORTED": "Acá aparecen los archivos que se ocultaron solos por acumular denuncias, para que los restaures o los quites."
+        }
       },
       "unclaimed": {
         "intro": "Carpetas que alguien compartió con la cuenta de CEITBA pero que nadie conectó desde «Mis apuntes». Si persisten, conviene avisarle a quien las compartió.",
@@ -452,7 +458,8 @@
           "firstSeen": "Vista por primera vez",
           "lastSeen": "Última vez"
         },
-        "empty": "No hay carpetas compartidas sin reclamar."
+        "empty": "No hay carpetas compartidas sin reclamar.",
+        "emptyHint": "Si alguien comparte una carpeta con la cuenta de CEITBA y no la conecta desde «Mis apuntes», va a aparecer acá."
       },
       "wiki": {
         "status": {
@@ -472,8 +479,14 @@
           "HIDDEN": "No hay páginas ocultas.",
           "PUBLISHED": "No hay páginas publicadas."
         },
-        "unit": "páginas"
-      }
+        "unit": "páginas",
+        "emptyHint": {
+          "HIDDEN": "Acá aparecen las páginas que ocultó el staff o que se ocultaron porque se quitó un archivo que citaban.",
+          "PUBLISHED": "Acá aparecen las páginas de la wiki que están visibles, con sus denuncias."
+        }
+      },
+      "prev": "‹ Anterior",
+      "next": "Siguiente ›"
     },
     "wikiAi": {
       "intro": "Elegí los modelos de cada etapa del pipeline que escribe las wikis, mirá cuánto cuesta y compará modelos con evidencia antes de cambiarlos.",
@@ -510,7 +523,8 @@
         "VALIDATE": "Validación",
         "PUBLISH": "Publicación",
         "EVAL": "Evaluación",
-        "PROBE": "Pruebas"
+        "PROBE": "Pruebas",
+        "other": "Otra etapa"
       },
       "metrics": {
         "costPerValidPage": "Costo por página válida",
@@ -601,8 +615,6 @@
         "history": "Historial de cambios",
         "noHistory": "Todavía no hay cambios guardados.",
         "restore": "Restaurar",
-        "restoreTitle": "Restaurar configuración",
-        "restoreBody": "La configuración vuelve a la de ese momento. El cambio queda en el historial.",
         "confirmTitle": "Guardar configuración",
         "confirmBody": "Los cambios se aplican desde la próxima etapa que se envíe; lo que ya está corriendo sigue con su modelo.",
         "autoRefreshPrices": "Actualizar precios de DigitalOcean semanalmente",
@@ -611,7 +623,14 @@
         "costBudget": "Presupuesto por corrida (US$)",
         "costBudgetInvalid": "Ingresá un monto entre US$ 0,10 y US$ 100.",
         "costBudgetHint": "Las materias entran a la corrida solo si su costo completo (resúmenes + plan + redacción) entra en el presupuesto; las más baratas primero. Lo que no entra queda para la próxima corrida.",
-        "budgetRequired": "Ingresá un presupuesto de tokens (0 o más)."
+        "budgetRequired": "Ingresá un presupuesto de tokens (0 o más).",
+        "noChanges": "No hay cambios para guardar.",
+        "fixErrors": "Corregí los campos marcados para poder guardar.",
+        "restored": "Configuración restaurada.",
+        "historyWrite": "Redacción: {{model}}",
+        "overrideAria": "{{stage}} para {{subject}}",
+        "pausedAria": "Pausar {{subject}}",
+        "removeOverride": "Quitar"
       },
       "endpoints": {
         "title": "Endpoints propios",
@@ -640,7 +659,6 @@
         "noModels": "El servidor no devolvió modelos.",
         "discoverResult": "Nuevos: {{added}} · ya existentes: {{existing}}",
         "discoverHint": "Los modelos nuevos aparecen en la lista como «custom:…», deshabilitados y con precio 0. Habilitalos y probalos desde ahí.",
-        "close": "Cerrar",
         "formCreate": "Nuevo endpoint",
         "formEdit": "Editar endpoint",
         "name": "Nombre",
@@ -649,8 +667,8 @@
         "token": "Token",
         "tokenKeep": "Dejalo vacío para conservar el token guardado.",
         "tokenUnreadable": "Token ilegible: volvé a cargarlo",
-      "tokenUnreadableHint": "Tocá Editar y pegá el token de nuevo.",
-      "tokenRemove": "Quitar token",
+        "tokenUnreadableHint": "Tocá Editar y pegá el token de nuevo.",
+        "tokenRemove": "Quitar token",
         "tokenWillRemove": "Se va a quitar el token al guardar.",
         "maxConcurrency": "Concurrencia máxima (1–64)",
         "timeoutSec": "Timeout (segundos)",
@@ -671,17 +689,14 @@
           "tokPerSec": "Tokens de salida/s",
           "inFlight": "En curso",
           "pausedHint": "Se actualiza cada 10 s mientras la pestaña está visible."
-        }
+        },
+        "emptyBody": "Cuando agregues uno, acá vas a poder probar la conexión, descubrir sus modelos y ver cómo aguanta la carga."
       },
       "models": {
         "intro": "Precios por millón de tokens. Un modelo solo se puede elegir cuando está habilitado y pasó la prueba.",
         "sync": "Sincronizar con DigitalOcean",
         "empty": "El catálogo está vacío.",
         "model": "Modelo",
-        "input": "Entrada / 1M",
-        "output": "Salida / 1M",
-        "cache": "Caché / 1M",
-        "batch": "Batch",
         "enabled": "Habilitado",
         "probe": "Prueba",
         "probeBtn": "Probar",
@@ -692,20 +707,35 @@
         "probed": "probado",
         "notProbed": "sin probar",
         "disabled": "deshabilitado",
-        "batchBadge": "batch −{{pct}}%",
         "syncBadge": "sync",
-        "pricePer": "US$ {{input}} / {{output}} por 1M",
         "context": "{{k}}k de contexto",
         "pricesAt": "precios del {{date}}",
-        "batchPlain": "batch"
+        "batchPlain": "batch",
+        "priceAria": "{{field}} de {{model}}",
+        "enabledAria": "Habilitar {{model}}",
+        "batchAria": "{{model}} admite batch",
+        "discountAria": "Descuento batch de {{model}} (%)",
+        "tools": "Usa herramientas: {{value}}",
+        "fields": {
+          "inputPerM": "Entrada",
+          "outputPerM": "Salida",
+          "cacheReadPerM": "Caché",
+          "batchSupported": "Batch",
+          "batchDiscount": "Descuento batch",
+          "other": "Otro campo"
+        }
       },
       "runs": {
-        "budget": {"title": "Presupuesto", "summary": "US$ {{spent}} gastados / US$ {{limit}} de límite · estimado admitido US$ {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas (US$ {{deferredEstimated}} estimado)", "oversized": "Corrida dedicada a {{subject}}: no entraba en el presupuesto"},
+        "budget": {
+          "title": "Presupuesto",
+          "summary": "US$ {{spent}} gastados / US$ {{limit}} de límite · estimado admitido US$ {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas (US$ {{deferredEstimated}} estimado)",
+          "oversized": "Corrida dedicada a {{subject}}: no entraba en el presupuesto"
+        },
         "runNow": "Ejecutar ahora",
-        "dryRun": "Simulación (dry run)",
+        "dryRun": "Simulación (sin costo)",
         "preview": "Vista previa",
-        "runBody": "Arranca una ejecución con las materias que cambiaron. Usa tokens y tiene costo.",
-        "dryBody": "Arma todos los pedidos y los guarda para revisar, sin enviarlos ni gastar tokens.",
+        "runBody": "Arranca una ejecución con las materias que cambiaron. Usa tokens y tiene costo real; lo que se gaste no se puede recuperar.",
+        "dryBody": "La simulación arma todos los pedidos y los guarda para revisar, sin enviarlos ni gastar tokens. Arranca apenas la tocás.",
         "started": "Ejecución iniciada.",
         "dryStarted": "Simulación iniciada.",
         "alreadyActive": "Ya hay una ejecución en curso.",
@@ -738,7 +768,18 @@
         "previewSummary": "{{dirty}} materias con cambios, {{clean}} sin cambios · ~{{tokens}} tokens (presupuesto {{budget}})",
         "overBudget": "Supera el presupuesto: las materias con menos cambios quedan para la próxima.",
         "nothingToDo": "No hay cambios: la próxima ejecución no gastaría tokens.",
-        "diff": "+{{added}} nuevos · {{changed}} cambiados · −{{removed}} quitados · {{digests}} digests · ~{{tokens}} tokens"
+        "diff": "+{{added}} nuevos · {{changed}} cambiados · −{{removed}} quitados · {{digests}} digests · ~{{tokens}} tokens",
+        "runTitle": "¿Ejecutar el pipeline ahora?",
+        "runConfirm": "Sí, ejecutar ahora",
+        "cancelTitle": "¿Cancelar la ejecución?",
+        "keepRunning": "Seguir ejecutando",
+        "tokens": "Tokens",
+        "triggers": {
+          "MANUAL": "Manual",
+          "SCHEDULED": "Semanal",
+          "EVAL": "Evaluación",
+          "other": "Otro"
+        }
       },
       "evals": {
         "sets": "Conjuntos de prueba",
@@ -782,7 +823,13 @@
         "refreezeBody": "«{{name}}» toma las entradas actuales de sus materias. Las evaluaciones nuevas dejan de ser comparables con las anteriores.",
         "refrozen": "Se volvió a congelar «{{name}}».",
         "frozenAt": "Congelado el {{date}} · {{files}} archivos",
-        "digestsMissing": "{{count}} digests por generar"
+        "digestsMissing": "{{count}} digests por generar",
+        "noSetsBody": "Creá un conjunto de prueba para comparar configuraciones con el mismo material.",
+        "setNeeds": "Poné un nombre y agregá al menos una materia.",
+        "removeSubject": "Quitar {{subject}}",
+        "removeConfig": "Quitar la configuración {{config}}",
+        "modelAria": "Modelo de {{stage}}, configuración {{config}}",
+        "reasoningAria": "Razonamiento de {{stage}}, configuración {{config}}"
       },
       "review": {
         "start": "Revisión a ciegas",
@@ -807,7 +854,9 @@
         "remaining_one": "queda {{count}}",
         "remaining_other": "quedan {{count}}",
         "scoresFor": "Puntajes de {{label}}",
-        "afterFinish": "Disponible cuando termine la evaluación"
+        "afterFinish": "Disponible cuando termine la evaluación",
+        "pickWinner": "Elegí cuál es mejor (o empate) para poder enviar.",
+        "scoreAria": "{{dimension}} de {{label}}"
       },
       "reasoning": {
         "label": "Razonamiento",
@@ -820,21 +869,23 @@
           "low": "Bajo",
           "medium": "Medio",
           "high": "Alto"
-        }
+        },
+        "aria": "Razonamiento para {{stage}}"
       },
       "prices": {
         "per1M": "por 1M",
         "upTo": "Descuento batch de hasta −{{pct}}% (estimado, todavía sin calibrar con la facturación)",
-        "verified": "Descuento batch de −{{pct}}% verificado con la facturación",
         "perWeek": "~{{cost}}/sem",
         "list": "Precio de lista",
         "inOutCache": "entrada / salida / caché por 1M",
         "batch": "Batch",
         "effective": "precio efectivo",
-        "discount": "descuento batch",
         "sourceRule": "Según la regla por proveedor",
         "sourceProbe": "Verificado por prueba ({{date}})",
-        "effectiveNote": "con precios efectivos, batch cuando aplica"
+        "effectiveNote": "con precios efectivos, batch cuando aplica",
+        "estimateShort": "Descuento estimado, todavía sin verificar con la facturación",
+        "batchEstimate": "batch hasta −{{pct}}%",
+        "batchVerified": "batch −{{pct}}% verificado"
       },
       "forecast": {
         "title": "Gasto esperado",
@@ -857,7 +908,8 @@
           "corpus": "Estimado por el volumen de apuntes que cambian cada semana.",
           "blend_one": "Combina el volumen de apuntes con {{count}} ejecución.",
           "blend_other": "Combina el volumen de apuntes con {{count}} ejecuciones."
-        }
+        },
+        "diff": "Diferencia"
       },
       "crashed": "Esta vista falló al mostrar los datos que devolvió la API.",
       "simulated": "Costos simulados (cliente LLM de prueba), no facturación real.",
@@ -916,13 +968,14 @@
           "validating": "validando",
           "done": "listo",
           "failed": "falló"
-        }
+        },
+        "tokensInOut": "{{in}} → {{out}} tokens"
       },
       "watch": {
         "evalDone": "La evaluación «{{name}}» terminó: {{configs}} configuraciones, {{pages}} páginas.",
-        "evalFailed": "La evaluación «{{name}}» terminó con estado {{status}}.",
+        "evalFailed": "La evaluación «{{name}}» no terminó bien ({{status}}).",
         "runDone": "La ejecución del pipeline terminó: {{subjects}} materias.",
-        "runFailed": "La ejecución del pipeline terminó con estado {{status}}.",
+        "runFailed": "La ejecución del pipeline no terminó bien ({{status}}).",
         "view": "Ver resultados",
         "notify": "Avisarme cuando termine",
         "notifyOn": "Te vamos a avisar",
@@ -955,6 +1008,42 @@
         "historyNote": "Los costos ya registrados mantienen los precios de su día; solo cambian las estimaciones y lo que se ejecute desde ahora.",
         "fromDo": "Precios de DigitalOcean · actualizado el {{date}}",
         "manual": "Precio manual · {{date}}"
+      },
+      "unavailableTitle": "Todavía no disponible",
+      "tokensN": "{{tokens}} tokens",
+      "yes": "Sí",
+      "no": "No",
+      "status": {
+        "DONE": "Terminada",
+        "SUCCEEDED": "Terminada",
+        "COMPLETED": "Terminada",
+        "PUBLISHED": "Publicada",
+        "OK": "OK",
+        "RUNNING": "En curso",
+        "SUBMITTED": "Enviada",
+        "QUEUED": "En cola",
+        "PENDING": "Pendiente",
+        "IN_PROGRESS": "En curso",
+        "VALIDATING": "Validando",
+        "FINALIZING": "Finalizando",
+        "WAITING": "Esperando",
+        "WAITING_BATCH": "Esperando lote",
+        "PLANNING": "Planificando",
+        "WRITING": "Redactando",
+        "CANCELLING": "Cancelando",
+        "PARTIAL": "Con fallas",
+        "BLOCKED": "Frenada",
+        "BLOCKED_BY_COST_LIMIT": "Frenada por costo",
+        "DEFERRED": "Postergada",
+        "RATE_LIMITED": "Límite de pedidos",
+        "EMPTY_TOOL": "Salida vacía",
+        "FAILED": "Falló",
+        "ERROR": "Error",
+        "CANCELLED": "Cancelada",
+        "CANCELED": "Cancelada",
+        "EXPIRED": "Vencida",
+        "SKIPPED": "Omitida",
+        "other": "Otro estado"
       }
     }
   },

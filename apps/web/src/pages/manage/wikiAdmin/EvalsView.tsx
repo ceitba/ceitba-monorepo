@@ -6,10 +6,10 @@ import {
 } from '../../../api/kbAdmin'
 import { fetchApunteSubjects, type ApunteSubject } from '../../../api/drive'
 import { useDebounced } from '../../../hooks/useDebounced'
-import { apuntesErrorMessage } from '../../../utils/apuntes'
-import ConfirmDialog from '../../../components/ConfirmDialog'
-import ErrorBanner from '../../../components/ErrorBanner'
-import Notice from '../../../components/Notice'
+import {
+  Alert, Badge, Button, CloseIcon, ConfirmDialog, EmptyState, Field, IconButton, inputClass, selectClass, toast,
+} from '@/components/ui'
+import { apuntesAdminErrorMessage } from '../adminErrors'
 import BlindReview from './BlindReview'
 import ReasoningSelect from './ReasoningSelect'
 import ProgressPanel, { ProgressBar } from './ProgressPanel'
@@ -20,8 +20,8 @@ import { ReviewSummaryLine } from './ReviewProgressView'
 import { markActive } from './jobWatchStore'
 import { ModelSelect } from './SettingsView'
 import { CostImpactDialog, Panel, StatusPill, ViewState } from './shared'
-import { pct, secs, tokens, usd } from './format'
-import { BTN, BTN_PRI, FIELD, TD, TH } from './styles'
+import { prettyConfig, pct, secs, tokens, usd } from './format'
+import { TD, TH } from './styles'
 import { isUnavailable, useLoad } from './useLoad'
 
 const FEW_RATINGS = 20
@@ -57,7 +57,7 @@ function best(values: (number | null | undefined)[], dir: Dir): number | null {
 }
 
 export default function EvalsView({ requestedId, onRequestHandled }: { requestedId?: string | null; onRequestHandled?: () => void } = {}) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [openEval, setOpenEval] = useState<string | null>(null)
   useEffect(() => {
     if (requestedId) { setOpenEval(requestedId); onRequestHandled?.() }
@@ -110,18 +110,18 @@ export default function EvalsView({ requestedId, onRequestHandled }: { requested
             <ul className="flex flex-col divide-y divide-border dark:divide-night-border">
               {list.map((e) => (
                 <li key={e.id}>
-                  <button type="button" onClick={() => setOpenEval(e.id)} className="w-full text-left flex flex-col gap-1.5 py-2 hover:text-primary">
+                  <button type="button" onClick={() => setOpenEval(e.id)} className="w-full min-h-[44px] text-left flex flex-col gap-1.5 py-2 text-ink-primary dark:text-night-text hover:text-primary">
                     <span className="flex flex-wrap items-center gap-3">
                       <StatusPill status={e.status} />
-                      <span className="font-body text-body-sm font-semibold">{e.setName ?? sets.data?.find((s) => s.id === e.setId)?.name ?? e.setId}</span>
-                      <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{(e.configs ?? []).map((c) => c.configKey).join(' vs ')}</span>
-                      <span className="ml-auto font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.createdAt).toLocaleDateString()}</span>
+                      <span className="font-body text-body-sm font-semibold">{e.setName ?? sets.data?.find((s) => s.id === e.setId)?.name ?? '—'}</span>
+                      <span className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{(e.configs ?? []).map((c) => prettyConfig(c.configKey, c.plan, c.write)).join(' · ')}</span>
+                      <span className="ml-auto font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.createdAt).toLocaleDateString(i18n.language)}</span>
                     </span>
                     {isActiveStatus(e.status) && (
                       <span className="flex items-center gap-3">
                         <ProgressBar className="flex-1" percent={e.progress?.overall?.percent} indeterminate={!e.progress?.overall} />
-                        <span className="font-mono text-[0.7rem] text-ink-secondary dark:text-night-muted whitespace-nowrap">
-                          {e.progress?.overall ? `${Math.round(e.progress.overall.percent)}%` : t(`manage.wikiAi.progress.stages.${(e.stage ?? '').toUpperCase()}`, { defaultValue: e.stage ?? '' })}
+                        <span className="font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap">
+                          {e.progress?.overall ? `${Math.round(e.progress.overall.percent)}%` : t(`manage.wikiAi.progress.stages.${(e.stage ?? '').toUpperCase()}`, { defaultValue: t('manage.wikiAi.stages.other') })}
                         </span>
                       </span>
                     )}
@@ -137,15 +137,15 @@ export default function EvalsView({ requestedId, onRequestHandled }: { requested
       <Panel
         title={t('manage.wikiAi.evals.leaderboard')}
         actions={sets.data && sets.data.length > 0 ? (
-          <select value={lbSet} onChange={(e) => setLbSet(e.target.value)} aria-label={t('manage.wikiAi.evals.set')} className={FIELD}>
+          <select value={lbSet} onChange={(e) => setLbSet(e.target.value)} aria-label={t('manage.wikiAi.evals.set')} className={selectClass({ className: 'w-auto' })}>
             {sets.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         ) : undefined}
       >
         {lbSet ? <Leaderboard setId={lbSet} latestEvalId={(evals.data ?? []).find((e) => e.setId === lbSet && !isActiveStatus(e.status))?.id ?? null} /> : (
-          <p className="py-4 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">
-            {sets.unavailable ? t('manage.wikiAi.unavailable') : t('manage.wikiAi.evals.noSets')}
-          </p>
+          sets.unavailable
+            ? <EmptyState compact title={t('manage.wikiAi.unavailableTitle')} body={t('manage.wikiAi.unavailable')} />
+            : <EmptyState compact title={t('manage.wikiAi.evals.noSets')} body={t('manage.wikiAi.evals.noSetsBody')} />
         )}
       </Panel>
     </div>
@@ -153,7 +153,7 @@ export default function EvalsView({ requestedId, onRequestHandled }: { requested
 }
 
 function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnType<typeof fetchEvalSets>>>> }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [picked, setPicked] = useState<ApunteSubject[]>([])
@@ -163,19 +163,20 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreezing, setRefreezing] = useState<{ id: string; name: string } | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [refreezeError, setRefreezeError] = useState<string | null>(null)
 
   async function refreeze() {
     if (!refreezing) return
-    setBusy(true); setError(null)
+    setBusy(true); setRefreezeError(null)
     try {
       await refreezeEvalSet(refreezing.id)
-      setNotice(t('manage.wikiAi.evals.refrozen', { name: refreezing.name }))
+      toast.success(t('manage.wikiAi.evals.refrozen', { name: refreezing.name }))
+      setRefreezing(null)
       sets.reload()
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setRefreezeError(apuntesAdminErrorMessage(e, t))
     } finally {
-      setBusy(false); setRefreezing(null)
+      setBusy(false)
     }
   }
 
@@ -193,7 +194,7 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
       setCreating(false); setName(''); setPicked([])
       sets.reload()
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesAdminErrorMessage(e, t))
     } finally {
       setBusy(false)
     }
@@ -202,19 +203,21 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
   return (
     <Panel
       title={t('manage.wikiAi.evals.sets')}
-      actions={!creating && !sets.unavailable ? <button type="button" onClick={() => setCreating(true)} className={BTN}>{t('manage.wikiAi.evals.newSet')}</button> : undefined}
+      actions={!creating && !sets.unavailable ? <Button variant="outline" size="sm" onClick={() => setCreating(true)}>{t('manage.wikiAi.evals.newSet')}</Button> : undefined}
     >
       {creating && (
         <div className="flex flex-col gap-3 mb-4 p-3 rounded-sm border border-border dark:border-night-border">
           <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.frozenHint')}</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('manage.wikiAi.evals.setName')} aria-label={t('manage.wikiAi.evals.setName')} className={FIELD} />
+          <Field label={t('manage.wikiAi.evals.setName')}>
+            {(p) => <input {...p} value={name} onChange={(e) => setName(e.target.value)} className={inputClass()} />}
+          </Field>
           <div className="relative">
-            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('manage.wikiAi.evals.addSubject')} aria-label={t('manage.wikiAi.evals.addSubject')} className={`${FIELD} w-full`} />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('manage.wikiAi.evals.addSubject')} aria-label={t('manage.wikiAi.evals.addSubject')} className={inputClass()} />
             {options.length > 0 && (
               <ul className="absolute z-20 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card-hover">
                 {options.map((s) => (
                   <li key={s.subjectId}>
-                    <button type="button" className="w-full text-left px-3 py-2 font-body text-body-sm hover:bg-primary-50 dark:hover:bg-primary-900" onClick={() => { if (!picked.some((p) => p.subjectId === s.subjectId)) setPicked([...picked, s]); setQ(''); setOptions([]) }}>
+                    <button type="button" className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900" onClick={() => { if (!picked.some((p) => p.subjectId === s.subjectId)) setPicked([...picked, s]); setQ(''); setOptions([]) }}>
                       <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-1.5">{s.subjectId}</span>{s.subjectName}
                       {s.hasWiki === false && <span className="ml-2 text-amber-700 dark:text-amber-300">{t('manage.wikiAi.evals.noWiki')}</span>}
                     </button>
@@ -226,30 +229,34 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
           {picked.length > 0 && (
             <ul className="flex flex-wrap gap-2">
               {picked.map((s) => (
-                <li key={s.subjectId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border dark:border-night-border font-body text-body-sm">
+                <li key={s.subjectId} className="inline-flex items-center gap-1 pl-3 rounded-full border border-border dark:border-night-border font-body text-body-sm text-ink-primary dark:text-night-text">
                   <span className="font-mono text-label">{s.subjectId}</span> {s.subjectName}
-                  <button type="button" aria-label={`${t('manage.delete')} ${s.subjectId}`} onClick={() => setPicked(picked.filter((p) => p.subjectId !== s.subjectId))} className="ml-1 opacity-60 hover:opacity-100">×</button>
+                  <IconButton size="sm" aria-label={t('manage.wikiAi.evals.removeSubject', { subject: s.subjectName ?? s.subjectId })} onClick={() => setPicked(picked.filter((p) => p.subjectId !== s.subjectId))} className="rounded-full">
+                    <CloseIcon size={14} />
+                  </IconButton>
                 </li>
               ))}
             </ul>
           )}
-          {error && <p role="alert" className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setCreating(false)} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary">{t('manage.cancel')}</button>
-            <button type="button" onClick={create} disabled={busy || !name.trim() || picked.length === 0} className={BTN_PRI}>{busy ? '…' : t('manage.wikiAi.evals.createSet')}</button>
+          {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {(!name.trim() || picked.length === 0) && (
+              <span className="mr-auto font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.setNeeds')}</span>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => { setCreating(false); setError(null) }}>{t('manage.cancel')}</Button>
+            <Button variant="outline" size="sm" onClick={create} disabled={!name.trim() || picked.length === 0} loading={busy}>{t('manage.wikiAi.evals.createSet')}</Button>
           </div>
         </div>
       )}
-      {!creating && error && <ErrorBanner className="mb-2" onDismiss={() => setError(null)}>{error}</ErrorBanner>}
-      {notice && <Notice className="mb-2" onDismiss={() => setNotice(null)}>{notice}</Notice>}
       {refreezing && (
         <ConfirmDialog
           title={t('manage.wikiAi.evals.refreeze')}
           body={t('manage.wikiAi.evals.refreezeBody', { name: refreezing.name })}
           confirmLabel={t('manage.wikiAi.evals.refreeze')}
           busy={busy}
+          error={refreezeError}
           onConfirm={() => void refreeze()}
-          onCancel={() => setRefreezing(null)}
+          onCancel={() => { setRefreezing(null); setRefreezeError(null) }}
         />
       )}
       <ViewState state={sets} skeleton="rows" empty={(s) => s.length === 0} emptyText={t('manage.wikiAi.evals.noSets')}>
@@ -261,13 +268,13 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
                   <p className="font-body text-body-sm font-semibold">{s.name}</p>
                   <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{s.subjectIds.join(' · ')}</p>
                   {s.frozenAt && (
-                    <p className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">
-                      {t('manage.wikiAi.evals.frozenAt', { date: new Date(s.frozenAt).toLocaleDateString(), files: (s.frozen ?? []).reduce((a, f) => a + (f.files ?? 0), 0) })}
+                    <p className="font-body text-label text-ink-secondary dark:text-night-muted">
+                      {t('manage.wikiAi.evals.frozenAt', { date: new Date(s.frozenAt).toLocaleDateString(i18n.language), files: (s.frozen ?? []).reduce((a, f) => a + (f.files ?? 0), 0) })}
                       {(s.frozen ?? []).some((f) => f.digestsMissing > 0) && ` · ${t('manage.wikiAi.evals.digestsMissing', { count: (s.frozen ?? []).reduce((a, f) => a + (f.digestsMissing ?? 0), 0) })}`}
                     </p>
                   )}
                 </div>
-                <button type="button" onClick={() => setRefreezing({ id: s.id, name: s.name })} className={BTN}>{t('manage.wikiAi.evals.refreeze')}</button>
+                <Button variant="outline" size="sm" onClick={() => setRefreezing({ id: s.id, name: s.name })}>{t('manage.wikiAi.evals.refreeze')}</Button>
               </li>
             ))}
           </ul>
@@ -290,7 +297,6 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
   const [estimate, setEstimate] = useState<{ total?: number; tokens?: number } | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => { if (!setId && sets.length) setSetId(sets[0].id) }, [sets, setId])
   const valid = setId && configs.length >= 2 && configs.every((c) => c.plan && c.write) &&
@@ -310,13 +316,13 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
   }, [setId, configs, valid])
 
   async function launch() {
-    setBusy(true); setError(null); setNotice(null)
+    setBusy(true); setError(null)
     try {
       const e = await createEval({ setId, models: configs, note: note.trim() || undefined })
-      setNotice(t('manage.wikiAi.evals.launched'))
+      toast.success(t('manage.wikiAi.evals.launched'))
       onCreated(e)
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesAdminErrorMessage(e, t))
     } finally {
       setBusy(false)
     }
@@ -325,33 +331,34 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
   return (
     <Panel title={t('manage.wikiAi.evals.newEval')}>
       {disabled ? (
-        <p className="py-4 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.unavailable')}</p>
+        <EmptyState compact title={t('manage.wikiAi.unavailableTitle')} body={t('manage.wikiAi.unavailable')} />
       ) : (
         <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.set')}</span>
-            <select value={setId} onChange={(e) => setSetId(e.target.value)} className={FIELD}>
-              {sets.length === 0 && <option value="">{t('manage.wikiAi.evals.noSets')}</option>}
-              {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
+          <Field label={t('manage.wikiAi.evals.set')}>
+            {(p) => (
+              <select {...p} value={setId} onChange={(e) => setSetId(e.target.value)} className={selectClass()}>
+                {sets.length === 0 && <option value="">{t('manage.wikiAi.evals.noSets')}</option>}
+                {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+          </Field>
           {configs.map((c, i) => (
-            <fieldset key={i} className="grid grid-cols-[auto_1fr_auto] items-start gap-2 p-2 rounded-sm border border-border dark:border-night-border">
+            <fieldset key={i} className="grid grid-cols-[auto_1fr_auto] items-start gap-2 p-2 rounded-sm border border-border dark:border-night-border min-w-0">
               <legend className="sr-only">{t('manage.wikiAi.evals.config', { n: i + 1 })}</legend>
               <span className="font-display font-bold text-h5 self-center w-6 text-center" aria-hidden="true">{String.fromCharCode(65 + i)}</span>
               <div className="flex flex-col gap-2 min-w-0">
               {(['plan', 'write'] as const).map((stage) => (
-                <div key={stage} className="grid grid-cols-[4.5rem_1fr_7.5rem] gap-2 items-start min-w-0">
+                <div key={stage} className="grid grid-cols-1 sm:grid-cols-[4.5rem_1fr_9rem] gap-2 items-start min-w-0">
                   <span className="pt-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t(`manage.wikiAi.stages.${stage.toUpperCase()}`)}</span>
                   <ModelSelect
-                    label={`${t(`manage.wikiAi.stages.${stage.toUpperCase()}`)} ${i + 1}`}
+                    label={t('manage.wikiAi.evals.modelAria', { stage: t(`manage.wikiAi.stages.${stage.toUpperCase()}`), config: String.fromCharCode(65 + i) })}
                     value={c[stage] || null}
                     models={models}
                     allowDefault
                     onChange={(v) => setConfigs(configs.map((x, j) => (j === i ? { ...x, [stage]: v ?? '' } : x)))}
                   />
                   <ReasoningSelect
-                    label={`${t(`manage.wikiAi.stages.${stage.toUpperCase()}`)} ${i + 1} · ${t('manage.wikiAi.reasoning.label')}`}
+                    label={t('manage.wikiAi.evals.reasoningAria', { stage: t(`manage.wikiAi.stages.${stage.toUpperCase()}`), config: String.fromCharCode(65 + i) })}
                     model={models.find((m) => m.id === c[stage])}
                     value={c.reasoningEffort?.[stage] ?? null}
                     onChange={(v) => setConfigs(configs.map((x, j) => (j === i ? { ...x, reasoningEffort: { ...(x.reasoningEffort ?? {}), [stage]: v } } : x)))}
@@ -359,28 +366,33 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
                 </div>
               ))}
               </div>
-              <button type="button" disabled={configs.length <= 2} onClick={() => setConfigs(configs.filter((_, j) => j !== i))} aria-label={t('manage.delete')} className="self-center px-2 text-ink-secondary hover:text-red-600 disabled:opacity-30">×</button>
+              {configs.length > 2 ? (
+                <IconButton size="sm" className="self-center" aria-label={t('manage.wikiAi.evals.removeConfig', { config: String.fromCharCode(65 + i) })} onClick={() => setConfigs(configs.filter((_, j) => j !== i))}>
+                  <CloseIcon size={16} />
+                </IconButton>
+              ) : <span aria-hidden="true" />}
             </fieldset>
           ))}
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" disabled={configs.length >= 4} onClick={() => setConfigs([...configs, { plan: '', write: '' }])} className={BTN}>{t('manage.wikiAi.evals.addConfig')}</button>
-            <span className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">
+            <Button variant="outline" size="sm" disabled={configs.length >= 4} onClick={() => setConfigs([...configs, { plan: '', write: '' }])}>{t('manage.wikiAi.evals.addConfig')}</Button>
+            <span className="font-body text-label text-ink-secondary dark:text-night-muted">
               {t('manage.wikiAi.evals.configHint')}
               {models.some((m) => m.supportsReasoningEffort) && ` ${t('manage.wikiAi.reasoning.hint')}`}
             </span>
           </div>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('manage.wikiAi.note')} aria-label={t('manage.wikiAi.note')} className={FIELD} />
+          <Field label={t('manage.wikiAi.note')}>
+            {(p) => <input {...p} value={note} onChange={(e) => setNote(e.target.value)} className={inputClass()} />}
+          </Field>
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border dark:border-night-border">
             <p className="font-body text-body-sm" aria-live="polite">
               {!valid ? <span className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.pickConfigs')}</span>
                 : estimate === undefined ? <span className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.estimating')}</span>
                   : estimate === null || estimate.total == null ? <span className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.noEstimate')}</span>
-                    : <>{t('manage.wikiAi.evals.estimate')}: <strong>{usd(estimate.total, 2)}</strong>{estimate.tokens ? ` · ${tokens(estimate.tokens)} tokens` : ''} <span className="text-ink-secondary dark:text-night-muted">({t('manage.wikiAi.prices.effectiveNote')})</span></>}
+                    : <>{t('manage.wikiAi.evals.estimate')}: <strong>{usd(estimate.total, 2)}</strong>{estimate.tokens ? ` · ${t('manage.wikiAi.tokensN', { tokens: tokens(estimate.tokens) })}` : ''} <span className="text-ink-secondary dark:text-night-muted">({t('manage.wikiAi.prices.effectiveNote')})</span></>}
             </p>
-            <button type="button" onClick={launch} disabled={!valid || busy} className={BTN_PRI}>{busy ? '…' : t('manage.wikiAi.evals.launch')}</button>
+            <Button onClick={launch} disabled={!valid} loading={busy}>{t('manage.wikiAi.evals.launch')}</Button>
           </div>
-          {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
-          {notice && <Notice onDismiss={() => setNotice(null)}>{notice}</Notice>}
+          {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
         </div>
       )}
     </Panel>
@@ -408,7 +420,7 @@ function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setNam
   if (reviewing) {
     return (
       <div className="flex flex-col gap-3">
-        <button type="button" onClick={() => setReviewing(false)} className="self-start font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary">← {t('manage.wikiAi.review.back')}</button>
+        <Button variant="ghost" size="sm" className="self-start" onClick={() => setReviewing(false)}>← {t('manage.wikiAi.review.back')}</Button>
         <h3 className="font-display font-bold text-h4">{t('manage.wikiAi.review.title')}</h3>
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.intro')}</p>
         <BlindReview evalId={id} onDone={() => { setReviewing(false); ev.reload() }} onLeaderboard={onLeaderboard} />
@@ -418,7 +430,7 @@ function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setNam
 
   return (
     <div className="flex flex-col gap-4">
-      <button type="button" onClick={onBack} className="self-start font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary">← {t('manage.wikiAi.evals.back')}</button>
+      <Button variant="ghost" size="sm" className="self-start" onClick={onBack}>← {t('manage.wikiAi.evals.back')}</Button>
       <ViewState state={ev}>
         {(e) => {
           const cfgs = e.configs ?? []
@@ -436,13 +448,18 @@ function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setNam
                 </Panel>
               )}
               <Panel
-                title={<span className="flex flex-wrap items-center gap-2">{e.setName ?? setName(e.setId) ?? e.setId} <StatusPill status={e.status} /></span>}
-                actions={<button type="button" onClick={() => setReviewing(true)} disabled={cfgs.length < 2 || isActiveStatus(e.status)} title={isActiveStatus(e.status) ? t('manage.wikiAi.review.afterFinish') : undefined} className={BTN_PRI}>{t('manage.wikiAi.review.start')}</button>}
+                title={<span className="flex flex-wrap items-center gap-2">{e.setName ?? setName(e.setId) ?? '—'} <StatusPill status={e.status} /></span>}
+                actions={
+                  <span className="flex flex-wrap items-center gap-2">
+                    {isActiveStatus(e.status) && <span className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.afterFinish')}</span>}
+                    <Button size="sm" onClick={() => setReviewing(true)} disabled={cfgs.length < 2 || isActiveStatus(e.status)}>{t('manage.wikiAi.review.start')}</Button>
+                  </span>
+                }
               >
                 {e.note && <p className="mb-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">“{e.note}”</p>}
                 <ReviewSummaryLine summary={e.reviewSummary ?? reviewSummary} className="mb-3" />
                 {cfgs.length === 0 ? (
-                  <p className="py-4 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.noResults')}</p>
+                  <EmptyState compact title={t('manage.wikiAi.evals.noResults')} />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full font-body text-body-sm">
@@ -451,7 +468,7 @@ function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setNam
                         {cfgs.map((c, i) => (
                           <th key={c.configKey} className={`${TH} text-right normal-case tracking-normal`}>
                             <span className="font-display font-bold text-h5 mr-1">{String.fromCharCode(65 + i)}</span>
-                            <span className="block font-mono text-[0.68rem] text-ink-secondary dark:text-night-muted">{modelWithEffort(c.plan, c.reasoningEffort?.plan)} → {modelWithEffort(c.write, c.reasoningEffort?.write)}</span>
+                            <span className="block font-mono text-label text-ink-secondary dark:text-night-muted">{modelWithEffort(c.plan, c.reasoningEffort?.plan)} → {modelWithEffort(c.write, c.reasoningEffort?.write)}</span>
                           </th>
                         ))}
                       </tr></thead>
@@ -463,7 +480,7 @@ function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setNam
                             <tr key={m.key} className={`border-t border-border dark:border-night-border ${m.headline ? 'bg-page-bg dark:bg-night-bg' : ''}`}>
                               <td className={`${TD} ${m.headline ? 'font-semibold' : ''}`}>
                                 {t(`manage.wikiAi.metrics.${m.key}`)}
-                                {m.key === 'unsupportedClaimsRate' && <span className="ml-1 font-mono text-[0.65rem] text-ink-secondary">({t('manage.wikiAi.metrics.heuristic')})</span>}
+                                {m.key === 'unsupportedClaimsRate' && <span className="ml-1 font-mono text-label text-ink-secondary dark:text-night-muted">({t('manage.wikiAi.metrics.heuristic')})</span>}
                               </td>
                               {vals.map((v, i) => {
                                 const isBest = b != null && v === b
@@ -481,7 +498,7 @@ function EvalDetail({ id, setName, onBack, onLeaderboard }: { id: string; setNam
                           <td className={TD} />
                           {cfgs.map((c) => (
                             <td key={c.configKey} className={`${TD} text-right`}>
-                              <button type="button" onClick={() => setPromoting(c)} className={BTN}>{t('manage.wikiAi.evals.promote')}</button>
+                              <Button variant="outline" size="sm" onClick={() => setPromoting(c)}>{t('manage.wikiAi.evals.promote')}</Button>
                             </td>
                           ))}
                         </tr>
@@ -584,15 +601,16 @@ function Leaderboard({ setId, latestEvalId }: { setId: string; latestEvalId: str
                   <td className={`${TD} text-right tabular-nums`}>
                     {r.ratings}
                     {(r.smallSample || r.ratings < FEW_RATINGS) && (
-                      <span className="ml-1.5 px-1 rounded-sm bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-mono text-[0.65rem]" title={t('manage.wikiAi.evals.fewRatingsHint', { n: FEW_RATINGS })}>
-                        {t('manage.wikiAi.evals.fewRatings')}
-                      </span>
+                      <Badge tone="warning" className="ml-1.5">{t('manage.wikiAi.evals.fewRatings')}</Badge>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {sorted.some((r) => r.smallSample || r.ratings < FEW_RATINGS) && (
+            <p className="mt-2 font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.fewRatingsHint', { n: FEW_RATINGS })}</p>
+          )}
         </div>
       )}
     </ViewState>
@@ -616,7 +634,7 @@ function ConfigsProgress({ configs }: { configs: EvalConfigResult[] }) {
         <div key={c.configKey} className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-display font-bold text-h5 w-5">{String.fromCharCode(65 + i)}</span>
-            <span className="font-mono text-[0.72rem] text-ink-secondary dark:text-night-muted break-all">
+            <span className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">
               {modelWithEffort(c.plan, c.reasoningEffort?.plan)} → {modelWithEffort(c.write, c.reasoningEffort?.write)}
             </span>
             <StatusPill status={c.status} />
@@ -632,11 +650,11 @@ function ConfigsProgress({ configs }: { configs: EvalConfigResult[] }) {
               return (
                 <li
                   key={s.subjectId}
-                  title={s.subjectName ?? s.subjectId}
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-body text-[0.75rem] ${SUBJECT_TONE[status] ?? 'bg-accent-50 text-accent-800 border-accent-200 dark:bg-accent-900/30 dark:text-accent-200 dark:border-accent-800'}`}
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-body text-label ${SUBJECT_TONE[status] ?? 'bg-accent-50 text-accent-800 border-accent-200 dark:bg-accent-900/30 dark:text-accent-200 dark:border-accent-800'}`}
                 >
                   <span className="font-mono">{s.subjectId}</span>
-                  <span>{t(`manage.wikiAi.progress.subject.${status}`, { defaultValue: status })}</span>
+                  {s.subjectName && <span className="max-w-[12rem] truncate">{s.subjectName}</span>}
+                  <span>{t(`manage.wikiAi.progress.subject.${status}`, { defaultValue: t('manage.wikiAi.status.other') })}</span>
                   {pages && <span className="opacity-80">· {pages}</span>}
                 </li>
               )

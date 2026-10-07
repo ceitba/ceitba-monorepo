@@ -5,11 +5,14 @@ import { fetchEval, fetchRun, finalTone, isActiveStatus, isBlockedStatus } from 
 import { ApiError } from '../../../api/client'
 import { activeJobs, dismissToast, drop, finish, requestOpen } from './jobWatchStore'
 import { useJobWatch } from './useJobWatch'
+import { statusLabel } from './status'
+import { Button, CloseIcon, IconButton } from '@/components/ui'
 
-const TONE = {
-  success: { border: 'border-emerald-300 dark:border-emerald-800', icon: 'text-emerald-600 dark:text-emerald-400', glyph: '✓' },
-  warning: { border: 'border-amber-300 dark:border-amber-800', icon: 'text-amber-600 dark:text-amber-400', glyph: '!' },
-  error: { border: 'border-red-300 dark:border-red-800', icon: 'text-red-600 dark:text-red-400', glyph: '✕' },
+// Left accent per outcome, same as the kit Toaster.
+const BORDER = {
+  success: 'border-l-emerald-500',
+  warning: 'border-l-amber-500',
+  error: 'border-l-red-500',
 } as const
 
 // Polls watched jobs (15 s visible, 60 s hidden) and shows a toast when
@@ -31,8 +34,8 @@ export default function JobWatcher({ onOpen }: { onOpen: () => void }) {
               const pages = (e.configs ?? []).reduce((a, c) => a + (c.metrics?.pagesWritten ?? 0), 0)
               const tone = finalTone(e.status)
               const name = e.setName ?? j.name
-              const text = tone === 'error' ? t('manage.wikiAi.watch.evalFailed', { name, status: e.status })
-                : tone === 'warning' ? t('manage.wikiAi.watch.evalPartial', { name, status: e.status })
+              const text = tone === 'error' ? t('manage.wikiAi.watch.evalFailed', { name, status: statusLabel(e.status, t) })
+                : tone === 'warning' ? t('manage.wikiAi.watch.evalPartial', { name, status: statusLabel(e.status, t) })
                   : t('manage.wikiAi.watch.evalDone', { name, configs: e.configs?.length ?? 0, pages })
               finish('eval', j.id, e.status, `${pages}`, text, tone)
             }
@@ -40,7 +43,7 @@ export default function JobWatcher({ onOpen }: { onOpen: () => void }) {
             const r = await fetchRun(j.id)
             if (!isActiveStatus(r.status)) {
               const tone = finalTone(r.status)
-              const text = tone === 'error' ? t('manage.wikiAi.watch.runFailed', { status: r.status })
+              const text = tone === 'error' ? t('manage.wikiAi.watch.runFailed', { status: statusLabel(r.status, t) })
                 : isBlockedStatus(r.status) ? t('manage.wikiAi.watch.runBlocked')
                   : tone === 'warning' ? t('manage.wikiAi.watch.runPartial', { subjects: r.subjects?.length ?? 0 })
                     : t('manage.wikiAi.watch.runDone', { subjects: r.subjects?.length ?? 0 })
@@ -60,29 +63,31 @@ export default function JobWatcher({ onOpen }: { onOpen: () => void }) {
     return () => { cancelled = true; window.clearTimeout(timer) }
   }, [t])
 
+  // Not a transient kit toast: each notice stays until dismissed and carries
+  // a "Ver resultados" action. Styled like the kit Toaster, stacked above it.
   if (!toasts.length) return null
   return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 flex flex-col gap-2" aria-live="polite">
+    <div className="fixed z-50 bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-96 flex flex-col gap-2" aria-live="polite">
       {toasts.map((toast) => (
         <div
           key={toast.key}
-          role="status"
-          className={`flex items-start gap-3 px-4 py-3 rounded-card border shadow-card-hover bg-white dark:bg-night-surface font-body text-body-sm animate-slide-up ${
-            TONE[toast.tone].border
-          }`}
+          role={toast.tone === 'error' ? 'alert' : 'status'}
+          className={`flex items-start gap-2 pl-4 pr-1 py-1 rounded-sm border border-border border-l-4 dark:border-night-border bg-white dark:bg-night-surface shadow-card animate-fade-in ${BORDER[toast.tone]}`}
         >
-          <span aria-hidden="true" className={TONE[toast.tone].icon}>{TONE[toast.tone].glyph}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-ink-primary dark:text-night-text">{toast.text}</p>
-            <button
-              type="button"
+          <div className="flex-1 min-w-0 py-2.5">
+            <p className="font-body text-body-sm text-ink-primary dark:text-night-text">{toast.text}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 -ml-3"
               onClick={() => { requestOpen(toast.kind, toast.id); dismissToast(toast.key); onOpen() }}
-              className="mt-1 font-mono text-label uppercase tracking-widest text-primary hover:underline"
             >
-              {t('manage.wikiAi.watch.view')} →
-            </button>
+              {t('manage.wikiAi.watch.view')}
+            </Button>
           </div>
-          <button type="button" onClick={() => dismissToast(toast.key)} aria-label={t('errors.dismiss')} className="leading-none text-h5 opacity-60 hover:opacity-100">×</button>
+          <IconButton size="sm" onClick={() => dismissToast(toast.key)} aria-label={t('errors.dismiss')}>
+            <CloseIcon size={16} />
+          </IconButton>
         </div>
       ))}
     </div>
