@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/api/client'
 import { fetchOrganizationFollowers } from '../../api/follows'
 import { fetchOrganizationBySlug } from '../../api/organizations'
 import { canViewFollowers } from '../../store/authStore'
 import { newsletterPath } from '@/newsletter/paths'
+import type { Follower } from '../../types'
+
+// GET /organizations/{slug}/followers → { data, count }.
+interface FollowersResponse {
+  data?: Follower[]
+  count?: number
+}
 
 // Followers expose names and emails: the API serves them only to staff and
 // to the org's admins (membership role 'admin'), so plain members get the
 // no-access screen instead of a request that would 403.
 export default function AdminOrganizationFollowersPage() {
-  const { slug } = useParams()
+  // The route is /admin/org/:slug, so the param is always there.
+  const { slug = '' } = useParams()
   const { t, i18n } = useTranslation()
   const allowed = canViewFollowers(slug)
 
-  const [data, setData]       = useState(null)
+  const [data, setData]       = useState<FollowersResponse | null>(null)
   const [orgName, setOrgName] = useState('')
   const [error, setError]     = useState('')
   const [query, setQuery]     = useState('')
@@ -33,7 +42,7 @@ export default function AdminOrganizationFollowersPage() {
       })
       // Roles can change server-side after /auth/me was cached, so a 403
       // is still possible; show it as a message, not a crash.
-      .catch((e) => setError(e?.status === 403 ? 'forbidden' : 'loadError'))
+      .catch((e: unknown) => setError(e instanceof ApiError && e.status === 403 ? 'forbidden' : 'loadError'))
   }, [slug, allowed])
 
   if (!allowed) {
@@ -151,7 +160,7 @@ export default function AdminOrganizationFollowersPage() {
   )
 }
 
-function formatDate(iso, lang) {
+function formatDate(iso: string | null | undefined, lang: string): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''

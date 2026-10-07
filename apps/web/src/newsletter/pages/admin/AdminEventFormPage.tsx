@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LoadErrorState from '../../components/admin/LoadErrorState'
@@ -9,9 +9,25 @@ import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../co
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import { todayISO } from '../../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import { ApiError } from '@/api/client'
+import type { Organization } from '../../types'
 
 
-function buildEmptyForm() {
+interface EventForm {
+  title: string
+  date: string
+  time: string
+  endTime: string
+  location: string
+  category: string
+  // null when an independent event is loaded for editing.
+  organization: string | null
+  description: string
+}
+
+type EventFormErrors = Partial<Record<keyof EventForm, string>>
+
+function buildEmptyForm(): EventForm {
   const myOrgs = getOrganizations()
   return {
     title:        '',
@@ -26,19 +42,19 @@ function buildEmptyForm() {
 }
 
 export default function AdminEventFormPage() {
-  const { id }   = useParams()
+  const { id = '' } = useParams()
   const navigate = useNavigate()
   const isEdit   = Boolean(id)
   const { t } = useTranslation()
   const categoryLabel = useCategoryLabel()
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
   // possible once the event loaded, so a failed load can't overwrite it.
-  const [loadState, setLoadState] = useState(isEdit ? 'loading' : 'ready')
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'notFound' | 'error'>(isEdit ? 'loading' : 'ready')
   const [reloadKey, setReloadKey] = useState(0)
 
   const [form, setForm]         = useState(buildEmptyForm)
-  const [orgs, setOrgs]         = useState([])
-  const [errors, setErrors]     = useState({})
+  const [orgs, setOrgs]         = useState<Organization[]>([])
+  const [errors, setErrors]     = useState<EventFormErrors>({})
   const [touched, setTouched]   = useState(false)
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
@@ -46,6 +62,8 @@ export default function AdminEventFormPage() {
 
   useEffect(() => {
     fetchOrganizations()
+      // Cast: GET /organizations answers { data: [...] } (OrganizationController.list),
+      // not the bare array api/organizations declares.
       .then(({ data }) => setOrgs(data ?? []))
       .catch(() => {})
   }, [])
@@ -70,19 +88,19 @@ export default function AdminEventFormPage() {
         setLoadState('ready')
       })
       .catch((err) => {
-        if (!cancelled) setLoadState(err?.status === 404 ? 'notFound' : 'error')
+        if (!cancelled) setLoadState(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error')
       })
     return () => { cancelled = true }
   }, [id, isEdit, reloadKey])
 
-  function set(key, value) {
+  function set<K extends keyof EventForm>(key: K, value: EventForm[K]) {
     const next = { ...form, [key]: value }
     setForm(next)
     if (touched) validate(next)
   }
 
-  function validate(values = form) {
-    const e = {}
+  function validate(values: EventForm = form) {
+    const e: EventFormErrors = {}
     if (!values.title.trim())    e.title    = t('admin.eventForm.errors.title')
     if (!values.date)            e.date     = t('admin.eventForm.errors.date')
     if (!values.time)            e.time     = t('admin.eventForm.errors.time')
@@ -94,7 +112,7 @@ export default function AdminEventFormPage() {
     return Object.keys(e).length === 0
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (loadState !== 'ready') return
     setTouched(true)
@@ -201,7 +219,7 @@ export default function AdminEventFormPage() {
               const locked = !isStaff() && myOrgs.length === 1
               return (
                 <select
-                  value={form.organization}
+                  value={form.organization ?? undefined}
                   onChange={(e) => set('organization', e.target.value)}
                   disabled={locked}
                   className={inputClass(null)}
@@ -230,7 +248,15 @@ export default function AdminEventFormPage() {
   )
 }
 
-function Field({ label, hint, error, required, children }) {
+interface FieldProps {
+  label: string
+  hint?: string
+  error?: string
+  required?: boolean
+  children: ReactNode
+}
+
+function Field({ label, hint, error, required, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
@@ -246,6 +272,6 @@ function Field({ label, hint, error, required, children }) {
   )
 }
 
-function inputClass(error) {
+function inputClass(error: string | null | undefined) {
   return ['w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
 }

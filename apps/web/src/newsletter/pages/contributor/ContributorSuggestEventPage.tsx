@@ -1,14 +1,36 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCachedSession } from '../../store/authStore'
-import { getEventById, submitEventSuggestion, resubmitEventSuggestion } from '../../store/eventStore'
+import { getEventById, submitEventSuggestion, resubmitEventSuggestion, type StoredEvent } from '../../store/eventStore'
 import { fetchOrganizations } from '../../api/organizations'
 import { todayISO } from '../../utils/dates'
 
 import { CATEGORIES as EVENT_CATEGORIES, DEFAULT_CATEGORY } from '../../constants/categories'
 import { newsletterPath } from '@/newsletter/paths'
+import type { UserProfile } from '@/store/authStore'
+import type { Organization } from '../../types'
 
-const EMPTY_FORM = {
+// The form fields; editing a suggestion also spreads the stored row in.
+type EventForm = Omit<Partial<StoredEvent>, 'organization'> & {
+  title: string
+  date: string
+  time: string
+  endTime: string
+  location: string
+  category: string
+  organization: string | null
+  description: string
+}
+
+interface FormErrors {
+  title?: string
+  date?: string
+  time?: string
+  endTime?: string
+  location?: string
+}
+
+const EMPTY_FORM: EventForm = {
   title:        '',
   date:         todayISO(),
   time:         '09:00',
@@ -22,12 +44,13 @@ const EMPTY_FORM = {
 export default function ContributorSuggestEventPage() {
   const { id }   = useParams()
   const navigate = useNavigate()
-  const session  = getCachedSession()
+  // Cast: ContributorAuthGuard renders this page only once /me resolved.
+  const session  = getCachedSession() as UserProfile
   const isEdit   = Boolean(id)
 
   const [form, setForm]       = useState(EMPTY_FORM)
-  const [orgs, setOrgs]       = useState([])
-  const [errors, setErrors]   = useState({})
+  const [orgs, setOrgs]       = useState<Organization[]>([])
+  const [errors, setErrors]   = useState<FormErrors>({})
   const [touched, setTouched] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [done, setDone]       = useState(false)
@@ -45,14 +68,14 @@ export default function ContributorSuggestEventPage() {
     }
   }, [id, isEdit])
 
-  function set(key, value) {
+  function set<K extends keyof EventForm>(key: K, value: EventForm[K]) {
     const next = { ...form, [key]: value }
     setForm(next)
     if (touched) validate(next)
   }
 
-  function validate(values = form) {
-    const e = {}
+  function validate(values: EventForm = form) {
+    const e: FormErrors = {}
     if (!values.title.trim())    e.title    = 'El título es obligatorio.'
     if (!values.date)            e.date     = 'La fecha es obligatoria.'
     if (!values.time)            e.time     = 'La hora de inicio es obligatoria.'
@@ -63,7 +86,7 @@ export default function ContributorSuggestEventPage() {
     return Object.keys(e).length === 0
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setTouched(true)
     if (!validate()) return
@@ -72,7 +95,7 @@ export default function ContributorSuggestEventPage() {
     await new Promise((r) => setTimeout(r, 400))
 
     if (isEdit) {
-      resubmitEventSuggestion(id, form)
+      resubmitEventSuggestion(id ?? '', form)
     } else {
       submitEventSuggestion(form, session)
     }
@@ -157,7 +180,7 @@ export default function ContributorSuggestEventPage() {
             </select>
           </Field>
           <Field label="Organización">
-            <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
+            <select value={form.organization ?? undefined} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
               {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
             </select>
           </Field>
@@ -193,7 +216,15 @@ export default function ContributorSuggestEventPage() {
   )
 }
 
-function Field({ label, hint, error, required, children }) {
+interface FieldProps {
+  label: string
+  hint?: string
+  error?: string
+  required?: boolean
+  children: ReactNode
+}
+
+function Field({ label, hint, error, required, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
@@ -209,7 +240,7 @@ function Field({ label, hint, error, required, children }) {
   )
 }
 
-function inputClass(error) {
+function inputClass(error: string | null | undefined) {
   return [
     'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white',
     'focus:outline-none focus:ring-1 transition-colors duration-150',

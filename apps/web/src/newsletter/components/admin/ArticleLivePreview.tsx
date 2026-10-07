@@ -1,18 +1,43 @@
+import type { ReactNode } from 'react'
 import CategoryBadge from '../CategoryBadge'
 import i18n from 'i18next'
 import { formatDate as formatLocalDate } from '../../utils/dates'
 import { bodyToMarkdown } from '../../utils/articleBody'
 import ArticleBody from '../article/ArticleBody'
+import type { IsoDate, Organization } from '../../types'
 
 // Mirrors the GeoFill in ArticleCard — kept local so preview has no router dependency
-const GEO_BG = {
+const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
   amber:  'bg-accent-400',
   green:  'bg-emerald-600',
   violet: 'bg-violet-600',
 }
 
-function CoverMedia({ coverImage, colorScheme, className }) {
+// What the admin article form previews (its form state).
+interface PreviewArticle {
+  title?: string | null
+  excerpt?: string | null
+  body: string[]
+  category: string
+  organization?: string | null
+  authors?: string[] | null
+  date?: IsoDate | null
+  readingTime?: string | null
+  featured?: boolean
+  colorScheme?: string | null
+  coverImage?: string | null
+}
+
+type PreviewOrg = Pick<Organization, 'slug' | 'name'>
+
+interface CoverMediaProps {
+  coverImage?: string | null
+  colorScheme?: string | null
+  className: string
+}
+
+function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
   if (coverImage) {
     return (
       <div className={['overflow-hidden flex-shrink-0', className].join(' ')}>
@@ -20,7 +45,7 @@ function CoverMedia({ coverImage, colorScheme, className }) {
       </div>
     )
   }
-  const bg = GEO_BG[colorScheme] ?? GEO_BG.blue
+  const bg = GEO_BG[colorScheme ?? ''] ?? GEO_BG.blue
   return (
     <div className={['relative overflow-hidden flex-shrink-0', bg, className].join(' ')}>
       <div className="absolute inset-0 opacity-20">
@@ -33,13 +58,13 @@ function CoverMedia({ coverImage, colorScheme, className }) {
   )
 }
 
-function formatDate(iso) {
+function formatDate(iso: IsoDate | null | undefined): string {
   return formatLocalDate(iso, i18n.language)
 }
 
 // ── Card preview ────────────────────────────────────────────────────────────
 
-function PreviewCard({ article, featured }) {
+function PreviewCard({ article, featured }: { article: PreviewArticle; featured?: boolean }) {
   if (featured) {
     return (
       <div className="rounded-card border border-border bg-white overflow-hidden shadow-card flex flex-col lg:flex-row">
@@ -102,8 +127,8 @@ function PreviewCard({ article, featured }) {
 
 // ── Full article preview ────────────────────────────────────────────────────
 
-function ArticleFullPreview({ article, orgs }) {
-  const heroBg = GEO_BG[article.colorScheme] ?? GEO_BG.blue
+function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: PreviewOrg[] }) {
+  const heroBg = GEO_BG[article.colorScheme ?? ''] ?? GEO_BG.blue
   const org = orgs.find((o) => o.slug === article.organization)
 
   return (
@@ -175,7 +200,12 @@ function ArticleFullPreview({ article, orgs }) {
 
 // ── Public export ────────────────────────────────────────────────────────────
 
-export default function ArticleLivePreview({ article, orgs = [] }) {
+interface ArticleLivePreviewProps {
+  article: PreviewArticle
+  orgs?: PreviewOrg[]
+}
+
+export default function ArticleLivePreview({ article, orgs = [] }: ArticleLivePreviewProps) {
   return (
     <div className="flex flex-col gap-10 pb-8">
       {/* Card in standard grid */}
@@ -203,7 +233,7 @@ export default function ArticleLivePreview({ article, orgs = [] }) {
   )
 }
 
-function PreviewLabel({ children }) {
+function PreviewLabel({ children }: { children: ReactNode }) {
   return (
     <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-3 flex items-center gap-2">
       <span className="inline-block w-2 h-2 rounded-full bg-accent" />

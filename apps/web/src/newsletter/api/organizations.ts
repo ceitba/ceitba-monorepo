@@ -1,8 +1,9 @@
 import { apiGet, apiSend } from '@/api/client'
-import type { Organization, OrganizationInput } from '../types'
+import type { Organization, OrganizationInput, OrganizationList } from '../types'
 
-export async function fetchOrganizations(): Promise<Organization[]> {
-  return apiGet<Organization[]>('/organizations')
+// GET /organizations answers { data: [...] } (OrganizationController.list).
+export async function fetchOrganizations(): Promise<OrganizationList> {
+  return apiGet<OrganizationList>('/organizations')
 }
 
 export async function fetchOrganizationBySlug(slug: string): Promise<Organization> {

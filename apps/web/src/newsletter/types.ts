@@ -125,6 +125,11 @@ export interface Organization {
 // OrganizationRequest / OrganizationPatchRequest.
 export type OrganizationInput = Partial<Omit<Organization, 'followerCount'>>
 
+// GET /organizations.
+export interface OrganizationList {
+  data: Organization[]
+}
+
 // MeFollowsController.FollowResponse (GET /me/follows).
 export interface Follow {
   orgSlug: string
@@ -138,6 +143,12 @@ export interface Follower {
   email: string
   avatarUrl: string | null
   followedAt: IsoDateTime
+}
+
+// GET /organizations/{slug}/followers.
+export interface FollowerList {
+  data: Follower[]
+  count: number
 }
 
 // ── Votes ───────────────────────────────────────────────────────────────────

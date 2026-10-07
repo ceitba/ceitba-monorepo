@@ -15,7 +15,8 @@ export default function AdminLoginPage() {
     : null
   // AdminAuthGuard passes the guarded page it bounced from; without it the
   // callback sends the user to the default admin landing page.
-  const returnTo = location.state?.from ?? null
+  // Cast: router state is untyped; AdminAuthGuard sets { from: pathname }.
+  const returnTo = (location.state as { from?: string } | null)?.from
 
   return (
     <div className="min-h-screen bg-primary-900 flex flex-col items-center justify-center px-4">

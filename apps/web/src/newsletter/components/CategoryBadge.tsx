@@ -1,6 +1,6 @@
 import { useCategoryLabel } from '../hooks/useCategoryLabel'
 
-const CATEGORY_STYLES = {
+const CATEGORY_STYLES: Record<string, string> = {
   Académico:      'bg-primary-100 text-primary-700',
   Campus:         'bg-accent-50 text-accent-600',
   Cultura:        'bg-emerald-50 text-emerald-700',
@@ -10,7 +10,12 @@ const CATEGORY_STYLES = {
   General:        'bg-ink-secondary/10 text-ink-secondary',
 }
 
-export default function CategoryBadge({ category, className = '' }) {
+interface CategoryBadgeProps {
+  category: string
+  className?: string
+}
+
+export default function CategoryBadge({ category, className = '' }: CategoryBadgeProps) {
   const label = useCategoryLabel()
   const style = CATEGORY_STYLES[category] ?? 'bg-border text-ink-secondary'
 

@@ -11,15 +11,21 @@ import { useCategoryLabel } from '../hooks/useCategoryLabel'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { canAccessAdmin } from '../store/authStore'
 import { CONTRIBUTIONS_ENABLED } from '../config/features'
+import type { Article } from '../types'
 
-function useFetchArticles(category, reloadKey) {
-  const [state, setState] = useState({ status: 'loading', data: [] })
+interface FetchState {
+  status: 'loading' | 'success' | 'error'
+  data: Article[]
+}
+
+function useFetchArticles(category: string | null, reloadKey: number) {
+  const [state, setState] = useState<FetchState>({ status: 'loading', data: [] })
 
   useEffect(() => {
     let cancelled = false
     setState({ status: 'loading', data: [] })
 
-    fetchArticles({ category })
+    fetchArticles({ category: category ?? undefined })
       .then(({ data }) => {
         if (!cancelled) setState({ status: 'success', data })
       })
@@ -36,7 +42,7 @@ function useFetchArticles(category, reloadKey) {
 export default function ArticlesPage() {
   const { t } = useTranslation()
   // null = all categories (no filter param)
-  const [activeCategory, setActiveCategory] = useState(null)
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const { status, data: articles } = useFetchArticles(activeCategory, reloadKey)
 
@@ -83,7 +89,13 @@ export default function ArticlesPage() {
   )
 }
 
-function FilterBar({ categories, active, onChange }) {
+interface FilterBarProps {
+  categories: string[]
+  active: string | null
+  onChange: (category: string | null) => void
+}
+
+function FilterBar({ categories, active, onChange }: FilterBarProps) {
   const { t } = useTranslation()
   const label = useCategoryLabel()
   return (
@@ -111,7 +123,12 @@ function FilterBar({ categories, active, onChange }) {
   )
 }
 
-function EditorialGrid({ featured, secondary }) {
+interface EditorialGridProps {
+  featured: Article | undefined
+  secondary: Article[]
+}
+
+function EditorialGrid({ featured, secondary }: EditorialGridProps) {
   return (
     <div className="flex flex-col gap-6">
       {featured && <ArticleCard article={featured} featured />}
@@ -137,7 +154,11 @@ function LoadingState() {
   )
 }
 
-function ErrorState({ onRetry }) {
+interface ErrorStateProps {
+  onRetry: () => void
+}
+
+function ErrorState({ onRetry }: ErrorStateProps) {
   const { t } = useTranslation()
   return (
     <div role="alert" className="flex flex-col items-center justify-center py-24 gap-6 text-center">
@@ -220,7 +241,11 @@ function ContributeBanner() {
   )
 }
 
-function EmptyState({ category }) {
+interface EmptyStateProps {
+  category: string | null
+}
+
+function EmptyState({ category }: EmptyStateProps) {
   const { t } = useTranslation()
   const label = useCategoryLabel()
   return (

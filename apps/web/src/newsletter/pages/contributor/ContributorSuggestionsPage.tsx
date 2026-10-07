@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCachedSession } from '../../store/authStore'
-import { getArticles } from '../../store/articleStore'
-import { getEvents } from '../../store/eventStore'
+import { getArticles, type StoredArticle } from '../../store/articleStore'
+import { getEvents, type StoredEvent } from '../../store/eventStore'
 import { newsletterPath } from '@/newsletter/paths'
 
-const STATUS_LABEL = {
+// A suggestion of either kind. The mock stores never set createdAt, so the
+// sort below keeps the store order.
+type SuggestionItem = (
+  | (StoredArticle & { resourceType: 'article' })
+  | (StoredEvent & { resourceType: 'event' })
+) & { createdAt?: string }
+
+const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pending_review:     { label: 'Pendiente de revisión', cls: 'bg-amber-50 text-amber-700' },
   changes_requested:  { label: 'Cambios solicitados',   cls: 'bg-blue-50 text-blue-700'  },
   published:          { label: 'Publicado',              cls: 'bg-emerald-50 text-emerald-700' },
@@ -14,15 +21,15 @@ const STATUS_LABEL = {
 
 export default function ContributorSuggestionsPage() {
   const session = getCachedSession()
-  const [items]  = useState(() => {
+  const [items]  = useState<SuggestionItem[]>(() => {
     if (!session) return []
     const articles = getArticles()
       .filter((a) => a.suggestedBy?.id === session.id)
-      .map((a) => ({ ...a, resourceType: 'article' }))
+      .map((a) => ({ ...a, resourceType: 'article' as const }))
     const events = getEvents()
       .filter((e) => e.suggestedBy?.id === session.id)
-      .map((e) => ({ ...e, resourceType: 'event' }))
-    return [...articles, ...events].sort((a, b) => {
+      .map((e) => ({ ...e, resourceType: 'event' as const }))
+    return [...articles, ...events].sort((a: SuggestionItem, b: SuggestionItem) => {
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
       return tb - ta
@@ -69,8 +76,12 @@ export default function ContributorSuggestionsPage() {
   )
 }
 
-function SuggestionRow({ item }) {
-  const s = STATUS_LABEL[item.status] ?? { label: item.status, cls: 'bg-surface text-ink-secondary' }
+interface SuggestionRowProps {
+  item: SuggestionItem
+}
+
+function SuggestionRow({ item }: SuggestionRowProps) {
+  const s = STATUS_LABEL[item.status ?? ''] ?? { label: item.status, cls: 'bg-surface text-ink-secondary' }
   const isArticle = item.resourceType === 'article'
 
   return (

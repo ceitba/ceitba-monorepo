@@ -1,27 +1,37 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, localeFor, parseLocalDate, todayISO, weekdayNames } from '../utils/dates'
+import type { IsoDate } from '../types'
 
-function getDaysInMonth(year, month) {
+function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
 }
 
-function getFirstWeekday(year, month) {
+function getFirstWeekday(year: number, month: number): number {
   return new Date(year, month, 1).getDay()
 }
 
-function isoDate(year, month, day) {
+function isoDate(year: number, month: number, day: number): IsoDate {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-function formatMonth(year, month, lang) {
+function formatMonth(year: number, month: number, lang: string): string {
   return new Date(year, month, 1).toLocaleDateString(localeFor(lang), {
     month: 'long',
     year: 'numeric',
   })
 }
 
-export default function Calendar({ events, selectedDate, onSelectDate, onMonthChange }) {
+interface CalendarProps {
+  // Only `date` is read, to mark the days that have events.
+  events: { date?: IsoDate | null }[]
+  selectedDate: IsoDate | null
+  onSelectDate: (date: IsoDate | null) => void
+  // month is 0-based, like Date#getMonth.
+  onMonthChange?: (year: number, month: number) => void
+}
+
+export default function Calendar({ events, selectedDate, onSelectDate, onMonthChange }: CalendarProps) {
   const { t, i18n } = useTranslation()
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
@@ -34,12 +44,12 @@ export default function Calendar({ events, selectedDate, onSelectDate, onMonthCh
   const eventDays = new Set(
     events
       .map((e) => parseLocalDate(e.date))
-      .filter((d) => d && d.getFullYear() === viewYear && d.getMonth() === viewMonth)
+      .filter((d): d is Date => d !== null && d.getFullYear() === viewYear && d.getMonth() === viewMonth)
       .map((d) => d.getDate())
   )
   const weekdays = weekdayNames(i18n.language)
 
-  function goTo(year, month) {
+  function goTo(year: number, month: number) {
     setViewYear(year)
     setViewMonth(month)
     onMonthChange?.(year, month)

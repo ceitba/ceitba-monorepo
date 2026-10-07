@@ -1,17 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { fetchOrganizationBySlug, updateOrganization } from '../../api/organizations'
 import { useTranslation } from 'react-i18next'
 import { canViewFollowers, getOrganizations, isStaff } from '../../store/authStore'
 import { newsletterPath } from '@/newsletter/paths'
 
+// The editable profile fields, as strings for the inputs ('' = empty).
+interface OrgForm {
+  name: string
+  fullName: string
+  description: string
+  category: string
+  color: string
+  logoUrl: string
+  backgroundUrl: string
+}
+
+type UrlField = 'logoUrl' | 'backgroundUrl'
+
 // Same rule as the API's OrganizationRequest/OrganizationPatchRequest:
 // blank (clears it) or http(s) with no whitespace, at most 2048 chars. The
 // browser's type="url" check alone lets data:, javascript: and ftp: through.
 const HTTP_URL = /^(\s*|https?:\/\/\S+)$/
-const URL_FIELDS = ['logoUrl', 'backgroundUrl']
+const URL_FIELDS: UrlField[] = ['logoUrl', 'backgroundUrl']
 
-function isAcceptedUrl(value) {
+function isAcceptedUrl(value: string | null | undefined): boolean {
   return (value ?? '').length <= 2048 && HTTP_URL.test(value ?? '')
 }
 
@@ -23,18 +36,19 @@ const COLOR_SCHEMES = [
 ]
 
 export default function AdminOrganizationProfilePage() {
-  const { slug } = useParams()
+  // The route is /admin/org/:slug, so the param is always there.
+  const { slug = '' } = useParams()
   const { t } = useTranslation()
   const allowed = isStaff() || getOrganizations().some((m) => m.slug === slug)
   // Plain members can edit the profile but not see followers (admins/staff only).
   const showFollowers = canViewFollowers(slug)
 
-  const [form, setForm]         = useState(null)
+  const [form, setForm]         = useState<OrgForm | null>(null)
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
   const [apiError, setApiError] = useState('')
-  const [urlErrors, setUrlErrors] = useState({})
+  const [urlErrors, setUrlErrors] = useState<Partial<Record<keyof OrgForm, string>>>({})
 
   useEffect(() => {
     if (!allowed) return
@@ -48,7 +62,7 @@ export default function AdminOrganizationProfilePage() {
         logoUrl:       org.logoUrl ?? '',
         backgroundUrl: org.backgroundUrl ?? '',
       }))
-      .catch((e) => setLoadError(e.message ?? 'Error al cargar la organización'))
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : 'Error al cargar la organización'))
   }, [slug, allowed])
 
   if (!allowed) {
@@ -78,8 +92,9 @@ export default function AdminOrganizationProfilePage() {
     return <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">Cargando…</p>
   }
 
-  function set(key, value) {
-    setForm((f) => ({ ...f, [key]: value }))
+  function set(key: keyof OrgForm, value: string) {
+    // Only called once the form has loaded.
+    setForm((f) => ({ ...(f as OrgForm), [key]: value }))
     setSaved(false)
     if (urlErrors[key] && isAcceptedUrl(value)) {
       setUrlErrors((prev) => {
@@ -90,20 +105,22 @@ export default function AdminOrganizationProfilePage() {
     }
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    // Rendered (and so submittable) only once the form has loaded.
+    const loaded = form as OrgForm
     // Rows saved before the API validated these URLs may hold anything; the
     // API now rejects every PATCH that carries one, so flag it here with a
     // readable message instead of the raw "logoUrl: must be …" 400.
     const invalid = Object.fromEntries(
-      URL_FIELDS.filter((k) => !isAcceptedUrl(form[k])).map((k) => [k, t('admin.form.errors.httpUrl')]),
+      URL_FIELDS.filter((k) => !isAcceptedUrl(loaded[k])).map((k) => [k, t('admin.form.errors.httpUrl')]),
     )
     setUrlErrors(invalid)
     if (Object.keys(invalid).length) return
     setSaving(true)
     setApiError('')
     try {
-      const next = await updateOrganization(slug, form)
+      const next = await updateOrganization(slug, loaded)
       setForm({
         name:          next.name ?? '',
         fullName:      next.fullName ?? '',
@@ -115,7 +132,7 @@ export default function AdminOrganizationProfilePage() {
       })
       setSaved(true)
     } catch (err) {
-      setApiError(err.message ?? 'Error al guardar.')
+      setApiError(err instanceof Error ? err.message : 'Error al guardar.')
     } finally {
       setSaving(false)
     }
@@ -274,7 +291,13 @@ export default function AdminOrganizationProfilePage() {
   )
 }
 
-function Field({ label, error, children }) {
+interface FieldProps {
+  label: string
+  error?: string
+  children: ReactNode
+}
+
+function Field({ label, error, children }: FieldProps) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">{label}</span>
@@ -284,6 +307,6 @@ function Field({ label, error, children }) {
   )
 }
 
-function inputClass() {
+function inputClass(): string {
   return 'w-full px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors duration-150 disabled:bg-surface disabled:text-ink-secondary'
 }

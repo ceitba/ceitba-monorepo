@@ -3,17 +3,20 @@ import { Link, Navigate } from 'react-router-dom'
 import { fetchOrganizations } from '../../api/organizations'
 import { isStaff } from '../../store/authStore'
 import { newsletterPath } from '@/newsletter/paths'
+import type { Organization } from '../../types'
 
 export default function AdminOrganizationsListPage() {
   // Hooks run unconditionally (rules of hooks); the staff redirect comes
   // after them and the fetch is skipped for non-staff.
   const staff = isStaff()
-  const [orgs, setOrgs] = useState(null)
+  const [orgs, setOrgs] = useState<Organization[] | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!staff) return
     fetchOrganizations()
+      // GET /organizations answers { data: [...] }, but api/organizations
+      // types it as a bare Organization[].
       .then(({ data }) => setOrgs(data ?? []))
       .catch(() => setError('No se pudieron cargar las organizaciones.'))
   }, [staff])

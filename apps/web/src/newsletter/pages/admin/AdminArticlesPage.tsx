@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ALL_STATUSES, deleteArticle, fetchAllArticles } from '../../api/articles'
@@ -8,6 +8,8 @@ import { formatDate } from '../../utils/dates'
 import { getOrganizations, isStaff } from '../../store/authStore'
 import { useAuthSession } from '../../hooks/useAuthSession'
 import { newsletterPath } from '@/newsletter/paths'
+import type { UserProfile } from '@/store/authStore'
+import type { Article, VoteCounts } from '../../types'
 
 // Articles visible to the current admin user, drafts included, plus the ids
 // the user wrote (their independent drafts are theirs to delete).
@@ -16,9 +18,9 @@ import { newsletterPath } from '@/newsletter/paths'
 // Everyone else gets ?status=all scoped to each of their organizations — the
 // API returns an org's drafts to its members — and their own articles
 // (?mine=true, any status), merged and re-sorted.
-async function loadArticles(profile) {
+async function loadArticles(profile: UserProfile): Promise<{ list: Article[]; mineIds: Set<string> }> {
   if (isStaff(profile)) {
-    return { list: await fetchAllArticles({ status: ALL_STATUSES }), mineIds: new Set() }
+    return { list: await fetchAllArticles({ status: ALL_STATUSES }), mineIds: new Set<string>() }
   }
   const slugs = getOrganizations(profile).map((o) => o.slug)
   const [mine, ...lists] = await Promise.all([
@@ -32,22 +34,22 @@ async function loadArticles(profile) {
 }
 
 // The API lets authors delete their own unpublished independent articles.
-function canDelete(article, staff, mineIds) {
+function canDelete(article: Article, staff: boolean, mineIds: Set<string>): boolean {
   return staff || (mineIds.has(article.id) && !article.organization && article.status !== 'published')
 }
 
-function dedupeById(list) {
+function dedupeById(list: Article[]): Article[] {
   return [...new Map(list.map((a) => [a.id, a])).values()]
 }
 
 // createdAt is an ISO OffsetDateTime whose fractional seconds vary in
 // length ("…:00Z" vs "…:00.5Z"), so compare instants, not strings.
-function createdAtMs(a) {
+function createdAtMs(a: Article): number {
   const ms = Date.parse(a.createdAt ?? '')
   return Number.isNaN(ms) ? 0 : ms
 }
 
-function sortNewestFirst(list) {
+function sortNewestFirst(list: Article[]): Article[] {
   return [...list].sort((a, b) => createdAtMs(b) - createdAtMs(a))
 }
 
@@ -55,11 +57,11 @@ export default function AdminArticlesPage() {
   const { t, i18n } = useTranslation()
   const { profile } = useAuthSession()
   const staff = isStaff(profile)
-  const [articles, setArticles] = useState([])
-  const [mineIds, setMineIds]   = useState(() => new Set())
-  const [votes, setVotes]       = useState({})
-  const [status, setStatus]     = useState('loading')
-  const [confirmId, setConfirmId] = useState(null)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [mineIds, setMineIds]   = useState(() => new Set<string>())
+  const [votes, setVotes]       = useState<Record<string, VoteCounts>>({})
+  const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
+  const [confirmId, setConfirmId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -91,7 +93,7 @@ export default function AdminArticlesPage() {
     return () => { cancelled = true }
   }, [profile, reloadKey])
 
-  async function handleDelete(id) {
+  async function handleDelete(id: string) {
     setDeleteError('')
     try {
       await deleteArticle(id)
@@ -201,7 +203,7 @@ export default function AdminArticlesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <time className="font-mono text-label text-ink-secondary" dateTime={article.date}>
+                      <time className="font-mono text-label text-ink-secondary" dateTime={article.date ?? undefined}>
                         {formatDate(article.date, i18n.language)}
                       </time>
                     </td>
@@ -257,7 +259,11 @@ export default function AdminArticlesPage() {
   )
 }
 
-function Th({ children }) {
+interface ThProps {
+  children: ReactNode
+}
+
+function Th({ children }: ThProps) {
   return (
     <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">
       {children}
@@ -265,7 +271,7 @@ function Th({ children }) {
   )
 }
 
-const STATUS_STYLES = {
+const STATUS_STYLES: Record<string, string> = {
   published:          'bg-emerald-50 text-emerald-700',
   draft:              'bg-amber-50 text-amber-700',
   pending_review:     'bg-amber-50 text-amber-700',
@@ -273,7 +279,11 @@ const STATUS_STYLES = {
   rejected:           'bg-red-50 text-red-600',
 }
 
-function StatusBadge({ status }) {
+interface StatusBadgeProps {
+  status: string
+}
+
+function StatusBadge({ status }: StatusBadgeProps) {
   const { t } = useTranslation()
   const cls = STATUS_STYLES[status] ?? 'bg-surface text-ink-secondary'
   return (
@@ -303,7 +313,11 @@ function EmptyState() {
   )
 }
 
-function VotePill({ votes }) {
+interface VotePillProps {
+  votes: VoteCounts | undefined
+}
+
+function VotePill({ votes }: VotePillProps) {
   if (!votes || (votes.up === 0 && votes.down === 0)) {
     return <span className="font-mono text-label text-border">—</span>
   }

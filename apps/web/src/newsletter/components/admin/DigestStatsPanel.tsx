@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchDigestStats } from '../../api/digests'
 import { formatArtDateTime, formatRate, hourlySeries } from '../../utils/digest'
+import type { DigestStats } from '../../types'
+
+interface DigestStatsPanelProps {
+  id: string
+  // Any change re-fetches.
+  refreshKey?: number | string
+}
+
+type LoadState = 'loading' | 'refreshing' | 'ready' | 'error'
 
 // Aggregate opens/clicks of a sent or sending issue: KPIs, clicks per link
 // and first opens per hour. Never per person.
-export default function DigestStatsPanel({ id, refreshKey = 0 }) {
+export default function DigestStatsPanel({ id, refreshKey = 0 }: DigestStatsPanelProps) {
   const { t, i18n } = useTranslation()
-  const [stats, setStats] = useState(null)
-  const [state, setState] = useState('loading')
+  const [stats, setStats] = useState<DigestStats | null>(null)
+  const [state, setState] = useState<LoadState>('loading')
 
   // Only the latest request's response is applied (a slow earlier one must
   // not overwrite newer numbers).
@@ -108,7 +117,13 @@ export default function DigestStatsPanel({ id, refreshKey = 0 }) {
   )
 }
 
-function Kpi({ label, value, sub }) {
+interface KpiProps {
+  label: ReactNode
+  value: number | null | undefined
+  sub?: ReactNode
+}
+
+function Kpi({ label, value, sub }: KpiProps) {
   return (
     <div className="flex flex-col bg-surface rounded-sm border border-border px-4 py-3">
       <dt className="font-mono text-label text-ink-secondary uppercase tracking-widest">{label}</dt>
@@ -119,7 +134,7 @@ function Kpi({ label, value, sub }) {
 }
 
 // Simple bars, one per hour, from the first to the last hour with opens.
-function OpensByHour({ opensByHour }) {
+function OpensByHour({ opensByHour }: { opensByHour: DigestStats['opensByHour'] | null | undefined }) {
   const { t, i18n } = useTranslation()
   const series = hourlySeries(opensByHour)
   const max = Math.max(1, ...series.map((h) => h.count))

@@ -1,13 +1,18 @@
 import { useTranslation } from 'react-i18next'
+import type { DigestStatus } from '../../types'
 
-const STYLES = {
+const STYLES: Record<string, string> = {
   draft:     'bg-accent-50 text-accent-700',
   sending:   'bg-primary-50 text-primary',
   sent:      'bg-emerald-50 text-emerald-700',
   cancelled: 'bg-border text-ink-secondary',
 }
 
-export default function DigestStatusBadge({ status }) {
+interface DigestStatusBadgeProps {
+  status: DigestStatus
+}
+
+export default function DigestStatusBadge({ status }: DigestStatusBadgeProps) {
   const { t } = useTranslation()
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest ${STYLES[status] ?? STYLES.cancelled}`}>

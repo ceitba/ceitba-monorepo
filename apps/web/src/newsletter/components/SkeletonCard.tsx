@@ -1,4 +1,8 @@
-export default function SkeletonCard({ featured = false }) {
+interface SkeletonCardProps {
+  featured?: boolean
+}
+
+export default function SkeletonCard({ featured = false }: SkeletonCardProps) {
   return (
     <div
       className={[

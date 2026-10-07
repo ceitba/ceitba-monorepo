@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { useParams, useNavigate, useBlocker, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -20,6 +20,9 @@ import RichTextEditor from '../../components/admin/editor/RichTextEditor'
 import { formatDate, todayISO } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
 import { newsletterPath } from '@/newsletter/paths'
+import { ApiError } from '@/api/client'
+import type { UserProfile } from '@/store/authStore'
+import type { ArticleInput, ArticleStatus, Organization } from '../../types'
 
 const COLOR_SCHEMES = [
   { value: 'blue',   bg: 'bg-primary-500' },
@@ -33,7 +36,41 @@ const COLOR_SCHEMES = [
 const EXCERPT_CARD_CHARS = 110
 const EXCERPT_FEATURED_CHARS = 180
 
-function buildEmptyForm(profile) {
+interface ArticleForm {
+  title: string
+  excerpt: string
+  // Markdown (the API's body blocks joined).
+  body: string
+  category: string
+  // '' = independent.
+  organization: string
+  authors: string[]
+  date: string
+  readingTime: string
+  featured: boolean
+  colorScheme: string
+  coverImage: string
+}
+
+type ArticleFormErrors = Partial<Record<keyof ArticleForm, string>>
+
+// toPayload's result: an ArticleInput with every field set.
+interface ArticlePayload extends ArticleInput {
+  title: string
+  excerpt: string
+  body: string[]
+  category: string
+  organization: string | null
+  authors: string[]
+  date: string
+  readingTime: string
+  featured: boolean
+  colorScheme: string
+  coverImage: string
+  status: ArticleStatus
+}
+
+function buildEmptyForm(profile: UserProfile | null): ArticleForm {
   const myOrgs = getOrganizations(profile)
   return {
     title:        '',
@@ -54,7 +91,7 @@ function buildEmptyForm(profile) {
 
 // Only what the API accepts — the loaded article also carries id, status,
 // timestamps, etc.
-function toPayload(form, status) {
+function toPayload(form: ArticleForm, status: ArticleStatus): ArticlePayload {
   return {
     title:        form.title.trim(),
     excerpt:      form.excerpt.trim(),
@@ -71,7 +108,7 @@ function toPayload(form, status) {
   }
 }
 
-function formatTime(date, lang) {
+function formatTime(date: Date, lang: string) {
   return date.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -85,36 +122,38 @@ export default function AdminArticleFormPage() {
   // The id of the article being edited. A new article gets one on its first
   // save (draft or publish); the URL then switches to /edit without
   // reloading the form.
-  const [articleId, setArticleId] = useState(routeId ?? null)
-  const loadedIdRef = useRef(null)
+  const [articleId, setArticleId] = useState<string | null>(routeId ?? null)
+  const loadedIdRef = useRef<string | null>(null)
   // Bumped on every edit, so a save only marks the form clean when nothing
   // changed while the request was in flight.
   const editVersionRef = useRef(0)
-  const redirectTimerRef = useRef(null)
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isEdit = Boolean(articleId)
 
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
   // possible once the article loaded, so a failed load can't overwrite it.
-  const [loadState, setLoadState] = useState(routeId ? 'loading' : 'ready')
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'notFound' | 'error'>(routeId ? 'loading' : 'ready')
   const [reloadKey, setReloadKey] = useState(0)
 
   const [form, setForm]               = useState(() => buildEmptyForm(profile))
-  const [savedStatus, setSavedStatus] = useState(null) // null = never saved
+  const [savedStatus, setSavedStatus] = useState<ArticleStatus | null>(null) // null = never saved
   const [autoReading, setAutoReading] = useState(true)
   const [editorKey, setEditorKey]     = useState(0)    // remounts the editor with loaded content
-  const [orgs, setOrgs]               = useState([])
-  const [errors, setErrors]           = useState({})
-  const [attempted, setAttempted]     = useState(null) // status of a failed save attempt
-  const [originalOrg, setOriginalOrg] = useState(null) // organization when loaded (null = independent)
-  const [saving, setSaving]           = useState(null) // status being saved
+  const [orgs, setOrgs]               = useState<Organization[]>([])
+  const [errors, setErrors]           = useState<ArticleFormErrors>({})
+  const [attempted, setAttempted]     = useState<ArticleStatus | null>(null) // status of a failed save attempt
+  const [originalOrg, setOriginalOrg] = useState<string | null>(null) // organization when loaded (null = independent)
+  const [saving, setSaving]           = useState<ArticleStatus | null>(null) // status being saved
   const [dirty, setDirty]             = useState(false)
-  const [lastSaved, setLastSaved]     = useState(null)
-  const [doneStatus, setDoneStatus]   = useState(null) // 'published' | 'pending_review' once sent
+  const [lastSaved, setLastSaved]     = useState<Date | null>(null)
+  const [doneStatus, setDoneStatus]   = useState<ArticleStatus | null>(null) // 'published' | 'pending_review' once sent
   const [apiError, setApiError]       = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
+      // Cast: GET /organizations answers { data: [...] } (OrganizationController.list),
+      // not the bare array api/organizations declares.
       .then(({ data }) => setOrgs(data ?? []))
       .catch(() => {})
   }, [])
@@ -123,7 +162,8 @@ export default function AdminArticleFormPage() {
   // whoever is writing, unless they already typed authors.
   useEffect(() => {
     if (routeId || !profile?.name) return
-    setForm((f) => (f.authors.length ? f : { ...f, authors: [profile.name] }))
+    // Non-null: checked just above (the narrowing doesn't reach the updater).
+    setForm((f) => (f.authors.length ? f : { ...f, authors: [profile.name!] }))
   }, [profile?.name, routeId])
 
   useEffect(() => {
@@ -161,7 +201,7 @@ export default function AdminArticleFormPage() {
         setLoadState('ready')
       })
       .catch((err) => {
-        if (!cancelled) setLoadState(err?.status === 404 ? 'notFound' : 'error')
+        if (!cancelled) setLoadState(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error')
       })
     return () => { cancelled = true }
     // profile only seeds defaults for missing fields; don't refetch on it.
@@ -187,7 +227,7 @@ export default function AdminArticleFormPage() {
 
   useEffect(() => {
     if (!dirty) return
-    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
@@ -218,7 +258,7 @@ export default function AdminArticleFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeId])
 
-  function set(key, value) {
+  function set<K extends keyof ArticleForm>(key: K, value: ArticleForm[K]) {
     setForm((f) => ({ ...f, [key]: value }))
     editVersionRef.current += 1
     setDirty(true)
@@ -226,8 +266,8 @@ export default function AdminArticleFormPage() {
 
   // Publishing needs the whole article; a draft only needs a title so it can
   // be found again in the list.
-  function validate(values, status) {
-    const e = {}
+  function validate(values: ArticleForm, status: ArticleStatus) {
+    const e: ArticleFormErrors = {}
     if (!values.title.trim()) e.title = t('admin.articleForm.errors.title')
     if (status === 'published' || status === 'pending_review') {
       if (!values.excerpt.trim())                 e.excerpt  = t('admin.articleForm.errors.excerpt')
@@ -240,7 +280,7 @@ export default function AdminArticleFormPage() {
     return e
   }
 
-  async function save(status) {
+  async function save(status: ArticleStatus) {
     if (loadState !== 'ready' || saving) return
     const e = validate(form, status)
     setErrors(e)
@@ -261,7 +301,8 @@ export default function AdminArticleFormPage() {
       if (!payload.excerpt) payload.excerpt = markdownToPlainText(form.body).slice(0, EXCERPT_CARD_CHARS) || payload.title
       if (!payload.authors.length) payload.authors = [profile?.name || payload.organization || 'CEITBA']
 
-      const saved = isEdit ? await updateArticle(articleId, payload) : await createArticle(payload)
+      // Non-null: isEdit means articleId is set.
+      const saved = isEdit ? await updateArticle(articleId!, payload) : await createArticle(payload)
       setSavedStatus(saved?.status ?? status)
       if (editVersionRef.current === versionAtSave) setDirty(false)
       setAttempted(null)
@@ -594,9 +635,14 @@ export default function AdminArticleFormPage() {
   )
 }
 
-function LeaveDialog({ onStay, onLeave }) {
+interface LeaveDialogProps {
+  onStay: () => void
+  onLeave: () => void
+}
+
+function LeaveDialog({ onStay, onLeave }: LeaveDialogProps) {
   const { t } = useTranslation()
-  const stayRef = useRef(null)
+  const stayRef = useRef<HTMLButtonElement>(null)
   useDialogFocus(stayRef, onStay)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={(e) => { if (e.target === e.currentTarget) onStay() }}>
@@ -616,23 +662,32 @@ function LeaveDialog({ onStay, onLeave }) {
   )
 }
 
-function StatusPill({ status }) {
+interface StatusPillProps {
+  status: ArticleStatus | null
+}
+
+function StatusPill({ status }: StatusPillProps) {
   const { t } = useTranslation()
-  const styles = {
+  const styles: Record<string, string> = {
     published:      'bg-emerald-50 text-emerald-700',
     draft:          'bg-amber-50 text-amber-700',
     pending_review: 'bg-primary-50 text-primary',
   }
-  const dot = { published: 'bg-emerald-600', draft: 'bg-amber-500', pending_review: 'bg-accent' }
+  const dot: Record<string, string> = { published: 'bg-emerald-600', draft: 'bg-amber-500', pending_review: 'bg-accent' }
   return (
-    <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest', styles[status] ?? 'bg-surface text-ink-secondary border border-border'].join(' ')}>
-      <span className={['w-1.5 h-1.5 rounded-full', dot[status] ?? 'bg-border'].join(' ')} aria-hidden="true" />
+    <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest', styles[status ?? ''] ?? 'bg-surface text-ink-secondary border border-border'].join(' ')}>
+      <span className={['w-1.5 h-1.5 rounded-full', dot[status ?? ''] ?? 'bg-border'].join(' ')} aria-hidden="true" />
       {status ? t(`admin.status.${status}`, { defaultValue: status }) : t('admin.articleForm.unsavedStatus')}
     </span>
   )
 }
 
-function ExcerptMeter({ value, featured }) {
+interface ExcerptMeterProps {
+  value: string
+  featured: boolean
+}
+
+function ExcerptMeter({ value, featured }: ExcerptMeterProps) {
   const { t } = useTranslation()
   const length = value.trim().length
   const limit = featured ? EXCERPT_FEATURED_CHARS : EXCERPT_CARD_CHARS
@@ -648,7 +703,13 @@ function ExcerptMeter({ value, featured }) {
   )
 }
 
-function AuthorsInput({ value, onChange, invalid }) {
+interface AuthorsInputProps {
+  value: string[]
+  onChange: (authors: string[]) => void
+  invalid: boolean
+}
+
+function AuthorsInput({ value, onChange, invalid }: AuthorsInputProps) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState('')
 
@@ -691,8 +752,16 @@ function AuthorsInput({ value, onChange, invalid }) {
   )
 }
 
-function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }) {
-  const ref = useRef(null)
+interface AutoGrowTextareaProps {
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  ariaLabel: string
+  className: string
+}
+
+function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }: AutoGrowTextareaProps) {
+  const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -712,9 +781,14 @@ function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, className }
   )
 }
 
-function PreviewDialog({ onClose, children }) {
+interface PreviewDialogProps {
+  onClose: () => void
+  children: ReactNode
+}
+
+function PreviewDialog({ onClose, children }: PreviewDialogProps) {
   const { t } = useTranslation()
-  const closeRef = useRef(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   useDialogFocus(closeRef, onClose)
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -741,7 +815,12 @@ function PreviewDialog({ onClose, children }) {
 
 function IconEye() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> }
 
-function SidebarCard({ title, children }) {
+interface SidebarCardProps {
+  title: string
+  children: ReactNode
+}
+
+function SidebarCard({ title, children }: SidebarCardProps) {
   return (
     <section className="bg-white rounded-card border border-border shadow-card p-4">
       <h2 className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-3">{title}</h2>
@@ -750,15 +829,23 @@ function SidebarCard({ title, children }) {
   )
 }
 
-function FieldLabel({ children }) {
+interface FieldLabelProps {
+  children: ReactNode
+}
+
+function FieldLabel({ children }: FieldLabelProps) {
   return <span className="block mb-1.5 font-body text-body-sm font-semibold text-ink-primary">{children}</span>
 }
 
-function FieldError({ children }) {
+interface FieldErrorProps {
+  children: ReactNode
+}
+
+function FieldError({ children }: FieldErrorProps) {
   return <span role="alert" className="mt-1.5 block font-body text-body-sm text-red-600">{children}</span>
 }
 
-function inputClass(error) {
+function inputClass(error: string | undefined) {
   return ['w-full min-h-[40px] px-3 py-2 border rounded-sm font-body text-body-sm text-ink-primary bg-white', 'focus:outline-none focus:ring-1 transition-colors duration-150', error ? 'border-red-400 focus:border-red-500 focus:ring-red-300' : 'border-border focus:border-primary focus:ring-primary/30'].join(' ')
 }
 

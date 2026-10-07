@@ -1,7 +1,12 @@
 import { startGoogleSignIn } from '../store/authStore'
 import { newsletterPath } from '@/newsletter/paths'
 
-export default function ContributeModal({ open, onClose }) {
+interface ContributeModalProps {
+  open: boolean
+  onClose: () => void
+}
+
+export default function ContributeModal({ open, onClose }: ContributeModalProps) {
   if (!open) return null
 
   return (

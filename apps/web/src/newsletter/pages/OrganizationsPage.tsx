@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { fetchOrganizations } from '../api/organizations'
 import { newsletterPath } from '@/newsletter/paths'
+import type { Organization } from '../types'
 
-const GEO_BG = {
+const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
   amber:  'bg-accent-400',
   green:  'bg-emerald-600',
@@ -13,8 +15,8 @@ const GEO_BG = {
 
 export default function OrganizationsPage() {
   const { t } = useTranslation()
-  const [orgs, setOrgs] = useState([])
-  const [status, setStatus] = useState('loading')
+  const [orgs, setOrgs] = useState<Organization[]>([])
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
 
   useEffect(() => {
     fetchOrganizations()
@@ -67,8 +69,13 @@ export default function OrganizationsPage() {
   )
 }
 
-function OrgCard({ org, t }) {
-  const heroBg = GEO_BG[org.color] ?? GEO_BG.blue
+interface OrgCardProps {
+  org: Organization
+  t: TFunction
+}
+
+function OrgCard({ org, t }: OrgCardProps) {
+  const heroBg = GEO_BG[org.color ?? ''] ?? GEO_BG.blue
 
   return (
     <Link

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/api/client'
 import {
   cancelDigest, deleteDigest, fetchDigest, fetchDigestQuota, fetchDigestPreview, sendDigestNow, sendDigestTest, updateDigest,
 } from '../../api/digests'
@@ -17,8 +18,25 @@ import {
   formatWeekRange, instantToArtInput, nowArtInput, shortTime,
 } from '../../utils/digest'
 import { newsletterPath } from '@/newsletter/paths'
+import type { DigestDetail } from '../../types'
 
-function formFrom(digest) {
+// The editable part of a digest, shaped for the inputs.
+interface DigestForm {
+  subject: string
+  intro: string
+  excludedArticleIds: string[]
+  excludedEventIds: string[]
+  autoSend: boolean
+  // "YYYY-MM-DDTHH:mm" Buenos Aires wall clock, for <input type="datetime-local">.
+  autoSendInput: string
+}
+
+type ExcludedKey = 'excludedArticleIds' | 'excludedEventIds'
+type LoadState = 'loading' | 'ready' | 'notFound' | 'error'
+type BusyAction = 'test' | 'send' | 'cancel' | 'delete'
+type DialogKind = 'send' | 'cancel' | 'delete'
+
+function formFrom(digest: DigestDetail): DigestForm {
   return {
     subject: digest.subject ?? '',
     intro: digest.intro ?? '',
@@ -31,9 +49,9 @@ function formFrom(digest) {
   }
 }
 
-const sameIds = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
+const sameIds = (a: string[], b: string[]): boolean => a.length === b.length && [...a].sort().join() === [...b].sort().join()
 
-function isDirty(form, base) {
+function isDirty(form: DigestForm, base: DigestForm): boolean {
   return form.subject !== base.subject
     || form.intro !== base.intro
     || !sameIds(form.excludedArticleIds, base.excludedArticleIds)
@@ -43,25 +61,26 @@ function isDirty(form, base) {
 }
 
 export default function AdminDigestEditorPage() {
-  const { id } = useParams()
+  // The route is /admin/digests/:id, so the param is always there.
+  const { id = '' } = useParams()
   const { t, i18n } = useTranslation()
   const staff = isStaff()
   const navigate = useNavigate()
 
-  const [loadState, setLoadState] = useState('loading')
+  const [loadState, setLoadState] = useState<LoadState>('loading')
   const [reloadKey, setReloadKey] = useState(0)
-  const [digest, setDigest] = useState(null)
-  const [form, setForm] = useState(null)
+  const [digest, setDigest] = useState<DigestDetail | null>(null)
+  const [form, setForm] = useState<DigestForm | null>(null)
   const [saving, setSaving] = useState(false)
-  const [busyAction, setBusyAction] = useState(null) // 'test' | 'send' | 'cancel' | 'delete'
-  const [dialog, setDialog] = useState(null)         // 'send' | 'cancel' | 'delete'
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null) // 'test' | 'send' | 'cancel' | 'delete'
+  const [dialog, setDialog] = useState<DialogKind | null>(null)         // 'send' | 'cancel' | 'delete'
   const [error, setError] = useState('')
   const [formError, setFormError] = useState('')
-  const [toast, setToast] = useState(null)
+  const [toast, setToast] = useState<string | null>(null)
   const [previewVersion, setPreviewVersion] = useState(0)
   // 'connected' | 'broken' | 'missing' | null (unknown yet / request failed).
   // Only warns; a send simply waits until a sender is connected.
-  const [senderStatus, setSenderStatus] = useState(null)
+  const [senderStatus, setSenderStatus] = useState<string | null>(null)
   // Sequence guard: every fetch/mutation takes a number, and a response is
   // applied only if nothing newer started (or finished) since. Stops a slow
   // poll from overwriting the result of a save/send/cancel.
@@ -69,7 +88,7 @@ export default function AdminDigestEditorPage() {
   const nextSeq = () => ++seqRef.current
 
   // Replace the server copy and reset the form to it.
-  const applyDigest = useCallback((d) => {
+  const applyDigest = useCallback((d: DigestDetail) => {
     setDigest(d)
     setForm(formFrom(d))
   }, [])
@@ -81,7 +100,7 @@ export default function AdminDigestEditorPage() {
     setLoadState('loading')
     fetchDigest(id)
       .then((d) => { if (!cancelled && seq === seqRef.current) { applyDigest(d); setLoadState('ready') } })
-      .catch((err) => { if (!cancelled && seq === seqRef.current) setLoadState(err?.status === 404 ? 'notFound' : 'error') })
+      .catch((err: unknown) => { if (!cancelled && seq === seqRef.current) setLoadState(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error') })
     return () => { cancelled = true }
   }, [id, staff, reloadKey, applyDigest])
 
@@ -130,7 +149,7 @@ export default function AdminDigestEditorPage() {
 
   useEffect(() => {
     if (!dirty) return
-    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
@@ -156,20 +175,24 @@ export default function AdminDigestEditorPage() {
     )
   }
 
-  const editable = digest.status === 'draft'
-  const set = (key, value) => { setForm((f) => ({ ...f, [key]: value })); setFormError('') }
+  // Unreachable: 'ready' is only set right after applyDigest() filled both.
+  if (!digest || !form) return null
 
-  function toggleExcluded(key, itemId) {
+  const editable = digest.status === 'draft'
+  // The updaters below run only while the form is shown, i.e. loaded.
+  const set = <K extends keyof DigestForm>(key: K, value: DigestForm[K]) => { setForm((f) => ({ ...(f as DigestForm), [key]: value })); setFormError('') }
+
+  function toggleExcluded(key: ExcludedKey, itemId: string) {
     setForm((f) => {
-      const list = f[key]
-      return { ...f, [key]: list.includes(itemId) ? list.filter((x) => x !== itemId) : [...list, itemId] }
+      const list = (f as DigestForm)[key]
+      return { ...(f as DigestForm), [key]: list.includes(itemId) ? list.filter((x) => x !== itemId) : [...list, itemId] }
     })
   }
 
   // A 409 means someone (or the auto-send job) moved it out of draft: show
   // the real state instead of a form that can't be saved.
-  async function refreshAfterConflict(err) {
-    if (err?.status === 409) {
+  async function refreshAfterConflict(err: unknown) {
+    if (err instanceof ApiError && err.status === 409) {
       const seq = nextSeq()
       try {
         const d = await fetchDigest(id)
@@ -178,9 +201,11 @@ export default function AdminDigestEditorPage() {
     }
   }
 
-  async function handleSave(e) {
+  async function handleSave(e?: FormEvent<HTMLFormElement>) {
     e?.preventDefault()
     if (!editable || saving) return
+    // Never null here (the form is rendered); narrows it for TypeScript.
+    if (!form) return
     if (!form.subject.trim()) { setFormError(t('admin.digests.editor.errors.subject')); return }
     const autoSendAt = form.autoSend ? artInputToInstant(form.autoSendInput) : null
     if (form.autoSend && !autoSendAt) { setFormError(t('admin.digests.editor.errors.autoSendAt')); return }
@@ -218,7 +243,7 @@ export default function AdminDigestEditorPage() {
     } catch (err) {
       // 429 MAIL_QUOTA_EXHAUSTED: says when the quota frees up.
       // 409 MAIL_SENDER_NOT_CONNECTED / MAIL_DISABLED have their own messages.
-      if (err?.code === 'MAIL_SENDER_NOT_CONNECTED') setSenderStatus((s) => (s === 'broken' ? s : 'missing'))
+      if (err instanceof ApiError && err.code === 'MAIL_SENDER_NOT_CONNECTED') setSenderStatus((s) => (s === 'broken' ? s : 'missing'))
       setError(digestErrorMessage(err, t, 'admin.digests.errors.test', i18n.language))
     } finally {
       setBusyAction(null)
@@ -566,7 +591,23 @@ export default function AdminDigestEditorPage() {
   )
 }
 
-function Checklist({ title, empty, items, disabled, onToggle }) {
+interface ChecklistItem {
+  id: string
+  title: string
+  org?: string
+  meta: string
+  excluded: boolean
+}
+
+interface ChecklistProps {
+  title: string
+  empty: string
+  items: ChecklistItem[]
+  disabled: boolean
+  onToggle: (itemId: string) => void
+}
+
+function Checklist({ title, empty, items, disabled, onToggle }: ChecklistProps) {
   return (
     <section className="bg-white rounded-card border border-border shadow-card min-w-0">
       <h2 className="px-4 sm:px-6 py-3 border-b border-border font-mono text-label uppercase tracking-widest text-ink-secondary">
@@ -605,10 +646,16 @@ function Checklist({ title, empty, items, disabled, onToggle }) {
 
 // Rendered email in a sandboxed iframe. Links open in a new tab (the email
 // HTML gets a <base target="_blank">); scripts never run.
-function DigestPreview({ id, version, stale }) {
+interface DigestPreviewProps {
+  id: string
+  version: number
+  stale: boolean
+}
+
+function DigestPreview({ id, version, stale }: DigestPreviewProps) {
   const { t } = useTranslation()
   const [html, setHtml] = useState('')
-  const [state, setState] = useState('loading')
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [retry, setRetry] = useState(0)
   const reqRef = useRef(0)
 
@@ -660,7 +707,7 @@ function DigestPreview({ id, version, stale }) {
   )
 }
 
-function withBlankTargets(html) {
+function withBlankTargets(html: string): string {
   const base = '<base target="_blank">'
   return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + base) : base + html
 }
@@ -668,7 +715,12 @@ function withBlankTargets(html) {
 const SUBJECT_MAX = 200
 const INTRO_MAX = 5000
 
-function Counter({ value, max }) {
+interface CounterProps {
+  value: string
+  max: number
+}
+
+function Counter({ value, max }: CounterProps) {
   const { t } = useTranslation()
   return (
     <p className="self-end font-mono text-label text-ink-secondary" aria-hidden="true">
@@ -677,7 +729,14 @@ function Counter({ value, max }) {
   )
 }
 
-function Field({ label, hint, htmlFor, children }) {
+interface FieldProps {
+  label: string
+  hint?: string
+  htmlFor: string
+  children: ReactNode
+}
+
+function Field({ label, hint, htmlFor, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2 flex-wrap">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createDigest, fetchDigests } from '../../api/digests'
@@ -13,15 +13,22 @@ import {
   SENDING_POLL_MS, digestErrorMessage, formatArtDateTime, formatWeekRange, isPastInstant, mondayOf,
 } from '../../utils/digest'
 import { newsletterPath } from '@/newsletter/paths'
+import type { DigestSummary } from '../../types'
+
+// Outcome of the Google consent round-trip (?mail=connected | ?mail=error&reason=<code>).
+interface MailResult {
+  ok: boolean
+  reason: string | null
+}
 
 // STAFF-only list of weekly digest issues ("La semana en ITBA").
 export default function AdminDigestsPage() {
   const { t, i18n } = useTranslation()
   const staff = isStaff()
-  const [digests, setDigests] = useState([])
-  const [status, setStatus] = useState('loading')
+  const [digests, setDigests] = useState<DigestSummary[]>([])
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [quotaKey, setQuotaKey] = useState(0)
-  const [mailResult, setMailResult] = useState(null) // { ok, reason }
+  const [mailResult, setMailResult] = useState<MailResult | null>(null) // { ok, reason }
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -44,7 +51,7 @@ export default function AdminDigestsPage() {
   // Only the response of the latest request is applied, so a slow poll can't
   // overwrite newer data.
   const reqRef = useRef(0)
-  const load = useCallback(({ quiet = false } = {}) => {
+  const load = useCallback(({ quiet = false }: { quiet?: boolean } = {}) => {
     const req = ++reqRef.current
     if (!quiet) setStatus('loading')
     return fetchDigests()
@@ -165,13 +172,19 @@ export default function AdminDigestsPage() {
   )
 }
 
-const MAIL_REASONS = new Set([
+// Typed to accept the nullable `reason` lookup below.
+const MAIL_REASONS = new Set<string | null>([
   'access_denied', 'invalid_state', 'not_staff', 'wrong_account', 'missing_scope', 'no_refresh_token', 'exchange_failed',
 ])
 
 // Outcome of the Google consent round-trip. Stays until dismissed: the error
 // reasons tell the person what to do differently.
-function MailResultBanner({ result, onDismiss }) {
+interface MailResultBannerProps {
+  result: MailResult
+  onDismiss: () => void
+}
+
+function MailResultBanner({ result, onDismiss }: MailResultBannerProps) {
   const { t } = useTranslation()
   const message = result.ok
     ? t('admin.digests.sender.result.connected')
@@ -197,19 +210,24 @@ function MailResultBanner({ result, onDismiss }) {
 }
 
 // "Nuevo resumen": pick any day, the issue covers that day's Monday–Sunday.
-function NewDigestForm({ digests }) {
+interface NewDigestFormProps {
+  digests: DigestSummary[]
+}
+
+function NewDigestForm({ digests }: NewDigestFormProps) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   // Default to last week — the usual reason to create one by hand is that
   // the Monday job didn't (or the draft was cancelled).
-  const [day, setDay] = useState(() => addDaysISO(mondayOf(todayISO()), -7))
+  // todayISO() is always a valid date, so mondayOf() can't return null here.
+  const [day, setDay] = useState(() => addDaysISO(mondayOf(todayISO()) as string, -7))
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   const weekStart = mondayOf(day)
   const existing = weekStart ? digests.find((d) => d.weekStart === weekStart) : null
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!weekStart) return
     setBusy(true)

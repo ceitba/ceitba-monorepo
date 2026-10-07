@@ -1,8 +1,26 @@
 import { useTranslation } from 'react-i18next'
 import CategoryBadge from './CategoryBadge'
 import { formatDate, parseLocalDate } from '../utils/dates'
+import type { IsoDate, IsoTime } from '../types'
 
-export default function EventCard({ event, compact = false }) {
+// The fields shown; fits both API events (NewsEvent) and the mock's
+// StoredEvent.
+interface EventCardEvent {
+  title: string
+  date: IsoDate
+  time?: IsoTime | null
+  endTime?: IsoTime | null
+  location?: string | null
+  category: string
+  description?: string | null
+}
+
+interface EventCardProps {
+  event: EventCardEvent
+  compact?: boolean
+}
+
+export default function EventCard({ event, compact = false }: EventCardProps) {
   const { t, i18n } = useTranslation()
   const { title, date, time, endTime, location, category, description } = event
   const day = parseLocalDate(date)

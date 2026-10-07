@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { NodeViewContent, NodeViewWrapper } from '@tiptap/react'
+import { NodeViewContent, NodeViewWrapper, type ReactNodeViewProps } from '@tiptap/react'
 import { useTranslation } from 'react-i18next'
 import MermaidDiagram from '../../article/MermaidDiagram'
 
 const LANGUAGES = ['', 'mermaid', 'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'bash', 'json', 'sql', 'html', 'css']
 
-function useDebounced(value, ms) {
+function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
     const id = setTimeout(() => setDebounced(value), ms)
@@ -16,9 +16,9 @@ function useDebounced(value, ms) {
 
 // Code block with a language picker; ```mermaid blocks also show the live
 // diagram under the source, rendered the same way readers will see it.
-export default function CodeBlockView({ node, updateAttributes }) {
+export default function CodeBlockView({ node, updateAttributes }: ReactNodeViewProps) {
   const { t } = useTranslation()
-  const language = node.attrs.language ?? ''
+  const language: string = node.attrs.language ?? ''
   const isMermaid = language === 'mermaid'
   const source = useDebounced(isMermaid ? node.textContent : '', 400)
 
@@ -36,7 +36,7 @@ export default function CodeBlockView({ node, updateAttributes }) {
           ))}
         </select>
       </div>
-      <pre><NodeViewContent as="code" /></pre>
+      <pre><NodeViewContent<'code'> as="code" /></pre>
       {isMermaid && (
         <div className="code-block-node__preview" contentEditable={false}>
           {source.trim()

@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import MermaidDiagram from './MermaidDiagram'
@@ -10,21 +10,22 @@ import { bodyToMarkdown } from '../../utils/articleBody'
 // used as line breaks inside a paragraph.
 
 // react-markdown passes its hast `node` to every component; keep it off the DOM.
-function domProps(props) {
+function domProps<P extends ExtraProps>(props: P): Omit<P, 'node'> {
   const rest = { ...props }
   delete rest.node
   return rest
 }
 
-function isExternal(href) {
+function isExternal(href: string | undefined): boolean {
   try {
-    return new URL(href, window.location.href).origin !== window.location.origin
+    // String(): what the URL constructor does with undefined anyway.
+    return new URL(String(href), window.location.href).origin !== window.location.origin
   } catch {
     return false
   }
 }
 
-const COMPONENTS = {
+const COMPONENTS: Components = {
   // Only links leaving the site open in a new tab; anchors (footnotes) and
   // same-site links stay in place.
   a: (props) => (
@@ -34,10 +35,12 @@ const COMPONENTS = {
   ),
   img: (props) => <img {...domProps(props)} alt={props.alt ?? ''} loading="lazy" />,
   pre: ({ node, children, ...props }) => {
-    const code = node?.children?.[0]
-    const lang = code?.properties?.className?.find?.((c) => String(c).startsWith('language-'))
-    if (lang === 'language-mermaid') {
-      const source = code.children?.map((c) => c.value ?? '').join('') ?? ''
+    const first = node?.children?.[0]
+    const code = first?.type === 'element' ? first : undefined
+    const className = code?.properties?.className
+    const lang = Array.isArray(className) ? className.find((c) => String(c).startsWith('language-')) : undefined
+    if (code && lang === 'language-mermaid') {
+      const source = code.children?.map((c) => ('value' in c ? c.value : '')).join('') ?? ''
       return <MermaidDiagram code={source} />
     }
     return <pre {...props}>{children}</pre>
@@ -47,9 +50,15 @@ const COMPONENTS = {
   ),
 }
 
+interface ArticleBodyProps {
+  // Markdown blocks (Article.body); see bodyToMarkdown.
+  body: unknown
+  className?: string
+}
+
 // Shared by the public article page, the editor preview and (by class) the
 // editor itself, so what the author sees is what readers get.
-export default function ArticleBody({ body, className = '' }) {
+export default function ArticleBody({ body, className = '' }: ArticleBodyProps) {
   const markdown = bodyToMarkdown(body)
   return (
     <div className={['article-prose', className].join(' ')}>

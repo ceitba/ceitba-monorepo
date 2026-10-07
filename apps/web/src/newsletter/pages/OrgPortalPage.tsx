@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import ArticleCard from '../components/ArticleCard'
 import EventCard from '../components/EventCard'
 import { fetchOrganizationBySlug } from '../api/organizations'
@@ -10,8 +11,9 @@ import { followOrganization, unfollowOrganization } from '../api/follows'
 import { getSession, isFollowing, refreshFollows } from '../store/authStore'
 import { todayISO } from '../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import type { Article, NewsEvent, Organization } from '../types'
 
-const GEO_BG = {
+const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
   amber:  'bg-accent-400',
   green:  'bg-emerald-600',
@@ -19,13 +21,14 @@ const GEO_BG = {
 }
 
 export default function OrgPortalPage() {
-  const { slug } = useParams()
+  // The route always defines :slug.
+  const { slug = '' } = useParams()
   const { t } = useTranslation()
 
-  const [org, setOrg]         = useState(null)
-  const [articles, setArticles] = useState([])
-  const [events, setEvents]     = useState([])
-  const [status, setStatus]     = useState('loading')
+  const [org, setOrg]         = useState<Organization | null>(null)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [events, setEvents]     = useState<NewsEvent[]>([])
+  const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
   const [authed, setAuthed]     = useState(false)
   const [following, setFollowing] = useState(false)
   const [followBusy, setFollowBusy] = useState(false)
@@ -92,7 +95,7 @@ export default function OrgPortalPage() {
   if (status === 'loading') return <PortalSkeleton />
   if (status === 'error' || !org) return <ErrorState t={t} />
 
-  const heroBg = GEO_BG[org.color] ?? GEO_BG.blue
+  const heroBg = GEO_BG[org.color ?? ''] ?? GEO_BG.blue
   const featured  = articles.find((a) => a.featured)
   const secondary = articles.filter((a) => !a.featured)
 
@@ -191,7 +194,12 @@ export default function OrgPortalPage() {
   )
 }
 
-function Stat({ label, value }) {
+interface StatProps {
+  label: string
+  value: string
+}
+
+function Stat({ label, value }: StatProps) {
   return (
     <div>
       <p className="font-display text-h3 font-bold text-ink-primary tabular-nums">{value}</p>
@@ -200,7 +208,14 @@ function Stat({ label, value }) {
   )
 }
 
-function SectionHeader({ id, label, linkTo, linkLabel }) {
+interface SectionHeaderProps {
+  id: string
+  label: string
+  linkTo?: string
+  linkLabel?: string
+}
+
+function SectionHeader({ id, label, linkTo, linkLabel }: SectionHeaderProps) {
   return (
     <div className="flex items-baseline justify-between mb-6 border-b border-border pb-3">
       <h2 id={id} className="font-display text-h3 font-bold text-ink-primary">
@@ -218,7 +233,11 @@ function SectionHeader({ id, label, linkTo, linkLabel }) {
   )
 }
 
-function EmptySection({ message }) {
+interface EmptySectionProps {
+  message: string
+}
+
+function EmptySection({ message }: EmptySectionProps) {
   return (
     <p className="font-body text-body text-ink-secondary py-8 text-center border border-dashed border-border rounded-card">
       {message}
@@ -241,7 +260,11 @@ function PortalSkeleton() {
   )
 }
 
-function ErrorState({ t }) {
+interface ErrorStateProps {
+  t: TFunction
+}
+
+function ErrorState({ t }: ErrorStateProps) {
   return (
     <div role="alert" className="flex flex-col items-center justify-center py-32 gap-6 text-center">
       <div>

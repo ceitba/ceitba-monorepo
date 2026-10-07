@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, type DragEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ALLOWED_IMAGE_TYPES as ALLOWED_TYPES, MAX_IMAGE_BYTES as MAX_BYTES, uploadViaSignedUrl } from '../api/media'
+import { ApiError } from '@/api/client'
 import { isStaff } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 
-function isHttpUrl(value) {
+function isHttpUrl(value: string): boolean {
   try {
     const u = new URL(value)
     return u.protocol === 'https:' || u.protocol === 'http:'
@@ -13,24 +14,32 @@ function isHttpUrl(value) {
   }
 }
 
+interface ImageUploaderProps {
+  // Current image URL ('' or nullish = none).
+  value?: string | null
+  onChange: (url: string) => void
+}
+
+type Tab = 'upload' | 'url'
+
 // Cover image picker. Staff can upload a file (presigned upload to object
 // storage); everyone else — and staff too — can paste an image URL. There
 // is deliberately no base64/data-URL fallback: it stored megabytes of
 // image data inside the article row.
-export default function ImageUploader({ value, onChange }) {
+export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const { t } = useTranslation()
   const { profile } = useAuthSession()
   const canUpload = isStaff(profile)
-  const [tab, setTab]         = useState(value?.startsWith('http') ? 'url' : 'upload')
+  const [tab, setTab]         = useState<Tab>(value?.startsWith('http') ? 'url' : 'upload')
   const [url, setUrl]         = useState(value?.startsWith('http') ? value : '')
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
-  const inputRef = useRef(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const hasImage = Boolean(value)
   const activeTab = canUpload ? tab : 'url'
 
-  async function handleFile(file) {
+  async function handleFile(file: File | undefined) {
     if (!file) return
     if (!ALLOWED_TYPES.includes(file.type)) { setError(t('imageUploader.errors.type')); return }
     if (file.size > MAX_BYTES) { setError(t('imageUploader.errors.size')); return }
@@ -39,9 +48,10 @@ export default function ImageUploader({ value, onChange }) {
     try {
       onChange(await uploadViaSignedUrl(file))
     } catch (err) {
+      const status = err instanceof ApiError ? err.status : undefined
       setError(
-        err?.status === 501 ? t('imageUploader.errors.notConfigured')
-          : err?.status === 403 ? t('imageUploader.errors.forbidden')
+        status === 501 ? t('imageUploader.errors.notConfigured')
+          : status === 403 ? t('imageUploader.errors.forbidden')
           : t('imageUploader.errors.upload'),
       )
     } finally {
@@ -50,7 +60,7 @@ export default function ImageUploader({ value, onChange }) {
     }
   }
 
-  function handleDrop(e) {
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
@@ -69,7 +79,7 @@ export default function ImageUploader({ value, onChange }) {
       {hasImage && (
         <div className="relative rounded-card overflow-hidden border border-border group">
           <img
-            src={value}
+            src={value ?? undefined}
             alt={t('imageUploader.previewAlt')}
             className="w-full h-40 object-cover"
             onError={() => { setError(t('imageUploader.errors.load')); onChange('') }}
@@ -87,7 +97,7 @@ export default function ImageUploader({ value, onChange }) {
 
       {canUpload && (
         <div className="flex rounded-sm border border-border overflow-hidden text-sm">
-          {['upload', 'url'].map((key) => (
+          {(['upload', 'url'] as const).map((key) => (
             <button
               key={key}
               type="button"
@@ -130,7 +140,7 @@ export default function ImageUploader({ value, onChange }) {
             type="file"
             accept={ALLOWED_TYPES.join(',')}
             className="sr-only"
-            onChange={(e) => handleFile(e.target.files[0])}
+            onChange={(e) => handleFile(e.target.files?.[0])}
           />
         </div>
       )}

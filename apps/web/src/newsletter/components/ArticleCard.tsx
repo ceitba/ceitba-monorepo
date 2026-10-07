@@ -3,15 +3,22 @@ import { useTranslation } from 'react-i18next'
 import CategoryBadge from './CategoryBadge'
 import { formatDate } from '../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import type { IsoDate } from '../types'
 
-const GEO_FILLS = {
+const GEO_FILLS: Record<string, string> = {
   blue:   'bg-primary-500',
   amber:  'bg-accent-400',
   green:  'bg-emerald-600',
   violet: 'bg-violet-600',
 }
 
-function CoverMedia({ coverImage, colorScheme, className }) {
+interface CoverMediaProps {
+  coverImage?: string | null
+  colorScheme?: string | null
+  className: string
+}
+
+function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
   if (coverImage) {
     return (
       <div className={['overflow-hidden flex-shrink-0', className].join(' ')}>
@@ -26,7 +33,7 @@ function CoverMedia({ coverImage, colorScheme, className }) {
     )
   }
 
-  const bg = GEO_FILLS[colorScheme] ?? GEO_FILLS.blue
+  const bg = GEO_FILLS[colorScheme ?? ''] ?? GEO_FILLS.blue
   return (
     <div className={['relative overflow-hidden flex-shrink-0', bg, className].join(' ')}>
       <div className="absolute inset-0 opacity-20">
@@ -39,7 +46,26 @@ function CoverMedia({ coverImage, colorScheme, className }) {
   )
 }
 
-export default function ArticleCard({ article, featured = false }) {
+// The fields shown; fits both API articles (Article) and the mock's
+// StoredArticle.
+interface ArticleCardArticle {
+  id: string
+  title: string
+  excerpt?: string | null
+  category: string
+  authors?: string[] | null
+  date?: IsoDate | null
+  readingTime?: string | null
+  colorScheme?: string | null
+  coverImage?: string | null
+}
+
+interface ArticleCardProps {
+  article: ArticleCardArticle
+  featured?: boolean
+}
+
+export default function ArticleCard({ article, featured = false }: ArticleCardProps) {
   const { t, i18n } = useTranslation()
   const { id, title, excerpt, category, authors, date, readingTime, colorScheme, coverImage } = article
   const authorLine = (authors ?? []).join(', ')
@@ -69,7 +95,7 @@ export default function ArticleCard({ article, featured = false }) {
             </p>
           </div>
           <footer className="flex items-center gap-4 pt-2 border-t border-border">
-            <time className="font-mono text-label text-ink-secondary" dateTime={date}>
+            <time className="font-mono text-label text-ink-secondary" dateTime={date ?? undefined}>
               {formatDate(date, i18n.language)}
             </time>
             <span className="text-border" aria-hidden="true">·</span>
@@ -99,7 +125,7 @@ export default function ArticleCard({ article, featured = false }) {
           {excerpt}
         </p>
         <footer className="flex items-center gap-3 pt-2 border-t border-border mt-auto">
-          <time className="font-mono text-label text-ink-secondary" dateTime={date}>
+          <time className="font-mono text-label text-ink-secondary" dateTime={date ?? undefined}>
             {formatDate(date, i18n.language)}
           </time>
           <span className="text-border" aria-hidden="true">·</span>

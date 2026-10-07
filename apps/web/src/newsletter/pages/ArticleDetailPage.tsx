@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import CategoryBadge from '../components/CategoryBadge'
 import { useCategoryLabel } from '../hooks/useCategoryLabel'
 import ArticleCard from '../components/ArticleCard'
@@ -10,15 +11,16 @@ import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate as formatLocalDate } from '../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import type { Article } from '../types'
 
-const GEO_BG = {
+const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
   amber:  'bg-accent-400',
   green:  'bg-emerald-600',
   violet: 'bg-violet-600',
 }
 
-function formatDate(iso, lang) {
+function formatDate(iso: string | null | undefined, lang: string) {
   return formatLocalDate(iso, lang, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
@@ -26,16 +28,17 @@ export default function ArticleDetailPage() {
   const { id } = useParams()
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
-  const [article, setArticle] = useState(null)
-  const [related, setRelated] = useState([])
-  const [status, setStatus]   = useState('loading')
+  const [article, setArticle] = useState<Article | null>(null)
+  const [related, setRelated] = useState<Article[]>([])
+  const [status, setStatus]   = useState<'loading' | 'success' | 'error'>('loading')
 
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
     setArticle(null)
 
-    fetchArticleById(id)
+    // The route always defines :id.
+    fetchArticleById(id ?? '')
       .then((a) => {
         if (cancelled) return
         setArticle(a)
@@ -56,7 +59,7 @@ export default function ArticleDetailPage() {
   if (status === 'loading') return <LoadingSkeleton />
   if (status === 'error' || !article) return <ErrorState t={t} />
 
-  const heroBg = GEO_BG[article.colorScheme] ?? GEO_BG.blue
+  const heroBg = GEO_BG[article.colorScheme ?? ''] ?? GEO_BG.blue
 
   return (
     <article className="py-section-mobile lg:py-section animate-fade-in">
@@ -109,7 +112,7 @@ export default function ArticleDetailPage() {
               <strong className="text-ink-primary font-semibold">{(article.authors ?? []).join(', ')}</strong>
             </span>
             <span className="text-border" aria-hidden="true">·</span>
-            <time className="font-mono text-label text-ink-secondary" dateTime={article.date}>
+            <time className="font-mono text-label text-ink-secondary" dateTime={article.date ?? undefined}>
               {formatDate(article.date, i18n.language)}
             </time>
             <span className="text-border" aria-hidden="true">·</span>
@@ -163,7 +166,11 @@ function LoadingSkeleton() {
   )
 }
 
-function ErrorState({ t }) {
+interface ErrorStateProps {
+  t: TFunction
+}
+
+function ErrorState({ t }: ErrorStateProps) {
   return (
     <div role="alert" className="flex flex-col items-center justify-center py-32 gap-6 text-center">
       <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">

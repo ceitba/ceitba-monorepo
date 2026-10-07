@@ -1,9 +1,16 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
+interface LoadErrorStateProps {
+  notFound?: boolean
+  backTo: string
+  backLabel: string
+  onRetry?: () => void
+}
+
 // Shown by edit forms when the record can't be loaded. The form itself is
 // not rendered, so an empty form can never be saved over the real record.
-export default function LoadErrorState({ notFound, backTo, backLabel, onRetry }) {
+export default function LoadErrorState({ notFound, backTo, backLabel, onRetry }: LoadErrorStateProps) {
   const { t } = useTranslation()
   return (
     <div role="alert" className="flex flex-col items-center justify-center py-32 gap-4 text-center">

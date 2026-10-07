@@ -1,72 +1,98 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getArticleById,
   approveArticleSuggestion,
   rejectArticleSuggestion,
   requestArticleChanges,
+  type StoredArticle,
 } from '../../store/articleStore'
 import {
   getEventById,
   approveEventSuggestion,
   rejectEventSuggestion,
   requestEventChanges,
+  type StoredEvent,
 } from '../../store/eventStore'
 import { fetchOrganizations } from '../../api/organizations'
 import { todayISO } from '../../utils/dates'
 
 import { CATEGORIES as ARTICLE_CATEGORIES, CATEGORIES as EVENT_CATEGORIES, DEFAULT_CATEGORY } from '../../constants/categories'
 import { newsletterPath } from '@/newsletter/paths'
+import type { Organization } from '../../types'
 
-const STATUS_META = {
+const STATUS_META: Record<string, { label: string; cls: string }> = {
   pending_review:    { label: 'Pendiente',        cls: 'bg-amber-50 text-amber-700' },
   changes_requested: { label: 'Esperando alumno', cls: 'bg-blue-50 text-blue-700'  },
   rejected:          { label: 'Rechazado',         cls: 'bg-red-50 text-red-600'    },
   published:         { label: 'Publicado',          cls: 'bg-emerald-50 text-emerald-700' },
 }
 
+// The editable fields of either kind of suggestion. Starts empty and is
+// filled with the article or the event fields once the resource is read.
+interface ReviewForm {
+  title?: string
+  excerpt?: string
+  body?: string[]
+  category?: string
+  organization?: string
+  readingTime?: string
+  date?: string
+  time?: string
+  endTime?: string
+  location?: string
+  description?: string
+}
+
+type ReviewOutcome = 'approved' | 'changes_requested' | 'rejected'
+
 export default function AdminSuggestionReviewPage() {
-  const { type, id } = useParams()
+  const { type, id = '' } = useParams()
   const navigate     = useNavigate()
   const isArticle    = type === 'article'
 
   // Loaded once from the local suggestion store; never replaced in place.
-  const [resource] = useState(() =>
+  const [resource] = useState<StoredArticle | StoredEvent | null>(() =>
     isArticle ? getArticleById(id) : getEventById(id),
   )
-  const [form, setForm]       = useState({})
-  const [orgs, setOrgs]       = useState([])
-  const [saved, setSaved]     = useState(null) // null | 'approved' | 'changes_requested' | 'rejected'
+  const [form, setForm]       = useState<ReviewForm>({})
+  const [orgs, setOrgs]       = useState<Organization[]>([])
+  const [saved, setSaved]     = useState<ReviewOutcome | null>(null) // null | 'approved' | 'changes_requested' | 'rejected'
   const [saving, setSaving]   = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
+      // Cast: GET /organizations answers { data: [...] } (OrganizationController.list),
+      // not the bare array api/organizations declares.
       .then(({ data }) => setOrgs(data ?? []))
       .catch(() => {})
   }, [])
 
   useEffect(() => {
     if (resource) {
+      // Casts: isArticle (from the route) says which store the resource came from.
+      const article = resource as StoredArticle
+      const event = resource as StoredEvent
       setForm(isArticle
         ? {
-            title:        resource.title        ?? '',
-            excerpt:      resource.excerpt       ?? '',
-            body:         Array.isArray(resource.body) ? resource.body : [''],
-            category:     resource.category     ?? DEFAULT_CATEGORY,
-            organization: resource.organization ?? 'ceitba',
-            readingTime:  resource.readingTime  ?? '',
-            date:         resource.date         ?? todayISO(),
+            title:        article.title         ?? '',
+            excerpt:      article.excerpt        ?? '',
+            body:         Array.isArray(article.body) ? article.body : [''],
+            category:     article.category      ?? DEFAULT_CATEGORY,
+            organization: article.organization  ?? 'ceitba',
+            readingTime:  article.readingTime   ?? '',
+            date:         article.date          ?? todayISO(),
           }
         : {
-            title:        resource.title        ?? '',
-            date:         resource.date         ?? todayISO(),
-            time:         resource.time         ?? '09:00',
-            endTime:      resource.endTime      ?? '10:00',
-            location:     resource.location     ?? '',
-            category:     resource.category     ?? DEFAULT_CATEGORY,
-            organization: resource.organization ?? 'ceitba',
-            description:  resource.description  ?? '',
+            title:        event.title           ?? '',
+            date:         event.date            ?? todayISO(),
+            time:         event.time            ?? '09:00',
+            endTime:      event.endTime         ?? '10:00',
+            location:     event.location        ?? '',
+            category:     event.category        ?? DEFAULT_CATEGORY,
+            organization: event.organization    ?? 'ceitba',
+            description:  event.description     ?? '',
           },
       )
     }
@@ -83,7 +109,7 @@ export default function AdminSuggestionReviewPage() {
     )
   }
 
-  const s = STATUS_META[resource.status] ?? { label: resource.status, cls: 'bg-surface text-ink-secondary' }
+  const s = STATUS_META[resource.status ?? ''] ?? { label: resource.status, cls: 'bg-surface text-ink-secondary' }
   const isReadOnly = resource.status !== 'pending_review'
 
   async function handleApprove() {
@@ -102,7 +128,8 @@ export default function AdminSuggestionReviewPage() {
       ? {
           title:        form.title,
           excerpt:      form.excerpt,
-          body:         form.body.filter((p) => p.trim()),
+          // Non-null: the article form always has a body once loaded.
+          body:         form.body!.filter((p) => p.trim()),
           category:     form.category,
           organization: form.organization,
           readingTime:  form.readingTime,
@@ -133,12 +160,13 @@ export default function AdminSuggestionReviewPage() {
     setTimeout(() => navigate(newsletterPath('/admin/suggestions')), 1200)
   }
 
-  function set(key, val) {
+  function set<K extends keyof ReviewForm>(key: K, val: ReviewForm[K]) {
     setForm((prev) => ({ ...prev, [key]: val }))
   }
 
-  function setBodyPara(index, value) {
-    const next = form.body.map((p, i) => (i === index ? value : p))
+  function setBodyPara(index: number, value: string) {
+    // Non-null: only the article form's body textareas call this.
+    const next = form.body!.map((p, i) => (i === index ? value : p))
     set('body', next)
   }
 
@@ -267,9 +295,19 @@ export default function AdminSuggestionReviewPage() {
   )
 }
 
+type SetField = <K extends keyof ReviewForm>(key: K, val: ReviewForm[K]) => void
+
 // ── Article fields ─────────────────────────────────────────────────────────────
 
-function ArticleFields({ form, set, setBodyPara, orgs, readOnly }) {
+interface ArticleFieldsProps {
+  form: ReviewForm
+  set: SetField
+  setBodyPara: (index: number, value: string) => void
+  orgs: Organization[]
+  readOnly: boolean
+}
+
+function ArticleFields({ form, set, setBodyPara, orgs, readOnly }: ArticleFieldsProps) {
   return (
     <>
       <Field label="Título">
@@ -329,7 +367,7 @@ function ArticleFields({ form, set, setBodyPara, orgs, readOnly }) {
             />
             {!readOnly && (form.body ?? []).length > 1 && (
               <button type="button"
-                onClick={() => set('body', form.body.filter((_, j) => j !== i))}
+                onClick={() => set('body', form.body!.filter((_, j) => j !== i))}
                 className="mt-1 w-8 h-8 flex items-center justify-center text-ink-secondary hover:text-red-500 hover:bg-red-50 rounded-sm transition-colors duration-150"
                 aria-label="Eliminar párrafo">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -351,7 +389,14 @@ function ArticleFields({ form, set, setBodyPara, orgs, readOnly }) {
 
 // ── Event fields ───────────────────────────────────────────────────────────────
 
-function EventFields({ form, set, orgs, readOnly }) {
+interface EventFieldsProps {
+  form: ReviewForm
+  set: SetField
+  orgs: Organization[]
+  readOnly: boolean
+}
+
+function EventFields({ form, set, orgs, readOnly }: EventFieldsProps) {
   return (
     <>
       <Field label="Título">
@@ -413,7 +458,12 @@ function EventFields({ form, set, orgs, readOnly }) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function Field({ label, children }) {
+interface FieldProps {
+  label: string
+  children: ReactNode
+}
+
+function Field({ label, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="font-body text-body-sm font-semibold text-ink-primary">{label}</label>
@@ -422,7 +472,7 @@ function Field({ label, children }) {
   )
 }
 
-function inputClass(error, readOnly = false) {
+function inputClass(error: string | null, readOnly = false) {
   return [
     'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary',
     readOnly ? 'bg-surface text-ink-secondary cursor-default' : 'bg-white',

@@ -4,16 +4,23 @@ import Calendar from '../components/Calendar'
 import EventCard from '../components/EventCard'
 import { fetchAllEvents } from '../api/events'
 import { formatDate, monthStartISO, todayISO } from '../utils/dates'
+import type { TFunction } from 'i18next'
+import type { NewsEvent } from '../types'
+
+interface ViewMonth {
+  year: number
+  month: number
+}
 
 export default function EventsPage() {
   const { t, i18n } = useTranslation()
-  const [selectedDate, setSelectedDate] = useState(null)
-  const [allEvents, setAllEvents]       = useState([])
-  const [status, setStatus]             = useState('loading')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [allEvents, setAllEvents]       = useState<NewsEvent[]>([])
+  const [status, setStatus]             = useState<'loading' | 'success' | 'error'>('loading')
   // Month shown by the calendar; months before the current one are fetched
   // on demand (the main list only covers this month onwards).
-  const [viewMonth, setViewMonth]       = useState(null)
-  const [pastMonthEvents, setPastMonthEvents] = useState([])
+  const [viewMonth, setViewMonth]       = useState<ViewMonth | null>(null)
+  const [pastMonthEvents, setPastMonthEvents] = useState<NewsEvent[]>([])
 
   const now = new Date()
   const currentMonthStart = monthStartISO(now.getFullYear(), now.getMonth())
@@ -33,7 +40,8 @@ export default function EventsPage() {
   const viewingPastMonth = viewedMonthStart < currentMonthStart
 
   useEffect(() => {
-    if (!viewingPastMonth) return
+    // viewingPastMonth implies viewMonth is set.
+    if (!viewingPastMonth || !viewMonth) return
     let cancelled = false
     const next = new Date(viewMonth.year, viewMonth.month + 1, 1)
     const to = monthStartISO(next.getFullYear(), next.getMonth())
@@ -89,7 +97,7 @@ export default function EventsPage() {
                   events={calendarEvents}
                   selectedDate={selectedDate}
                   onSelectDate={setSelectedDate}
-                  onMonthChange={(year, month) => setViewMonth({ year, month })}
+                  onMonthChange={(year: number, month: number) => setViewMonth({ year, month })}
                 />
                 {selectedDate && (
                   <button
@@ -150,7 +158,12 @@ export default function EventsPage() {
   )
 }
 
-function EmptyDayState({ selectedDate, t }) {
+interface EmptyDayStateProps {
+  selectedDate: string | null
+  t: TFunction
+}
+
+function EmptyDayState({ selectedDate, t }: EmptyDayStateProps) {
   return (
     <div className="py-10 flex flex-col items-center gap-3 text-center animate-fade-in">
       <div className="relative w-12 h-12">

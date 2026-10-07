@@ -1,12 +1,23 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { useDialogFocus } from '../../hooks/useDialogFocus'
+
+interface ConfirmDialogProps {
+  title: ReactNode
+  children?: ReactNode
+  confirmLabel: ReactNode
+  cancelLabel: ReactNode
+  busy?: boolean
+  tone?: 'primary' | 'danger'
+  onConfirm: () => void
+  onClose: () => void
+}
 
 // In-app confirmation modal (instead of window.confirm). `tone="danger"`
 // paints the confirm button red for destructive actions.
 export default function ConfirmDialog({
   title, children, confirmLabel, cancelLabel, busy = false, tone = 'primary', onConfirm, onClose,
-}) {
-  const cancelRef = useRef(null)
+}: ConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
   useDialogFocus(cancelRef, () => { if (!busy) onClose() })
 
   const confirmClass = tone === 'danger'

@@ -4,13 +4,18 @@ import { useTranslation } from 'react-i18next'
 import { fetchCorrectionVote, sendCorrectionVote } from '../api/digests'
 import { localeFor } from '../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import { ApiError } from '@/api/client'
+import type { CorrectionVote, CorrectionVoteValue, CorrectionVoteView, DigestSlot } from '../types'
+
+type ErrorState = 'invalid' | 'expired' | 'notFound' | 'closed' | 'notAllowed'
+type PageState = 'loading' | 'ready' | 'done' | 'error' | ErrorState
 
 // Same origin as the newsletter in production (Caddy serves /scheduler).
 const SCHEDULER_URL = '/scheduler/'
-const DAY_INDEX = { MONDAY: 0, TUESDAY: 1, WEDNESDAY: 2, THURSDAY: 3, FRIDAY: 4, SATURDAY: 5, SUNDAY: 6 }
+const DAY_INDEX: Record<string, number> = { MONDAY: 0, TUESDAY: 1, WEDNESDAY: 2, THURSDAY: 3, FRIDAY: 4, SATURDAY: 5, SUNDAY: 6 }
 
 // Error codes of GET/POST /v1/digests/correction-vote → page state.
-const ERROR_STATES = {
+const ERROR_STATES: Record<string, ErrorState> = {
   INVALID_TOKEN: 'invalid',
   TOKEN_EXPIRED: 'expired',
   CORRECTION_NOT_FOUND: 'notFound',
@@ -18,14 +23,26 @@ const ERROR_STATES = {
   EMAIL_NOT_ALLOWED: 'notAllowed',
 }
 
+function errorStateFor(err: unknown): ErrorState | undefined {
+  return err instanceof ApiError ? ERROR_STATES[err.code] : undefined
+}
+
 // "lunes" / "Monday" for an API day name (2024-01-01 was a Monday).
-function dayName(day, lang) {
+function dayName(day: string, lang: string) {
   const i = DAY_INDEX[day]
   if (i === undefined) return day
   return new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(localeFor(lang), { weekday: 'long', timeZone: 'UTC' })
 }
 
-function SlotList({ title, slots, lang, emptyLabel, highlight }) {
+interface SlotListProps {
+  title: string
+  slots: DigestSlot[]
+  lang: string
+  emptyLabel: string
+  highlight?: boolean
+}
+
+function SlotList({ title, slots, lang, emptyLabel, highlight }: SlotListProps) {
   return (
     <div className={`rounded-sm border p-4 ${highlight ? 'border-primary bg-primary-50' : 'border-border bg-surface'}`}>
       <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">{title}</p>
@@ -54,16 +71,16 @@ export default function CorrectionVotePage() {
   const { t, i18n } = useTranslation()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
-  const suggested = params.get('vote') === 'reject' ? 'reject' : params.get('vote') === 'confirm' ? 'confirm' : null
+  const suggested: CorrectionVote | null = params.get('vote') === 'reject' ? 'reject' : params.get('vote') === 'confirm' ? 'confirm' : null
 
   // 'loading' → 'ready' | 'done' | 'invalid' | 'expired' | 'notFound' | 'closed' | 'notAllowed' | 'error'
-  const [state, setState] = useState(token ? 'loading' : 'invalid')
-  const [correction, setCorrection] = useState(null)
-  const [result, setResult] = useState(null) // { previousVote } after a vote
-  const [busy, setBusy] = useState(null) // 'confirm' | 'reject' while posting
+  const [state, setState] = useState<PageState>(token ? 'loading' : 'invalid')
+  const [correction, setCorrection] = useState<CorrectionVoteView | null>(null)
+  const [result, setResult] = useState<{ previousVote: CorrectionVoteValue | null } | null>(null) // { previousVote } after a vote
+  const [busy, setBusy] = useState<CorrectionVote | null>(null) // 'confirm' | 'reject' while posting
   const [voteError, setVoteError] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  const loadedRef = useRef(null)
+  const loadedRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -76,10 +93,10 @@ export default function CorrectionVotePage() {
         setCorrection(c)
         setState(c.open ? 'ready' : 'closed')
       })
-      .catch((err) => setState(ERROR_STATES[err?.code] ?? 'error'))
+      .catch((err: unknown) => setState(errorStateFor(err) ?? 'error'))
   }, [token, attempt])
 
-  async function vote(choice) {
+  async function vote(choice: CorrectionVote) {
     setBusy(choice)
     setVoteError(false)
     try {
@@ -88,7 +105,7 @@ export default function CorrectionVotePage() {
       setResult({ previousVote: res.previousVote ?? null })
       setState('done')
     } catch (err) {
-      const next = ERROR_STATES[err?.code]
+      const next = errorStateFor(err)
       if (next) setState(next)
       else setVoteError(true)
     } finally {
@@ -97,10 +114,10 @@ export default function CorrectionVotePage() {
   }
 
   const lang = i18n.language
-  const title = (key) => (
+  const title = (key: string) => (
     <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t(key)}</h1>
   )
-  const hint = (key) => (
+  const hint = (key: string) => (
     <p className="font-body text-body text-ink-secondary leading-relaxed">{t(key)}</p>
   )
 
@@ -138,13 +155,13 @@ export default function CorrectionVotePage() {
             </>
           )}
 
-          {state === 'ready' && (
+          {state === 'ready' && correction && (
             <div className="flex flex-col gap-3">
               {correction.myVote
                 ? <p className="font-body text-body-sm text-ink-secondary">{t(`digest.correction.currentVote_${correction.myVote}`)}</p>
                 : <p className="font-body text-body-sm text-ink-secondary">{t('digest.correction.hint')}</p>}
               <div className="flex flex-wrap gap-3">
-                {['confirm', 'reject'].map((choice) => {
+                {(['confirm', 'reject'] as const).map((choice) => {
                   const preselected = suggested === choice
                   const current = correction.myVote === choice.toUpperCase()
                   return (
@@ -171,7 +188,7 @@ export default function CorrectionVotePage() {
             </div>
           )}
 
-          {state === 'done' && (
+          {state === 'done' && correction && (
             <div className="flex flex-col gap-2">
               <p className="font-display text-h5 font-bold text-emerald-700">{t('digest.correction.doneTitle')}</p>
               {result?.previousVote && (

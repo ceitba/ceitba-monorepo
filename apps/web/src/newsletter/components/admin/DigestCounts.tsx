@@ -1,10 +1,15 @@
 import { useTranslation } from 'react-i18next'
+import type { DigestCounts as DigestCountsData } from '../../types'
+
+interface DigestCountsProps {
+  counts: DigestCountsData | null | undefined
+}
 
 // Sent / failed / pending recipients of a digest issue.
-export default function DigestCounts({ counts }) {
+export default function DigestCounts({ counts }: DigestCountsProps) {
   const { t } = useTranslation()
-  const c = counts ?? {}
-  const items = [
+  const c: Partial<DigestCountsData> = counts ?? {}
+  const items: [string, number, string][] = [
     ['sent', c.sent ?? 0, 'text-emerald-700'],
     ['failed', c.failed ?? 0, (c.failed ?? 0) > 0 ? 'text-red-600' : 'text-ink-primary'],
     ['pending', c.pending ?? 0, 'text-ink-primary'],

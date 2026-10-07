@@ -1,27 +1,35 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { getArticleSuggestions } from '../../store/articleStore'
-import { getEventSuggestions } from '../../store/eventStore'
+import { getArticleSuggestions, type StoredArticle } from '../../store/articleStore'
+import { getEventSuggestions, type StoredEvent } from '../../store/eventStore'
 
-const STATUS_META = {
+const STATUS_META: Record<string, { label: string; cls: string }> = {
   pending_review:    { label: 'Pendiente',        cls: 'bg-amber-50 text-amber-700'   },
   changes_requested: { label: 'Esperando alumno', cls: 'bg-blue-50 text-blue-700'     },
   rejected:          { label: 'Rechazado',         cls: 'bg-red-50 text-red-600'       },
 }
 
-const TABS = [
+type TabKey = 'pending' | 'waiting' | 'rejected'
+
+const TABS: { key: TabKey; label: string; statuses: (string | undefined)[] }[] = [
   { key: 'pending',  label: 'Pendientes',      statuses: ['pending_review']    },
   { key: 'waiting',  label: 'Esperando alumno',statuses: ['changes_requested'] },
   { key: 'rejected', label: 'Rechazados',       statuses: ['rejected']         },
 ]
 
-export default function AdminSuggestionsPage() {
-  const [tab, setTab] = useState('pending')
+// A row of the list: an article or event suggestion, tagged with its kind.
+// The mock stores keep no createdAt (the sort below reads it anyway).
+type SuggestionItem =
+  | (StoredArticle & { resourceType: 'article'; createdAt?: string | number })
+  | (StoredEvent & { resourceType: 'event'; createdAt?: string | number })
 
-  const allSuggestions = [
-    ...getArticleSuggestions().map((a) => ({ ...a, resourceType: 'article' })),
-    ...getEventSuggestions().map((e)   => ({ ...e, resourceType: 'event'   })),
-  ].sort((a, b) => {
+export default function AdminSuggestionsPage() {
+  const [tab, setTab] = useState<TabKey>('pending')
+
+  const allSuggestions: SuggestionItem[] = [
+    ...getArticleSuggestions().map((a) => ({ ...a, resourceType: 'article' as const })),
+    ...getEventSuggestions().map((e)   => ({ ...e, resourceType: 'event' as const   })),
+  ].sort((a: SuggestionItem, b: SuggestionItem) => {
     const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
     const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
     return tb - ta
@@ -30,7 +38,7 @@ export default function AdminSuggestionsPage() {
   const activeStatuses = TABS.find((t) => t.key === tab)?.statuses ?? []
   const visible = allSuggestions.filter((s) => activeStatuses.includes(s.status))
 
-  function countFor(key) {
+  function countFor(key: TabKey) {
     const statuses = TABS.find((t) => t.key === key)?.statuses ?? []
     return allSuggestions.filter((s) => statuses.includes(s.status)).length
   }
@@ -104,8 +112,12 @@ export default function AdminSuggestionsPage() {
   )
 }
 
-function SuggestionRow({ item }) {
-  const s = STATUS_META[item.status] ?? { label: item.status, cls: 'bg-surface text-ink-secondary' }
+interface SuggestionRowProps {
+  item: SuggestionItem
+}
+
+function SuggestionRow({ item }: SuggestionRowProps) {
+  const s = STATUS_META[item.status ?? ''] ?? { label: item.status, cls: 'bg-surface text-ink-secondary' }
   const reviewPath = `/admin/suggestions/${item.resourceType}/${item.id}`
 
   return (
@@ -149,7 +161,11 @@ function SuggestionRow({ item }) {
   )
 }
 
-function Th({ children }) {
+interface ThProps {
+  children: ReactNode
+}
+
+function Th({ children }: ThProps) {
   return (
     <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">
       {children}
@@ -157,8 +173,12 @@ function Th({ children }) {
   )
 }
 
-function EmptyTab({ tab }) {
-  const msg = {
+interface EmptyTabProps {
+  tab: TabKey
+}
+
+function EmptyTab({ tab }: EmptyTabProps) {
+  const msg: Record<TabKey, string> = {
     pending:  'No hay sugerencias pendientes de revisión.',
     waiting:  'No hay sugerencias esperando respuesta de alumnos.',
     rejected: 'No hay sugerencias rechazadas.',

@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchDigestQuota } from '../../api/digests'
+import type { DigestQuota, IsoDateTime } from '../../types'
 import { formatArtDateTime } from '../../utils/digest'
+
+interface DigestQuotaBarProps {
+  refreshKey?: number
+}
 
 // "Hoy: used / limit usados" — the rolling 24h sending quota of the account
 // the digest goes out from (test sends count too), plus any active pause.
 // `refreshKey` re-fetches (e.g. while an issue is sending).
-export default function DigestQuotaBar({ refreshKey = 0 }) {
+export default function DigestQuotaBar({ refreshKey = 0 }: DigestQuotaBarProps) {
   const { t, i18n } = useTranslation()
-  const [quota, setQuota] = useState(null)
+  const [quota, setQuota] = useState<DigestQuota | null>(null)
   const [failed, setFailed] = useState(false)
 
   // Ignore responses of requests that a newer one has superseded.
@@ -33,7 +38,7 @@ export default function DigestQuotaBar({ refreshKey = 0 }) {
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 100
   const full = (quota.remaining ?? 0) <= 0
   const barColor = full ? 'bg-red-500' : pct >= 80 ? 'bg-accent' : 'bg-primary'
-  const when = (iso) => formatArtDateTime(iso, i18n.language)
+  const when = (iso: IsoDateTime) => formatArtDateTime(iso, i18n.language)
 
   return (
     <section className="bg-white rounded-card border border-border shadow-card p-4 sm:p-5 flex flex-col gap-2" aria-label={t('admin.digests.quota.title')}>

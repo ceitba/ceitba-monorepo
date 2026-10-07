@@ -3,6 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { unsubscribeFromDigest } from '../api/digests'
 import { newsletterPath } from '@/newsletter/paths'
+import { ApiError } from '@/api/client'
+
+type UnsubscribeState = 'confirm' | 'loading' | 'done' | 'invalid' | 'error'
 
 // Target of the one-click unsubscribe link in "La semana en ITBA" emails
 // (/newsletter/unsubscribe?token=…). Works signed out: the token alone
@@ -15,13 +18,13 @@ export default function UnsubscribePage() {
   // page load: email link scanners that execute JS would otherwise
   // unsubscribe people. One-click unsubscribe for mail clients is handled by
   // the List-Unsubscribe header on the API side.
-  const [state, setState] = useState(token ? 'confirm' : 'invalid')
+  const [state, setState] = useState<UnsubscribeState>(token ? 'confirm' : 'invalid')
 
   function handleConfirm() {
     setState('loading')
     unsubscribeFromDigest(token)
       .then(() => setState('done'))
-      .catch((err) => setState(err?.status === 400 || err?.code === 'INVALID_TOKEN' ? 'invalid' : 'error'))
+      .catch((err: unknown) => setState(err instanceof ApiError && (err.status === 400 || err.code === 'INVALID_TOKEN') ? 'invalid' : 'error'))
   }
 
   return (

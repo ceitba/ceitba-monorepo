@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getArticleById, acceptArticleChanges, rejectArticleChanges } from '../../store/articleStore'
-import { getEventById, acceptEventChanges, rejectEventChanges } from '../../store/eventStore'
+import { getArticleById, acceptArticleChanges, rejectArticleChanges, type StoredArticle } from '../../store/articleStore'
+import { getEventById, acceptEventChanges, rejectEventChanges, type StoredEvent } from '../../store/eventStore'
 import ArticleBody from '../../components/article/ArticleBody'
 import { bodyToMarkdown } from '../../utils/articleBody'
 import { newsletterPath } from '@/newsletter/paths'
 
+// Either kind of suggestion, read field by field for the comparison.
+type Comparable = Partial<StoredArticle> & Partial<StoredEvent>
+
+type CompareKey =
+  | 'title' | 'excerpt' | 'category' | 'organization' | 'readingTime'
+  | 'date' | 'time' | 'endTime' | 'location' | 'description'
+
 export default function ContributorReviewChangesPage() {
-  const { type, id } = useParams()  // type = 'article' | 'event'
+  const { type, id = '' } = useParams()  // type = 'article' | 'event'; the route always defines :id
   const navigate     = useNavigate()
-  const [done, setDone] = useState(null) // null | 'accepted' | 'rejected'
+  const [done, setDone] = useState<'accepted' | 'rejected' | null>(null) // null | 'accepted' | 'rejected'
 
   const resource = type === 'article' ? getArticleById(id) : getEventById(id)
 
@@ -69,11 +76,11 @@ export default function ContributorReviewChangesPage() {
     )
   }
 
-  const original = resource
-  const proposed = { ...resource, ...resource.staffEdits }
+  const original: Comparable = resource
+  const proposed: Comparable = { ...resource, ...resource.staffEdits }
   const isArticle = type === 'article'
 
-  const COMPARE_FIELDS = isArticle
+  const COMPARE_FIELDS: { key: CompareKey; label: string }[] = isArticle
     ? [
         { key: 'title',       label: 'Título' },
         { key: 'excerpt',     label: 'Copete' },

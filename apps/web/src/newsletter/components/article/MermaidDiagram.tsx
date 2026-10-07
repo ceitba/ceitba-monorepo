@@ -1,11 +1,12 @@
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { Mermaid } from 'mermaid'
 
 // mermaid is ~1 MB: load it only when an article actually has a diagram.
 // A failed import (e.g. a chunk removed by a deploy) isn't cached, so the
 // next diagram retries.
-let mermaidPromise = null
-function loadMermaid() {
+let mermaidPromise: Promise<Mermaid> | null = null
+function loadMermaid(): Promise<Mermaid> {
   mermaidPromise ??= import('mermaid')
     .then((m) => m.default)
     .catch((err) => { mermaidPromise = null; throw err })
@@ -14,12 +15,12 @@ function loadMermaid() {
 
 let renderCount = 0
 
-function isDark() {
+function isDark(): boolean {
   return document.documentElement.classList.contains('dark')
 }
 
 // Re-render diagrams when the theme toggles (`dark` class on <html>).
-function useIsDark() {
+function useIsDark(): boolean {
   const [dark, setDark] = useState(isDark)
   useEffect(() => {
     const observer = new MutationObserver(() => setDark(isDark()))
@@ -29,11 +30,15 @@ function useIsDark() {
   return dark
 }
 
+interface MermaidDiagramProps {
+  code: string
+}
+
 // Renders a ```mermaid fence. securityLevel 'strict' sanitizes the SVG and
 // disables click handlers, so diagram source from an article can't inject
 // script. On a syntax error the source is shown instead, so the editor sees
 // what to fix and readers still get the content.
-export default function MermaidDiagram({ code }) {
+export default function MermaidDiagram({ code }: MermaidDiagramProps) {
   const { t } = useTranslation()
   const baseId = `mmd-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`
   const dark = useIsDark()

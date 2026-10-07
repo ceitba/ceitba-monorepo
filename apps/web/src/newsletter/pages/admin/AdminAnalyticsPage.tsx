@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import { addDaysISO, localeFor, todayISO } from '../../utils/dates'
+import type { AnalyticsSummary } from '../../types'
 
 // GET /analytics/summary?days=N looks back N days and defaults to 30 when
 // the param is missing, so "all time" must be an explicit, large window
@@ -15,7 +16,7 @@ const RANGES = [
   { key: 'allTime', days: ALL_TIME_DAYS },
 ]
 
-const EMPTY_SUMMARY = {
+const EMPTY_SUMMARY: AnalyticsSummary = {
   totalArticleViews: 0,
   uniqueVisitors:    0,
   topArticles:       [],
@@ -27,7 +28,7 @@ const EMPTY_SUMMARY = {
 export default function AdminAnalyticsPage() {
   const [days, setDays]       = useState(30)
   const [summary, setSummary] = useState(EMPTY_SUMMARY)
-  const [status, setStatus]   = useState('loading')
+  const [status, setStatus]   = useState<'loading' | 'success' | 'error'>('loading')
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
 
@@ -214,7 +215,12 @@ export default function AdminAnalyticsPage() {
 
 // ── Sub-components ────────────────────────────────────────────────────────
 
-function RangePicker({ active, onChange }) {
+interface RangePickerProps {
+  active: number
+  onChange: (days: number) => void
+}
+
+function RangePicker({ active, onChange }: RangePickerProps) {
   const { t } = useTranslation()
   return (
     <div className="flex rounded-sm border border-border overflow-hidden">
@@ -235,7 +241,15 @@ function RangePicker({ active, onChange }) {
   )
 }
 
-function StatCard({ label, value, icon, loading, lang }) {
+interface StatCardProps {
+  label: string
+  value: number
+  icon: ReactNode
+  loading: boolean
+  lang: string
+}
+
+function StatCard({ label, value, icon, loading, lang }: StatCardProps) {
   return (
     <div className="bg-white rounded-card border border-border shadow-card p-5 flex flex-col gap-2">
       <div className="w-8 h-8 text-primary">{icon}</div>
@@ -249,7 +263,17 @@ function StatCard({ label, value, icon, loading, lang }) {
   )
 }
 
-function BarChart({ data, colorClass }) {
+interface BarDatum {
+  label: string
+  value: number
+}
+
+interface BarChartProps {
+  data: BarDatum[]
+  colorClass: string
+}
+
+function BarChart({ data, colorClass }: BarChartProps) {
   const max = Math.max(...data.map((d) => d.value), 1)
   return (
     <div className="flex flex-col gap-3">
@@ -271,11 +295,19 @@ function BarChart({ data, colorClass }) {
   )
 }
 
-function EmptyMetric({ label }) {
+interface EmptyMetricProps {
+  label: string
+}
+
+function EmptyMetric({ label }: EmptyMetricProps) {
   return <p className="font-body text-body-sm text-ink-secondary py-4 text-center">{label}</p>
 }
 
-function VTh({ children }) {
+interface VThProps {
+  children: ReactNode
+}
+
+function VTh({ children }: VThProps) {
   return (
     <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">
       {children}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from '@tiptap/react'
+import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlock from '@tiptap/extension-code-block'
 import Image from '@tiptap/extension-image'
@@ -13,6 +13,7 @@ import CodeBlockView from './CodeBlockView'
 import EditorToolbar from './EditorToolbar'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, uploadViaSignedUrl } from '../../../api/media'
 import { looksLikeMarkdown } from '../../../utils/articleBody'
+import { ApiError } from '@/api/client'
 
 // The fence must be longer than any backtick run inside the code, or a
 // ``` line in the code would end the block early.
@@ -30,7 +31,7 @@ const CodeBlockWithPreview = CodeBlock.extend({
 // the start of a line, so a paragraph reading "1. Ser alumno" or "- x" came
 // back as a list after saving. Escape those markers (and setext underlines,
 // and indentation that would make a code block) line by line.
-function escapeLineStarts(markdown) {
+function escapeLineStarts(markdown: string): string {
   return markdown
     .split('\n')
     .map((line) => line
@@ -66,19 +67,27 @@ const SafeHardBreak = HardBreak.extend({
 const SingleLineCell = TableCell.extend({ content: 'paragraph' })
 const SingleLineHeader = TableHeader.extend({ content: 'paragraph' })
 
-function imageFiles(dataTransfer) {
+function imageFiles(dataTransfer: DataTransfer | null | undefined): File[] {
   return [...(dataTransfer?.files ?? [])].filter((f) => f.type.startsWith('image/'))
 }
 
 // Word/Excel/PowerPoint put a PNG rendering of the selection next to the
 // HTML: that's a text paste, not an image paste. Only treat the clipboard
 // as images when its HTML (if any) is nothing but images.
-function isImagePaste(clipboard) {
+function isImagePaste(clipboard: DataTransfer): boolean {
   if (!imageFiles(clipboard).length) return false
   const html = clipboard.getData('text/html')
   if (!html) return true
   const doc = new DOMParser().parseFromString(html, 'text/html')
   return !doc.body.textContent.trim() && doc.body.querySelectorAll('img').length > 0
+}
+
+interface RichTextEditorProps {
+  // Markdown; only read on mount.
+  value?: string | null
+  onChange: (markdown: string) => void
+  canUpload: boolean
+  invalid?: boolean
 }
 
 // WYSIWYG article body editor. The document is Markdown in and out
@@ -89,20 +98,20 @@ function isImagePaste(clipboard) {
 // web pages) goes through ProseMirror's HTML parser; plain text that looks
 // like Markdown is parsed as Markdown. Images can be pasted, dropped or
 // picked — uploaded when the user may upload (staff), otherwise by URL.
-export default function RichTextEditor({ value, onChange, canUpload, invalid }) {
+export default function RichTextEditor({ value, onChange, canUpload, invalid }: RichTextEditorProps) {
   const { t } = useTranslation()
-  const [mode, setMode] = useState('visual') // 'visual' | 'markdown'
+  const [mode, setMode] = useState<'visual' | 'markdown'>('visual')
   const [source, setSource] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
-  const editorRef = useRef(null)
+  const editorRef = useRef<Editor | null>(null)
   const placeholderRef = useRef(t('editor.placeholder'))
   placeholderRef.current = t('editor.placeholder')
   const sourceAtToggleRef = useRef('')
 
-  async function uploadImages(files) {
+  async function uploadImages(files: File[]) {
     const editor = editorRef.current
     if (!editor || !files.length) return
     if (!canUpload) { setUploadError(t('editor.errors.uploadForbidden')); return }
@@ -117,9 +126,10 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
         editor.chain().focus().insertContent({ type: 'image', attrs: { src, alt: file.name.replace(/\.[^.]+$/, '') } }).run()
       }
     } catch (err) {
+      const status = err instanceof ApiError ? err.status : undefined
       setUploadError(
-        err?.status === 501 ? t('imageUploader.errors.notConfigured')
-          : err?.status === 403 ? t('imageUploader.errors.forbidden')
+        status === 501 ? t('imageUploader.errors.notConfigured')
+          : status === 403 ? t('imageUploader.errors.forbidden')
           : t('imageUploader.errors.upload'),
       )
     } finally {
@@ -157,7 +167,7 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }) 
         'aria-multiline': 'true',
         role: 'textbox',
       },
-      handlePaste(view, event) {
+      handlePaste(_view, event) {
         const ed = editorRef.current
         if (event.clipboardData && isImagePaste(event.clipboardData)) {
           event.preventDefault()

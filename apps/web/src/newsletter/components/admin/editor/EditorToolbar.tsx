@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode, type SVGProps } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEditorState } from '@tiptap/react'
+import { useEditorState, type Editor } from '@tiptap/react'
 import { ALLOWED_IMAGE_TYPES } from '../../../api/media'
 
-function isHttpUrl(value) {
+function isHttpUrl(value: string): boolean {
   try {
     const u = new URL(value)
     return u.protocol === 'https:' || u.protocol === 'http:'
@@ -12,18 +12,29 @@ function isHttpUrl(value) {
   }
 }
 
-function withProtocol(value) {
+function withProtocol(value: string): string {
   const v = value.trim()
   if (!v) return v
   return /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v}`
 }
 
-export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, uploading, onPickImages }) {
+type UrlMode = 'link' | 'image'
+
+interface EditorToolbarProps {
+  editor: Editor | null
+  mode: 'visual' | 'markdown'
+  onToggleMode: () => void
+  canUpload: boolean
+  uploading: boolean
+  onPickImages: (files: File[]) => void
+}
+
+export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, uploading, onPickImages }: EditorToolbarProps) {
   const { t } = useTranslation()
-  const [urlMode, setUrlMode] = useState(null) // 'link' | 'image' | null
+  const [urlMode, setUrlMode] = useState<UrlMode | null>(null)
   const [url, setUrl] = useState('')
   const [urlError, setUrlError] = useState('')
-  const fileRef = useRef(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const state = useEditorState({
     editor,
@@ -55,15 +66,16 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
   const visual = mode === 'visual'
   const chain = () => editor.chain().focus()
 
-  function setBlock(value) {
+  function setBlock(value: string) {
     if (value === 'p') chain().setParagraph().run()
-    else chain().setHeading({ level: Number(value.slice(1)) }).run()
+    // Cast: the <select> only offers h1–h4.
+    else chain().setHeading({ level: Number(value.slice(1)) as 1 | 2 | 3 | 4 }).run()
   }
 
-  function openUrl(kind) {
+  function openUrl(kind: UrlMode) {
     setUrlError('')
     if (urlMode === kind) { setUrlMode(null); return }
-    setUrl(kind === 'link' ? editor.getAttributes('link').href ?? '' : '')
+    setUrl(kind === 'link' ? editor?.getAttributes('link').href ?? '' : '')
     setUrlMode(kind)
   }
 
@@ -196,13 +208,22 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
         accept={ALLOWED_IMAGE_TYPES.join(',')}
         className="sr-only"
         tabIndex={-1}
-        onChange={(e) => { onPickImages([...e.target.files]); e.target.value = '' }}
+        onChange={(e) => { onPickImages([...(e.target.files ?? [])]); e.target.value = '' }}
       />
     </div>
   )
 }
 
-function Btn({ label, shortcut, active, disabled, onClick, children }) {
+interface BtnProps {
+  label: string
+  shortcut?: string
+  active?: boolean
+  disabled?: boolean
+  onClick: () => void
+  children: ReactNode
+}
+
+function Btn({ label, shortcut, active, disabled, onClick, children }: BtnProps) {
   return (
     <button
       type="button"
@@ -222,7 +243,13 @@ function Btn({ label, shortcut, active, disabled, onClick, children }) {
   )
 }
 
-function TextBtn({ danger, onClick, children }) {
+interface TextBtnProps {
+  danger?: boolean
+  onClick: () => void
+  children: ReactNode
+}
+
+function TextBtn({ danger, onClick, children }: TextBtnProps) {
   return (
     <button
       type="button"
@@ -237,7 +264,7 @@ function TextBtn({ danger, onClick, children }) {
 
 function Sep() { return <span className="w-px h-5 bg-border mx-1" aria-hidden="true" /> }
 
-const svg = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+const svg: SVGProps<SVGSVGElement> = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
 function IconCode()      { return <svg {...svg}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> }
 function IconLink()      { return <svg {...svg}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> }
 function IconBullets()   { return <svg {...svg}><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg> }

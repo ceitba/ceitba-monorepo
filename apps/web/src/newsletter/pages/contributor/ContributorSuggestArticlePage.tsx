@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCachedSession } from '../../store/authStore'
 import {
   getArticleById,
   submitArticleSuggestion,
   resubmitArticleSuggestion,
+  type ArticleDraft,
+  type StoredArticle,
 } from '../../store/articleStore'
 import { fetchOrganizations } from '../../api/organizations'
 import ImageUploader from '../../components/ImageUploader'
@@ -12,6 +14,26 @@ import { todayISO } from '../../utils/dates'
 
 import { CATEGORIES, DEFAULT_CATEGORY } from '../../constants/categories'
 import { newsletterPath } from '@/newsletter/paths'
+import type { UserProfile } from '@/store/authStore'
+import type { Organization } from '../../types'
+
+// The form fields; editing a suggestion also spreads the stored row in.
+type ArticleForm = Omit<Partial<StoredArticle>, 'organization'> & {
+  title: string
+  excerpt: string
+  body: string[]
+  category: string
+  organization: string | null
+  date: string
+  readingTime: string
+  colorScheme: string
+  coverImage: string
+}
+
+interface FormErrors {
+  title?: string
+  excerpt?: string
+}
 
 const COLOR_OPTIONS = [
   { value: 'blue',   label: 'Azul',    cls: 'bg-primary-500' },
@@ -20,7 +42,7 @@ const COLOR_OPTIONS = [
   { value: 'violet', label: 'Violeta', cls: 'bg-violet-600'  },
 ]
 
-const EMPTY_FORM = {
+const EMPTY_FORM: ArticleForm = {
   title:        '',
   excerpt:      '',
   body:         [''],
@@ -35,12 +57,13 @@ const EMPTY_FORM = {
 export default function ContributorSuggestArticlePage() {
   const { id }   = useParams()
   const navigate = useNavigate()
-  const session  = getCachedSession()
+  // Cast: ContributorAuthGuard renders this page only once /me resolved.
+  const session  = getCachedSession() as UserProfile
   const isEdit   = Boolean(id)
 
   const [form, setForm]       = useState(EMPTY_FORM)
-  const [orgs, setOrgs]       = useState([])
-  const [errors, setErrors]   = useState({})
+  const [orgs, setOrgs]       = useState<Organization[]>([])
+  const [errors, setErrors]   = useState<FormErrors>({})
   const [touched, setTouched] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [done, setDone]       = useState(false)
@@ -64,32 +87,32 @@ export default function ContributorSuggestArticlePage() {
     }
   }, [id, isEdit])
 
-  function set(key, value) {
+  function set<K extends keyof ArticleForm>(key: K, value: ArticleForm[K]) {
     const next = { ...form, [key]: value }
     setForm(next)
     if (touched) validate(next)
   }
 
-  function setBodyPara(index, value) {
+  function setBodyPara(index: number, value: string) {
     const next = form.body.map((p, i) => (i === index ? value : p))
     set('body', next)
   }
 
   function addPara() { set('body', [...form.body, '']) }
-  function removePara(index) {
+  function removePara(index: number) {
     if (form.body.length <= 1) return
     set('body', form.body.filter((_, i) => i !== index))
   }
 
-  function validate(values = form) {
-    const e = {}
+  function validate(values: ArticleForm = form) {
+    const e: FormErrors = {}
     if (!values.title.trim())   e.title   = 'El título es obligatorio.'
     if (!values.excerpt.trim()) e.excerpt  = 'El copete es obligatorio.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setTouched(true)
     if (!validate()) return
@@ -97,14 +120,16 @@ export default function ContributorSuggestArticlePage() {
     setSaving(true)
     await new Promise((r) => setTimeout(r, 400))
 
+    // Cast: the form has no `featured` (left undefined, i.e. not featured)
+    // and the profile name may be null; the mock store keeps the row as is.
     const data = {
       ...form,
       authors: [session.name],
       body: form.body.filter((p) => p.trim()),
-    }
+    } as ArticleDraft
 
     if (isEdit) {
-      resubmitArticleSuggestion(id, data)
+      resubmitArticleSuggestion(id ?? '', data)
     } else {
       submitArticleSuggestion(data, session)
     }
@@ -178,7 +203,7 @@ export default function ContributorSuggestArticlePage() {
             </select>
           </Field>
           <Field label="Organización">
-            <select value={form.organization} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
+            <select value={form.organization ?? undefined} onChange={(e) => set('organization', e.target.value)} className={inputClass(null)}>
               {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
             </select>
           </Field>
@@ -242,7 +267,7 @@ export default function ContributorSuggestArticlePage() {
 
         {/* Cover image */}
         <Field label="Imagen de portada" hint="Opcional">
-          <ImageUploader value={form.coverImage} onChange={(v) => set('coverImage', v)} />
+          <ImageUploader value={form.coverImage} onChange={(v: string) => set('coverImage', v)} />
         </Field>
 
         {/* Color scheme */}
@@ -291,7 +316,15 @@ export default function ContributorSuggestArticlePage() {
   )
 }
 
-function Field({ label, hint, error, required, children }) {
+interface FieldProps {
+  label: string
+  hint?: string
+  error?: string
+  required?: boolean
+  children: ReactNode
+}
+
+function Field({ label, hint, error, required, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
@@ -307,7 +340,7 @@ function Field({ label, hint, error, required, children }) {
   )
 }
 
-function inputClass(error) {
+function inputClass(error: string | null | undefined) {
   return [
     'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white',
     'focus:outline-none focus:ring-1 transition-colors duration-150',

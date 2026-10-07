@@ -3,18 +3,24 @@ import { useTranslation } from 'react-i18next'
 import { connectCeitbaSender, disconnectSenderAccount, listSenderAccounts } from '../../api/digests'
 import { formatArtDateTime } from '../../utils/digest'
 import ConfirmDialog from './ConfirmDialog'
+import type { IsoDateTime, SenderAccount } from '../../types'
 
 const btnBase = 'min-h-[44px] px-5 inline-flex items-center justify-center font-body text-body-sm font-semibold rounded-sm transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed'
 const primaryBtn = `${btnBase} bg-primary text-surface hover:bg-primary-600`
 const accentBtn = `${btnBase} bg-accent text-ink-primary hover:bg-accent-500`
 const dangerBtn = `${btnBase} bg-white border border-border text-red-600 hover:bg-red-50 hover:border-red-300`
 
+interface DigestSenderCardProps {
+  refreshKey?: number
+  onChanged?: () => void
+}
+
 // The Gmail account the weekly digest is sent from. Missing → prominent
 // notice + connect button; broken → warning + reconnect; connected → details
 // + disconnect. `refreshKey` re-fetches (after returning from Google).
-export default function DigestSenderCard({ refreshKey = 0, onChanged }) {
+export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSenderCardProps) {
   const { t, i18n } = useTranslation()
-  const [accounts, setAccounts] = useState(null)
+  const [accounts, setAccounts] = useState<SenderAccount[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -44,7 +50,7 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }) {
     }
   }
 
-  async function handleDisconnect(id) {
+  async function handleDisconnect(id: number) {
     setDisconnecting(true)
     setError('')
     try {
@@ -72,13 +78,13 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }) {
 
   const account = accounts.find((a) => a.ownerType === 'ceitba' && a.status !== 'revoked')
   const state = account ? account.status : 'missing' // 'connected' | 'broken' | 'missing'
-  const when = (iso) => formatArtDateTime(iso, i18n.language)
+  const when = (iso: IsoDateTime) => formatArtDateTime(iso, i18n.language)
 
   const errorBox = error && (
     <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{error}</p>
   )
 
-  if (state === 'missing') {
+  if (!account) { // state === 'missing'
     return (
       <section
         className="bg-accent-50 rounded-card border border-accent shadow-card p-4 sm:p-5 flex flex-col gap-3"

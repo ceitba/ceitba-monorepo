@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchAllEvents, deleteEvent } from '../../api/events'
@@ -6,13 +6,14 @@ import { isStaff } from '../../store/authStore'
 import CategoryBadge from '../../components/CategoryBadge'
 import { formatDate, todayISO } from '../../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
+import type { NewsEvent } from '../../types'
 
 export default function AdminEventsPage() {
   const { t, i18n } = useTranslation()
   const staff = isStaff()
-  const [events, setEvents]     = useState([])
-  const [status, setStatus]     = useState('loading')
-  const [confirmId, setConfirmId] = useState(null)
+  const [events, setEvents]     = useState<NewsEvent[]>([])
+  const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
+  const [confirmId, setConfirmId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
 
   // Every event, all pages: the API caps a page at `limit` (default 50)
@@ -26,7 +27,7 @@ export default function AdminEventsPage() {
 
   useEffect(load, [])
 
-  async function handleDelete(id) {
+  async function handleDelete(id: string) {
     setDeleteError('')
     try {
       await deleteEvent(id)
@@ -158,7 +159,11 @@ export default function AdminEventsPage() {
   )
 }
 
-function Th({ children }) {
+interface ThProps {
+  children: ReactNode
+}
+
+function Th({ children }: ThProps) {
   return <th className="px-4 py-3 text-left font-mono text-label uppercase tracking-widest text-ink-secondary">{children}</th>
 }
 

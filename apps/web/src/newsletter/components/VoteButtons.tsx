@@ -1,11 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { castVote, getVotesForArticle } from '../store/voteStore'
+import { castVote, getVotesForArticle, type VoteState } from '../store/voteStore'
+import type { VoteType } from '../types'
 import { trackEvent } from '../store/analyticsStore'
 
-export default function VoteButtons({ articleId }) {
+interface VoteButtonsProps {
+  articleId: string
+}
+
+export default function VoteButtons({ articleId }: VoteButtonsProps) {
   const { t } = useTranslation()
-  const [state, setState] = useState({ up: 0, down: 0, myVote: null })
+  const [state, setState] = useState<VoteState>({ up: 0, down: 0, myVote: null })
   const [busy, setBusy] = useState(false)
   const stateRef = useRef(state)
   stateRef.current = state
@@ -16,7 +21,7 @@ export default function VoteButtons({ articleId }) {
     return () => { active = false }
   }, [articleId])
 
-  async function handleVote(type) {
+  async function handleVote(type: VoteType) {
     if (busy) return
     const before = stateRef.current
     setBusy(true)
@@ -24,7 +29,8 @@ export default function VoteButtons({ articleId }) {
     setState({ ...before, myVote: before.myVote === type ? null : type })
     trackEvent('vote', { articleId })
     const next = await castVote(articleId, type, before)
-    setState(next)
+    // castVote only returns null/undefined when given no state; `before` is always set.
+    setState(next ?? before)
     setBusy(false)
   }
 
@@ -40,7 +46,15 @@ export default function VoteButtons({ articleId }) {
   )
 }
 
-function VoteButton({ type, active, onVote, label, disabled }) {
+interface VoteButtonProps {
+  type: VoteType
+  active: boolean
+  onVote: (type: VoteType) => void
+  label: string
+  disabled: boolean
+}
+
+function VoteButton({ type, active, onVote, label, disabled }: VoteButtonProps) {
   const isUp = type === 'up'
   return (
     <button
