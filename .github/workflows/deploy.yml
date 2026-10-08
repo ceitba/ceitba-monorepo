@@ -2,7 +2,9 @@ name: Deploy
 
 # Every push to main deploys the apps it changed, to the same VPS paths as the
 # old per-repo workflows: API image + compose (~/CEITBA-API), Caddy (~/infra),
-# the web app (/var/www/main; it serves the site, /scheduler and /newsletter).
+# the web app (/var/www/main; it serves the site, /scheduler and /newsletter,
+# plus its index.html in the old /scheduler and /newsletter roots until the
+# Caddy cutover).
 # The API ships first; the web deploy waits for it, so it never goes live
 # ahead of the API it depends on.
 # Deploy credentials live only in the `production` environment.
@@ -240,4 +242,17 @@ jobs:
             set -e
             STAGE=/tmp/${{ matrix.app }}-deploy-${{ github.sha }}
             rsync -r --delete "$STAGE/dist/" /var/www/${{ matrix.www }}/
+            # Until the Caddy cutover, Caddy still serves /scheduler* and
+            # /newsletter* from the old standalone builds' roots. Their
+            # try_files fallback is index.html, so putting the web app's
+            # there makes every hard load (refresh, bookmark, shared link)
+            # open the merged app. Its asset URLs are absolute (/assets/...),
+            # served from /var/www/main, which is why this runs after the
+            # rsync above. Old assets stay so open tabs can still lazy-load.
+            if [ "${{ matrix.app }}" = web ]; then
+              for d in scheduler itbanews; do
+                mkdir -p "/var/www/$d"
+                cp "$STAGE/dist/index.html" "/var/www/$d/index.html"
+              done
+            fi
             rm -rf "$STAGE"
