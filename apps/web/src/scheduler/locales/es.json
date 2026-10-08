@@ -223,6 +223,8 @@
     "freeDayHint": "Solo combinaciones con al menos un día de semana sin clases.",
     "goToCourses": "Ir a Materias",
     "noResult": {
+      "noCommissions_one": "{{names}} no tiene comisiones cargadas: sacala de la lista para poder generar horarios.",
+      "noCommissions_other": "{{names}} no tienen comisiones cargadas: sacalas de la lista para poder generar horarios.",
       "blockedOut_one": "Todas las comisiones de {{names}} caen en tus horarios bloqueados (Adicionales).",
       "blockedOut_other": "Todas las comisiones de {{names}} caen en tus horarios bloqueados (Adicionales).",
       "clash": "{{a}} y {{b}} se superponen en todas sus comisiones.",

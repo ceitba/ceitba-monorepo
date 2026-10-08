@@ -64,6 +64,12 @@ const getAvailableCommissions = (subject: SchedulerSubject): Commission[] => {
   return selected.length > 0 ? selected : subject.commissions;
 };
 
+// Subjects with no commissions at all: with any of these, generateSchedules
+// can't return a combination whatever the options. Used to explain an empty
+// result.
+export const subjectsWithoutCommissions = (subjects: SchedulerSubject[]): SchedulerSubject[] =>
+  subjects.filter(subject => getAvailableCommissions(subject).length === 0);
+
 // Subjects none of whose (selected) commissions avoid the blocked times:
 // with any of these, generateSchedules can't return a combination. Used to
 // explain an empty result. A subject with no commissions at all is not

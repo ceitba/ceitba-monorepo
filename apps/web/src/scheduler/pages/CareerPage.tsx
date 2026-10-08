@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { detectConflicts, liveSlotsFromCourses } from '../services/conflicts'
 import { normalizePlanId, denormalizePlanId } from '../utils/planUtils'
-import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, type GenerationResult } from '../services/scheduler'
+import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, subjectsWithoutCommissions, type GenerationResult } from '../services/scheduler'
 import { useScheduleGeneration } from '../hooks/useScheduleGeneration'
 import type { GenerationInputs } from '../workers/protocol'
 import { PossibleSchedule, SchedulerOptions, TimeBlock } from '../types/scheduler'
@@ -182,8 +182,9 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const conflictReport = useMemo(() => detectConflicts(selectedCourses), [selectedCourses])
   const liveConflictCount = conflictReport.totalConflicts
 
-  // Explains an empty generation: subjects that clash in every commission
-  // and subjects all of whose commissions hit a blocked time.
+  // Explains an empty generation: subjects with no commissions, subjects
+  // that clash in every commission and subjects all of whose commissions hit
+  // a blocked time.
   const noResultReasons = useMemo<NoResultReasons>(() => {
     const names = new Map(selectedCourses.map((c) => [c.subject_id, c.name]))
     const clashes: [string, string][] = []
@@ -193,6 +194,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       })
     })
     return {
+      noCommissions: subjectsWithoutCommissions(selectedCourses).map((c) => c.name),
       clashes,
       blockedOut: subjectsBlockedOut(selectedCourses, blockedTimes).map((c) => c.name),
       hasBlockedTimes: blockedTimes.length > 0,

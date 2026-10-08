@@ -226,6 +226,8 @@
     "freeDayHint": "Only combinations with at least one weekday without classes.",
     "goToCourses": "Go to Courses",
     "noResult": {
+      "noCommissions_one": "{{names}} has no commissions listed: remove it to generate schedules.",
+      "noCommissions_other": "{{names}} have no commissions listed: remove them to generate schedules.",
       "blockedOut_one": "Every commission of {{names}} falls in your blocked times (Options).",
       "blockedOut_other": "Every commission of {{names}} falls in your blocked times (Options).",
       "clash": "{{a}} and {{b}} overlap in every commission.",
