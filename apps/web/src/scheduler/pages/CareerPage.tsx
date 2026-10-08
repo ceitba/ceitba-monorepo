@@ -23,8 +23,7 @@ import { errorMessageKey } from '../services/apiErrors'
 import { CorrectionsContext, type CorrectionsContextValue } from '../context/correctionsContext'
 import { mergeCorrection, sameSlotSet } from '../services/corrections'
 import { discardPendingWorkspace, parsePayload, savePendingWorkspace, takePendingWorkspace, type SavedSchedulePayload } from '../services/workspaceSnapshot'
-import { SignInContext } from '../context/signInContext'
-import { startGoogleSignIn } from '@/store/authStore'
+import { onBeforeSignIn, startGoogleSignIn } from '@/store/authStore'
 import type { CommissionCorrection } from '../types/scheduler'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
 import { Button, Modal, Tabs, ToggleGroup, buttonClass, toast } from '@/components/ui'
@@ -246,11 +245,11 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     }
   }
 
-  // Every sign-in button on this page (navbar, corrections) goes through
-  // here: the workspace only lives in React state, so it's snapshotted to
-  // sessionStorage before the redirect to Google and restored on return
-  // (effect below).
-  const beginSignIn = () => {
+  // The workspace only lives in React state, so every sign-in from this page
+  // (the navbar's included: it renders outside the scheduler) snapshots it
+  // to sessionStorage before the redirect to Google; it's restored on return
+  // (effect below). Re-registered each render so it saves the current state.
+  const snapshotWorkspace = () => {
     savePendingWorkspace({
       career,
       plan: normalizedPlan,
@@ -259,8 +258,9 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       activeTab: TAB_IDS.indexOf(activeTab),
       payload: currentPayload(),
     })
-    startGoogleSignIn(location.pathname + location.search)
   }
+  useEffect(() => onBeforeSignIn(snapshotWorkspace))
+  const beginSignIn = () => startGoogleSignIn(location.pathname + location.search)
 
   // Restore the workspace snapshotted before a sign-in redirect, once the
   // catalog has loaded; the snapshot is deleted whether or not it applies.
@@ -511,7 +511,6 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   }
 
   return (
-    <SignInContext.Provider value={beginSignIn}>
     <CorrectionsContext.Provider value={correctionsContext}>
       <div className="flex flex-col bg-surface dark:bg-night-bg">
         <main id="main-content" className="flex-1">
@@ -685,6 +684,5 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
         )}
       </div>
     </CorrectionsContext.Provider>
-    </SignInContext.Provider>
   )
 }
