@@ -4,10 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { fetchKbPage, fetchSubjectKb, type KbPage, type KbPageSummary } from '../../api/kb'
-import { apuntesErrorMessage } from '../../utils/apuntes'
-import EmptyState from '../../components/apuntes/EmptyState'
+import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
+import { EmptyState, ErrorState, LoadingRegion, Skeleton, buttonClass } from '../../components/ui'
 import WikiArticle, { PagesPanel } from '../../components/apuntes/wiki/WikiArticle'
-import { BTN_PRIMARY } from '../../components/apuntes/buttons'
 
 // /apuntes/:subjectId/wiki/:slug — one wiki page with its sources,
 // backlinks and the subject's other pages.
@@ -32,7 +31,7 @@ export default function WikiPage() {
         if (reqRef.current !== id) return
         setPage(null)
         if (e instanceof ApiError && e.status === 404) setNotFound(true)
-        else setError(apuntesErrorMessage(e, t))
+        else setError(apuntesErrorCopy(e, t))
       })
       .finally(() => { if (reqRef.current === id) setLoading(false) })
   }, [subjectId, slug, tick, t])
@@ -69,28 +68,28 @@ export default function WikiPage() {
       </nav>
 
       {loading && !page && (
-        <div aria-busy="true" aria-hidden="true" className="flex flex-col gap-4 max-w-[70ch]">
-          <div className="h-10 w-2/3 rounded-sm skeleton" />
-          <div className="h-4 w-full rounded-sm skeleton" />
-          <div className="h-4 w-5/6 rounded-sm skeleton" />
-          <div className="h-[40vh] rounded-card skeleton" />
-        </div>
+        <LoadingRegion className="flex flex-col gap-4 max-w-[70ch]">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-[40vh] !rounded-card" />
+        </LoadingRegion>
       )}
 
       {error && (
-        <div role="alert" className="flex flex-col items-start gap-3 py-6">
-          <p className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>
-          <button type="button" onClick={() => setTick((n) => n + 1)} className="font-mono text-label uppercase tracking-widest text-primary hover:underline">
-            {t('errors.retry')}
-          </button>
-        </div>
+        <ErrorState
+          message={error}
+          onRetry={() => setTick((n) => n + 1)}
+          backTo={`/apuntes/${encodeURIComponent(subjectId)}`}
+          backLabel={t('wiki.backToSubject')}
+        />
       )}
 
       {notFound && (
         <EmptyState
           title={t('wiki.notFoundTitle')}
           body={t('wiki.notFoundBody')}
-          action={<Link to={`/apuntes/${encodeURIComponent(subjectId)}`} className={BTN_PRIMARY}>{t('wiki.backToSubject')}</Link>}
+          action={<Link to={`/apuntes/${encodeURIComponent(subjectId)}`} className={buttonClass()}>{t('wiki.backToSubject')}</Link>}
         />
       )}
 

@@ -1,55 +1,49 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CostImpact } from '../../../api/kbAdmin'
-import Modal from '../../../components/Modal'
-import { apuntesErrorMessage } from '../../../utils/apuntes'
+import {
+  Alert, Badge, Button, EmptyState, ErrorState, Field, LoadingRegion, Modal, Skeleton, SkeletonCards, textareaClass,
+} from '@/components/ui'
+import { apuntesAdminErrorMessage } from '../adminErrors'
 import { basisText, range, usd } from './format'
-import { BTN_PRI, FIELD } from './styles'
 import type { Loaded } from './useLoad'
+import { statusInfo } from './status'
 
 // Shared components for the "Wiki IA" admin views. Formatting helpers live
-// in format.ts, class strings in styles.ts and useLoad in useLoad.ts.
+// in format.ts, table cell classes in styles.ts and useLoad in useLoad.ts.
 
 // Loading / unavailable / error / empty wrapper for a view or a panel.
-export function ViewState<T>({ state, empty, emptyText, skeleton = 'block', children }: {
+export function ViewState<T>({ state, empty, emptyText, emptyBody, emptyAction, skeleton = 'block', children }: {
   state: Loaded<T>
   empty?: (d: T) => boolean
   emptyText?: string
+  emptyBody?: ReactNode
+  emptyAction?: ReactNode
   skeleton?: 'block' | 'rows' | 'cards'
   children: (d: T) => ReactNode
 }) {
   const { t } = useTranslation()
   if (state.loading && state.data == null) {
+    if (skeleton === 'cards') {
+      return <SkeletonCards count={4} className="grid grid-cols-2 lg:grid-cols-4 gap-3" cardClassName="h-24" />
+    }
     return (
-      <div aria-busy="true" aria-hidden="true" className={skeleton === 'cards' ? 'grid grid-cols-2 lg:grid-cols-4 gap-3' : 'flex flex-col gap-2'}>
-        {Array.from({ length: skeleton === 'block' ? 1 : 4 }).map((_, i) => (
-          <div key={i} className={`rounded-card skeleton ${skeleton === 'block' ? 'h-48' : skeleton === 'cards' ? 'h-24' : 'h-10'}`} />
-        ))}
-      </div>
+      <LoadingRegion className="flex flex-col gap-2">
+        {skeleton === 'block'
+          ? <Skeleton className="h-48 rounded-card" />
+          : Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
+      </LoadingRegion>
     )
   }
   if (state.unavailable) {
-    return (
-      <div className="px-4 py-6 rounded-card border border-dashed border-border dark:border-night-border text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">
-        {t('manage.wikiAi.unavailable')}
-      </div>
-    )
+    return <EmptyState compact title={t('manage.wikiAi.unavailableTitle')} body={t('manage.wikiAi.unavailable')} />
   }
   if (state.error && state.data == null) {
-    return (
-      <div role="alert" className="flex flex-wrap items-center gap-3 px-4 py-4 rounded-card border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 font-body text-body-sm text-red-700 dark:text-red-300">
-        <span className="flex-1">{state.error}</span>
-        <button type="button" onClick={state.reload} className="font-mono text-label uppercase tracking-widest underline">{t('errors.retry')}</button>
-      </div>
-    )
+    return <ErrorState compact title={t('manage.errors.loadFailed')} message={state.error} onRetry={state.reload} />
   }
   if (state.data == null) return null
   if (empty?.(state.data)) {
-    return (
-      <p className="px-4 py-8 rounded-card border border-border dark:border-night-border text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">
-        {emptyText ?? t('manage.wikiAi.empty')}
-      </p>
-    )
+    return <EmptyState compact title={emptyText ?? t('manage.wikiAi.empty')} body={emptyBody} action={emptyAction} />
   }
   return <>{children(state.data)}</>
 }
@@ -70,13 +64,10 @@ export function Panel({ title, actions, children, className = '' }: { title?: Re
 }
 
 export function StatusPill({ status }: { status: string | null | undefined }) {
-  const s = (status ?? '').toUpperCase()
-  const tone =
-    /FAIL|ERROR|EXPIRED|CANCEL/.test(s) ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-      : /BLOCKED/.test(s) ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-        : /DONE|COMPLETE|SUCCE|PUBLISHED|OK/.test(s) ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-          : 'bg-primary-50 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
-  return <span className={`inline-block px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest whitespace-nowrap ${tone}`}>{status ?? '—'}</span>
+  const { t } = useTranslation()
+  const info = statusInfo(status)
+  if (!info) return <Badge>—</Badge>
+  return <Badge tone={info.tone}>{t(`manage.wikiAi.status.${info.key}`)}</Badge>
 }
 
 // Confirmation for settings changes and promotions: shows the weekly cost
@@ -101,7 +92,7 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
     let cancelled = false
     loadImpact()
       .then((i) => { if (!cancelled) setImpact(i) })
-      .catch((e) => { if (!cancelled) { setImpact(null); setError(apuntesErrorMessage(e, t)) } })
+      .catch((e) => { if (!cancelled) { setImpact(null); setError(apuntesAdminErrorMessage(e, t)) } })
     return () => { cancelled = true }
   }, [loadImpact, t])
 
@@ -111,7 +102,7 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
       const result = await onConfirm(note.trim())
       setAfter(result ?? null)
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesAdminErrorMessage(e, t))
     } finally {
       setBusy(false)
     }
@@ -128,16 +119,16 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
       busy={busy}
       size="lg"
       footer={done ? (
-        <button type="button" onClick={onCancel} className={BTN_PRI}>{t('manage.wikiAi.close')}</button>
+        <Button onClick={onCancel}>{t('manage.wikiAi.close')}</Button>
       ) : (
         <>
-          <button type="button" onClick={onCancel} disabled={busy} className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.cancel')}</button>
-          <button type="button" onClick={confirm} disabled={busy} className={BTN_PRI}>{busy ? '…' : t('manage.wikiAi.confirmSave')}</button>
+          <Button variant="ghost" onClick={onCancel} disabled={busy}>{t('manage.cancel')}</Button>
+          <Button onClick={confirm} loading={busy}>{t('manage.wikiAi.confirmSave')}</Button>
         </>
       )}
     >
       {body && <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{body}</div>}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ImpactCard label={t('manage.wikiAi.impact.previous')} value={shown === undefined ? undefined : shown?.previousWeeklyAvgUsd ?? null} />
         <ImpactCard
           label={t('manage.wikiAi.impact.projected')}
@@ -148,10 +139,10 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
       {shown && (shown.projectedRange?.low != null || shown.projectedMonthly || shown.fullRebuildUsd != null) && (
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 font-body text-body-sm">
           {shown.projectedRange?.low != null && shown.projectedRange.high != null && (
-            <div className="flex justify-between gap-2"><dt className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.forecast.weeklyRange')}</dt><dd className="tabular-nums">{range(shown.projectedRange.low, shown.projectedRange.high)}</dd></div>
+            <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.forecast.weeklyRange')}</dt><dd className="tabular-nums">{range(shown.projectedRange.low, shown.projectedRange.high)}</dd></div>
           )}
           {shown.projectedMonthly?.expectedUsd != null && (
-            <div className="flex justify-between gap-2">
+            <div className="flex flex-wrap justify-between gap-x-2">
               <dt className="text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.forecast.monthly')}</dt>
               <dd className="tabular-nums">
                 {usd(shown.projectedMonthly.expectedUsd, 2)}
@@ -165,7 +156,7 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
             <p className="sm:col-span-2 mt-1 px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg">{t('manage.wikiAi.forecast.fullRebuild', { cost: usd(shown.fullRebuildUsd, 2) })}</p>
           )}
           {shown.basis && (
-            <p className="sm:col-span-2 font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{basisText(shown.basis, shown.runsUsed, t)}</p>
+            <p className="sm:col-span-2 font-body text-label text-ink-secondary dark:text-night-muted">{basisText(shown.basis, shown.runsUsed, t)}</p>
           )}
         </dl>
       )}
@@ -173,12 +164,11 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
         <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.impact.afterSave')}</p>
       )}
       {!done && (
-        <label className="flex flex-col gap-1">
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.note')}</span>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} className={FIELD} />
-        </label>
+        <Field label={t('manage.wikiAi.note')}>
+          {(p) => <textarea {...p} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} className={textareaClass()} />}
+        </Field>
       )}
-      {error && <p role="alert" className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Alert tone="error">{error}</Alert>}
     </Modal>
   )
 }
@@ -189,9 +179,9 @@ function ImpactCard({ label, value, delta }: { label: string; value: number | nu
     <div className="rounded-sm border border-border dark:border-night-border p-3">
       <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{label}</p>
       {value === undefined ? (
-        <div className="h-7 mt-1 rounded-sm skeleton" aria-hidden="true" />
+        <Skeleton className="h-7 mt-1" />
       ) : (
-        <p className="font-display font-bold text-h4 text-ink-primary dark:text-night-text">
+        <p className="font-display font-bold text-h5 sm:text-h4 text-ink-primary dark:text-night-text tabular-nums break-words">
           {value == null ? '—' : usd(value, 2)}
           <span className="font-body text-body-sm font-normal text-ink-secondary dark:text-night-muted"> {t('manage.wikiAi.perWeek')}</span>
         </p>

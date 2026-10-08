@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
+import { EmptyState, ErrorState, LoadingRegion } from '@/components/ui'
 import { fetchOrganizations } from '../api/organizations'
 import { newsletterPath } from '@/newsletter/paths'
+import { localeFor } from '../utils/dates'
 import type { Organization } from '../types'
+import NewsletterPageHeader from '../components/NewsletterPageHeader'
 
 const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
@@ -17,41 +20,42 @@ export default function OrganizationsPage() {
   const { t } = useTranslation()
   const [orgs, setOrgs] = useState<Organization[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    let cancelled = false
+    setStatus('loading')
     fetchOrganizations()
-      .then(({ data }) => { setOrgs(data); setStatus('success') })
-      .catch(() => setStatus('error'))
-  }, [])
+      .then(({ data }) => { if (!cancelled) { setOrgs(data); setStatus('success') } })
+      .catch(() => { if (!cancelled) setStatus('error') })
+    return () => { cancelled = true }
+  }, [reloadKey])
 
   return (
     <div className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <header className="mb-10 lg:mb-14">
-          <h1 className="font-display text-h1 lg:text-display font-bold text-ink-primary leading-tight">
-            {t('orgs.pageTitle')}
-          </h1>
-          <p className="font-body text-body-lg text-ink-secondary mt-2">
-            {t('orgs.pageSubtitle')}
-          </p>
-        </header>
+        <NewsletterPageHeader current="organizations" title={t('orgs.pageTitle')} subtitle={t('orgs.pageSubtitle')} />
 
         {status === 'loading' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6" aria-busy="true">
+          <LoadingRegion className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {[1,2,3,4].map((i) => (
-              <div key={i} className="rounded-card border border-border overflow-hidden">
+              <div key={i} className="rounded-card border border-border dark:border-night-border overflow-hidden">
                 <div className="skeleton h-32" />
                 <div className="p-6 flex flex-col gap-3">
-                  <div className="skeleton h-6 w-1/3 rounded" />
-                  <div className="skeleton h-4 w-full rounded" />
-                  <div className="skeleton h-4 w-4/5 rounded" />
+                  <div className="skeleton h-6 w-1/3 rounded-sm" />
+                  <div className="skeleton h-4 w-full rounded-sm" />
+                  <div className="skeleton h-4 w-4/5 rounded-sm" />
                 </div>
               </div>
             ))}
-          </div>
+          </LoadingRegion>
         )}
 
-        {status === 'success' && (
+        {status === 'success' && orgs.length === 0 && (
+          <EmptyState title={t('orgs.empty.title')} body={t('orgs.empty.message')} />
+        )}
+
+        {status === 'success' && orgs.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8">
             {orgs.map((org) => (
               <OrgCard key={org.slug} org={org} t={t} />
@@ -60,9 +64,7 @@ export default function OrganizationsPage() {
         )}
 
         {status === 'error' && (
-          <p role="alert" className="font-body text-body text-ink-secondary">
-            {t('articles.error.message')}
-          </p>
+          <ErrorState message={t('orgs.loadError')} onRetry={() => setReloadKey((k) => k + 1)} />
         )}
       </div>
     </div>
@@ -75,12 +77,14 @@ interface OrgCardProps {
 }
 
 function OrgCard({ org, t }: OrgCardProps) {
+  const { i18n } = useTranslation()
   const heroBg = GEO_BG[org.color ?? ''] ?? GEO_BG.blue
+  const followers = org.followerCount ?? 0
 
   return (
     <Link
       to={newsletterPath(`/organizations/${org.slug}`)}
-      className="group rounded-card border border-border bg-white overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col animate-fade-in focus-visible:rounded-card"
+      className="group rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col focus-visible:rounded-card"
     >
       {/* Geometric hero */}
       <div className={['relative h-32 overflow-hidden', heroBg].join(' ')}>
@@ -102,9 +106,9 @@ function OrgCard({ org, t }: OrgCardProps) {
         <p className="font-body text-body-sm text-ink-secondary leading-relaxed line-clamp-3">
           {org.description}
         </p>
-        <div className="flex items-center gap-4 mt-auto pt-3 border-t border-border">
+        <div className="flex items-center gap-4 mt-auto pt-3 border-t border-border dark:border-night-border">
           <span className="font-mono text-label text-ink-secondary">
-            {t('orgs.followers', { count: (org.followerCount ?? 0).toLocaleString() })}
+            {t('orgs.followers', { count: followers, formatted: followers.toLocaleString(localeFor(i18n.language)) })}
           </span>
         </div>
       </div>

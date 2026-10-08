@@ -2,6 +2,7 @@ import { useState, useRef, type DragEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ALLOWED_IMAGE_TYPES as ALLOWED_TYPES, MAX_IMAGE_BYTES as MAX_BYTES, uploadViaSignedUrl } from '../api/media'
 import { ApiError } from '@/api/client'
+import { Alert, Button, CloseIcon, IconButton, ToggleGroup, inputClass } from '@/components/ui'
 import { isStaff } from '../store/authStore'
 import { useAuthSession } from '../hooks/useAuthSession'
 
@@ -77,40 +78,35 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   return (
     <div className="flex flex-col gap-3">
       {hasImage && (
-        <div className="relative rounded-card overflow-hidden border border-border group">
+        <div className="relative rounded-card overflow-hidden border border-border dark:border-night-border">
           <img
             src={value ?? undefined}
             alt={t('imageUploader.previewAlt')}
             className="w-full h-40 object-cover"
             onError={() => { setError(t('imageUploader.errors.load')); onChange('') }}
           />
-          <button
-            type="button"
+          <IconButton
             onClick={() => { onChange(''); setUrl('') }}
-            className="absolute top-2 right-2 w-7 h-7 bg-black/60 text-white rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150"
             aria-label={t('imageUploader.remove')}
+            className="absolute top-1 right-1 !bg-black/60 !text-white hover:!bg-black/75"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+            <CloseIcon size={16} />
+          </IconButton>
         </div>
       )}
 
       {canUpload && (
-        <div className="flex rounded-sm border border-border overflow-hidden text-sm">
-          {(['upload', 'url'] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => { setTab(key); setError('') }}
-              className={[
-                'flex-1 min-h-[36px] font-mono text-label uppercase tracking-widest transition-colors duration-150',
-                activeTab === key ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface',
-              ].join(' ')}
-            >
-              {key === 'upload' ? t('imageUploader.uploadTab') : t('imageUploader.urlTab')}
-            </button>
-          ))}
-        </div>
+        <ToggleGroup<Tab>
+          joined
+          className="self-start"
+          label={t('imageUploader.source')}
+          value={activeTab}
+          onChange={(key) => { setTab(key); setError('') }}
+          options={[
+            { value: 'upload', label: t('imageUploader.uploadTab') },
+            { value: 'url', label: t('imageUploader.urlTab') },
+          ]}
+        />
       )}
 
       {activeTab === 'upload' && (
@@ -122,7 +118,7 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click() }}
           aria-label={t('imageUploader.dropzone')}
-          className="border-2 border-dashed border-border rounded-card p-6 text-center cursor-pointer hover:border-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded-card"
+          className="border-2 border-dashed border-border dark:border-night-border rounded-card p-6 text-center cursor-pointer hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors duration-150 focus-visible:rounded-card"
         >
           {loading ? (
             <p className="font-body text-body-sm text-ink-secondary">{t('imageUploader.uploading')}</p>
@@ -132,7 +128,7 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
               <p className="font-body text-body-sm text-ink-secondary">
                 <Trans i18nKey="imageUploader.dropHint" components={{ 1: <span className="text-primary underline" /> }} />
               </p>
-              <p className="font-mono text-label text-border mt-1">{t('imageUploader.limits')}</p>
+              <p className="font-mono text-label text-ink-secondary mt-1">{t('imageUploader.limits')}</p>
             </>
           )}
           <input
@@ -146,27 +142,26 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
       )}
 
       {activeTab === 'url' && (
-        <div className="flex gap-2">
+        <div
+          className="flex gap-2"
+        >
           <input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyUrl() } }}
             placeholder="https://…"
-            className="flex-1 min-h-[44px] px-3 py-2 border border-border rounded-sm font-body text-body text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+            aria-label={t('imageUploader.urlLabel')}
+            aria-invalid={Boolean(error) || undefined}
+            className={inputClass({ invalid: Boolean(error), className: 'flex-1' })}
           />
-          <button
-            type="button"
-            onClick={applyUrl}
-            disabled={!url.trim()}
-            className="min-h-[44px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 disabled:opacity-50 transition-colors duration-150"
-          >
+          <Button variant="outline" onClick={applyUrl} disabled={!url.trim()}>
             {t('imageUploader.apply')}
-          </button>
+          </Button>
         </div>
       )}
 
-      {error && <p className="font-body text-body-sm text-red-600">{error}</p>}
+      {error && <Alert tone="error">{error}</Alert>}
 
       {!hasImage && (
         <p className="font-mono text-label text-ink-secondary">

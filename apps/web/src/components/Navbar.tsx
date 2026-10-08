@@ -3,9 +3,11 @@ import { Link, NavLink } from 'react-router-dom'
 import { useThemeContext } from '../context/useThemeContext'
 import AuthMenu from './AuthMenu'
 import { useCapability } from '../hooks/useCapability'
+import { iconButtonClass } from './ui'
 
 // The CEITBA app's sections. Home is the brand link.
 const SECTIONS = [
+  { to: '/benefits', label: 'nav.benefits' },
   { to: '/scheduler', label: 'nav.scheduler' },
   { to: '/newsletter', label: 'nav.newsletter' },
   { to: '/apuntes', label: 'nav.apuntes', capability: 'apuntes' },
@@ -21,7 +23,7 @@ function SectionLinks({ className, linkClassName }: { className: string; linkCla
           key={to}
           to={to}
           className={({ isActive }) =>
-            `${linkClassName} min-h-[36px] inline-flex items-center flex-shrink-0 font-mono text-label uppercase tracking-widest transition-colors duration-150 border-b-2 ${
+            `${linkClassName} min-h-[44px] inline-flex items-center flex-shrink-0 font-mono text-label uppercase tracking-wide md:tracking-widest transition-colors duration-150 border-b-2 ${
               isActive
                 ? 'text-primary border-accent'
                 : 'text-ink-secondary dark:text-night-muted hover:text-primary border-transparent'
@@ -66,7 +68,7 @@ export default function Navbar() {
             className="flex flex-col justify-center hover:opacity-80 transition-opacity duration-150"
           >
             <span className="font-display text-h5 font-bold text-primary tracking-tight leading-tight">CEITBA</span>
-            <span className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest leading-tight">
+            <span className="hidden sm:block font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest leading-tight">
               {t('nav.tagline')}
             </span>
           </Link>
@@ -75,16 +77,18 @@ export default function Navbar() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <button
+              type="button"
               onClick={toggleLanguage}
-              className="min-h-[36px] px-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+              className="min-h-[44px] min-w-[44px] px-2 rounded-sm font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
               aria-label={t('nav.langToggleAria')}
             >
               {t('nav.langToggleLabel')}
             </button>
 
             <button
+              type="button"
               onClick={toggle}
-              className="min-h-[36px] w-9 flex items-center justify-center text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150 rounded-sm hover:bg-primary-50 dark:hover:bg-primary-900"
+              className={iconButtonClass()}
               aria-label={theme === 'dark' ? t('nav.themeToggleLight') : t('nav.themeToggleDark')}
             >
               {theme === 'dark' ? (
@@ -111,8 +115,8 @@ export default function Navbar() {
         </div>
       </header>
       <SectionLinks
-        className="md:hidden flex items-center gap-5 overflow-x-auto px-4 border-b border-border dark:border-night-border bg-surface dark:bg-night-bg"
-        linkClassName="py-1"
+        className="md:hidden flex flex-wrap items-center gap-x-4 px-4 border-b border-border dark:border-night-border bg-surface dark:bg-night-bg"
+        linkClassName=""
       />
     </>
   )

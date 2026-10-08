@@ -10,6 +10,7 @@ import {
   sgaScheduleOf,
 } from '../../services/corrections'
 import CorrectionVoteButtons from './CorrectionVoteButtons'
+import { Badge, Button } from '@/components/ui'
 
 interface Props {
   subject: Subject
@@ -55,9 +56,7 @@ export default function CorrectionStatus({ subject, commission, onSuggest, class
       {applied && (
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="inline-flex px-1.5 py-0.5 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary dark:text-primary-200 font-mono text-label uppercase tracking-widest">
-              {t('corrections.appliedBadge')}
-            </span>
+            <Badge tone="info">{t('corrections.appliedBadge')}</Badge>
             <span className="text-ink-secondary dark:text-night-muted">
               {t('corrections.sga', { schedule: sgaText })}
             </span>
@@ -86,14 +85,15 @@ export default function CorrectionStatus({ subject, commission, onSuggest, class
       ))}
 
       {pending.length > 1 && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setShowAll((v) => !v)}
           aria-expanded={showAll}
-          className="self-start text-ink-secondary dark:text-night-muted hover:text-primary underline-offset-2 hover:underline"
+          className="self-start"
         >
           {showAll ? t('corrections.less') : t('corrections.more', { count: pending.length - 1 })}
-        </button>
+        </Button>
       )}
 
       {ended && (applied || pending.length > 0) && (
@@ -101,14 +101,15 @@ export default function CorrectionStatus({ subject, commission, onSuggest, class
       )}
 
       {onSuggest && !ended && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onSuggest}
           aria-label={t('corrections.actionAria', { commission: commission.name })}
-          className="self-start font-semibold text-primary dark:text-primary-300 underline-offset-2 hover:underline"
+          className="self-start"
         >
           {t('corrections.action')}
-        </button>
+        </Button>
       )}
     </div>
   )

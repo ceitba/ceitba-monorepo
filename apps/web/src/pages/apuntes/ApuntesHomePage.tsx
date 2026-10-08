@@ -5,9 +5,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
 import { useDebounced } from '../../hooks/useDebounced'
 import { groupPlanSubjects, semesterLabel } from '../../utils/planGroups'
-import { apuntesErrorMessage, formatDate } from '../../utils/apuntes'
-import EmptyState from '../../components/apuntes/EmptyState'
-import { BTN_PRIMARY, INPUT } from '../../components/apuntes/buttons'
+import { formatDate } from '../../utils/apuntes'
+import { CloseIcon, EmptyState, ErrorState, IconButton, SkeletonCards, buttonClass, inputClass } from '../../components/ui'
+import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
 import PinButton, { PinIcon } from '../../components/apuntes/PinButton'
 import PinNotice from '../../components/apuntes/PinNotice'
 import { usePins } from '../../hooks/usePins'
@@ -38,12 +38,15 @@ export default function ApuntesHomePage() {
   // The student's plan subjects ("Tus materias"); [] without a plan.
   const [mine, setMine] = useState<ApunteSubject[] | null>(null)
   const [mineFailed, setMineFailed] = useState(false)
+  const [mineTick, setMineTick] = useState(0)
 
   useEffect(() => {
+    setMineFailed(false)
+    setMine(null)
     fetchMyPlanSubjects()
       .then((res) => setMine(res ?? []))
-      .catch(() => setMineFailed(true))
-  }, [])
+      .catch((e) => { console.error(e); setMineFailed(true) })
+  }, [mineTick])
 
   useEffect(() => {
     const next = new URLSearchParams(params)
@@ -59,7 +62,7 @@ export default function ApuntesHomePage() {
     setLoading(true)
     fetchApunteSubjects(debounced || undefined, 20)
       .then((res) => { if (reqRef.current === id) { setSubjects(res); setError(null) } })
-      .catch((e) => { if (reqRef.current === id) setError(apuntesErrorMessage(e, t)) })
+      .catch((e) => { if (reqRef.current === id) setError(apuntesErrorCopy(e, t)) })
       .finally(() => { if (reqRef.current === id) setLoading(false) })
   }, [debounced, tick, t])
 
@@ -106,7 +109,7 @@ export default function ApuntesHomePage() {
           <div className="lg:max-w-xs p-5 rounded-card border border-accent-200 dark:border-accent-800 bg-accent-50 dark:bg-accent-900/20 flex flex-col gap-3">
             <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{t('apuntes.home.ctaTitle')}</p>
             <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('apuntes.home.ctaBody')}</p>
-            <Link to="/apuntes/mis-apuntes" className={`${BTN_PRIMARY} self-start`}>
+            <Link to="/apuntes/mis-apuntes" className={buttonClass({ className: 'self-start' })}>
               {t('apuntes.home.cta')}
             </Link>
           </div>
@@ -157,7 +160,7 @@ export default function ApuntesHomePage() {
           <p className="mb-6 flex items-center gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
             <span className="text-accent-600 dark:text-accent-300"><PinIcon size={14} /></span>
             <span className="flex-1">{t('apuntes.pins.hint')}</span>
-            <button type="button" onClick={dismissHint} aria-label={t('errors.dismiss')} className="leading-none text-h5 opacity-60 hover:opacity-100">×</button>
+            <IconButton size="sm" onClick={dismissHint} aria-label={t('errors.dismiss')}><CloseIcon size={16} /></IconButton>
           </p>
         )}
         <label htmlFor="apuntes-search" className="sr-only">{t('apuntes.home.searchLabel')}</label>
@@ -172,20 +175,20 @@ export default function ApuntesHomePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('apuntes.home.searchPlaceholder')}
-            className={`${INPUT} pl-10 py-3 text-body`}
+            className={inputClass({ className: 'pl-10 text-body' })}
             autoComplete="off"
           />
         </div>
 
-        {!searching && !mineFailed && (
+        {!searching && (
           <section aria-labelledby="apuntes-mine-heading" className="mt-10">
             <h2 id="apuntes-mine-heading" className="font-display font-bold text-h4 text-ink-primary dark:text-night-text mb-1">
               {t('apuntes.home.mine')}
             </h2>
-            {mine == null ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3" aria-busy="true" aria-hidden="true">
-                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 rounded-card skeleton" />)}
-              </div>
+            {mineFailed ? (
+              <ErrorState compact message={t('apuntes.home.mineFailed')} onRetry={() => setMineTick((n) => n + 1)} />
+            ) : mine == null ? (
+              <SkeletonCards count={3} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3" cardClassName="h-24" />
             ) : mine.length === 0 ? (
               <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
                 {t('apuntes.home.mineNoPlan')}{' '}
@@ -224,20 +227,9 @@ export default function ApuntesHomePage() {
           {searching ? t('apuntes.home.results', { q: debounced }) : t('apuntes.home.recent')}
         </h2>
 
-        {loading && subjects == null && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true" aria-hidden="true">
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-24 rounded-card skeleton" />)}
-          </div>
-        )}
+        {loading && subjects == null && <SkeletonCards count={6} cardClassName="h-24" />}
 
-        {error && !loading && (
-          <div role="alert" className="flex flex-col items-start gap-3 py-6">
-            <p className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>
-            <button type="button" onClick={() => setTick((n) => n + 1)} className="font-mono text-label uppercase tracking-widest text-primary hover:underline">
-              {t('errors.retry')}
-            </button>
-          </div>
-        )}
+        {error && !loading && <ErrorState message={error} onRetry={() => setTick((n) => n + 1)} />}
 
         {!error && subjects != null && subjects.length === 0 && !loading && (
           searching ? (
@@ -246,7 +238,7 @@ export default function ApuntesHomePage() {
             <EmptyState
               title={t('apuntes.home.emptyTitle')}
               body={t('apuntes.home.emptyBody')}
-              action={<Link to="/apuntes/mis-apuntes" className={BTN_PRIMARY}>{t('apuntes.home.cta')}</Link>}
+              action={<Link to="/apuntes/mis-apuntes" className={buttonClass({ variant: 'outline' })}>{t('apuntes.home.cta')}</Link>}
             />
           )
         )}

@@ -16,7 +16,11 @@ import {
 } from '../../api/admin'
 import { getCachedSession, getSession } from '../../store/authStore'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ErrorBanner from '../../components/ErrorBanner'
+import {
+  Alert, Badge, Button, CloseIcon, EmptyState, ErrorState, Field, IconButton, Modal, SkeletonRows, ToggleGroup,
+  inputClass, selectClass, toast,
+} from '../../components/ui'
+import { adminErrorMessage } from './adminErrors'
 
 const STAFF_BRANCH = 'DIRECTIVES'
 const STAFF_ROLE = 'MEMBER'
@@ -33,9 +37,12 @@ function defaultStaffRange() {
 }
 
 type SortKey = 'newest' | 'oldest'
+type Scope = 'all' | 'staff'
 
-// `initialAddingTo` opens the tab in "adding members to <org>" mode (from
-// "Agregar miembros" right after creating an org): every user is listed, as
+// Personas: everyone who signed in to the site (Staff and Usuarios used to
+// be two tabs over the same people). `initialAddingTo` opens it in "adding
+// members to <org>" mode (from
+// "Agregar miembros" in the Organizations tab): every user is listed, as
 // usual, and each row that isn't in that org gets a one-click
 // "Agregar a <org>" button. A new org has no members, so filtering by it
 // would only show an empty table.
@@ -43,12 +50,17 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   const { t } = useTranslation()
   const [page, setPage]       = useState<UsersPage | null>(null)
   const [orgs, setOrgs]       = useState<OrganizationSummary[]>([])
-  const [error, setError]     = useState<string | null>(null)
+  const [orgsError, setOrgsError] = useState<string | null>(null)
+  const [orgsTick, setOrgsTick]   = useState(0)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [unassigning, setUnassigning] = useState<AdminUser | null>(null)
-  const [removingOrg, setRemovingOrg] = useState<{ user: AdminUser; slug: string } | null>(null)
-  const [demotingOrg, setDemotingOrg] = useState<{ user: AdminUser; slug: string } | null>(null)
+  // Granting and revoking STAFF change who can use this panel: both confirm.
+  const [staffChange, setStaffChange] = useState<{ user: AdminUser; grant: boolean } | null>(null)
+  const [staffError, setStaffError]   = useState<string | null>(null)
+  // "+ Organización" opens one small dialog instead of a dropdown on every row.
+  const [orgPicker, setOrgPicker] = useState<{ user: AdminUser; options: OrganizationSummary[] } | null>(null)
+  const [pickedOrg, setPickedOrg] = useState('')
 
   // Filters / paging state. `query` is the input value; `q` is the debounced
   // value that actually drives requests, so we don't fire one fetch per keystroke.
@@ -56,8 +68,12 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   const [q, setQ]             = useState('')
   const [sort, setSort]       = useState<SortKey>('newest')
   const [orgSlug, setOrgSlug] = useState('')
+  const [scope, setScope]     = useState<Scope>('all')
   const [pageNum, setPageNum] = useState(1)
   const [addingTo, setAddingTo] = useState<OrganizationSummary | null>(initialAddingTo ?? null)
+
+  // The tab can be re-opened in "adding" mode for another org while mounted.
+  useEffect(() => { setAddingTo(initialAddingTo ?? null) }, [initialAddingTo])
 
   // Entering the mode: go straight to the search box.
   const searchRef = useRef<HTMLInputElement>(null)
@@ -74,8 +90,13 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
-    fetchOrganizations().then(setOrgs).catch(() => setOrgs([]))
-  }, [])
+    let active = true
+    setOrgsError(null)
+    fetchOrganizations()
+      .then((data) => { if (active) setOrgs(data) })
+      .catch((e) => { if (active) setOrgsError(adminErrorMessage(e, t)) })
+    return () => { active = false }
+  }, [orgsTick, t])
 
   // Debounce the search input. Filter changes reset to page 1 in the same
   // update (not in a follow-up effect), so we don't first fire a wasted
@@ -93,7 +114,8 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
     q: q || undefined,
     sort,
     organization: orgSlug || undefined,
-  }), [pageNum, q, sort, orgSlug])
+    staff: scope === 'staff' || undefined,
+  }), [pageNum, q, sort, orgSlug, scope])
 
   useEffect(() => {
     const id = ++reqIdRef.current
@@ -102,62 +124,57 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
       .then((res) => {
         if (reqIdRef.current !== id) return
         setPage(res)
-        setError(null)
+        setLoadError(null)
         // The result set can shrink under us (e.g. the last user on the last
         // page was removed from the filtered org): clamp to the last page.
         const lastPage = Math.max(1, Math.ceil(res.meta.total / PAGE_SIZE))
         if ((params.page ?? 1) > lastPage) setPageNum(lastPage)
       })
-      .catch((e: Error) => {
+      .catch((e: unknown) => {
         if (reqIdRef.current !== id) return
-        setError(e.message)
+        setLoadError(adminErrorMessage(e, t))
       })
       .finally(() => {
         if (reqIdRef.current === id) setLoading(false)
       })
-  }, [params, refreshTick])
+  }, [params, refreshTick, t])
 
   function reload() {
     setRefreshTick((n) => n + 1)
   }
 
-  async function makeStaff(u: AdminUser) {
-    setError(null); setBusyId(u.id)
-    try {
-      await assignStaff({ email: u.email, branch: STAFF_BRANCH, role: STAFF_ROLE, ...defaultStaffRange() })
-      reload()
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setBusyId(null)
-    }
-  }
+  const orgName = (slug: string) => orgs.find((o) => o.slug === slug)?.name ?? slug
+  const userName = (u: AdminUser) => u.name ?? u.email
 
-  async function confirmUnassign() {
-    if (!unassigning) return
-    const u = unassigning
-    setError(null); setBusyId(u.id)
+  async function confirmStaffChange() {
+    if (!staffChange) return
+    const { user: u, grant } = staffChange
+    setStaffError(null); setBusyId(u.id)
     try {
-      await revokeStaff(u.id)
-      setUnassigning(null)
+      if (grant) {
+        await assignStaff({ email: u.email, branch: STAFF_BRANCH, role: STAFF_ROLE, ...defaultStaffRange() })
+      } else {
+        await revokeStaff(u.id)
+      }
+      setStaffChange(null)
       // Unassigning yourself: refresh the session so StaffGuard sees the
       // lost role and leaves /manage instead of showing a dead admin UI.
-      if (u.id === getCachedSession()?.id) {
+      if (!grant && u.id === getCachedSession()?.id) {
         await getSession({ force: true })
         return
       }
       reload()
     } catch (e) {
-      setUnassigning(null)
-      setError((e as Error).message)
+      setStaffError(adminErrorMessage(e, t))
     } finally {
       setBusyId(null)
     }
   }
 
-  async function addOrg(u: AdminUser, slug: string) {
-    if (!slug) return
-    setError(null); setBusyId(u.id)
+  // Resolves true when the membership was added (the picker closes only then).
+  async function addOrg(u: AdminUser, slug: string): Promise<boolean> {
+    if (!slug) return false
+    setBusyId(u.id)
     try {
       const m = await addUserOrganization(u.id, slug, 'member')
       // Show the chip (and drop the "Agregar a" button) right away instead of
@@ -170,45 +187,39 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           : x)),
       })
       reload()
+      return true
     } catch (e) {
-      setError((e as Error).message)
+      toast.error(adminErrorMessage(e, t))
+      return false
     } finally {
       setBusyId(null)
     }
   }
 
-  // Org admins can see the org's followers (names + emails); promoting is
-  // instant, demoting goes through a confirm dialog.
+  // Org admins can see the org's followers (names + emails). Both directions
+  // are a single click: the change can be undone the same way.
   async function setOrgRole(u: AdminUser, slug: string, role: MembershipRole) {
-    setError(null); setBusyId(u.id)
+    setBusyId(u.id)
     try {
       await updateUserOrganizationRole(u.id, slug, role)
       reload()
     } catch (e) {
-      setError((e as Error).message)
+      toast.error(adminErrorMessage(e, t))
     } finally {
       setBusyId(null)
     }
   }
 
-  async function confirmDemoteOrg() {
-    if (!demotingOrg) return
-    const { user: u, slug } = demotingOrg
-    await setOrgRole(u, slug, 'member')
-    setDemotingOrg(null)
-  }
-
-  async function confirmRemoveOrg() {
-    if (!removingOrg) return
-    const { user: u, slug } = removingOrg
-    setError(null); setBusyId(u.id)
+  // Removing a membership is undone by adding the person back, so it
+  // doesn't ask; the toast says what happened.
+  async function removeOrg(u: AdminUser, slug: string) {
+    setBusyId(u.id)
     try {
       await removeUserOrganization(u.id, slug)
-      setRemovingOrg(null)
+      toast.success(t('manage.users.removedFromOrg', { name: userName(u), org: orgName(slug) }))
       reload()
     } catch (e) {
-      setRemovingOrg(null)
-      setError((e as Error).message)
+      toast.error(adminErrorMessage(e, t))
     } finally {
       setBusyId(null)
     }
@@ -220,23 +231,35 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
 
   return (
     <div className="flex flex-col gap-4">
-      {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+      {orgsError && (
+        <Alert
+          tone="error"
+          action={<Button size="sm" variant="outline" onClick={() => setOrgsTick((n) => n + 1)}>{t('errors.retry')}</Button>}
+        >
+          {t('manage.users.orgsLoadError')}
+        </Alert>
+      )}
 
       {addingTo && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-sm border font-body text-body-sm bg-primary-50 text-primary-800 border-primary-200 dark:bg-night-surface dark:text-night-text dark:border-primary-300"
+        <Alert
+          tone="info"
+          action={<Button size="sm" variant="outline" onClick={() => setAddingTo(null)}>{t('manage.users.addingDone')}</Button>}
         >
-          <p className="flex-1 min-w-[200px]">{t('manage.users.addingBanner', { org: addingTo.name })}</p>
-          <button
-            type="button"
-            onClick={() => setAddingTo(null)}
-            className="px-3 py-1 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600 transition-colors"
-          >
-            {t('manage.users.addingDone')}
-          </button>
-        </div>
+          {t('manage.users.addingBanner', { org: addingTo.name })}
+        </Alert>
       )}
+
+      <ToggleGroup<Scope>
+        joined
+        className="self-start"
+        label={t('manage.users.scopeAria')}
+        value={scope}
+        onChange={(next) => { setScope(next); setPageNum(1) }}
+        options={[
+          { value: 'all', label: t('manage.users.scope.all') },
+          { value: 'staff', label: t('manage.users.scope.staff') },
+        ]}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -245,12 +268,14 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('manage.users.searchPlaceholder')}
-          className="flex-1 min-w-[200px] px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm focus:outline-none focus:border-primary"
+          aria-label={t('manage.users.searchAria')}
+          className={inputClass({ className: 'flex-1 min-w-[200px] !w-auto' })}
         />
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value as SortKey); setPageNum(1) }}
-          className="px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
+          aria-label={t('manage.users.sortAria')}
+          className={selectClass({ className: '!w-auto' })}
         >
           <option value="newest">{t('manage.users.sort.newest')}</option>
           <option value="oldest">{t('manage.users.sort.oldest')}</option>
@@ -258,199 +283,225 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
         <select
           value={orgSlug}
           onChange={(e) => { setOrgSlug(e.target.value); setPageNum(1) }}
-          className="px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
+          aria-label={t('manage.users.filterOrgAria')}
+          className={selectClass({ className: '!w-auto' })}
         >
           <option value="">{t('manage.users.filterAllOrgs')}</option>
-          {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name ?? o.slug}</option>)}
+          {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-card border border-border dark:border-night-border">
-        <table className="w-full font-body text-body-sm">
-          <thead className="bg-page-bg dark:bg-night-bg">
-            <tr className="text-left">
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.user')}</th>
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.staff')}</th>
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.organizations')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              const orgOptions = orgs.filter((o) => !u.organizations.find((m) => m.slug === o.slug))
-              return (
-                <tr key={u.id} className="border-t border-border dark:border-night-border align-top">
-                  <td className="px-3 py-3">
-                    <p className="font-semibold text-ink-primary dark:text-night-text">{u.name ?? u.email}</p>
-                    <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{u.email}</p>
-                  </td>
-                  <td className="px-3 py-3">
-                    {u.isStaff ? (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="px-3 py-1 rounded-sm bg-primary text-white border border-primary font-mono text-label uppercase tracking-widest">
-                          {t('manage.users.staffOn')}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={busyId === u.id}
-                          onClick={() => setUnassigning(u)}
-                          className="text-red-600 dark:text-red-400 font-mono text-label uppercase tracking-widest hover:underline disabled:opacity-50"
-                        >
-                          {t('manage.users.unassign')}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={busyId === u.id}
-                        onClick={() => makeStaff(u)}
-                        className="px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
-                      >
-                        {t('manage.users.staffOff')}
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    {addingTo && !u.organizations.some((m) => m.slug === addingTo.slug) && (
-                      <button
-                        type="button"
-                        disabled={busyId === u.id}
-                        onClick={() => addOrg(u, addingTo.slug)}
-                        aria-label={t('manage.users.addToOrgAria', { org: addingTo.name, name: u.name ?? u.email })}
-                        className="mb-2 px-3 py-1 rounded-sm border border-primary text-primary dark:border-primary-300 dark:text-primary-300 font-mono text-label uppercase tracking-widest hover:bg-primary-50 dark:hover:bg-night-raised transition-colors disabled:opacity-50"
-                      >
-                        {busyId === u.id ? t('manage.users.addingToOrg') : t('manage.users.addToOrg', { org: addingTo.name })}
-                      </button>
-                    )}
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {u.organizations.map((m) => {
-                        const isAdmin = m.role === 'admin'
-                        return (
-                          <span key={m.slug} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border dark:border-night-border">
-                            {m.slug}
-                            <button
-                              type="button"
-                              disabled={busyId === u.id}
-                              onClick={() => (isAdmin
-                                ? setDemotingOrg({ user: u, slug: m.slug })
-                                : setOrgRole(u, m.slug, 'admin'))}
-                              aria-label={t(isAdmin ? 'manage.users.makeOrgMember' : 'manage.users.makeOrgAdmin', { org: m.slug })}
-                              title={t(isAdmin ? 'manage.users.makeOrgMember' : 'manage.users.makeOrgAdmin', { org: m.slug })}
-                              className={isAdmin
-                                ? 'px-1.5 rounded-sm bg-primary text-white border border-primary font-mono text-label uppercase tracking-widest disabled:opacity-50'
-                                : 'px-1.5 rounded-sm border border-border dark:border-night-border text-ink-secondary dark:text-night-muted font-mono text-label uppercase tracking-widest hover:border-primary hover:text-primary transition-colors disabled:opacity-50'}
-                            >
-                              {t(isAdmin ? 'manage.users.orgAdmin' : 'manage.users.orgMember')}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === u.id}
-                              onClick={() => setRemovingOrg({ user: u, slug: m.slug })}
-                              aria-label={t('manage.users.removeOrgAria', { org: m.slug, name: u.name ?? u.email })}
-                              className="text-red-600 dark:text-red-400 disabled:opacity-50"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        )
-                      })}
-                      {u.organizations.length === 0 && <span className="text-ink-secondary dark:text-night-muted">{t('manage.users.noOrgs')}</span>}
-                    </div>
-                    {orgOptions.length > 0 && (
-                      <select
-                        value=""
-                        onChange={(e) => addOrg(u, e.target.value)}
-                        className="px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
-                      >
-                        <option value="">{t('manage.users.addOrg')}</option>
-                        {orgOptions.map((o) => <option key={o.slug} value={o.slug}>{o.slug}</option>)}
-                      </select>
-                    )}
-                  </td>
+      {loadError && !page ? (
+        <ErrorState message={loadError} onRetry={reload} />
+      ) : (
+        <>
+          {loadError && (
+            <Alert tone="error" action={<Button size="sm" variant="outline" onClick={reload}>{t('errors.retry')}</Button>}>
+              {loadError}
+            </Alert>
+          )}
+          <div className="overflow-x-auto rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface">
+            <table className="w-full font-body text-body-sm" aria-busy={loading || undefined}>
+              <thead className="bg-page-bg dark:bg-night-raised text-ink-secondary dark:text-night-muted">
+                <tr className="text-left">
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.user')}</th>
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.staff')}</th>
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.users.col.organizations')}</th>
                 </tr>
-              )
-            })}
-            {!loading && users.length === 0 && (orgSlug && !q ? (
-              // Filtering by an org with no members: offer the same
-              // "adding members" mode the Organizations tab opens.
-              <tr>
-                <td colSpan={3} className="px-3 py-8 text-center">
-                  <p className="font-semibold text-ink-primary dark:text-night-text">
-                    {t('manage.users.noOrgMembers', { org: orgs.find((o) => o.slug === orgSlug)?.name ?? orgSlug })}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddingTo(orgs.find((o) => o.slug === orgSlug) ?? { slug: orgSlug, name: orgSlug })
-                      setOrgSlug('')
-                      setPageNum(1)
-                    }}
-                    className="mt-3 px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors"
-                  >
-                    {t('manage.users.addMembers')}
-                  </button>
-                </td>
-              </tr>
-            ) : (
-              <tr><td colSpan={3} className="px-3 py-6 text-center text-ink-secondary">{t('manage.empty')}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {!page && loading && <SkeletonRows rows={8} cols={3} />}
+                {users.map((u) => {
+                  const orgOptions = orgs.filter((o) => !u.organizations.find((m) => m.slug === o.slug))
+                  const busy = busyId === u.id
+                  return (
+                    <tr key={u.id} className="border-t border-border dark:border-night-border align-top">
+                      <td className="px-3 py-3">
+                        <p className="font-semibold text-ink-primary dark:text-night-text">{userName(u)}</p>
+                        <p className="font-mono text-label text-ink-secondary dark:text-night-muted">{u.email}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        {u.isStaff ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone="info">{t('manage.users.staffOn')}</Badge>
+                            <Button
+                              size="sm"
+                              variant="dangerGhost"
+                              disabled={busy}
+                              onClick={() => { setStaffError(null); setStaffChange({ user: u, grant: false }) }}
+                              aria-label={t('manage.users.unassignAria', { name: userName(u) })}
+                            >
+                              {t('manage.users.unassign')}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => { setStaffError(null); setStaffChange({ user: u, grant: true }) }}
+                            aria-label={t('manage.users.assignAria', { name: userName(u) })}
+                          >
+                            {t('manage.users.staffOff')}
+                          </Button>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {addingTo && !u.organizations.some((m) => m.slug === addingTo.slug) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mb-2"
+                            loading={busy}
+                            loadingLabel={t('manage.users.addingToOrg')}
+                            onClick={() => addOrg(u, addingTo.slug)}
+                            aria-label={t('manage.users.addToOrgAria', { org: addingTo.name, name: userName(u) })}
+                          >
+                            {t('manage.users.addToOrg', { org: addingTo.name })}
+                          </Button>
+                        )}
+                        {u.organizations.length > 0 ? (
+                          <ul className="flex flex-col gap-1 mb-2">
+                            {u.organizations.map((m) => {
+                              const isAdmin = m.role === 'admin'
+                              const org = orgName(m.slug)
+                              return (
+                                <li key={m.slug} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="font-semibold text-ink-primary dark:text-night-text">{org}</span>
+                                  <Badge tone={isAdmin ? 'info' : 'neutral'}>
+                                    {t(isAdmin ? 'manage.users.orgAdmin' : 'manage.users.orgMember')}
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={busy}
+                                    onClick={() => setOrgRole(u, m.slug, isAdmin ? 'member' : 'admin')}
+                                    aria-label={t(isAdmin ? 'manage.users.makeOrgMemberAria' : 'manage.users.makeOrgAdminAria', { org, name: userName(u) })}
+                                  >
+                                    {t(isAdmin ? 'manage.users.makeOrgMember' : 'manage.users.makeOrgAdmin')}
+                                  </Button>
+                                  <IconButton
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={() => removeOrg(u, m.slug)}
+                                    aria-label={t('manage.users.removeOrgAria', { org, name: userName(u) })}
+                                    className="hover:!text-red-600 dark:hover:!text-red-400"
+                                  >
+                                    <CloseIcon size={16} />
+                                  </IconButton>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="mb-2 text-ink-secondary dark:text-night-muted">{t('manage.users.noOrgs')}</p>
+                        )}
+                        {orgOptions.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy}
+                            onClick={() => { setPickedOrg(orgOptions[0]?.slug ?? ''); setOrgPicker({ user: u, options: orgOptions }) }}
+                            aria-label={t('manage.users.addOrgAria', { name: userName(u) })}
+                          >
+                            {t('manage.users.addOrgButton')}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+                {page && !loading && users.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-3">
+                      {orgSlug && !q ? (
+                        // Filtering by an org with no members: offer the same
+                        // "adding members" mode the Organizations tab opens.
+                        <EmptyState
+                          compact
+                          title={t('manage.users.noOrgMembers', { org: orgName(orgSlug) })}
+                          body={t('manage.users.noOrgMembersHint')}
+                          action={
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setAddingTo(orgs.find((o) => o.slug === orgSlug) ?? { slug: orgSlug, name: orgSlug })
+                                setOrgSlug('')
+                                setPageNum(1)
+                              }}
+                            >
+                              {t('manage.users.addMembers')}
+                            </Button>
+                          }
+                        />
+                      ) : (
+                        <EmptyState
+                          compact
+                          title={t(q ? 'manage.users.noResults' : 'manage.users.empty')}
+                          body={t(q ? 'manage.users.noResultsHint' : 'manage.users.emptyHint')}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="flex items-center justify-between gap-2 font-body text-body-sm">
-        <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-          {t('manage.users.pageStatus', { page: pageNum, pages: totalPages, total })}
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={pageNum <= 1 || loading}
-            onClick={() => setPageNum((n) => Math.max(1, n - 1))}
-            className="px-3 py-1 rounded-sm border border-border dark:border-night-border font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
-          >
-            {t('manage.users.prev')}
-          </button>
-          <button
-            type="button"
-            disabled={pageNum >= totalPages || loading}
-            onClick={() => setPageNum((n) => Math.min(totalPages, n + 1))}
-            className="px-3 py-1 rounded-sm border border-border dark:border-night-border font-mono text-label uppercase tracking-widest disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
-          >
-            {t('manage.users.next')}
-          </button>
-        </div>
-      </div>
-
-      {unassigning && (
-        <ConfirmDialog
-          title={t('manage.users.unassignTitle')}
-          body={t('manage.users.unassignBody', { name: unassigning.name ?? unassigning.email })}
-          confirmLabel={t('manage.users.unassignConfirm')}
-          busy={busyId === unassigning.id}
-          onConfirm={confirmUnassign}
-          onCancel={() => setUnassigning(null)}
-        />
+          <div className="flex flex-wrap items-center justify-between gap-2 font-body text-body-sm">
+            <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+              {t('manage.users.pageStatus', { page: pageNum, pages: totalPages, total })}
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={pageNum <= 1 || loading} onClick={() => setPageNum((n) => Math.max(1, n - 1))}>
+                {t('manage.users.prev')}
+              </Button>
+              <Button size="sm" variant="outline" disabled={pageNum >= totalPages || loading} onClick={() => setPageNum((n) => Math.min(totalPages, n + 1))}>
+                {t('manage.users.next')}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
 
-      {demotingOrg && (
-        <ConfirmDialog
-          title={t('manage.users.demoteOrgTitle')}
-          body={t('manage.users.demoteOrgBody', { name: demotingOrg.user.name ?? demotingOrg.user.email, org: demotingOrg.slug })}
-          confirmLabel={t('manage.users.demoteOrgConfirm')}
-          busy={busyId === demotingOrg.user.id}
-          onConfirm={confirmDemoteOrg}
-          onCancel={() => setDemotingOrg(null)}
-        />
+      {orgPicker && (
+        <Modal
+          title={t('manage.users.addOrgTitle', { name: userName(orgPicker.user) })}
+          onClose={() => setOrgPicker(null)}
+          busy={busyId === orgPicker.user.id}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setOrgPicker(null)} disabled={busyId === orgPicker.user.id}>{t('ui.cancel')}</Button>
+              <Button
+                loading={busyId === orgPicker.user.id}
+                disabled={!pickedOrg}
+                onClick={async () => { if (await addOrg(orgPicker.user, pickedOrg)) setOrgPicker(null) }}
+              >
+                {t('manage.users.addOrgConfirm')}
+              </Button>
+            </>
+          }
+        >
+          <Field label={t('manage.users.addOrgField')} hint={t('manage.users.addOrgHint')}>
+            {(p) => (
+              <select {...p} value={pickedOrg} onChange={(e) => setPickedOrg(e.target.value)} className={selectClass()}>
+                {orgPicker.options.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+              </select>
+            )}
+          </Field>
+        </Modal>
       )}
 
-      {removingOrg && (
+      {staffChange && (
         <ConfirmDialog
-          title={t('manage.users.removeOrgTitle')}
-          body={t('manage.users.removeOrgBody', { name: removingOrg.user.name ?? removingOrg.user.email, org: removingOrg.slug })}
-          confirmLabel={t('manage.users.removeOrgConfirm')}
-          busy={busyId === removingOrg.user.id}
-          onConfirm={confirmRemoveOrg}
-          onCancel={() => setRemovingOrg(null)}
+          title={t(staffChange.grant ? 'manage.users.assignTitle' : 'manage.users.unassignTitle', { name: userName(staffChange.user) })}
+          body={t(staffChange.grant ? 'manage.users.assignBody' : 'manage.users.unassignBody', { name: userName(staffChange.user) })}
+          confirmLabel={t(staffChange.grant ? 'manage.users.assignConfirm' : 'manage.users.unassignConfirm')}
+          danger={!staffChange.grant}
+          busy={busyId === staffChange.user.id}
+          error={staffError}
+          onConfirm={confirmStaffChange}
+          onCancel={() => setStaffChange(null)}
         />
       )}
     </div>

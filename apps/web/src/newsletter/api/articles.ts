@@ -41,9 +41,12 @@ export async function createArticle(data: ArticleInput): Promise<Article> {
   return normalize(await apiSend<ArticleResponse>('POST', '/articles', { ...rest, publishedAt: date }))
 }
 
+// `date: null` empties the date (the API reads a null field as "unchanged",
+// so that's sent as clearPublishedAt).
 export async function updateArticle(id: string, data: ArticleInput): Promise<Article> {
-  const payload: ArticleInput & { publishedAt?: IsoDate | null } = { ...data }
+  const payload: ArticleInput & { publishedAt?: IsoDate | null; clearPublishedAt?: boolean } = { ...data }
   if (payload.date) { payload.publishedAt = payload.date; delete payload.date }
+  else if (payload.date === null) { payload.clearPublishedAt = true; delete payload.date }
   return normalize(await apiSend<ArticleResponse>('PATCH', `/articles/${encodeURIComponent(id)}`, payload))
 }
 

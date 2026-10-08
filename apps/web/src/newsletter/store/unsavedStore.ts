@@ -1,14 +1,10 @@
 // Whether a page holds unsaved edits. The article editor sets it; the
-// router blocker and code that leaves without a link (sign-out) read it.
+// router blocker reads it.
 let _unsaved = false
 let _bypassNext = false
 
 export function setUnsavedChanges(value: unknown): void {
   _unsaved = Boolean(value)
-}
-
-export function hasUnsavedChanges(): boolean {
-  return _unsaved
 }
 
 // For the page's own navigations (e.g. to the edit URL after the first

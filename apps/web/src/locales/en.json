@@ -10,54 +10,17 @@
     "apuntes": "Notes",
     "sectionsAria": "Sections",
     "scheduler": "Schedules",
-    "newsletter": "Newsletter"
-  },
-  "tabs": {
-    "home": "Home",
-    "departments": "Departments",
-    "benefits": "Benefits",
-    "staff": "Staff",
-    "aria": "Page sections"
+    "newsletter": "Newsletter",
+    "benefits": "Benefits"
   },
   "manage": {
-    "title": "Manage",
-    "subtitle": "Run the CEITBA roster, benefits and permissions.",
     "loading": "Loading…",
     "save": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
     "delete": "Delete",
-    "empty": "No data",
     "tabs": {
-      "staff": "Staff",
-      "benefits": "Benefits",
-      "users": "Users",
-      "organizations": "Organizations",
-      "corrections": "Schedule corrections",
-      "drive": "Notes",
-      "wikiAi": "Wiki AI",
-      "wikiAiUnseen": "{{count}} updates in Wiki AI",
-      "capabilities": "Capabilities"
-    },
-    "staff": {
-      "year": "Year",
-      "add": "Add member",
-      "addTitle": "New member",
-      "editTitle": "Edit member",
-      "noneForYear": "No members loaded for this year.",
-      "confirmDelete": "Delete this member?",
-      "col": {
-        "name": "Name",
-        "role": "Role",
-        "order": "Order",
-        "department": "Department"
-      },
-      "deleteBody": "{{name}} will be removed from the {{year}} staff. This can't be undone.",
-      "roleEs": "Role (ES)",
-      "roleEn": "Role (EN)",
-      "email": "Email",
-      "photoUrl": "Photo URL",
-      "linkedinUrl": "LinkedIn URL"
+      "wikiAiUnseen": "{{count}} updates in Wiki AI"
     },
     "benefits": {
       "tabs": {
@@ -65,11 +28,46 @@
         "categories": "Categories"
       },
       "categories": {
-        "help": "Categories are the chips users filter benefits by. Edit their name, color and order here.",
-        "colorVar": "Color variable",
+        "help": "Categories are the chips used to filter benefits. Create new categories and edit their name, color and order here.",
         "order": "Order",
         "nameEs": "Name (ES)",
-        "nameEn": "Name (EN)"
+        "nameEn": "Name (EN)",
+        "color": "Color",
+        "colors": {
+          "it": "Sky blue",
+          "media": "Pink",
+          "infra": "Green",
+          "nautica": "Teal",
+          "deportes": "Orange",
+          "direct": "Lavender",
+          "custom": "Custom",
+          "none": "No color"
+        },
+        "noChanges": "No changes to save",
+        "saved": "Category saved.",
+        "loadFailed": "We couldn't load the categories.",
+        "empty": "There are no benefit categories yet.",
+        "emptyHint": "Categories group the benefit cards and let people filter them on the site. Create the first one to start adding benefits.",
+        "create": "New category",
+        "createTitle": "New benefit category",
+        "createSubmit": "Create category",
+        "created": "Category created.",
+        "nameEsRequired": "Enter the Spanish name.",
+        "nameEnHint": "Optional. If you leave it empty, the English site shows the Spanish name.",
+        "slug": "Identifier",
+        "slugHint": "Built from the name and can't be changed later. Lowercase letters, numbers and hyphens only.",
+        "slugErrors": {
+          "required": "Enter an identifier.",
+          "format": "Use 2 to 40 characters: lowercase letters without accents, numbers and single hyphens (for example, \"mental-health\").",
+          "taken": "A category with that identifier already exists. Pick another one."
+        },
+        "confirmDelete": "Delete this category?",
+        "deleteBody_zero": "The category “{{name}}” will be deleted. It has no cards. This can't be undone.",
+        "deleteBody_one": "The category “{{name}}” will be deleted along with its card. This can't be undone.",
+        "deleteBody_other": "The category “{{name}}” will be deleted along with its {{count}} cards. This can't be undone.",
+        "deleteBodyUnknown": "The category “{{name}}” will be deleted along with all its cards. This can't be undone.",
+        "deleteConfirm": "Yes, delete",
+        "deleted": "Category deleted."
       },
       "cards": {
         "filter": "Category",
@@ -78,7 +76,7 @@
         "addTitle": "New benefit card",
         "editTitle": "Edit card",
         "confirmDelete": "Delete this card?",
-        "empty": "No cards yet.",
+        "empty": "There are no benefit cards yet.",
         "titleEs": "Title (ES)",
         "titleEn": "Title (EN)",
         "summaryEs": "Description (ES)",
@@ -94,9 +92,19 @@
           "title": "Title",
           "category": "Category",
           "price": "Price",
-          "order": "Order"
+          "order": "Order",
+          "actions": "Actions"
         },
-        "deleteBody": "The card \"{{title}}\" will be deleted. This can't be undone."
+        "deleteBody": "The card \"{{title}}\" will be deleted. This can't be undone.",
+        "saved": "Card saved.",
+        "deleted": "Card deleted.",
+        "deleteConfirm": "Yes, delete",
+        "loadFailed": "We couldn't load the benefit cards.",
+        "emptyFiltered": "There are no cards in this category.",
+        "emptyHint": "The cards shown in the site's Benefits section will appear here.",
+        "needsCategory": "Every card needs a category and there are none yet. Create one under Categories, then come back here.",
+        "goToCategories": "See categories",
+        "titlesRequired": "Fill in the Spanish and English titles to save."
       },
       "tabsAria": "Manage benefits"
     },
@@ -109,11 +117,11 @@
       "staffOn": "STAFF",
       "staffOff": "Make STAFF",
       "unassign": "Unassign",
-      "unassignTitle": "Remove STAFF?",
-      "unassignBody": "{{name}} will lose STAFF access, including this dashboard, right away. You can assign them again later.",
-      "unassignConfirm": "Unassign",
-      "addOrg": "+ organization",
-      "noOrgs": "—",
+      "unassignTitle": "Remove STAFF from {{name}}?",
+      "unassignBody": "{{name}} will lose STAFF access, including this panel, right away. You can assign it again later.",
+      "unassignConfirm": "Yes, remove STAFF",
+      "addOrg": "Add to an organization…",
+      "noOrgs": "No organizations",
       "searchPlaceholder": "Search by name or email…",
       "sort": {
         "newest": "Newest first",
@@ -124,23 +132,45 @@
       "prev": "‹ Prev",
       "next": "Next ›",
       "removeOrgAria": "Remove {{name}} from {{org}}",
-      "removeOrgTitle": "Remove from organization?",
-      "removeOrgBody": "{{name}} will no longer be a member of {{org}}. You can add them back later.",
-      "removeOrgConfirm": "Remove",
-      "orgAdmin": "admin",
-      "orgMember": "member",
-      "makeOrgAdmin": "Make admin of {{org}}",
-      "makeOrgMember": "Remove admin of {{org}}",
-      "demoteOrgTitle": "Remove admin?",
-      "demoteOrgBody": "{{name}} will stay a member of {{org}}, but without admin access (e.g. the followers list).",
-      "demoteOrgConfirm": "Remove admin",
-      "noOrgMembers": "{{org}} has no members yet.",
+      "orgAdmin": "Admin",
+      "orgMember": "Member",
+      "makeOrgAdmin": "Make admin",
+      "makeOrgMember": "Remove admin",
+      "noOrgMembers": "{{org}} has no members yet",
       "addingBanner": "Adding members to {{org}} — search for the person and tap “Add to {{org}}”.",
       "addingDone": "Done",
       "addToOrg": "Add to {{org}}",
       "addToOrgAria": "Add {{name}} to {{org}}",
       "addingToOrg": "Adding…",
-      "addMembers": "Add members"
+      "addMembers": "Add members",
+      "assignAria": "Make {{name}} STAFF",
+      "unassignAria": "Remove STAFF from {{name}}",
+      "assignTitle": "Give {{name}} STAFF access?",
+      "assignBody": "{{name}} will be able to open this panel and manage the whole site: staff, benefits, users, organizations, notes and the AI Wiki, including granting and removing STAFF for other people. Access lasts one year.",
+      "assignConfirm": "Yes, give STAFF access",
+      "orgsLoadError": "We couldn't load the organizations: names and the organization filter may be missing.",
+      "searchAria": "Search users",
+      "sortAria": "Sort users",
+      "filterOrgAria": "Filter by organization",
+      "addOrgAria": "Add {{name}} to an organization",
+      "makeOrgAdminAria": "Make {{name}} an admin of {{org}}",
+      "makeOrgMemberAria": "Remove {{name}}'s admin role in {{org}}",
+      "removedFromOrg": "You removed {{name}} from {{org}}.",
+      "noOrgMembersHint": "Add the people who will post on ITBA News on behalf of the organization.",
+      "empty": "No users yet",
+      "emptyHint": "People show up here the first time they sign in to the site.",
+      "noResults": "No users match that search",
+      "noResultsHint": "Try another part of the name or email.",
+      "scopeAria": "Show",
+      "scope": {
+        "all": "Everyone",
+        "staff": "Staff"
+      },
+      "addOrgButton": "+ Organization",
+      "addOrgTitle": "Add {{name}} to an organization",
+      "addOrgField": "Organization",
+      "addOrgHint": "They join as a member. You can make them an admin from their row afterwards.",
+      "addOrgConfirm": "Add"
     },
     "organizations": {
       "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
@@ -188,11 +218,13 @@
         "slugRequired": "Enter an address.",
         "slugFormat": "Use 2 to {{max}} characters: lowercase letters, digits and single hyphens, not at the start or end.",
         "duplicate": "An organization with that address already exists."
-      }
+      },
+      "emptyHint": "Create the first one so its members can post on ITBA News.",
+      "editProfile": "Edit profile",
+      "editProfileAria": "Edit {{name}}'s profile on ITBA News"
     },
-    "tabsAria": "Manage sections",
     "corrections": {
-      "intro": "Schedule corrections are suggested by students and apply on their own once they reach 3 confirmations and more confirmations than rejections. This panel is a safety net: you can apply a pending one right away or reject one (if it was applied, it reverts to the SGA schedule). Corrections are anonymous.",
+      "intro": "They apply on their own with 3 confirmations and more confirmations than rejections. Here you can apply one sooner or reject it (if it was applied, the SGA schedule comes back).",
       "filterLabel": "Status",
       "filter": {
         "PENDING": "Pending",
@@ -257,10 +289,17 @@
         "SUPERSEDED": "No superseded corrections."
       },
       "emptyHint": "This is where schedules that students propose to fix from the Schedule Builder will show up. Normally you don't need to do anything: each correction applies on its own once enough other students confirm it.",
-      "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections"
+      "pageStatus": "Page {{page}} of {{pages}} · {{total}} corrections",
+      "loadFailed": "We couldn't load the corrections.",
+      "rowLabel": "{{subject}} · Commission {{commission}}",
+      "slot": "{{day}} {{from}}–{{to}}",
+      "prev": "Previous",
+      "next": "Next",
+      "pageLoadFailed": "We couldn't load page {{page}}. You're still seeing the previous one.",
+      "reloadFailed": "We couldn't refresh the list: it may be out of date."
     },
     "capabilities": {
-      "intro": "Enable features in testing for everyone, for specific people (by email, even if they've never signed in) or for whole organizations. Staff always have all of them.",
+      "intro": "Features in testing: turn them on for everyone, for specific people or for organizations. Staff always have them.",
       "empty": "No capabilities defined.",
       "enabledForAll": "Enabled for everyone",
       "everyone": "Enabled for everyone",
@@ -294,7 +333,153 @@
         "add": "Add",
         "empty": "No organization has access yet.",
         "members_one": "{{count}} member",
-        "members_other": "{{count}} members"
+        "members_other": "{{count}} members",
+        "meta": "{{members}} · {{granted}}"
+      },
+      "loadFailed": "We couldn't load the capabilities.",
+      "grantsLoadFailed": "We couldn't load this capability's access list.",
+      "emptyHint": "Features in testing that you can enable for everyone or for specific people and organizations will appear here."
+    },
+    "errors": {
+      "generic": "We couldn't complete the action. Try again in a moment.",
+      "network": "Can't reach the server. Check your connection and try again.",
+      "unauthorized": "Your session expired. Sign in again.",
+      "forbidden": "You don't have permission to do this.",
+      "notFound": "We couldn't find it: someone may have deleted it. Reload the page.",
+      "conflict": "Someone changed this in the meantime. Reload and try again.",
+      "invalid": "Check the data: the server didn't accept something.",
+      "tooMany": "Too many requests in a row. Wait a moment and try again.",
+      "loadFailed": "We couldn't load this section."
+    },
+    "rail": {
+      "aria": "Admin areas",
+      "eyebrow": "Admin",
+      "areas": "Areas",
+      "back": "Admin",
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending",
+      "groups": {
+        "content": "Content",
+        "community": "Community",
+        "academic": "Academic",
+        "system": "System"
+      }
+    },
+    "areas": {
+      "review": {
+        "label": "To review"
+      },
+      "newsletter": {
+        "label": "Newsletter"
+      },
+      "benefits": {
+        "label": "Benefits",
+        "subtitle": "The benefit cards students see, and their categories."
+      },
+      "people": {
+        "label": "People",
+        "subtitle": "Everyone who signed in to the site. Grant or remove staff access and add people to organizations."
+      },
+      "organizations": {
+        "label": "Organizations"
+      },
+      "corrections": {
+        "label": "Schedule corrections"
+      },
+      "apuntes": {
+        "label": "Notes"
+      },
+      "wiki": {
+        "label": "AI Wiki"
+      },
+      "capabilities": {
+        "label": "Capabilities"
+      }
+    },
+    "review": {
+      "title": "To review",
+      "checking": "Checking what is waiting for a decision…",
+      "pending_zero": "Nothing left to review.",
+      "pending_one": "1 item is waiting for a staff decision. Oldest first.",
+      "pending_other": "{{count}} items are waiting for a staff decision. Oldest first.",
+      "filterAria": "Filter by type",
+      "filters": {
+        "all": "All · {{count}}",
+        "articles": "Articles · {{count}}",
+        "corrections": "Corrections · {{count}}",
+        "apuntes": "Notes · {{count}}",
+        "wiki": "AI Wiki · {{count}}"
+      },
+      "types": {
+        "article": "Article",
+        "correction": "Schedule correction",
+        "source": "Drive folder",
+        "fileReview": "File to review",
+        "fileReported": "Reported file",
+        "wiki": "AI Wiki"
+      },
+      "sources": {
+        "articles": "articles",
+        "corrections": "corrections",
+        "sources": "Drive folders",
+        "needsReview": "files to review",
+        "reported": "reported files",
+        "wiki": "AI Wiki"
+      },
+      "sourceFailed": "We couldn't load: {{sources}}. Everything else is up to date.",
+      "articleMeta": "{{authors}} · independent · sent {{when}}",
+      "unknownAuthor": "No name",
+      "community": "Community archive",
+      "correctionMeta": "Proposes {{proposed}} · SGA today: {{sga}} · {{votes}}",
+      "sourceMeta_one": "{{owner}} · {{count}} file · connected {{when}}",
+      "sourceMeta_other": "{{owner}} · {{count}} files · connected {{when}}",
+      "fileReviewMeta": "{{subject}} · shared by {{sharer}}, who isn't the Drive owner",
+      "fileReportedMeta_one": "{{subject}} · {{count}} report: {{reason}}",
+      "fileReportedMeta_other": "{{subject}} · {{count}} reports, the first: {{reason}}",
+      "noSubject": "No subject",
+      "wikiBlockedTitle": "An AI Wiki run is waiting for you to approve its cost",
+      "wikiBlockedMeta": "Started {{when}}",
+      "wikiFailedTitle": "The latest AI Wiki run finished with errors",
+      "wikiFailedMeta": "Finished {{when}}",
+      "wikiReviewCost": "Review cost",
+      "wikiOpen": "Open in AI Wiki",
+      "open": "Review",
+      "publish": "Publish",
+      "publishAria": "Publish “{{title}}”",
+      "articlePublished": "You published “{{title}}”.",
+      "conflict": "Someone already took care of this (another staff member or a sync). We removed it from the list.",
+      "emptyTitle": "All caught up",
+      "emptyBody": "Nothing is waiting on staff. New items (submitted articles, corrections, folders and reports) show up here as soon as they arrive.",
+      "truncated": {
+        "corrections": "Showing {{shown}} of {{total}} pending corrections.",
+        "sources": "Showing {{shown}} of {{total}} folders to approve.",
+        "needsReview": "Showing {{shown}} of {{total}} files to review.",
+        "reported": "Showing {{shown}} of {{total}} reported files."
+      },
+      "seeAll": "See all",
+      "digest": {
+        "title": "Weekly digest",
+        "week": "Week of {{date}}",
+        "sendsAt": "Goes out {{when}}",
+        "notScheduled": "Not scheduled",
+        "articles_one": "{{count}} article",
+        "articles_other": "{{count}} articles",
+        "edit": "Edit digest",
+        "none": "No digest is being prepared.",
+        "open": "Go to Weekly digest",
+        "loadError": "We couldn't load the weekly digest.",
+        "status": {
+          "draft": "Draft",
+          "sending": "Sending",
+          "sent": "Sent",
+          "cancelled": "Withdrawn"
+        }
+      },
+      "quick": {
+        "title": "Shortcuts",
+        "benefit": "New benefit card",
+        "org": "Add someone to an organization",
+        "staff": "Grant staff access"
       }
     }
   },
@@ -309,15 +494,19 @@
     "language": "Language",
     "career": "Career",
     "plan": "Plan",
-    "fileNumber": "File number",
     "unset": "Not set",
-    "pickCareerFirst": "Pick a career to see available plans."
+    "pickCareerFirst": "Pick a career to see available plans.",
+    "fileNumberValue": "Student ID: {{number}}",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveError": "We couldn't save that change. Try again.",
+    "loadError": "We couldn't load your academic details."
   },
   "auth": {
     "profile": "My profile",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "manage": "Manage",
+    "manage": "Admin",
     "errors": {
       "unauthorized": "Only @itba.edu.ar accounts can sign in.",
       "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
@@ -330,8 +519,7 @@
     "myApuntes": "My notes",
     "accountMenu": "Account menu",
     "savedSchedules": "My saved schedules",
-    "newsletterAdmin": "Newsletter panel",
-    "myArticles": "My articles"
+    "myPosts": "My posts"
   },
   "hero": {
     "eyebrow": "Student Center",
@@ -340,13 +528,6 @@
     "description": "We work to improve the university experience for every ITBA student, representing their interests, organizing activities, and building tools that make academic life easier."
   },
   "home": {
-    "departments": {
-      "eyebrow": "Who powers CEITBA",
-      "title": "The teams behind every initiative",
-      "subtitle": "Six departments coordinate everything CEITBA does for the ITBA community: from technology and communications to sports and student representation.",
-      "seeAll": "Meet every department",
-      "tileAria": "View the {{name}} department"
-    },
     "benefits": {
       "eyebrow": "What we offer members",
       "title": "Benefits designed for your time at ITBA",
@@ -433,16 +614,12 @@
     },
     "filterLabel": "Filter by category",
     "all": "All",
-    "empty": "No benefits in this category yet.",
-    "learnMore": "Learn more"
-  },
-  "staff": {
-    "sectionTitle": "Our team",
-    "sectionSubtitle": "The people behind CEITBA.",
-    "comingSoon": "Coming soon",
-    "comingSoonMessage": "We're working on introducing you to the full team. Check back soon!",
-    "yearLabel": "Filter by year",
-    "linkedinAria": "{{name}} on LinkedIn"
+    "empty": "When CEITBA adds benefits, you'll see them here.",
+    "learnMore": "Learn more",
+    "emptyTitle": "No benefits yet",
+    "emptyFilteredTitle": "No benefits in this category",
+    "emptyFiltered": "Try another category or see all benefits.",
+    "showAll": "See all benefits"
   },
   "footer": {
     "itTeam": "CEITBA IT Team",
@@ -474,5 +651,17 @@
     "toggle": "Get 'La semana en ITBA' by email",
     "toggleHint": "Turning it on also follows CEITBA.",
     "toggleError": "We couldn't save that change."
+  },
+  "ui": {
+    "back": "Back",
+    "close": "Close",
+    "loading": "Loading",
+    "cancel": "Cancel",
+    "undo": "Undo"
+  },
+  "staffGuard": {
+    "title": "This page is for CEITBA staff",
+    "body": "Administration is used by the CEITBA team. If you are on the staff and can't see it, ask someone on the team to give you access.",
+    "home": "Go home"
   }
 }

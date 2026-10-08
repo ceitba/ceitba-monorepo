@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { unsubscribeFromDigest } from '../api/digests'
 import { newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
+import { Button, buttonClass } from '@/components/ui'
 
 type UnsubscribeState = 'confirm' | 'loading' | 'done' | 'invalid' | 'error'
 
@@ -24,12 +25,22 @@ export default function UnsubscribePage() {
     setState('loading')
     unsubscribeFromDigest(token)
       .then(() => setState('done'))
-      .catch((err: unknown) => setState(err instanceof ApiError && (err.status === 400 || err.code === 'INVALID_TOKEN') ? 'invalid' : 'error'))
+      .catch((err: unknown) => {
+        console.error(err)
+        setState(err instanceof ApiError && (err.status === 400 || err.code === 'INVALID_TOKEN') ? 'invalid' : 'error')
+      })
   }
+
+  const title = (key: string) => (
+    <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t(key)}</h1>
+  )
+  const hint = (key: string) => (
+    <p className="font-body text-body text-ink-secondary leading-relaxed">{t(key)}</p>
+  )
 
   return (
     <section className="max-w-content mx-auto px-4 sm:px-6 py-section-mobile lg:py-section">
-      <div className="max-w-xl mx-auto bg-white rounded-card border border-border shadow-card overflow-hidden">
+      <div className="max-w-xl mx-auto bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card overflow-hidden">
         <div className="relative h-20 bg-primary-900 overflow-hidden" aria-hidden="true">
           <div className="absolute top-[-40%] right-[-10%] w-1/2 h-[180%] rounded-full bg-primary-700/50" />
           <div className="absolute bottom-[-60%] left-[10%] w-1/3 h-full rotate-12 bg-accent/30" />
@@ -37,52 +48,46 @@ export default function UnsubscribePage() {
         <div className="p-6 sm:p-8 flex flex-col gap-4" aria-live="polite">
           <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">{t('digest.name')}</p>
 
-          {state === 'confirm' && (
+          {(state === 'confirm' || state === 'loading') && (
             <>
-              <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.confirmTitle')}</h1>
-              <p className="font-body text-body text-ink-secondary leading-relaxed">{t('digest.unsubscribe.confirmHint')}</p>
-              <button
-                type="button"
+              {title('digest.unsubscribe.confirmTitle')}
+              {hint('digest.unsubscribe.confirmHint')}
+              <Button
                 onClick={handleConfirm}
-                className="self-start min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
+                loading={state === 'loading'}
+                loadingLabel={t('digest.unsubscribe.confirming')}
+                className="self-start"
               >
                 {t('digest.unsubscribe.confirm')}
-              </button>
+              </Button>
             </>
-          )}
-
-          {state === 'loading' && (
-            <p className="font-body text-body text-ink-secondary" aria-busy="true">{t('digest.unsubscribe.confirming')}</p>
           )}
 
           {state === 'done' && (
             <>
-              <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.doneTitle')}</h1>
-              <p className="font-body text-body text-ink-secondary leading-relaxed">{t('digest.unsubscribe.doneHint')}</p>
+              {title('digest.unsubscribe.doneTitle')}
+              {hint('digest.unsubscribe.doneHint')}
             </>
           )}
 
           {state === 'invalid' && (
             <>
-              <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.invalidTitle')}</h1>
-              <p className="font-body text-body text-ink-secondary leading-relaxed">{t('digest.unsubscribe.invalidHint')}</p>
+              {title('digest.unsubscribe.invalidTitle')}
+              {hint('digest.unsubscribe.invalidHint')}
             </>
           )}
 
           {state === 'error' && (
             <>
-              <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t('digest.unsubscribe.errorTitle')}</h1>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                className="self-start min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
-              >
-                {t('admin.common.retry')}
-              </button>
+              {title('digest.unsubscribe.errorTitle')}
+              {hint('digest.unsubscribe.errorHint')}
+              <Button onClick={handleConfirm} className="self-start">
+                {t('errors.retry')}
+              </Button>
             </>
           )}
 
-          <Link to={newsletterPath('/')} className="self-start font-body text-body-sm font-semibold text-primary hover:underline underline-offset-2">
+          <Link to={newsletterPath('/')} className={buttonClass({ variant: 'ghost', className: 'self-start' })}>
             {t('digest.unsubscribe.backHome')}
           </Link>
         </div>

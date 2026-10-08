@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import CategoryBadge from '../CategoryBadge'
-import i18n from 'i18next'
-import { formatDate as formatLocalDate } from '../../utils/dates'
+import { formatDate } from '../../utils/dates'
 import { bodyToMarkdown } from '../../utils/articleBody'
 import ArticleBody from '../article/ArticleBody'
 import type { IsoDate, Organization } from '../../types'
@@ -31,6 +31,15 @@ interface PreviewArticle {
 
 type PreviewOrg = Pick<Organization, 'slug' | 'name'>
 
+const muted = 'text-ink-secondary dark:text-night-muted'
+const strong = 'text-ink-primary dark:text-night-text'
+const cardShell = 'rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden shadow-card'
+
+// Stand-in for a field the writer hasn't filled yet.
+function Missing({ children }: { children: ReactNode }) {
+  return <span className={`${muted} italic`}>{children}</span>
+}
+
 interface CoverMediaProps {
   coverImage?: string | null
   colorScheme?: string | null
@@ -47,7 +56,7 @@ function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
   }
   const bg = GEO_BG[colorScheme ?? ''] ?? GEO_BG.blue
   return (
-    <div className={['relative overflow-hidden flex-shrink-0', bg, className].join(' ')}>
+    <div className={['relative overflow-hidden flex-shrink-0', bg, className].join(' ')} aria-hidden="true">
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-[-20%] right-[-10%] w-2/3 h-2/3 rounded-full bg-white/30" />
         <div className="absolute bottom-[-15%] left-[-5%] w-1/2 h-1/2 rotate-45 bg-white/20" />
@@ -58,41 +67,35 @@ function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
   )
 }
 
-function formatDate(iso: IsoDate | null | undefined): string {
-  return formatLocalDate(iso, i18n.language)
-}
-
 // ── Card preview ────────────────────────────────────────────────────────────
 
 function PreviewCard({ article, featured }: { article: PreviewArticle; featured?: boolean }) {
+  const { t, i18n } = useTranslation()
+  const title = article.title || <Missing>{t('admin.preview.noTitle')}</Missing>
+  const excerpt = article.excerpt || <Missing>{t('admin.preview.noExcerpt')}</Missing>
+  const authors = (article.authors ?? []).join(', ') || t('admin.preview.noAuthors')
+  const date = formatDate(article.date, i18n.language)
+
   if (featured) {
     return (
-      <div className="rounded-card border border-border bg-white overflow-hidden shadow-card flex flex-col lg:flex-row">
-        <CoverMedia
-          coverImage={article.coverImage}
-          colorScheme={article.colorScheme}
-          className="h-48 lg:h-auto lg:w-1/2"
-        />
+      <div className={`${cardShell} flex flex-col lg:flex-row`}>
+        <CoverMedia coverImage={article.coverImage} colorScheme={article.colorScheme} className="h-48 lg:h-auto lg:w-1/2" />
         <div className="p-6 lg:p-8 flex flex-col justify-between gap-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <CategoryBadge category={article.category} />
-              <span className="font-mono text-label text-ink-secondary">DESTACADO</span>
+              <span className={`font-mono text-label uppercase tracking-widest ${muted}`}>{t('admin.preview.featured')}</span>
             </div>
-            <h2 className="font-display text-h2 text-ink-primary font-bold leading-tight">
-              {article.title || <span className="text-border italic">Sin título</span>}
-            </h2>
-            <p className="font-body text-body text-ink-secondary leading-relaxed line-clamp-3">
-              {article.excerpt || <span className="text-border italic">Sin copete</span>}
-            </p>
+            <h2 className={`font-display text-h2 font-bold leading-tight ${strong}`}>{title}</h2>
+            <p className={`font-body text-body leading-relaxed line-clamp-3 ${muted}`}>{excerpt}</p>
           </div>
-          <footer className="flex items-center gap-3 pt-2 border-t border-border text-ink-secondary">
-            <time className="font-mono text-label">{formatDate(article.date)}</time>
-            <span className="text-border">·</span>
-            <span className="font-body text-body-sm">{(article.authors ?? []).join(', ') || 'Sin autores'}</span>
+          <footer className={`flex items-center gap-3 pt-2 border-t border-border dark:border-night-border ${muted}`}>
+            <time className="font-mono text-label">{date}</time>
+            <span aria-hidden="true">·</span>
+            <span className="font-body text-body-sm">{authors}</span>
             {article.readingTime && (
               <>
-                <span className="text-border">·</span>
+                <span aria-hidden="true">·</span>
                 <span className="font-mono text-label">{article.readingTime}</span>
               </>
             )}
@@ -103,22 +106,16 @@ function PreviewCard({ article, featured }: { article: PreviewArticle; featured?
   }
 
   return (
-    <div className="rounded-card border border-border bg-white overflow-hidden shadow-card flex flex-col">
+    <div className={`${cardShell} flex flex-col`}>
       <CoverMedia coverImage={article.coverImage} colorScheme={article.colorScheme} className="h-44" />
       <div className="p-5 flex flex-col gap-3">
         <CategoryBadge category={article.category} />
-        <h3 className="font-display text-h5 text-ink-primary font-bold leading-snug line-clamp-2">
-          {article.title || <span className="text-border italic">Sin título</span>}
-        </h3>
-        <p className="font-body text-body-sm text-ink-secondary leading-relaxed line-clamp-2">
-          {article.excerpt || <span className="text-border italic">Sin copete</span>}
-        </p>
-        <footer className="flex items-center gap-3 pt-2 border-t border-border">
-          <time className="font-mono text-label text-ink-secondary">{formatDate(article.date)}</time>
-          <span className="text-border">·</span>
-          <span className="font-body text-body-sm text-ink-secondary truncate">
-            {(article.authors ?? []).join(', ') || 'Sin autores'}
-          </span>
+        <h3 className={`font-display text-h5 font-bold leading-snug line-clamp-2 ${strong}`}>{title}</h3>
+        <p className={`font-body text-body-sm leading-relaxed line-clamp-2 ${muted}`}>{excerpt}</p>
+        <footer className={`flex items-center gap-3 pt-2 border-t border-border dark:border-night-border ${muted}`}>
+          <time className="font-mono text-label">{date}</time>
+          <span aria-hidden="true">·</span>
+          <span className="font-body text-body-sm truncate">{authors}</span>
         </footer>
       </div>
     </div>
@@ -128,11 +125,12 @@ function PreviewCard({ article, featured }: { article: PreviewArticle; featured?
 // ── Full article preview ────────────────────────────────────────────────────
 
 function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: PreviewOrg[] }) {
+  const { t, i18n } = useTranslation()
   const heroBg = GEO_BG[article.colorScheme ?? ''] ?? GEO_BG.blue
   const org = orgs.find((o) => o.slug === article.organization)
 
   return (
-    <div className="bg-surface rounded-card border border-border overflow-hidden">
+    <div className="bg-page-bg dark:bg-night-bg rounded-card border border-border dark:border-night-border overflow-hidden">
       {/* Hero */}
       {article.coverImage ? (
         <div className="h-56 overflow-hidden">
@@ -140,11 +138,11 @@ function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: 
         </div>
       ) : (
         <div className={['relative h-44 overflow-hidden', heroBg].join(' ')}>
-          <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 opacity-20" aria-hidden="true">
             <div className="absolute top-[-20%] right-[-5%] w-1/2 h-full rounded-full bg-white/30" />
             <div className="absolute bottom-[-30%] left-[-5%] w-2/3 h-2/3 rotate-12 bg-white/20" />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/30" aria-hidden="true" />
           <div className="absolute bottom-4 left-5">
             <CategoryBadge category={article.category} />
           </div>
@@ -159,39 +157,34 @@ function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: 
           </div>
         )}
 
-        {/* Headline */}
-        <h1 className="font-display text-h2 font-bold text-ink-primary leading-tight">
-          {article.title || <span className="text-border italic">Sin título</span>}
-        </h1>
+        <h2 className={`font-display text-h2 font-bold leading-tight ${strong}`}>
+          {article.title || <Missing>{t('admin.preview.noTitle')}</Missing>}
+        </h2>
 
-        {/* Meta */}
-        <div className="flex flex-wrap items-center gap-3 mt-3 pb-5 border-b border-border">
-          <span className="font-body text-body-sm text-ink-secondary">
-            por <strong className="text-ink-primary font-semibold">{(article.authors ?? []).join(', ') || '—'}</strong>
+        <div className={`flex flex-wrap items-center gap-3 mt-3 pb-5 border-b border-border dark:border-night-border ${muted}`}>
+          <span className="font-body text-body-sm">
+            {t('articles.meta.by')} <strong className={`font-semibold ${strong}`}>{(article.authors ?? []).join(', ') || t('admin.preview.noAuthors')}</strong>
           </span>
-          <span className="text-border">·</span>
-          <time className="font-mono text-label text-ink-secondary">
-            {formatDate(article.date)}
-          </time>
+          <span aria-hidden="true">·</span>
+          <time className="font-mono text-label">{formatDate(article.date, i18n.language)}</time>
           {article.readingTime && (
             <>
-              <span className="text-border">·</span>
-              <span className="font-mono text-label text-ink-secondary">{article.readingTime}</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono text-label">{article.readingTime}</span>
             </>
           )}
           {org && (
             <>
-              <span className="text-border">·</span>
-              <span className="font-mono text-label text-ink-secondary">{org.name}</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono text-label">{org.name}</span>
             </>
           )}
         </div>
 
-        {/* Body */}
         {bodyToMarkdown(article.body).trim() ? (
           <ArticleBody body={article.body} className="mt-6" />
         ) : (
-          <p className="mt-6 font-body text-body text-border italic">El cuerpo del artículo aparecerá acá.</p>
+          <p className="mt-6 font-body text-body"><Missing>{t('admin.preview.noBody')}</Missing></p>
         )}
       </div>
     </div>
@@ -206,27 +199,25 @@ interface ArticleLivePreviewProps {
 }
 
 export default function ArticleLivePreview({ article, orgs = [] }: ArticleLivePreviewProps) {
+  const { t } = useTranslation()
   return (
-    <div className="flex flex-col gap-10 pb-8">
-      {/* Card in standard grid */}
+    <div className="flex flex-col gap-10">
       <section>
-        <PreviewLabel>Tarjeta en la lista</PreviewLabel>
+        <PreviewLabel>{t('admin.preview.card')}</PreviewLabel>
         <div className="max-w-sm">
           <PreviewCard article={article} />
         </div>
       </section>
 
-      {/* Card as featured */}
       {article.featured && (
         <section>
-          <PreviewLabel>Tarjeta destacada</PreviewLabel>
+          <PreviewLabel>{t('admin.preview.featuredCard')}</PreviewLabel>
           <PreviewCard article={article} featured />
         </section>
       )}
 
-      {/* Full article */}
       <section>
-        <PreviewLabel>Vista del artículo completo</PreviewLabel>
+        <PreviewLabel>{t('admin.preview.full')}</PreviewLabel>
         <ArticleFullPreview article={article} orgs={orgs} />
       </section>
     </div>
@@ -235,9 +226,9 @@ export default function ArticleLivePreview({ article, orgs = [] }: ArticleLivePr
 
 function PreviewLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-3 flex items-center gap-2">
-      <span className="inline-block w-2 h-2 rounded-full bg-accent" />
+    <h4 className={`font-mono text-label uppercase tracking-widest mb-3 flex items-center gap-2 ${muted}`}>
+      <span className="inline-block w-2 h-2 rounded-full bg-accent" aria-hidden="true" />
       {children}
-    </p>
+    </h4>
   )
 }

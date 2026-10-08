@@ -28,7 +28,7 @@ const timeKey = (s: ScheduleSlot) => `${s.day}|${s.subject_id}|${s.commission}|$
 // position the wrapper offscreen.
 const WallpaperLayout = forwardRef<HTMLDivElement, WallpaperLayoutProps>(
   ({ slots, title, subtitle }, ref) => {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
 
     const byDay: Record<string, DayBlock[]> = {}
     const dedup = new Map<string, DayBlock>()
@@ -238,7 +238,7 @@ const WallpaperLayout = forwardRef<HTMLDivElement, WallpaperLayoutProps>(
           borderTop: '1px solid #E5E7EB',
           marginTop: 'auto',
         }}>
-          ceitba.org.ar · {new Date().toLocaleDateString()}
+          ceitba.org.ar · {new Date().toLocaleDateString(i18n.language)}
         </footer>
       </div>
     )

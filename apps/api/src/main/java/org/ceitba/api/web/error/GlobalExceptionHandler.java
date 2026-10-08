@@ -17,6 +17,7 @@ import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.capability.CapabilityRequiredException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
+import org.ceitba.api.service.staff.InvalidBenefitSlugException;
 import org.ceitba.api.service.digest.DigestException;
 import org.ceitba.api.service.mail.MailQuotaExhaustedException;
 import org.ceitba.api.service.mail.MailSenderNotConnectedException;
@@ -173,6 +174,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
             .header("Retry-After", Long.toString(ex.retryAfterSeconds()))
             .body(ErrorResponse.of("TooManyRequests", ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidBenefitSlugException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBenefitSlug(InvalidBenefitSlugException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "InvalidSlug", ex.getMessage(), req);
     }
 
     @ExceptionHandler(ValidationException.class)

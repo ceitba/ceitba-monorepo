@@ -2,13 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { connectCeitbaSender, disconnectSenderAccount, listSenderAccounts } from '../../api/digests'
 import { formatArtDateTime } from '../../utils/digest'
-import ConfirmDialog from './ConfirmDialog'
+import { Alert, Button, ConfirmDialog, LoadingRegion, Skeleton } from '@/components/ui'
 import type { IsoDateTime, SenderAccount } from '../../types'
-
-const btnBase = 'min-h-[44px] px-5 inline-flex items-center justify-center font-body text-body-sm font-semibold rounded-sm transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed'
-const primaryBtn = `${btnBase} bg-primary text-surface hover:bg-primary-600`
-const accentBtn = `${btnBase} bg-accent text-ink-primary hover:bg-accent-500`
-const dangerBtn = `${btnBase} bg-white border border-border text-red-600 hover:bg-red-50 hover:border-red-300`
 
 interface DigestSenderCardProps {
   refreshKey?: number
@@ -32,7 +27,10 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
     const req = ++reqRef.current
     return listSenderAccounts()
       .then((list) => { if (req === reqRef.current) { setAccounts(list ?? []); setFailed(false) } })
-      .catch(() => { if (req === reqRef.current) setFailed(true) })
+      .catch((err: unknown) => {
+        console.error('newsletter admin: sender accounts', err)
+        if (req === reqRef.current) setFailed(true)
+      })
   }, [])
 
   useEffect(() => { load() }, [load, refreshKey])
@@ -44,7 +42,8 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
       const { authorizationUrl } = await connectCeitbaSender()
       // Whole-window navigation; the button stays disabled until we leave.
       window.location.assign(authorizationUrl)
-    } catch {
+    } catch (err) {
+      console.error('newsletter admin: connect sender', err)
       setError(t('admin.digests.sender.connectError'))
       setConnecting(false)
     }
@@ -58,8 +57,8 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
       setConfirming(false)
       await load()
       onChanged?.()
-    } catch {
-      setConfirming(false)
+    } catch (err) {
+      console.error('newsletter admin: disconnect sender', err)
       setError(t('admin.digests.sender.disconnectError'))
     } finally {
       setDisconnecting(false)
@@ -68,36 +67,40 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
 
   if (failed && !accounts) {
     return (
-      <p className="font-body text-body-sm text-ink-secondary">
-        {t('admin.digests.sender.loadError')}{' '}
-        <button type="button" onClick={load} className="text-primary underline underline-offset-2">{t('admin.common.retry')}</button>
-      </p>
+      <Alert tone="error" action={<Button variant="outline" size="sm" onClick={load}>{t('admin.common.retry')}</Button>}>
+        {t('admin.digests.sender.loadError')}
+      </Alert>
     )
   }
-  if (!accounts) return null
+  if (!accounts) {
+    return (
+      <LoadingRegion>
+        <Skeleton className="h-28 w-full rounded-card" />
+      </LoadingRegion>
+    )
+  }
 
   const account = accounts.find((a) => a.ownerType === 'ceitba' && a.status !== 'revoked')
   const state = account ? account.status : 'missing' // 'connected' | 'broken' | 'missing'
   const when = (iso: IsoDateTime) => formatArtDateTime(iso, i18n.language)
 
-  const errorBox = error && (
-    <p role="alert" className="font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{error}</p>
-  )
+  // Disconnect errors show inside the confirmation dialog instead.
+  const errorBox = error && !confirming && <Alert tone="error" onDismiss={() => setError('')}>{error}</Alert>
 
   if (!account) { // state === 'missing'
     return (
       <section
-        className="bg-accent-50 rounded-card border border-accent shadow-card p-4 sm:p-5 flex flex-col gap-3"
+        className="bg-amber-50 dark:bg-amber-950/40 rounded-card border border-amber-200 dark:border-amber-900 shadow-card p-4 sm:p-5 flex flex-col gap-3"
         aria-label={t('admin.digests.sender.title')}
       >
-        <h2 className="font-display text-h5 font-bold text-ink-primary">{t('admin.digests.sender.missingTitle')}</h2>
-        <p className="font-body text-body-sm text-ink-primary max-w-2xl">{t('admin.digests.sender.missingBody')}</p>
-        <p className="font-body text-body-sm text-ink-secondary max-w-2xl">{t('admin.digests.sender.help')}</p>
+        <h3 className="font-display text-h5 font-bold text-ink-primary dark:text-night-text">{t('admin.digests.sender.missingTitle')}</h3>
+        <p className="font-body text-body-sm text-ink-primary dark:text-night-text max-w-2xl">{t('admin.digests.sender.missingBody')}</p>
+        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted max-w-2xl">{t('admin.digests.sender.help')}</p>
         {errorBox}
         <div>
-          <button type="button" onClick={handleConnect} disabled={connecting} className={`${accentBtn} w-full sm:w-auto`}>
-            {connecting ? t('admin.digests.sender.connecting') : t('admin.digests.sender.connect')}
-          </button>
+          <Button variant="accent" onClick={handleConnect} loading={connecting} loadingLabel={t('admin.digests.sender.connecting')} className="w-full sm:w-auto">
+            {t('admin.digests.sender.connect')}
+          </Button>
         </div>
       </section>
     )
@@ -107,22 +110,22 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
 
   return (
     <section
-      className={`bg-white rounded-card border shadow-card p-4 sm:p-5 flex flex-col gap-3 ${broken ? 'border-accent' : 'border-border'}`}
+      className={`bg-white dark:bg-night-surface rounded-card border shadow-card p-4 sm:p-5 flex flex-col gap-3 ${broken ? 'border-amber-300 dark:border-amber-800' : 'border-border dark:border-night-border'}`}
       aria-label={t('admin.digests.sender.title')}
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0 flex flex-col gap-1">
-          <p className="font-mono text-label text-ink-secondary uppercase tracking-widest">{t('admin.digests.sender.title')}</p>
-          <p className="font-body text-body font-semibold text-ink-primary break-all">{account.email}</p>
-          <p className={`font-body text-body-sm font-semibold ${broken ? 'text-accent-700' : 'text-emerald-700'}`}>
+          <h3 className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">{t('admin.digests.sender.title')}</h3>
+          <p className="font-body text-body font-semibold text-ink-primary dark:text-night-text break-all">{account.email}</p>
+          <p className={`font-body text-body-sm font-semibold ${broken ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
             {t(`admin.digests.sender.status.${state}`)}
           </p>
           {account.connectedAt && (
-            <p className="font-body text-body-sm text-ink-secondary">
+            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
               {t('admin.digests.sender.connectedAt', { when: when(account.connectedAt) })}
             </p>
           )}
-          <p className="font-body text-body-sm text-ink-secondary">
+          <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {account.lastUsedAt
               ? t('admin.digests.sender.lastUsedAt', { when: when(account.lastUsedAt) })
               : t('admin.digests.sender.neverUsed')}
@@ -130,37 +133,32 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
           {broken && (
-            <button type="button" onClick={handleConnect} disabled={connecting} className={primaryBtn}>
-              {connecting ? t('admin.digests.sender.connecting') : t('admin.digests.sender.reconnect')}
-            </button>
+            <Button variant="accent" onClick={handleConnect} loading={connecting} loadingLabel={t('admin.digests.sender.connecting')}>
+              {t('admin.digests.sender.reconnect')}
+            </Button>
           )}
-          <button type="button" onClick={() => setConfirming(true)} disabled={connecting || disconnecting} className={dangerBtn}>
+          <Button variant="dangerGhost" onClick={() => { setError(''); setConfirming(true) }} disabled={connecting || disconnecting}>
             {t('admin.digests.sender.disconnect')}
-          </button>
+          </Button>
         </div>
       </div>
       {broken && (
-        <div role="status" className="font-body text-body-sm text-accent-700 bg-accent-50 px-3 py-2 rounded-sm">
+        <Alert tone="warning">
           <p>{t('admin.digests.sender.brokenBody')}</p>
-          {account.lastError && (
-            <p className="mt-1 font-mono text-label break-words">{t('admin.digests.sender.lastError', { error: account.lastError })}</p>
-          )}
           <p className="mt-1">{t('admin.digests.sender.help')}</p>
-        </div>
+        </Alert>
       )}
       {errorBox}
       {confirming && (
         <ConfirmDialog
-          tone="danger"
           title={t('admin.digests.sender.disconnectDialog.title')}
-          confirmLabel={disconnecting ? t('admin.digests.sender.disconnecting') : t('admin.digests.sender.disconnectDialog.confirm')}
-          cancelLabel={t('admin.common.cancel')}
+          body={t('admin.digests.sender.disconnectDialog.body', { email: account.email })}
+          confirmLabel={t('admin.digests.sender.disconnectDialog.confirm')}
           busy={disconnecting}
+          error={error || undefined}
           onConfirm={() => handleDisconnect(account.id)}
-          onClose={() => setConfirming(false)}
-        >
-          {t('admin.digests.sender.disconnectDialog.body', { email: account.email })}
-        </ConfirmDialog>
+          onCancel={() => { setConfirming(false); setError('') }}
+        />
       )}
     </section>
   )

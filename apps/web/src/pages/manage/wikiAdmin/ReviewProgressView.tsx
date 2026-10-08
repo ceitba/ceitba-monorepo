@@ -53,12 +53,12 @@ export default function ReviewProgressHeader({ progress, fallback }: {
             return (
               <li
                 key={s.subjectId}
-                title={s.subjectName ?? s.subjectId}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-body text-[0.75rem] ${
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-body text-label ${
                   complete ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-border dark:border-night-border text-ink-secondary dark:text-night-muted'
                 }`}
               >
                 <span className="font-mono">{s.subjectId}</span>
+                {s.subjectName && <span className="max-w-[12rem] truncate">{s.subjectName}</span>}
                 <span className="tabular-nums">{done}/{s.totalPairs}</span>
               </li>
             )
@@ -72,8 +72,8 @@ export default function ReviewProgressHeader({ progress, fallback }: {
             const ok = c.ratings >= min
             return (
               <div key={c.configKey} className="flex flex-col gap-1">
-                <p className="font-body text-[0.78rem]">
-                  <span className="font-mono text-[0.7rem] text-ink-secondary dark:text-night-muted">{prettyConfig(c.configKey, c.plan, c.write)}</span>
+                <p className="font-body text-label">
+                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{prettyConfig(c.configKey, c.plan, c.write)}</span>
                   <span className={`block ${ok ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>{t('manage.wikiAi.reviewProgress.confidence', { n: Math.min(c.ratings, min), min })}</span>
                 </p>
                 <ProgressBar percent={(Math.min(c.ratings, min) / min) * 100} tone={ok ? 'done' : 'primary'} />

@@ -1,6 +1,6 @@
 {
   "nav": {
-    "scheduler": "Combinador de Horarios",
+    "scheduler": "Combinador de horarios",
     "skipToContent": "Ir al contenido",
     "langToggleLabel": "EN",
     "langToggleAria": "Cambiar a inglés",
@@ -16,34 +16,59 @@
   "saved": {
     "pageTitle": "Mis horarios guardados",
     "usage": "{{count}} de {{max}} guardados",
-    "empty": "Aún no guardaste ningún horario.",
     "open": "Abrir",
     "share": "Compartir",
     "rename": "Renombrar",
     "delete": "Eliminar",
     "save": "Guardar",
-    "cancel": "Cancelar",
     "saveSchedule": "Guardar horario",
     "dialogTitle": "Guardar este horario",
     "nameLabel": "Nombre",
     "namePlaceholder": "ej. 1er cuatri 2026",
     "limitReached": "Llegaste al límite de {{max}} horarios. Eliminá uno para guardar otro.",
-    "confirmDelete": "¿Eliminar este horario guardado?",
     "openMissingContext": "Este horario no tiene carrera o plan asociados.",
-    "toastSavedTitle": "Horario \"{{name}}\" guardado",
-    "toastViewLink": "Ver mis guardados",
-    "toastDismiss": "Cerrar",
-    "compareCta": "Seleccioná 2 para comparar",
     "compareSelected_one": "Comparar {{count}} horario",
     "compareSelected_other": "Comparar {{count}} horarios",
-    "compareToggleAria": "Incluir {{name}} en la comparación"
+    "compareToggleAria": "Comparar {{name}}",
+    "emptyTitle": "Todavía no guardaste horarios",
+    "emptyBody": "Armá un horario en el combinador y tocá «Guardar horario»: va a aparecer acá para abrirlo, compartirlo o compararlo.",
+    "emptyAction": "Armar un horario",
+    "compare": "Comparar",
+    "compareHint": "Marcá «Comparar» en 2 o 3 horarios para verlos lado a lado.",
+    "compareToggle": "Comparar",
+    "confirmDeleteTitle": "¿Eliminar este horario?",
+    "confirmDeleteBody": "Vas a eliminar «{{name}}». No se puede deshacer.",
+    "confirmDeleteAction": "Sí, eliminar",
+    "deleted": "Eliminaste «{{name}}».",
+    "toastSaved": "Guardaste «{{name}}». Lo encontrás en Mis horarios guardados.",
+    "nameHint": "Ponele un nombre para reconocerlo después.",
+    "saveDisabledHint": "Elegí al menos una materia para guardar.",
+    "signInTitle": "Iniciá sesión para guardar",
+    "signInBody": "Para guardar tu horario en tu cuenta, iniciá sesión con tu cuenta @itba.edu.ar. Lo que armaste se mantiene cuando volvés.",
+    "signInAction": "Iniciar sesión con Google",
+    "planLabel": "Plan {{plan}}",
+    "noCareer": "Sin carrera",
+    "backToScheduler": "Ir al combinador",
+    "errors": {
+      "loadFailed": "No pudimos cargar tus horarios guardados.",
+      "saveFailed": "No pudimos guardar el horario. Probá de nuevo.",
+      "deleteFailed": "No pudimos eliminar el horario. Probá de nuevo.",
+      "renameFailed": "No pudimos renombrar el horario. Probá de nuevo.",
+      "shareFailed": "No pudimos crear la sesión compartida. Probá de nuevo."
+    },
+    "viewSaved": "Ver guardados"
   },
   "compare": {
     "label": "Comparación",
     "heading_one": "{{count}} horario lado a lado",
     "heading_other": "{{count}} horarios lado a lado",
     "back": "Volver",
-    "needAtLeastTwo": "Elegí al menos 2 horarios para comparar."
+    "needAtLeastTwo": "Elegí al menos 2 horarios guardados para verlos lado a lado.",
+    "needAtLeastTwoTitle": "Faltan horarios para comparar",
+    "pickSchedules": "Elegir horarios",
+    "loadFailed": "No pudimos cargar los horarios para comparar.",
+    "someFailed_one": "No pudimos cargar {{count}} de los horarios.",
+    "someFailed_other": "No pudimos cargar {{count}} de los horarios."
   },
   "home": {
     "title": "Planificá tu horario",
@@ -61,14 +86,13 @@
       "settings": "Adicionales",
       "calendar": "Calendario"
     },
-    "tabsAria": "Secciones del combinador"
+    "tabsAria": "Secciones del combinador",
+    "changeCareer": "Elegir otra carrera",
+    "plan": "Plan"
   },
   "courses": {
     "selected": "Materias seleccionadas",
     "available": "Materias disponibles",
-    "credits": "créditos",
-    "course": "materia",
-    "courses": "materias",
     "semester1": "Primer cuatrimestre",
     "semester2": "Segundo cuatrimestre",
     "electives": "Electivas",
@@ -83,7 +107,21 @@
     "noResults": "No se encontraron materias",
     "removeAria": "Eliminar {{name}}",
     "reorderAria": "Reordenar {{name}}",
-    "or": "o"
+    "or": "o",
+    "add": "Agregar",
+    "remove": "Quitar",
+    "removed": "Quitaste {{name}}.",
+    "creditCount_one": "{{count}} crédito",
+    "creditCount_other": "{{count}} créditos",
+    "selectedSummary_one": "{{count}} materia · {{credits}} créditos",
+    "selectedSummary_other": "{{count}} materias · {{credits}} créditos",
+    "conflictCount_one": "{{count}} posible choque",
+    "conflictCount_other": "{{count}} posibles choques",
+    "viewCombinations": "Ver combinaciones",
+    "noneSelectedBody": "Buscá o tocá materias de la lista para sumarlas.",
+    "loadFailedTitle": "No pudimos cargar las materias",
+    "loadFailed": "Revisá tu conexión y probá de nuevo.",
+    "undo": "Deshacer"
   },
   "commission": {
     "title": "Seleccionar comisión",
@@ -97,13 +135,15 @@
     "turn_morning": "Mañana",
     "turn_afternoon": "Tarde",
     "turn_evening": "Noche",
-    "noMatchTurns": "Ninguna comisión coincide con el turno seleccionado."
+    "noMatchTurns": "Ninguna comisión coincide con el turno seleccionado.",
+    "addSelectedNone": "Elegí al menos una"
   },
   "conflicts": {
     "status_clear": "Sin conflicto",
     "status_partial": "Posible conflicto",
     "status_all": "Conflicto total",
-    "conflictsWith": "Choca con: {{names}}"
+    "alwaysClashesWith": "Choca siempre con: {{names}}",
+    "mayClashWith": "Puede chocar con: {{names}}"
   },
   "share": {
     "untitledSession": "Sesión compartida",
@@ -115,16 +155,18 @@
     "signInToJoin": "Iniciá sesión para unirte",
     "leave": "Salir",
     "deleteSession": "Eliminar sesión",
-    "confirmLeave": "¿Salir de esta sesión compartida?",
-    "confirmDelete": "¿Eliminar la sesión para todos los participantes?",
+    "confirmDelete": "Se elimina para todos los participantes y el enlace deja de funcionar. No se puede deshacer.",
     "creatorTag": "Creador",
     "scheduleRemoved": "horario eliminado",
     "participantsHeading": "Participantes",
     "join": {
       "title": "Elegí qué horario sumás",
       "hint": "Tu selección aparecerá en el mapa junto al resto del grupo.",
-      "noSaved": "Aún no guardaste ningún horario. Guardá uno antes de unirte.",
-      "confirm": "Sumar al grupo"
+      "noSaved": "Para sumarte, primero armá un horario y guardalo en tu cuenta.",
+      "confirm": "Sumar al grupo",
+      "noSavedTitle": "No tenés horarios guardados",
+      "makeOne": "Armar un horario",
+      "loadFailed": "No pudimos cargar tus horarios guardados."
     },
     "heatmap": {
       "label": "Mapa de horarios compartidos",
@@ -132,16 +174,23 @@
       "busy_one": "{{count}} de {{total}} ocupados: {{names}}",
       "busy_other": "{{count}} de {{total}} ocupados: {{names}}"
     },
-    "catalogLoadFailed": "No se pudieron cargar las materias de: {{plans}}. Esos horarios se muestran sin clases."
+    "catalogLoadFailed": "No se pudieron cargar las materias de: {{plans}}. Esos horarios se muestran sin clases.",
+    "confirmDeleteTitle": "¿Eliminar la sesión?",
+    "confirmDeleteAction": "Sí, eliminar",
+    "deleted": "Eliminaste la sesión compartida.",
+    "joined": "Sumaste tu horario al grupo.",
+    "left": "Saliste de la sesión. Podés volver a sumarte cuando quieras.",
+    "notFound": "Esta sesión compartida no existe o ya se eliminó.",
+    "loadFailed": "No pudimos cargar la sesión compartida.",
+    "backToScheduler": "Ir al combinador",
+    "errors": {
+      "joinFailed": "No pudimos sumar tu horario. Probá de nuevo.",
+      "leaveFailed": "No pudimos sacarte de la sesión. Probá de nuevo.",
+      "deleteFailed": "No pudimos eliminar la sesión. Probá de nuevo."
+    }
   },
   "scheduler": {
     "title": "Vista previa de horarios",
-    "option": "Opción",
-    "of": "de",
-    "allowOverlap": "Permitir superposición limitada",
-    "allowOverlapTooltip": "Máx. diferencia: 30 mins",
-    "allowUnlimitedOverlap": "Permitir superposición completa",
-    "allowUnlimitedOverlapTooltip": "Sin límite de superposición",
     "freeDay": "Tener un día libre",
     "hasOverlap": "Tiene superposición",
     "noOverlap": "Sin superposición",
@@ -151,34 +200,57 @@
     "noFreeDay": "Sin día libre",
     "blockedTime": "Horario bloqueado",
     "noSubjects": "No hay materias seleccionadas",
-    "noSubjectsMessage": "Seleccioná materias en la pestaña Materias y luego volvé aquí para ver las combinaciones posibles.",
-    "generating": "Generando combinaciones…",
-    "noCombinations": "No hay combinaciones posibles para esta configuración",
-    "noCombinationsMessage": "Probá cambiando las opciones o seleccionando otras comisiones.",
-    "livePreviewHint": "Vista previa en vivo · generá combinaciones para ver opciones válidas",
-    "livePreviewConflicts_one": "Vista previa en vivo · {{count}} conflicto detectado",
-    "livePreviewConflicts_other": "Vista previa en vivo · {{count}} conflictos detectados",
+    "noSubjectsMessage": "Elegí materias en la pestaña Materias para ver las combinaciones posibles.",
+    "noCombinations": "No hay combinaciones posibles",
+    "noCombinationsMessage": "Probá elegir otras comisiones o materias.",
+    "livePreviewHint": "Vista previa de todas las comisiones elegidas, encimadas. Tocá «Ver combinaciones» para ver las opciones sin choques.",
+    "livePreviewConflicts_one": "Vista previa de todas las comisiones elegidas: hay {{count}} choque. Tocá «Ver combinaciones» para ver las opciones posibles.",
+    "livePreviewConflicts_other": "Vista previa de todas las comisiones elegidas: hay {{count}} choques. Tocá «Ver combinaciones» para ver las opciones posibles.",
     "truncatedNotice": "Se muestran las primeras {{count}} combinaciones encontradas. Elegí comisiones específicas o agregá horarios bloqueados para acotar la búsqueda.",
     "searchStopped": "La búsqueda se detuvo antes de terminar porque hay demasiadas combinaciones posibles. Elegí comisiones específicas o agregá horarios bloqueados para acotarla.",
     "rankingHint": "Ordenadas por menos superposición, más días libres y menos horas libres entre clases",
-    "prevOption": "Horario anterior",
-    "nextOption": "Siguiente horario"
+    "prevOption": "Opción anterior",
+    "nextOption": "Opción siguiente",
+    "optionCounter": "Opción {{current}} de {{total}}",
+    "optionCounterTruncated": "Opción {{current}} de {{total}}+",
+    "overlapLabel": "Superposición entre clases",
+    "overlap_none": "No",
+    "overlap_limited": "Hasta 30 min",
+    "overlap_unlimited": "Sin límite",
+    "overlapHint_none": "Solo combinaciones sin clases superpuestas.",
+    "overlapHint_limited": "Dos clases pueden compartir hasta 30 minutos.",
+    "overlapHint_unlimited": "Muestra también combinaciones con clases superpuestas.",
+    "freeDayHint": "Solo combinaciones con al menos un día de semana sin clases.",
+    "goToCourses": "Ir a Materias",
+    "noResult": {
+      "blockedOut_one": "Todas las comisiones de {{names}} caen en tus horarios bloqueados (Adicionales).",
+      "blockedOut_other": "Todas las comisiones de {{names}} caen en tus horarios bloqueados (Adicionales).",
+      "clash": "{{a}} y {{b}} se superponen en todas sus comisiones.",
+      "maybeBlocked": "Tus horarios bloqueados (Adicionales) pueden estar dejando afuera comisiones.",
+      "freeDay": "«Tener un día libre» está activado: desactivalo para ver más opciones.",
+      "allowOverlap": "Probá permitir superposición arriba."
+    },
+    "and": "y",
+    "reviewCourses": "Revisar materias",
+    "reviewBlockedTimes": "Revisar Adicionales",
+    "stepLimitNotice": "Hay demasiadas combinaciones posibles: la búsqueda se cortó y se muestran las {{count}} encontradas hasta ahí. Elegí comisiones específicas o agregá horarios bloqueados para acotarla."
   },
   "save": {
-    "title": "Guardar horario",
-    "saveAsPDF": "Guardar como PDF",
-    "saveAsPDFDescription": "Descarga tu horario en formato PDF",
-    "saveAsImage": "Guardar como imagen",
-    "saveAsImageDescription": "Descarga tu horario como imagen PNG",
+    "title": "Descargar o compartir",
+    "saveAsPDF": "Descargar como PDF",
+    "saveAsPDFDescription": "Tu horario en un archivo PDF",
+    "saveAsImage": "Descargar como imagen",
+    "saveAsImageDescription": "Tu horario como imagen PNG",
     "saveAsWallpaper": "Fondo de pantalla 9:16",
     "saveAsWallpaperDescription": "Imagen vertical 1080×1920 lista para usar de fondo",
     "exportToCalendar": "Exportar a Google Calendar",
-    "exportToCalendarDescription": "Sincroniza tu horario con Google Calendar",
+    "exportToCalendarDescription": "Sumá tus clases a Google Calendar",
     "shareLink": "Copiar enlace",
     "linkCopied": "¡Enlace copiado al portapapeles!",
     "shareLinkDescription": "Copiá un enlace que abre el combinador con estas materias ya seleccionadas",
     "linkCopyFailed": "No se pudo copiar el enlace. Copialo manualmente: {{url}}",
-    "toastDismiss": "Cerrar aviso"
+    "exportButton": "Exportar",
+    "exportFailed": "No pudimos generar el archivo. Probá de nuevo."
   },
   "wallpaper": {
     "defaultTitle": "Mi horario",
@@ -189,15 +261,18 @@
   "calendar": {
     "title": "Agregar al calendario",
     "option1Title": "Opción 1: Todos los eventos",
-    "option1Description": "Descarga el archivo y súbelo a Google Calendar para agregar todos los eventos a la vez.",
-    "option1Step1": "Descarga el archivo de calendario",
-    "option1Step2": "Ve a Google Calendar",
+    "option1Description": "Descargá el archivo y subilo a Google Calendar para agregar todas las clases de una vez.",
+    "option1Step1": "Descargá el archivo de calendario",
+    "option1Step2": "Abrí",
     "option1Step3": "Configuración → Importar y exportar",
-    "option1Step4": "Sube el archivo descargado",
+    "option1Step4": "Subí el archivo descargado",
     "downloadFile": "Descargar archivo de calendario",
     "option2Title": "Opción 2: Eventos uno por uno",
-    "commission": "Comisión",
-    "closePanel": "Cerrar panel"
+    "option2Description": "Cada enlace abre Google Calendar con una clase ya cargada.",
+    "googleCalendar": "Google Calendar",
+    "commissionName": "Comisión {{name}}",
+    "eventWithCommission": "{{title}} · Comisión {{commission}}",
+    "allAdded": "Ya abriste todas las clases."
   },
   "settings": {
     "title": "Configuración adicional",
@@ -209,13 +284,25 @@
     "delete": "Eliminar",
     "save": "Guardar",
     "hour": "Hora",
-    "blockedTimesDescription": "Los horarios bloqueados son períodos específicos en los que no deseas tener clases programadas.",
+    "blockedTimesDescription": "Los horarios bloqueados son momentos en los que no querés tener clases.",
     "blockedReason1Title": "Actividades personales",
     "blockedReason1Desc": "Trabajo, almuerzo, ejercicio, tiempo en familia",
     "blockedReason2Title": "Tiempos de traslado",
     "blockedReason2Desc": "Viajes hacia y desde la universidad",
     "blockedReason3Title": "Compromisos fijos",
-    "blockedReason3Desc": "Otras actividades académicas, cursos o responsabilidades"
+    "blockedReason3Desc": "Otras actividades académicas, cursos o responsabilidades",
+    "howToBlock": "Arrastrá sobre el calendario para bloquear un rango (en el celular, mantené presionado y después arrastrá), o usá «Agregar horario bloqueado». Tocá un bloque para editarlo.",
+    "day": "Día",
+    "from": "Desde",
+    "to": "Hasta",
+    "blockLabelHint": "Opcional.",
+    "editBlockAria": "Editar bloque {{label}} {{day}} {{range}}",
+    "overlapsBlock": "Se superpone",
+    "overlapNotAdded": "No se agregó: se superpone con otro horario bloqueado.",
+    "errors": {
+      "order": "El inicio tiene que ser antes del fin.",
+      "overlap": "Se superpone con otro horario bloqueado de ese día."
+    }
   },
   "footer": {
     "itTeam": "IT Team CEITBA",
@@ -234,22 +321,16 @@
   },
   "errors": {
     "somethingWrong": "Algo salió mal",
-    "retry": "Reintentar",
-    "loading": "Cargando"
+    "retry": "Reintentar"
   },
   "authErrors": {
     "title": "No pudimos iniciar tu sesión",
-    "dismiss": "Cerrar aviso",
     "unauthorized": "Tu email no está habilitado para ingresar. Usá tu cuenta @itba.edu.ar.",
     "unauthorized_workspace": "El dominio de tu cuenta de Google no está habilitado. Usá tu cuenta @itba.edu.ar.",
     "unverified_email": "El email de tu cuenta de Google no está verificado.",
     "auth_failed": "Algo salió mal al iniciar sesión. Probá de nuevo.",
     "invalid_state": "La solicitud de inicio de sesión expiró o no es válida. Probá de nuevo.",
     "access_denied": "Cancelaste el inicio de sesión con Google."
-  },
-  "common": {
-    "close": "Cerrar",
-    "moreInfo": "Más información"
   },
   "daysFull": {
     "MONDAY": "Lunes",
@@ -333,5 +414,10 @@
       "rateLimited": "Hiciste muchas sugerencias o votos seguidos. Probá de nuevo en un rato.",
       "generic": "No pudimos guardar tu respuesta. Probá de nuevo."
     }
+  },
+  "apiErrors": {
+    "offline": "No hay conexión. Revisá tu internet y probá de nuevo.",
+    "signInRequired": "Tu sesión expiró. Iniciá sesión de nuevo.",
+    "notFound": "No lo encontramos: puede que se haya eliminado."
   }
 }

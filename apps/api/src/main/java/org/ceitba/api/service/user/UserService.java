@@ -86,10 +86,11 @@ public class UserService {
     // Paginated/filtered variant for the admin Manage Users view. `q` is
     // matched against name OR email (case-insensitive substring); `organization`
     // narrows to that org's members; `sort` is the only public knob — the rest
-    // (offset, limit) come from the page params. The toResponse mapping stays
-    // N+1, but it's now bounded by `limit` instead of the whole user table.
+    // (offset, limit) come from the page params. `staffOnly` keeps only users
+    // with STAFF right now. The toResponse mapping stays N+1, but it's now
+    // bounded by `limit` instead of the whole user table.
     @Transactional(readOnly = true)
-    public Page<UserResponse> findPaged(String q, String organization, String sort, int page, int limit) {
+    public Page<UserResponse> findPaged(String q, String organization, boolean staffOnly, String sort, int page, int limit) {
         // Normalize to a non-null lowercase string — see UserRepository.findFiltered
         // for why null binds blow up under Postgres + LIKE.
         String normalizedQ = (q == null) ? "" : q.trim().toLowerCase();
@@ -98,7 +99,7 @@ public class UserService {
             ? Sort.by(Sort.Direction.ASC, "createdAt")
             : Sort.by(Sort.Direction.DESC, "createdAt");
         return userRepository
-            .findFiltered(normalizedQ, normalizedOrg,
+            .findFiltered(normalizedQ, normalizedOrg, staffOnly, OffsetDateTime.now(),
                 PageRequest.of(Math.max(page - 1, 0), Math.min(Math.max(limit, 1), 100), jpaSort))
             .map(this::toResponse);
     }

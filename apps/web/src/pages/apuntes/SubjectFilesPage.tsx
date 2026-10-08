@@ -11,11 +11,11 @@ import PinButton from '../../components/apuntes/PinButton'
 import PinNotice from '../../components/apuntes/PinNotice'
 import SubjectCorrelativas from '../../components/apuntes/correlativas/SubjectCorrelativas'
 import { ApiError } from '../../api/client'
-import { apuntesErrorMessage, authorName, formatDate, formatSize, isCommunity } from '../../utils/apuntes'
+import { authorName, formatDate, formatSize, isCommunity } from '../../utils/apuntes'
+import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
 import CommunityBadge from '../../components/apuntes/CommunityBadge'
-import EmptyState from '../../components/apuntes/EmptyState'
+import { Button, EmptyState, ErrorState, LoadingRegion, Skeleton, Tabs, ToggleGroup, buttonClass, selectClass } from '../../components/ui'
 import KindIcon from '../../components/apuntes/KindIcon'
-import { BTN_PRIMARY } from '../../components/apuntes/buttons'
 
 const SubjectGraphThumb = lazy(() => import('../../components/apuntes/graph/SubjectGraphThumb'))
 
@@ -47,7 +47,7 @@ export default function SubjectFilesPage() {
         if (reqRef.current !== id) return
         setData(null)
         if (e instanceof ApiError && e.status === 404) setNotFound(true)
-        else setError(apuntesErrorMessage(e, t))
+        else setError(apuntesErrorCopy(e, t))
       })
       .finally(() => { if (reqRef.current === id) setLoading(false) })
   }, [subjectId, tick, t])
@@ -89,6 +89,8 @@ export default function SubjectFilesPage() {
     return { years: [...years].sort((a, b) => b - a), none }
   })()
   const showYearChips = yearChips.years.length + (yearChips.none ? 1 : 0) > 1
+  const hasEstimatedYear = groups.some((g) => g.files.some((f) => f.academicYear != null && f.academicYearSource === 'DRIVE'))
+  const hasCommunity = groups.some((g) => isCommunity(g) || g.files.some((f) => f.community))
   const byRecent = (a: FileSummary, b: FileSummary) =>
     (b.academicYear ?? -Infinity) - (a.academicYear ?? -Infinity) ||
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
@@ -112,10 +114,10 @@ export default function SubjectFilesPage() {
 
       <header className="mb-8 pb-6 border-b border-border dark:border-night-border">
         {loading && !data ? (
-          <div aria-hidden="true" className="flex flex-col gap-3">
-            <div className="h-10 w-2/3 rounded-sm skeleton" />
-            <div className="h-4 w-40 rounded-sm skeleton" />
-          </div>
+          <LoadingRegion className="flex flex-col gap-3">
+            <Skeleton className="h-10 w-2/3" />
+            <Skeleton className="h-4 w-40" />
+          </LoadingRegion>
         ) : (
           <>
             <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
@@ -149,26 +151,25 @@ export default function SubjectFilesPage() {
       </header>
 
       {!notFound && (
-        <div role="tablist" aria-label={t('wiki.tabsAria')} className="flex gap-2 border-b border-border dark:border-night-border -mt-4 mb-8">
-          {(['wiki', 'archivos'] as Tab[]).map((id) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => selectTab(id)}
-              className={`px-4 py-2 -mb-px border-b-2 font-mono text-label uppercase tracking-widest transition-colors duration-150 ${
-                tab === id ? 'border-primary text-primary' : 'border-transparent text-ink-secondary dark:text-night-muted hover:text-primary'
-              }`}
-            >
-              {t(`wiki.tabs.${id}`)}
-              {id === 'archivos' && data && <span className="ml-1.5 opacity-70">{totalFiles}</span>}
-            </button>
-          ))}
+        <div className="flex items-end gap-2 border-b border-border dark:border-night-border -mt-4 mb-8">
+          {tab != null && (
+            <Tabs
+              className="!border-b-0 flex-1 min-w-0"
+              items={(['wiki', 'archivos'] as Tab[]).map((id) => ({
+                id,
+                label: t(`wiki.tabs.${id}`),
+                count: id === 'archivos' && data ? totalFiles : null,
+              }))}
+              active={tab}
+              onChange={selectTab}
+              label={t('wiki.tabsAria')}
+              idPrefix={TABS_ID}
+            />
+          )}
           {kb && (kb.index || kb.pages.length > 0) && (
             <Link
               to={`/apuntes/${encodeURIComponent(subjectId)}/grafo`}
-              className="ml-auto self-center font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary"
+              className="ml-auto self-center inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary"
             >
               {t('wiki.graphLink')}
             </Link>
@@ -177,12 +178,13 @@ export default function SubjectFilesPage() {
       )}
 
       {/* Also while ?vista=wiki waits for /kb, so "no wiki" never flashes. */}
-      {(tab === null || (tab === 'wiki' && !kbLoaded)) && !notFound && (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-hidden="true">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 rounded-card skeleton" />)}
-        </div>
-      )}
+      {(tab === null || (tab === 'wiki' && !kbLoaded)) && !notFound && <FileListSkeleton />}
 
+      <div
+        role={tab != null && !notFound ? 'tabpanel' : undefined}
+        id={tab != null ? `${TABS_ID}-panel-${tab}` : undefined}
+        aria-labelledby={tab != null && !notFound ? `${TABS_ID}-tab-${tab}` : undefined}
+      >
       {tab === 'wiki' && kbLoaded && (
         kb?.index ? (
           <WikiArticle
@@ -205,72 +207,53 @@ export default function SubjectFilesPage() {
           <EmptyState
             title={t('wiki.emptyTitle')}
             body={t('wiki.emptyBody')}
-            action={<button type="button" onClick={() => selectTab('archivos')} className={BTN_PRIMARY}>{t('wiki.seeFiles')}</button>}
+            action={<Button onClick={() => selectTab('archivos')}>{t('wiki.seeFiles')}</Button>}
           />
         )
       )}
 
       {tab === 'archivos' && error && (
-        <div role="alert" className="flex flex-col items-start gap-3">
-          <p className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>
-          <button type="button" onClick={() => setTick((n) => n + 1)} className="font-mono text-label uppercase tracking-widest text-primary hover:underline">
-            {t('errors.retry')}
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={() => setTick((n) => n + 1)} backTo="/apuntes" backLabel={t('apuntes.backToSearch')} />
       )}
 
       {notFound && (
         <EmptyState
           title={t('apuntes.subject.notFoundTitle')}
           body={t('apuntes.subject.notFoundBody')}
-          action={<Link to="/apuntes" className={BTN_PRIMARY}>{t('apuntes.backToSearch')}</Link>}
+          action={<Link to="/apuntes" className={buttonClass()}>{t('apuntes.backToSearch')}</Link>}
         />
       )}
 
-      {tab === 'archivos' && loading && !data && !error && (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-hidden="true">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 rounded-card skeleton" />)}
-        </div>
-      )}
+      {tab === 'archivos' && loading && !data && !error && <FileListSkeleton />}
 
       {tab === 'archivos' && data && groups.length === 0 && (
         <EmptyState
           title={t('apuntes.subject.emptyTitle')}
           body={t('apuntes.subject.emptyBody')}
-          action={<Link to="/apuntes/mis-apuntes" className={BTN_PRIMARY}>{t('apuntes.home.cta')}</Link>}
+          action={<Link to="/apuntes/mis-apuntes" className={buttonClass()}>{t('apuntes.home.cta')}</Link>}
         />
       )}
 
       {tab === 'archivos' && data && groups.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           {showYearChips ? (
-            <div role="group" aria-label={t('apuntes.year.filterAria')} className="flex flex-wrap gap-2">
-              {[{ key: 'all', value: null as number | 'none' | null, label: t('apuntes.year.all') },
-                ...yearChips.years.map((y) => ({ key: String(y), value: y as number | 'none' | null, label: String(y) })),
-                ...(yearChips.none ? [{ key: 'none', value: 'none' as const, label: t('apuntes.year.none') }] : []),
-              ].map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  aria-pressed={yearFilter === c.value}
-                  onClick={() => setYearFilter(c.value)}
-                  className={`px-3 py-1 rounded-full border font-mono text-label tracking-wide transition-colors ${
-                    yearFilter === c.value
-                      ? 'bg-primary text-white border-primary'
-                      : 'border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary hover:text-primary'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+            <ToggleGroup<number | 'none' | null>
+              label={t('apuntes.year.filterAria')}
+              value={yearFilter}
+              onChange={setYearFilter}
+              options={[
+                { key: 'all', value: null, label: t('apuntes.year.all') },
+                ...yearChips.years.map((y) => ({ value: y, label: String(y) })),
+                ...(yearChips.none ? [{ value: 'none' as const, label: t('apuntes.year.none') }] : []),
+              ]}
+            />
           ) : <span />}
           <label className="inline-flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('apuntes.year.sortLabel')}
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as 'recent' | 'folder')}
-              className="px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm normal-case tracking-normal text-ink-primary dark:text-night-text"
+              className={selectClass({ className: '!w-auto normal-case tracking-normal' })}
             >
               <option value="recent">{t('apuntes.year.sortRecent')}</option>
               <option value="folder">{t('apuntes.year.sortFolder')}</option>
@@ -281,6 +264,13 @@ export default function SubjectFilesPage() {
 
       {tab === 'archivos' && data && groups.length > 0 && (
         <div className="flex flex-col gap-10">
+          {/* What the badges mean, spelled out once instead of in tooltips. */}
+          {(hasEstimatedYear || hasCommunity) && (
+            <ul className="-mt-4 flex flex-col gap-1 font-body text-label text-ink-secondary dark:text-night-muted">
+              {hasEstimatedYear && <li>{t('apuntes.year.estimatedLegend')}</li>}
+              {hasCommunity && <li><CommunityBadge className="mr-2" /> {t('apuntes.community.hint')}</li>}
+            </ul>
+          )}
           {shownGroups.map((g) => {
             const community = isCommunity(g) || g.files.some((f) => f.community)
             const author = community ? t('apuntes.community.label') : authorName(g.author, t)
@@ -332,7 +322,18 @@ export default function SubjectFilesPage() {
           })}
         </div>
       )}
+      </div>
       <PinNotice />
     </main>
+  )
+}
+
+const TABS_ID = 'subject-tabs'
+
+function FileListSkeleton() {
+  return (
+    <LoadingRegion className="flex flex-col gap-3">
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 !rounded-card" />)}
+    </LoadingRegion>
   )
 }

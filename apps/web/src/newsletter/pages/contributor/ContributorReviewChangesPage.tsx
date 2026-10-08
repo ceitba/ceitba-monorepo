@@ -62,11 +62,11 @@ export default function ContributorReviewChangesPage() {
   if (done) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3 animate-fade-in">
-        <div className={['w-12 h-12 rounded-full flex items-center justify-center', done === 'accepted' ? 'bg-emerald-50' : 'bg-amber-50'].join(' ')}>
+        <div className={['w-12 h-12 rounded-full flex items-center justify-center', done === 'accepted' ? 'bg-emerald-50 dark:bg-emerald-900' : 'bg-amber-50 dark:bg-amber-950'].join(' ')}>
           {done === 'accepted' ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-emerald-600 dark:text-emerald-400" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
           ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-amber-600 dark:text-amber-400" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
           )}
         </div>
         <p className="font-display text-h5 font-bold text-ink-primary">
@@ -119,8 +119,8 @@ export default function ContributorReviewChangesPage() {
       </div>
 
       {/* Info banner */}
-      <div className="rounded-card border border-blue-200 bg-blue-50 px-4 py-3">
-        <p className="font-body text-body-sm text-blue-800">
+      <div className="rounded-card border border-primary-100 dark:border-primary-800 bg-primary-50 dark:bg-primary-800 px-4 py-3">
+        <p className="font-body text-body-sm text-primary-700 dark:text-primary-200">
           El staff propuso cambios en tu {isArticle ? 'artículo' : 'evento'}{' '}
           <strong>“{resource.title}”</strong>. Revisá las diferencias y decidí si aceptás la versión propuesta o la devolvés al estado de revisión.
         </p>
@@ -128,50 +128,50 @@ export default function ContributorReviewChangesPage() {
 
       {/* Summary of changes */}
       {changedFields.length === 0 && !bodyChanged ? (
-        <div className="bg-white rounded-card border border-border shadow-card p-5">
+        <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-5">
           <p className="font-body text-body-sm text-ink-secondary italic">No se detectaron diferencias de texto.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-card border border-border shadow-card overflow-hidden">
+        <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card overflow-hidden">
           {/* Column headers */}
-          <div className="grid grid-cols-2 border-b border-border">
-            <div className="px-5 py-3 border-r border-border bg-surface">
+          <div className="grid grid-cols-2 border-b border-border dark:border-night-border">
+            <div className="px-5 py-3 border-r border-border dark:border-night-border bg-surface dark:bg-night-bg">
               <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">Tu versión</p>
             </div>
-            <div className="px-5 py-3 bg-blue-50">
-              <p className="font-mono text-label uppercase tracking-widest text-blue-700">Versión del staff</p>
+            <div className="px-5 py-3 bg-primary-50 dark:bg-primary-800">
+              <p className="font-mono text-label uppercase tracking-widest text-primary-700 dark:text-primary-300">Versión del staff</p>
             </div>
           </div>
 
           {changedFields.map(({ key, label }, i) => (
             <div
               key={key}
-              className={['grid grid-cols-2', i < changedFields.length - 1 || bodyChanged ? 'border-b border-border' : ''].join(' ')}
+              className={['grid grid-cols-2', i < changedFields.length - 1 || bodyChanged ? 'border-b border-border dark:border-night-border' : ''].join(' ')}
             >
-              <div className="px-5 py-4 border-r border-border">
+              <div className="px-5 py-4 border-r border-border dark:border-night-border">
                 <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-1">{label}</p>
-                <p className="font-body text-body text-ink-primary">{original[key] || <em className="text-border">—</em>}</p>
+                <p className="font-body text-body text-ink-primary">{original[key] || <em className="text-border dark:text-night-muted">—</em>}</p>
               </div>
-              <div className="px-5 py-4 bg-blue-50/40">
-                <p className="font-mono text-label uppercase tracking-widest text-blue-600 mb-1">{label}</p>
-                <p className="font-body text-body text-ink-primary">{proposed[key] || <em className="text-border">—</em>}</p>
+              <div className="px-5 py-4 bg-primary-50/40 dark:bg-primary-900/40">
+                <p className="font-mono text-label uppercase tracking-widest text-primary-600 dark:text-primary-300 mb-1">{label}</p>
+                <p className="font-body text-body text-ink-primary">{proposed[key] || <em className="text-border dark:text-night-muted">—</em>}</p>
               </div>
             </div>
           ))}
 
           {bodyChanged && (
             <div className="grid grid-cols-2">
-              <div className="px-5 py-4 border-r border-border">
+              <div className="px-5 py-4 border-r border-border dark:border-night-border">
                 <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">Cuerpo</p>
                 {bodyToMarkdown(original.body).trim()
                   ? <ArticleBody body={original.body} className="text-body-sm" />
-                  : <em className="font-body text-body-sm text-border">Sin cuerpo</em>}
+                  : <em className="font-body text-body-sm text-border dark:text-night-muted">Sin cuerpo</em>}
               </div>
-              <div className="px-5 py-4 bg-blue-50/40">
-                <p className="font-mono text-label uppercase tracking-widest text-blue-600 mb-2">Cuerpo</p>
+              <div className="px-5 py-4 bg-primary-50/40 dark:bg-primary-900/40">
+                <p className="font-mono text-label uppercase tracking-widest text-primary-600 dark:text-primary-300 mb-2">Cuerpo</p>
                 {bodyToMarkdown(proposed.body).trim()
                   ? <ArticleBody body={proposed.body} className="text-body-sm" />
-                  : <em className="font-body text-body-sm text-border">Sin cuerpo</em>}
+                  : <em className="font-body text-body-sm text-border dark:text-night-muted">Sin cuerpo</em>}
               </div>
             </div>
           )}
@@ -190,7 +190,7 @@ export default function ContributorReviewChangesPage() {
         <button
           type="button"
           onClick={handleReject}
-          className="min-h-[44px] px-6 bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-red-300 hover:text-red-600 transition-colors duration-150 focus-visible:rounded"
+          className="min-h-[44px] px-6 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-secondary font-body font-semibold rounded-sm hover:border-red-300 hover:text-red-600 transition-colors duration-150 focus-visible:rounded"
         >
           Rechazar cambios
         </button>

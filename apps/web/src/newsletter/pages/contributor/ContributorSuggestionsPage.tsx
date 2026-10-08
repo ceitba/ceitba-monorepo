@@ -13,10 +13,10 @@ type SuggestionItem = (
 ) & { createdAt?: string }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  pending_review:     { label: 'Pendiente de revisión', cls: 'bg-amber-50 text-amber-700' },
-  changes_requested:  { label: 'Cambios solicitados',   cls: 'bg-blue-50 text-blue-700'  },
-  published:          { label: 'Publicado',              cls: 'bg-emerald-50 text-emerald-700' },
-  rejected:           { label: 'Rechazado',              cls: 'bg-red-50 text-red-600'    },
+  pending_review:     { label: 'Pendiente de revisión', cls: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300' },
+  changes_requested:  { label: 'Cambios solicitados',   cls: 'bg-primary-50 dark:bg-primary-800 text-primary-700 dark:text-primary-300'  },
+  published:          { label: 'Publicado',              cls: 'bg-emerald-50 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-400' },
+  rejected:           { label: 'Rechazado',              cls: 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400'    },
 }
 
 export default function ContributorSuggestionsPage() {
@@ -55,7 +55,7 @@ export default function ContributorSuggestionsPage() {
           </Link>
           <Link
             to={newsletterPath('/contribute/suggest/event')}
-            className="inline-flex items-center gap-2 min-h-[40px] px-4 bg-white border border-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+            className="inline-flex items-center gap-2 min-h-[40px] px-4 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
           >
             <PlusIcon /> Evento
           </Link>
@@ -81,11 +81,11 @@ interface SuggestionRowProps {
 }
 
 function SuggestionRow({ item }: SuggestionRowProps) {
-  const s = STATUS_LABEL[item.status ?? ''] ?? { label: item.status, cls: 'bg-surface text-ink-secondary' }
+  const s = STATUS_LABEL[item.status ?? ''] ?? { label: item.status, cls: 'bg-surface dark:bg-night-bg text-ink-secondary' }
   const isArticle = item.resourceType === 'article'
 
   return (
-    <div className="bg-white rounded-card border border-border shadow-card p-5 flex items-start justify-between gap-4">
+    <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-5 flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">
@@ -120,7 +120,7 @@ function SuggestionRow({ item }: SuggestionRowProps) {
         {(item.status === 'pending_review' || item.status === 'rejected') && (
           <Link
             to={newsletterPath(`/contribute/suggest/${isArticle ? 'article' : 'event'}/${item.id}/edit`)}
-            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded"
+            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 dark:hover:bg-primary-800 rounded-sm transition-colors duration-150 focus-visible:rounded"
           >
             {item.status === 'rejected' ? 'Re-enviar' : 'Editar'}
           </Link>
@@ -132,10 +132,10 @@ function SuggestionRow({ item }: SuggestionRowProps) {
 
 function EmptyState() {
   return (
-    <div className="bg-white rounded-card border border-border shadow-card flex flex-col items-center justify-center py-20 gap-4 text-center">
+    <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card flex flex-col items-center justify-center py-20 gap-4 text-center">
       <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full bg-primary-50" />
-        <div className="absolute top-3 left-3 w-8 h-8 rotate-45 bg-accent-100" />
+        <div className="absolute inset-0 rounded-full bg-primary-50 dark:bg-primary-800" />
+        <div className="absolute top-3 left-3 w-8 h-8 rotate-45 bg-accent-100 dark:bg-accent-900" />
       </div>
       <p className="font-display text-h5 font-bold text-ink-primary">Aún no sugeriste nada</p>
       <p className="font-body text-body-sm text-ink-secondary max-w-xs">
@@ -150,7 +150,7 @@ function EmptyState() {
         </Link>
         <Link
           to={newsletterPath('/contribute/suggest/event')}
-          className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-white border border-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150"
+          className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150"
         >
           <PlusIcon /> Sugerir evento
         </Link>

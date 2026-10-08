@@ -35,14 +35,19 @@
     "error": {
       "title": "Something went wrong",
       "message": "We couldn't load the articles. Check your connection and try again.",
-      "retry": "Try again"
+      "articleMessage": "We couldn't load the article. Check your connection and try again."
     },
     "meta": {
       "by": "by",
       "readingTime": "{{time}} read"
     },
     "backToArticles": "← Back to articles",
-    "moreFrom": "More from {{category}}"
+    "moreFrom": "More from {{category}}",
+    "notFound": {
+      "title": "We couldn't find this article",
+      "message": "It may have been unpublished, or the link is wrong."
+    },
+    "backToList": "See all articles"
   },
   "events": {
     "pageTitle": "Events",
@@ -55,12 +60,13 @@
     "noEventsOnDay": "Nothing scheduled for this day.",
     "noEvents": "No events scheduled.",
     "timeRange": "{{start}}–{{end}}",
-    "error": "We couldn't load the events. Check your connection and try again."
+    "error": "We couldn't load the events. Check your connection and try again.",
+    "monthError": "We couldn't load that month's events.",
+    "noEventsHint": "When organizations publish events, they will show up here."
   },
   "orgs": {
     "pageTitle": "Organizations",
     "pageSubtitle": "Explore the student spaces at ITBA.",
-    "followers": "{{count}} followers",
     "follow": "Follow",
     "unfollow": "Unfollow",
     "following": "Following",
@@ -73,7 +79,18 @@
     "error": {
       "title": "Organization not found",
       "message": "The portal you're looking for doesn't exist or was removed."
-    }
+    },
+    "followers_one": "{{formatted}} follower",
+    "followers_other": "{{formatted}} followers",
+    "followersLabel_one": "follower",
+    "followersLabel_other": "followers",
+    "loadError": "We couldn't load the organizations. Check your connection and try again.",
+    "portalLoadError": "We couldn't load this organization. Check your connection and try again.",
+    "empty": {
+      "title": "No organizations yet",
+      "message": "When student groups join the newsletter, you will see them here."
+    },
+    "backToList": "See organizations"
   },
   "categories": {
     "Académico": "Academic",
@@ -85,25 +102,16 @@
     "all": "All",
     "Organizaciones": "Organizations"
   },
-  "common": {
-    "loading": "Loading…",
-    "backHome": "Back to home",
-    "notFound": "Page not found"
-  },
   "auth": {
     "signIn": "Sign in",
     "signOut": "Sign out",
     "myProfile": "My profile",
-    "adminPanel": "Admin panel",
     "contribute": "Contribute",
     "accountMenu": "Account menu",
     "verifying": "Verifying session…",
     "errorTitle": "We couldn't sign you in",
     "tryAgain": "Try again",
     "back": "Go back",
-    "adminSubtitle": "Admin Panel",
-    "googleButton": "Sign in with Google (ITBA)",
-    "requiresAccount": "Requires an <1>@itba.edu.ar</1> account",
     "errors": {
       "unauthorized": "Only @itba.edu.ar accounts can sign in.",
       "unauthorized_workspace": "Only ITBA workspace accounts can sign in.",
@@ -125,7 +133,6 @@
       "actions": "Actions",
       "edit": "Edit",
       "delete": "Delete",
-      "confirm": "Confirm",
       "cancel": "Cancel"
     },
     "status": {
@@ -140,11 +147,9 @@
       "count_one": "{{count}} article in total",
       "count_other": "{{count}} articles in total",
       "new": "New article",
-      "loading": "Loading articles…",
       "loadError": "Couldn't load the articles",
       "featured": "Featured",
       "emptyTitle": "No articles",
-      "emptyMessage": "Create the first article for the newsletter.",
       "deleteError": "Couldn't delete the article. Please try again.",
       "columns": {
         "title": "Title",
@@ -152,21 +157,31 @@
         "category": "Category",
         "organization": "Organization",
         "date": "Date",
-        "votes": "Votes"
+        "votes": "Votes ({{count}} days)"
       },
       "independent": "Independent",
-      "pendingReview_one": "{{count}} independent article is waiting for review: open it and publish it if it's fine.",
-      "pendingReview_other": "{{count}} independent articles are waiting for review: open them and publish them if they're fine."
+      "filters": {
+        "all": "All",
+        "label": "Filter articles by status"
+      },
+      "editAria": "Edit “{{title}}”",
+      "deleteAria": "Delete “{{title}}”",
+      "noVotes": "No votes",
+      "votesSr": "{{up}} helpful votes, {{down}} not helpful",
+      "deleteDialog": {
+        "title": "Delete this article?",
+        "body": "“{{title}}” will be deleted for good. This cannot be undone.",
+        "confirm": "Yes, delete"
+      }
     },
     "events": {
       "title": "Events",
       "count_one": "{{count}} event in total",
       "count_other": "{{count}} events in total",
       "new": "New event",
-      "loading": "Loading events…",
       "loadError": "Couldn't load the events",
       "emptyTitle": "No events",
-      "emptyMessage": "Create the first event for the calendar.",
+      "emptyMessage": "Once you add the first one it will show up here and in the calendar. Start with “New event”.",
       "deleteError": "Couldn't delete the event. Please try again.",
       "columns": {
         "title": "Title",
@@ -174,10 +189,19 @@
         "category": "Category",
         "location": "Location",
         "organization": "Organization"
+      },
+      "editAria": "Edit “{{title}}”",
+      "deleteAria": "Delete “{{title}}”",
+      "deleteStaffOnly": "Only CEITBA staff can delete events. If one needs to go, write to newsletter@ceitba.org.ar.",
+      "noUpcoming": "No upcoming events.",
+      "past": "Past",
+      "deleteDialog": {
+        "title": "Delete this event?",
+        "body": "“{{title}}” will be removed from the calendar for good. This cannot be undone.",
+        "confirm": "Yes, delete"
       }
     },
     "form": {
-      "optional": "Optional",
       "saving": "Saving…",
       "saveChanges": "Save changes",
       "category": "Category",
@@ -193,14 +217,13 @@
       }
     },
     "articleForm": {
-      "loading": "Loading article…",
       "back": "← Articles",
       "newTitle": "New article",
       "saveError": "Couldn't save the article. Please try again.",
       "title": "Title",
       "titlePlaceholder": "Article title",
       "excerpt": "Standfirst",
-      "excerptHint": "Shown in full on the card.",
+      "excerptHint": "{{length}}/{{limit}} · Shown in full on the card.",
       "excerptPlaceholder": "Standfirst: 2–3 sentences summing up the story…",
       "body": "Body",
       "publish": "Publish",
@@ -214,12 +237,6 @@
       "featured": "Show as featured",
       "featuredHint": "It will replace the current featured article.",
       "coverColor": "Colour when there's no image",
-      "colors": {
-        "blue": "Blue",
-        "amber": "Amber",
-        "green": "Green",
-        "violet": "Violet"
-      },
       "errors": {
         "title": "Title is required.",
         "excerpt": "Standfirst is required.",
@@ -236,7 +253,7 @@
       "savedAt": "Saved at {{time}}",
       "upToDate": "No changes",
       "notSavedYet": "Not saved yet",
-      "excerptTruncated": "The card will cut it at: “{{shown}}…”",
+      "excerptTruncated": "{{length}}/{{limit}} · The card will cut it at: “{{shown}}…”",
       "noAuthors": "no authors",
       "saveChanges": "Save changes",
       "unpublish": "Move to drafts",
@@ -258,7 +275,6 @@
       "date": "Publication date",
       "placement": "Placement",
       "byline": "Byline",
-      "readingTimeComputed": "computed from the text",
       "readingTimeEdit": "Edit",
       "readingTimeAuto": "Automatic",
       "cover": "Cover",
@@ -275,10 +291,18 @@
       "backToDraft": "Back to draft",
       "editPendingTitle": "Editing article in review",
       "submittedDone": "Submitted for review",
-      "submittedHint": "CEITBA staff will review and publish it. Meanwhile you can keep editing it from Articles."
+      "submittedHint": "CEITBA staff will review and publish it. You can keep editing it meanwhile.",
+      "publishedHint": "It's now live in the newsletter.",
+      "viewArticle": "View article",
+      "backToList": "Back to articles",
+      "keepEditing": "Keep editing",
+      "orgLocked": "This article's organization can't be changed.",
+      "authorsHint": "Type a name and press Enter to add it.",
+      "readingTimeAutoValue": "{{time}} · worked out from the text",
+      "backToReview": "← Review",
+      "backToReviewList": "Back to review"
     },
     "eventForm": {
-      "loading": "Loading event…",
       "back": "← Events",
       "newTitle": "New event",
       "editTitle": "Edit event",
@@ -302,18 +326,19 @@
         "endTime": "End time is required.",
         "location": "Location is required.",
         "endBeforeStart": "End time must be after the start time."
-      }
+      },
+      "orgLocked": "Your events are published under your organization."
     },
     "analytics": {
-      "title": "Analytics",
+      "title": "Statistics",
       "subtitle": "Content performance for the media team.",
-      "loadError": "Couldn't load analytics. Please try again later.",
+      "loadError": "Couldn't load statistics. Please try again later.",
       "noDataTitle": "No data yet.",
       "noDataMessage": "Data is recorded when readers visit articles and vote.",
       "articleViews": "Article views",
       "uniqueVisitors": "Unique visitors",
       "totalVotes": "Total votes",
-      "dailyViews": "Daily views — last 14 days",
+      "dailyViews": "Daily views, last {{count}} days",
       "topArticles": "Most viewed articles",
       "noViews": "No visits recorded yet.",
       "categoryViews": "Views by category",
@@ -325,63 +350,43 @@
         "helpful": "Helpful",
         "notHelpful": "Not helpful",
         "ratio": "Ratio",
-        "views": "Views"
+        "views": "Views",
+        "day": "Day"
       },
       "ranges": {
         "days7": "7 days",
         "days30": "30 days",
         "allTime": "All time"
-      }
+      },
+      "sparkSummary": "Min {{min}} · Max {{max}} · Today {{last}}",
+      "rangeLabel": "Period",
+      "noVotes": "No votes"
     },
     "followers": {
       "link": "Followers",
-      "view": "View →",
       "title": "Followers",
       "backToProfile": "← Profile",
       "backToProfileLong": "Back to profile",
-      "backToPanel": "Back to the panel",
       "noAccessTitle": "No access",
       "noAccess": "Only the organization's admins and CEITBA staff can see its followers.",
       "forbidden": "You don't have permission to see this organization's followers.",
       "loadError": "We couldn't load the followers.",
-      "errorTitle": "Error",
-      "loading": "Loading…",
-      "count_one": "person follows this organization",
-      "count_other": "people follow this organization",
       "searchPlaceholder": "Search by name or email…",
-      "empty": "Nobody follows this organization yet.",
-      "noMatches": "No matches."
-    },
-    "roles": {
-      "staff": "Staff",
-      "user": "Author",
-      "member": "Member"
+      "empty": "When someone follows the organization from the newsletter, they will show up here.",
+      "noMatches": "No matches.",
+      "subtitle_one": "{{org}} · {{count}} person follows this organization",
+      "subtitle_other": "{{org}} · {{count}} people follow this organization",
+      "emptyTitle": "No followers yet",
+      "searchLabel": "Search"
     },
     "nav": {
-      "label": "Admin navigation",
-      "content": "Content",
-      "articles": "Articles",
-      "events": "Events",
-      "suggestions": "Suggestions",
-      "organization": "Organization",
-      "orgProfile": "Profile · {{org}}",
-      "media": "Media",
-      "analytics": "Analytics",
-      "superadmin": "Superadmin",
-      "allOrganizations": "All organizations",
-      "backToSite": "Back to the public site",
-      "panel": "Admin Panel",
-      "viewSite": "View site",
-      "new": "New",
-      "edit": "Edit",
       "review": "Review",
-      "signOutUnsaved": "The article has unsaved changes. Sign out anyway and lose them?",
+      "analytics": "Analytics",
       "digests": "Weekly digest"
     },
     "digests": {
       "title": "La semana en ITBA",
-      "subtitle": "CEITBA's weekly email digest: last week's articles and next week's events from every organization. Everyone gets the same email; it goes to people who follow CEITBA with the email turned on. Every Monday at 00:05 a draft for the previous week is created, and it goes out automatically at 12:00 (Argentina time) unless you cancel it or turn auto-send off.",
-      "loading": "Loading digests…",
+      "subtitle": "The Monday email with last week's articles and next week's events. The draft builds itself on Monday at 00:05 and goes out at 12:00 unless you cancel it.",
       "loadError": "We couldn't load the digests.",
       "back": "← Digests",
       "noSubject": "No subject",
@@ -394,7 +399,7 @@
         "draft": "Draft",
         "sending": "Sending",
         "sent": "Sent",
-        "cancelled": "Cancelled"
+        "cancelled": "Withdrawn"
       },
       "counts": {
         "sent": "Sent",
@@ -406,7 +411,8 @@
         "submit": "New digest",
         "creating": "Creating…",
         "covers": "Covers the week of {{range}}",
-        "alreadyExists": "Already exists: open it"
+        "alreadyExists": "Open it",
+        "existsReason": "There is already a digest for that week."
       },
       "errors": {
         "DIGEST_EXISTS": "There is already a digest for that week.",
@@ -418,7 +424,7 @@
         "save": "We couldn't save your changes.",
         "test": "We couldn't send the test.",
         "send": "We couldn't start sending.",
-        "cancel": "We couldn't cancel the digest.",
+        "cancel": "Couldn't withdraw the issue or stop the send.",
         "delete": "We couldn't delete the digest.",
         "DIGEST_SENDING": "The digest is being sent: stop the send before deleting it.",
         "DIGEST_EMPTY": "A digest with no articles or events can't be sent.",
@@ -434,7 +440,7 @@
         "contentLegend": "Email content",
         "subject": "Subject",
         "intro": "Intro",
-        "introHint": "Optional · shown before the articles",
+        "introHint": "Optional · shown before the articles · {{count}}/{{max}}",
         "articles": "This week's articles · {{included}} of {{total}}",
         "events": "Next week's events · {{included}} of {{total}}",
         "noArticles": "No articles were published that week.",
@@ -450,12 +456,11 @@
         "testing": "Sending test…",
         "testSent": "We sent a test to {{email}}.",
         "sendNow": "Send now",
-        "sending": "Sending…",
         "sendStarted": "Sending has started. Progress updates automatically.",
-        "cancel": "Cancel digest",
+        "cancel": "Withdraw issue",
         "delete": "Delete digest",
         "stopSending": "Stop sending",
-        "cancelled": "Digest cancelled.",
+        "cancelled": "Issue withdrawn.",
         "errors": {
           "subject": "The subject can't be empty.",
           "autoSendAt": "Pick the auto-send date and time.",
@@ -464,7 +469,7 @@
         "readOnly": {
           "sending": "Sending in progress. The numbers update automatically.",
           "sent": "This digest has been sent and can't be changed.",
-          "cancelled": "This digest was cancelled and will not be sent."
+          "cancelled": "This issue was withdrawn and will not be sent."
         },
         "sendDialog": {
           "title": "Send the digest now?",
@@ -474,22 +479,25 @@
           "senderWarning": {
             "missing": "No sending account is connected yet: the send will wait and only start once someone connects one.",
             "broken": "The sending account needs to be reconnected: the send will wait and only continue once someone reconnects it."
-          }
+          },
+          "bodyUnknown": "It will be sent to every subscriber (followers of CEITBA with the email on). This cannot be undone.",
+          "keep": "Go back"
         },
         "deleteDialog": {
           "title": "Delete this digest?",
           "body_sent": "It is deleted for good, along with its stats (opens, clicks and deliveries). Emails that already went out can't be recalled.",
           "body_other": "It is deleted for good. You can create a new one for that week afterwards.",
           "confirm": "Yes, delete",
-          "deleting": "Deleting…",
           "keep": "Back"
         },
         "cancelDialog": {
-          "title": "Cancel this digest?",
+          "title": "Withdraw this issue?",
           "body": "It won't be sent, automatically or by hand. You'd have to create a new one for that week.",
           "bodySending": "Sending stops: people who already got it aren't affected, and the rest won't receive it.",
-          "confirm": "Yes, cancel",
-          "keep": "Go back"
+          "confirm": "Yes, withdraw",
+          "keep": "Go back",
+          "titleSending": "Stop sending?",
+          "confirmSending": "Yes, stop"
         },
         "emptyWarning": "No article or event is included: include at least one to be able to send it.",
         "leaveDialog": {
@@ -503,12 +511,14 @@
           "missing": "No sending account is connected yet, so the email can't go out.",
           "broken": "The sending account has a problem and must be reconnected before the email can go out.",
           "link": "Go to the digest list to connect it"
-        }
+        },
+        "stopped": "Sending stopped.",
+        "deleted": "Digest deleted.",
+        "upToDate": "No unsaved changes."
       },
       "preview": {
         "title": "Preview",
         "stale": "You have unsaved changes: the preview shows the last saved version.",
-        "loading": "Loading…",
         "error": "We couldn't load the preview."
       },
       "resumesAt": "Sending paused: resumes ~{{when}} (Argentina time)",
@@ -530,7 +540,6 @@
         "title": "Opens and clicks",
         "refresh": "Refresh",
         "refreshing": "Refreshing…",
-        "loading": "Loading stats…",
         "error": "We couldn't load the stats.",
         "delivered": "Delivered",
         "uniqueOpens": "Unique opens",
@@ -542,13 +551,14 @@
         "total": "Total",
         "noClicks": "No clicks yet.",
         "byHour": "First opens per hour",
-        "byHourAria": "Bar chart of first opens per hour: {{hours}} hours, at most {{max}} per hour",
         "opensCount_one": "{{count}} open",
         "opensCount_other": "{{count}} opens",
         "noOpens": "No opens yet.",
         "note": "Aggregate data only, never per person. Opens are approximate: Gmail caches images (repeat opens are invisible), Apple Mail downloads them on its own when the email arrives and some clients block them. Clicks are the reliable signal. Security scanners, bots and anything in the first seconds after sending are not counted.",
         "laterBucket": "+7 days",
-        "laterFrom": "From {{when}}"
+        "laterFrom": "From {{when}}",
+        "peak_one": "Peak: {{count}} open ({{when}})",
+        "peak_other": "Peak: {{count}} opens ({{when}})"
       },
       "autoSendPast": "This draft's auto-send time has already passed: it won't send by itself.",
       "sender": {
@@ -568,9 +578,7 @@
         "reconnect": "Reconnect",
         "connecting": "Redirecting to Google…",
         "disconnect": "Disconnect",
-        "disconnecting": "Disconnecting…",
         "brokenBody": "Google rejected the sending account (for example, the password changed or access was removed). No email goes out until it is reconnected.",
-        "lastError": "Last error: {{error}}",
         "connectError": "We couldn't start the connection with Google. Try again.",
         "disconnectError": "We couldn't disconnect the account. Try again.",
         "disconnectDialog": {
@@ -591,6 +599,121 @@
           "unknown": "We couldn't connect the sending account. Try again."
         }
       }
+    },
+    "layout": {
+      "title": "Newsletter",
+      "subtitle": "Approve what students send in and prepare Monday's email.",
+      "tabsAria": "Newsletter admin sections"
+    },
+    "guard": {
+      "signInTitle": "Sign in to manage the newsletter",
+      "signInBody": "The newsletter admin is for the CEITBA team. Sign in with your @itba.edu.ar account.",
+      "signIn": "Sign in with Google",
+      "deniedTitle": "You don't have access to the newsletter admin",
+      "deniedBody": "Reviewing articles and the weekly digest are the CEITBA team's job. Your articles, your drafts and your organization's are in My posts.",
+      "toMine": "Go to My posts"
+    },
+    "colors": {
+      "blue": "Blue",
+      "amber": "Amber",
+      "green": "Green",
+      "violet": "Violet"
+    },
+    "preview": {
+      "card": "Card in the list",
+      "featuredCard": "Featured card",
+      "full": "Full article view",
+      "featured": "Featured",
+      "noTitle": "No title",
+      "noExcerpt": "No standfirst",
+      "noAuthors": "No authors",
+      "noBody": "The article body will show up here."
+    },
+    "orgProfile": {
+      "title": "Organization profile",
+      "fields": {
+        "name": "Short name",
+        "fullName": "Full name",
+        "description": "Description",
+        "category": "Category",
+        "categoryHint": "For example: student union, sports, culture.",
+        "color": "Colour",
+        "colorHint": "It's the colour of the organization's cover in ITBA News.",
+        "logoUrl": "Logo URL",
+        "backgroundUrl": "Background URL"
+      },
+      "namesStaffOnly": "Only CEITBA staff can change the name.",
+      "preview": "Preview",
+      "saved": "Profile saved.",
+      "unsaved": "Unsaved changes",
+      "upToDate": "No changes",
+      "loadError": "Couldn't load the organization",
+      "notFoundTitle": "We couldn't find the organization",
+      "notFound": "The link may be wrong or the organization may no longer exist.",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's members and CEITBA staff can edit its profile.",
+      "backToPanel": "Back to articles",
+      "backToManage": "← Organizations",
+      "errors": {
+        "save": "Couldn't save the profile. Please try again.",
+        "forbidden": "You don't have permission to edit this organization."
+      },
+      "leave": {
+        "title": "Leave without saving?",
+        "body": "You have unsaved changes to the profile. If you leave now, they will be lost.",
+        "discard": "Leave without saving",
+        "stay": "Keep editing"
+      }
+    },
+    "review": {
+      "title": "Articles to review",
+      "allTitle": "All articles",
+      "count_one": "{{count}} article waiting for review",
+      "count_other": "{{count}} articles waiting for review",
+      "views": {
+        "label": "Which articles to show",
+        "pending": "Pending",
+        "all": "All articles"
+      },
+      "columns": {
+        "author": "Author",
+        "submitted": "Sent"
+      },
+      "loadError": "Couldn't load the articles",
+      "emptyTitle": "No articles to review",
+      "emptyBody": "When someone sends an article for review, it will show up here.",
+      "allEmptyBody": "When someone writes an article, it will show up here.",
+      "review": "Review",
+      "reviewAria": "Review “{{title}}”",
+      "publish": "Publish",
+      "publishAria": "Publish “{{title}}”",
+      "publishing": "Publishing…",
+      "published": "You published “{{title}}”.",
+      "publishError": "Couldn't publish “{{title}}”. Try again.",
+      "undo": "Undo",
+      "undoError": "Couldn't undo publishing «{{title}}». Try again from the editor.",
+      "alreadyHandled": "Another staff member had already handled «{{title}}». We removed it from the list."
+    }
+  },
+  "mine": {
+    "layout": {
+      "title": "My posts",
+      "subtitle": "Your articles: drafts, sent for review and published.",
+      "subtitleMember": "Your articles and your organizations' articles, events and profile.",
+      "tabsAria": "My posts sections"
+    },
+    "nav": {
+      "articles": "Articles",
+      "events": "Events"
+    },
+    "guard": {
+      "signInTitle": "Sign in to write for the newsletter",
+      "signInBody": "Sign in with your @itba.edu.ar account to write articles, keep drafts and, if you're in an organization, manage its events."
+    },
+    "articles": {
+      "emptyTitle": "You haven't written anything yet",
+      "emptyBody": "Only you can see your drafts until you send them for review. Once CEITBA approves them, they are published in the newsletter.",
+      "write": "Write an article"
     }
   },
   "imageUploader": {
@@ -612,7 +735,9 @@
       "forbidden": "You don't have permission to upload images. Paste an image URL instead.",
       "url": "Enter a valid URL starting with https://",
       "load": "The image couldn't be loaded."
-    }
+    },
+    "source": "Image source",
+    "urlLabel": "Image URL"
   },
   "votes": {
     "groupLabel": "Was this article helpful?",
@@ -683,15 +808,13 @@
     "intro": "Any student can write for the newsletter. Student groups publish directly; independent articles are reviewed by CEITBA staff before they go out.",
     "signedOut": "Sign in with your @itba.edu.ar account and you'll be able to write in a visual editor.",
     "signIn": "Sign in with Google",
-    "organizations": "See organizations",
-    "close": "Close"
+    "organizations": "See organizations"
   },
   "digest": {
     "name": "La semana en ITBA",
     "toggle": "Get 'La semana en ITBA' by email",
     "toggleError": "We couldn't save that change.",
     "unsubscribe": {
-      "loading": "Unsubscribing…",
       "doneTitle": "Done, you won't get the weekly digest anymore",
       "doneHint": "If you change your mind, you can turn it back on from your account menu, top right (you'll need to sign in).",
       "invalidTitle": "This link is not valid",
@@ -701,11 +824,11 @@
       "confirmTitle": "Stop receiving the weekly digest?",
       "confirmHint": "You'll stop getting 'La semana en ITBA' by email. Confirm to unsubscribe.",
       "confirm": "Confirm unsubscribe",
-      "confirming": "Unsubscribing…"
+      "confirming": "Unsubscribing…",
+      "errorHint": "Check your connection and try again."
     },
     "correction": {
       "kicker": "Schedule to confirm",
-      "loading": "Loading the correction…",
       "title": "Is {{subject}} (com. {{commission}}) taught like this?",
       "lead": "Someone reported that the SGA schedule is not the real one. Your answer is anonymous: with 3 confirmations, the corrected schedule is used in the schedule builder.",
       "proposed": "What was reported",
@@ -734,8 +857,22 @@
       "errorTitle": "We couldn't load the correction",
       "voteError": "We couldn't record your vote. Please try again.",
       "openScheduler": "Go to the schedule builder",
-      "backHome": "Go to the newsletter"
+      "backHome": "Go to the newsletter",
+      "errorHint": "Check your connection and try again."
     },
     "toggleHint": "Turning it on also follows CEITBA."
+  },
+  "contributor": {
+    "brand": "Contribute",
+    "nav": {
+      "mine": "My suggestions",
+      "article": "+ Article",
+      "event": "+ Event"
+    },
+    "notifications": "Notifications",
+    "notificationsUnread_one": "Notifications ({{count}} unread)",
+    "notificationsUnread_other": "Notifications ({{count}} unread)",
+    "markAllRead": "Mark all as read",
+    "noNotifications": "You have no notifications"
   }
 }

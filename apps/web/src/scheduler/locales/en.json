@@ -1,6 +1,6 @@
 {
   "nav": {
-    "scheduler": "Schedule Builder",
+    "scheduler": "Schedule builder",
     "skipToContent": "Skip to content",
     "langToggleLabel": "ES",
     "langToggleAria": "Switch to Spanish",
@@ -16,34 +16,59 @@
   "saved": {
     "pageTitle": "My saved schedules",
     "usage": "{{count}} of {{max}} saved",
-    "empty": "You haven't saved any schedules yet.",
     "open": "Open",
     "share": "Share",
     "rename": "Rename",
     "delete": "Delete",
     "save": "Save",
-    "cancel": "Cancel",
     "saveSchedule": "Save schedule",
     "dialogTitle": "Save this schedule",
     "nameLabel": "Name",
     "namePlaceholder": "e.g. Spring 2026",
     "limitReached": "You've hit the {{max}}-schedule limit. Delete one to save another.",
-    "confirmDelete": "Delete this saved schedule?",
     "openMissingContext": "This schedule has no career or plan attached.",
-    "toastSavedTitle": "Schedule \"{{name}}\" saved",
-    "toastViewLink": "View my saved",
-    "toastDismiss": "Dismiss",
-    "compareCta": "Pick 2 to compare",
     "compareSelected_one": "Compare {{count}} schedule",
     "compareSelected_other": "Compare {{count}} schedules",
-    "compareToggleAria": "Include {{name}} in the comparison"
+    "compareToggleAria": "Compare {{name}}",
+    "emptyTitle": "You haven't saved any schedules yet",
+    "emptyBody": "Build a schedule in the scheduler and press \"Save schedule\": it will show up here to open, share or compare.",
+    "emptyAction": "Build a schedule",
+    "compare": "Compare",
+    "compareHint": "Tick \"Compare\" on 2 or 3 schedules to see them side by side.",
+    "compareToggle": "Compare",
+    "confirmDeleteTitle": "Delete this schedule?",
+    "confirmDeleteBody": "You are about to delete \"{{name}}\". This can't be undone.",
+    "confirmDeleteAction": "Yes, delete",
+    "deleted": "Deleted \"{{name}}\".",
+    "toastSaved": "Saved \"{{name}}\". Find it in My saved schedules.",
+    "nameHint": "Give it a name you will recognize later.",
+    "saveDisabledHint": "Pick at least one course to save.",
+    "signInTitle": "Sign in to save",
+    "signInBody": "To save your schedule to your account, sign in with your @itba.edu.ar account. What you built is kept when you come back.",
+    "signInAction": "Sign in with Google",
+    "planLabel": "Plan {{plan}}",
+    "noCareer": "No career",
+    "backToScheduler": "Go to the scheduler",
+    "errors": {
+      "loadFailed": "We couldn't load your saved schedules.",
+      "saveFailed": "We couldn't save the schedule. Try again.",
+      "deleteFailed": "We couldn't delete the schedule. Try again.",
+      "renameFailed": "We couldn't rename the schedule. Try again.",
+      "shareFailed": "We couldn't create the shared session. Try again."
+    },
+    "viewSaved": "View saved"
   },
   "compare": {
     "label": "Comparison",
     "heading_one": "{{count}} schedule side by side",
     "heading_other": "{{count}} schedules side by side",
     "back": "Back",
-    "needAtLeastTwo": "Pick at least 2 schedules to compare."
+    "needAtLeastTwo": "Pick at least 2 saved schedules to see them side by side.",
+    "needAtLeastTwoTitle": "Not enough schedules to compare",
+    "pickSchedules": "Pick schedules",
+    "loadFailed": "We couldn't load the schedules to compare.",
+    "someFailed_one": "We couldn't load {{count}} of the schedules.",
+    "someFailed_other": "We couldn't load {{count}} of the schedules."
   },
   "home": {
     "title": "Plan your schedule",
@@ -61,14 +86,13 @@
       "settings": "Options",
       "calendar": "Calendar"
     },
-    "tabsAria": "Scheduler sections"
+    "tabsAria": "Scheduler sections",
+    "changeCareer": "Choose another career",
+    "plan": "Plan"
   },
   "courses": {
     "selected": "Selected courses",
     "available": "Available courses",
-    "credits": "credits",
-    "course": "course",
-    "courses": "courses",
     "semester1": "First semester",
     "semester2": "Second semester",
     "electives": "Electives",
@@ -86,7 +110,21 @@
     "noResults": "No subjects found",
     "removeAria": "Remove {{name}}",
     "reorderAria": "Reorder {{name}}",
-    "or": "or"
+    "or": "or",
+    "add": "Add",
+    "remove": "Remove",
+    "removed": "Removed {{name}}.",
+    "creditCount_one": "{{count}} credit",
+    "creditCount_other": "{{count}} credits",
+    "selectedSummary_one": "{{count}} course · {{credits}} credits",
+    "selectedSummary_other": "{{count}} courses · {{credits}} credits",
+    "conflictCount_one": "{{count}} possible clash",
+    "conflictCount_other": "{{count}} possible clashes",
+    "viewCombinations": "See combinations",
+    "noneSelectedBody": "Search or tap courses in the list to add them.",
+    "loadFailedTitle": "We couldn't load the courses",
+    "loadFailed": "Check your connection and try again.",
+    "undo": "Undo"
   },
   "commission": {
     "title": "Select commission",
@@ -100,13 +138,15 @@
     "turn_morning": "Morning",
     "turn_afternoon": "Afternoon",
     "turn_evening": "Evening",
-    "noMatchTurns": "No commissions match the selected turn."
+    "noMatchTurns": "No commissions match the selected turn.",
+    "addSelectedNone": "Pick at least one"
   },
   "conflicts": {
     "status_clear": "No conflict",
     "status_partial": "Possible conflict",
     "status_all": "Full conflict",
-    "conflictsWith": "Clashes with: {{names}}"
+    "alwaysClashesWith": "Always clashes with: {{names}}",
+    "mayClashWith": "May clash with: {{names}}"
   },
   "share": {
     "untitledSession": "Shared session",
@@ -118,16 +158,18 @@
     "signInToJoin": "Sign in to join",
     "leave": "Leave",
     "deleteSession": "Delete session",
-    "confirmLeave": "Leave this shared session?",
-    "confirmDelete": "Delete this session for everyone?",
+    "confirmDelete": "It is deleted for every participant and the link stops working. This can't be undone.",
     "creatorTag": "Creator",
     "scheduleRemoved": "schedule removed",
     "participantsHeading": "Participants",
     "join": {
       "title": "Pick which schedule you bring",
       "hint": "Your selection will be added to the heatmap with the rest of the group.",
-      "noSaved": "No saved schedules yet. Save one before joining.",
-      "confirm": "Join with this"
+      "noSaved": "To join, first build a schedule and save it to your account.",
+      "confirm": "Join with this",
+      "noSavedTitle": "You don't have saved schedules",
+      "makeOne": "Build a schedule",
+      "loadFailed": "We couldn't load your saved schedules."
     },
     "heatmap": {
       "label": "Group schedule heatmap",
@@ -135,16 +177,23 @@
       "busy_one": "{{count}} of {{total}} busy: {{names}}",
       "busy_other": "{{count}} of {{total}} busy: {{names}}"
     },
-    "catalogLoadFailed": "Couldn't load the subjects for: {{plans}}. Those schedules are shown without classes."
+    "catalogLoadFailed": "Couldn't load the subjects for: {{plans}}. Those schedules are shown without classes.",
+    "confirmDeleteTitle": "Delete the session?",
+    "confirmDeleteAction": "Yes, delete",
+    "deleted": "You deleted the shared session.",
+    "joined": "You added your schedule to the group.",
+    "left": "You left the session. You can join again any time.",
+    "notFound": "This shared session doesn't exist or was deleted.",
+    "loadFailed": "We couldn't load the shared session.",
+    "backToScheduler": "Go to the scheduler",
+    "errors": {
+      "joinFailed": "We couldn't add your schedule. Try again.",
+      "leaveFailed": "We couldn't remove you from the session. Try again.",
+      "deleteFailed": "We couldn't delete the session. Try again."
+    }
   },
   "scheduler": {
     "title": "Schedule preview",
-    "option": "Option",
-    "of": "of",
-    "allowOverlap": "Allow limited overlap",
-    "allowOverlapTooltip": "Max difference: 30 min",
-    "allowUnlimitedOverlap": "Allow full overlap",
-    "allowUnlimitedOverlapTooltip": "No overlap limit",
     "freeDay": "Have a free day",
     "hasOverlap": "Has overlap",
     "noOverlap": "No overlap",
@@ -154,34 +203,57 @@
     "noFreeDay": "No free day",
     "blockedTime": "Blocked time",
     "noSubjects": "No subjects selected",
-    "noSubjectsMessage": "Select subjects in the Courses tab then come back here to see possible combinations.",
-    "generating": "Generating combinations…",
-    "noCombinations": "No possible combinations for this configuration",
-    "noCombinationsMessage": "Try changing the options or selecting different commissions.",
-    "livePreviewHint": "Live preview · generate combinations to see valid options",
-    "livePreviewConflicts_one": "Live preview · {{count}} conflict detected",
-    "livePreviewConflicts_other": "Live preview · {{count}} conflicts detected",
+    "noSubjectsMessage": "Pick courses in the Courses tab to see the possible combinations.",
+    "noCombinations": "No possible combinations",
+    "noCombinationsMessage": "Try picking other commissions or courses.",
+    "livePreviewHint": "Preview of every commission you picked, stacked. Press \"See combinations\" to see the options without clashes.",
+    "livePreviewConflicts_one": "Preview of every commission you picked: there is {{count}} clash. Press \"See combinations\" to see the possible options.",
+    "livePreviewConflicts_other": "Preview of every commission you picked: there are {{count}} clashes. Press \"See combinations\" to see the possible options.",
     "truncatedNotice": "Showing the first {{count}} combinations found. Pick specific commissions or add blocked times to narrow the search.",
     "searchStopped": "The search stopped before finishing because there are too many possible combinations. Pick specific commissions or add blocked times to narrow it down.",
     "rankingHint": "Sorted by least overlap, most free days and fewest idle hours between classes",
-    "prevOption": "Previous schedule",
-    "nextOption": "Next schedule"
+    "prevOption": "Previous option",
+    "nextOption": "Next option",
+    "optionCounter": "Option {{current}} of {{total}}",
+    "optionCounterTruncated": "Option {{current}} of {{total}}+",
+    "overlapLabel": "Overlap between classes",
+    "overlap_none": "No",
+    "overlap_limited": "Up to 30 min",
+    "overlap_unlimited": "No limit",
+    "overlapHint_none": "Only combinations without overlapping classes.",
+    "overlapHint_limited": "Two classes may share up to 30 minutes.",
+    "overlapHint_unlimited": "Also shows combinations with overlapping classes.",
+    "freeDayHint": "Only combinations with at least one weekday without classes.",
+    "goToCourses": "Go to Courses",
+    "noResult": {
+      "blockedOut_one": "Every commission of {{names}} falls in your blocked times (Options).",
+      "blockedOut_other": "Every commission of {{names}} falls in your blocked times (Options).",
+      "clash": "{{a}} and {{b}} overlap in every commission.",
+      "maybeBlocked": "Your blocked times (Options) may be ruling out commissions.",
+      "freeDay": "\"Have a free day\" is on: turn it off to see more options.",
+      "allowOverlap": "Try allowing overlap above."
+    },
+    "and": "and",
+    "reviewCourses": "Review courses",
+    "reviewBlockedTimes": "Review Options",
+    "stepLimitNotice": "There are too many possible combinations: the search stopped and shows the {{count}} found so far. Pick specific commissions or add blocked times to narrow it down."
   },
   "save": {
-    "title": "Save schedule",
-    "saveAsPDF": "Save as PDF",
-    "saveAsPDFDescription": "Download your schedule as a PDF file",
-    "saveAsImage": "Save as image",
-    "saveAsImageDescription": "Download your schedule as a PNG image",
+    "title": "Download or share",
+    "saveAsPDF": "Download as PDF",
+    "saveAsPDFDescription": "Your schedule as a PDF file",
+    "saveAsImage": "Download as image",
+    "saveAsImageDescription": "Your schedule as a PNG image",
     "saveAsWallpaper": "9:16 phone wallpaper",
     "saveAsWallpaperDescription": "Vertical 1080×1920 image, ready to set as a lock-screen background",
     "exportToCalendar": "Export to Google Calendar",
-    "exportToCalendarDescription": "Sync your schedule with Google Calendar",
+    "exportToCalendarDescription": "Add your classes to Google Calendar",
     "shareLink": "Copy link",
     "linkCopied": "Link copied to clipboard!",
     "shareLinkDescription": "Copy a link that opens the scheduler with these subjects already selected",
     "linkCopyFailed": "Couldn't copy the link. Copy it manually: {{url}}",
-    "toastDismiss": "Dismiss notice"
+    "exportButton": "Export",
+    "exportFailed": "We couldn't create the file. Try again."
   },
   "wallpaper": {
     "defaultTitle": "My schedule",
@@ -192,15 +264,18 @@
   "calendar": {
     "title": "Add to calendar",
     "option1Title": "Option 1: All events",
-    "option1Description": "Download the file and upload it to Google Calendar to add all events at once.",
+    "option1Description": "Download the file and upload it to Google Calendar to add every class at once.",
     "option1Step1": "Download the calendar file",
-    "option1Step2": "Go to Google Calendar",
+    "option1Step2": "Open",
     "option1Step3": "Settings → Import & export",
     "option1Step4": "Upload the downloaded file",
     "downloadFile": "Download calendar file",
     "option2Title": "Option 2: Events one by one",
-    "commission": "Commission",
-    "closePanel": "Close panel"
+    "option2Description": "Each link opens Google Calendar with one class filled in.",
+    "googleCalendar": "Google Calendar",
+    "commissionName": "Commission {{name}}",
+    "eventWithCommission": "{{title}} · Commission {{commission}}",
+    "allAdded": "You opened every class."
   },
   "settings": {
     "title": "Additional settings",
@@ -212,13 +287,25 @@
     "delete": "Delete",
     "save": "Save",
     "hour": "Hour",
-    "blockedTimesDescription": "Blocked times are specific periods when you don't want classes scheduled.",
+    "blockedTimesDescription": "Blocked times are moments when you don't want classes.",
     "blockedReason1Title": "Personal activities",
     "blockedReason1Desc": "Work, lunch, exercise, family time",
     "blockedReason2Title": "Travel time",
     "blockedReason2Desc": "Trips to and from the university",
     "blockedReason3Title": "Fixed commitments",
-    "blockedReason3Desc": "Other academic activities, courses, or responsibilities"
+    "blockedReason3Desc": "Other academic activities, courses, or responsibilities",
+    "howToBlock": "Drag on the calendar to block a range (on a phone, press and hold, then drag), or use \"Add blocked time\". Tap a block to edit it.",
+    "day": "Day",
+    "from": "From",
+    "to": "To",
+    "blockLabelHint": "Optional.",
+    "editBlockAria": "Edit block {{label}} {{day}} {{range}}",
+    "overlapsBlock": "Overlaps",
+    "overlapNotAdded": "Not added: it overlaps another blocked time.",
+    "errors": {
+      "order": "The start has to be before the end.",
+      "overlap": "It overlaps another blocked time that day."
+    }
   },
   "footer": {
     "itTeam": "IT Team CEITBA",
@@ -237,22 +324,16 @@
   },
   "errors": {
     "somethingWrong": "Something went wrong",
-    "retry": "Retry",
-    "loading": "Loading"
+    "retry": "Retry"
   },
   "authErrors": {
     "title": "We couldn't sign you in",
-    "dismiss": "Dismiss notice",
     "unauthorized": "Your email isn't allowed to sign in. Use your @itba.edu.ar account.",
     "unauthorized_workspace": "Your Google account's domain isn't allowed. Use your @itba.edu.ar account.",
     "unverified_email": "Your Google account's email isn't verified.",
     "auth_failed": "Something went wrong while signing in. Please try again.",
     "invalid_state": "The sign-in request expired or is invalid. Please try again.",
     "access_denied": "You cancelled the Google sign-in."
-  },
-  "common": {
-    "close": "Close",
-    "moreInfo": "More information"
   },
   "daysFull": {
     "MONDAY": "Monday",
@@ -336,5 +417,10 @@
       "rateLimited": "Too many suggestions or votes in a row. Try again in a while.",
       "generic": "We couldn't save your answer. Try again."
     }
+  },
+  "apiErrors": {
+    "offline": "You're offline. Check your connection and try again.",
+    "signInRequired": "Your session expired. Sign in again.",
+    "notFound": "We couldn't find it: it may have been deleted."
   }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+import { ErrorState, LoadingRegion } from '@/components/ui'
+import { ApiError } from '@/api/client'
 import CategoryBadge from '../components/CategoryBadge'
 import { useCategoryLabel } from '../hooks/useCategoryLabel'
 import ArticleCard from '../components/ArticleCard'
@@ -30,12 +31,14 @@ export default function ArticleDetailPage() {
   const categoryLabel = useCategoryLabel()
   const [article, setArticle] = useState<Article | null>(null)
   const [related, setRelated] = useState<Article[]>([])
-  const [status, setStatus]   = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus]   = useState<'loading' | 'success' | 'notFound' | 'error'>('loading')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
     setArticle(null)
+    setRelated([])
 
     // The route always defines :id.
     fetchArticleById(id ?? '')
@@ -45,28 +48,42 @@ export default function ArticleDetailPage() {
         setStatus('success')
         // Track view with category for analytics aggregation
         trackEvent('article_view', { articleId: a.id, category: a.category })
-        return fetchArticles({ category: a.category })
+        // "More from…" is secondary: if it fails the section just stays hidden.
+        fetchArticles({ category: a.category })
+          .then((res) => { if (!cancelled) setRelated(res.data.filter((r) => r.id !== id).slice(0, 3)) })
+          .catch((err: unknown) => console.error(err))
       })
-      .then((res) => {
-        if (cancelled || !res) return
-        setRelated(res.data.filter((a) => a.id !== id).slice(0, 3))
+      .catch((err: unknown) => {
+        if (!cancelled) setStatus(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error')
       })
-      .catch(() => { if (!cancelled) setStatus('error') })
 
     return () => { cancelled = true }
-  }, [id])
+  }, [id, reloadKey])
 
   if (status === 'loading') return <LoadingSkeleton />
-  if (status === 'error' || !article) return <ErrorState t={t} />
+  if (status === 'notFound' || status === 'error' || !article) {
+    const notFound = status !== 'error'
+    return (
+      <div className="container-content py-section-mobile lg:py-section">
+        <ErrorState
+          title={notFound ? t('articles.notFound.title') : t('articles.error.title')}
+          message={notFound ? t('articles.notFound.message') : t('articles.error.articleMessage')}
+          onRetry={notFound ? undefined : () => setReloadKey((k) => k + 1)}
+          backTo={newsletterPath('/')}
+          backLabel={t('articles.backToList')}
+        />
+      </div>
+    )
+  }
 
   const heroBg = GEO_BG[article.colorScheme ?? ''] ?? GEO_BG.blue
 
   return (
-    <article className="py-section-mobile lg:py-section animate-fade-in">
+    <article className="py-section-mobile lg:py-section">
       <div className="container-content">
         <Link
           to={newsletterPath('/')}
-          className="inline-block font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 mb-8 focus-visible:rounded"
+          className="inline-flex items-center min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 mb-6 focus-visible:rounded"
         >
           {t('articles.backToArticles')}
         </Link>
@@ -106,16 +123,16 @@ export default function ArticleDetailPage() {
             {article.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-3 mt-4 pb-6 border-b border-border">
+          <div className="flex flex-wrap items-center gap-3 mt-4 pb-6 border-b border-border dark:border-night-border">
             <span className="font-body text-body-sm text-ink-secondary">
               {t('articles.meta.by')}{' '}
               <strong className="text-ink-primary font-semibold">{(article.authors ?? []).join(', ')}</strong>
             </span>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
             <time className="font-mono text-label text-ink-secondary" dateTime={article.date ?? undefined}>
               {formatDate(article.date, i18n.language)}
             </time>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
             <span className="font-mono text-label text-ink-secondary">
               {t('articles.meta.readingTime', { time: article.readingTime })}
             </span>
@@ -125,14 +142,14 @@ export default function ArticleDetailPage() {
           <ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} className="mt-8" />
 
           {/* Vote bar — counts hidden from public */}
-          <div className="mt-10 pt-6 border-t border-border">
+          <div className="mt-10 pt-6 border-t border-border dark:border-night-border">
             <VoteButtons articleId={article.id} />
           </div>
         </div>
 
         {/* Related */}
         {related.length > 0 && (
-          <section className="mt-16 pt-10 border-t border-border" aria-labelledby="related-heading">
+          <section className="mt-16 pt-10 border-t border-border dark:border-night-border" aria-labelledby="related-heading">
             <h2 id="related-heading" className="font-display text-h3 font-bold text-ink-primary mb-6">
               {t('articles.moreFrom', { category: categoryLabel(article.category) })}
             </h2>
@@ -148,43 +165,21 @@ export default function ArticleDetailPage() {
 
 function LoadingSkeleton() {
   return (
-    <div className="py-section-mobile lg:py-section" aria-busy="true">
+    <LoadingRegion className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <div className="skeleton h-4 w-32 rounded mb-8" />
+        <div className="skeleton h-4 w-32 rounded-sm mb-8" />
         <div className="skeleton rounded-card h-48 lg:h-64 mb-10" />
         <div className="max-w-2xl flex flex-col gap-3">
-          <div className="skeleton h-10 w-4/5 rounded" />
-          <div className="skeleton h-10 w-3/5 rounded" />
-          <div className="flex gap-4 mt-1 pb-6 border-b border-border">
-            <div className="skeleton h-3 w-24 rounded" />
-            <div className="skeleton h-3 w-32 rounded" />
+          <div className="skeleton h-10 w-4/5 rounded-sm" />
+          <div className="skeleton h-10 w-3/5 rounded-sm" />
+          <div className="flex gap-4 mt-1 pb-6 border-b border-border dark:border-night-border">
+            <div className="skeleton h-3 w-24 rounded-sm" />
+            <div className="skeleton h-3 w-32 rounded-sm" />
           </div>
-          {[1,2,3,4].map((i) => <div key={i} className="skeleton h-4 w-full rounded" />)}
+          {[1,2,3,4].map((i) => <div key={i} className="skeleton h-4 w-full rounded-sm" />)}
         </div>
       </div>
-    </div>
+    </LoadingRegion>
   )
 }
 
-interface ErrorStateProps {
-  t: TFunction
-}
-
-function ErrorState({ t }: ErrorStateProps) {
-  return (
-    <div role="alert" className="flex flex-col items-center justify-center py-32 gap-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-      </div>
-      <div>
-        <p className="font-display text-h4 font-bold text-ink-primary">{t('articles.error.title')}</p>
-        <p className="font-body text-body text-ink-secondary mt-1">{t('articles.error.message')}</p>
-      </div>
-      <Link to={newsletterPath('/')} className="min-h-[44px] px-6 py-2.5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded inline-flex items-center">
-        {t('common.backHome')}
-      </Link>
-    </div>
-  )
-}

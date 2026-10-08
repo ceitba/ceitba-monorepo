@@ -1,25 +1,25 @@
 import { useSearchParams, useParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import TabView from '../components/TabView'
 import CourseView from '../components/CourseView'
 import { SettingsView } from '../components/SettingsView'
-import { SchedulerPreview } from '../components/SchedulerPreview'
-import SchedulerHeader from '../components/SchedulerHeader'
+import { SchedulerPreview, type NoResultReasons } from '../components/SchedulerPreview'
+import { SchedulerBackLink } from '../components/SchedulerHeader'
 import CommissionSelectionModal from '../components/CommissionSelectionModal'
 import SaveScheduleDialog from '../components/SaveScheduleDialog'
 import ClassDetailModal from '../components/corrections/ClassDetailModal'
 import { Subject, useSubjects } from '../hooks/useSubjects'
 import { useAuth } from '@/hooks/useAuth'
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { detectConflicts, liveSlotsFromCourses } from '../services/conflicts'
 import { normalizePlanId, denormalizePlanId } from '../utils/planUtils'
-import { DEFAULT_SCHEDULER_OPTIONS, type GenerationResult } from '../services/scheduler'
+import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, type GenerationResult } from '../services/scheduler'
 import { useScheduleGeneration } from '../hooks/useScheduleGeneration'
 import type { GenerationInputs } from '../workers/protocol'
 import { PossibleSchedule, SchedulerOptions, TimeBlock } from '../types/scheduler'
-import { AVAILABLE_PLANS } from '../types/careers'
+import { AVAILABLE_PLANS, CAREERS } from '../types/careers'
 import { buildIcs, eventsFromSlots, googleCalendarUrl, type CalendarEvent } from '../utils/ics'
-import { createSavedSchedule, listSavedSchedules, MAX_SAVED_SCHEDULES, type SavedSchedule } from '../api/schedules'
+import { createSavedSchedule, isLimitReached, listSavedSchedules, MAX_SAVED_SCHEDULES, type SavedSchedule } from '../api/schedules'
+import { errorMessageKey } from '../services/apiErrors'
 import { CorrectionsContext, type CorrectionsContextValue } from '../context/correctionsContext'
 import { mergeCorrection, sameSlotSet } from '../services/corrections'
 import { discardPendingWorkspace, parsePayload, savePendingWorkspace, takePendingWorkspace, type SavedSchedulePayload } from '../services/workspaceSnapshot'
@@ -27,6 +27,7 @@ import { SignInContext } from '../context/signInContext'
 import { startGoogleSignIn } from '@/store/authStore'
 import type { CommissionCorrection } from '../types/scheduler'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
+import { Button, Modal, Tabs, ToggleGroup, buttonClass, toast } from '@/components/ui'
 
 interface SelectedCourse extends Subject {
   selectedCommissions: string[]
@@ -41,9 +42,10 @@ interface CalendarLink {
 const VALID_CAREERS = Object.keys(AVAILABLE_PLANS)
 const NO_SCHEDULES: PossibleSchedule[] = []
 
-// Tab indexes (see `tabs` below).
-const TAB_COUNT = 3
-const CALENDAR_TAB = 2
+// The workspace tabs. The pending-workspace snapshot stores the active tab
+// as its index in this list.
+const TAB_IDS = ['courses', 'settings', 'calendar'] as const
+type TabId = (typeof TAB_IDS)[number]
 
 // Validates the route, then mounts the workspace keyed by career + plan so
 // switching plan starts from a clean slate (no courses or schedules from
@@ -75,7 +77,8 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const { profile } = useAuth()
   const preselectedSubjectsIds = useRef(searchParams.getAll('code'))
   const plan = denormalizePlanId(normalizedPlan)
-  const { subjects, loading: subjectsLoading, error: subjectsError, updateCommission } = useSubjects(plan)
+  const careerPlans = AVAILABLE_PLANS[career as keyof typeof AVAILABLE_PLANS] ?? []
+  const { subjects, loading: subjectsLoading, error: subjectsError, updateCommission, refetch: refetchSubjects } = useSubjects(plan)
 
   // ALL useState / useRef declarations come first, so the useEffect dep
   // arrays that follow can reference them without hitting TDZ during render.
@@ -84,7 +87,8 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const [saveOpen, setSaveOpen] = useState(false)
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
+  // Anonymous user pressed "Guardar horario": explain sign-in first.
+  const [signInToSave, setSignInToSave] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedCourseForModal, setSelectedCourseForModal] = useState<Subject | null>(null)
@@ -104,8 +108,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const [scheduleEvents, setScheduleEvents] = useState<CalendarEvent[]>([])
   // Class block whose detail dialog is open (opened from the calendar grid).
   const [classDetail, setClassDetail] = useState<{ subjectId: string; commissionName: string } | null>(null)
-  const [activeTab, setActiveTab] = useState(0)
-  const calendarPanelRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState<TabId>('courses')
   const restoredId = useRef<string | null>(null)
   const preselectApplied = useRef(false)
   const pendingWorkspaceChecked = useRef(false)
@@ -173,39 +176,40 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       onCorrectionChange: handleCorrectionChange,
       openClassDetail: (subjectId, commissionName) => setClassDetail({ subjectId, commissionName }),
     }),
-    [subjectsById, handleCorrectionChange],
+    [subjectsById, handleCorrectionChange, setClassDetail],
   )
 
   const liveSlots = useMemo(() => liveSlotsFromCourses(selectedCourses), [selectedCourses])
-  const liveConflictCount = useMemo(() => detectConflicts(selectedCourses).totalConflicts, [selectedCourses])
+  const conflictReport = useMemo(() => detectConflicts(selectedCourses), [selectedCourses])
+  const liveConflictCount = conflictReport.totalConflicts
 
-  // savedCount is only shown to a signed-in user (the save button is hidden
-  // otherwise), so there's nothing to reset on sign-out.
+  // Explains an empty generation: subjects that clash in every commission
+  // and subjects all of whose commissions hit a blocked time.
+  const noResultReasons = useMemo<NoResultReasons>(() => {
+    const names = new Map(selectedCourses.map((c) => [c.subject_id, c.name]))
+    const clashes: [string, string][] = []
+    Object.entries(conflictReport.perSubject).forEach(([id, status]) => {
+      status.conflictsWith.forEach((other) => {
+        if (other.level === 'all' && id < other.subjectId) clashes.push([names.get(id) ?? id, other.subjectName])
+      })
+    })
+    return {
+      clashes,
+      blockedOut: subjectsBlockedOut(selectedCourses, blockedTimes).map((c) => c.name),
+      hasBlockedTimes: blockedTimes.length > 0,
+    }
+  }, [selectedCourses, conflictReport, blockedTimes])
+
+  // savedCount is only shown to a signed-in user (anonymous users are asked
+  // to sign in first), so there's nothing to reset on sign-out.
   useEffect(() => {
     if (!profile) return
     let ignore = false
-    listSavedSchedules().then((l) => { if (!ignore) setSavedCount(l.length) }).catch(() => { /* ignore */ })
+    // Only feeds the X/MAX hint in the save dialog; the server enforces
+    // the cap anyway.
+    listSavedSchedules().then((l) => { if (!ignore) setSavedCount(l.length) }).catch((e) => console.error(e))
     return () => { ignore = true }
   }, [profile])
-
-  // Auto-dismiss the save toast a few seconds after it appears.
-  useEffect(() => {
-    if (!saveSuccess) return
-    const t = setTimeout(() => setSaveSuccess(null), 4500)
-    return () => clearTimeout(t)
-  }, [saveSuccess])
-
-  // Outside-click closes the calendar export panel.
-  useEffect(() => {
-    if (!isCalendarPanelOpen) return
-    const handleClick = (e: MouseEvent) => {
-      if (calendarPanelRef.current && !calendarPanelRef.current.contains(e.target as Node)) {
-        setIsCalendarPanelOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [isCalendarPanelOpen])
 
   // Replaces the workspace inputs with a saved payload. Subjects missing
   // from the current catalog are dropped.
@@ -224,15 +228,23 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     setGenerationRequested(false)
   }, [subjects])
 
-  const currentPayload = (): SavedSchedulePayload => ({
-    version: 1,
-    selectedCourses: selectedCourses.map((c) => ({
-      subject_id: c.subject_id,
-      selectedCommissions: c.selectedCommissions,
-    })),
-    options,
-    blockedTimes,
-  })
+  // `shownCombination` records the option on screen in the Calendario
+  // tab (one commission per subject), so a comparison shows that one.
+  const currentPayload = (withShown = false): SavedSchedulePayload => {
+    const shown = withShown && currentSchedule
+      ? Array.from(new Map(currentSchedule.slots.map((s) => [s.subject_id, s.commission])), ([subject_id, commission]) => ({ subject_id, commission }))
+      : null
+    return {
+      version: 1,
+      selectedCourses: selectedCourses.map((c) => ({
+        subject_id: c.subject_id,
+        selectedCommissions: c.selectedCommissions,
+      })),
+      options,
+      blockedTimes,
+      ...(shown ? { shownCombination: shown } : {}),
+    }
+  }
 
   // Every sign-in button on this page (navbar, corrections) goes through
   // here: the workspace only lives in React state, so it's snapshotted to
@@ -244,7 +256,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       plan: normalizedPlan,
       codes: preselectedSubjectsIds.current,
       savedAt: Date.now(),
-      activeTab,
+      activeTab: TAB_IDS.indexOf(activeTab),
       payload: currentPayload(),
     })
     startGoogleSignIn(location.pathname + location.search)
@@ -272,10 +284,10 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     // Applying a one-off snapshot handed over through sessionStorage (an
     // external system) once the catalog it refers to has loaded.
     applyPayload(pending.payload)
-    const tab = pending.activeTab < TAB_COUNT ? pending.activeTab : 0
+    const tab = TAB_IDS[pending.activeTab] ?? 'courses'
     setActiveTab(tab)
     // The calendar tab generates on open; reopening it must too.
-    if (tab === CALENDAR_TAB) setGenerationRequested(true)
+    if (tab === 'calendar') setGenerationRequested(true)
   }, [subjects, career, normalizedPlan, location.state, selectedCourses.length, applyPayload])
 
   // Backing out of Google (browser back) can bring this page back from the
@@ -363,7 +375,9 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   async function handleSave(name: string) {
     setSaveBusy(true); setSaveError(null)
     try {
-      const payload = currentPayload()
+      // The shown option only means something while the Calendario tab
+      // displays results for the current inputs.
+      const payload = currentPayload(activeTab === 'calendar')
       const saved = await createSavedSchedule({
         name,
         careerId: career ?? null,
@@ -372,11 +386,48 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       })
       setSavedCount((c) => c + 1)
       setSaveOpen(false)
-      setSaveSuccess(saved.name)
+      toast.success(t('saved.toastSaved', { name: saved.name }), {
+        label: t('saved.viewSaved'),
+        onClick: () => navigate(schedulerPath('/saved')),
+      })
     } catch (e) {
-      setSaveError((e as Error).message)
+      setSaveError(isLimitReached(e)
+        ? t('saved.limitReached', { max: MAX_SAVED_SCHEDULES })
+        : t(errorMessageKey(e, 'saved.errors.saveFailed')))
     } finally {
       setSaveBusy(false)
+    }
+  }
+
+  const openSave = () => {
+    if (!profile) { setSignInToSave(true); return }
+    setSaveError(null)
+    setSaveOpen(true)
+  }
+
+  // Generates the combinations and shows them.
+  const viewCombinations = () => {
+    setGenerationRequested(true)
+    setActiveTab('calendar')
+  }
+
+  const changeTab = (tab: TabId) => {
+    setActiveTab(tab)
+    // Opening the calendar generates the combinations for the current inputs.
+    if (tab === 'calendar') setGenerationRequested(true)
+  }
+
+  const downloadIcs = () => {
+    try {
+      const blob = new Blob([buildIcs(scheduleEvents)], { type: 'text/calendar;charset=utf-8' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'horario.ics'
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(link.href), 0)
+    } catch (e) {
+      console.error(e)
+      toast.error(t('save.exportFailed'))
     }
   }
 
@@ -385,7 +436,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     setIsCalendarPanelOpen(true)
     const events = eventsFromSlots(
       currentSchedule.slots,
-      (slot) => `${t('calendar.commission')} ${slot.commission}`,
+      (slot) => t('calendar.commissionName', { name: slot.commission }),
     )
     setScheduleEvents(events)
     setRemainingCalendarUrls(
@@ -396,84 +447,134 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     )
   }
 
-  const tabs = [
-    {
-      label: t('career.tabs.courses'),
-      content: (
-        <CourseView
-          subjects={subjects}
-          loading={subjectsLoading}
-          error={subjectsError}
-          selectedCourses={selectedCourses}
-          onCommissionSelect={course => {
-            if (!modalOpen) { setSelectedCourseForModal(course); setModalOpen(true) }
-          }}
-          onAddCourse={(course, commissions) => {
-            updateSelectedCourses([...selectedCourses, { ...course, selectedCommissions: commissions }])
-          }}
-          onRemoveCourse={courseId => {
-            updateSelectedCourses(selectedCourses.filter(c => c.subject_id !== courseId))
-          }}
-          onReorderCourses={updateSelectedCourses}
-        />
-      ),
-    },
-    {
-      label: t('career.tabs.settings'),
-      content: <SettingsView blockedTimes={blockedTimes} onChange={handleBlockedTimesChange} />,
-    },
-    {
-      label: t('career.tabs.calendar'),
-      content: (
-        <SchedulerPreview
-          schedules={schedules}
-          truncated={generation?.truncated ?? false}
-          generated={generation !== null}
-          generating={generating}
-          currentIndex={currentIndex}
-          onIndexChange={setCurrentIndex}
-          options={options}
-          onOptionsChange={handleOptionsChange}
-          blockedTimes={blockedTimes}
-          hasSubjects={selectedCourses.length > 0}
-          onExportToCalendar={handleExportToCalendar}
-          shareUrl={shareUrl}
-          liveSlots={liveSlots}
-          liveConflictCount={liveConflictCount}
-        />
-      ),
-      onClick: () => setGenerationRequested(true),
-    },
-  ]
+  const panels: Record<TabId, ReactNode> = {
+    courses: (
+      <CourseView
+        subjects={subjects}
+        loading={subjectsLoading}
+        error={subjectsError}
+        onRetry={refetchSubjects}
+        selectedCourses={selectedCourses}
+        conflictReport={conflictReport}
+        onCommissionSelect={course => {
+          if (!modalOpen) { setSelectedCourseForModal(course); setModalOpen(true) }
+        }}
+        onAddCourse={(course, commissions) => {
+          updateSelectedCourses([...selectedCourses, { ...course, selectedCommissions: commissions }])
+        }}
+        onRemoveCourse={courseId => {
+          const before = selectedCourses
+          const removed = before.find(c => c.subject_id === courseId)
+          updateSelectedCourses(before.filter(c => c.subject_id !== courseId))
+          if (removed) {
+            toast.info(t('courses.removed', { name: removed.name }), {
+              label: t('courses.undo'),
+              // Puts it back where it was, unless it was re-added meanwhile.
+              onClick: () => {
+                clearSchedules()
+                setSelectedCourses(current => {
+                  if (current.some(c => c.subject_id === courseId)) return current
+                  const at = Math.min(before.indexOf(removed), current.length)
+                  return [...current.slice(0, at), removed, ...current.slice(at)]
+                })
+              },
+            })
+          }
+        }}
+        onReorderCourses={updateSelectedCourses}
+        onViewCombinations={viewCombinations}
+      />
+    ),
+    settings: <SettingsView blockedTimes={blockedTimes} onChange={handleBlockedTimesChange} />,
+    calendar: (
+      <SchedulerPreview
+        schedules={schedules}
+        truncated={generation?.truncated ?? false}
+        stepLimitReached={generation?.stepLimitReached ?? false}
+        generated={generation !== null}
+        generating={generating}
+        currentIndex={currentIndex}
+        onIndexChange={setCurrentIndex}
+        options={options}
+        onOptionsChange={handleOptionsChange}
+        blockedTimes={blockedTimes}
+        hasSubjects={selectedCourses.length > 0}
+        onExportToCalendar={handleExportToCalendar}
+        shareUrl={shareUrl}
+        liveSlots={liveSlots}
+        liveConflictCount={liveConflictCount}
+        noResultReasons={noResultReasons}
+        onViewCombinations={viewCombinations}
+        onGoToTab={changeTab}
+      />
+    ),
+  }
 
   return (
     <SignInContext.Provider value={beginSignIn}>
     <CorrectionsContext.Provider value={correctionsContext}>
       <div className="flex flex-col bg-surface dark:bg-night-bg">
-        <SchedulerHeader currentPlan={plan || ''} />
-
         <main id="main-content" className="flex-1">
           <div className="container-content py-6">
-            {profile && (
-              <div className="flex justify-end mb-3">
-                <button
-                  type="button"
-                  onClick={() => { setSaveError(null); setSaveOpen(true) }}
-                  disabled={selectedCourses.length === 0}
-                  className="px-3 py-1.5 rounded-sm border border-primary text-primary font-mono text-label uppercase tracking-widest hover:bg-primary hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-primary"
-                  aria-label={t('saved.dialogTitle')}
-                >
-                  {t('saved.saveSchedule')}
-                </button>
+            <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 mb-4">
+              <div className="flex flex-col min-w-0">
+                <SchedulerBackLink label={t('career.changeCareer')} />
+                <h1 className="font-display text-h3 font-bold text-ink-primary dark:text-night-text leading-tight">
+                  {(career && CAREERS[career]) || career}
+                </h1>
+                {careerPlans.length > 1 && plan ? (
+                  <div className="flex flex-wrap items-center gap-3 mt-2">
+                    <span id="career-plan-label" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+                      {t('career.plan')}
+                    </span>
+                    <ToggleGroup
+                      joined
+                      labelledBy="career-plan-label"
+                      value={plan}
+                      onChange={(id) => navigate(schedulerPath(`/${career}?plan=${normalizePlanId(id)}`))}
+                      options={careerPlans.map((p) => ({ value: p.id, label: p.id }))}
+                    />
+                  </div>
+                ) : plan ? (
+                  <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mt-1">
+                    {t('saved.planLabel', { plan })}
+                  </p>
+                ) : null}
               </div>
-            )}
-            <TabView tabs={tabs} activeTab={activeTab} onActiveTabChange={setActiveTab} />
+              <div className="flex flex-col items-start sm:items-end gap-1">
+                <Button variant="outline" size="sm" onClick={openSave} disabled={selectedCourses.length === 0}>
+                  {t('saved.saveSchedule')}
+                </Button>
+                {selectedCourses.length === 0 && (
+                  <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('saved.saveDisabledHint')}</p>
+                )}
+              </div>
+            </header>
+            <Tabs
+              items={TAB_IDS.map((id) => ({ id, label: t(`career.tabs.${id}`) }))}
+              active={activeTab}
+              onChange={changeTab}
+              label={t('career.tabsAria')}
+              idPrefix="workspace"
+            />
+            {TAB_IDS.map((id) => (
+              // All panels stay mounted (they hold state); only one shows.
+              <div
+                key={id}
+                role="tabpanel"
+                id={`workspace-panel-${id}`}
+                aria-labelledby={`workspace-tab-${id}`}
+                hidden={activeTab !== id}
+                className="mt-6"
+              >
+                {panels[id]}
+              </div>
+            ))}
           </div>
         </main>
 
         {saveOpen && (
           <SaveScheduleDialog
-            open={saveOpen}
             count={savedCount}
             max={MAX_SAVED_SCHEDULES}
             busy={saveBusy}
@@ -483,45 +584,25 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
           />
         )}
 
-        {saveSuccess && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="fixed bottom-4 right-4 z-50 max-w-sm bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover p-4 flex items-center gap-3 animate-slide-up"
+        {signInToSave && (
+          <Modal
+            title={t('saved.signInTitle')}
+            size="sm"
+            onClose={() => setSignInToSave(false)}
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setSignInToSave(false)}>{t('ui.cancel')}</Button>
+                <Button onClick={beginSignIn}>{t('saved.signInAction')}</Button>
+              </>
+            }
           >
-            <div className="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center flex-shrink-0" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text truncate">
-                {t('saved.toastSavedTitle', { name: saveSuccess })}
-              </p>
-              <button
-                type="button"
-                onClick={() => { setSaveSuccess(null); navigate(schedulerPath('/saved')) }}
-                className="font-mono text-label uppercase tracking-widest text-primary hover:underline mt-0.5"
-              >
-                {t('saved.toastViewLink')}
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSaveSuccess(null)}
-              aria-label={t('saved.toastDismiss')}
-              className="text-ink-secondary dark:text-night-muted hover:text-ink-primary"
-            >
-              ×
-            </button>
-          </div>
+            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('saved.signInBody')}</p>
+          </Modal>
         )}
-
 
         {modalOpen && selectedCourseForModal && (
           <CommissionSelectionModal
             key={selectedCourseForModal.subject_id}
-            isOpen={modalOpen}
             onClose={() => { setModalOpen(false); setSelectedCourseForModal(null) }}
             // The live catalog entry, so corrections made in the dialog show up in it.
             subject={subjectsById.get(selectedCourseForModal.subject_id) ?? selectedCourseForModal}
@@ -538,84 +619,69 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
         )}
 
         {isCalendarPanelOpen && (
-          <>
-            <div className="fixed inset-0 bg-ink-primary/25 dark:bg-black/50 backdrop-blur-sm z-[100]" />
-            <div
-              ref={calendarPanelRef}
-              className="fixed inset-y-0 right-0 w-full sm:w-[28rem] bg-white dark:bg-night-surface border-l border-border dark:border-night-border overflow-y-auto z-[101] shadow-card-hover animate-slide-in"
-            >
-              <div className="p-5">
-                <div className="flex justify-between items-center mb-5">
-                  <h3 className="font-display text-h4 font-bold text-ink-primary dark:text-night-text">{t('calendar.title')}</h3>
-                  <button
-                    onClick={() => setIsCalendarPanelOpen(false)}
-                    className="p-2 hover:bg-surface dark:hover:bg-night-bg rounded-sm transition-colors duration-150"
-                    aria-label={t('calendar.closePanel')}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
+          <Modal
+            title={t('calendar.title')}
+            size="lg"
+            onClose={() => setIsCalendarPanelOpen(false)}
+            footer={<Button variant="ghost" onClick={() => setIsCalendarPanelOpen(false)}>{t('ui.close')}</Button>}
+          >
+            <section className="p-4 rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-bg">
+              <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-2">{t('calendar.option1Title')}</h4>
+              <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">
+                {t('calendar.option1Description')}
+              </p>
+              <ol className="list-decimal pl-5 font-body text-body-sm text-ink-secondary dark:text-night-muted space-y-1.5 mb-4">
+                <li>{t('calendar.option1Step1')}</li>
+                <li>
+                  {t('calendar.option1Step2')}{' '}
+                  <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" className="text-primary dark:text-primary-300 underline">
+                    {t('calendar.googleCalendar')}
+                  </a>
+                </li>
+                <li>{t('calendar.option1Step3')}</li>
+                <li>{t('calendar.option1Step4')}</li>
+              </ol>
+              <Button block onClick={downloadIcs}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+                {t('calendar.downloadFile')}
+              </Button>
+            </section>
 
-                <div className="mb-5 p-4 rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-bg">
-                  <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-2">{t('calendar.option1Title')}</h4>
-                  <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">
-                    {t('calendar.option1Description')}
-                  </p>
-                  <ol className="font-body text-body-sm text-ink-secondary dark:text-night-muted space-y-1.5 mb-4">
-                    <li>1. {t('calendar.option1Step1')}</li>
-                    <li>2. {t('calendar.option1Step2')}: <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google Calendar</a></li>
-                    <li>3. {t('calendar.option1Step3')}</li>
-                    <li>4. {t('calendar.option1Step4')}</li>
-                  </ol>
-                  <button
-                    onClick={() => {
-                      const blob = new Blob([buildIcs(scheduleEvents)], { type: 'text/calendar;charset=utf-8' })
-                      const link = document.createElement('a')
-                      link.href = URL.createObjectURL(blob)
-                      link.download = 'horario.ics'
-                      link.click()
-                      setTimeout(() => URL.revokeObjectURL(link.href), 0)
-                    }}
-                    className="w-full flex items-center justify-center gap-2 min-h-[44px] px-4 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                    </svg>
-                    <span>{t('calendar.downloadFile')}</span>
-                  </button>
+            <section className="p-4 rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-bg">
+              <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-1">{t('calendar.option2Title')}</h4>
+              <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-3">{t('calendar.option2Description')}</p>
+              {remainingCalendarUrls.length === 0 ? (
+                <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('calendar.allAdded')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {remainingCalendarUrls.map((event) => (
+                    <a
+                      key={event.url}
+                      href={event.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setRemainingCalendarUrls(prev => prev.filter((e) => e.url !== event.url))}
+                      className={buttonClass({ variant: 'outline', block: true, className: '!justify-start !normal-case !tracking-normal !font-body text-body-sm text-left' })}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary dark:text-primary-300 flex-shrink-0" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      <span className="line-clamp-1">
+                        {event.commission
+                          ? t('calendar.eventWithCommission', { title: event.title, commission: event.commission })
+                          : event.title}
+                      </span>
+                    </a>
+                  ))}
                 </div>
-
-                <div className="p-4 rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-bg">
-                  <h4 className="font-body font-semibold text-body text-ink-primary dark:text-night-text mb-3">{t('calendar.option2Title')}</h4>
-                  <div className="space-y-2">
-                    {remainingCalendarUrls.map((event, i) => (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          window.open(event.url, '_blank')
-                          setRemainingCalendarUrls(prev => prev.filter((_, idx) => idx !== i))
-                        }}
-                        className="w-full flex items-center gap-3 min-h-[44px] px-3 py-2 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary text-left transition-colors duration-150 group"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary flex-shrink-0" aria-hidden="true">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                          <line x1="16" y1="2" x2="16" y2="6" />
-                          <line x1="8" y1="2" x2="8" y2="6" />
-                          <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg>
-                        <span className="font-body text-body-sm text-ink-primary dark:text-night-text line-clamp-1">
-                          {event.title}{event.commission && ` · ${t('calendar.commission')} ${event.commission}`}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
+              )}
+            </section>
+          </Modal>
         )}
       </div>
     </CorrectionsContext.Provider>

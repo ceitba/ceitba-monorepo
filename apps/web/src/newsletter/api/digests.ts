@@ -134,7 +134,8 @@ export async function sendCorrectionVote(token: string, vote: CorrectionVote): P
 
 // → { authorizationUrl }. The caller must navigate the whole window there
 // (window.location.assign): no fetch, no popup. Google then sends the browser
-// back to /newsletter/admin/digests?mail=connected | ?mail=error&reason=<code>.
+// back to /newsletter/admin/digests?mail=connected | ?mail=error&reason=<code>,
+// which NewsletterApp forwards (query included) to /manage/newsletter/digests.
 export async function connectCeitbaSender(): Promise<MailConnectResponse> {
   return apiSend<MailConnectResponse>('POST', '/mail/accounts/ceitba/connect')
 }

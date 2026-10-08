@@ -347,6 +347,30 @@ class ArticleEndpointsIT {
     }
 
     @Test
+    void undoingAPublishCanClearTheDateItFilledIn() throws Exception {
+        String ind = createIndependent();
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\",\"publishedAt\":\"2026-10-07\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.publishedAt").value("2026-10-07"));
+
+        // A null date means "unchanged"...
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"pending_review\",\"publishedAt\":null}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.publishedAt").value("2026-10-07"));
+        // ...so emptying it takes the explicit flag.
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"pending_review\",\"clearPublishedAt\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("pending_review"));
+        assertThat(articleRepo.findById(ind).orElseThrow().getPublishedAt()).isNull();
+    }
+
+    @Test
     void authorCanDeleteOwnPendingArticle() throws Exception {
         String ind = createIndependent();
         mvc.perform(delete("/v1/articles/" + ind).with(user()))

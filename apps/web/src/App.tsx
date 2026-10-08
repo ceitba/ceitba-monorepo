@@ -5,12 +5,13 @@ import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
-import ManagePage from './pages/ManagePage'
+import BenefitsPage from './pages/BenefitsPage'
 import ProfilePage from './pages/ProfilePage'
 import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
+import { Toaster } from './components/ui/Toaster'
 import { getSession, isSafeReturnPath, takeReturnTo } from './store/authStore'
 
 // Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
@@ -24,6 +25,8 @@ const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
 const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 
 // Sections that used to be separate SPAs, each in its own chunk.
+// Administración (staff only): its own chunk, with the queue and its areas.
+const ManagePage = lazy(() => import('./pages/ManagePage'))
 const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
 const NewsletterApp = lazy(() => import('./newsletter/NewsletterApp'))
 
@@ -56,8 +59,9 @@ function AuthCallback() {
 }
 
 // Pages with their own full-screen chrome instead of the app's Navbar and
-// Footer: the newsletter's admin dashboard and its sign-in page.
-const CHROMELESS = ['/newsletter/admin/*', '/newsletter/contribute/*']
+// Footer: the newsletter's contributor portal (behind a feature flag). The
+// newsletter admin renders inside the site chrome, like /manage.
+const CHROMELESS = ['/newsletter/contribute/*']
 
 function Layout() {
   const { pathname } = useLocation()
@@ -76,7 +80,8 @@ function Layout() {
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
+          <Route path="/benefits" element={<BenefitsPage />} />
+          <Route path="/manage/*" element={<StaffGuard><Suspense fallback={<PageFallback />}><ManagePage /></Suspense></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />
@@ -94,6 +99,7 @@ function Layout() {
         </Routes>
       </div>
       <Footer />
+      <Toaster />
     </div>
   )
 }

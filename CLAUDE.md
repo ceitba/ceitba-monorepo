@@ -12,7 +12,9 @@ One repo, two apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
 | `apps/web` | The whole frontend, one SPA: main site + `/manage` staff admin + Apuntes at `/`, the "Combinador de Horarios" at `/scheduler`, the student newsletter at `/newsletter` | React 18 + Vite + TS |
 
 `infra/caddy/` is the production reverse proxy. `docs/EDITORIAL_UI_SYSTEM.md` defines the shared warm/editorial
-Tailwind look: read it before UI work.
+Tailwind look: read it before UI work. Build UI from the shared kit in `apps/web/src/components/ui` (buttons,
+fields, tabs, toggles, badges, alerts, toasts, skeletons, empty/error states; `Modal`/`ConfirmDialog`) instead of
+hand-rolling markup, and keep one navigation bar per page (§6 "Navigation depth").
 
 **Release flow**: feature PRs merge into `dev` with real merge commits (`--no-ff`); one reviewed `dev → main` PR is
 merged with a merge commit. Only `main` deploys. `.github/workflows/ci.yml` runs on PRs and `dev` pushes;
