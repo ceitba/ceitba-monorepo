@@ -2,8 +2,9 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchAllEvents, deleteEvent } from '../../api/events'
-import { getOrganizations, isStaff } from '../../store/authStore'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { getOrganizations } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import CategoryBadge from '../../components/CategoryBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
@@ -17,7 +18,7 @@ const COLS = 6
 
 export default function MyEventsPage() {
   const { t, i18n } = useTranslation()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const { orgName } = useAdminContext()
   const staff = isStaff(profile)
   const [events, setEvents]     = useState<NewsEvent[]>([])

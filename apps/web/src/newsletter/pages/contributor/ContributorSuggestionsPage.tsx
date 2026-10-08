@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getCachedSession } from '../../store/authStore'
+import { getCachedSession } from '@/store/authStore'
 import { getArticles, type StoredArticle } from '../../store/articleStore'
 import { getEvents, type StoredEvent } from '../../store/eventStore'
 import { newsletterPath } from '@/newsletter/paths'

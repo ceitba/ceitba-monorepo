@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCachedSession } from '../../store/authStore'
+import { getCachedSession } from '@/store/authStore'
 import {
   getArticleById,
   submitArticleSuggestion,

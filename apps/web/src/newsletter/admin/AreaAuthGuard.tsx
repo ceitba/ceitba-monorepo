@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import PageFallback from '@/components/PageFallback'
 import { Button, EmptyState, buttonClass } from '@/components/ui'
 import { startGoogleSignIn } from '@/store/authStore'
-import { isStaff } from '../store/authStore'
-import { useAuthSession } from '../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
 import { MINE_PATH } from '@/newsletter/paths'
 
 // Guards the newsletter's signed-in areas: Mis publicaciones (anyone signed
@@ -18,7 +18,7 @@ import { MINE_PATH } from '@/newsletter/paths'
 export default function AreaAuthGuard({ staffOnly = false, children }: { staffOnly?: boolean; children: ReactNode }) {
   const { t } = useTranslation()
   const location = useLocation()
-  const { profile, loading } = useAuthSession()
+  const { profile, loading } = useAuth()
 
   if (loading) return <PageFallback />
 

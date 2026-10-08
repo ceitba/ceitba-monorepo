@@ -2,8 +2,9 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchEventById, createEvent, updateEvent } from '../../api/events'
-import { getOrganizations, isStaff } from '../../store/authStore'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { getOrganizations } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
@@ -49,7 +50,7 @@ export default function EventFormPage() {
   const isEdit   = Boolean(id)
   const { t } = useTranslation()
   const categoryLabel = useCategoryLabel()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const { orgs } = useAdminContext()
   // Edit mode: 'loading' → 'ready' | 'notFound' | 'error'. Saving is only
   // possible once the event loaded, so a failed load can't overwrite it.

@@ -3,8 +3,8 @@ import { Trans, useTranslation } from 'react-i18next'
 import { ALLOWED_IMAGE_TYPES as ALLOWED_TYPES, MAX_IMAGE_BYTES as MAX_BYTES, uploadViaSignedUrl } from '../api/media'
 import { ApiError } from '@/api/client'
 import { Alert, Button, CloseIcon, IconButton, ToggleGroup, inputClass } from '@/components/ui'
-import { isStaff } from '../store/authStore'
-import { useAuthSession } from '../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -29,7 +29,7 @@ type Tab = 'upload' | 'url'
 // image data inside the article row.
 export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const { t } = useTranslation()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const canUpload = isStaff(profile)
   const [tab, setTab]         = useState<Tab>(value?.startsWith('http') ? 'url' : 'upload')
   const [url, setUrl]         = useState(value?.startsWith('http') ? value : '')
