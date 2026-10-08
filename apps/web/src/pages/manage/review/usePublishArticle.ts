@@ -2,12 +2,11 @@ import { useCallback } from 'react'
 import { toast } from '../../../components/ui'
 import { updateArticle } from '../../../newsletter/api/articles'
 import type { Article, ArticleStatus, IsoDate } from '../../../newsletter/types'
-import { todayISO } from '../../../newsletter/utils/dates'
 import { useQueueOptional } from './queueContext'
 
 // What publishing changed, so Deshacer can put it back exactly: the previous
-// status and the previous date (null when publishing filled one in, which
-// undo then clears; otherwise a later publish would go out back-dated).
+// status and the previous date (null when the API filled one in, which undo
+// then clears; otherwise a later publish would go out back-dated).
 interface PublishSnapshot {
   id: string
   status: ArticleStatus
@@ -19,12 +18,8 @@ interface PublishSnapshot {
 // someone has changed since): the API answers 409 instead.
 async function publish(article: Article): Promise<PublishSnapshot> {
   const snapshot = { id: article.id, status: article.status, date: article.date ?? null }
-  // An article sent without a date gets today's.
-  await updateArticle(
-    article.id,
-    { status: 'published', ...(article.date ? {} : { date: todayISO() }) },
-    { expectedStatus: article.status },
-  )
+  // An article sent without a date gets today's (the API fills it in).
+  await updateArticle(article.id, { status: 'published' }, { expectedStatus: article.status })
   return snapshot
 }
 

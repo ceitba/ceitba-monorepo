@@ -220,6 +220,7 @@
       "back": "← Articles",
       "newTitle": "New article",
       "saveError": "Couldn't save the article. Please try again.",
+      "conflict": "Someone changed this article's status while you were editing, so it wasn't saved. Reload the page to see the current version (copy anything you want to keep first).",
       "title": "Title",
       "titlePlaceholder": "Article title",
       "excerpt": "Standfirst",

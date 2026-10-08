@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -96,6 +97,7 @@ public class ArticleService {
         }
         resolveOrganization(article, organizationSlug);
         article.setCreatedBy(createdBy);
+        dateIfPublished(article);
         notifyFollowersOnce(article);
         return articleRepo.save(article);
     }
@@ -128,6 +130,7 @@ public class ArticleService {
         if (patch.getStatus()     != null) article.setStatus(patch.getStatus());
         if (featured              != null) article.setFeatured(featured);
         if (organizationSlug != null) resolveOrganization(article, organizationSlug);
+        dateIfPublished(article);
         notifyFollowersOnce(article);
         return articleRepo.save(article);
     }
@@ -167,6 +170,16 @@ public class ArticleService {
         if (!isPublished(article) || article.getPushSentAt() != null) return;
         article.markPushSent(OffsetDateTime.now(clock));
         NewsPushes.articlePublished(article).ifPresent(events::publishEvent);
+    }
+
+    // Drafts and submissions may be undated (an empty date means "the day
+    // it's published"), so a published article without a date gets today's,
+    // in ART: otherwise it would never reach the weekly digest
+    // (findPublishedBetween) and would sort first under publishedAt DESC.
+    private void dateIfPublished(Article article) {
+        if (isPublished(article) && article.getPublishedAt() == null) {
+            article.setPublishedAt(LocalDate.now(clock));
+        }
     }
 
     private static boolean isPublished(Article article) {

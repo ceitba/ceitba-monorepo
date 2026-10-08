@@ -220,6 +220,7 @@
       "back": "← Artículos",
       "newTitle": "Nuevo artículo",
       "saveError": "No se pudo guardar el artículo. Intentá de nuevo.",
+      "conflict": "Alguien cambió el estado de este artículo mientras lo editabas, así que no lo guardamos. Recargá la página para ver la versión actual (copiá antes lo que quieras conservar).",
       "title": "Título",
       "titlePlaceholder": "Título del artículo",
       "excerpt": "Copete",

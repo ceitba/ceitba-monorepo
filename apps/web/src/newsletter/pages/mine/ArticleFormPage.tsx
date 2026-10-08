@@ -18,7 +18,7 @@ import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import RichTextEditor from '../../components/admin/editor/RichTextEditor'
 import { useAdminContext } from '../../admin/adminContext'
-import { formatDate, todayISO } from '../../utils/dates'
+import { formatDate } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
 import { ADMIN_PATH, MY_ARTICLES_PATH, REVIEW_PATH, articleEditPath, newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
@@ -97,9 +97,9 @@ function buildEmptyForm(profile: UserProfile | null): ArticleForm {
 }
 
 // Only what the API accepts — the loaded article also carries id, status,
-// timestamps, etc. A date is only filled in when publishing: a draft or a
-// submission saved with today's would go out back-dated when staff publish
-// it later (null clears a date the writer emptied).
+// timestamps, etc. An empty date is sent as null (clearing one the writer
+// emptied): the API dates an article the day it's published. Filling in
+// today here would back-date a draft or submission that staff publish later.
 function toPayload(form: ArticleForm, status: ArticleStatus): ArticlePayload {
   return {
     title:        form.title.trim(),
@@ -108,7 +108,7 @@ function toPayload(form: ArticleForm, status: ArticleStatus): ArticlePayload {
     category:     form.category,
     organization: form.organization || null,
     authors:      form.authors.map((a) => a.trim()).filter(Boolean),
-    date:         form.date || (status === 'published' ? todayISO() : null),
+    date:         form.date || null,
     readingTime:  form.readingTime,
     featured:     form.featured,
     colorScheme:  form.colorScheme,
@@ -312,8 +312,13 @@ export default function ArticleFormPage() {
       if (!payload.excerpt) payload.excerpt = markdownToPlainText(form.body).slice(0, EXCERPT_CARD_CHARS) || payload.title
       if (!payload.authors.length) payload.authors = [profile?.name || payload.organization || 'CEITBA']
 
-      // Non-null: isEdit means articleId is set.
-      const saved = isEdit ? await updateArticle(articleId!, payload) : await createArticle(payload)
+      // Non-null: isEdit means articleId is set. Conditional on the status
+      // this editor last saw: if someone moved the article since (an author
+      // pulling it back, staff publishing it), the API answers 409 instead of
+      // overwriting their change with this copy.
+      const saved = isEdit
+        ? await updateArticle(articleId!, payload, { expectedStatus: savedStatus ?? undefined })
+        : await createArticle(payload)
       // Inside Administración: publishing or re-filing changes the review queue.
       reviewQueue?.reloadSource('articles')
       setSavedStatus(saved?.status ?? status)
@@ -325,7 +330,7 @@ export default function ArticleFormPage() {
         ...f,
         excerpt: f.excerpt.trim() ? f.excerpt : payload.excerpt,
         authors: f.authors.length ? f.authors : payload.authors,
-        date:    f.date || (payload.date ?? ''),
+        date:    f.date || (saved?.date ?? ''),
       }))
       setOriginalOrg(saved?.organization ?? (payload.organization || null))
       if (!isEdit && saved?.id) {
@@ -337,8 +342,12 @@ export default function ArticleFormPage() {
       // A confirmation with what to do next (no auto-redirect).
       if (status === 'published' || status === 'pending_review') setDoneStatus(status)
     } catch (err) {
-      console.error('newsletter admin: save article', err)
-      setApiError(t('admin.articleForm.saveError'))
+      if (err instanceof ApiError && err.status === 409) {
+        setApiError(t('admin.articleForm.conflict'))
+      } else {
+        console.error('newsletter admin: save article', err)
+        setApiError(t('admin.articleForm.saveError'))
+      }
     } finally {
       setSaving(null)
     }

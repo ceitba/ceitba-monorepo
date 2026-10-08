@@ -1,5 +1,6 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.jayway.jsonpath.JsonPath;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -391,6 +393,18 @@ class ArticleEndpointsIT {
                 .content("{\"status\":\"published\",\"expectedStatus\":\"draft\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("published"));
+    }
+
+    @Test
+    void publishingAnUndatedArticleDatesItToday() throws Exception {
+        String ind = createIndependent();
+        assertThat(articleRepo.findById(ind).orElseThrow().getPublishedAt()).isNull();
+
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.publishedAt").value(LocalDate.now(ClockConfig.ZONE).toString()));
     }
 
     @Test
