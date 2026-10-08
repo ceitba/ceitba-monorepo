@@ -2,9 +2,7 @@ name: Deploy
 
 # Every push to main deploys the apps it changed, to the same VPS paths as the
 # old per-repo workflows: API image + compose (~/CEITBA-API), Caddy (~/infra),
-# the web app (/var/www/main; it serves the site, /scheduler and /newsletter,
-# plus its index.html in the old /scheduler and /newsletter roots until the
-# Caddy cutover).
+# the web app (/var/www/main; it serves the site, /scheduler and /newsletter).
 # The API ships first; the web deploy waits for it, so it never goes live
 # ahead of the API it depends on.
 # Deploy credentials live only in the `production` environment.
@@ -246,21 +244,7 @@ jobs:
             #    index.html last, so it never points at chunks not yet there.
             rsync -rt --exclude=/index.html "$STAGE/dist/" "$WWW/"
             rsync -t "$STAGE/dist/index.html" "$WWW/index.html"
-            # 2. Until the Caddy cutover, Caddy still serves /scheduler* and
-            #    /newsletter* from the old standalone builds' roots, whose
-            #    try_files fallback is index.html: putting the web app's there
-            #    makes every hard load (refresh, bookmark, shared link) open
-            #    the merged app. Its asset URLs are absolute (/assets/...),
-            #    served from $WWW, which already has them.
-            if [ "${{ matrix.app }}" = web ]; then
-              for d in scheduler itbanews; do
-                mkdir -p "/var/www/$d"
-                # Copy then rename: a request never sees a half-written file.
-                cp "$STAGE/dist/index.html" "/var/www/$d/.index.html.new"
-                mv -f "/var/www/$d/.index.html.new" "/var/www/$d/index.html"
-              done
-            fi
-            # 3. Only now drop the previous build's files (-t keeps mtimes, so
+            # 2. Only now drop the previous build's files (-t keeps mtimes, so
             #    this pass copies nothing again). Tabs opened before
             #    the deploy that then lazy-load one of them reload once
             #    (vite:preloadError in apps/web/src/main.tsx).
