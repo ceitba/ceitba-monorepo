@@ -241,18 +241,27 @@ jobs:
           script: |
             set -e
             STAGE=/tmp/${{ matrix.app }}-deploy-${{ github.sha }}
-            rsync -r --delete "$STAGE/dist/" /var/www/${{ matrix.www }}/
-            # Until the Caddy cutover, Caddy still serves /scheduler* and
-            # /newsletter* from the old standalone builds' roots. Their
-            # try_files fallback is index.html, so putting the web app's
-            # there makes every hard load (refresh, bookmark, shared link)
-            # open the merged app. Its asset URLs are absolute (/assets/...),
-            # served from /var/www/main, which is why this runs after the
-            # rsync above. Old assets stay so open tabs can still lazy-load.
+            WWW=/var/www/${{ matrix.www }}
+            # 1. Add the new build's files without removing anything, and
+            #    index.html last, so it never points at chunks not yet there.
+            rsync -r --exclude=/index.html "$STAGE/dist/" "$WWW/"
+            rsync "$STAGE/dist/index.html" "$WWW/index.html"
+            # 2. Until the Caddy cutover, Caddy still serves /scheduler* and
+            #    /newsletter* from the old standalone builds' roots, whose
+            #    try_files fallback is index.html: putting the web app's there
+            #    makes every hard load (refresh, bookmark, shared link) open
+            #    the merged app. Its asset URLs are absolute (/assets/...),
+            #    served from $WWW, which already has them.
             if [ "${{ matrix.app }}" = web ]; then
               for d in scheduler itbanews; do
                 mkdir -p "/var/www/$d"
-                cp "$STAGE/dist/index.html" "/var/www/$d/index.html"
+                # Copy then rename: a request never sees a half-written file.
+                cp "$STAGE/dist/index.html" "/var/www/$d/.index.html.new"
+                mv -f "/var/www/$d/.index.html.new" "/var/www/$d/index.html"
               done
             fi
+            # 3. Only now drop the previous build's files. Tabs opened before
+            #    the deploy that then lazy-load one of them reload once
+            #    (vite:preloadError in apps/web/src/main.tsx).
+            rsync -r --delete "$STAGE/dist/" "$WWW/"
             rm -rf "$STAGE"
