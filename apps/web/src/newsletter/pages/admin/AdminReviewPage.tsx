@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ALL_STATUSES, fetchAllArticles } from '../../api/articles'
 import { ApiError } from '@/api/client'
 import { usePublishArticle } from '@/pages/manage/review/usePublishArticle'
+import { useQueueOptional } from '@/pages/manage/review/queueContext'
 import { fetchAnalyticsSummary } from '../../api/analytics'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import ArticlesTable from '../../components/admin/ArticlesTable'
@@ -37,15 +38,39 @@ export default function AdminReviewPage() {
   const { orgName, refreshPending } = useAdminContext()
   const [params, setParams] = useSearchParams()
   const view: View = params.get(VIEW_PARAM) === 'all' ? 'all' : 'pending'
-  const [articles, setArticles] = useState<Article[]>([])
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [localArticles, setArticles] = useState<Article[]>([])
+  const [localStatus, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [reloadKey, setReloadKey] = useState(0)
   const [publishing, setPublishing] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<Article | null>(null)
   const [votes, setVotes] = useState<Record<string, VoteCounts>>({})
   const publishArticle = usePublishArticle()
 
+  // Inside Administración the pending list is the review queue's own: one
+  // request, and the table always agrees with the rail and tab counts.
+  // "Todos" (and the page outside the queue) loads its own list.
+  const queue = useQueueOptional()
+  const fromQueue = view === 'pending' && queue != null
+  const queueArticles = queue?.data.articles
+  const queueStatus = queue?.status.articles
+  const pendingFromQueue = useMemo(
+    () => [...(queueArticles ?? [])].sort((a, b) => updatedAtMs(a) - updatedAtMs(b)),
+    [queueArticles],
+  )
+  const articles = fromQueue ? pendingFromQueue : localArticles
+  const status: 'loading' | 'success' | 'error' = !fromQueue
+    ? localStatus
+    : queueStatus === 'loading' ? 'loading' : queueStatus === 'error' ? 'error' : 'success'
+  const reload = () => (fromQueue ? queue.reloadSource('articles') : setReloadKey((k) => k + 1))
+
+  // Opening the tab refreshes the queue unless it just loaded.
+  const revalidateQueue = queue?.revalidate
   useEffect(() => {
+    if (fromQueue) revalidateQueue?.()
+  }, [fromQueue, revalidateQueue])
+
+  useEffect(() => {
+    if (fromQueue) return
     let cancelled = false
     setStatus('loading')
     const request = view === 'pending'
@@ -59,7 +84,7 @@ export default function AdminReviewPage() {
         if (!cancelled) setStatus('error')
       })
     return () => { cancelled = true }
-  }, [view, reloadKey])
+  }, [view, reloadKey, fromQueue])
 
   // Vote counts for "Todos". Best-effort: never let it fail the list.
   useEffect(() => {
@@ -93,7 +118,7 @@ export default function AdminReviewPage() {
         published: t('admin.review.published', { title: article.title }),
         undo: t('admin.review.undo'),
         undoFailed: () => t('admin.review.undoError', { title: article.title }),
-      }, () => setReloadKey((k) => k + 1))
+      }, () => { if (!fromQueue) setReloadKey((k) => k + 1) })
       drop()
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -141,7 +166,7 @@ export default function AdminReviewPage() {
       {status === 'loading' && <SkeletonTable rows={5} cols={view === 'pending' ? 4 : 7} />}
 
       {status === 'error' && (
-        <ErrorState title={t('admin.review.loadError')} onRetry={() => setReloadKey((k) => k + 1)} />
+        <ErrorState title={t('admin.review.loadError')} onRetry={reload} />
       )}
 
       {status === 'success' && articles.length === 0 && (

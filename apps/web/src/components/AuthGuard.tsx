@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { startGoogleSignIn } from '../store/authStore'
-import { Button } from './ui'
+import { Button, EmptyState, buttonClass } from './ui'
 import PageFallback from './PageFallback'
 
 // Logged-in-only pages. Like StaffGuard it waits for /me (the session cookie
@@ -23,30 +23,20 @@ export default function AuthGuard({ children }: { children: ReactElement }) {
 
   return (
     <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
-      <div className="max-w-lg mx-auto flex flex-col items-center text-center gap-5 py-12 animate-fade-in">
-        <div className="relative w-20 h-20" aria-hidden="true">
-          <div className="absolute inset-0 rounded-full bg-primary-50 dark:bg-primary-900" />
-          <div className="absolute top-3 left-3 w-8 h-8 rotate-45 bg-accent-100 dark:bg-accent-800" />
-          <div className="absolute bottom-3 right-3 w-5 h-5 rounded-full bg-primary-200 dark:bg-primary-700" />
-        </div>
-        <h1 className="font-display font-bold text-h3 text-ink-primary dark:text-night-text">
-          {t('authGuard.title')}
-        </h1>
-        <p className="font-body text-body text-ink-secondary dark:text-night-muted">
-          {t('authGuard.body')}
-        </p>
-        <Button onClick={() => startGoogleSignIn(returnTo)}>
-          {t('authGuard.signIn')}
-        </Button>
-        {devLogin && (
-          <Link
-            to={`/dev-login?returnTo=${encodeURIComponent(returnTo)}`}
-            className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary"
-          >
-            {t('devLogin.link', { defaultValue: 'Dev login' })}
-          </Link>
-        )}
-      </div>
+      <EmptyState
+        title={<span role="heading" aria-level={1}>{t('authGuard.title')}</span>}
+        body={t('authGuard.body')}
+        action={
+          <div className="flex flex-col items-center gap-2">
+            <Button onClick={() => startGoogleSignIn(returnTo)}>{t('authGuard.signIn')}</Button>
+            {devLogin && (
+              <Link to={`/dev-login?returnTo=${encodeURIComponent(returnTo)}`} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
+                {t('devLogin.link', { defaultValue: 'Dev login' })}
+              </Link>
+            )}
+          </div>
+        }
+      />
     </main>
   )
 }
