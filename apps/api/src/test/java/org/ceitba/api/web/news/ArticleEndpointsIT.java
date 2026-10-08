@@ -408,6 +408,16 @@ class ArticleEndpointsIT {
     }
 
     @Test
+    void creatingAnUndatedPublishedArticleDatesItToday() throws Exception {
+        mvc.perform(post("/v1/articles").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(INDEPENDENT.formatted(",\"status\":\"published\"")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("published"))
+            .andExpect(jsonPath("$.publishedAt").value(LocalDate.now(ClockConfig.ZONE).toString()));
+    }
+
+    @Test
     void authorCanDeleteOwnPendingArticle() throws Exception {
         String ind = createIndependent();
         mvc.perform(delete("/v1/articles/" + ind).with(user()))

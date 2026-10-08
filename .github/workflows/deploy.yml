@@ -244,8 +244,8 @@ jobs:
             WWW=/var/www/${{ matrix.www }}
             # 1. Add the new build's files without removing anything, and
             #    index.html last, so it never points at chunks not yet there.
-            rsync -r --exclude=/index.html "$STAGE/dist/" "$WWW/"
-            rsync "$STAGE/dist/index.html" "$WWW/index.html"
+            rsync -rt --exclude=/index.html "$STAGE/dist/" "$WWW/"
+            rsync -t "$STAGE/dist/index.html" "$WWW/index.html"
             # 2. Until the Caddy cutover, Caddy still serves /scheduler* and
             #    /newsletter* from the old standalone builds' roots, whose
             #    try_files fallback is index.html: putting the web app's there
@@ -260,8 +260,9 @@ jobs:
                 mv -f "/var/www/$d/.index.html.new" "/var/www/$d/index.html"
               done
             fi
-            # 3. Only now drop the previous build's files. Tabs opened before
+            # 3. Only now drop the previous build's files (-t keeps mtimes, so
+            #    this pass copies nothing again). Tabs opened before
             #    the deploy that then lazy-load one of them reload once
             #    (vite:preloadError in apps/web/src/main.tsx).
-            rsync -r --delete "$STAGE/dist/" "$WWW/"
+            rsync -rt --delete "$STAGE/dist/" "$WWW/"
             rm -rf "$STAGE"
