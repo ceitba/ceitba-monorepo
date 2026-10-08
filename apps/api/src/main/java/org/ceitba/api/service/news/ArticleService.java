@@ -105,10 +105,16 @@ public class ArticleService {
     // `independentAuthor` is the caller's id when they act only as the author
     // of an independent article (not STAFF, not an org member), else null.
     // `clearPublishedAt` empties the date (a null in `patch` means unchanged).
+    // `expectedStatus`, when set, must match the article's current status
+    // (checked under the row lock), else 409 InvalidState.
     @Transactional
     public Article update(String id, Article patch, Boolean featured, String organizationSlug,
-                          UUID independentAuthor, boolean clearPublishedAt) {
+                          UUID independentAuthor, boolean clearPublishedAt, String expectedStatus) {
         var article = lockedForWrite(id, independentAuthor);
+        if (expectedStatus != null && !expectedStatus.equals(article.getStatus())) {
+            throw new InvalidStateException(
+                "Article " + id + " is " + article.getStatus() + ", not " + expectedStatus);
+        }
         if (patch.getTitle()      != null) article.setTitle(patch.getTitle());
         if (patch.getExcerpt()    != null) article.setExcerpt(patch.getExcerpt());
         if (patch.getBody()       != null) article.setBody(patch.getBody());

@@ -14,15 +14,22 @@ interface PublishSnapshot {
   date: IsoDate | null
 }
 
+// Both writes are conditional on the status the row showed, so a stale row
+// can't publish an article its author already pulled back (or undo a publish
+// someone has changed since): the API answers 409 instead.
 async function publish(article: Article): Promise<PublishSnapshot> {
   const snapshot = { id: article.id, status: article.status, date: article.date ?? null }
   // An article sent without a date gets today's.
-  await updateArticle(article.id, { status: 'published', ...(article.date ? {} : { date: todayISO() }) })
+  await updateArticle(
+    article.id,
+    { status: 'published', ...(article.date ? {} : { date: todayISO() }) },
+    { expectedStatus: article.status },
+  )
   return snapshot
 }
 
 function undo(s: PublishSnapshot): Promise<Article> {
-  return updateArticle(s.id, { status: s.status, date: s.date })
+  return updateArticle(s.id, { status: s.status, date: s.date }, { expectedStatus: 'published' })
 }
 
 export interface PublishMessages {

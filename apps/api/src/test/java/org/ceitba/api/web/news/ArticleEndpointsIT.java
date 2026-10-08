@@ -371,6 +371,29 @@ class ArticleEndpointsIT {
     }
 
     @Test
+    void expectedStatusRefusesAPublishFromAStaleReviewRow() throws Exception {
+        String ind = createIndependent();
+        // The author pulls it back to draft after the review queue loaded it.
+        mvc.perform(patch("/v1/articles/" + ind).with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"draft\"}"))
+            .andExpect(status().isOk());
+
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\",\"expectedStatus\":\"pending_review\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("InvalidState"));
+        assertThat(articleRepo.findById(ind).orElseThrow().getStatus()).isEqualTo("draft");
+
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\",\"expectedStatus\":\"draft\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("published"));
+    }
+
+    @Test
     void authorCanDeleteOwnPendingArticle() throws Exception {
         String ind = createIndependent();
         mvc.perform(delete("/v1/articles/" + ind).with(user()))

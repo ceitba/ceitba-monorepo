@@ -273,6 +273,8 @@
         "lockedForAuthor": "Staff already published it, so it can't be edited here. For changes, email newsletter@ceitba.org.ar."
       },
       "date": "Publication date",
+      "dateHint": "Leave it empty to use the day it's published.",
+      "dateOnPublish": "No date yet",
       "placement": "Placement",
       "byline": "Byline",
       "readingTimeEdit": "Edit",
