@@ -29,6 +29,16 @@ const datesOverlap = (a: Commission, b: Commission): boolean =>
   !a.course_start || !a.course_end || !b.course_start || !b.course_end ||
   (a.course_start <= b.course_end && b.course_start <= a.course_end)
 
+// A saved selection (workspace, share) names commissions; names that no
+// longer exist (a commission now carries a suffix, or left the catalog) are
+// dropped, and a selection with none left means "any" rather than nothing.
+export function knownSelection(commissions: Commission[], selected: string[]): string[] {
+  if (selected.includes('any')) return selected
+  const names = new Set(commissions.map((c) => c.name))
+  const known = selected.filter((name) => names.has(name))
+  return known.length > 0 ? known : ['any']
+}
+
 export function disambiguateCommissions(commissions: Commission[]): Commission[] {
   // The same row twice (same ITBA id) is a true duplicate.
   const seenIds = new Set<string>()

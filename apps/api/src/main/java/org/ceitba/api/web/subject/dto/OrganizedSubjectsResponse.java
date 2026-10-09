@@ -10,7 +10,8 @@ import java.util.UUID;
 // Response of GET /api/v1/subjects?plan=...
 //
 // Shape: { section: { year: { semester: [SubjectDetail, ...] } } }
-// Mirrors the NestJS SectionSubjectsDto byte-for-byte.
+// Started as the NestJS SectionSubjectsDto; since then commissions carry
+// their own dates and subjects a past_term flag.
 public final class OrganizedSubjectsResponse {
 
     public record SubjectDetail(

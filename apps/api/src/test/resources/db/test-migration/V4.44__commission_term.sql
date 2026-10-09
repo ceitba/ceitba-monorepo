@@ -8,9 +8,10 @@
 -- upsert) and backfill the rows already here from their course dates, so no
 -- existing row is dropped or rewritten beyond the new columns.
 --
--- Backfill rule, the same split CommissionQuery uses for its default period:
--- a course starting January-June belongs to that year's FirstSemester, one
--- starting July-December to its SecondSemester. Year-long commissions
+-- Backfill rule: a course starting January-June belongs to that year's
+-- FirstSemester, one starting July-December to its SecondSemester. (Unlike
+-- CommissionQuery's default period, January counts as FirstSemester: a
+-- summer course belongs with the year it runs in.) Year-long commissions
 -- (01/03-31/12) land in FirstSemester, the term they started in.
 -- =============================================================================
 

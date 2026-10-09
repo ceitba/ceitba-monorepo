@@ -98,9 +98,12 @@ const createSlotsFromCommission =(subject: SchedulerSubject, commission: Commiss
     classroom: slot.classroom
   }));
 
-// "S / S2" for a slot that stands for several interchangeable commissions.
-export const commissionLabel = (slot: Pick<ScheduleSlot, "commission" | "alternatives">): string =>
-  [slot.commission, ...(slot.alternatives ?? [])].join(" / ");
+// "S / S2" for a slot that stands for several interchangeable commissions;
+// past three names, "A / AR / BR +6" so a class block stays readable.
+export const commissionLabel = (slot: Pick<ScheduleSlot, "commission" | "alternatives">): string => {
+  const names = [slot.commission, ...(slot.alternatives ?? [])];
+  return names.length <= 3 ? names.join(" / ") : `${names.slice(0, 3).join(" / ")} +${names.length - 3}`;
+};
 
 // What makes two commissions interchangeable for generation: same weekly
 // slots, same buildings (building changes are checked) and same dates.

@@ -8,6 +8,7 @@ import CommissionSelectionModal from '../components/CommissionSelectionModal'
 import SaveScheduleDialog from '../components/SaveScheduleDialog'
 import ClassDetailModal from '../components/corrections/ClassDetailModal'
 import { Subject, useSubjects } from '../hooks/useSubjects'
+import { knownSelection } from '../services/commissionNames'
 import { useAuth } from '@/hooks/useAuth'
 import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { detectConflicts, liveSlotsFromCourses } from '../services/conflicts'
@@ -220,7 +221,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       .map((sc) => {
         const subject = byId.get(sc.subject_id)
         if (!subject) return null
-        return { ...subject, selectedCommissions: sc.selectedCommissions }
+        return { ...subject, selectedCommissions: knownSelection(subject.commissions, sc.selectedCommissions) }
       })
       .filter((x): x is SelectedCourse => x !== null)
     setSelectedCourses(restoredCourses)
