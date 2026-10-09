@@ -16,7 +16,7 @@ import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, subjectsWithoutCommissio
 import { useScheduleGeneration } from '../hooks/useScheduleGeneration'
 import type { GenerationInputs } from '../workers/protocol'
 import { PossibleSchedule, SchedulerOptions, TimeBlock } from '../types/scheduler'
-import { AVAILABLE_PLANS, CAREERS, isValidCareer } from '../types/careers'
+import { AVAILABLE_PLANS, CAREERS, getLatestPlan, isValidCareer } from '../types/careers'
 import { buildIcs, eventsFromSlots, googleCalendarUrl, type CalendarEvent } from '../utils/ics'
 import { createSavedSchedule, isLimitReached, listSavedSchedules, MAX_SAVED_SCHEDULES, type SavedSchedule } from '../api/schedules'
 import { errorMessageKey } from '../services/apiErrors'
@@ -25,7 +25,7 @@ import { mergeCorrection, sameSlotSet } from '../services/corrections'
 import { discardPendingWorkspace, parsePayload, savePendingWorkspace, takePendingWorkspace, type SavedSchedulePayload } from '../services/workspaceSnapshot'
 import { onBeforeSignIn, startGoogleSignIn } from '@/store/authStore'
 import type { CommissionCorrection } from '../types/scheduler'
-import { CAREER_PICKER_PATH, SCHEDULER_BASE, careerPath, schedulerPath } from '../paths'
+import { CAREER_PICKER_PATH, careerPath, schedulerPath } from '../paths'
 import { Button, Modal, Tabs, ToggleGroup, buttonClass, toast } from '@/components/ui'
 
 interface SelectedCourse extends Subject {
@@ -53,14 +53,16 @@ export default function CareerPage() {
   const [searchParams] = useSearchParams()
   const normalizedPlan = searchParams.get('plan')
 
+  // To the picker: plain /scheduler would send a signed-in user to their own
+  // career, as if the link had pointed there.
   if (!isValidCareer(career)) {
-    return <Navigate to={SCHEDULER_BASE} replace />
+    return <Navigate to={CAREER_PICKER_PATH} replace />
   }
 
   const validPlans = AVAILABLE_PLANS[career].map(p => normalizePlanId(p.id))
 
   if (!normalizedPlan || !validPlans.includes(normalizedPlan)) {
-    return <Navigate to={careerPath(career, AVAILABLE_PLANS[career][0].id)} replace />
+    return <Navigate to={careerPath(career, getLatestPlan(career))} replace />
   }
 
   return <CareerWorkspace key={`${career}|${normalizedPlan}`} career={career} normalizedPlan={normalizedPlan} />
@@ -74,7 +76,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const { profile } = useAuth()
   const preselectedSubjectsIds = useRef(searchParams.getAll('code'))
   const plan = denormalizePlanId(normalizedPlan)
-  const careerPlans = AVAILABLE_PLANS[career as keyof typeof AVAILABLE_PLANS] ?? []
+  const careerPlans = AVAILABLE_PLANS[career]
   const { subjects, loading: subjectsLoading, error: subjectsError, updateCommission, refetch: refetchSubjects } = useSubjects(plan)
 
   // ALL useState / useRef declarations come first, so the useEffect dep
