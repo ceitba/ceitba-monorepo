@@ -39,10 +39,14 @@ export const AVAILABLE_PLANS: Record<string, Plan[]> = {
   'M': [{ id: "M22" }, { id: "M09 - Rev18 (Marzo)" }, { id: "M09 - Rev18 (Agosto)" }],
   'N': [{ id: "N22" }, { id: "N18 Marzo" }, { id: "N18 Agosto" }],
   'P': [{ id: "P22" }, { id: "P05-Rev.18" }, { id: "P-13" }, { id: "P05" }],
-  'Q': [{ id: "Q22" }, { id: "Q05-Rev18" }],
+  'Q': [{ id: "Q22" }, { id: "Q05 - Rev.18" }],
   'S': [{ id: "S10-Rev23" }, { id: "S10 - Rev18" }, { id: "S10 A - Rev18" }],
   'X': [{ id: "IN23" }]
 };
+
+// Own keys only, so a stray id like "constructor" doesn't pass.
+export const isValidCareer = (careerId: string | null | undefined): careerId is string =>
+  careerId != null && Object.prototype.hasOwnProperty.call(AVAILABLE_PLANS, careerId);
 
 // Helper function to get the latest plan for a career
 export const getLatestPlan = (careerId: string): string => {

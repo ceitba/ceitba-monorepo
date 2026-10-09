@@ -10,12 +10,11 @@ import {
   type SavedSchedule,
 } from '../api/schedules'
 import { createShareSession } from '../api/share'
-import { normalizePlanId } from '../utils/planUtils'
 import { careerPlanLabel } from '../utils/careerLabel'
 import { errorMessageKey } from '../services/apiErrors'
 import { SchedulerBackLink } from '../components/SchedulerHeader'
 import Checkbox from '../components/Checkbox'
-import { SCHEDULER_BASE, schedulerPath } from '../paths'
+import { SCHEDULER_BASE, careerPath, schedulerPath } from '../paths'
 import {
   Button,
   ConfirmDialog,
@@ -72,7 +71,7 @@ export default function SavedSchedulesPage() {
       toast.error(t('saved.openMissingContext'))
       return
     }
-    navigate(schedulerPath(`/${s.careerId}?plan=${normalizePlanId(s.plan)}`), { state: { savedSchedule: s } })
+    navigate(careerPath(s.careerId, s.plan), { state: { savedSchedule: s } })
   }
 
   async function confirmDelete() {

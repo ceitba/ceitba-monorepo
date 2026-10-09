@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CAREERS, EXCHANGE_CAREER, getLatestPlan } from '../types/careers'
-import { normalizePlanId } from '../utils/planUtils'
-import { schedulerPath } from '../paths'
-import { Alert } from '@/components/ui'
+import { CAREERS, EXCHANGE_CAREER, getLatestPlan, isValidCareer } from '../types/careers'
+import { CAREER_PICKER_PARAM, careerPath } from '../paths'
+import { Alert, SkeletonCards } from '@/components/ui'
+import { useAuth } from '@/hooks/useAuth'
 
 // Reasons CEITBA-API puts in ?error= when sign-in fails (AuthController /
 // LoginRejectedException; access_denied = the user cancelled Google consent).
@@ -13,11 +13,9 @@ const AUTH_ERROR_CODES = ['unauthorized', 'unauthorized_workspace', 'unverified_
 
 function CareerCard({ id, name }: { id: string; name: string }) {
   const { t } = useTranslation()
-  const planParam = normalizePlanId(getLatestPlan(id))
-
   return (
     <Link
-      to={schedulerPath(`/${id}?plan=${planParam}`)}
+      to={careerPath(id, getLatestPlan(id))}
       className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col p-5 group"
       aria-label={`${t('home.viewSchedules')} ${name}`}
     >
@@ -37,6 +35,7 @@ function CareerCard({ id, name }: { id: string; name: string }) {
 
 export default function HomePage() {
   const { t } = useTranslation()
+  const { profile, loading } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [authError, setAuthError] = useState<string | null>(() => {
     const code = searchParams.get('authError')
@@ -44,13 +43,24 @@ export default function HomePage() {
     return AUTH_ERROR_CODES.includes(code) ? code : 'auth_failed'
   })
 
-  // Strip ?authError= so a reload or shared URL doesn't show it again.
+  // Strip ?authError= so a reload or shared URL doesn't show it again. It
+  // becomes ?elegir= so dismissing the alert doesn't redirect (see below).
   useEffect(() => {
     if (!searchParams.has('authError')) return
     const next = new URLSearchParams(searchParams)
     next.delete('authError')
+    next.set(CAREER_PICKER_PARAM, '1')
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
+
+  // A signed-in user with a career in their profile lands on it (and on their
+  // plan; CareerPage falls back to the latest one if it isn't listed), unless
+  // they asked for the picker ("Elegir otra carrera").
+  const showPicker = searchParams.has(CAREER_PICKER_PARAM) || searchParams.has('authError')
+  if (!showPicker && !loading && isValidCareer(profile?.careerId)) {
+    return <Navigate to={careerPath(profile.careerId, profile.plan)} replace />
+  }
+  const awaitingSession = !showPicker && loading
 
   const careersList = Object.entries(CAREERS).map(([id, name]) => ({ id, name }))
 
@@ -72,15 +82,23 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
-            {careersList.map(career => (
-              <CareerCard key={career.id} id={career.id} name={career.name} />
-            ))}
-          </div>
+          {awaitingSession ? (
+            <SkeletonCards
+              count={careersList.length}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              cardClassName="h-36"
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
+              {careersList.map(career => (
+                <CareerCard key={career.id} id={career.id} name={career.name} />
+              ))}
+            </div>
+          )}
 
-          <div className="mt-8 pt-8 border-t border-border dark:border-night-border">
+          {!awaitingSession && <div className="mt-8 pt-8 border-t border-border dark:border-night-border">
             <Link
-              to={schedulerPath(`/${EXCHANGE_CAREER.id}?plan=${normalizePlanId(getLatestPlan(EXCHANGE_CAREER.id))}`)}
+              to={careerPath(EXCHANGE_CAREER.id, getLatestPlan(EXCHANGE_CAREER.id))}
               className="inline-flex items-center gap-4 rounded-card border border-dashed border-primary/40 hover:border-primary bg-white dark:bg-night-surface px-6 py-4 transition-colors duration-150 group"
               aria-label={t('home.viewSchedules')}
             >
@@ -95,7 +113,7 @@ export default function HomePage() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
-          </div>
+          </div>}
         </section>
       </main>
 
