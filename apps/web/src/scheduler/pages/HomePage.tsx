@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CAREERS, EXCHANGE_CAREER, getLatestPlan } from '../types/careers'
+import { AVAILABLE_PLANS, CAREERS, EXCHANGE_CAREER, getLatestPlan } from '../types/careers'
 import { normalizePlanId } from '../utils/planUtils'
 import { schedulerPath } from '../paths'
 import { Alert } from '@/components/ui'
+import { useAuth } from '@/hooks/useAuth'
 
 // Reasons CEITBA-API puts in ?error= when sign-in fails (AuthController /
 // LoginRejectedException; access_denied = the user cancelled Google consent).
@@ -35,8 +36,16 @@ function CareerCard({ id, name }: { id: string; name: string }) {
   )
 }
 
+// Navigation state that shows the career picker to a signed-in user instead of
+// sending them to their own career ("Elegir otra carrera").
+export interface HomePageState {
+  chooseCareer?: boolean
+}
+
 export default function HomePage() {
   const { t } = useTranslation()
+  const { profile, loading } = useAuth()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [authError, setAuthError] = useState<string | null>(() => {
     const code = searchParams.get('authError')
@@ -51,6 +60,18 @@ export default function HomePage() {
     next.delete('authError')
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
+
+  // A signed-in user with a career in their profile lands on it (and on their
+  // plan; CareerPage falls back to the latest one if it isn't listed).
+  const chooseCareer = (location.state as HomePageState | null)?.chooseCareer === true
+  if (!chooseCareer && !authError) {
+    if (loading) return null
+    const careerId = profile?.careerId
+    if (careerId && careerId in AVAILABLE_PLANS) {
+      const plan = profile?.plan ? `?plan=${encodeURIComponent(normalizePlanId(profile.plan))}` : ''
+      return <Navigate to={schedulerPath(`/${careerId}${plan}`)} replace />
+    }
+  }
 
   const careersList = Object.entries(CAREERS).map(([id, name]) => ({ id, name }))
 

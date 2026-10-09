@@ -4,6 +4,7 @@ import CourseView from '../components/CourseView'
 import { SettingsView } from '../components/SettingsView'
 import { SchedulerPreview, type NoResultReasons } from '../components/SchedulerPreview'
 import { SchedulerBackLink } from '../components/SchedulerHeader'
+import type { HomePageState } from './HomePage'
 import CommissionSelectionModal from '../components/CommissionSelectionModal'
 import SaveScheduleDialog from '../components/SaveScheduleDialog'
 import ClassDetailModal from '../components/corrections/ClassDetailModal'
@@ -519,7 +520,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
           <div className="container-content py-6">
             <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 mb-4">
               <div className="flex flex-col min-w-0">
-                <SchedulerBackLink label={t('career.changeCareer')} />
+                <SchedulerBackLink state={{ chooseCareer: true } satisfies HomePageState} label={t('career.changeCareer')} />
                 <h1 className="font-display text-h3 font-bold text-ink-primary dark:text-night-text leading-tight">
                   {(career && CAREERS[career]) || career}
                 </h1>
