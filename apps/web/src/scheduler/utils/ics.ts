@@ -8,6 +8,7 @@
 // RFC 5545 requires in UTC when DTSTART has a TZID) is shifted by 3 hours.
 
 import type { ScheduleSlot } from "../types/scheduler"
+import { commissionLabel } from "../services/scheduler"
 
 export const CLASS_TIME_ZONE = "America/Argentina/Buenos_Aires"
 const UTC_OFFSET_HOURS = -3
@@ -139,7 +140,7 @@ export function eventsFromSlots(
         courseStart: slot.dateFrom,
         courseEnd: slot.dateTo,
         location: slot.classroom || "",
-        commission: slot.commission,
+        commission: commissionLabel(slot),
         description: describe?.(slot),
       })
     } else if (slot.classroom && !existing.location.split(", ").includes(slot.classroom)) {

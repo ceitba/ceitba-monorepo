@@ -25,6 +25,10 @@ export interface ScheduleSlot {
   subject: string;
   subject_id: string;
   commission: string;
+  // Other commissions of the subject with the very same timetable, building
+  // and dates. Generation treats them as one option (they make no difference
+  // to the schedule) and lists their names here; `commission` is the first.
+  alternatives?: string[];
   building: string;
   classroom: string;
 }
@@ -73,6 +77,16 @@ export interface Commission {
   // The ITBA commission id, needed to suggest a correction. Optional so the
   // app keeps working against an API that doesn't send it yet.
   commission_id?: string;
+  // This commission's own "YYYY-MM-DD" dates. Optional: older API.
+  course_start?: string;
+  course_end?: string;
+  // Set when another commission of the subject has the same SGA name: `name`
+  // then carries a suffix to keep it unique and this is the name ITBA sent
+  // (see services/commissionNames.ts).
+  sga_name?: string;
+  // True when a same-named commission runs at the same time with a
+  // different timetable: the data can't say which one is real.
+  name_conflict?: boolean;
   // EFFECTIVE slots: the applied correction's slots if any, else SGA's.
   schedule: CommissionSchedule[];
   // Original SGA slots, present only while a correction is applied.

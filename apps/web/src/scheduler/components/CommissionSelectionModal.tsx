@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Modal } from '@/components/ui'
+import { Alert, Button, Modal } from '@/components/ui'
 import CorrectionStatus from './corrections/CorrectionStatus'
 import SuggestCorrectionModal from './corrections/SuggestCorrectionModal'
 import { Subject } from '../hooks/useSubjects'
@@ -23,6 +23,9 @@ const turnsForCommission = (c: Commission): Set<Turn> => {
   }
   return turns
 }
+
+// "YYYY-MM-DD" → "DD/MM/YYYY" without going through Date (no time zone shift).
+const formatDay = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`
 
 // Selection and turn filters start fresh on mount: render it only while
 // open and key it by subject so each subject gets a clean modal.
@@ -137,6 +140,12 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
           <p>{t('commission.selectHint')}</p>
         </div>
 
+        {subject.past_term && (
+          <Alert tone="warning" title={t('commission.pastTermTitle')}>
+            {t('commission.pastTerm', { from: formatDay(subject.course_start), to: formatDay(subject.course_end) })}
+          </Alert>
+        )}
+
         <div className="flex flex-wrap gap-2 items-center" role="group" aria-label={t('commission.turnFilterLabel')}>
           <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mr-1">
             {t('commission.turnFilterLabel')}
@@ -195,7 +204,20 @@ const CommissionSelectionModal: React.FC<CommissionSelectionModalProps> = ({
                   }`}>
                     {formatSchedule(commission.schedule)}
                   </div>
+                  {/* Same-named commissions are told apart by their dates. */}
+                  {commission.sga_name && commission.course_start && commission.course_end && (
+                    <div className={`font-mono text-label mt-1 ${
+                      selected ? "text-white/80" : "text-ink-secondary dark:text-night-muted"
+                    }`}>
+                      {t('commission.dates', { from: formatDay(commission.course_start), to: formatDay(commission.course_end) })}
+                    </div>
+                  )}
                 </button>
+                {commission.name_conflict && (
+                  <Alert tone="warning" className="m-2">
+                    {t('commission.nameConflict', { name: commission.sga_name })}
+                  </Alert>
+                )}
                 <CorrectionStatus
                   className="px-4 py-2.5 bg-white dark:bg-night-surface border-t border-border dark:border-night-border"
                   subject={subject}

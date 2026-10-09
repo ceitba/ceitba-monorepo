@@ -2,6 +2,7 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { ScheduleSlot, TimeBlock } from "../types/scheduler"
 import { useCorrections } from "../context/correctionsContext"
+import { commissionLabel } from "../services/scheduler"
 
 interface ScheduleGridProps {
   slots: ScheduleSlot[]
@@ -14,6 +15,8 @@ interface GroupedSlot {
   subject: string
   subject_id: string
   commission: string
+  // The commission plus its interchangeable alternatives, for display.
+  label: string
   rooms: Array<{ classroom: string; building: string }>
   timeFrom: string
   timeTo: string
@@ -70,6 +73,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
         subject: slot.subject,
         subject_id: slot.subject_id,
         commission: slot.commission,
+        label: commissionLabel(slot),
         timeFrom: slot.timeFrom,
         timeTo: slot.timeTo,
         rooms: [{ classroom: slot.classroom, building: slot.building }],
@@ -110,7 +114,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
           {slot.subject}
         </div>
         <div className="space-y-0.5 text-ink-primary/80 text-center text-[11px]">
-          <div>{t('courses.commissionAbbr')} {slot.commission}</div>
+          <div>{t('courses.commissionAbbr')} {slot.label}</div>
           <div>{formatRooms(slot.rooms)}</div>
           <div>{slot.timeFrom.slice(0, 5)} - {slot.timeTo.slice(0, 5)}</div>
         </div>

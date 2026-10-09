@@ -124,7 +124,9 @@
     "noneSelectedBody": "Search or tap courses in the list to add them.",
     "loadFailedTitle": "We couldn't load the courses",
     "loadFailed": "Check your connection and try again.",
-    "undo": "Undo"
+    "undo": "Undo",
+    "pastTerm": "Not offered this term",
+    "pastTermHint": "The commissions listed are from a course that already ended"
   },
   "commission": {
     "title": "Select commission",
@@ -139,7 +141,11 @@
     "turn_afternoon": "Afternoon",
     "turn_evening": "Evening",
     "noMatchTurns": "No commissions match the selected turn.",
-    "addSelectedNone": "Pick at least one"
+    "addSelectedNone": "Pick at least one",
+    "pastTermTitle": "This subject has no commissions this term",
+    "pastTerm": "These times are from its last course, which already ended ({{from}} – {{to}}). Check SGA whether it is offered and when before planning with it.",
+    "dates": "Course {{from}} – {{to}}",
+    "nameConflict": "Another commission {{name}} runs at the same time with a different timetable. ITBA's data doesn't say which one is real: check SGA."
   },
   "conflicts": {
     "status_clear": "No conflict",

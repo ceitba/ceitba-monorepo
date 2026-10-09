@@ -90,13 +90,52 @@ const createSlotsFromCommission =(subject: SchedulerSubject, commission: Commiss
     timeFrom: slot.time_from,
     timeTo: slot.time_to,
     subject: subject.name,
-    dateFrom: subject.course_start,
-    dateTo: subject.course_end,
+    dateFrom: commission.course_start ?? subject.course_start,
+    dateTo: commission.course_end ?? subject.course_end,
     subject_id: subject.subject_id,
     commission: commission.name,
     building: slot.building,
     classroom: slot.classroom
   }));
+
+// "S / S2" for a slot that stands for several interchangeable commissions.
+export const commissionLabel = (slot: Pick<ScheduleSlot, "commission" | "alternatives">): string =>
+  [slot.commission, ...(slot.alternatives ?? [])].join(" / ");
+
+// What makes two commissions interchangeable for generation: same weekly
+// slots, same buildings (building changes are checked) and same dates.
+const optionKey = (slots: ScheduleSlot[]): string =>
+  slots
+    .map(slot => `${slot.day} ${slot.timeFrom.slice(0, 5)}-${slot.timeTo.slice(0, 5)} ${slot.building} ${slot.dateFrom} ${slot.dateTo}`)
+    .sort()
+    .join('|');
+
+// Merges commissions that only differ in name or classroom (parallel
+// sections like S/S2, ingreso's 9 identical virtual groups) into one option,
+// so they don't multiply the combinations by the number of copies. The first
+// commission represents the group; the others are listed in each slot's
+// `alternatives` and their classrooms are joined into the slot's.
+const mergeEquivalentOptions = (options: ScheduleSlot[][]): ScheduleSlot[][] => {
+  const groups = new Map<string, ScheduleSlot[][]>();
+  options.forEach(slots => {
+    const key = optionKey(slots);
+    groups.set(key, [...(groups.get(key) ?? []), slots]);
+  });
+  return Array.from(groups.values(), ([first, ...others]) => {
+    if (others.length === 0) return first;
+    const alternatives = others.map(slots => slots[0]?.commission).filter((name): name is string => !!name);
+    return first.map(slot => {
+      const sameSlot = (other: ScheduleSlot) =>
+        other.day === slot.day && other.timeFrom === slot.timeFrom && other.timeTo === slot.timeTo;
+      const classrooms = [slot.classroom, ...others.map(slots => slots.find(sameSlot)?.classroom ?? '')];
+      return {
+        ...slot,
+        alternatives,
+        classroom: Array.from(new Set(classrooms.filter(Boolean))).join(' / ')
+      };
+    });
+  });
+};
 
 // Largest number of minutes any two classes of different subjects share on
 // the same day. Compares every pair (not just neighbours after sorting), so
@@ -199,10 +238,11 @@ export function generateSchedules(
 
   // Commissions that hit a blocked time can never be part of a result.
   const candidates = subjects.map(subject =>
-    getAvailableCommissions(subject)
-      .map(commission => createSlotsFromCommission(subject, commission))
-      .filter(slots => !slots.some(slot => intersectsBlockedTime(slot, blockedTimes)))
-      .map(slots => ({ slots, intervals: slots.map(slotInterval) }))
+    mergeEquivalentOptions(
+      getAvailableCommissions(subject)
+        .map(commission => createSlotsFromCommission(subject, commission))
+        .filter(slots => !slots.some(slot => intersectsBlockedTime(slot, blockedTimes)))
+    ).map(slots => ({ slots, intervals: slots.map(slotInterval) }))
   );
   if (candidates.some(list => list.length === 0)) return { schedules: [], truncated: false, stepLimitReached: false };
 
