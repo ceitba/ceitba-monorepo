@@ -16,6 +16,7 @@ public record CommissionProjection(
     LocalDate courseEnd,
     int enrolledStudents,
     int quota,
+    // Null when ITBA sent none or an unknown one.
     SubjectType subjectType,
     List<TimeSlot> times
 ) {

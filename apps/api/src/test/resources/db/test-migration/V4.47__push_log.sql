@@ -1,4 +1,4 @@
--- Test mirror of V56.
+-- Test mirror of V57.
 CREATE TABLE public.push_log (
     id         BIGSERIAL   PRIMARY KEY,
     org_slug   TEXT        REFERENCES public.organizations(slug) ON DELETE CASCADE,

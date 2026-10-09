@@ -29,7 +29,7 @@ public class AnalyticsEvent {
     @Column(name = "article_id")
     private String articleId;
 
-    // Event detail page views ('event_view'), V55.
+    // Event detail page views ('event_view'), V56.
     @Column(name = "event_id")
     private String eventId;
 

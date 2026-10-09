@@ -41,7 +41,7 @@ public class OrganizationService {
         return repo.save(org);
     }
 
-    // Contact and recruiting fields of the profile (V54). In a PATCH, null
+    // Contact and recruiting fields of the profile (V55). In a PATCH, null
     // leaves a field unchanged and blank clears it.
     public record ProfileFields(String instagram, String linkedinUrl, String websiteUrl, String contactEmail,
                                 Boolean recruitingOpen, String recruitingUrl, String recruitingText) {}

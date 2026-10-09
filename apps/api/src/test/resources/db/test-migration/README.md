@@ -56,7 +56,8 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.41 kb_llm_endpoint | V51 |
 | V4.42 kb_model_remote_id | V52 |
 | V4.43 kb_widen_model_fields | V53 |
-| V4.44 org_self_service | V54 |
-| V4.45 event_signup | V55 |
-| V4.46 push_log | V56 |
-| V4.47 org_mail | V57 |
+| V4.44 commission_term | V54 |
+| V4.45 org_self_service | V55 |
+| V4.46 event_signup | V56 |
+| V4.47 push_log | V57 |
+| V4.48 org_mail | V58 |

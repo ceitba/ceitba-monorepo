@@ -10,7 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// A follower who doesn't want an organization's emails (V57).
+// A follower who doesn't want an organization's emails (V58).
 @Entity
 @Table(schema = "public", name = "org_mail_optouts")
 @IdClass(OrgMailOptoutId.class)

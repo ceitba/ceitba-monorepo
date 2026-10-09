@@ -50,7 +50,7 @@ public class NewsEventService {
             .orElseThrow(() -> new ResourceNotFoundException("Event", id));
     }
 
-    // Cover, online link and sign-up of an event (V55). In a PATCH null leaves
+    // Cover, online link and sign-up of an event (V56). In a PATCH null leaves
     // coverImage/onlineUrl unchanged (blank clears); the sign-up is applied
     // as a whole only when signupMode is set.
     public record Extras(String coverImage, String onlineUrl, String signupMode, String signupUrl, Integer capacity) {}

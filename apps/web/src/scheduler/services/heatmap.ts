@@ -1,5 +1,6 @@
 import type { ShareParticipant } from '../api/share'
 import type { Subject } from '../hooks/useSubjects'
+import { knownSelection } from './commissionNames'
 
 // One concrete time block contributed by a participant. The viewer renders
 // these directly (no bucketing) so overlaps can be visualized via horizontal
@@ -62,7 +63,7 @@ const busyIntervalsFor = (
     const subject = subjectsByCode.get(sc.subject_id)
     if (!subject) continue
 
-    const picks = (sc.selectedCommissions ?? []).filter((n) => n !== 'any')
+    const picks = knownSelection(subject.commissions, sc.selectedCommissions ?? []).filter((n) => n !== 'any')
     const commissions =
       picks.length > 0
         ? subject.commissions.filter((c) => picks.includes(c.name))

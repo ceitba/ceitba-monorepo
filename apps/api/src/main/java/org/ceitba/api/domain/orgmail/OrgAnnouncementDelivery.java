@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// One recipient of an announcement (V57): pending -> sending (claimed) ->
+// One recipient of an announcement (V58): pending -> sending (claimed) ->
 // sent | failed, like digest_deliveries (OrgAnnouncementSender).
 @Entity
 @Table(schema = "public", name = "org_announcement_deliveries")

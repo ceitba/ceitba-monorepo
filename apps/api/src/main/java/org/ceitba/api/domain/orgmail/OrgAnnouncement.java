@@ -11,7 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// An email an organization's admin writes to the org's followers (V57).
+// An email an organization's admin writes to the org's followers (V58).
 // draft -> sending (recipients snapshot in org_announcement_deliveries) ->
 // sent (no pending delivery left). Only drafts are edited.
 @Entity

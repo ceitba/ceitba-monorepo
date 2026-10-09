@@ -10,7 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.OffsetDateTime;
 
-// One push fan-out and its reach (V56), written by PushTriggerListener.
+// One push fan-out and its reach (V57), written by PushTriggerListener.
 @Entity
 @Table(schema = "public", name = "push_log")
 public class PushLog {

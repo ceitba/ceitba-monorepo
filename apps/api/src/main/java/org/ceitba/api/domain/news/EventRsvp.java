@@ -10,7 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// A user going to an event with built-in sign-up (V55, signup_mode 'rsvp').
+// A user going to an event with built-in sign-up (V56, signup_mode 'rsvp').
 @Entity
 @Table(schema = "public", name = "event_rsvps")
 @IdClass(EventRsvpId.class)

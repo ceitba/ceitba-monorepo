@@ -58,7 +58,7 @@ public class NewsEvent {
     @Column(name = "online_url")
     private String onlineUrl;
 
-    // SIGNUP_* (V55 CHECK): how people sign up.
+    // SIGNUP_* (V56 CHECK): how people sign up.
     @Column(name = "signup_mode", nullable = false)
     private String signupMode = SIGNUP_NONE;
 

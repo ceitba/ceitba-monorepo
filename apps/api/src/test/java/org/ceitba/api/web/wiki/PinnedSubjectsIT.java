@@ -1,15 +1,11 @@
 package org.ceitba.api.web.wiki;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -27,17 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // flag), logged-in only, and the 30-pin cap.
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "itba.api.use-fake=true"})
 class PinnedSubjectsIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;

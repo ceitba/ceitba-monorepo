@@ -1,16 +1,4 @@
--- =============================================================================
--- V57__org_mail.sql
---
--- Organizations email their followers from their own connected Gmail account
--- (mail_sender_account owner_type 'organization', docs/ORGANIZATIONS.md):
---   * org_announcements: one email an org admin writes (draft) and sends.
---   * org_announcement_deliveries: the recipients snapshot at send time,
---     worked through one by one by OrgAnnouncementSender (same lifecycle as
---     digest_deliveries).
---   * org_mail_optouts: followers who don't want an org's emails (one-click
---     unsubscribe or the portal switch). Survives unfollowing.
--- =============================================================================
-
+-- Test mirror of V58.
 CREATE TABLE public.org_announcements (
     id              BIGSERIAL   PRIMARY KEY,
     org_slug        TEXT        NOT NULL REFERENCES public.organizations(slug) ON DELETE CASCADE,

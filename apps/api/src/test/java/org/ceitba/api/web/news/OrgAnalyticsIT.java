@@ -10,7 +10,6 @@ import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.repository.news.UserOrganizationRepository;
-import org.ceitba.api.support.SharedPostgres;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +17,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -38,17 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // content counts, the window is respected, and it's for members only.
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "auth.allowed-domains=itba.edu.ar")
 class OrgAnalyticsIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired MockMvc mvc;
     @Autowired UserRepository userRepo;

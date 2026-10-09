@@ -61,7 +61,7 @@ that never had an admin are unaffected; STAFF names the first one.
 
 ## Profile
 
-`organizations` (V54) adds `instagram` (bare handle, normalized with `SocialHandles.instagram`; the API accepts a
+`organizations` (V55) adds `instagram` (bare handle, normalized with `SocialHandles.instagram`; the API accepts a
 handle, `@handle` or profile URL), `linkedin_url`, `website_url` and `recruiting_url` (http(s) only),
 `contact_email`, `recruiting_open` and `recruiting_text` (≤280). In a PATCH, null leaves a field and blank clears
 it.
@@ -78,7 +78,7 @@ app uses it for the logo, the portal background and article covers/inline images
 
 ## Events: sign-up, reminders, calendar
 
-`news_events` (V55) adds `cover_image`, `online_url` and the sign-up: `signup_mode` is `none`, `external`
+`news_events` (V56) adds `cover_image`, `online_url` and the sign-up: `signup_mode` is `none`, `external`
 (`signup_url` required, e.g. a Google Form) or `rsvp` (built-in, optional `capacity`). In a PATCH the sign-up is
 replaced as a whole only when `signupMode` is sent (`signupUrl`/`capacity` are then taken as sent, null clearing
 them); `coverImage`/`onlineUrl` follow null-leaves, blank-clears. Responses carry `rsvpCount`.
@@ -116,7 +116,7 @@ including today) → `OrgAnalyticsService.OrgAnalytics`:
 - `topArticles` (10) and `events` (the org's events dated in the window or later, with views and RSVPs);
 - `followers`: `total`, `newInPeriod` and `cumulative`, the current followers by the day they followed (unfollows
   are not recorded, so it is not a net-growth curve);
-- `pushes`: fan-outs and devices targeted/reached from `push_log` (V56). `PushTriggerListener` writes one row per
+- `pushes`: fan-outs and devices targeted/reached from `push_log` (V57). `PushTriggerListener` writes one row per
   fan-out with the message's `org` data key (`PushToOrgFollowers` always; event reminders carry it too).
 
 The web page is `/newsletter/mine/org/:slug/stats` (Estadísticas), built from the same CSS charts as the staff

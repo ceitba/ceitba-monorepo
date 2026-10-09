@@ -1,6 +1,5 @@
 package org.ceitba.api.service.sync;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Career;
 import org.ceitba.api.domain.DayOfWeek;
 import org.ceitba.api.domain.Plan;
@@ -20,9 +19,8 @@ import org.ceitba.api.web.career.dto.CreatePlanRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -30,17 +28,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(properties = "itba.api.use-fake=true")
+@SpringBootTest
+// Not used here; declared so this class shares the common IT context.
+@AutoConfigureMockMvc
 class DataSyncServiceIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired DataSyncService syncService;
     @Autowired FakeItbaApiClient fakeClient;
@@ -227,6 +218,52 @@ class DataSyncServiceIT {
         assertThat(c.getEnrolledStudents()).isEqualTo(12);
         assertThat(c.getQuota()).isEqualTo(35);
         assertThat(times("93.12-A")).containsExactly("TUESDAY 08:00-10:00 102T");
+    }
+
+    // The queried (year, period) is stored on the row, and ITBA's corrections
+    // to name, dates and type reach it (they used to be frozen at insert, so
+    // a fixed course_end never reached the term filter).
+    @Test
+    void resyncStampsTheQueriedTermAndRefreshesNameDatesAndType() {
+        fakeClient.stubPlan("S10-Rev23", List.of());
+        fakeClient.stubCommissions(List.of(commission(10, 30, List.of())));
+        syncService.syncAll(new CommissionQuery(2025, "SecondSemester", null));
+
+        var stored = commissionRepository.findById("93.12-A").orElseThrow();
+        assertThat(stored.getTermYear()).isEqualTo((short) 2025);
+        assertThat(stored.getTermPeriod()).isEqualTo("SecondSemester");
+
+        fakeClient.stubCommissions(List.of(new CommissionProjection("93.12-A", "93.12", "Algoritmos", "A1",
+            LocalDate.of(2025, 8, 4), LocalDate.of(2026, 7, 24), 10, 30, SubjectType.ANNUAL, List.of())));
+        syncService.syncCommissionsBySubject("93.12", new CommissionQuery(2026, "FirstSemester", null));
+
+        var c = commissionRepository.findById("93.12-A").orElseThrow();
+        assertThat(c.getCommissionName()).isEqualTo("A1");
+        assertThat(c.getCourseStart()).isEqualTo(LocalDate.of(2025, 8, 4));
+        assertThat(c.getCourseEnd()).isEqualTo(LocalDate.of(2026, 7, 24));
+        assertThat(c.getSubjectType()).isEqualTo(SubjectType.ANNUAL);
+        assertThat(c.getTermYear()).isEqualTo((short) 2026);
+        assertThat(c.getTermPeriod()).isEqualTo("FirstSemester");
+    }
+
+    // ITBA leaving out the name or sending an unknown type (null in the
+    // projection) is not a change: the stored values stay.
+    @Test
+    void resyncKeepsNameAndTypeWhenUpstreamOmitsThem() {
+        fakeClient.stubPlan("S10-Rev23", List.of());
+        fakeClient.stubCommissions(List.of(new CommissionProjection("93.12-A", "93.12", "Algoritmos", "A",
+            LocalDate.of(2026, 3, 1), LocalDate.of(2026, 12, 31), 10, 30, SubjectType.ANNUAL, List.of())));
+        syncService.syncAll(CommissionQuery.defaults());
+
+        fakeClient.stubCommissions(List.of(new CommissionProjection("93.12-A", "93.12", "Algoritmos", null,
+            LocalDate.of(2026, 3, 1), LocalDate.of(2026, 12, 31), 12, 30, null, List.of())));
+        var second = syncService.syncCommissionsOnly(CommissionQuery.defaults());
+
+        assertThat(second.commissions().getErrors()).isZero();
+        var c = commissionRepository.findById("93.12-A").orElseThrow();
+        assertThat(c.getCommissionName()).isEqualTo("A");
+        assertThat(c.getSubjectType()).isEqualTo(SubjectType.ANNUAL);
+        assertThat(c.getEnrolledStudents()).isEqualTo(12);
     }
 
     private static CommissionProjection commission(int enrolled, int quota,

@@ -1,4 +1,17 @@
--- Test mirror of V54.
+-- =============================================================================
+-- V55__org_self_service.sql
+--
+-- Organizations manage themselves (docs/ORGANIZATIONS.md):
+--   * org_invites: an org admin invites an email that has never signed in;
+--     the invite becomes a user_organizations row on that email's first login
+--     (UserProvisioningService). Emails of existing users are added directly.
+--   * user_organizations: who added the member, and the member's board
+--     position (title) shown on the public portal when show_on_portal.
+--   * organizations: public contact and recruiting fields. instagram is a
+--     bare handle (SocialHandles); linkedin and website are http(s) URLs
+--     (an org's LinkedIn is a /company/ page, not an /in/ handle).
+-- =============================================================================
+
 CREATE TABLE public.org_invites (
     org_slug   TEXT        NOT NULL REFERENCES public.organizations(slug) ON DELETE CASCADE,
     email      TEXT        NOT NULL CHECK (email = lower(email)),

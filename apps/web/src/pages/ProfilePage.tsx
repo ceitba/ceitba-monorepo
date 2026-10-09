@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useThemeContext } from '../context/useThemeContext'
 import { fetchCareersWithPlans, fetchMyProfile, patchMyProfile, type CareerWithPlans, type MeProfile } from '../api/profile'
-import { getSession } from '../store/authStore'
+import { getSession, patchCachedSession } from '../store/authStore'
 import { safeHttpUrl } from '../utils/url'
 import { ErrorState, Field, Skeleton, SkeletonForm, ToggleGroup, selectClass, toast } from '../components/ui'
 
@@ -48,6 +48,9 @@ export default function ProfilePage() {
     try {
       const updated = await patchMyProfile(payload)
       setMe(updated)
+      // Update the cached session now (the scheduler opens on its career and
+      // plan); the refresh below may still be in flight on the next click.
+      patchCachedSession({ careerId: updated.careerId, plan: updated.plan })
       void getSession({ force: true })
       toast.success(t('profile.saved'))
     } catch (e) {

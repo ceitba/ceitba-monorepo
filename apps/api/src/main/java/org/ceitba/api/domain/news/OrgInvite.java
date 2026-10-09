@@ -10,7 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// An org admin's invite for an email that has not signed in yet (V54). It is
+// An org admin's invite for an email that has not signed in yet (V55). It is
 // claimed, i.e. turned into a UserOrganization, when that email is first
 // provisioned (OrganizationMembershipService.claimInvites).
 @Entity
@@ -22,7 +22,7 @@ public class OrgInvite {
     @Column(name = "org_slug")
     private String organization;
 
-    // Always lowercased (CHECK in V54).
+    // Always lowercased (CHECK in V55).
     @Id
     @Column
     private String email;

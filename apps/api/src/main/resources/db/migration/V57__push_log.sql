@@ -1,5 +1,5 @@
 -- =============================================================================
--- V56__push_log.sql
+-- V57__push_log.sql
 --
 -- One row per push fan-out (PushTriggerListener), so organizations can see
 -- how many devices their articles, events and reminders reached

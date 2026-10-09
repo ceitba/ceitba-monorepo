@@ -1,15 +1,4 @@
--- =============================================================================
--- V55__event_signup.sql
---
--- Events with sign-ups (docs/ORGANIZATIONS.md):
---   * news_events: a cover image, an optional online link and how people sign
---     up: 'none', 'external' (signup_url, e.g. a Google Form) or 'rsvp'
---     (built-in, optional capacity). reminder_sent_at marks the day-before
---     push to the RSVPs as sent (EventReminderService claims it once).
---   * event_rsvps: who is going.
---   * analytics_events.event_id: event detail page views ('event_view').
--- =============================================================================
-
+-- Test mirror of V56.
 ALTER TABLE public.news_events
     ADD COLUMN cover_image      TEXT,
     ADD COLUMN online_url       TEXT,

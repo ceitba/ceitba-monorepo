@@ -1,6 +1,5 @@
 package org.ceitba.api.web.auth;
 
-import org.ceitba.api.support.SharedPostgres;
 import jakarta.servlet.http.Cookie;
 import org.ceitba.api.config.AuthProperties;
 import org.ceitba.api.service.auth.GoogleOAuthService;
@@ -13,8 +12,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -35,20 +32,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-    "auth.allowed-domains=itba.edu.ar",
-    "auth.frontend-url=https://ceitba.org.ar",
-    "itba.api.use-fake=true"
+    "auth.frontend-url=https://ceitba.org.ar"
 })
 class AuthOAuthFlowIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     static final AtomicInteger EXCHANGES = new AtomicInteger();
 

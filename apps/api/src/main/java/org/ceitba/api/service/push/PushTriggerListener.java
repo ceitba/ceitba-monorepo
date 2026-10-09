@@ -45,7 +45,7 @@ public class PushTriggerListener {
         }
     }
 
-    // Reach of the fan-out, for the organizations' stats (push_log, V56).
+    // Reach of the fan-out, for the organizations' stats (push_log, V57).
     // Never fails the delivery.
     private void record(PushTrigger trigger, PushResult result) {
         try {

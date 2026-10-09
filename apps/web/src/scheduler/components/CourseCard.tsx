@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { Badge } from "@/components/ui"
 import { type Subject } from "../hooks/useSubjects"
 
 interface CourseCardProps {
@@ -33,6 +34,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, isSelected, onClick }) 
           <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
             {t('courses.creditCount', { count: course.credits })}
           </span>
+          {course.past_term && (
+            <Badge tone="warning" className="self-start mt-1" title={t('courses.pastTermHint')}>
+              {t('courses.pastTerm')}
+            </Badge>
+          )}
         </span>
       </span>
 

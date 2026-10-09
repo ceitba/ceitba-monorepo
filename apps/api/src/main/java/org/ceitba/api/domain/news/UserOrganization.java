@@ -30,7 +30,7 @@ public class UserOrganization {
     private String role;
 
     // Who added the member (an org admin or STAFF); null for members added
-    // before V54, invites claimed at first login keep the inviter.
+    // before V55, invites claimed at first login keep the inviter.
     @Column(name = "added_by")
     private UUID addedBy;
 
