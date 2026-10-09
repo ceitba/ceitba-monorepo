@@ -259,11 +259,10 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
           />
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 px-5 sm:px-8 py-2 border-t border-border dark:border-night-border">
+      <div className="flex items-center gap-3 px-5 sm:px-8 py-2 border-t border-border dark:border-night-border">
         <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
           {t('editor.words', { count: mode === 'visual' ? counts?.words ?? 0 : (source.trim() ? source.trim().split(/\s+/).length : 0) })}
         </span>
-        <span className="font-mono text-label text-ink-secondary dark:text-night-muted hidden sm:inline">{t('editor.pasteHint')}</span>
       </div>
     </div>
   )

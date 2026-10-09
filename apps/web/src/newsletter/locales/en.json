@@ -1083,7 +1083,6 @@
     "markdownHint": "Editing Markdown. Switch back to “Visual” to see the result.",
     "words_one": "{{count}} word",
     "words_other": "{{count}} words",
-    "pasteHint": "Paste from Claude, Docs or Markdown: formatting is kept",
     "errors": {
       "url": "Enter a valid URL (https://…).",
       "uploadForbidden": "Only staff can upload images; use a URL."
