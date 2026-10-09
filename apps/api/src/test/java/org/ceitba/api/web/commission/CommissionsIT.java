@@ -1,6 +1,5 @@
 package org.ceitba.api.web.commission;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.DayOfWeek;
@@ -21,8 +20,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Clock;
@@ -42,15 +39,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(CommissionsIT.FixedClock.class)
 class CommissionsIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     // 2026-09-21 01:00 ART (04:00Z). The UTC date is the same here; the
     // boundary case below uses course_end = today to pin the >= comparison.

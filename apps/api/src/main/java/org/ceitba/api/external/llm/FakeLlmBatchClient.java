@@ -51,6 +51,7 @@ public class FakeLlmBatchClient implements LlmBatchClient {
         createFailures.clear();
         unsupportedModel = m -> false;
         createCalls.set(0);
+        ids.set(0);
     }
 
     // The next createBatch calls throw these, in order (e.g. a 429).

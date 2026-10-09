@@ -1,0 +1,7 @@
+# Test infrastructure shared by every @SpringBootTest (see the classes' javadoc).
+# One fresh SharedPostgres database per Spring context:
+org.springframework.test.context.ContextCustomizerFactory=\
+org.ceitba.api.support.ItDatabaseContextCustomizerFactory
+# Reset that database and the in-memory fakes when a later class reuses the context:
+org.springframework.test.context.TestExecutionListener=\
+org.ceitba.api.support.ResetSharedContextTestExecutionListener

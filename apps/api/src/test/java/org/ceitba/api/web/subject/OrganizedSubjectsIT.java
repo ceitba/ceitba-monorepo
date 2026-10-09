@@ -1,6 +1,5 @@
 package org.ceitba.api.web.subject;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.DayOfWeek;
@@ -17,8 +16,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -36,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "itba.api.use-fake=true")
+@SpringBootTest
 @AutoConfigureMockMvc
 @Import({OrganizedSubjectsIT.FixedClock.class, OrganizedSubjectsIT.TxRecordingClient.class})
 class OrganizedSubjectsIT {
@@ -73,15 +70,6 @@ class OrganizedSubjectsIT {
             txActiveDuringLastPlanCall = TransactionSynchronizationManager.isActualTransactionActive();
             return super.getSubjectsByPlan(planId);
         }
-    }
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
     @Autowired MockMvc mvc;

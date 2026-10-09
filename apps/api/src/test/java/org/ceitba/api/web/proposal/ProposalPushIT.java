@@ -1,13 +1,14 @@
 package org.ceitba.api.web.proposal;
 
-import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
 import org.ceitba.api.service.push.FakePushGatewayConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,9 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -40,20 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(FakePushGatewayConfig.class)
-@TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "itba.api.use-fake=true"})
 class ProposalPushIT {
 
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
-
     private static final Duration WAIT = Duration.ofSeconds(10);
-    private static final Duration QUIET = Duration.ofMillis(700);
     private static final String AUTHOR = "autor@itba.edu.ar";
     private static final String OTHER = "otro@itba.edu.ar";
     private static final String MOD = "mod@itba.edu.ar";
@@ -63,6 +50,7 @@ class ProposalPushIT {
     @Autowired UserRepository users;
     @Autowired ObjectMapper json;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
 
     @BeforeEach
     void seed() {
@@ -106,7 +94,8 @@ class ProposalPushIT {
     }
 
     private void assertCallsStay(int n) {
-        await().during(QUIET).atMost(QUIET.plusSeconds(2)).until(() -> gateway.calls().size() == n);
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).hasSize(n);
     }
 
     @Test

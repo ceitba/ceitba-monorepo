@@ -1,6 +1,5 @@
 package org.ceitba.api.web.auth;
 
-import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.domain.User;
@@ -42,9 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestGoogleIdTokens.LocalKeyVerifier.class)
 @TestPropertySource(properties = {
-    "auth.allowed-domains=itba.edu.ar",
     "auth.google.mobile-audiences=" + TestGoogleIdTokens.WEB_CLIENT,
-    "itba.api.use-fake=true",
     "rate-limit.enabled=true",
     "rate-limit.trust-forwarded-for=true",
     // Mirrors application.yml: the generic auth bucket excludes review-login...
@@ -63,13 +60,8 @@ class ReviewLoginIT {
     static final String REVIEW_EMAIL = "appreview@example.com";
     static final String PASSWORD = "correct horse battery staple";
 
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
         // Configured with odd casing/whitespace on purpose: it is normalized.
         r.add("auth.review-login.email", () -> "  AppReview@Example.com ");
         r.add("auth.review-login.password-hash", () -> new BCryptPasswordEncoder(4).encode(PASSWORD));

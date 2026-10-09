@@ -11,6 +11,18 @@ auth:
     client-id: test-client-id
     client-secret: test-client-secret
     redirect-uri: http://localhost:8080/api/v1/auth/callback
+  # Shared defaults that most ITs used to repeat in @TestPropertySource. Every
+  # distinct property set is a separate Spring context (a full app boot), so
+  # keep per-class overrides to what the class really tests.
+  allowed-domains: itba.edu.ar
+  allowed-emails: external@gmail.com
+  sync-api-key: test-sync-key
+
+# In-memory ITBA API (FakeItbaApiClient) instead of the real HTTP client, whose
+# base URL is unset in tests.
+itba:
+  api:
+    use-fake: true
 
 spring:
   # Mirror the main jpa block (this file shadows it): without ddl-auto the

@@ -1,6 +1,5 @@
 package org.ceitba.api.web.drive;
 
-import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.domain.Career;
@@ -23,8 +22,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -58,20 +55,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(InMemoryObjectStorage.Config.class)
 @TestPropertySource(properties = {
-    "auth.allowed-domains=itba.edu.ar",
-    "itba.api.use-fake=true",
     "drive-sync.use-fake=true"
 })
 class DriveSyncIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     static final String ALUMNO = "alumno1@itba.edu.ar";
     static final String ROOT = "root-alumno1-0001";

@@ -1,6 +1,5 @@
 package org.ceitba.api.web.user;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.user.DeviceService;
@@ -12,9 +11,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -38,20 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // and the per-user cap.
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-    "auth.allowed-domains=itba.edu.ar",
-    "itba.api.use-fake=true"
-})
 class DeviceIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     // Shaped like a real FCM token (instance id ':' base64url payload), PII-free.
     private static final String TOKEN = "fAk3InstanceId:APA91bFakeFcmToken_payload-0123456789";
