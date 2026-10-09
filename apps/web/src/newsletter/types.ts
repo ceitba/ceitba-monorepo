@@ -120,10 +120,61 @@ export interface Organization {
   followerCount: number
   logoUrl: string | null
   backgroundUrl: string | null
+  // Bare handle; build the profile URL with instagramUrl().
+  instagram: string | null
+  linkedinUrl: string | null
+  websiteUrl: string | null
+  contactEmail: string | null
+  recruitingOpen: boolean
+  recruitingUrl: string | null
+  recruitingText: string | null
+  // Only on GET /organizations/{slug}; null in lists.
+  board?: BoardMember[] | null
 }
 
-// OrganizationRequest / OrganizationPatchRequest.
-export type OrganizationInput = Partial<Omit<Organization, 'followerCount'>>
+// OrganizationMembershipService.BoardMemberView: members shown on the portal.
+export interface BoardMember {
+  name: string | null
+  title: string | null
+  avatarUrl: string | null
+}
+
+// OrganizationRequest / OrganizationPatchRequest. In a PATCH a blank string
+// clears a contact or recruiting field.
+export type OrganizationInput = Partial<Omit<Organization, 'followerCount' | 'board'>>
+
+export type MembershipRole = 'member' | 'admin'
+
+// OrganizationMembershipService.MemberView.
+export interface OrgMember {
+  userId: string
+  name: string | null
+  email: string | null
+  avatarUrl: string | null
+  role: MembershipRole
+  title: string | null
+  showOnPortal: boolean
+  since: IsoDateTime
+}
+
+// OrganizationMembershipService.InviteView: an email that has not signed in yet.
+export interface OrgInvite {
+  email: string
+  role: MembershipRole
+  createdAt: IsoDateTime
+}
+
+// GET /organizations/{slug}/members.
+export interface OrgMembers {
+  members: OrgMember[]
+  invites: OrgInvite[]
+}
+
+// POST /organizations/{slug}/members/invites.
+export interface InviteResult {
+  added: OrgMember[]
+  pending: OrgInvite[]
+}
 
 // GET /organizations.
 export interface OrganizationList {

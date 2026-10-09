@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 public class MediaUploadService {
 
     public static final String PROPOSAL_ATTACHMENT_RATE_RULE = "proposal-attachments";
+    public static final String ORG_IMAGE_RATE_RULE = "org-images";
 
     static final long MB = 1024L * 1024L;
 
@@ -70,6 +71,15 @@ public class MediaUploadService {
         var contentType = normalize(req.contentType());
         var allowed = check(STAFF_IMAGE_TYPES, contentType, req.sizeBytes());
         return sign("media/" + UUID.randomUUID() + "." + allowed.ext(), contentType, req.sizeBytes());
+    }
+
+    // Org members' images (docs/ORGANIZATIONS.md): same types and sizes as
+    // STAFF images, keyed under the org so the bucket shows whose they are.
+    public SignUploadResponse signOrgImage(String orgSlug, UUID userId, SignUploadRequest req) {
+        var contentType = normalize(req.contentType());
+        var allowed = check(STAFF_IMAGE_TYPES, contentType, req.sizeBytes());
+        rateLimiter.consume(ORG_IMAGE_RATE_RULE, userId);
+        return sign("orgs/" + orgSlug + "/" + UUID.randomUUID() + "." + allowed.ext(), contentType, req.sizeBytes());
     }
 
     public SignUploadResponse signProposalAttachment(UUID userId, SignUploadRequest req) {

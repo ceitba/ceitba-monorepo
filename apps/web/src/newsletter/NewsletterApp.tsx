@@ -24,6 +24,7 @@ import MyEventsPage        from './pages/mine/MyEventsPage'
 import EventFormPage       from './pages/mine/EventFormPage'
 import OrgProfilePage      from './pages/mine/OrgProfilePage'
 import OrgFollowersPage    from './pages/mine/OrgFollowersPage'
+import OrgMembersPage      from './pages/mine/OrgMembersPage'
 import UnsubscribePage     from './pages/UnsubscribePage'
 import CorrectionVotePage  from './pages/CorrectionVotePage'
 
@@ -90,6 +91,7 @@ export default function NewsletterApp() {
           <Route path="events/new"           element={<EventFormPage />} />
           <Route path="events/:id/edit"      element={<EventFormPage />} />
           <Route path="org/:slug"            element={<OrgProfilePage />} />
+          <Route path="org/:slug/members"    element={<OrgMembersPage />} />
           <Route path="org/:slug/followers"  element={<OrgFollowersPage />} />
           <Route path="*"                    element={<Navigate to={MY_ARTICLES_PATH} replace />} />
         </Route>

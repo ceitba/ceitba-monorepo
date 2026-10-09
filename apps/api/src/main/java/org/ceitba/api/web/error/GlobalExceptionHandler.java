@@ -28,6 +28,7 @@ import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.FileNumberAlreadySetException;
 import org.ceitba.api.service.user.FileNumberTakenException;
+import org.ceitba.api.service.news.LastOrgAdminException;
 import org.ceitba.api.service.user.LastActiveStaffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(LastActiveStaffException.class)
     public ResponseEntity<ErrorResponse> handleLastActiveStaff(LastActiveStaffException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "LastActiveStaff", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(LastOrgAdminException.class)
+    public ResponseEntity<ErrorResponse> handleLastOrgAdmin(LastOrgAdminException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "LastOrgAdmin", ex.getMessage(), req);
     }
 
     @ExceptionHandler(FileNumberAlreadySetException.class)

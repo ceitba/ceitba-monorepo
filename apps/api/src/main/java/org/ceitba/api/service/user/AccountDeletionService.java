@@ -4,6 +4,7 @@ import org.ceitba.api.repository.AccountDeletionRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.correction.ScheduleCorrectionService;
 import org.ceitba.api.service.drive.DriveModerationService;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -59,6 +60,8 @@ import java.util.UUID;
 // STAFF row can only be bootstrapped with raw SQL (AUTH-AND-ROLES.md), so they
 // must grant the role to someone else first. The check locks the active staff
 // rows, so concurrent deletions by the last two staff members serialize.
+// Likewise the only admin of an organization cannot (409 LastOrgAdmin) until
+// they make another member admin (docs/ORGANIZATIONS.md).
 //
 // Already-issued access JWTs are stateless and stay valid until they expire:
 // mobile access tokens after AUTH_MOBILE_ACCESS_TTL (15 min), but web cookies
@@ -78,15 +81,17 @@ public class AccountDeletionService {
     private final CeitbaStaffRepository staff;
     private final ScheduleCorrectionService scheduleCorrections;
     private final DriveModerationService drive;
+    private final OrganizationMembershipService memberships;
     private final Clock clock;
 
     public AccountDeletionService(AccountDeletionRepository deletion, CeitbaStaffRepository staff,
                                   ScheduleCorrectionService scheduleCorrections, DriveModerationService drive,
-                                  Clock clock) {
+                                  OrganizationMembershipService memberships, Clock clock) {
         this.deletion            = deletion;
         this.staff               = staff;
         this.scheduleCorrections = scheduleCorrections;
         this.drive               = drive;
+        this.memberships         = memberships;
         this.clock               = clock;
     }
 
@@ -96,6 +101,7 @@ public class AccountDeletionService {
         if (staff.isActiveStaff(userId, now) && !otherActiveStaffRemains(userId, now)) {
             throw new LastActiveStaffException();
         }
+        memberships.requireNotLastAdmin(userId);
         deletion.recordDeletedFirebaseAccount(userId);
         deletion.deleteSessionsAndCredentials(userId);
         deletion.deleteStaffMembership(userId);
@@ -111,6 +117,7 @@ public class AccountDeletionService {
         deletion.deleteDriveSources(userId);
         deletion.deleteKbReports(userId);
         deletion.deleteCapabilityGrants(userId);
+        deletion.deleteOrgInvites(userId);
 
         if (deletion.countRetainedContributions(userId) > 0) {
             deletion.anonymizeUser(userId);

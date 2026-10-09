@@ -33,6 +33,27 @@ public class Organization {
     @Column(name = "background_url")
     private String backgroundUrl;
 
+    @Column
+    private String instagram;
+
+    @Column(name = "linkedin_url")
+    private String linkedinUrl;
+
+    @Column(name = "website_url")
+    private String websiteUrl;
+
+    @Column(name = "contact_email")
+    private String contactEmail;
+
+    @Column(name = "recruiting_open", nullable = false)
+    private boolean recruitingOpen;
+
+    @Column(name = "recruiting_url")
+    private String recruitingUrl;
+
+    @Column(name = "recruiting_text")
+    private String recruitingText;
+
     protected Organization() {}
 
     public Organization(String slug, String name, String fullName) {
@@ -49,6 +70,13 @@ public class Organization {
     public String getColor()       { return color; }
     public String getLogoUrl()       { return logoUrl; }
     public String getBackgroundUrl() { return backgroundUrl; }
+    public String getInstagram()     { return instagram; }
+    public String getLinkedinUrl()   { return linkedinUrl; }
+    public String getWebsiteUrl()    { return websiteUrl; }
+    public String getContactEmail()  { return contactEmail; }
+    public boolean isRecruitingOpen(){ return recruitingOpen; }
+    public String getRecruitingUrl() { return recruitingUrl; }
+    public String getRecruitingText(){ return recruitingText; }
 
     public void setName(String name)                  { this.name = name; }
     public void setFullName(String fullName)           { this.fullName = fullName; }
@@ -57,4 +85,11 @@ public class Organization {
     public void setColor(String color)                 { this.color = color; }
     public void setLogoUrl(String logoUrl)             { this.logoUrl = logoUrl; }
     public void setBackgroundUrl(String backgroundUrl) { this.backgroundUrl = backgroundUrl; }
+    public void setInstagram(String instagram)         { this.instagram = instagram; }
+    public void setLinkedinUrl(String linkedinUrl)     { this.linkedinUrl = linkedinUrl; }
+    public void setWebsiteUrl(String websiteUrl)       { this.websiteUrl = websiteUrl; }
+    public void setContactEmail(String contactEmail)   { this.contactEmail = contactEmail; }
+    public void setRecruitingOpen(boolean open)        { this.recruitingOpen = open; }
+    public void setRecruitingUrl(String recruitingUrl) { this.recruitingUrl = recruitingUrl; }
+    public void setRecruitingText(String text)         { this.recruitingText = text; }
 }

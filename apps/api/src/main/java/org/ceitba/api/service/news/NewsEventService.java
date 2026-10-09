@@ -1,5 +1,6 @@
 package org.ceitba.api.service.news;
 
+import org.ceitba.api.common.exception.InvalidStateException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.User;
@@ -21,12 +22,14 @@ public class NewsEventService {
     private final NewsEventRepository eventRepo;
     private final OrganizationRepository orgRepo;
     private final ApplicationEventPublisher events;
+    private final OrganizationMembershipService memberships;
 
     public NewsEventService(NewsEventRepository eventRepo, OrganizationRepository orgRepo,
-                            ApplicationEventPublisher events) {
-        this.eventRepo = eventRepo;
-        this.orgRepo   = orgRepo;
-        this.events    = events;
+                            ApplicationEventPublisher events, OrganizationMembershipService memberships) {
+        this.eventRepo   = eventRepo;
+        this.orgRepo     = orgRepo;
+        this.events      = events;
+        this.memberships = memberships;
     }
 
     @Transactional(readOnly = true)
@@ -82,12 +85,17 @@ public class NewsEventService {
         return eventRepo.save(event);
     }
 
+    // `orgMember`: null for STAFF; otherwise the caller, who must (still,
+    // under the row lock) belong to the event's organization, else 409.
     @Transactional
-    public void delete(String id) {
-        if (!eventRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Event", id);
+    public void delete(String id, UUID orgMember) {
+        var event = eventRepo.findByIdForUpdate(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Event", id));
+        if (orgMember != null && (event.getOrganization() == null
+                || !memberships.userBelongsTo(orgMember, event.getOrganization().getSlug()))) {
+            throw new InvalidStateException("Event " + id + " no longer belongs to one of your organizations");
         }
-        eventRepo.deleteById(id);
+        eventRepo.delete(event);
     }
 
     private void resolveOrganization(NewsEvent event, String slug) {

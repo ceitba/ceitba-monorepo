@@ -36,3 +36,9 @@ export function digestPath(id: string): string {
 export function articleEditPath(id: string, from: 'mine' | 'admin' = 'mine'): string {
   return from === 'admin' ? `${REVIEW_PATH}/${id}` : `${MY_ARTICLES_PATH}/${id}/edit`
 }
+
+// An organization's pages in Mis publicaciones: profile ('' ), members,
+// followers.
+export function orgAreaPath(slug: string, page: '' | 'members' | 'followers' = ''): string {
+  return newsletterPath(`/mine/org/${encodeURIComponent(slug)}${page ? `/${page}` : ''}`)
+}

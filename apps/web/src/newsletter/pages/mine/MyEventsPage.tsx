@@ -101,17 +101,16 @@ export default function MyEventsPage() {
             >
               {t('admin.common.edit')}
             </Link>
-            {/* DELETE /news/events/{id} is STAFF-only on the API. */}
-            {staff && (
-              <Button
-                variant="dangerGhost"
-                size="sm"
-                onClick={() => { setDeleteError(''); setToDelete(event) }}
-                aria-label={t('admin.events.deleteAria', { title: event.title })}
-              >
-                {t('admin.common.delete')}
-              </Button>
-            )}
+            {/* Members delete their organizations' events (the only ones
+                listed to them); staff any. */}
+            <Button
+              variant="dangerGhost"
+              size="sm"
+              onClick={() => { setDeleteError(''); setToDelete(event) }}
+              aria-label={t('admin.events.deleteAria', { title: event.title })}
+            >
+              {t('admin.common.delete')}
+            </Button>
           </div>
         </td>
       </tr>
@@ -139,9 +138,6 @@ export default function MyEventsPage() {
 
       {status === 'success' && events.length > 0 && (
         <>
-          {!staff && (
-            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('admin.events.deleteStaffOnly')}</p>
-          )}
           <TableCard>
             <thead>
               <tr className={theadRowClass}>

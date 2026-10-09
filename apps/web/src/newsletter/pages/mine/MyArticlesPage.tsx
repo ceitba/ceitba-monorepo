@@ -7,7 +7,7 @@ import ArticlesTable from '../../components/admin/ArticlesTable'
 import DeleteArticleDialog from '../../components/admin/DeleteArticleDialog'
 import { useAdminContext } from '../../admin/adminContext'
 import { isStaff } from '@/store/authStore'
-import { writerOrgSlugs } from '@/newsletter/utils/session'
+import { getOrganizations, writerOrgSlugs } from '@/newsletter/utils/session'
 import { useAuth } from '@/hooks/useAuth'
 import { NEW_ARTICLE_PATH, articleEditPath } from '@/newsletter/paths'
 import { EmptyState, ErrorState, SkeletonTable, ToggleGroup, buttonClass, type TabItem } from '@/components/ui'
@@ -79,10 +79,13 @@ export default function MyArticlesPage() {
     return () => { cancelled = true }
   }, [profile, reloadKey])
 
-  // The API lets authors delete their own unpublished independent articles;
-  // staff delete any.
+  // The API lets members delete their organizations' articles and authors
+  // their own unpublished independent ones; staff delete any.
+  const myOrgs = new Set(getOrganizations(profile).map((m) => m.slug))
   const canDelete = (a: Article) =>
-    staff || (mineIds.has(a.id) && !a.organization && a.status !== 'published')
+    staff
+    || (a.organization != null && myOrgs.has(a.organization))
+    || (mineIds.has(a.id) && !a.organization && a.status !== 'published')
 
   const counts = Object.fromEntries(STATUS_ORDER.map((s) => [s, articles.filter((a) => (a.status ?? 'published') === s).length]))
   const filters: TabItem<Filter>[] = [

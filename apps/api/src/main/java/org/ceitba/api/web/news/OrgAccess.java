@@ -71,6 +71,35 @@ public class OrgAccess {
         return slug != null && userId != null && membership.userIsAdminOf(userId, slug);
     }
 
+    // Member management (OrgMembersController) is for the org's admins: it
+    // exposes members' emails and decides who can publish for the org.
+    public boolean canManageMembers(String slug, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        return slug != null && userId != null && membership.userIsAdminOf(userId, slug);
+    }
+
+    // DELETE of an org's article or event by any current member of that org
+    // (members already publish and edit for it). Org-less articles fail this
+    // check; their author is covered by canDeleteOwnIndependentArticle. A
+    // missing item yields false (403).
+    public boolean canDeleteArticle(String articleId, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        if (userId == null) return false;
+        return articleRepo.findById(articleId)
+            .map(a -> a.getOrganization() != null
+                && membership.userBelongsTo(userId, a.getOrganization().getSlug()))
+            .orElse(false);
+    }
+
+    public boolean canDeleteEvent(String eventId, Authentication auth) {
+        UUID userId = userIdOf(auth);
+        if (userId == null) return false;
+        return eventRepo.findById(eventId)
+            .map(e -> e.getOrganization() != null
+                && membership.userBelongsTo(userId, e.getOrganization().getSlug()))
+            .orElse(false);
+    }
+
     // For PATCH: the caller must belong to the org that currently owns the
     // article and, when the patch moves it to another org, to that org too.
     // Org-less articles fail this check; their author is covered by

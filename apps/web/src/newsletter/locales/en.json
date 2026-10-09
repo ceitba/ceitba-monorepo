@@ -90,7 +90,17 @@
       "title": "No organizations yet",
       "message": "When student groups join the newsletter, you will see them here."
     },
-    "backToList": "See organizations"
+    "backToList": "See organizations",
+    "board": "Board",
+    "recruiting": {
+      "eyebrow": "We are recruiting",
+      "default": "{{org}} is looking for new members.",
+      "cta": "Apply"
+    },
+    "links": {
+      "label": "Contact",
+      "website": "Website"
+    }
   },
   "categories": {
     "Académico": "Academic",
@@ -192,7 +202,6 @@
       },
       "editAria": "Edit “{{title}}”",
       "deleteAria": "Delete “{{title}}”",
-      "deleteStaffOnly": "Only CEITBA staff can delete events. If one needs to go, write to newsletter@ceitba.org.ar.",
       "noUpcoming": "No upcoming events.",
       "past": "Past",
       "deleteDialog": {
@@ -642,8 +651,20 @@
         "categoryHint": "For example: student union, sports, culture.",
         "color": "Colour",
         "colorHint": "It's the colour of the organization's cover in ITBA News.",
-        "logoUrl": "Logo URL",
-        "backgroundUrl": "Background URL"
+        "logoUrl": "Logo",
+        "backgroundUrl": "Background image",
+        "logoHint": "Square; shown small next to the name.",
+        "backgroundHint": "Wide image for the portal cover.",
+        "instagram": "Instagram",
+        "instagramHint": "Username or profile link.",
+        "linkedinUrl": "LinkedIn",
+        "websiteUrl": "Website",
+        "contactEmail": "Contact email",
+        "recruitingOpen": "We are recruiting",
+        "recruitingOpenHint": "Shows a notice on the organization portal.",
+        "recruitingText": "Notice text",
+        "recruitingTextHint": "Up to 280 characters. Left empty, a generic one is used.",
+        "recruitingUrl": "Application link"
       },
       "namesStaffOnly": "Only CEITBA staff can change the name.",
       "preview": "Preview",
@@ -659,14 +680,18 @@
       "backToManage": "← Organizations",
       "errors": {
         "save": "Couldn't save the profile. Please try again.",
-        "forbidden": "You don't have permission to edit this organization."
+        "forbidden": "You don't have permission to edit this organization.",
+        "email": "Enter a valid email.",
+        "instagram": "That Instagram username is not valid."
       },
       "leave": {
         "title": "Leave without saving?",
         "body": "You have unsaved changes to the profile. If you leave now, they will be lost.",
         "discard": "Leave without saving",
         "stay": "Keep editing"
-      }
+      },
+      "contactTitle": "Contact",
+      "recruitingTitle": "Recruiting"
     },
     "review": {
       "title": "Articles to review",
@@ -696,6 +721,70 @@
       "undo": "Undo",
       "undoError": "Couldn't undo publishing «{{title}}». Try again from the editor.",
       "alreadyHandled": "Another staff member had already handled «{{title}}». We removed it from the list."
+    },
+    "orgPages": {
+      "label": "Organization sections",
+      "profile": "Profile",
+      "members": "Members",
+      "followers": "Followers"
+    },
+    "members": {
+      "title": "Members",
+      "invite": "Invite",
+      "inviteTitle": "Invite members",
+      "emailsLabel": "Emails",
+      "emailsHint": "One per line or comma-separated. People who already used the site join right away; the rest when they first sign in.",
+      "roleField": "Role",
+      "inviteSubmit_one": "Invite {{count}}",
+      "inviteSubmit_other": "Invite {{count}}",
+      "invited": "Done: {{added}} added, {{pending}} pending.",
+      "roles": {
+        "member": "Member",
+        "admin": "Admin"
+      },
+      "roleLabel": "Role of {{name}}",
+      "titleLabel": "Position",
+      "titleHint": "For example, President.",
+      "showOnPortal": "Show on the portal",
+      "you": "you",
+      "remove": "Remove",
+      "removed": "Member removed.",
+      "transfer": "Hand over admin",
+      "transferred": "{{name}} is now admin. You are a member now.",
+      "leave": "Leave the organization",
+      "left": "You left {{org}}.",
+      "onlyYou": "You are the only member: invite someone before you can leave.",
+      "staffNote": "You are viewing this organization as staff.",
+      "pendingTitle_one": "{{count}} pending invite",
+      "pendingTitle_other": "{{count}} pending invites",
+      "pendingHint": "They join automatically when they first sign in with that email.",
+      "revoke": "Cancel invite",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's admins and staff can see and manage its members.",
+      "loadError": "We could not load the members.",
+      "errors": {
+        "lastAdmin": "The organization needs at least one admin. Make another member admin first.",
+        "forbidden": "You are not allowed to manage this organization's members.",
+        "save": "We could not save the change. Try again.",
+        "invalidEmails": "Some email is invalid or cannot sign in to the site (it must be @itba.edu.ar)."
+      },
+      "confirm": {
+        "remove": {
+          "title": "Remove {{name}}?",
+          "body": "They will no longer be able to publish for {{org}}. You can invite them again any time.",
+          "confirm": "Remove"
+        },
+        "transfer": {
+          "title": "Hand over admin to {{name}}?",
+          "body": "{{name}} becomes admin of {{org}} and you stay as a member.",
+          "confirm": "Hand over"
+        },
+        "leave": {
+          "title": "Leave {{org}}?",
+          "body": "You will no longer be able to publish or edit the profile of {{org}}.",
+          "confirm": "Leave"
+        }
+      }
     }
   },
   "mine": {

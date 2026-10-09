@@ -13,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -84,9 +85,10 @@ public class NewsEventController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF')")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        service.delete(id);
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteEvent(#id, authentication)")
+    public ResponseEntity<Void> delete(@PathVariable String id, @CurrentUser User user, Authentication auth) {
+        boolean staff = auth.getAuthorities().stream().anyMatch(a -> "ROLE_STAFF".equals(a.getAuthority()));
+        service.delete(id, staff ? null : user.getId());
         return ResponseEntity.noContent().build();
     }
 }

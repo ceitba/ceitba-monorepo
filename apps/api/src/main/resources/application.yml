@@ -418,6 +418,10 @@ rate-limit:
       period: ${RATE_LIMIT_ANALYTICS_PERIOD:1m}
   # Per authenticated user (service/ratelimit/UserRateLimiter), not per IP.
   user-rules:
+    # POST /v1/organizations/{slug}/media/sign-upload
+    org-images:
+      capacity: ${RATE_LIMIT_ORG_IMAGES_CAPACITY:60}
+      period: ${RATE_LIMIT_ORG_IMAGES_PERIOD:1h}
     # POST /v1/proposals/attachments/sign-upload
     proposal-attachments:
       capacity: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:30}

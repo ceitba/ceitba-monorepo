@@ -149,10 +149,16 @@ public class ArticleController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteOwnIndependentArticle(#id, authentication)")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteArticle(#id, authentication)"
+        + " or @orgAccess.canDeleteOwnIndependentArticle(#id, authentication)")
     public ResponseEntity<Void> delete(@PathVariable String id, Authentication auth) {
-        UUID independentAuthor = hasRole(auth, "ROLE_STAFF") ? null : orgAccess.currentUserId(auth);
-        service.delete(id, independentAuthor);
+        if (hasRole(auth, "ROLE_STAFF")) {
+            service.delete(id, null);
+        } else if (orgAccess.canDeleteArticle(id, auth)) {
+            service.deleteAsOrgMember(id, orgAccess.currentUserId(auth));
+        } else {
+            service.delete(id, orgAccess.currentUserId(auth));
+        }
         return ResponseEntity.noContent().build();
     }
 

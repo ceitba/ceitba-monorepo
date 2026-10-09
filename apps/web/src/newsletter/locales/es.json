@@ -90,7 +90,17 @@
       "title": "Todavía no hay organizaciones",
       "message": "Cuando se sumen agrupaciones al newsletter, las vas a ver acá."
     },
-    "backToList": "Ver organizaciones"
+    "backToList": "Ver organizaciones",
+    "board": "Comisión directiva",
+    "recruiting": {
+      "eyebrow": "Buscamos gente",
+      "default": "{{org}} está sumando miembros.",
+      "cta": "Postularme"
+    },
+    "links": {
+      "label": "Contacto",
+      "website": "Sitio web"
+    }
   },
   "categories": {
     "Académico": "Académico",
@@ -192,7 +202,6 @@
       },
       "editAria": "Editar «{{title}}»",
       "deleteAria": "Eliminar «{{title}}»",
-      "deleteStaffOnly": "Solo el staff del CEITBA puede eliminar eventos. Si hay que borrar uno, escribinos a newsletter@ceitba.org.ar.",
       "noUpcoming": "No hay eventos próximos.",
       "past": "Pasados",
       "deleteDialog": {
@@ -642,8 +651,20 @@
         "categoryHint": "Por ejemplo: centro de estudiantes, deporte, cultura.",
         "color": "Color",
         "colorHint": "Es el color de la portada de la organización en ITBA News.",
-        "logoUrl": "URL del logo",
-        "backgroundUrl": "URL del fondo"
+        "logoUrl": "Logo",
+        "backgroundUrl": "Imagen de fondo",
+        "logoHint": "Cuadrado, se muestra chico junto al nombre.",
+        "backgroundHint": "Imagen ancha para la portada del portal.",
+        "instagram": "Instagram",
+        "instagramHint": "Usuario o link al perfil.",
+        "linkedinUrl": "LinkedIn",
+        "websiteUrl": "Sitio web",
+        "contactEmail": "Mail de contacto",
+        "recruitingOpen": "Estamos sumando miembros",
+        "recruitingOpenHint": "Muestra un aviso en el portal de la organización.",
+        "recruitingText": "Texto del aviso",
+        "recruitingTextHint": "Hasta 280 caracteres. Si lo dejás vacío usamos uno genérico.",
+        "recruitingUrl": "Link para postularse"
       },
       "namesStaffOnly": "Solo el staff del CEITBA puede cambiar el nombre.",
       "preview": "Vista previa",
@@ -659,14 +680,18 @@
       "backToManage": "← Organizaciones",
       "errors": {
         "save": "No pudimos guardar el perfil. Probá de nuevo.",
-        "forbidden": "No tenés permiso para editar esta organización."
+        "forbidden": "No tenés permiso para editar esta organización.",
+        "email": "Ingresá un mail válido.",
+        "instagram": "El usuario de Instagram no es válido."
       },
       "leave": {
         "title": "¿Salir sin guardar?",
         "body": "Tenés cambios sin guardar en el perfil. Si salís ahora, se pierden.",
         "discard": "Salir sin guardar",
         "stay": "Seguir editando"
-      }
+      },
+      "contactTitle": "Contacto",
+      "recruitingTitle": "Convocatoria"
     },
     "review": {
       "title": "Artículos para revisar",
@@ -696,6 +721,70 @@
       "undo": "Deshacer",
       "undoError": "No se pudo deshacer la publicación de «{{title}}». Volvé a intentarlo desde el editor.",
       "alreadyHandled": "«{{title}}» ya lo había resuelto otra persona del staff. Lo sacamos de la lista."
+    },
+    "orgPages": {
+      "label": "Secciones de la organización",
+      "profile": "Perfil",
+      "members": "Miembros",
+      "followers": "Seguidores"
+    },
+    "members": {
+      "title": "Miembros",
+      "invite": "Invitar",
+      "inviteTitle": "Invitar miembros",
+      "emailsLabel": "Mails",
+      "emailsHint": "Uno por línea o separados por comas. Quien ya usó el sitio se suma al instante; el resto, cuando entre por primera vez.",
+      "roleField": "Rol",
+      "inviteSubmit_one": "Invitar a {{count}}",
+      "inviteSubmit_other": "Invitar a {{count}}",
+      "invited": "Listo: {{added}} sumados, {{pending}} pendientes.",
+      "roles": {
+        "member": "Miembro",
+        "admin": "Admin"
+      },
+      "roleLabel": "Rol de {{name}}",
+      "titleLabel": "Cargo",
+      "titleHint": "Por ejemplo, Presidenta.",
+      "showOnPortal": "Mostrar en el portal",
+      "you": "vos",
+      "remove": "Quitar",
+      "removed": "Miembro quitado.",
+      "transfer": "Pasarle la administración",
+      "transferred": "{{name}} ahora es admin. Vos quedaste como miembro.",
+      "leave": "Salir de la organización",
+      "left": "Saliste de {{org}}.",
+      "onlyYou": "Sos el único miembro: invitá a alguien antes de poder salir.",
+      "staffNote": "Estás viendo esta organización como staff.",
+      "pendingTitle_one": "{{count}} invitación pendiente",
+      "pendingTitle_other": "{{count}} invitaciones pendientes",
+      "pendingHint": "Se suman solas cuando entren al sitio por primera vez con ese mail.",
+      "revoke": "Cancelar invitación",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los admins de la organización y el staff pueden ver y gestionar sus miembros.",
+      "loadError": "No pudimos cargar los miembros.",
+      "errors": {
+        "lastAdmin": "La organización tiene que tener al menos un admin. Hacé admin a otro miembro primero.",
+        "forbidden": "No tenés permiso para gestionar los miembros de esta organización.",
+        "save": "No pudimos guardar el cambio. Probá de nuevo.",
+        "invalidEmails": "Algún mail no es válido o no puede entrar al sitio (tiene que ser @itba.edu.ar)."
+      },
+      "confirm": {
+        "remove": {
+          "title": "¿Quitar a {{name}}?",
+          "body": "Deja de poder publicar para {{org}}. Lo podés volver a invitar cuando quieras.",
+          "confirm": "Quitar"
+        },
+        "transfer": {
+          "title": "¿Pasarle la administración a {{name}}?",
+          "body": "{{name}} pasa a ser admin de {{org}} y vos quedás como miembro.",
+          "confirm": "Pasar administración"
+        },
+        "leave": {
+          "title": "¿Salir de {{org}}?",
+          "body": "Vas a dejar de poder publicar y editar el perfil de {{org}}.",
+          "confirm": "Salir"
+        }
+      }
     }
   },
   "mine": {

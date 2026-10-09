@@ -157,6 +157,14 @@ public class AccountDeletionRepository {
             """, userId);
     }
 
+    // Pending org invites of the user's email: same reason as capability grants.
+    public void deleteOrgInvites(UUID userId) {
+        exec("""
+            DELETE FROM public.org_invites
+            WHERE email = (SELECT lower(u.email) FROM public."user" u WHERE u.id = :u)
+            """, userId);
+    }
+
     // Subject-wiki reports by the user (page counters adjusted first).
     public void deleteKbReports(UUID userId) {
         exec("""
