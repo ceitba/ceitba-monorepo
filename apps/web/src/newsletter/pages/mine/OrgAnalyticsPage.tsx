@@ -12,7 +12,7 @@ import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import OrgSectionLinks from '../../components/admin/OrgSectionLinks'
 import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
 import {
-  BarChart, EmptyMetric, IconBell, IconEye, IconHeart, IconUser, RangePicker, Sparkline, StatCard, statCard,
+  BarChart, EmptyMetric, IconBell, IconEye, IconHeart, IconMail, IconUser, RangePicker, Sparkline, StatCard, statCard,
   statCardLabel,
 } from '../../components/admin/charts'
 import { useAdminContext } from '../../admin/adminContext'
@@ -89,7 +89,7 @@ export default function OrgAnalyticsPage() {
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <SkeletonCards count={4} className="grid grid-cols-2 lg:grid-cols-4 gap-4" cardClassName="h-32" />
+        <SkeletonCards count={5} className="grid grid-cols-2 lg:grid-cols-5 gap-4" cardClassName="h-32" />
         <LoadingRegion className={statCard}>
           <Skeleton className="h-3 w-48 mb-4" />
           <Skeleton className="h-20 w-full" />
@@ -112,7 +112,7 @@ export default function OrgAnalyticsPage() {
         <Alert tone="info" title={t('admin.orgStats.noViewsTitle')}>{t('admin.orgStats.noViews')}</Alert>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           label={t('admin.orgStats.views')}
           value={fmtNum(views)}
@@ -131,6 +131,12 @@ export default function OrgAnalyticsPage() {
           value={fmtNum(data.pushes.devicesReached)}
           icon={<IconBell />}
           hint={t('admin.orgStats.pushes', { count: data.pushes.pushes })}
+        />
+        <StatCard
+          label={t('admin.orgStats.mailReach')}
+          value={fmtNum(data.mail.recipients)}
+          icon={<IconMail />}
+          hint={t('admin.orgStats.mails', { count: data.mail.announcements })}
         />
       </div>
 

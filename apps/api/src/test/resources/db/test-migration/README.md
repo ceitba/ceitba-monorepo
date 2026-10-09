@@ -59,3 +59,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.44 org_self_service | V54 |
 | V4.45 event_signup | V55 |
 | V4.46 push_log | V56 |
+| V4.47 org_mail | V57 |

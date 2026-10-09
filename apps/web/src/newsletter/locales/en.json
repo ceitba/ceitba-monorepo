@@ -133,7 +133,10 @@
     "links": {
       "label": "Contact",
       "website": "Website"
-    }
+    },
+    "receiveMail": "Get emails from {{org}}",
+    "receiveMailHint": "Notices the organization emails to its followers.",
+    "mailError": "We could not save your preference."
   },
   "categories": {
     "Académico": "Academic",
@@ -785,7 +788,8 @@
       "profile": "Profile",
       "members": "Members",
       "followers": "Followers",
-      "stats": "Stats"
+      "stats": "Stats",
+      "mail": "Email"
     },
     "members": {
       "title": "Members",
@@ -883,6 +887,95 @@
         "date": "Date",
         "views": "Views",
         "rsvps": "Going"
+      },
+      "mailReach": "Emails delivered",
+      "mails_one": "{{count}} send",
+      "mails_other": "{{count}} sends"
+    },
+    "orgMail": {
+      "title": "Email",
+      "loadError": "We could not load the organization's email.",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's admins email its followers.",
+      "connected": "Account connected. You can send emails now.",
+      "connectErrors": {
+        "access_denied": "You cancelled the permission on Google.",
+        "invalid_state": "The attempt expired. Try connecting again.",
+        "not_org_admin": "Only an admin of the organization can connect its account.",
+        "wrong_domain": "Pick an @{{domain}} account of the organization.",
+        "account_in_use": "Another organization or CEITBA already uses that account.",
+        "missing_scope": "Google did not grant permission to send email. Connect again and accept every permission.",
+        "no_refresh_token": "Google did not return a lasting permission. Try again.",
+        "exchange_failed": "We could not connect the account. Try again."
+      },
+      "accountTitle": "Sending account",
+      "missing": "Connect the organization's Gmail account (@{{domain}}) to send emails from it.",
+      "missingHelp": "Google asks for permission to send email only; we never read the mailbox.",
+      "adminOnlyConnect": "Only an admin of the organization can connect the account.",
+      "statusConnected": "Connected",
+      "statusBroken": "Needs to be reconnected",
+      "quota": "Daily quota",
+      "quotaValue": "{{remaining}} of {{limit}} left",
+      "weekly": "Sends this week",
+      "weeklyValue": "{{left}} of {{limit}} left",
+      "audience": "Reaches",
+      "audienceValue_one": "{{count}} follower",
+      "audienceValue_other": "{{count}} followers",
+      "connect": "Connect Gmail account",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
+      "newTitle": "New email",
+      "editTitle": "Editing draft",
+      "subject": "Subject",
+      "body": "Message",
+      "bodyHint": "Plain text: a blank line starts a paragraph and links become clickable.",
+      "saveDraft": "Save draft",
+      "sendTest": "Send me a test",
+      "send": "Send to followers",
+      "newInstead": "Start a new one",
+      "footerNote": "Every email includes a link to stop getting the organization's emails.",
+      "saved": "Draft saved.",
+      "testSent": "We sent the test to {{email}}.",
+      "sending": "Sending. You can follow the progress here.",
+      "history": "Emails",
+      "noHistory": "No emails yet.",
+      "draftOf": "Draft · {{when}}",
+      "progress": "{{sent}} sent · {{failed}} failed · {{pending}} pending · {{when}}",
+      "status": {
+        "draft": "Draft",
+        "sending": "Sending",
+        "sent": "Sent"
+      },
+      "errors": {
+        "OrgMailNotConnected": "Connect the organization's Gmail account first.",
+        "OrgMailWeeklyLimit": "The organization already used its sends for this week.",
+        "OrgMailNoRecipients": "No follower can receive this email yet.",
+        "MailDisabled": "Sending email is turned off on the server.",
+        "OrgMailNotDraft": "That email was already sent.",
+        "OrgMailTestFailed": "The test could not be sent.",
+        "MAIL_QUOTA_EXHAUSTED": "The account's daily quota is used up. Try tomorrow.",
+        "MAIL_SENDER_NOT_CONNECTED": "The Gmail account is not available: reconnect it.",
+        "invalid": "Check the subject (one line, up to 150 characters) and the message.",
+        "empty": "Fill in the subject and the message.",
+        "generic": "We could not complete that. Try again."
+      },
+      "confirm": {
+        "send": {
+          "title": "Send to your followers?",
+          "body_one": "\"{{subject}}\" will reach {{count}} follower.",
+          "body_other": "\"{{subject}}\" will reach {{count}} followers.",
+          "confirm": "Send"
+        },
+        "delete": {
+          "title": "Delete the draft?",
+          "body": "\"{{subject}}\" is deleted for good.",
+          "confirm": "Delete"
+        },
+        "disconnect": {
+          "title": "Disconnect the account?",
+          "body": "{{email}} stops sending the organization's emails.",
+          "confirm": "Disconnect"
+        }
       }
     }
   },
@@ -1065,5 +1158,20 @@
     "notificationsUnread_other": "Notifications ({{count}} unread)",
     "markAllRead": "Mark all as read",
     "noNotifications": "You have no notifications"
+  },
+  "orgMail": {
+    "name": "Organization emails",
+    "unsubscribe": {
+      "confirmTitle": "Stop getting emails from this organization?",
+      "confirmHint": "You will still see it on ITBA News; you only stop getting its emails.",
+      "confirm": "Unsubscribe",
+      "confirming": "Saving…",
+      "doneTitle": "Done: no more emails from {{org}}",
+      "doneHint": "Changed your mind? Turn them back on from the organization portal.",
+      "invalidTitle": "This link is not valid",
+      "invalidHint": "It may be incomplete. Try opening it again from the email.",
+      "errorTitle": "We could not unsubscribe you",
+      "errorHint": "Try again in a while."
+    }
   }
 }

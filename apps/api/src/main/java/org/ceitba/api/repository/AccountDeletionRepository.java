@@ -34,6 +34,8 @@ public class AccountDeletionRepository {
         exec("DELETE FROM public.user_follows WHERE user_id = :u", userId);
         exec("DELETE FROM public.user_organizations WHERE user_id = :u", userId);
         exec("DELETE FROM public.event_rsvps WHERE user_id = :u", userId);
+        exec("DELETE FROM public.org_mail_optouts WHERE user_id = :u", userId);
+        exec("DELETE FROM public.org_announcement_deliveries WHERE user_id = :u", userId);
     }
 
     public void deleteSchedulesAndShares(UUID userId) {

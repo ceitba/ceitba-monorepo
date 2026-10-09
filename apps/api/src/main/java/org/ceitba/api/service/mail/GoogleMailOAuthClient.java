@@ -91,8 +91,8 @@ public class GoogleMailOAuthClient {
             .queryParam("scope", SCOPE_SEND + " openid email")
             .queryParam("state", state)
             .queryParam("access_type", "offline")
-            .queryParam("prompt", "consent")
-            .queryParam("login_hint", loginHint);
+            .queryParam("prompt", "consent");
+        if (loginHint != null) b.queryParam("login_hint", loginHint);
         if (hostedDomain != null) b.queryParam("hd", hostedDomain);
         // encode(): '+' and ':' in the scope list must be percent-encoded.
         return b.encode().build().toUri();

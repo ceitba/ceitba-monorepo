@@ -468,4 +468,45 @@ export interface OrgAnalytics {
   // `cumulative`: current followers by the day they followed.
   followers: { total: number; newInPeriod: number; cumulative: { date: IsoDate; count: number }[] }
   pushes: { pushes: number; devicesTargeted: number; devicesReached: number }
+  mail: { announcements: number; recipients: number }
+}
+
+// ── Organization emails ─────────────────────────────────────────────────────
+
+// MailSendService.QuotaStatus of the org's account.
+export interface MailQuota {
+  account: string
+  limit: number
+  usedLast24h: number
+  remaining: number
+  pausedUntil: IsoDateTime | null
+  pauseReason: string | null
+  nextCapacityAt: IsoDateTime | null
+}
+
+// OrgAnnouncementService.MailStatus (GET /organizations/{slug}/mail).
+export interface OrgMailStatus {
+  account: SenderAccount | null
+  mailEnabled: boolean
+  quota: MailQuota | null
+  weeklyLimit: number
+  sentThisWeek: number
+  // Followers an email would reach now.
+  recipientEstimate: number
+  allowedDomain: string
+}
+
+// OrgAnnouncementService.AnnouncementView.
+export interface OrgAnnouncement {
+  id: number
+  subject: string
+  body: string
+  status: 'draft' | 'sending' | 'sent'
+  recipientCount: number | null
+  sent: number
+  failed: number
+  pending: number
+  createdAt: IsoDateTime
+  sentAt: IsoDateTime | null
+  finishedAt: IsoDateTime | null
 }

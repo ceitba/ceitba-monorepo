@@ -133,7 +133,10 @@
     "links": {
       "label": "Contacto",
       "website": "Sitio web"
-    }
+    },
+    "receiveMail": "Recibir correos de {{org}}",
+    "receiveMailHint": "Avisos que la organización manda por mail a quienes la siguen.",
+    "mailError": "No pudimos guardar tu preferencia."
   },
   "categories": {
     "Académico": "Académico",
@@ -785,7 +788,8 @@
       "profile": "Perfil",
       "members": "Miembros",
       "followers": "Seguidores",
-      "stats": "Estadísticas"
+      "stats": "Estadísticas",
+      "mail": "Correo"
     },
     "members": {
       "title": "Miembros",
@@ -883,6 +887,95 @@
         "date": "Fecha",
         "views": "Visitas",
         "rsvps": "Anotados"
+      },
+      "mailReach": "Correos entregados",
+      "mails_one": "{{count}} envío",
+      "mails_other": "{{count}} envíos"
+    },
+    "orgMail": {
+      "title": "Correo",
+      "loadError": "No pudimos cargar el correo de la organización.",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los admins de la organización mandan correos a sus seguidores.",
+      "connected": "Cuenta conectada. Ya pueden mandar correos.",
+      "connectErrors": {
+        "access_denied": "Cancelaste el permiso en Google.",
+        "invalid_state": "El intento venció. Probá conectar de nuevo.",
+        "not_org_admin": "Solo un admin de la organización puede conectar su cuenta.",
+        "wrong_domain": "Elegí una cuenta @{{domain}} de la organización.",
+        "account_in_use": "Esa cuenta ya la usa otra organización o el CEITBA.",
+        "missing_scope": "Google no dio permiso para enviar mails. Volvé a conectar y aceptá todos los permisos.",
+        "no_refresh_token": "Google no devolvió un permiso duradero. Probá de nuevo.",
+        "exchange_failed": "No pudimos conectar la cuenta. Probá de nuevo."
+      },
+      "accountTitle": "Cuenta de envío",
+      "missing": "Conectá la cuenta de Gmail de la organización (@{{domain}}) para mandar correos desde ella.",
+      "missingHelp": "Google te va a pedir permiso solo para enviar mails; no leemos tu casilla.",
+      "adminOnlyConnect": "Solo un admin de la organización puede conectar la cuenta.",
+      "statusConnected": "Conectada",
+      "statusBroken": "Hay que volver a conectarla",
+      "quota": "Cupo diario",
+      "quotaValue": "{{remaining}} de {{limit}} disponibles",
+      "weekly": "Envíos esta semana",
+      "weeklyValue": "Quedan {{left}} de {{limit}}",
+      "audience": "Lo reciben",
+      "audienceValue_one": "{{count}} seguidor",
+      "audienceValue_other": "{{count}} seguidores",
+      "connect": "Conectar cuenta de Gmail",
+      "reconnect": "Volver a conectar",
+      "disconnect": "Desconectar",
+      "newTitle": "Nuevo correo",
+      "editTitle": "Editando borrador",
+      "subject": "Asunto",
+      "body": "Mensaje",
+      "bodyHint": "Texto plano: una línea en blanco separa párrafos y los links se vuelven clickeables.",
+      "saveDraft": "Guardar borrador",
+      "sendTest": "Enviarme una prueba",
+      "send": "Enviar a seguidores",
+      "newInstead": "Empezar uno nuevo",
+      "footerNote": "Cada correo incluye un link para dejar de recibir los de la organización.",
+      "saved": "Borrador guardado.",
+      "testSent": "Te mandamos la prueba a {{email}}.",
+      "sending": "Enviando. Podés seguir el progreso acá.",
+      "history": "Correos",
+      "noHistory": "Todavía no hay correos.",
+      "draftOf": "Borrador · {{when}}",
+      "progress": "{{sent}} enviados · {{failed}} fallidos · {{pending}} pendientes · {{when}}",
+      "status": {
+        "draft": "Borrador",
+        "sending": "Enviando",
+        "sent": "Enviado"
+      },
+      "errors": {
+        "OrgMailNotConnected": "Primero conectá la cuenta de Gmail de la organización.",
+        "OrgMailWeeklyLimit": "La organización ya usó sus envíos de esta semana.",
+        "OrgMailNoRecipients": "Ningún seguidor puede recibir este correo todavía.",
+        "MailDisabled": "El envío de mails está apagado en el servidor.",
+        "OrgMailNotDraft": "Ese correo ya se envió.",
+        "OrgMailTestFailed": "La prueba no se pudo enviar.",
+        "MAIL_QUOTA_EXHAUSTED": "Se terminó el cupo diario de la cuenta. Probá mañana.",
+        "MAIL_SENDER_NOT_CONNECTED": "La cuenta de Gmail no está disponible: volvé a conectarla.",
+        "invalid": "Revisá el asunto (una línea, hasta 150 caracteres) y el mensaje.",
+        "empty": "Completá el asunto y el mensaje.",
+        "generic": "No pudimos completar la acción. Probá de nuevo."
+      },
+      "confirm": {
+        "send": {
+          "title": "¿Enviar a tus seguidores?",
+          "body_one": "«{{subject}}» le va a llegar a {{count}} seguidor.",
+          "body_other": "«{{subject}}» les va a llegar a {{count}} seguidores.",
+          "confirm": "Enviar"
+        },
+        "delete": {
+          "title": "¿Borrar el borrador?",
+          "body": "«{{subject}}» se borra para siempre.",
+          "confirm": "Borrar"
+        },
+        "disconnect": {
+          "title": "¿Desconectar la cuenta?",
+          "body": "{{email}} deja de enviar los correos de la organización.",
+          "confirm": "Desconectar"
+        }
       }
     }
   },
@@ -1065,5 +1158,20 @@
     "notificationsUnread_other": "Notificaciones ({{count}} sin leer)",
     "markAllRead": "Marcar todas como leídas",
     "noNotifications": "No tenés notificaciones"
+  },
+  "orgMail": {
+    "name": "Correos de organizaciones",
+    "unsubscribe": {
+      "confirmTitle": "¿Dejar de recibir correos de esta organización?",
+      "confirmHint": "Vas a seguir viéndola en ITBA News; solo dejás de recibir sus mails.",
+      "confirm": "Dejar de recibir",
+      "confirming": "Guardando…",
+      "doneTitle": "Listo: no vas a recibir más correos de {{org}}",
+      "doneHint": "Si cambiás de idea, activalos de nuevo desde el portal de la organización.",
+      "invalidTitle": "El link no es válido",
+      "invalidHint": "Puede que esté incompleto. Probá abrirlo de nuevo desde el mail.",
+      "errorTitle": "No pudimos completar la baja",
+      "errorHint": "Probá de nuevo en un rato."
+    }
   }
 }

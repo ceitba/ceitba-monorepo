@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Button, EmptyState, ErrorState, LoadingRegion, Skeleton, buttonClass, toast } from '@/components/ui'
+import { Button, EmptyState, ErrorState, LoadingRegion, Skeleton, Switch, buttonClass, toast } from '@/components/ui'
 import { ApiError } from '@/api/client'
 import ArticleCard from '../components/ArticleCard'
 import EventCard from '../components/EventCard'
@@ -9,6 +9,7 @@ import { fetchOrganizationBySlug } from '../api/organizations'
 import { fetchArticles } from '../api/articles'
 import { fetchEvents } from '../api/events'
 import { followOrganization, unfollowOrganization } from '../api/follows'
+import { fetchOrgMailPreference, setOrgMailPreference } from '../api/orgMail'
 import { getSession } from '@/store/authStore'
 import { isFollowing, refreshFollows } from '@/newsletter/utils/session'
 import { localeFor, todayISO } from '../utils/dates'
@@ -35,6 +36,8 @@ export default function OrgPortalPage() {
   const [authed, setAuthed]     = useState(false)
   const [following, setFollowing] = useState(false)
   const [followBusy, setFollowBusy] = useState(false)
+  // Whether the follower gets the org's emails (null = unknown / not following).
+  const [mailOn, setMailOn] = useState<boolean | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +74,27 @@ export default function OrgPortalPage() {
     })
     return () => { cancelled = true }
   }, [slug])
+
+  useEffect(() => {
+    if (!authed || !following) { setMailOn(null); return }
+    let cancelled = false
+    fetchOrgMailPreference(slug)
+      .then((on) => { if (!cancelled) setMailOn(on) })
+      .catch((err: unknown) => console.error('newsletter: mail preference', err))
+    return () => { cancelled = true }
+  }, [authed, following, slug])
+
+  async function toggleMail(next: boolean) {
+    const previously = mailOn
+    setMailOn(next)
+    try {
+      setMailOn(await setOrgMailPreference(slug, next))
+    } catch (err) {
+      console.error(err)
+      setMailOn(previously)
+      toast.error(t('orgs.mailError'))
+    }
+  }
 
   async function toggleFollow() {
     setFollowBusy(true)
@@ -174,6 +198,14 @@ export default function OrgPortalPage() {
                 {org.description}
               </p>
               <OrgLinks org={org} />
+              {mailOn !== null && (
+                <Switch
+                  checked={mailOn}
+                  onChange={toggleMail}
+                  label={t('orgs.receiveMail', { org: org.name })}
+                  hint={t('orgs.receiveMailHint')}
+                />
+              )}
             </div>
             <div className="flex sm:flex-col gap-6 sm:gap-3 flex-shrink-0 sm:text-right">
               <Stat label={t('orgs.followersLabel', { count: followers })} value={followers.toLocaleString(localeFor(i18n.language))} />

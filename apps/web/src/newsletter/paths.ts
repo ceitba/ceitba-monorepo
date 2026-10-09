@@ -38,8 +38,8 @@ export function articleEditPath(id: string, from: 'mine' | 'admin' = 'mine'): st
 }
 
 // An organization's pages in Mis publicaciones: profile (''), stats,
-// members, followers.
-export function orgAreaPath(slug: string, page: '' | 'stats' | 'members' | 'followers' = ''): string {
+// members, followers, mail (the API's OAuth callback redirects to .../mail).
+export function orgAreaPath(slug: string, page: '' | 'stats' | 'members' | 'followers' | 'mail' = ''): string {
   return newsletterPath(`/mine/org/${encodeURIComponent(slug)}${page ? `/${page}` : ''}`)
 }
 

@@ -121,3 +121,50 @@ including today) → `OrgAnalyticsService.OrgAnalytics`:
 
 The web page is `/newsletter/mine/org/:slug/stats` (Estadísticas), built from the same CSS charts as the staff
 analytics (`newsletter/components/admin/charts.tsx`).
+
+## Email to followers
+
+An org's admins email its followers from the org's **own Gmail account** (`mail_sender_account`, owner type
+`organization`, owner ref = slug). The Google Cloud setup is the digest's (WEEKLY-DIGEST.md: Internal consent
+screen on the itba.edu.ar Workspace, `gmail.send` scope, the same `GOOGLE_MAIL_REDIRECT_URI`), so the account must
+be an `@itba.edu.ar` one (`ORG_MAIL_ALLOWED_DOMAIN`).
+
+**Connecting.** `POST /v1/organizations/{slug}/mail/connect` (the org's own admin) returns Google's consent URL
+with `hd=<allowed domain>` and no login hint; the signed OAuth state carries the slug. The shared callback
+(`/v1/mail/accounts/oauth/callback`) then requires the user to still be an admin of the org and a verified address
+of the allowed domain that no other owner uses, stores the encrypted refresh token (one account per org;
+reconnecting with another address replaces it) and redirects to `/newsletter/mine/org/{slug}/mail` with
+`?mail=connected` or `?mail=error&reason=` `not_org_admin | wrong_domain | account_in_use | missing_scope |
+no_refresh_token | access_denied | invalid_state | exchange_failed`. `DELETE /v1/organizations/{slug}/mail`
+revokes and removes it; deleting the org does too.
+
+**Sending.** Each org account gets its own `MailSendService` (`OrgMailSenders`): its own rolling-24h quota in
+`mail_send_log` (`ORG_MAIL_DAILY_LIMIT`, default 400, or `mail.daily-limits.<address>`), lock and pause, with the
+org's name in From. The transport follows `MAIL_ENABLED`/`MAIL_TRANSPORT` (log-only in dev); with SMTP orgs can't
+send. Org emails (kind `org`) are refused outside `digest.allowed-domains`, like the digest's.
+
+| Method | Path (`/v1/organizations/{slug}`…) | |
+|---|---|---|
+| GET | `/mail` | account, quota, `weeklyLimit`/`sentThisWeek`, `recipientEstimate` |
+| GET / POST | `/announcements` | list (50 latest, with sent/failed/pending counts) / create a draft `{subject, body}` |
+| PATCH / DELETE | `/announcements/{id}` | drafts only (409 `OrgMailNotDraft`) |
+| POST | `/announcements/{id}/test` | the draft to the caller, `[Prueba] …` |
+| POST | `/announcements/{id}/send` | snapshot the recipients and start sending |
+
+All are for the org's admins and STAFF. Send answers 409 `OrgMailNotConnected`, `MailDisabled`,
+`OrgMailWeeklyLimit` (`ORG_MAIL_WEEKLY_LIMIT`, default 3 per rolling 7 days) or `OrgMailNoRecipients`.
+Recipients are the org's followers who haven't opted out, within the allowed domains; each is re-checked right
+before its email. `OrgAnnouncementSender` works through the deliveries exactly like the digest's worker (claim with
+`SKIP LOCKED`, at most once, `TRANSIENT` retried 3 times, quota/transport problems pause until a later tick), woken
+after commit and every `org-mail.tick-interval` (PT2M) by `OrgMailJob` (`ORG_MAIL_JOBS_ENABLED`).
+
+The body is plain text (≤ 20 000 chars): escaped, blank lines start paragraphs, http(s) URLs become links; no
+HTML, attachments or open/click tracking. `Reply-To` is the org's contact email when set. Delivery rows are deleted
+with the digest's tracking data (`MAIL_RETENTION_TRACKING_EVENTS`, 180 days after the email finished).
+
+**Opting out.** Every email has `List-Unsubscribe` (one-click, RFC 8058) to the public
+`POST /v1/org-mail/unsubscribe?token=` and a footer link to `/newsletter/unsubscribe?kind=org&token=`. The token
+(`<userId>.<slug>.<HMAC>`, ContentHmac purpose `org-mail-unsubscribe`) only opts that user out of that org
+(`org_mail_optouts`, which survives unfollowing). A follower switches an org's emails on and off with
+`GET`/`PUT /v1/me/follows/{slug}/mail` `{enabled}` (the portal shows the switch). The stats count announcements
+and recipients (`mail`).

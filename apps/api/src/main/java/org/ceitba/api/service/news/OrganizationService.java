@@ -4,6 +4,7 @@ import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.news.OrganizationRepository;
+import org.ceitba.api.service.mail.MailSenderAccountService;
 import org.ceitba.api.service.user.SocialHandles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +15,11 @@ import java.util.List;
 public class OrganizationService {
 
     private final OrganizationRepository repo;
+    private final MailSenderAccountService mailAccounts;
 
-    public OrganizationService(OrganizationRepository repo) {
+    public OrganizationService(OrganizationRepository repo, MailSenderAccountService mailAccounts) {
         this.repo = repo;
+        this.mailAccounts = mailAccounts;
     }
 
     @Transactional(readOnly = true)
@@ -85,6 +88,8 @@ public class OrganizationService {
         if (!repo.existsById(slug)) {
             throw new ResourceNotFoundException("Organization", slug);
         }
+        // mail_sender_account.owner_ref has no FK: revoke and drop the org's Gmail account.
+        mailAccounts.disconnectOrg(slug);
         repo.deleteById(slug);
     }
 }

@@ -26,6 +26,7 @@ import OrgProfilePage      from './pages/mine/OrgProfilePage'
 import OrgFollowersPage    from './pages/mine/OrgFollowersPage'
 import OrgMembersPage      from './pages/mine/OrgMembersPage'
 import OrgAnalyticsPage    from './pages/mine/OrgAnalyticsPage'
+import OrgMailPage         from './pages/mine/OrgMailPage'
 import EventDetailPage     from './pages/EventDetailPage'
 import EventAttendeesPage  from './pages/mine/EventAttendeesPage'
 import UnsubscribePage     from './pages/UnsubscribePage'
@@ -98,6 +99,7 @@ export default function NewsletterApp() {
           <Route path="org/:slug/stats"      element={<OrgAnalyticsPage />} />
           <Route path="org/:slug/members"    element={<OrgMembersPage />} />
           <Route path="org/:slug/followers"  element={<OrgFollowersPage />} />
+          <Route path="org/:slug/mail"       element={<OrgMailPage />} />
           <Route path="*"                    element={<Navigate to={MY_ARTICLES_PATH} replace />} />
         </Route>
 

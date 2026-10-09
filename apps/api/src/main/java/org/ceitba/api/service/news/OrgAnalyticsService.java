@@ -6,6 +6,7 @@ import org.ceitba.api.repository.PushLogRepository;
 import org.ceitba.api.repository.news.AnalyticsEventRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.repository.news.UserFollowRepository;
+import org.ceitba.api.repository.orgmail.OrgAnnouncementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 // Stats of one organization for its members (docs/ORGANIZATIONS.md): views of
-// its articles and events, followers, and push reach, over the last `days`
+// its articles and events, followers, push and email reach, over the last `days`
 // ART calendar days (today included). Views count toward the article's or
 // event's current organization; "visitors" are distinct browser sessions;
 // the follower series counts current followers by the day they followed
@@ -33,20 +34,23 @@ public class OrgAnalyticsService {
     private final UserFollowRepository follows;
     private final PushLogRepository pushLog;
     private final OrganizationRepository orgs;
+    private final OrgAnnouncementRepository announcements;
     private final Clock clock;
 
     public OrgAnalyticsService(AnalyticsEventRepository analytics, UserFollowRepository follows,
-                               PushLogRepository pushLog, OrganizationRepository orgs, Clock clock) {
+                               PushLogRepository pushLog, OrganizationRepository orgs,
+                               OrgAnnouncementRepository announcements, Clock clock) {
         this.analytics = analytics;
         this.follows = follows;
         this.pushLog = pushLog;
         this.orgs = orgs;
+        this.announcements = announcements;
         this.clock = clock;
     }
 
     public record OrgAnalytics(int days, long articleViews, long eventViews, long uniqueVisitors,
                                List<DailyViews> daily, List<ArticleViews> topArticles, List<EventStats> events,
-                               Followers followers, PushReach pushes) {}
+                               Followers followers, PushReach pushes, MailReach mail) {}
 
     public record DailyViews(LocalDate date, long articleViews, long eventViews) {}
 
@@ -61,6 +65,9 @@ public class OrgAnalyticsService {
     public record FollowerPoint(LocalDate date, long count) {}
 
     public record PushReach(long pushes, long devicesTargeted, long devicesReached) {}
+
+    // Announcements the org emailed to its followers in the window.
+    public record MailReach(long announcements, long recipients) {}
 
     @Transactional(readOnly = true)
     public OrgAnalytics summary(String org, int days) {
@@ -103,10 +110,12 @@ public class OrgAnalyticsService {
         long total = follows.countByOrganization(org);
 
         var push = first(pushLog.totalsForOrgSince(org, since));
+        var mail = first(announcements.totalsSince(org, since));
 
         return new OrgAnalytics(days, num(totals[0]), num(totals[1]), num(totals[2]), daily, top, events,
             new Followers(total, running - before, cumulative),
-            new PushReach(num(push[0]), num(push[1]), num(push[2])));
+            new PushReach(num(push[0]), num(push[1]), num(push[2])),
+            new MailReach(num(mail[0]), num(mail[1])));
     }
 
     private static Object[] first(List<Object[]> rows) {

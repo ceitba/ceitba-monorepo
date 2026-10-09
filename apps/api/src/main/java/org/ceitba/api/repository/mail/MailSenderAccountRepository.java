@@ -15,6 +15,8 @@ public interface MailSenderAccountRepository extends JpaRepository<MailSenderAcc
 
     Optional<MailSenderAccount> findFirstByOwnerTypeAndOwnerRefIsNull(String ownerType);
 
+    Optional<MailSenderAccount> findFirstByOwnerTypeAndOwnerRef(String ownerType, String ownerRef);
+
     @Query("SELECT a FROM MailSenderAccount a WHERE lower(a.email) = lower(:email)")
     Optional<MailSenderAccount> findByEmailIgnoreCase(@Param("email") String email);
 
