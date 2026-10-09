@@ -248,7 +248,11 @@
       "rsvps_one": "{{count}} going →",
       "rsvps_other": "{{count}} going →",
       "rsvpsOf_one": "{{count}}/{{capacity}} going →",
-      "rsvpsOf_other": "{{count}}/{{capacity}} going →"
+      "rsvpsOf_other": "{{count}}/{{capacity}} going →",
+      "rsvpsText_one": "{{count}} going",
+      "rsvpsText_other": "{{count}} going",
+      "rsvpsOfText_one": "{{count}}/{{capacity}} going",
+      "rsvpsOfText_other": "{{count}}/{{capacity}} going"
     },
     "form": {
       "saving": "Saving…",
@@ -857,7 +861,7 @@
       "export": "Export CSV",
       "emptyTitle": "Nobody signed up yet",
       "empty": "When someone RSVPs from the event page, they show up here.",
-      "forbidden": "The organization's admins made the attendee list admins-only.",
+      "forbidden": "Only the organization's admins, and its members if the admins allow it, can see who signed up.",
       "loadError": "We could not load the list."
     },
     "orgStats": {

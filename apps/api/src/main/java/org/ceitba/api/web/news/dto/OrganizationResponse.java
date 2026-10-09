@@ -24,6 +24,8 @@ public record OrganizationResponse(
     boolean recruitingOpen,
     String  recruitingUrl,
     String  recruitingText,
+    // Whether plain members see events' RSVP lists (the admins' setting).
+    boolean attendeesVisibleToMembers,
     List<BoardMemberView> board
 ) {
     public static OrganizationResponse from(Organization org, long followerCount) {
@@ -37,7 +39,7 @@ public record OrganizationResponse(
             followerCount, org.getLogoUrl(), org.getBackgroundUrl(),
             org.getInstagram(), org.getLinkedinUrl(), org.getWebsiteUrl(), org.getContactEmail(),
             org.isRecruitingOpen(), org.getRecruitingUrl(), org.getRecruitingText(),
-            board
+            org.isAttendeesVisibleToMembers(), board
         );
     }
 }

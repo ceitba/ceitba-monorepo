@@ -4,8 +4,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 
+// @DynamicUpdate: an UPDATE writes only the columns that changed, so a profile
+// edit (any member) never rewrites a member setting an admin changed meanwhile
+// (attendees_visible_to_members), and vice versa.
 @Entity
+@DynamicUpdate
 @Table(schema = "public", name = "organizations")
 public class Organization {
 

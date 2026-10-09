@@ -50,6 +50,7 @@ export default function OrgMembersPage() {
   const [loadError, setLoadError] = useState<'' | 'forbidden' | 'error'>('')
   const [reloadKey, setReloadKey] = useState(0)
   const [busyId, setBusyId] = useState('')
+  const [settingsBusy, setSettingsBusy] = useState(false)
   const [inviting, setInviting] = useState(false)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
@@ -96,7 +97,7 @@ export default function OrgMembersPage() {
   }
 
   async function setAttendeesVisible(visible: boolean) {
-    setBusyId('settings')
+    setSettingsBusy(true)
     try {
       const settings = await updateOrgMemberSettings(slug, { attendeesVisibleToMembers: visible })
       setData((d) => d && { ...d, settings })
@@ -104,7 +105,7 @@ export default function OrgMembersPage() {
       console.error('newsletter: member settings', e)
       toast.error(errorMessage(e))
     } finally {
-      setBusyId('')
+      setSettingsBusy(false)
     }
   }
 
@@ -222,7 +223,7 @@ export default function OrgMembersPage() {
               onChange={setAttendeesVisible}
               label={t('admin.members.attendeesVisible')}
               hint={t('admin.members.attendeesVisibleHint')}
-              disabled={busyId === 'settings'}
+              disabled={settingsBusy}
             />
           </section>
 

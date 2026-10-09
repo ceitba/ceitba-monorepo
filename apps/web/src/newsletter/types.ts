@@ -162,6 +162,8 @@ export interface Organization {
   recruitingOpen: boolean
   recruitingUrl: string | null
   recruitingText: string | null
+  // Plain members see events' RSVP lists (admins always do).
+  attendeesVisibleToMembers: boolean
   // Only on GET /organizations/{slug}; null in lists.
   board?: BoardMember[] | null
 }
@@ -175,7 +177,7 @@ export interface BoardMember {
 
 // OrganizationRequest / OrganizationPatchRequest. In a PATCH a blank string
 // clears a contact or recruiting field.
-export type OrganizationInput = Partial<Omit<Organization, 'followerCount' | 'board'>>
+export type OrganizationInput = Partial<Omit<Organization, 'followerCount' | 'board' | 'attendeesVisibleToMembers'>>
 
 export type MembershipRole = 'member' | 'admin'
 

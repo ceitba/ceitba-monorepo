@@ -248,7 +248,11 @@
       "rsvps_one": "{{count}} anotado →",
       "rsvps_other": "{{count}} anotados →",
       "rsvpsOf_one": "{{count}}/{{capacity}} anotados →",
-      "rsvpsOf_other": "{{count}}/{{capacity}} anotados →"
+      "rsvpsOf_other": "{{count}}/{{capacity}} anotados →",
+      "rsvpsText_one": "{{count}} anotado",
+      "rsvpsText_other": "{{count}} anotados",
+      "rsvpsOfText_one": "{{count}}/{{capacity}} anotados",
+      "rsvpsOfText_other": "{{count}}/{{capacity}} anotados"
     },
     "form": {
       "saving": "Guardando…",
@@ -857,7 +861,7 @@
       "export": "Exportar CSV",
       "emptyTitle": "Todavía nadie se anotó",
       "empty": "Cuando alguien se anote desde la página del evento, lo vas a ver acá.",
-      "forbidden": "Los admins de la organización dejaron la lista de anotados solo para admins.",
+      "forbidden": "Solo los admins de la organización, y sus miembros si los admins lo permiten, pueden ver quién se anotó.",
       "loadError": "No pudimos cargar la lista."
     },
     "orgStats": {

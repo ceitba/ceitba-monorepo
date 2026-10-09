@@ -1,11 +1,9 @@
 package org.ceitba.api.web.news;
 
 import org.ceitba.api.domain.User;
-import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
-import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,18 +24,15 @@ public class OrgAccess {
     private final OrganizationMembershipService membership;
     private final ArticleRepository articleRepo;
     private final NewsEventRepository eventRepo;
-    private final OrganizationRepository orgRepo;
 
     public OrgAccess(UserRepository userRepo,
                      OrganizationMembershipService membership,
                      ArticleRepository articleRepo,
-                     NewsEventRepository eventRepo,
-                     OrganizationRepository orgRepo) {
+                     NewsEventRepository eventRepo) {
         this.userRepo   = userRepo;
         this.membership = membership;
         this.articleRepo = articleRepo;
         this.eventRepo  = eventRepo;
-        this.orgRepo    = orgRepo;
     }
 
     public boolean canEditOrg(String slug, Authentication auth) {
@@ -109,14 +104,9 @@ public class OrgAccess {
     public boolean canSeeAttendees(String eventId, Authentication auth) {
         UUID userId = userIdOf(auth);
         if (userId == null) return false;
-        // Only the slug of the lazy organization proxy (no session here); the
-        // setting comes from a fresh load.
         return eventRepo.findById(eventId)
-            .filter(e -> e.getOrganization() != null)
-            .map(e -> e.getOrganization().getSlug())
-            .map(slug -> membership.userIsAdminOf(userId, slug)
-                || (membership.userBelongsTo(userId, slug)
-                    && orgRepo.findById(slug).map(Organization::isAttendeesVisibleToMembers).orElse(false)))
+            .map(e -> e.getOrganization() != null
+                && membership.userSeesAttendeesOf(userId, e.getOrganization().getSlug()))
             .orElse(false);
     }
 

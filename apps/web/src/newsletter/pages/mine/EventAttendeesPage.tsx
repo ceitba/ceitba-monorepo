@@ -17,8 +17,9 @@ function csvField(value: string): string {
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
 
-// Who RSVP'd to an event, for the members of its organization (the API
-// answers 403 to anyone else), with a CSV export for the door list.
+// Who RSVP'd to an event, for the admins of its organization and, unless the
+// admins turned that off, its plain members (the API answers 403 to anyone
+// else), with a CSV export for the door list.
 export default function EventAttendeesPage() {
   const { id = '' } = useParams()
   const { t, i18n } = useTranslation()

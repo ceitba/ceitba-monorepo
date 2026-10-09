@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchAllEvents, deleteEvent } from '../../api/events'
 import { isStaff } from '@/store/authStore'
-import { getOrganizations } from '@/newsletter/utils/session'
+import { getOrganizations, isOrgAdmin } from '@/newsletter/utils/session'
 import { useAuth } from '@/hooks/useAuth'
 import CategoryBadge from '../../components/CategoryBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
@@ -19,8 +19,12 @@ const COLS = 6
 export default function MyEventsPage() {
   const { t, i18n } = useTranslation()
   const { profile } = useAuth()
-  const { orgName } = useAdminContext()
+  const { orgName, orgs } = useAdminContext()
   const staff = isStaff(profile)
+  // The RSVP list: staff and the org's admins always; plain members unless
+  // the admins hid it (the API answers 403 then).
+  const seesAttendees = (slug: string | null) => Boolean(slug) && (staff || isOrgAdmin(slug as string, profile)
+    || (orgs.find((o) => o.slug === slug)?.attendeesVisibleToMembers ?? true))
   const [events, setEvents]     = useState<NewsEvent[]>([])
   const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
   const [toDelete, setToDelete] = useState<NewsEvent | null>(null)
@@ -76,7 +80,14 @@ export default function MyEventsPage() {
           <Link to={eventPath(event.id)} className={`font-body text-body-sm font-semibold line-clamp-2 hover:underline underline-offset-2 ${text}`}>
             {event.title}
           </Link>
-          {event.signupMode === 'rsvp' && (
+          {event.signupMode === 'rsvp' && !seesAttendees(event.organization) && (
+            <span className="block font-mono text-label text-ink-secondary dark:text-night-muted">
+              {event.capacity != null
+                ? t('admin.events.rsvpsOfText', { count: event.rsvpCount, capacity: event.capacity })
+                : t('admin.events.rsvpsText', { count: event.rsvpCount })}
+            </span>
+          )}
+          {event.signupMode === 'rsvp' && seesAttendees(event.organization) && (
             <Link
               to={newsletterPath(`/mine/events/${encodeURIComponent(event.id)}/attendees`)}
               className="inline-flex items-center min-h-[32px] font-mono text-label text-primary dark:text-primary-300 hover:underline underline-offset-2"

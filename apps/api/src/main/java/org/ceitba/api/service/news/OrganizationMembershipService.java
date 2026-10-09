@@ -97,6 +97,17 @@ public class OrganizationMembershipService {
         return repo.existsByUserIdAndOrganizationAndRole(userId, orgSlug, ADMIN_ROLE);
     }
 
+    // An event's RSVP list (names, emails): the org's admins, and its plain
+    // members unless the admins turned that off. STAFF is handled by the caller.
+    @Transactional(readOnly = true)
+    public boolean userSeesAttendeesOf(UUID userId, String orgSlug) {
+        if (userId == null || orgSlug == null) return false;
+        return repo.findById(new UserOrganizationId(userId, orgSlug))
+            .map(m -> ADMIN_ROLE.equals(m.getRole())
+                || orgRepo.findById(orgSlug).map(o -> o.isAttendeesVisibleToMembers()).orElse(false))
+            .orElse(false);
+    }
+
     @Transactional(readOnly = true)
     public List<MemberView> members(String orgSlug) {
         requireOrg(orgSlug);
