@@ -35,14 +35,18 @@ public final class SharedPostgres {
     private static final PostgreSQLContainer<?> CONTAINER =
         new PostgreSQLContainer<>("postgres:16-alpine")
             // Throwaway data: keep it in RAM and skip every durability step.
-            .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"))
+            // Capped so a leak fails loudly instead of eating the runner's RAM;
+            // each context's database is dropped when the context closes.
+            .withTmpFs(Map.of("/var/lib/postgresql/data", "rw,size=2g"))
             .withCommand("postgres",
                 // A few cached test contexts (10 pooled connections each) plus
                 // the plain-JUnit ITs all point at this one server.
                 "-c", "max_connections=200",
                 "-c", "fsync=off",
                 "-c", "synchronous_commit=off",
-                "-c", "full_page_writes=off");
+                "-c", "full_page_writes=off",
+                // WAL lives on the tmpfs too; the 1 GB default is wasted RAM.
+                "-c", "max_wal_size=128MB");
 
     static {
         CONTAINER.start();
@@ -63,11 +67,22 @@ public final class SharedPostgres {
         }
         var url = "jdbc:postgresql://" + CONTAINER.getHost() + ":"
             + CONTAINER.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT) + "/" + name;
-        return new Database(url, CONTAINER.getUsername(), CONTAINER.getPassword());
+        return new Database(name, url, CONTAINER.getUsername(), CONTAINER.getPassword());
+    }
+
+    /** Drops a database made by {@link #newDatabase()}, closing any connection still open on it. */
+    public static void dropDatabase(Database database) {
+        try (var c = DriverManager.getConnection(
+                 CONTAINER.getJdbcUrl(), CONTAINER.getUsername(), CONTAINER.getPassword());
+             var s = c.createStatement()) {
+            s.execute("DROP DATABASE IF EXISTS " + database.name() + " WITH (FORCE)");
+        } catch (SQLException e) {
+            throw new IllegalStateException("Could not drop test database " + database.name(), e);
+        }
     }
 
     /** Connection details for one per-class database; mirrors the container getters. */
-    public record Database(String jdbcUrl, String username, String password) {
+    public record Database(String name, String jdbcUrl, String username, String password) {
         public String getJdbcUrl() {
             return jdbcUrl;
         }
