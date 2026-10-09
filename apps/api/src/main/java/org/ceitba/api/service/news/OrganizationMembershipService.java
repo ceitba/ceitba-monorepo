@@ -176,7 +176,7 @@ public class OrganizationMembershipService {
             var ids = added.stream().map(MemberView::userId).collect(Collectors.toSet());
             events.publishEvent(new PushToUsers(ids, new PushMessage(
                 name, "Te sumaron como miembro de " + name,
-                Map.of(PushMessage.TYPE, "organization", PushMessage.ID, orgSlug))));
+                Map.of(PushMessage.TYPE, "organization", PushMessage.ID, orgSlug, "org", orgSlug))));
         }
         return new InviteResult(added, pending);
     }

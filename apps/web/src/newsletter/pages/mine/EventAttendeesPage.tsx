@@ -9,9 +9,12 @@ import { localeFor } from '../../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
 import type { Attendee, NewsEvent } from '../../types'
 
-// Quotes a CSV field when needed (RFC 4180).
+// Quotes a CSV field when needed (RFC 4180). Names come from users' Google
+// profiles: one starting with = + - @ (or a tab/CR) would run as a formula
+// in Excel/Sheets, so it is prefixed with ' to stay text.
 function csvField(value: string): string {
-  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
 
 // Who RSVP'd to an event, for the members of its organization (the API

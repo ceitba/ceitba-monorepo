@@ -829,7 +829,8 @@
         "lastAdmin": "The organization needs at least one admin. Make another member admin first.",
         "forbidden": "You are not allowed to manage this organization's members.",
         "save": "We could not save the change. Try again.",
-        "invalidEmails": "Some email is invalid or cannot sign in to the site (it must be @itba.edu.ar)."
+        "invalidEmails": "Some email is invalid or cannot sign in to the site (it must be @itba.edu.ar).",
+        "tooMany": "You can invite up to {{max}} emails at a time."
       },
       "confirm": {
         "remove": {

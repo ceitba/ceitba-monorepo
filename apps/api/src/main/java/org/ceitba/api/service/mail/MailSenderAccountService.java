@@ -188,7 +188,8 @@ public class MailSenderAccountService {
         String enc = cipher().encrypt(refreshToken, senderEmail);
         var row = accounts.findFirstByOwnerTypeAndOwnerRefIsNull(MailSenderAccount.OWNER_CEITBA).orElse(null);
         if (row == null || !row.getEmail().equalsIgnoreCase(senderEmail)) {
-            if (row != null) accounts.delete(row);
+            // The replaced address's token is revoked at Google too, like a disconnect.
+            if (row != null) delete(row.getId());
             accounts.flush();
             accounts.save(new MailSenderAccount(senderEmail, MailSenderAccount.OWNER_CEITBA, null, enc, scopes, by, now));
         } else {
@@ -205,7 +206,8 @@ public class MailSenderAccountService {
         String enc = cipher().encrypt(refreshToken, senderEmail);
         var row = accounts.findFirstByOwnerTypeAndOwnerRef(MailSenderAccount.OWNER_ORGANIZATION, slug).orElse(null);
         if (row == null || !row.getEmail().equalsIgnoreCase(senderEmail)) {
-            if (row != null) accounts.delete(row);
+            // The replaced address's token is revoked at Google too, like a disconnect.
+            if (row != null) delete(row.getId());
             accounts.flush();
             accounts.save(new MailSenderAccount(senderEmail, MailSenderAccount.OWNER_ORGANIZATION, slug, enc, scopes,
                 by, now));

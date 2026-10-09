@@ -190,6 +190,10 @@ class EventSignupIT {
         assertThat(reminders.sendDueReminders()).isZero();
         assertThat(eventRepo.findById("tomorrow-evt").orElseThrow().getReminderSentAt()).isNotNull();
         assertThat(eventRepo.findById("rsvp-evt").orElseThrow().getReminderSentAt()).isNull();
+        // No RSVPs at the first run: left unclaimed, so a later run reminds a late sign-up.
+        assertThat(eventRepo.findById("tomorrow-empty").orElseThrow().getReminderSentAt()).isNull();
+        mvc.perform(post("/v1/news/events/tomorrow-empty/rsvp").with(as("bob@itba.edu.ar"))).andExpect(status().isOk());
+        assertThat(reminders.sendDueReminders()).isEqualTo(1);
 
         // Rescheduled after its reminder went out: reminded again for the new date.
         mvc.perform(patch("/v1/news/events/tomorrow-evt").with(as("alice@itba.edu.ar"))

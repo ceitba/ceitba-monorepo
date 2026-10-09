@@ -829,7 +829,8 @@
         "lastAdmin": "La organización tiene que tener al menos un admin. Hacé admin a otro miembro primero.",
         "forbidden": "No tenés permiso para gestionar los miembros de esta organización.",
         "save": "No pudimos guardar el cambio. Probá de nuevo.",
-        "invalidEmails": "Algún mail no es válido o no puede entrar al sitio (tiene que ser @itba.edu.ar)."
+        "invalidEmails": "Algún mail no es válido o no puede entrar al sitio (tiene que ser @itba.edu.ar).",
+        "tooMany": "Podés invitar hasta {{max}} mails por vez."
       },
       "confirm": {
         "remove": {

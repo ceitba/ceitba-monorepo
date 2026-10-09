@@ -6,7 +6,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 
-// rsvpCount: people going (signupMode 'rsvp'; 0 otherwise).
+// rsvpCount: RSVP rows of the event. They survive a change of signupMode, so
+// read it only when signupMode is 'rsvp'.
 public record NewsEventResponse(
     String        id,
     String        title,

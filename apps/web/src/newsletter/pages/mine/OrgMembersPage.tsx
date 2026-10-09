@@ -24,6 +24,9 @@ type Confirm =
   | { kind: 'leave' }
   | { kind: 'transfer'; member: OrgMember }
 
+// What POST .../members/invites takes at once (OrganizationMembershipService).
+const MAX_INVITES = 50
+
 // Emails typed or pasted one per line, or separated by commas/spaces.
 function parseEmails(raw: string): string[] {
   return [...new Set(raw.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))]
@@ -79,6 +82,11 @@ export default function OrgMembersPage() {
     setBusyId(member.userId)
     try {
       replaceMember(await updateOrgMember(slug, member.userId, patch))
+      // Stepped down to member: no longer allowed here, like after a transfer.
+      if (member.userId === profile?.id && member.role === 'admin' && patch.role === 'member' && !staff) {
+        await getSession({ force: true })
+        navigate(orgAreaPath(slug), { replace: true })
+      }
     } catch (e) {
       console.error('newsletter: update member', e)
       toast.error(errorMessage(e))
@@ -350,10 +358,11 @@ function InviteModal({ slug, onClose, onDone }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const emails = parseEmails(raw)
+  const tooMany = emails.length > MAX_INVITES
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (!emails.length) return
+    if (!emails.length || tooMany) return
     setBusy(true)
     setError('')
     try {
@@ -378,7 +387,7 @@ function InviteModal({ slug, onClose, onDone }: {
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={busy}>{t('admin.common.cancel')}</Button>
-          <Button type="submit" form="org-invite-form" loading={busy} disabled={!emails.length}>
+          <Button type="submit" form="org-invite-form" loading={busy} disabled={!emails.length || tooMany}>
             {t('admin.members.inviteSubmit', { count: emails.length })}
           </Button>
         </>
@@ -405,6 +414,7 @@ function InviteModal({ slug, onClose, onDone }: {
             </select>
           )}
         </Field>
+        {tooMany && <Alert tone="error">{t('admin.members.errors.tooMany', { max: MAX_INVITES })}</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
       </form>
     </Modal>

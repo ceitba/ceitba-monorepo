@@ -56,10 +56,12 @@ public class OrgMailSenders {
         return props.dailyLimits().getOrDefault(account, orgMail.dailyLimit());
     }
 
+    // The org's name is member-editable: control characters (CR/LF) are dropped.
     static String fromHeader(String address, String displayName) {
-        if (displayName == null || displayName.isBlank()) return address;
+        String name = displayName == null ? "" : displayName.replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").strip();
+        if (name.isEmpty()) return address;
         try {
-            return new InternetAddress(address, displayName.trim(), "UTF-8").toString();
+            return new InternetAddress(address, name, "UTF-8").toString();
         } catch (UnsupportedEncodingException e) {
             return address;
         }

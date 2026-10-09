@@ -11,7 +11,7 @@ import { cancelRsvp, fetchEventById, fetchMyRsvps, rsvpEvent } from '../api/even
 import { fetchOrganizationBySlug } from '../api/organizations'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate, todayISO } from '../utils/dates'
-import { newsletterPath } from '@/newsletter/paths'
+import { eventPath, newsletterPath } from '@/newsletter/paths'
 import type { NewsEvent, Organization } from '../types'
 
 // Public page of one event: when and where, the organizing org, how to sign
@@ -83,7 +83,7 @@ export default function EventDetailPage() {
     endTime: event.endTime ?? event.startTime ?? '00:00',
     location: event.location ?? undefined,
     description: event.description ?? undefined,
-    url: `${window.location.origin}${newsletterPath(`/events/${encodeURIComponent(event.id)}`)}`,
+    url: `${window.location.origin}${eventPath(event.id)}`,
   }
   const googleUrl = googleCalendarEventUrl(calendarEvent)
 

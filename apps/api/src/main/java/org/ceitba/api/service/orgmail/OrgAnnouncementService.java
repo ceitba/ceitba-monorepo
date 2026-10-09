@@ -26,6 +26,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.mail.internet.MimeUtility;
+
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -207,7 +210,7 @@ public class OrgAnnouncementService {
         // RFC 2369 + RFC 8058 one-click: mail clients POST to the API directly.
         headers.put("List-Unsubscribe", "<" + digest.apiBaseUrl() + "/v1/org-mail/unsubscribe?token=" + enc(token) + ">");
         headers.put("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
-        headers.put("List-Id", o.getName().replaceAll("[<>\"]", "") + " <" + o.getSlug() + ".orgs.ceitba.org.ar>");
+        headers.put("List-Id", listIdPhrase(o.getName(), o.getSlug()) + " <" + o.getSlug() + ".orgs.ceitba.org.ar>");
         if (o.getContactEmail() != null) headers.put("Reply-To", o.getContactEmail());
         if (!test) headers.put("Precedence", "bulk");
         String subject = test ? "[Prueba] " + a.getSubject() : a.getSubject();
@@ -295,6 +298,21 @@ public class OrgAnnouncementService {
             c.getOrDefault(OrgAnnouncementDelivery.SENT, 0L), c.getOrDefault(OrgAnnouncementDelivery.FAILED, 0L),
             c.getOrDefault(OrgAnnouncementDelivery.PENDING, 0L) + c.getOrDefault(OrgAnnouncementDelivery.SENDING, 0L),
             a.getCreatedAt(), a.getSentAt(), a.getFinishedAt());
+    }
+
+    // The List-Id phrase from the org's name, which any member can edit:
+    // headers are written to the message as is, so control characters
+    // (CR/LF would start a new header, e.g. a Bcc) and <>" are dropped and
+    // non-ASCII text ("Robótica") goes out as an RFC 2047 encoded word.
+    static String listIdPhrase(String name, String slug) {
+        String s = name == null ? "" : name.replaceAll("[\\p{Cntrl}<>\"]", " ").replaceAll("\\s+", " ").strip();
+        if (s.isEmpty()) return slug;
+        if (s.chars().allMatch(c -> c < 0x80)) return s;
+        try {
+            return MimeUtility.encodeText(s, "UTF-8", "Q");
+        } catch (UnsupportedEncodingException e) {
+            return slug;
+        }
     }
 
     private static String enc(String s) {

@@ -44,9 +44,10 @@ public class EventReminderService {
         var now = OffsetDateTime.now(clock);
         int sent = 0;
         for (var id : events.findReminderDue(tomorrow)) {
-            if (events.claimReminder(id, now) != 1) continue;
+            // No RSVPs yet: left unclaimed, so a later run reminds whoever signs up this evening.
             var users = new HashSet<>(rsvps.findUserIdsByEventId(id));
             if (users.isEmpty()) continue;
+            if (events.claimReminder(id, now) != 1) continue;
             var event = events.findById(id).orElseThrow();
             var body = "Mañana a las " + event.getStartTime().format(TIME) + " · " + event.getLocation();
             var data = new HashMap<String, String>();

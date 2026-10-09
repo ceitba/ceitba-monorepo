@@ -74,8 +74,7 @@ public class OrgAccess {
     // Member management (OrgMembersController) is for the org's admins: it
     // exposes members' emails and decides who can publish for the org.
     public boolean canManageMembers(String slug, Authentication auth) {
-        UUID userId = userIdOf(auth);
-        return slug != null && userId != null && membership.userIsAdminOf(userId, slug);
+        return canViewFollowers(slug, auth);
     }
 
     // DELETE of an org's article or event by any current member of that org
