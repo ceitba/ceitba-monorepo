@@ -7,6 +7,7 @@ import { type Subject } from '../hooks/useSubjects'
 import { usePlanCatalogs } from '../hooks/usePlanCatalogs'
 import { ScheduleSlot } from '../types/scheduler'
 import { parsePayload, type SavedSchedulePayload } from '../services/workspaceSnapshot'
+import { knownSelection } from '../services/commissionNames'
 import { careerPlanLabel } from '../utils/careerLabel'
 import ScheduleGrid from '../components/ScheduleGrid'
 import ScheduleGridSkeleton from '../components/ScheduleGridSkeleton'
@@ -28,12 +29,16 @@ const slotsFromSaved = (
   for (const sc of payload.selectedCourses) {
     const subject = subjectsByCode.get(sc.subject_id)
     if (!subject) continue
+    // Names saved before a commission got (or lost) a suffix are resolved
+    // like a restored workspace's (see knownSelection).
+    const resolve = (name: string | undefined) => {
+      if (!name) return undefined
+      const known = knownSelection(subject.commissions, [name]).find((n) => n !== 'any')
+      return known ? subject.commissions.find((c) => c.name === known) : undefined
+    }
     const shownName = shown.get(sc.subject_id)
     const pickName = [...sc.selectedCommissions].sort().find((n) => n !== 'any')
-    const commission =
-      (shownName && subject.commissions.find((c) => c.name === shownName)) ||
-      (pickName && subject.commissions.find((c) => c.name === pickName)) ||
-      subject.commissions[0]
+    const commission = resolve(shownName) || resolve(pickName) || subject.commissions[0]
     if (!commission) continue
     for (const slot of commission.schedule ?? []) {
       out.push({

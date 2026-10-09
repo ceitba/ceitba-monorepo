@@ -123,8 +123,9 @@ class SyncUpserter {
     // first insert, so an ITBA date fix never reached the term filter
     // (CommissionTerms). ITBA issues new ids every term, so refreshing in
     // place never overwrites an older term's row; a change is logged anyway.
-    // A missing name or an unknown type (null from the client) keeps the
-    // stored value: ITBA omitting a field is not a change.
+    // On an existing row, a missing name or an unknown type (null from the
+    // client) keeps the stored value: ITBA omitting a field is not a change.
+    // A new row gets SEMESTRAL for an unknown type; it still needs a name.
     //
     // An existing commission is locked (SELECT ... FOR UPDATE) like every
     // schedule-correction write does, so a slot change and its correction

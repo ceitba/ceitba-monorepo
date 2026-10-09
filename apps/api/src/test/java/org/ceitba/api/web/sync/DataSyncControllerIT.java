@@ -41,4 +41,14 @@ class DataSyncControllerIT {
                 .header(ApiKeyFilter.HEADER, "test-sync-key"))
             .andExpect(status().isBadRequest());
     }
+
+    // term_year is a SMALLINT: a year that can't be a term is rejected
+    // instead of wrapping in the cast.
+    @Test
+    void rejectsAnOutOfRangeYear() throws Exception {
+        mvc.perform(post("/v1/sync/commissions")
+                .param("year", "40000")
+                .header(ApiKeyFilter.HEADER, "test-sync-key"))
+            .andExpect(status().isBadRequest());
+    }
 }

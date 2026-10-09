@@ -122,7 +122,9 @@ const mergeEquivalentOptions = (options: ScheduleSlot[][]): ScheduleSlot[][] => 
   const groups = new Map<string, ScheduleSlot[][]>();
   options.forEach(slots => {
     const key = optionKey(slots);
-    groups.set(key, [...(groups.get(key) ?? []), slots]);
+    const group = groups.get(key);
+    if (group) group.push(slots);
+    else groups.set(key, [slots]);
   });
   return Array.from(groups.values(), ([first, ...others]) => {
     if (others.length === 0) return first;

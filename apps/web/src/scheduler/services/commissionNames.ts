@@ -20,6 +20,9 @@ const slotKey = (slots: CommissionSchedule[]): string =>
     .sort()
     .join('|')
 
+// Present only while a correction is applied; else `schedule` is SGA's.
+const sgaSlots = (c: Commission): CommissionSchedule[] => c.sga_schedule ?? c.schedule
+
 // "YYYY-MM-DD" → "DD/MM" / "DD/MM/YYYY" without going through Date (no
 // time zone shift).
 const dayMonth = (date: string): string => `${date.slice(8, 10)}/${date.slice(5, 7)}`
@@ -31,14 +34,29 @@ const datesOverlap = (a: Commission, b: Commission): boolean =>
   !a.course_start || !a.course_end || !b.course_start || !b.course_end ||
   (a.course_start <= b.course_end && b.course_start <= a.course_end)
 
-// A saved selection (workspace, share) names commissions; names that no
-// longer exist (a commission now carries a suffix, or left the catalog) are
-// dropped, and a selection with none left means "any" rather than nothing.
+// The SGA name a selected name stands for: the name without the suffix
+// disambiguateCommissions may have added ("A (26/10)" / "M4 (2)" → "A" / "M4").
+const sgaNameOf = (name: string): string => name.replace(/ \((\d{2}\/\d{2}|\d+)\)$/, '')
+
+// A saved selection (workspace, share) names commissions. A name that no
+// longer exists is matched by its SGA name: a bare "A" saved before its twin
+// appeared stands for every commission now shown as "A (…)", and a suffixed
+// "A (26/10)" whose twin has since left the term stands for the plain "A".
+// Names with no match are dropped, and a selection with none left means
+// "any" rather than nothing.
 export function knownSelection(commissions: Commission[], selected: string[]): string[] {
   if (selected.includes('any')) return selected
   const names = new Set(commissions.map((c) => c.name))
-  const known = selected.filter((name) => names.has(name))
-  return known.length > 0 ? known : ['any']
+  const known = new Set<string>()
+  selected.forEach((name) => {
+    if (names.has(name)) {
+      known.add(name)
+      return
+    }
+    const sga = sgaNameOf(name)
+    commissions.filter((c) => (c.sga_name ?? c.name) === sga).forEach((c) => known.add(c.name))
+  })
+  return known.size > 0 ? Array.from(known) : ['any']
 }
 
 export function disambiguateCommissions(commissions: Commission[]): Commission[] {
@@ -52,7 +70,11 @@ export function disambiguateCommissions(commissions: Commission[]): Commission[]
   })
 
   const byName = new Map<string, Commission[]>()
-  unique.forEach((c) => byName.set(c.name, [...(byName.get(c.name) ?? []), c]))
+  unique.forEach((c) => {
+    const group = byName.get(c.name)
+    if (group) group.push(c)
+    else byName.set(c.name, [c])
+  })
 
   const renamed = new Map<Commission, Commission>()
   byName.forEach((group, name) => {
@@ -63,9 +85,11 @@ export function disambiguateCommissions(commissions: Commission[]): Commission[]
     const byDate = starts.every(Boolean) && new Set(starts.map((s) => dayMonth(s!))).size === group.length
     group.forEach((c, i) => {
       // Two commissions running at the same time under one name with
-      // different timetables: the data can't say which one is real.
+      // different SGA timetables: the data can't say which one is real.
+      // Compared on the SGA slots, not the effective ones: an applied
+      // student correction is not a second timetable.
       const conflicting = group.some((other) =>
-        other !== c && datesOverlap(c, other) && slotKey(other.schedule) !== slotKey(c.schedule))
+        other !== c && datesOverlap(c, other) && slotKey(sgaSlots(other)) !== slotKey(sgaSlots(c)))
       renamed.set(c, {
         ...c,
         name: byDate ? `${name} (${dayMonth(c.course_start!)})` : `${name} (${i + 1})`,

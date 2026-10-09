@@ -9,11 +9,14 @@
 -- existing row is dropped or rewritten beyond the new columns.
 --
 -- Backfill rule: the same split CommissionQuery uses for the period the
--- sync queries by default, so a backfilled row and one the sync stamps agree:
+-- sync queries by default, so a row stamped by a default sync and its
+-- backfill agree. Rows backfilled here record the term they started in; the
+-- sync stamps the LAST term that listed a row, so a year-long commission
+-- (01/03-31/12) backfilled as FirstSemester becomes SecondSemester once a
+-- second-semester sync lists it again. The split:
 -- a course starting February-June belongs to that year's FirstSemester, any
 -- other month (July-January) to that year's SecondSemester. A January summer
--- course thus gets the same (year, SecondSemester) the January sync stamps. Year-long commissions
--- (01/03-31/12) land in FirstSemester, the term they started in.
+-- course thus gets the same (year, SecondSemester) the January sync stamps.
 -- =============================================================================
 
 ALTER TABLE "public"."commission"

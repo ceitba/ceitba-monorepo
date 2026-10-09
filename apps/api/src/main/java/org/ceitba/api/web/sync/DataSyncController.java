@@ -104,6 +104,11 @@ public class DataSyncController {
             // anything ITBA wouldn't send back rather than store it.
             throw new ValidationException("period", period, "must be one of " + CommissionQuery.PERIODS);
         }
+        if (year != null && (year < 2000 || year > 2999)) {
+            // Stored as SMALLINT (term_year): reject what can't be a term
+            // rather than let the cast wrap it.
+            throw new ValidationException("year", year, "must be between 2000 and 2999");
+        }
         List<String> levelList = null;
         if (levels != null && !levels.isBlank()) {
             levelList = java.util.Arrays.stream(levels.split(","))
