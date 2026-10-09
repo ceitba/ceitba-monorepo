@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -96,6 +97,7 @@ public class ArticleService {
         }
         resolveOrganization(article, organizationSlug);
         article.setCreatedBy(createdBy);
+        dateIfPublished(article);
         notifyFollowersOnce(article);
         return articleRepo.save(article);
     }
@@ -104,22 +106,31 @@ public class ArticleService {
     // primitive: null means the request omitted it and it stays unchanged.
     // `independentAuthor` is the caller's id when they act only as the author
     // of an independent article (not STAFF, not an org member), else null.
+    // `clearPublishedAt` empties the date (a null in `patch` means unchanged).
+    // `expectedStatus`, when set, must match the article's current status
+    // (checked under the row lock), else 409 InvalidState.
     @Transactional
     public Article update(String id, Article patch, Boolean featured, String organizationSlug,
-                          UUID independentAuthor) {
+                          UUID independentAuthor, boolean clearPublishedAt, String expectedStatus) {
         var article = lockedForWrite(id, independentAuthor);
+        if (expectedStatus != null && !expectedStatus.equals(article.getStatus())) {
+            throw new InvalidStateException(
+                "Article " + id + " is " + article.getStatus() + ", not " + expectedStatus);
+        }
         if (patch.getTitle()      != null) article.setTitle(patch.getTitle());
         if (patch.getExcerpt()    != null) article.setExcerpt(patch.getExcerpt());
         if (patch.getBody()       != null) article.setBody(patch.getBody());
         if (patch.getCategory()   != null) article.setCategory(patch.getCategory());
         if (patch.getAuthors()    != null) article.setAuthors(patch.getAuthors());
         if (patch.getPublishedAt()!= null) article.setPublishedAt(patch.getPublishedAt());
+        else if (clearPublishedAt)         article.setPublishedAt(null);
         if (patch.getReadingTime()!= null) article.setReadingTime(patch.getReadingTime());
         if (patch.getColorScheme()!= null) article.setColorScheme(patch.getColorScheme());
         if (patch.getCoverImage() != null) article.setCoverImage(patch.getCoverImage());
         if (patch.getStatus()     != null) article.setStatus(patch.getStatus());
         if (featured              != null) article.setFeatured(featured);
         if (organizationSlug != null) resolveOrganization(article, organizationSlug);
+        dateIfPublished(article);
         notifyFollowersOnce(article);
         return articleRepo.save(article);
     }
@@ -159,6 +170,16 @@ public class ArticleService {
         if (!isPublished(article) || article.getPushSentAt() != null) return;
         article.markPushSent(OffsetDateTime.now(clock));
         NewsPushes.articlePublished(article).ifPresent(events::publishEvent);
+    }
+
+    // Drafts and submissions may be undated (an empty date means "the day
+    // it's published"), so a published article without a date gets today's,
+    // in ART: otherwise it would never reach the weekly digest
+    // (findPublishedBetween) and would sort first under publishedAt DESC.
+    private void dateIfPublished(Article article) {
+        if (isPublished(article) && article.getPublishedAt() == null) {
+            article.setPublishedAt(LocalDate.now(clock));
+        }
     }
 
     private static boolean isPublished(Article article) {

@@ -36,19 +36,6 @@ export interface BenefitCard {
   bulletsEn: string[]
 }
 
-export interface StaffMember {
-  id: string
-  year: number
-  departmentSlug: string
-  displayOrder: number
-  name: string
-  roleEs: string
-  roleEn: string
-  photoUrl: string | null
-  linkedinUrl: string | null
-  email: string | null
-}
-
 export function fetchDepartments(): Promise<DepartmentEntry[]> {
   return apiGet('/staff-departments')
 }
@@ -57,26 +44,16 @@ export function fetchBenefits(): Promise<BenefitEntry[]> {
   return apiGet('/benefits')
 }
 
-export function fetchStaffYears(): Promise<number[]> {
-  return apiGet('/staff-members/years')
+// The slug becomes the category's primary key: lowercase letters, digits and
+// single hyphens, 2-40 chars (the API answers 400 InvalidSlug otherwise and
+// 409 if it is taken).
+export function createBenefit(slug: string, payload: Omit<BenefitEntry, 'slug'>): Promise<BenefitEntry> {
+  return apiSend('POST', `/benefits/${encodeURIComponent(slug)}`, payload)
 }
 
-export function fetchStaffMembers(year: number): Promise<StaffMember[]> {
-  return apiGet(`/staff-members?year=${year}`)
-}
-
-// Staff-only mutations used by /manage. Errors bubble up via ApiError so the
-// UI can render server messages.
-export function createStaffMember(payload: Omit<StaffMember, 'id'>): Promise<StaffMember> {
-  return apiSend('POST', '/staff-members', payload)
-}
-
-export function updateStaffMember(id: string, payload: Omit<StaffMember, 'id'>): Promise<StaffMember> {
-  return apiSend('PUT', `/staff-members/${id}`, payload)
-}
-
-export function deleteStaffMember(id: string): Promise<void> {
-  return apiSend('DELETE', `/staff-members/${id}`)
+// Deletes the category and, through the database cascade, all its cards.
+export function deleteBenefit(slug: string): Promise<void> {
+  return apiSend('DELETE', `/benefits/${encodeURIComponent(slug)}`)
 }
 
 export function updateBenefit(slug: string, payload: Omit<BenefitEntry, 'slug'>): Promise<BenefitEntry> {

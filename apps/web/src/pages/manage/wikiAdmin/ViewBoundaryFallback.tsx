@@ -1,13 +1,9 @@
 import { useTranslation } from 'react-i18next'
+import { ErrorState } from '@/components/ui'
 
-// Inline error shown by ViewBoundary when a sub-view crashes.
-export default function ViewBoundaryFallback({ error, onRetry }: { error: Error; onRetry: () => void }) {
+// Inline error shown by ViewBoundary when a sub-view crashes (the error
+// itself is logged by the boundary, never shown).
+export default function ViewBoundaryFallback({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation()
-  return (
-    <div role="alert" className="flex flex-col gap-2 px-4 py-4 rounded-card border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 font-body text-body-sm text-red-700 dark:text-red-300">
-      <p className="font-semibold">{t('manage.wikiAi.crashed')}</p>
-      <code className="font-mono text-[0.75rem] break-words opacity-80">{error.message}</code>
-      <button type="button" onClick={onRetry} className="self-start font-mono text-label uppercase tracking-widest underline">{t('errors.retry')}</button>
-    </div>
-  )
+  return <ErrorState title={t('errors.somethingWrong')} message={t('manage.wikiAi.crashed')} onRetry={onRetry} />
 }

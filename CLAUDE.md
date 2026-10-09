@@ -4,60 +4,76 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-One repo, four apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
+One repo, two apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
 
 | Dir | What | Stack |
 |---|---|---|
 | `apps/api` | Backend for everything below | Spring Boot 3, Java 21, Postgres, Maven (not part of the JS workspace) |
-| `apps/web` | Main CEITBA site + `/manage` staff admin (benefits, users, orgs), served at `/` | React 18 + Vite + TS |
-| `apps/scheduler` | "Combinador de Horarios": schedule builder, saved schedules, share sessions, served at `/scheduler/` | React 18 + Vite + TS |
-| `apps/newsletter` | Student newsletter (articles, events, org follows, admin area), served at `/newsletter/` | React 18 + Vite, **plain JS (JSX)** |
+| `apps/web` | The whole frontend, one SPA: main site + `/manage` staff admin + Apuntes at `/`, the "Combinador de Horarios" at `/scheduler`, the student newsletter at `/newsletter` | React 18 + Vite + TS |
 
 `infra/caddy/` is the production reverse proxy. `docs/EDITORIAL_UI_SYSTEM.md` defines the shared warm/editorial
-Tailwind look: read it before UI work in any web app.
+Tailwind look: read it before UI work. Build UI from the shared kit in `apps/web/src/components/ui` (buttons,
+fields, tabs, toggles, badges, alerts, toasts, skeletons, empty/error states; `Modal`/`ConfirmDialog`) instead of
+hand-rolling markup, and keep one navigation bar per page (§6 "Navigation depth").
 
 **Release flow**: feature PRs merge into `dev` with real merge commits (`--no-ff`); one reviewed `dev → main` PR is
 merged with a merge commit. Only `main` deploys. `.github/workflows/ci.yml` runs on PRs and `dev` pushes;
 `deploy.yml` runs on `main`. Both use `dorny/paths-filter` to run only the apps a change touches (`packages/**`,
-the root `package.json`/`bun.lock` and `.github/spa-apps.json` count for every web app). The API deploys before the
-web apps in the same push. Keep actions pinned to commit SHAs.
+the root `package.json`/`bun.lock` and `.github/spa-apps.json` count for web). The API deploys before the web app in
+the same push. Keep actions pinned to commit SHAs.
 
 ---
 
-## Web apps (bun workspaces)
+## Web app (`apps/web`, bun workspace)
 
 From the repo root:
 ```
 bun install
-bun run dev                                  # all three apps
-bun run --filter @ceitba/scheduler dev       # one app
-bun run build | lint                         # all apps; build = tsc + vite build (newsletter: vite build only)
+bun run dev                                  # Vite dev server, :5173
+bun run build | lint                         # build = tsc (app + workers) + vite build
 ```
-There is no JS test runner; lint + build is the only CI gate. Copy each app's `.env.example` → `.env.local` and
-point it at a local API.
+There is no JS test runner; lint + build is the only CI gate. Copy `apps/web/.env.example` → `.env.local` and point
+it at a local API.
 
-- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/scheduler*` → `/var/www/scheduler`,
-  `/newsletter*` → `/var/www/itbanews` (`/itbanews*` 301s to `/newsletter`), everything else → `/var/www/main`
-  (web). All apps use `try_files … /index.html` fallback. Production build env lives in `.github/spa-apps.json`.
-- **Base path**: `vite.config` sets `base` from `VITE_BASE_PATH`. The router basename must strip the trailing slash
-  (`BASE_URL.replace(/\/+$/, '')`), otherwise opening the bare `/scheduler` or `/newsletter` renders a blank page.
-- **Shared auth**: all apps authenticate against the API with an **HttpOnly session cookie** (the API-issued JWT).
-  Login = redirect to `${API}/auth/google?redirect_uri=<VITE_GOOGLE_REDIRECT_URI>`; session = `GET /auth/me`;
-  logout = `POST /auth/logout`. Apps never read/write tokens in JS; every fetch uses `credentials: 'include'`.
-- **Client pattern**: each app has `src/api/client.ts|js` with `apiRequest`/`apiGet`/`apiSend` and an
-  `ApiError(message, status, code)` built from the API's `{error, message}` body (the code is in `error`). Auth/prefs
-  live in hand-rolled module-level stores (`src/store/authStore`, `prefsStore`). Theme/language sync to the user
-  profile and are cached in `localStorage` (`prefs.theme`, `prefs.lang`).
-- **API URL env differs per app**: web/newsletter use `VITE_API_URL` **including** `/api/v1`; scheduler uses
-  `VITE_CEITBA_API_URL` as **origin only** and appends `/api/v1` itself.
-- **i18n**: `i18next`/`react-i18next` with `src/locales/{es,en}.json` in every app.
-- **web**: `src/pages/sections/` are the public home tabs; `src/pages/manage/` is the STAFF-only admin.
-- **scheduler**: generation is a pure `generateSchedules(subjects, options, blockedTimes)` in `src/services/`
-  (capped at `MAX_GENERATED_SCHEDULES`); `src/utils/ics.ts` builds calendar exports in
-  `America/Argentina/Buenos_Aires`; `src/api/schedules.ts`/`share.ts` back saved schedules and share sessions.
-- **newsletter**: the contributor/suggestion flow is a `localStorage` mock hidden behind
-  `CONTRIBUTIONS_ENABLED = false` (`src/config/features.js`). Dates are `YYYY-MM-DD` strings: parse them with
-  `src/utils/dates.js`, never `new Date(str)` (UTC → off by one day in Argentina).
+One SPA, one router (a data router, so pages can use `useBlocker`), one shell. Layout:
+- `src/` root: the shared core and the main site. `api/client.ts` (`apiRequest`/`apiGet`/`apiSend`, `ApiError(message,
+  status, code, data)` from the API's `{error, message}` body, the code is in `error`; network failures throw
+  `NETWORK_ERROR`), `store/authStore.ts` + `prefsStore.ts` (hand-rolled module-level stores), `context/ThemeContext`,
+  `components/` (`Navbar`, `Footer`, `AuthMenu`, `SectionHeader`), `pages/sections/` (public home tabs),
+  `pages/manage/` (STAFF-only admin), `pages/apuntes/`.
+- `src/scheduler/`: the "Combinador de Horarios", lazily mounted at `/scheduler/*` (`SchedulerApp.tsx`).
+- `src/newsletter/`: the student newsletter, lazily mounted at `/newsletter/*` (`NewsletterApp.tsx`); its admin
+  dashboard (`/newsletter/admin/*`) keeps its own full-screen chrome instead of the app shell.
+
+Rules for the sections:
+- Route paths inside a section are relative to its mount point, but `Link`/`navigate()` take absolute paths: build
+  them with `schedulerPath('/saved')` / `newsletterPath('/events')` (`<section>/paths.ts`).
+- Each section's strings are its own i18n namespace (`scheduler`, `newsletter`), added lazily from
+  `<section>/locales/` and made the default for its subtree with `I18nextProvider defaultNS`. Shared components
+  render outside that provider and use the default `translation` namespace (`src/locales/`).
+- Shared modules come from `@/` (= `src/`). Don't add a per-section API client, auth store or theme handling.
+- The newsletter's dark-mode remaps of plain `bg-white`/`border-border` are scoped to `.newsletter-scope`; elsewhere
+  use `dark:` variants with the `night-*` tokens.
+
+- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/itbanews*` 301s to `/newsletter`,
+  everything else → `/var/www/main` with `try_files … /index.html`. Production build env lives in
+  `.github/spa-apps.json`. `/var/www/scheduler` and `/var/www/itbanews` (the old standalone builds) are no longer
+  served.
+- **Auth**: an **HttpOnly session cookie** (the API-issued JWT). Login = redirect to
+  `${API}/auth/google?redirect_uri=<VITE_GOOGLE_REDIRECT_URI>` (`/auth/callback`; the old apps' callbacks
+  `/scheduler/auth/callback` and `/newsletter/admin/callback` are still routed); the page to come back to travels in
+  sessionStorage (`startGoogleSignIn(returnTo)`). Session = `GET /auth/me`; logout = `POST /auth/logout`. Never
+  read/write tokens in JS; every fetch uses `credentials: 'include'`. Theme/language sync to the user profile and are
+  cached in `localStorage` (`prefs.theme`, `prefs.lang`).
+- `VITE_API_URL` **includes** `/api/v1`.
+- **scheduler**: generation is a pure `generateSchedules(subjects, options, blockedTimes)` in `services/` (capped at
+  `MAX_GENERATED_SCHEDULES`, run in a Web Worker); `utils/ics.ts` builds calendar exports in
+  `America/Argentina/Buenos_Aires`; `api/schedules.ts`/`share.ts` back saved schedules and share sessions.
+- **newsletter**: API shapes are in `newsletter/types.ts`. The contributor/suggestion flow is a `localStorage` mock
+  hidden behind `CONTRIBUTIONS_ENABLED = false` (`config/features.ts`). Dates are `YYYY-MM-DD` strings: parse them
+  with `utils/dates.ts`, never `new Date(str)` (UTC → off by one day in Argentina).
+- **Lint**: the React Compiler rules of `eslint-plugin-react-hooks` 7 are enforced in `src/scheduler/` only so far
+  (see `eslint.config.js`).
 
 ---
 

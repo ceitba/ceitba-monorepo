@@ -2,8 +2,9 @@ name: Deploy
 
 # Every push to main deploys the apps it changed, to the same VPS paths as the
 # old per-repo workflows: API image + compose (~/CEITBA-API), Caddy (~/infra),
-# SPAs (/var/www/{main,scheduler,itbanews}). The API ships first; SPA deploys
-# wait for it, so an SPA never goes live ahead of the API it depends on.
+# the web app (/var/www/main; it serves the site, /scheduler and /newsletter).
+# The API ships first; the web deploy waits for it, so it never goes live
+# ahead of the API it depends on.
 # Deploy credentials live only in the `production` environment.
 #
 # Run it by hand ("Run workflow" on main) to redeploy every app regardless of
@@ -49,16 +50,10 @@ jobs:
             web:
               - 'apps/web/**'
               - *shared
-            scheduler:
-              - 'apps/scheduler/**'
-              - *shared
-            newsletter:
-              - 'apps/newsletter/**'
-              - *shared
       - id: spas
         env:
           # Manual runs deploy every app.
-          CHANGES: ${{ github.event_name == 'workflow_dispatch' && '["web","scheduler","newsletter"]' || steps.filter.outputs.changes }}
+          CHANGES: ${{ github.event_name == 'workflow_dispatch' && '["web"]' || steps.filter.outputs.changes }}
         run: echo "matrix=$(jq -c --argjson changes "$CHANGES" '[.[] | select(.app as $a | $changes | index($a))]' .github/spa-apps.json)" >> "$GITHUB_OUTPUT"
 
   # main has no required checks, so a PR can merge before CI finishes: test
@@ -244,5 +239,14 @@ jobs:
           script: |
             set -e
             STAGE=/tmp/${{ matrix.app }}-deploy-${{ github.sha }}
-            rsync -r --delete "$STAGE/dist/" /var/www/${{ matrix.www }}/
+            WWW=/var/www/${{ matrix.www }}
+            # 1. Add the new build's files without removing anything, and
+            #    index.html last, so it never points at chunks not yet there.
+            rsync -rt --exclude=/index.html "$STAGE/dist/" "$WWW/"
+            rsync -t "$STAGE/dist/index.html" "$WWW/index.html"
+            # 2. Only now drop the previous build's files (-t keeps mtimes, so
+            #    this pass copies nothing again). Tabs opened before
+            #    the deploy that then lazy-load one of them reload once
+            #    (vite:preloadError in apps/web/src/main.tsx).
+            rsync -rt --delete "$STAGE/dist/" "$WWW/"
             rm -rf "$STAGE"

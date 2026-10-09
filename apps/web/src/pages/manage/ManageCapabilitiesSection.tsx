@@ -12,20 +12,25 @@ import {
   type Capability,
   type CapabilityGrants,
 } from '../../api/capabilities'
-import ConfirmDialog from '../../components/ConfirmDialog'
-import ErrorBanner from '../../components/ErrorBanner'
+import {
+  Alert,
+  Badge,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  LoadingRegion,
+  SkeletonCards,
+  SkeletonText,
+  Switch,
+  selectClass,
+  textareaClass,
+} from '../../components/ui'
 import { formatDate } from '../../utils/apuntes'
+import { adminErrorMessage } from './adminErrors'
 
-const BTN_OUTLINE =
-  'px-3 py-1.5 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary hover:text-primary transition-colors disabled:opacity-50'
-const BTN_PRIMARY =
-  'px-3 py-1.5 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600 transition-colors disabled:opacity-50'
-const BTN_REMOVE =
-  'flex-shrink-0 px-2 py-1 rounded-sm font-mono text-label uppercase tracking-widest text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-50'
 const PANEL = 'flex flex-col gap-3 p-3 sm:p-4 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-bg'
 const PANEL_TITLE = 'font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted'
-const FIELD =
-  'w-full px-3 py-2 rounded-sm border border-border dark:border-night-border bg-surface dark:bg-night-surface text-ink-primary dark:text-night-text font-body text-body-sm focus:outline-none focus:border-primary'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -43,24 +48,22 @@ function parseEmails(raw: string): { valid: string[]; invalid: string[] } {
   return { valid, invalid }
 }
 
-function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : String(e)
-}
-
 // /manage → "Capacidades": feature flags (e.g. Apuntes) enabled for everyone,
 // or granted per email / per organization (CEITBA-API /v1/staff/capabilities).
 export default function ManageCapabilitiesSection() {
   const { t } = useTranslation()
   const [items, setItems] = useState<Capability[] | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let active = true
+    setLoadFailed(false)
     listCapabilities()
-      .then((data) => { if (active) { setItems(data); setLoadError(null) } })
-      .catch((e) => { if (active) setLoadError(errorMessage(e)) })
+      .then((data) => { if (active) setItems(data) })
+      .catch((e) => { console.error(e); if (active) setLoadFailed(true) })
     return () => { active = false }
-  }, [])
+  }, [reloadKey])
 
   function update(next: Capability) {
     setItems((prev) => prev?.map((c) => (c.key === next.key ? next : c)) ?? prev)
@@ -71,12 +74,12 @@ export default function ManageCapabilitiesSection() {
       <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted max-w-3xl">
         {t('manage.capabilities.intro')}
       </p>
-      {loadError && <ErrorBanner onDismiss={() => setLoadError(null)}>{loadError}</ErrorBanner>}
-      {items === null && !loadError && (
-        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>
+      {loadFailed && items === null && (
+        <ErrorState message={t('manage.capabilities.loadFailed')} onRetry={() => setReloadKey((k) => k + 1)} />
       )}
+      {items === null && !loadFailed && <SkeletonCards count={3} className="flex flex-col gap-3" cardClassName="h-28" />}
       {items !== null && items.length === 0 && (
-        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.capabilities.empty')}</p>
+        <EmptyState title={t('manage.capabilities.empty')} body={t('manage.capabilities.emptyHint')} />
       )}
       <ul className="flex flex-col gap-3">
         {items?.map((c) => (
@@ -107,20 +110,17 @@ function CapabilityCard({ capability: c, onChange }: { capability: Capability; o
       onChange(await setCapabilityEnabledForAll(c.key, value))
     } catch (e) {
       onChange(prev)
-      setError(errorMessage(e))
+      setError(adminErrorMessage(e, t))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <article className="rounded-card border border-border dark:border-night-border bg-surface dark:bg-night-surface">
+    <article className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface">
       <div className="flex flex-col sm:flex-row sm:items-start gap-3 p-4">
         <div className="flex-1 min-w-0">
-          <h2 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">
-            {c.label}
-            <span className="ml-2 font-mono text-label font-normal text-ink-secondary dark:text-night-muted align-middle">{c.key}</span>
-          </h2>
+          <h2 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text">{c.label}</h2>
           {c.description && (
             <p className="mt-1 font-body text-body-sm text-ink-secondary dark:text-night-muted">{c.description}</p>
           )}
@@ -134,36 +134,24 @@ function CapabilityCard({ capability: c, onChange }: { capability: Capability; o
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={c.enabledForAll}
-              disabled={busy}
-              onClick={() => (c.enabledForAll ? setEnabledForAll(false) : setConfirmOn(true))}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-                c.enabledForAll ? 'bg-primary' : 'bg-border dark:bg-night-border'
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${c.enabledForAll ? 'translate-x-5' : 'translate-x-0.5'}`}
-              />
-            </button>
-            <span className="font-body text-body-sm text-ink-primary dark:text-night-text">{t('manage.capabilities.enabledForAll')}</span>
-          </label>
-          <button
-            type="button"
+          <Switch
+            checked={c.enabledForAll}
+            disabled={busy}
+            onChange={(next) => (next ? setConfirmOn(true) : setEnabledForAll(false))}
+            label={t('manage.capabilities.enabledForAll')}
+          />
+          <Button
+            variant="outline"
+            size="sm"
             aria-expanded={expanded}
             aria-controls={panelId}
             onClick={() => setExpanded((v) => !v)}
-            className={BTN_OUTLINE}
           >
             {expanded ? t('manage.capabilities.hideGrants') : t('manage.capabilities.manageGrants')}
-          </button>
+          </Button>
         </div>
       </div>
-      {error && <ErrorBanner className="mx-4 mb-4" onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+      {error && <Alert tone="error" className="mx-4 mb-4" onDismiss={() => setError(null)}>{error}</Alert>}
       {expanded && (
         <div id={panelId} className="border-t border-border dark:border-night-border p-3 sm:p-4">
           {c.enabledForAll && (
@@ -211,6 +199,8 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
   const [grants, setGrants] = useState<CapabilityGrants | null>(null)
   const [orgs, setOrgs] = useState<Organization[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [emailsRaw, setEmailsRaw] = useState('')
   const [invalid, setInvalid] = useState<string[]>([])
   const [granting, setGranting] = useState(false)
@@ -222,14 +212,12 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
 
   useEffect(() => {
     let active = true
-    getCapabilityGrants(capabilityKey)
-      .then((g) => { if (active) setGrants(g) })
-      .catch((e) => { if (active) setError(errorMessage(e)) })
-    loadOrgs()
-      .then((list) => { if (active) setOrgs(list) })
-      .catch((e) => { if (active) setError(errorMessage(e)) })
+    setLoadFailed(false)
+    Promise.all([getCapabilityGrants(capabilityKey), loadOrgs()])
+      .then(([g, list]) => { if (active) { setGrants(g); setOrgs(list) } })
+      .catch((e) => { console.error(e); if (active) setLoadFailed(true) })
     return () => { active = false }
-  }, [capabilityKey])
+  }, [capabilityKey, reloadKey])
 
   // Keep the card's counts in sync with the grant lists.
   useEffect(() => {
@@ -256,7 +244,7 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
       setGrants(await grantCapabilityToUsers(capabilityKey, valid))
       setEmailsRaw('')
     } catch (err) {
-      setError(errorMessage(err))
+      setError(adminErrorMessage(err, t))
     } finally {
       setGranting(false)
     }
@@ -277,7 +265,7 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
       setGrants((g) => (g && !g.users.some((u) => u.email === email)
         ? { ...g, users: [...g.users.slice(0, index), removed, ...g.users.slice(index)] }
         : g))
-      setError(errorMessage(err))
+      setError(adminErrorMessage(err, t))
     } finally {
       markPending(`u:${email}`, false)
     }
@@ -294,7 +282,7 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
       setGrants(await getCapabilityGrants(capabilityKey))
       setOrgSlug('')
     } catch (err) {
-      setError(errorMessage(err))
+      setError(adminErrorMessage(err, t))
     } finally {
       setAddingOrg(false)
     }
@@ -315,23 +303,28 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
       setGrants((g) => (g && !g.orgs.some((o) => o.slug === slug)
         ? { ...g, orgs: [...g.orgs.slice(0, index), removed, ...g.orgs.slice(index)] }
         : g))
-      setError(errorMessage(err))
+      setError(adminErrorMessage(err, t))
     } finally {
       markPending(`o:${slug}`, false)
     }
   }
 
+  if (loadFailed) {
+    return <ErrorState compact message={t('manage.capabilities.grantsLoadFailed')} onRetry={() => setReloadKey((k) => k + 1)} />
+  }
+
   const grantedSlugs = new Set(grants?.orgs.map((o) => o.slug))
   const available = orgs.filter((o) => !grantedSlugs.has(o.slug))
-  const loading = <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>
+  const loading = <LoadingRegion><SkeletonText lines={2} /></LoadingRegion>
   const meta = (grantedAt: string, by: string | null) =>
     by
       ? t('manage.capabilities.grantedBy', { date: formatDate(grantedAt, i18n.language), name: by })
       : t('manage.capabilities.grantedOn', { date: formatDate(grantedAt, i18n.language) })
+  const emailsErrorId = `${capabilityKey}-emails-error`
 
   return (
     <div className="flex flex-col gap-3">
-      {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
+      {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <section className={PANEL} aria-labelledby={`${capabilityKey}-users`}>
           <h3 id={`${capabilityKey}-users`} className={PANEL_TITLE}>
@@ -348,17 +341,18 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
               rows={3}
               placeholder={t('manage.capabilities.users.placeholder')}
               aria-invalid={invalid.length > 0}
-              className={FIELD}
+              aria-describedby={invalid.length > 0 ? emailsErrorId : undefined}
+              className={textareaClass({ invalid: invalid.length > 0 })}
             />
             {invalid.length > 0 && (
-              <p role="alert" className="font-body text-body-sm text-red-700 dark:text-red-400">
+              <p id={emailsErrorId} role="alert" className="font-body text-body-sm text-red-700 dark:text-red-400">
                 {t('manage.capabilities.users.invalid', { emails: invalid.join(', ') })}
               </p>
             )}
             <div>
-              <button type="submit" disabled={granting || !emailsRaw.trim()} className={BTN_PRIMARY}>
-                {granting ? '…' : t('manage.capabilities.users.grant')}
-              </button>
+              <Button type="submit" size="sm" loading={granting} disabled={!emailsRaw.trim()}>
+                {t('manage.capabilities.users.grant')}
+              </Button>
             </div>
           </form>
           {grants === null ? loading : grants.users.length === 0 ? (
@@ -371,23 +365,19 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
                     {u.name && <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text truncate">{u.name}</p>}
                     <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">
                       {u.email}
-                      {!u.userId && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded-sm border border-border dark:border-night-border uppercase tracking-widest">
-                          {t('manage.capabilities.users.neverLoggedIn')}
-                        </span>
-                      )}
+                      {!u.userId && <Badge className="ml-2">{t('manage.capabilities.users.neverLoggedIn')}</Badge>}
                     </p>
                     <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{meta(u.grantedAt, u.grantedByName)}</p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={pending.has(`u:${u.email}`)}
+                  <Button
+                    variant="dangerGhost"
+                    size="sm"
+                    loading={pending.has(`u:${u.email}`)}
                     onClick={() => revokeUser(u.email)}
                     aria-label={t('manage.capabilities.removeAria', { name: u.name ?? u.email })}
-                    className={BTN_REMOVE}
                   >
                     {t('manage.capabilities.remove')}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -404,16 +394,16 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
               id={`${capabilityKey}-org`}
               value={orgSlug}
               onChange={(e) => setOrgSlug(e.target.value)}
-              className={`${FIELD} sm:flex-1 min-w-0`}
+              className={selectClass({ className: 'sm:flex-1 min-w-0' })}
             >
               <option value="">{t('manage.capabilities.orgs.pick')}</option>
               {available.map((o) => (
                 <option key={o.slug} value={o.slug}>{o.name}</option>
               ))}
             </select>
-            <button type="submit" disabled={addingOrg || !orgSlug} className={`${BTN_PRIMARY} flex-shrink-0`}>
-              {addingOrg ? '…' : t('manage.capabilities.orgs.add')}
-            </button>
+            <Button type="submit" variant="outline" className="flex-shrink-0" loading={addingOrg} disabled={!orgSlug}>
+              {t('manage.capabilities.orgs.add')}
+            </Button>
           </form>
           {grants === null ? loading : grants.orgs.length === 0 ? (
             <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.capabilities.orgs.empty')}</p>
@@ -422,23 +412,23 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
               {grants.orgs.map((o) => (
                 <li key={o.slug} className="flex items-start gap-2 py-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text truncate">
-                      {o.name}
-                      <span className="ml-2 font-mono text-label font-normal text-ink-secondary dark:text-night-muted">{o.slug}</span>
-                    </p>
+                    <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text truncate">{o.name}</p>
                     <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-                      {t('manage.capabilities.orgs.members', { count: o.memberCount })} · {meta(o.grantedAt, o.grantedByName)}
+                      {t('manage.capabilities.orgs.meta', {
+                        members: t('manage.capabilities.orgs.members', { count: o.memberCount }),
+                        granted: meta(o.grantedAt, o.grantedByName),
+                      })}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={pending.has(`o:${o.slug}`)}
+                  <Button
+                    variant="dangerGhost"
+                    size="sm"
+                    loading={pending.has(`o:${o.slug}`)}
                     onClick={() => revokeOrg(o.slug)}
                     aria-label={t('manage.capabilities.removeAria', { name: o.name })}
-                    className={BTN_REMOVE}
                   >
                     {t('manage.capabilities.remove')}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

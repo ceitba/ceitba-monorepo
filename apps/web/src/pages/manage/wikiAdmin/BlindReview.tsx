@@ -2,10 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { useTranslation } from 'react-i18next'
 import { fetchNextReview, fetchReviewProgress, submitReview, type ReviewProgress, type ModelConfig, type ReviewPage, type ReviewPair, type ReviewResult, type ReviewScores } from '../../../api/kbAdmin'
 import type { KbPage } from '../../../api/kb'
-import { apuntesErrorMessage } from '../../../utils/apuntes'
+import { Alert, Button, EmptyState, ErrorState, Field, LoadingRegion, Skeleton, textareaClass } from '@/components/ui'
+import { apuntesAdminErrorMessage } from '../adminErrors'
 import { CitationContext } from '../../../components/apuntes/wiki/citationContext'
 import { citationOrder } from '../../../components/apuntes/wiki/wikilinks'
-import { BTN, BTN_PRI, FIELD } from './styles'
 import { isUnavailable } from './useLoad'
 import ReviewProgressHeader, { ReviewSummaryLine } from './ReviewProgressView'
 
@@ -42,7 +42,7 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
     setScoresA(NEUTRAL); setScoresB(NEUTRAL)
     fetchNextReview(evalId)
       .then((p) => setPair(p))
-      .catch((e) => { if (isUnavailable(e)) setUnavailable(true); else setError(apuntesErrorMessage(e, t)) })
+      .catch((e) => { if (isUnavailable(e)) setUnavailable(true); else setError(apuntesAdminErrorMessage(e, t)) })
   }, [evalId, t])
 
   useEffect(() => { next() }, [next])
@@ -55,14 +55,15 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
       setRevealed(r?.revealed ?? {})
       loadProgress()
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesAdminErrorMessage(e, t))
     } finally {
       setBusy(false)
     }
   }
 
-  if (unavailable) return <p className="py-6 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.unavailable')}</p>
-  if (pair === undefined && !error) return <div className="h-96 rounded-card skeleton" aria-busy="true" />
+  if (unavailable) return <EmptyState compact title={t('manage.wikiAi.unavailableTitle')} body={t('manage.wikiAi.unavailable')} />
+  if (pair === undefined && error) return <ErrorState title={t('manage.errors.loadFailed')} message={error} onRetry={next} />
+  if (pair === undefined) return <LoadingRegion><Skeleton className="h-96 rounded-card" /></LoadingRegion>
   if (pair === null || (rp?.remainingForMe === 0 && !revealed)) {
     return (
       <div className="flex flex-col gap-4">
@@ -74,8 +75,8 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
           </p>
           <ReviewSummaryLine summary={rp} />
           <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={onDone} className={BTN}>{t('manage.wikiAi.review.back')}</button>
-            {onLeaderboard && <button type="button" onClick={onLeaderboard} className={BTN_PRI}>{t('manage.wikiAi.reviewProgress.toLeaderboard')}</button>}
+            <Button variant="outline" size="sm" onClick={onDone}>{t('manage.wikiAi.review.back')}</Button>
+            {onLeaderboard && <Button size="sm" onClick={onLeaderboard}>{t('manage.wikiAi.reviewProgress.toLeaderboard')}</Button>}
           </div>
         </div>
       </div>
@@ -85,12 +86,12 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
   return (
     <div className="flex flex-col gap-4">
       <ReviewProgressHeader progress={rp} fallback={pair ? { reviewedByMe: pair.reviewedByMe, totalPairs: pair.totalPairs, remaining: pair.remaining } : null} />
-      {error && <p role="alert" className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
       {pair && (
         <>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-              <span className="font-mono text-label mr-1.5">{pair.subjectId}</span>{pair.subjectName} · <code className="font-mono">{pair.slug}</code>
+              <span className="font-mono text-label mr-1.5">{pair.subjectId}</span>{pair.subjectName}
             </p>
 
           </div>
@@ -111,8 +112,8 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
           {revealed ? (
             <div className="flex flex-wrap items-center gap-3 p-4 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-bg">
               <p className="flex-1 font-body text-body-sm">{t('manage.wikiAi.review.saved')}</p>
-              <button type="button" onClick={onDone} className={BTN}>{t('manage.wikiAi.review.back')}</button>
-              <button type="button" onClick={next} className={BTN_PRI}>{t('manage.wikiAi.review.next')}</button>
+              <Button variant="outline" size="sm" onClick={onDone}>{t('manage.wikiAi.review.back')}</Button>
+              <Button size="sm" onClick={next}>{t('manage.wikiAi.review.next')}</Button>
             </div>
           ) : (
             <div className="flex flex-col gap-4 p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface">
@@ -125,17 +126,20 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
                     role="radio"
                     aria-checked={winner === w}
                     onClick={() => setWinner(w)}
-                    className={`min-w-[5rem] px-4 py-2 rounded-sm border font-mono text-label uppercase tracking-widest ${winner === w ? 'bg-primary text-white border-primary' : 'border-border dark:border-night-border hover:border-primary'}`}
+                    className={`min-w-[5rem] min-h-[44px] px-4 rounded-sm border font-mono text-label uppercase tracking-widest transition-colors duration-150 ${winner === w ? 'bg-primary text-white border-primary' : 'border-border dark:border-night-border text-ink-primary dark:text-night-text hover:border-primary'}`}
                   >
                     {w === 'tie' ? t('manage.wikiAi.review.tie') : w}
                   </button>
                 ))}
               </div>
-              <p className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.scoresHint')}</p>
-              <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} maxLength={1000} placeholder={t('manage.wikiAi.review.comment')} aria-label={t('manage.wikiAi.review.comment')} className={FIELD} />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={next} disabled={busy} className={BTN}>{t('manage.wikiAi.review.skip')}</button>
-                <button type="button" onClick={submit} disabled={!winner || busy} className={BTN_PRI}>{busy ? '…' : t('manage.wikiAi.review.submit')}</button>
+              <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.scoresHint')}</p>
+              <Field label={t('manage.wikiAi.review.comment')}>
+                {(p) => <textarea {...p} value={comment} onChange={(e) => setComment(e.target.value)} rows={2} maxLength={1000} className={textareaClass()} />}
+              </Field>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {!winner && <span className="mr-auto font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.review.pickWinner')}</span>}
+                <Button variant="ghost" size="sm" onClick={next} disabled={busy}>{t('manage.wikiAi.review.skip')}</Button>
+                <Button size="sm" onClick={submit} disabled={!winner} loading={busy}>{t('manage.wikiAi.review.submit')}</Button>
               </div>
             </div>
           )}
@@ -190,7 +194,7 @@ function ReviewColumn({ label, page, subjectId, slug, reveal }: {
         <h2 className="font-display font-bold text-h4 text-ink-primary dark:text-night-text mb-1">{page.title}</h2>
         {page.summary && <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mb-4">{page.summary}</p>}
         <CitationContext.Provider value={ctx}>
-          <Suspense fallback={<div className="h-64 rounded-sm skeleton" />}>
+          <Suspense fallback={<LoadingRegion><Skeleton className="h-64" /></LoadingRegion>}>
             <WikiMarkdown page={kbPage} />
           </Suspense>
         </CitationContext.Provider>
@@ -220,9 +224,9 @@ function ScoreSliders({ label, value, onChange, disabled }: {
             max={5}
             step={1}
             value={value[k]}
-            aria-label={`${label} · ${t(`manage.wikiAi.review.scores.${k}`)}`}
+            aria-label={t('manage.wikiAi.review.scoreAria', { label, dimension: t(`manage.wikiAi.review.scores.${k}`) })}
             onChange={(e) => onChange({ ...value, [k]: Number(e.target.value) })}
-            className="accent-primary"
+            className="min-h-[44px] accent-primary"
           />
         </label>
       ))}

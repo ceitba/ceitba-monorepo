@@ -1,5 +1,6 @@
 package org.ceitba.api.web.news;
 
+import org.ceitba.api.config.ClockConfig;
 import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Article;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.jayway.jsonpath.JsonPath;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -344,6 +346,75 @@ class ArticleEndpointsIT {
             .andExpect(status().isForbidden());
         mvc.perform(delete("/v1/articles/" + ind).with(user()))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void undoingAPublishCanClearTheDateItFilledIn() throws Exception {
+        String ind = createIndependent();
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\",\"publishedAt\":\"2026-10-07\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.publishedAt").value("2026-10-07"));
+
+        // A null date means "unchanged"...
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"pending_review\",\"publishedAt\":null}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.publishedAt").value("2026-10-07"));
+        // ...so emptying it takes the explicit flag.
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"pending_review\",\"clearPublishedAt\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("pending_review"));
+        assertThat(articleRepo.findById(ind).orElseThrow().getPublishedAt()).isNull();
+    }
+
+    @Test
+    void expectedStatusRefusesAPublishFromAStaleReviewRow() throws Exception {
+        String ind = createIndependent();
+        // The author pulls it back to draft after the review queue loaded it.
+        mvc.perform(patch("/v1/articles/" + ind).with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"draft\"}"))
+            .andExpect(status().isOk());
+
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\",\"expectedStatus\":\"pending_review\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("InvalidState"));
+        assertThat(articleRepo.findById(ind).orElseThrow().getStatus()).isEqualTo("draft");
+
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\",\"expectedStatus\":\"draft\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("published"));
+    }
+
+    @Test
+    void publishingAnUndatedArticleDatesItToday() throws Exception {
+        String ind = createIndependent();
+        assertThat(articleRepo.findById(ind).orElseThrow().getPublishedAt()).isNull();
+
+        mvc.perform(patch("/v1/articles/" + ind).with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"published\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.publishedAt").value(LocalDate.now(ClockConfig.ZONE).toString()));
+    }
+
+    @Test
+    void creatingAnUndatedPublishedArticleDatesItToday() throws Exception {
+        mvc.perform(post("/v1/articles").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(INDEPENDENT.formatted(",\"status\":\"published\"")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("published"))
+            .andExpect(jsonPath("$.publishedAt").value(LocalDate.now(ClockConfig.ZONE).toString()));
     }
 
     @Test

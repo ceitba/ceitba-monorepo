@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
@@ -10,13 +10,12 @@ import {
   type PatchFileBody,
   type TreeItem,
 } from '../../api/drive'
-import { apuntesErrorMessage, formatDate, formatSize } from '../../utils/apuntes'
-import ErrorBanner from '../ErrorBanner'
-import Notice from '../Notice'
+import { formatDate, formatSize } from '../../utils/apuntes'
+import { Alert, Button, EmptyState, ErrorState, LoadingRegion, Skeleton, selectClass } from '../ui'
+import { apuntesErrorCopy } from './errorCopy'
 import KindIcon from './KindIcon'
 import { NotMineBadge, PublicationBadge } from './Badges'
 import SubjectPicker, { type SubjectRef } from './SubjectPicker'
-import { BTN_OUTLINE } from './buttons'
 
 interface Props {
   sourceId: string
@@ -89,7 +88,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
       })
       .catch((e) => {
         if (reqRef.current !== id) return
-        if (!silent) setLoadError(apuntesErrorMessage(e, t))
+        if (!silent) setLoadError(apuntesErrorCopy(e, t))
       })
       .finally(() => {
         if (reqRef.current === id) setLoading(false)
@@ -122,6 +121,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
   }
   const suggestionCount = useMemo(() => (items ?? []).filter(hasSuggestion).length, [items])
   const hasForeignFiles = useMemo(() => (items ?? []).some((it) => !it.ownedByMe && it.kind !== 'FOLDER'), [items])
+  const hasNotMine = useMemo(() => (items ?? []).some((it) => !it.ownedByMe), [items])
 
   async function update(item: TreeItem, body: PatchFileBody) {
     setError(null)
@@ -133,7 +133,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
       // effective subject and publication: refresh the tree quietly.
       void load(true)
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesErrorCopy(e, t))
     } finally {
       setBusyIds((s) => { const n = new Set(s); n.delete(item.id); return n })
     }
@@ -146,7 +146,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
       setNotice(t('apuntes.tree.acceptedNotice', { count: res?.applied ?? 0 }))
       await load(true)
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesErrorCopy(e, t))
     } finally {
       setAccepting(false)
     }
@@ -163,7 +163,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
       if (res.source) onLoadedRef.current?.(res.source)
       setNotice(t('apuntes.tree.recomputedNotice', { count: (res.items ?? []).filter(hasSuggestion).length }))
     } catch (e) {
-      setError(apuntesErrorMessage(e, t))
+      setError(apuntesErrorCopy(e, t))
     } finally {
       setRecomputing(false)
     }
@@ -205,7 +205,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                 type="button"
                 onClick={() => toggleFolder(item.id)}
                 aria-label={t(isCollapsed ? 'apuntes.tree.expand' : 'apuntes.tree.collapse', { name: item.name })}
-                className="w-5 h-5 mt-0.5 flex items-center justify-center text-ink-secondary dark:text-night-muted hover:text-primary flex-shrink-0"
+                className="w-11 h-11 -mx-3 -mb-3 mt-[-0.625rem] flex items-center justify-center rounded-sm text-ink-secondary dark:text-night-muted hover:text-primary flex-shrink-0"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" className={`transition-transform duration-150 ${isCollapsed ? '' : 'rotate-90'}`}>
                   <polyline points="9 6 15 12 9 18" />
@@ -235,7 +235,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
               </div>
               {item.syncError && (
                 <p className="mt-1 font-body text-body-sm text-red-600 dark:text-red-400">
-                  {t('apuntes.tree.syncError', { error: item.syncError })}
+                  {t('apuntes.tree.syncError')}
                 </p>
               )}
             </div>
@@ -255,11 +255,10 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                   type="button"
                   disabled={busy}
                   onClick={() => update(item, { subjectId: item.suggestedSubjectId! })}
-                  title={t('apuntes.tree.useSuggestion')}
-                  className="self-start inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-dashed border-accent-400 bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-200 font-body text-body-sm hover:border-solid disabled:opacity-50"
+                  className="self-start inline-flex items-center gap-1 min-h-[44px] sm:min-h-[32px] px-2 py-0.5 rounded-sm border border-dashed border-accent-400 bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-200 font-body text-body-sm hover:border-solid disabled:opacity-50"
                 >
                   <span aria-hidden="true">＋</span>
-                  {t('apuntes.tree.suggestion', { name: item.suggestedSubjectName ?? item.suggestedSubjectId })}
+                  {t('apuntes.tree.useSuggestionNamed', { name: item.suggestedSubjectName ?? item.suggestedSubjectId })}
                   {item.suggestedInMyPlan && (
                     <span className="ml-1 px-1.5 rounded-sm bg-white/70 dark:bg-night-bg/60 font-mono text-[0.65rem] uppercase tracking-widest">
                       {t('apuntes.tree.inMyPlan')}
@@ -275,7 +274,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
               )}
             </div>
             <YearSelect item={item} disabled={busy} onChange={(academicYear) => update(item, { academicYear })} />
-            <label className="inline-flex items-center gap-2 min-h-[36px] cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+            <label className="inline-flex items-center gap-2 min-h-[44px] cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               <input
                 type="checkbox"
                 checked={item.hidden}
@@ -297,59 +296,51 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted max-w-2xl">
-          {t('apuntes.tree.intro')}
-        </p>
+        <div className="max-w-2xl font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          <p>{t('apuntes.tree.intro')}</p>
+          <p className="mt-1">{t('apuntes.tree.recomputeHint')}</p>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={recompute}
-            disabled={recomputing || accepting}
-            title={t('apuntes.tree.recomputeHint')}
-            className={BTN_OUTLINE}
-          >
-            {recomputing ? '…' : t('apuntes.tree.recompute')}
-          </button>
-          <button
-            type="button"
+          <Button variant="outline" onClick={recompute} disabled={accepting} loading={recomputing}>
+            {t('apuntes.tree.recompute')}
+          </Button>
+          <Button
+            variant="outline"
             onClick={acceptAll}
-            disabled={accepting || recomputing || suggestionCount === 0}
-            className={BTN_OUTLINE}
+            disabled={recomputing || suggestionCount === 0}
+            loading={accepting}
           >
-            {accepting ? '…' : t('apuntes.tree.acceptAll', { count: suggestionCount })}
-          </button>
+            {t('apuntes.tree.acceptAll', { count: suggestionCount })}
+          </Button>
         </div>
       </div>
 
-      {hasForeignFiles && (
-        <p className="px-3 py-2 rounded-sm border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-violet-950/40 font-body text-body-sm text-violet-800 dark:text-violet-200">
-          {t('apuntes.tree.foreignHint')}
-        </p>
-      )}
+      {hasForeignFiles && <Alert tone="info">{t('apuntes.tree.foreignHint')}</Alert>}
 
-      {error && <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>}
-      {notice && <Notice onDismiss={() => setNotice(null)}>{notice}</Notice>}
+      {error && <Alert tone="error" onDismiss={() => setError(null)}>{error}</Alert>}
+      {notice && <Alert tone="success" onDismiss={() => setNotice(null)}>{notice}</Alert>}
 
       {loading && items == null && (
-        <div className="flex flex-col gap-2" aria-busy="true" aria-hidden="true">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 rounded-sm skeleton" />)}
-        </div>
+        <LoadingRegion className="flex flex-col gap-2">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
+        </LoadingRegion>
       )}
-      {loadError && (
-        <ErrorBanner>
-          {loadError}{' '}
-          <button type="button" onClick={() => void load()} className="underline font-semibold">{t('errors.retry')}</button>
-        </ErrorBanner>
-      )}
+      {loadError && <ErrorState compact message={loadError} onRetry={() => void load()} />}
       {!loading && !loadError && items != null && items.length === 0 && (
-        <p className="py-6 text-center font-body text-body-sm text-ink-secondary dark:text-night-muted">
-          {t('apuntes.tree.empty')}
-        </p>
+        <EmptyState compact title={t('apuntes.tree.emptyTitle')} body={t('apuntes.tree.empty')} />
       )}
       {items != null && items.length > 0 && (
-        <ul role="tree" aria-label={t('apuntes.tree.aria')} className="rounded-card border-b border-border dark:border-night-border">
-          {forest.map((n) => renderNode(n, 0))}
-        </ul>
+        <>
+          <ul role="tree" aria-label={t('apuntes.tree.aria')} className="rounded-card border-b border-border dark:border-night-border">
+            {forest.map((n) => renderNode(n, 0))}
+          </ul>
+          {hasNotMine && (
+            <p className="flex flex-wrap items-center gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
+              <NotMineBadge />
+              <span>{t('apuntes.tree.notMineHint')}</span>
+            </p>
+          )}
+        </>
       )}
     </div>
   )
@@ -358,7 +349,7 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
 const FIRST_YEAR = 2000
 
 // Academic year per item: "Automático" shows the derived (or inherited)
-// year muted, with where it came from as tooltip; picking a year sets it
+// year muted, with where it came from underneath; picking a year sets it
 // (PATCH academicYear), "Automático" sends null.
 function YearSelect({ item, disabled, onChange }: {
   item: TreeItem
@@ -374,21 +365,28 @@ function YearSelect({ item, disabled, onChange }: {
   const autoLabel = derived != null
     ? t('apuntes.year.autoWith', { year: `${item.academicYearSource === 'DRIVE' ? '≈' : ''}${derived}` })
     : t('apuntes.year.auto')
+  const tipId = useId()
   return (
-    <label className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted" title={sourceTip}>
-      <span className="sr-only sm:not-sr-only">{t('apuntes.year.label')}</span>
-      <select
-        value={explicit ?? ''}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-        aria-label={t('apuntes.year.forItem', { name: item.name })}
-        className={`min-h-[36px] px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm normal-case tracking-normal disabled:opacity-50 ${
-          explicit == null ? 'text-ink-secondary dark:text-night-muted italic' : 'text-ink-primary dark:text-night-text'
-        }`}
-      >
-        <option value="">{autoLabel}</option>
-        {years.map((y) => <option key={y} value={y}>{y}</option>)}
-      </select>
-    </label>
+    <div className="flex flex-col gap-0.5">
+      <label className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+        <span className="sr-only sm:not-sr-only">{t('apuntes.year.label')}</span>
+        <select
+          value={explicit ?? ''}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+          aria-label={t('apuntes.year.forItem', { name: item.name })}
+          aria-describedby={explicit == null ? tipId : undefined}
+          className={selectClass({
+            className: `!w-auto font-body normal-case tracking-normal ${explicit == null ? '!text-ink-secondary dark:!text-night-muted italic' : ''}`,
+          })}
+        >
+          <option value="">{autoLabel}</option>
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </label>
+      {explicit == null && (
+        <span id={tipId} className="font-body text-label text-ink-secondary dark:text-night-muted">{sourceTip}</span>
+      )}
+    </div>
   )
 }

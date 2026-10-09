@@ -5,6 +5,10 @@ export default {
     './index.html',
     './src/**/*.{js,jsx,ts,tsx}',
   ],
+  // Scheduler subject colors are built from an index at runtime.
+  safelist: [
+    { pattern: /bg-subject_color_\d/, variants: ['hover', 'focus'] },
+  ],
   theme: {
     extend: {
       colors: {
@@ -51,6 +55,17 @@ export default {
           text:    '#f4f4f5', // primary text
           navy:    '#0f1f38', // deep brand navy (hero bg, text on primary-300)
         },
+        // Scheduler calendar grid: one color per subject.
+        subject_color_1:  'rgba(179, 229, 252, 0.75)',
+        subject_color_2:  'rgba(225, 190, 231, 0.75)',
+        subject_color_3:  'rgba(200, 230, 201, 0.75)',
+        subject_color_4:  'rgba(255, 224, 178, 0.75)',
+        subject_color_5:  'rgba(248, 187, 208, 0.75)',
+        subject_color_6:  'rgba(178, 235, 242, 0.75)',
+        subject_color_7:  'rgba(209, 196, 233, 0.75)',
+        subject_color_8:  'rgba(220, 237, 200, 0.75)',
+        subject_color_9:  'rgba(178, 223, 219, 0.75)',
+        subject_color_10: 'rgba(255, 204, 188, 0.75)',
         'card-bg': 'var(--card-bg)',
         'page-bg': 'var(--page-bg)',
       },
@@ -98,11 +113,16 @@ export default {
           '0%':   { opacity: '0', transform: 'translateY(16px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'slide-in': {
+          '0%':   { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
       },
       animation: {
         shimmer:    'shimmer 1.4s infinite linear',
         'fade-in':  'fade-in 0.3s ease-out both',
         'slide-up': 'slide-up 0.4s ease-out both',
+        'slide-in': 'slide-in 0.25s ease-out both',
       },
     },
   },

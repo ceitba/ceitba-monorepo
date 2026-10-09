@@ -7,54 +7,20 @@
     "langToggleAria": "Cambiar a inglés",
     "themeToggleLight": "Cambiar a modo claro",
     "themeToggleDark": "Cambiar a modo oscuro",
-    "apuntes": "Apuntes"
-  },
-  "tabs": {
-    "home": "Inicio",
-    "departments": "Departamentos",
-    "benefits": "Beneficios",
-    "staff": "Staff",
-    "aria": "Secciones de la página"
+    "apuntes": "Apuntes",
+    "sectionsAria": "Secciones",
+    "scheduler": "Horarios",
+    "newsletter": "Newsletter",
+    "benefits": "Beneficios"
   },
   "manage": {
-    "title": "Administrar",
-    "subtitle": "Gestioná staff, beneficios y permisos del CEITBA.",
     "loading": "Cargando…",
     "save": "Guardar",
     "cancel": "Cancelar",
     "edit": "Editar",
     "delete": "Eliminar",
-    "empty": "Sin datos",
     "tabs": {
-      "staff": "Staff",
-      "benefits": "Beneficios",
-      "users": "Usuarios",
-      "organizations": "Organizaciones",
-      "corrections": "Correcciones de horario",
-      "drive": "Apuntes",
-      "wikiAi": "Wiki IA",
-      "wikiAiUnseen": "{{count}} novedades en Wiki IA",
-      "capabilities": "Capacidades"
-    },
-    "staff": {
-      "year": "Año",
-      "add": "Agregar miembro",
-      "addTitle": "Nuevo miembro",
-      "editTitle": "Editar miembro",
-      "noneForYear": "No hay miembros cargados para este año.",
-      "confirmDelete": "¿Eliminar este miembro?",
-      "col": {
-        "name": "Nombre",
-        "role": "Rol",
-        "order": "Orden",
-        "department": "Departamento"
-      },
-      "deleteBody": "{{name}} se va a eliminar del staff {{year}}. Esta acción no se puede deshacer.",
-      "roleEs": "Rol (ES)",
-      "roleEn": "Rol (EN)",
-      "email": "Email",
-      "photoUrl": "URL de foto",
-      "linkedinUrl": "URL de LinkedIn"
+      "wikiAiUnseen": "{{count}} novedades en Wiki IA"
     },
     "benefits": {
       "tabs": {
@@ -62,11 +28,46 @@
         "categories": "Categorías"
       },
       "categories": {
-        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Editá su nombre, color y orden acá.",
-        "colorVar": "Variable de color",
+        "help": "Las categorías son los \"chips\" con los que se filtran los beneficios. Creá categorías nuevas y editá su nombre, color y orden acá.",
         "order": "Orden",
         "nameEs": "Nombre (ES)",
-        "nameEn": "Nombre (EN)"
+        "nameEn": "Nombre (EN)",
+        "color": "Color",
+        "colors": {
+          "it": "Celeste",
+          "media": "Rosa",
+          "infra": "Verde",
+          "nautica": "Turquesa",
+          "deportes": "Naranja",
+          "direct": "Lavanda",
+          "custom": "Personalizado",
+          "none": "Sin color"
+        },
+        "noChanges": "Sin cambios para guardar",
+        "saved": "Guardaste la categoría.",
+        "loadFailed": "No pudimos cargar las categorías.",
+        "empty": "Todavía no hay categorías de beneficios.",
+        "emptyHint": "Las categorías agrupan las tarjetas de beneficios y sirven para filtrarlas en el sitio. Creá la primera para empezar a cargar beneficios.",
+        "create": "Nueva categoría",
+        "createTitle": "Nueva categoría de beneficios",
+        "createSubmit": "Crear categoría",
+        "created": "Creaste la categoría.",
+        "nameEsRequired": "Escribí el nombre en español.",
+        "nameEnHint": "Opcional. Si lo dejás vacío, el sitio en inglés muestra el nombre en español.",
+        "slug": "Identificador",
+        "slugHint": "Se arma solo a partir del nombre y no se puede cambiar después. Solo minúsculas, números y guiones.",
+        "slugErrors": {
+          "required": "Escribí un identificador.",
+          "format": "Usá entre 2 y 40 caracteres: minúsculas sin tildes, números y guiones simples (por ejemplo, \"salud-mental\").",
+          "taken": "Ya existe una categoría con ese identificador. Elegí otro."
+        },
+        "confirmDelete": "¿Eliminar esta categoría?",
+        "deleteBody_zero": "La categoría «{{name}}» se va a eliminar. No tiene tarjetas. Esta acción no se puede deshacer.",
+        "deleteBody_one": "La categoría «{{name}}» se va a eliminar junto con su tarjeta. Esta acción no se puede deshacer.",
+        "deleteBody_other": "La categoría «{{name}}» se va a eliminar junto con sus {{count}} tarjetas. Esta acción no se puede deshacer.",
+        "deleteBodyUnknown": "La categoría «{{name}}» se va a eliminar junto con todas sus tarjetas. Esta acción no se puede deshacer.",
+        "deleteConfirm": "Sí, eliminar",
+        "deleted": "Eliminaste la categoría."
       },
       "cards": {
         "filter": "Categoría",
@@ -75,7 +76,7 @@
         "addTitle": "Nueva tarjeta de beneficio",
         "editTitle": "Editar tarjeta",
         "confirmDelete": "¿Eliminar esta tarjeta?",
-        "empty": "No hay tarjetas cargadas todavía.",
+        "empty": "Todavía no hay tarjetas de beneficios.",
         "titleEs": "Título (ES)",
         "titleEn": "Título (EN)",
         "summaryEs": "Descripción (ES)",
@@ -91,9 +92,19 @@
           "title": "Título",
           "category": "Categoría",
           "price": "Precio",
-          "order": "Orden"
+          "order": "Orden",
+          "actions": "Acciones"
         },
-        "deleteBody": "La tarjeta «{{title}}» se va a eliminar. Esta acción no se puede deshacer."
+        "deleteBody": "La tarjeta «{{title}}» se va a eliminar. Esta acción no se puede deshacer.",
+        "saved": "Guardaste la tarjeta.",
+        "deleted": "Eliminaste la tarjeta.",
+        "deleteConfirm": "Sí, eliminar",
+        "loadFailed": "No pudimos cargar las tarjetas de beneficios.",
+        "emptyFiltered": "No hay tarjetas en esta categoría.",
+        "emptyHint": "Acá van a aparecer las tarjetas que se muestran en la sección Beneficios del sitio.",
+        "needsCategory": "Cada tarjeta necesita una categoría y todavía no hay ninguna. Creá una en Categorías y después volvé acá.",
+        "goToCategories": "Ver categorías",
+        "titlesRequired": "Completá el título en español y en inglés para guardar."
       },
       "tabsAria": "Administrar beneficios"
     },
@@ -106,11 +117,11 @@
       "staffOn": "STAFF",
       "staffOff": "Asignar STAFF",
       "unassign": "Quitar",
-      "unassignTitle": "¿Quitar STAFF?",
+      "unassignTitle": "¿Quitarle STAFF a {{name}}?",
       "unassignBody": "{{name}} va a perder el acceso STAFF, incluido este panel, de inmediato. Podés volver a asignarlo más adelante.",
-      "unassignConfirm": "Quitar STAFF",
-      "addOrg": "+ organización",
-      "noOrgs": "—",
+      "unassignConfirm": "Sí, quitar STAFF",
+      "addOrg": "Agregar a una organización…",
+      "noOrgs": "Sin organizaciones",
       "searchPlaceholder": "Buscar por nombre o email…",
       "sort": {
         "newest": "Más recientes",
@@ -121,23 +132,45 @@
       "prev": "‹ Anterior",
       "next": "Siguiente ›",
       "removeOrgAria": "Quitar a {{name}} de {{org}}",
-      "removeOrgTitle": "¿Quitar de la organización?",
-      "removeOrgBody": "{{name}} va a dejar de ser miembro de {{org}}. Podés volver a agregarlo más adelante.",
-      "removeOrgConfirm": "Quitar",
-      "orgAdmin": "admin",
-      "orgMember": "miembro",
-      "makeOrgAdmin": "Hacer admin de {{org}}",
-      "makeOrgMember": "Quitar admin de {{org}}",
-      "demoteOrgTitle": "¿Quitar admin?",
-      "demoteOrgBody": "{{name}} va a seguir siendo miembro de {{org}}, pero sin acceso de admin (por ejemplo, la lista de seguidores).",
-      "demoteOrgConfirm": "Quitar admin",
-      "noOrgMembers": "{{org}} todavía no tiene miembros.",
+      "orgAdmin": "Admin",
+      "orgMember": "Miembro",
+      "makeOrgAdmin": "Hacer admin",
+      "makeOrgMember": "Quitar admin",
+      "noOrgMembers": "{{org}} todavía no tiene miembros",
       "addingBanner": "Agregando miembros a {{org}} — buscá a la persona y tocá «Agregar a {{org}}».",
       "addingDone": "Listo",
       "addToOrg": "Agregar a {{org}}",
       "addToOrgAria": "Agregar a {{name}} a {{org}}",
       "addingToOrg": "Agregando…",
-      "addMembers": "Agregar miembros"
+      "addMembers": "Agregar miembros",
+      "assignAria": "Asignar STAFF a {{name}}",
+      "unassignAria": "Quitar STAFF a {{name}}",
+      "assignTitle": "¿Dar acceso STAFF a {{name}}?",
+      "assignBody": "{{name}} va a poder entrar a este panel y administrar todo el sitio: staff, beneficios, usuarios, organizaciones, apuntes y la Wiki IA, incluido dar y quitar STAFF a otras personas. El acceso dura un año.",
+      "assignConfirm": "Sí, dar acceso STAFF",
+      "orgsLoadError": "No pudimos cargar las organizaciones: los nombres y el filtro por organización pueden faltar.",
+      "searchAria": "Buscar usuarios",
+      "sortAria": "Ordenar usuarios",
+      "filterOrgAria": "Filtrar por organización",
+      "addOrgAria": "Agregar a {{name}} a una organización",
+      "makeOrgAdminAria": "Hacer a {{name}} admin de {{org}}",
+      "makeOrgMemberAria": "Quitarle a {{name}} el rol de admin de {{org}}",
+      "removedFromOrg": "Quitaste a {{name}} de {{org}}.",
+      "noOrgMembersHint": "Agregá a las personas que van a publicar en ITBA News en nombre de la organización.",
+      "empty": "Todavía no hay usuarios",
+      "emptyHint": "Las personas aparecen acá la primera vez que inician sesión en el sitio.",
+      "noResults": "No encontramos usuarios con esa búsqueda",
+      "noResultsHint": "Probá con otra parte del nombre o del email.",
+      "scopeAria": "Mostrar",
+      "scope": {
+        "all": "Todas",
+        "staff": "Staff"
+      },
+      "addOrgButton": "+ Organización",
+      "addOrgTitle": "Sumar a {{name}} a una organización",
+      "addOrgField": "Organización",
+      "addOrgHint": "Entra como miembro. Después podés hacerlo admin desde su fila.",
+      "addOrgConfirm": "Sumar"
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
@@ -185,11 +218,13 @@
         "slugRequired": "Ingresá una dirección.",
         "slugFormat": "Usá entre 2 y {{max}} caracteres: minúsculas, números y guiones simples, sin guion al principio ni al final.",
         "duplicate": "Ya existe una organización con esa dirección."
-      }
+      },
+      "emptyHint": "Creá la primera para que sus miembros puedan publicar en ITBA News.",
+      "editProfile": "Editar perfil",
+      "editProfileAria": "Editar el perfil de {{name}} en ITBA News"
     },
-    "tabsAria": "Secciones de administración",
     "corrections": {
-      "intro": "Las correcciones de horario las sugieren los estudiantes y se aplican solas cuando suman 3 confirmaciones y más confirmaciones que rechazos. Este panel es una red de seguridad: podés aplicar una pendiente ya mismo o rechazar una (si estaba aplicada, se revierte al horario del SGA). Las correcciones son anónimas.",
+      "intro": "Se aplican solas con 3 confirmaciones y más confirmaciones que rechazos. Acá podés aplicarlas antes o rechazarlas (si ya estaba aplicada, vuelve al horario del SGA).",
       "filterLabel": "Estado",
       "filter": {
         "PENDING": "Pendientes",
@@ -254,10 +289,17 @@
         "SUPERSEDED": "No hay correcciones reemplazadas."
       },
       "emptyHint": "Acá vas a ver los horarios que los estudiantes proponen corregir desde el Combinador de Horarios. Normalmente no tenés que hacer nada: cada corrección se aplica sola cuando suma suficientes confirmaciones de otros estudiantes.",
-      "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones"
+      "pageStatus": "Página {{page}} de {{pages}} · {{total}} correcciones",
+      "loadFailed": "No pudimos cargar las correcciones.",
+      "rowLabel": "{{subject}} · Comisión {{commission}}",
+      "slot": "{{day}} {{from}}–{{to}}",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "pageLoadFailed": "No pudimos cargar la página {{page}}. Seguís viendo la anterior.",
+      "reloadFailed": "No pudimos actualizar la lista: puede estar desactualizada."
     },
     "capabilities": {
-      "intro": "Habilitá funciones en prueba para todos, para personas puntuales (por email, aunque nunca hayan entrado) o para organizaciones enteras. El staff siempre tiene todas.",
+      "intro": "Funciones en prueba: activalas para todos, para personas puntuales o para organizaciones. El staff siempre las tiene.",
       "empty": "No hay capacidades definidas.",
       "enabledForAll": "Habilitado para todos",
       "everyone": "Habilitado para todos",
@@ -291,7 +333,153 @@
         "add": "Agregar",
         "empty": "Ninguna organización tiene acceso todavía.",
         "members_one": "{{count}} miembro",
-        "members_other": "{{count}} miembros"
+        "members_other": "{{count}} miembros",
+        "meta": "{{members}} · {{granted}}"
+      },
+      "loadFailed": "No pudimos cargar las capacidades.",
+      "grantsLoadFailed": "No pudimos cargar los accesos de esta capacidad.",
+      "emptyHint": "Acá van a aparecer las funciones en prueba que podés habilitar para todos o para personas y organizaciones puntuales."
+    },
+    "errors": {
+      "generic": "No pudimos completar la acción. Probá de nuevo en un rato.",
+      "network": "No hay conexión con el servidor. Revisá tu conexión y probá de nuevo.",
+      "unauthorized": "Tu sesión venció. Volvé a iniciar sesión.",
+      "forbidden": "No tenés permiso para hacer esto.",
+      "notFound": "No encontramos lo que buscabas: puede que alguien lo haya borrado. Recargá la página.",
+      "conflict": "Alguien cambió esto mientras tanto. Recargá y probá de nuevo.",
+      "invalid": "Revisá los datos: hay algo que el servidor no aceptó.",
+      "tooMany": "Hiciste demasiados pedidos seguidos. Esperá un momento y probá de nuevo.",
+      "loadFailed": "No pudimos cargar esta sección."
+    },
+    "rail": {
+      "aria": "Áreas de administración",
+      "eyebrow": "Administración",
+      "areas": "Áreas",
+      "back": "Administración",
+      "pending_one": "{{count}} pendiente",
+      "pending_other": "{{count}} pendientes",
+      "groups": {
+        "content": "Contenido",
+        "community": "Comunidad",
+        "academic": "Académico",
+        "system": "Sistema"
+      }
+    },
+    "areas": {
+      "review": {
+        "label": "Para revisar"
+      },
+      "newsletter": {
+        "label": "Newsletter"
+      },
+      "benefits": {
+        "label": "Beneficios",
+        "subtitle": "Las tarjetas de beneficios que ven los estudiantes y sus categorías."
+      },
+      "people": {
+        "label": "Personas",
+        "subtitle": "Todos los que entraron al sitio. Desde acá das o sacás acceso de staff y los sumás a organizaciones."
+      },
+      "organizations": {
+        "label": "Organizaciones"
+      },
+      "corrections": {
+        "label": "Correcciones de horario"
+      },
+      "apuntes": {
+        "label": "Apuntes"
+      },
+      "wiki": {
+        "label": "Wiki IA"
+      },
+      "capabilities": {
+        "label": "Capacidades"
+      }
+    },
+    "review": {
+      "title": "Para revisar",
+      "checking": "Revisando qué espera una decisión…",
+      "pending_zero": "No queda nada pendiente.",
+      "pending_one": "1 cosa espera una decisión del staff. Lo más viejo, primero.",
+      "pending_other": "{{count}} cosas esperan una decisión del staff. Lo más viejo, primero.",
+      "filterAria": "Filtrar por tipo",
+      "filters": {
+        "all": "Todo · {{count}}",
+        "articles": "Artículos · {{count}}",
+        "corrections": "Correcciones · {{count}}",
+        "apuntes": "Apuntes · {{count}}",
+        "wiki": "Wiki IA · {{count}}"
+      },
+      "types": {
+        "article": "Artículo",
+        "correction": "Corrección de horario",
+        "source": "Carpeta de Drive",
+        "fileReview": "Archivo para revisar",
+        "fileReported": "Archivo denunciado",
+        "wiki": "Wiki IA"
+      },
+      "sources": {
+        "articles": "artículos",
+        "corrections": "correcciones",
+        "sources": "carpetas de Drive",
+        "needsReview": "archivos para revisar",
+        "reported": "archivos denunciados",
+        "wiki": "Wiki IA"
+      },
+      "sourceFailed": "No pudimos cargar: {{sources}}. Lo demás está al día.",
+      "articleMeta": "{{authors}} · independiente · enviado {{when}}",
+      "unknownAuthor": "Sin nombre",
+      "community": "Archivo comunitario",
+      "correctionMeta": "Propone {{proposed}} · hoy en el SGA: {{sga}} · {{votes}}",
+      "sourceMeta_one": "{{owner}} · {{count}} archivo · conectada {{when}}",
+      "sourceMeta_other": "{{owner}} · {{count}} archivos · conectada {{when}}",
+      "fileReviewMeta": "{{subject}} · lo compartió {{sharer}}, que no es el dueño en Drive",
+      "fileReportedMeta_one": "{{subject}} · {{count}} denuncia: {{reason}}",
+      "fileReportedMeta_other": "{{subject}} · {{count}} denuncias, la primera: {{reason}}",
+      "noSubject": "Sin materia",
+      "wikiBlockedTitle": "Una ejecución de la Wiki IA espera que apruebes su costo",
+      "wikiBlockedMeta": "Iniciada el {{when}}",
+      "wikiFailedTitle": "La última ejecución de la Wiki IA terminó con errores",
+      "wikiFailedMeta": "Terminó el {{when}}",
+      "wikiReviewCost": "Revisar costo",
+      "wikiOpen": "Ver en Wiki IA",
+      "open": "Revisar",
+      "publish": "Publicar",
+      "publishAria": "Publicar «{{title}}»",
+      "articlePublished": "Publicaste «{{title}}».",
+      "conflict": "Alguien ya se ocupó de esto (otra persona del staff o una sincronización). Lo sacamos de la lista.",
+      "emptyTitle": "Todo al día",
+      "emptyBody": "No queda nada esperando al staff. Lo nuevo (artículos enviados, correcciones, carpetas y denuncias) aparece acá apenas llega.",
+      "truncated": {
+        "corrections": "Mostramos {{shown}} de {{total}} correcciones pendientes.",
+        "sources": "Mostramos {{shown}} de {{total}} carpetas para aprobar.",
+        "needsReview": "Mostramos {{shown}} de {{total}} archivos para revisar.",
+        "reported": "Mostramos {{shown}} de {{total}} archivos denunciados."
+      },
+      "seeAll": "Ver todas",
+      "digest": {
+        "title": "Resumen semanal",
+        "week": "Semana del {{date}}",
+        "sendsAt": "Sale el {{when}}",
+        "notScheduled": "Sin envío programado",
+        "articles_one": "{{count}} artículo",
+        "articles_other": "{{count}} artículos",
+        "edit": "Editar resumen",
+        "none": "No hay un resumen en preparación.",
+        "open": "Ir a Resumen semanal",
+        "loadError": "No pudimos cargar el resumen semanal.",
+        "status": {
+          "draft": "Borrador",
+          "sending": "Enviándose",
+          "sent": "Enviado",
+          "cancelled": "Anulado"
+        }
+      },
+      "quick": {
+        "title": "Accesos rápidos",
+        "benefit": "Nueva tarjeta de beneficio",
+        "org": "Sumar a alguien a una organización",
+        "staff": "Dar acceso de staff"
       }
     }
   },
@@ -306,15 +494,19 @@
     "language": "Idioma",
     "career": "Carrera",
     "plan": "Plan",
-    "fileNumber": "Legajo",
     "unset": "Sin definir",
-    "pickCareerFirst": "Elegí una carrera para ver los planes disponibles."
+    "pickCareerFirst": "Elegí una carrera para ver los planes disponibles.",
+    "fileNumberValue": "Legajo: {{number}}",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveError": "No pudimos guardar el cambio. Probá de nuevo.",
+    "loadError": "No pudimos cargar tus datos académicos."
   },
   "auth": {
     "profile": "Mi perfil",
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",
-    "manage": "Administrar",
+    "manage": "Administración",
     "errors": {
       "unauthorized": "Solo cuentas @itba.edu.ar pueden iniciar sesión.",
       "unauthorized_workspace": "Solo cuentas del workspace ITBA pueden iniciar sesión.",
@@ -324,7 +516,10 @@
       "access_denied": "Cancelaste el inicio de sesión con Google."
     },
     "apuntes": "Apuntes",
-    "myApuntes": "Mis apuntes"
+    "myApuntes": "Mis apuntes",
+    "accountMenu": "Menú de cuenta",
+    "savedSchedules": "Mis horarios guardados",
+    "myPosts": "Mis publicaciones"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
@@ -333,13 +528,6 @@
     "description": "Trabajamos para mejorar la experiencia universitaria de cada estudiante ITBA, representando sus intereses, organizando actividades y gestionando herramientas que hacen la vida académica más fácil."
   },
   "home": {
-    "departments": {
-      "eyebrow": "Quiénes hacemos al CEITBA",
-      "title": "Equipos detrás de cada iniciativa",
-      "subtitle": "Seis departamentos coordinan todo lo que el CEITBA hace por la comunidad ITBA: desde tecnología y comunicación hasta deportes y representación estudiantil.",
-      "seeAll": "Conocer todos los departamentos",
-      "tileAria": "Ver el departamento {{name}}"
-    },
     "benefits": {
       "eyebrow": "Lo que ofrecemos a los socios",
       "title": "Beneficios pensados para tu paso por el ITBA",
@@ -426,16 +614,12 @@
     },
     "filterLabel": "Filtrar por categoría",
     "all": "Todos",
-    "empty": "No hay beneficios cargados para esta categoría todavía.",
-    "learnMore": "Ver más"
-  },
-  "staff": {
-    "sectionTitle": "Nuestro equipo",
-    "sectionSubtitle": "Las personas detrás del CEITBA.",
-    "comingSoon": "Próximamente",
-    "comingSoonMessage": "Estamos trabajando para presentarte al equipo completo. ¡Volvé pronto!",
-    "yearLabel": "Filtrar por año",
-    "linkedinAria": "LinkedIn de {{name}}"
+    "empty": "Cuando el CEITBA sume beneficios, los vas a ver acá.",
+    "learnMore": "Ver más",
+    "emptyTitle": "Todavía no hay beneficios cargados",
+    "emptyFilteredTitle": "No hay beneficios en esta categoría",
+    "emptyFiltered": "Probá con otra categoría o mirá todos los beneficios.",
+    "showAll": "Ver todos los beneficios"
   },
   "footer": {
     "itTeam": "IT Team CEITBA",
@@ -446,6 +630,7 @@
   },
   "errors": {
     "somethingWrong": "Algo salió mal",
+    "pageFailed": "No se pudo cargar esta página. Recargala para seguir.",
     "retry": "Reintentar",
     "dismiss": "Cerrar"
   },
@@ -462,5 +647,22 @@
       "title": "Apuntes todavía no está habilitado para tu cuenta",
       "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
     }
+  },
+  "digest": {
+    "toggle": "Recibir 'La semana en ITBA' por mail",
+    "toggleHint": "Al activarlo, también seguís a CEITBA.",
+    "toggleError": "No pudimos guardar el cambio."
+  },
+  "ui": {
+    "back": "Volver",
+    "close": "Cerrar",
+    "loading": "Cargando",
+    "cancel": "Cancelar",
+    "undo": "Deshacer"
+  },
+  "staffGuard": {
+    "title": "Esta página es del staff del CEITBA",
+    "body": "La administración la usa el equipo del CEITBA. Si sos parte del staff y no la ves, pedile a alguien del equipo que te dé acceso.",
+    "home": "Ir al inicio"
   }
 }

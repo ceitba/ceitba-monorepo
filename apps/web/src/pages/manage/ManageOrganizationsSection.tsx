@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import {
   createOrganization,
   listOrganizations,
@@ -7,8 +8,13 @@ import {
   type Organization,
 } from '../../api/admin'
 import { ApiError } from '../../api/client'
-import ErrorBanner from '../../components/ErrorBanner'
 import Modal from '../../components/Modal'
+import {
+  Alert, Badge, Button, EmptyState, ErrorState, Field, SkeletonTable,
+  buttonClass, inputClass, selectClass, textareaClass,
+} from '../../components/ui'
+import { newsletterPath } from '../../newsletter/paths'
+import { adminErrorMessage } from './adminErrors'
 import { SLUG_MAX, isValidSlug, slugify } from '../../utils/slug'
 
 // The categories the seeded orgs use (CEITBA-API V7__seed_organizations.sql).
@@ -44,11 +50,11 @@ export default function ManageOrganizationsSection({ onAddMembers }: { onAddMemb
   const { t } = useTranslation()
   const [orgs, setOrgs]           = useState<Organization[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [notice, setNotice]       = useState<string | null>(null)
   const [creating, setCreating]   = useState(false)
-  // Orgs created in this visit: kept on top of the list with the
-  // "Agregar miembros" shortcut, newest first (even if the list fetch
-  // resolves after the create).
+  // Orgs created in this visit: kept on top of the list, newest first (even
+  // if the list fetch resolves after the create).
   const [created, setCreated]     = useState<Organization[]>([])
 
   // Out-of-order guard: only the latest request may write state.
@@ -56,17 +62,17 @@ export default function ManageOrganizationsSection({ onAddMembers }: { onAddMemb
 
   useEffect(() => {
     const id = ++reqIdRef.current
+    setLoadError(null)
     listOrganizations()
       .then((data) => {
         if (reqIdRef.current !== id) return
         setOrgs([...data].sort(byName))
-        setLoadError(null)
       })
-      .catch((e: Error) => {
+      .catch((e: unknown) => {
         if (reqIdRef.current !== id) return
-        setLoadError(e.message)
+        setLoadError(adminErrorMessage(e, t))
       })
-  }, [])
+  }, [reloadKey, t])
 
   function handleCreated(org: Organization) {
     setCreating(false)
@@ -76,6 +82,7 @@ export default function ManageOrganizationsSection({ onAddMembers }: { onAddMemb
 
   const createdSlugs = new Set(created.map((o) => o.slug))
   const rows = [...created, ...(orgs ?? []).filter((o) => !createdSlugs.has(o.slug))]
+  const retry = () => setReloadKey((k) => k + 1)
 
   return (
     <div className="flex flex-col gap-4">
@@ -83,99 +90,98 @@ export default function ManageOrganizationsSection({ onAddMembers }: { onAddMemb
         <p className="flex-1 min-w-[240px] font-body text-body-sm text-ink-secondary dark:text-night-muted">
           {t('manage.organizations.intro')}
         </p>
-        <button
-          type="button"
-          onClick={() => { setNotice(null); setCreating(true) }}
-          className="px-3 py-1.5 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600 transition-colors"
-        >
+        <Button size="sm" onClick={() => { setNotice(null); setCreating(true) }}>
           {t('manage.organizations.add')}
-        </button>
+        </Button>
       </div>
 
-      {loadError && <ErrorBanner onDismiss={() => setLoadError(null)}>{loadError}</ErrorBanner>}
-      {notice && (
-        <div
-          role="status"
-          className="flex items-start gap-3 px-3 py-2 rounded-sm border font-body text-body-sm bg-green-50 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-900"
-        >
-          <p className="flex-1">{notice}</p>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            aria-label={t('errors.dismiss')}
-            className="flex-shrink-0 leading-none text-h5 opacity-70 hover:opacity-100"
-          >
-            ×
-          </button>
-        </div>
-      )}
+      {notice && <Alert tone="success" onDismiss={() => setNotice(null)}>{notice}</Alert>}
 
-      <div className="overflow-x-auto rounded-card border border-border dark:border-night-border">
-        <table className="w-full font-body text-body-sm">
-          <thead className="bg-page-bg dark:bg-night-bg">
-            <tr className="text-left">
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.organizations.col.organization')}</th>
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.organizations.col.slug')}</th>
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.organizations.col.category')}</th>
-              <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">
-                <span className="sr-only">{t('manage.organizations.col.actions')}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((o) => {
-              const isNew = createdSlugs.has(o.slug)
-              return (
-                <tr
-                  key={o.slug}
-                  className={`border-t border-border dark:border-night-border align-middle ${isNew ? 'bg-green-50/60 dark:bg-green-950/20' : ''}`}
-                >
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-3">
-                      <OrgBadge org={o} />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-ink-primary dark:text-night-text">
-                          {o.name}
-                          {isNew && (
-                            <span className="ml-2 px-1.5 py-0.5 rounded-sm border border-green-300 dark:border-green-800 text-green-800 dark:text-green-300 font-mono text-label uppercase tracking-widest align-middle">
-                              {t('manage.organizations.newBadge')}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-ink-secondary dark:text-night-muted">{o.fullName}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap">
-                    {o.slug}
-                  </td>
-                  <td className="px-3 py-3 text-ink-secondary dark:text-night-muted">
-                    {o.category || '—'}
-                  </td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap">
-                    {isNew && (
-                      <button
-                        type="button"
-                        onClick={() => onAddMembers(o)}
-                        aria-label={t('manage.organizations.addMembersAria', { name: o.name })}
-                        className="px-3 py-1 rounded-sm font-mono text-label uppercase tracking-widest border border-border dark:border-night-border hover:border-primary hover:text-primary transition-colors"
-                      >
-                        {t('manage.organizations.addMembers')}
-                      </button>
-                    )}
-                  </td>
+      {/* The list failed and there's nothing to show: say so and offer a
+          retry. If orgs created in this visit exist, keep them visible and
+          flag the failure above them. */}
+      {loadError && rows.length === 0 ? (
+        <ErrorState message={loadError} onRetry={retry} />
+      ) : orgs === null && rows.length === 0 ? (
+        <SkeletonTable rows={6} cols={4} />
+      ) : orgs !== null && rows.length === 0 ? (
+        <EmptyState
+          title={t('manage.organizations.empty')}
+          body={t('manage.organizations.emptyHint')}
+          action={<Button onClick={() => setCreating(true)}>{t('manage.organizations.add')}</Button>}
+        />
+      ) : (
+        <>
+          {loadError && (
+            <Alert tone="error" action={<Button size="sm" variant="outline" onClick={retry}>{t('errors.retry')}</Button>}>
+              {loadError}
+            </Alert>
+          )}
+          <div className="overflow-x-auto rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface">
+            <table className="w-full font-body text-body-sm">
+              <thead className="bg-page-bg dark:bg-night-raised text-ink-secondary dark:text-night-muted">
+                <tr className="text-left">
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.organizations.col.organization')}</th>
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.organizations.col.slug')}</th>
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">{t('manage.organizations.col.category')}</th>
+                  <th className="px-3 py-2 font-mono text-label uppercase tracking-widest">
+                    <span className="sr-only">{t('manage.organizations.col.actions')}</span>
+                  </th>
                 </tr>
-              )
-            })}
-            {orgs === null && !loadError && rows.length === 0 && (
-              <tr><td colSpan={4} className="px-3 py-6 text-center text-ink-secondary dark:text-night-muted">{t('manage.loading')}</td></tr>
-            )}
-            {orgs !== null && rows.length === 0 && (
-              <tr><td colSpan={4} className="px-3 py-6 text-center text-ink-secondary dark:text-night-muted">{t('manage.organizations.empty')}</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {rows.map((o) => {
+                  const isNew = createdSlugs.has(o.slug)
+                  return (
+                    <tr
+                      key={o.slug}
+                      className={`border-t border-border dark:border-night-border align-middle ${isNew ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''}`}
+                    >
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <OrgBadge org={o} />
+                          <div className="min-w-0">
+                            <p className="flex flex-wrap items-center gap-2 font-semibold text-ink-primary dark:text-night-text">
+                              {o.name}
+                              {isNew && <Badge tone="success">{t('manage.organizations.newBadge')}</Badge>}
+                            </p>
+                            <p className="text-ink-secondary dark:text-night-muted">{o.fullName}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap">
+                        {o.slug}
+                      </td>
+                      <td className="px-3 py-3 text-ink-secondary dark:text-night-muted">
+                        {o.category || '—'}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Link
+                            to={newsletterPath(`/mine/org/${encodeURIComponent(o.slug)}`)}
+                            aria-label={t('manage.organizations.editProfileAria', { name: o.name })}
+                            className={buttonClass({ variant: 'ghost', size: 'sm' })}
+                          >
+                            {t('manage.organizations.editProfile')}
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onAddMembers(o)}
+                            aria-label={t('manage.organizations.addMembersAria', { name: o.name })}
+                          >
+                            {t('manage.organizations.addMembers')}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {creating && (
         <CreateOrganizationModal
@@ -316,7 +322,7 @@ function CreateOrganizationModal({
           return
         }
       }
-      setFormError((err as Error).message)
+      setFormError(adminErrorMessage(err, t))
     }
   }
 
@@ -342,57 +348,59 @@ function CreateOrganizationModal({
       initialFocusRef={nameRef}
       footer={
         <>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onCancel}
-            className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted disabled:opacity-50"
-          >
+          <Button variant="ghost" disabled={busy} onClick={onCancel}>
             {t('manage.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="create-organization-form"
-            disabled={busy}
-            className="px-3 py-1.5 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest disabled:opacity-50"
-          >
-            {busy ? t('manage.organizations.creating') : t('manage.organizations.create')}
-          </button>
+          </Button>
+          <Button type="submit" form="create-organization-form" loading={busy} loadingLabel={t('manage.organizations.creating')}>
+            {t('manage.organizations.create')}
+          </Button>
         </>
       }
     >
       <form id="create-organization-form" noValidate onSubmit={submit} className="flex flex-col gap-4">
-        {formError && <ErrorBanner onDismiss={() => setFormError(null)}>{formError}</ErrorBanner>}
+        {formError && <Alert tone="error" onDismiss={() => setFormError(null)}>{formError}</Alert>}
 
-        <TextField
-          id="org-name"
-          inputRef={nameRef}
+        <Field
           label={t('manage.organizations.fields.name')}
           hint={t('manage.organizations.fields.nameHint')}
-          value={name}
-          onChange={onNameChange}
-          disabled={busy}
           error={shown('name')}
           required
-        />
+        >
+          {(p) => (
+            <input
+              {...p}
+              ref={nameRef}
+              value={name}
+              disabled={busy}
+              onChange={(e) => onNameChange(e.target.value)}
+              className={inputClass({ invalid: !!shown('name') })}
+            />
+          )}
+        </Field>
 
-        <TextField
-          id="org-full-name"
+        <Field
           label={t('manage.organizations.fields.fullName')}
           hint={t('manage.organizations.fields.fullNameHint')}
-          value={fullName}
-          onChange={(v) => { setFullName(v); setServerErrors((e) => ({ ...e, fullName: undefined })) }}
-          disabled={busy}
           error={shown('fullName')}
           required
-        />
+        >
+          {(p) => (
+            <input
+              {...p}
+              value={fullName}
+              disabled={busy}
+              onChange={(e) => { setFullName(e.target.value); setServerErrors((er) => ({ ...er, fullName: undefined })) }}
+              className={inputClass({ invalid: !!shown('fullName') })}
+            />
+          )}
+        </Field>
 
         <div className="flex flex-col gap-1">
           <span id="org-slug-label" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
             {t('manage.organizations.fields.slug')}
           </span>
           {editingSlug ? (
-            <div className="flex items-stretch rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface focus-within:border-primary">
+            <div className={`flex items-stretch rounded-sm border bg-white dark:bg-night-surface focus-within:ring-1 ${slugError ? 'border-red-400 dark:border-red-500 focus-within:ring-red-300/40' : 'border-border dark:border-night-border focus-within:border-primary focus-within:ring-primary/30'}`}>
               <span className="hidden sm:flex items-center pl-3 font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap select-none">
                 {NEWSLETTER_ORG_PREFIX}
               </span>
@@ -417,7 +425,7 @@ function CreateOrganizationModal({
                   setSlugManual(next !== '')
                   setServerErrors((er) => ({ ...er, slug: undefined }))
                 }}
-                className="flex-1 min-w-0 px-3 sm:pl-0 py-1.5 bg-transparent font-mono text-body-sm focus:outline-none"
+                className="flex-1 min-w-0 min-h-[44px] px-3 sm:pl-0 py-2 bg-transparent font-mono text-body-sm text-ink-primary dark:text-night-text focus:outline-none"
               />
             </div>
           ) : (
@@ -426,57 +434,59 @@ function CreateOrganizationModal({
                 {NEWSLETTER_ORG_PREFIX}
                 <strong className="font-semibold">{slug || t('manage.organizations.fields.slugPlaceholder')}</strong>
               </span>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={busy}
                 onClick={() => setEditingSlug(true)}
                 aria-label={t('manage.organizations.fields.slugEditAria')}
-                className="text-primary dark:text-primary-300 font-mono text-label uppercase tracking-widest hover:underline disabled:opacity-50"
               >
                 {t('manage.edit')}
-              </button>
+              </Button>
             </div>
           )}
           {slugError ? (
-            <p id="org-slug-error" className="font-body text-body-sm text-red-600 dark:text-red-400">{slugError}</p>
+            <p id="org-slug-error" className="font-body text-label text-red-600 dark:text-red-400">{slugError}</p>
           ) : (
-            <p id="org-slug-hint" className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+            <p id="org-slug-hint" className="font-body text-label text-ink-secondary dark:text-night-muted">
               {t(slugManual ? 'manage.organizations.fields.slugHintManual' : 'manage.organizations.fields.slugHint')}
             </p>
           )}
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-            {t('manage.organizations.fields.description')}
-            <span className="normal-case tracking-normal"> {t('manage.organizations.fields.optional')}</span>
-          </span>
-          <textarea
-            value={description}
-            disabled={busy}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm resize-y"
-          />
-          {shown('description') && <p className="font-body text-body-sm text-red-600 dark:text-red-400">{shown('description')}</p>}
-        </label>
+        <Field
+          label={<>{t('manage.organizations.fields.description')}<span className="normal-case tracking-normal"> {t('manage.organizations.fields.optional')}</span></>}
+          error={shown('description')}
+        >
+          {(p) => (
+            <textarea
+              {...p}
+              value={description}
+              disabled={busy}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className={textareaClass({ invalid: !!shown('description'), className: 'resize-y' })}
+            />
+          )}
+        </Field>
 
-        <label className="flex flex-col gap-1">
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-            {t('manage.organizations.fields.category')}
-            <span className="normal-case tracking-normal"> {t('manage.organizations.fields.optional')}</span>
-          </span>
-          <select
-            value={category}
-            disabled={busy}
-            onChange={(e) => setCategory(e.target.value)}
-            className="px-3 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm"
-          >
-            <option value="">{t('manage.organizations.fields.noCategory')}</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          {shown('category') && <p className="font-body text-body-sm text-red-600 dark:text-red-400">{shown('category')}</p>}
-        </label>
+        <Field
+          label={<>{t('manage.organizations.fields.category')}<span className="normal-case tracking-normal"> {t('manage.organizations.fields.optional')}</span></>}
+          error={shown('category')}
+        >
+          {(p) => (
+            <select
+              {...p}
+              value={category}
+              disabled={busy}
+              onChange={(e) => setCategory(e.target.value)}
+              className={selectClass({ invalid: !!shown('category') })}
+            >
+              <option value="">{t('manage.organizations.fields.noCategory')}</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+        </Field>
 
         <fieldset className="flex flex-col gap-2" disabled={busy} aria-describedby="org-color-hint">
           <legend className="mb-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
@@ -494,7 +504,7 @@ function CreateOrganizationModal({
                   className="peer sr-only"
                 />
                 <span
-                  className={`flex items-center gap-2 pl-1 pr-3 py-1 rounded-sm border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1 ${
+                  className={`flex items-center gap-2 min-h-[44px] pl-2 pr-3 py-1 rounded-sm border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1 ${
                     color === c
                       ? 'border-primary dark:border-primary-300 text-ink-primary dark:text-night-text'
                       : 'border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary'
@@ -506,61 +516,12 @@ function CreateOrganizationModal({
               </label>
             ))}
           </div>
-          <p id="org-color-hint" className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          <p id="org-color-hint" className="font-body text-label text-ink-secondary dark:text-night-muted">
             {t('manage.organizations.fields.colorHint')}
           </p>
-          {shown('color') && <p className="font-body text-body-sm text-red-600 dark:text-red-400">{shown('color')}</p>}
+          {shown('color') && <p className="font-body text-label text-red-600 dark:text-red-400">{shown('color')}</p>}
         </fieldset>
       </form>
     </Modal>
-  )
-}
-
-function TextField({
-  id,
-  label,
-  hint,
-  value,
-  onChange,
-  disabled,
-  error,
-  required,
-  inputRef,
-}: {
-  id: string
-  label: string
-  hint?: string
-  value: string
-  onChange: (v: string) => void
-  disabled?: boolean
-  error?: string
-  required?: boolean
-  inputRef?: RefObject<HTMLInputElement>
-}) {
-  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
-        {label}
-      </label>
-      <input
-        ref={inputRef}
-        id={id}
-        value={value}
-        disabled={disabled}
-        required={required}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        onChange={(e) => onChange(e.target.value)}
-        className={`px-3 py-1.5 rounded-sm border bg-white dark:bg-night-surface font-body text-body-sm focus:outline-none focus:border-primary ${
-          error ? 'border-red-400 dark:border-red-700' : 'border-border dark:border-night-border'
-        }`}
-      />
-      {error ? (
-        <p id={`${id}-error`} className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : hint ? (
-        <p id={`${id}-hint`} className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{hint}</p>
-      ) : null}
-    </div>
   )
 }

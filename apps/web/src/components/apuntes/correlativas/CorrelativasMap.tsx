@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { usePins } from '../../../hooks/usePins'
 import { closure, edgePath, layoutColumns, type CorrModel, type CorrNode } from '../../../utils/correlatividades'
 import PinButton from '../PinButton'
+import ZoomControls from '../ZoomControls'
+import { inputClass } from '../../ui'
 import { yearLabel } from '../../../utils/planGroups'
 
 const MIN_Z = 0.4
@@ -115,7 +117,7 @@ export default function CorrelativasMap({ model }: { model: CorrModel }) {
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t('apuntes.corr.search')}
         aria-label={t('apuntes.corr.search')}
-        className="sm:w-72 px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm focus:outline-none focus:border-primary"
+        className={inputClass({ className: 'sm:!w-72' })}
       />
       {matches && (
         <span className="font-mono text-label text-ink-secondary dark:text-night-muted" aria-live="polite">
@@ -127,21 +129,23 @@ export default function CorrelativasMap({ model }: { model: CorrModel }) {
         <li className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm corr-swatch-down" aria-hidden="true" />{t('apuntes.corr.legendDown')}</li>
       </ul>
       {!phone && (
-            <div className="flex items-center gap-2 px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface">
-              <button type="button" onClick={() => setZoom((z) => Math.max(MIN_Z, +(z - 0.1).toFixed(2)))} aria-label={t('wiki.graphUi.zoomOut')} className="w-7 h-7 font-mono hover:text-primary">−</button>
-              <input
-                type="range"
-                min={MIN_Z}
-                max={MAX_Z}
-                step={0.05}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                aria-label={t('apuntes.corr.zoom')}
-                className="w-24 accent-primary"
-              />
-              <button type="button" onClick={() => setZoom((z) => Math.min(MAX_Z, +(z + 0.1).toFixed(2)))} aria-label={t('wiki.graphUi.zoomIn')} className="w-7 h-7 font-mono hover:text-primary">+</button>
-              <button type="button" onClick={fit} className="px-2 h-7 font-mono text-label uppercase tracking-widest hover:text-primary">{t('wiki.graphUi.fit')}</button>
-            </div>
+        <ZoomControls
+          onZoomOut={() => setZoom((z) => Math.max(MIN_Z, +(z - 0.1).toFixed(2)))}
+          onZoomIn={() => setZoom((z) => Math.min(MAX_Z, +(z + 0.1).toFixed(2)))}
+          onFit={fit}
+          between={
+            <input
+              type="range"
+              min={MIN_Z}
+              max={MAX_Z}
+              step={0.05}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              aria-label={t('apuntes.corr.zoom')}
+              className="w-24 accent-primary"
+            />
+          }
+        />
       )}
     </div>
   )
@@ -255,12 +259,12 @@ function CorrCard({ node: n, hasWiki, state, style, onFocusChange, model, showDe
         </span>
         {showDeps && n.deps.length > 0 && (
           <span className="font-body text-[0.7rem] text-ink-secondary dark:text-night-muted">
-            {t('apuntes.corr.requires')}: {n.deps.join(', ')}
+            {t('apuntes.corr.requiresList', { list: n.deps.join(', ') })}
           </span>
         )}
       </Link>
       <span id={`corr-deps-${cssId(n.id)}`} className="sr-only">
-        {n.deps.length ? `${t('apuntes.corr.requires')}: ${n.deps.map((d) => model.nodes.get(d)?.name ?? d).join(', ')}` : ''}
+        {n.deps.length ? t('apuntes.corr.requiresList', { list: n.deps.map((d) => model.nodes.get(d)?.name ?? d).join(', ') }) : ''}
       </span>
       <PinButton subject={{ subjectId: n.id, subjectName: n.name, fileCount: n.fileCount, hasWiki }} className="absolute top-1 right-1" />
     </div>
