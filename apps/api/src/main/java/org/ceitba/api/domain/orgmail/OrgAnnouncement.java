@@ -39,7 +39,8 @@ public class OrgAnnouncement {
     @Column(nullable = false)
     private String status = DRAFT;
 
-    // The org's connected account at send time.
+    // The org's connected account at send time (a record only: the worker
+    // sends from the org's current account, OrgAnnouncementService.senderOf).
     @Column(name = "sender_email")
     private String senderEmail;
 

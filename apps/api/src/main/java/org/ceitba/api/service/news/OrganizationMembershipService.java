@@ -1,5 +1,6 @@
 package org.ceitba.api.service.news;
 
+import org.ceitba.api.common.exception.InvalidStateException;
 import org.ceitba.api.common.exception.ResourceAlreadyExistsException;
 import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.common.exception.ValidationException;
@@ -259,7 +260,12 @@ public class OrganizationMembershipService {
         }
         var target = find(toUserId, orgSlug);
         var current = find(fromUserId, orgSlug);
-        repo.findAdminsForUpdate(orgSlug);
+        // @PreAuthorize ran before the lock: the caller may have been demoted since.
+        boolean stillAdmin = repo.findAdminsForUpdate(orgSlug).stream()
+            .anyMatch(a -> a.getUserId().equals(fromUserId));
+        if (!stillAdmin) {
+            throw new InvalidStateException("You are no longer an admin of " + orgSlug);
+        }
         target.setRole(ADMIN_ROLE);
         current.setRole(MEMBER_ROLE);
     }

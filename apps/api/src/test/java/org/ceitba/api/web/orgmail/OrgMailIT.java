@@ -104,6 +104,9 @@ class OrgMailIT {
             .andExpect(jsonPath("$.error").value("OrgMailNotConnected"));
 
         connectedAccount("sabf@itba.edu.ar");
+        // Counted in SQL with the same rule as the send: Dave opted out, Eve is outside the domains.
+        mvc.perform(get("/v1/organizations/sabf/mail").with(admin()))
+            .andExpect(jsonPath("$.recipientEstimate").value(1));
         mvc.perform(post("/v1/organizations/sabf/announcements/" + id + "/test").with(admin()))
             .andExpect(status().isNoContent());
         mvc.perform(post("/v1/organizations/sabf/announcements/" + id + "/send").with(admin()))
@@ -122,6 +125,31 @@ class OrgMailIT {
         // Test and announcement both count toward the org account's quota, not CEITBA's.
         assertThat(jdbc.queryForObject("SELECT count(*) FROM public.mail_send_log WHERE account = 'sabf@itba.edu.ar'",
             Integer.class)).isEqualTo(2);
+    }
+
+    // Deliveries go out from the org's current account: they wait while it has
+    // none and resume once it reconnects, also with another address.
+    @Test
+    void pendingDeliveriesWaitForTheOrgsAccountAndResumeFromTheNewOne() throws Exception {
+        connectedAccount("sabf@itba.edu.ar");
+        long id = draft("Convocatoria");
+        mvc.perform(post("/v1/organizations/sabf/announcements/" + id + "/send").with(admin()))
+            .andExpect(status().isOk());
+        jdbc.update("DELETE FROM public.mail_sender_account WHERE owner_ref = 'sabf'");
+
+        sender.runPending();
+        mvc.perform(get("/v1/organizations/sabf/announcements").with(admin()))
+            .andExpect(jsonPath("$[0].status").value("sending"))
+            .andExpect(jsonPath("$[0].pending").value(1));
+
+        connectedAccount("prensa.sabf@itba.edu.ar");
+        sender.runPending();
+        mvc.perform(get("/v1/organizations/sabf/announcements").with(admin()))
+            .andExpect(jsonPath("$[0].status").value("sent"))
+            .andExpect(jsonPath("$[0].sent").value(1));
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM public.mail_send_log WHERE account = 'prensa.sabf@itba.edu.ar'",
+            Integer.class)).isEqualTo(1);
     }
 
     @Test

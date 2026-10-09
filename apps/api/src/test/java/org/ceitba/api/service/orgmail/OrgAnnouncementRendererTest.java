@@ -20,6 +20,14 @@ class OrgAnnouncementRendererTest {
     }
 
     @Test
+    void aQuotedOrBracketedUrlStopsAtItsDelimiter() {
+        var html = OrgAnnouncementRenderer.render("O", null, "Mirá \"https://a.org/x\" y <https://b.org>",
+            "u", "p").html();
+        assertThat(html).contains("&quot;<a href=\"https://a.org/x\" style=\"color:#1A3C6E\">https://a.org/x</a>&quot;")
+            .contains("&lt;<a href=\"https://b.org\"");
+    }
+
+    @Test
     void blankLinesStartParagraphsAndSingleNewlinesBreakLines() {
         var html = OrgAnnouncementRenderer.render("O", null, "uno\ndos\n\ntres", "u", "p").html();
         assertThat(html).contains(">uno<br>dos</p>").contains(">tres</p>");

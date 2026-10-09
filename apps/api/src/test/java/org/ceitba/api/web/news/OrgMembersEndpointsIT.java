@@ -182,6 +182,23 @@ class OrgMembersEndpointsIT {
     }
 
     @Test
+    void pendingInviteIsClaimedWhenStaffCreatesTheUser() throws Exception {
+        mvc.perform(post("/v1/organizations/sabf/members/invites").with(orgAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"emails\":[\"dave@itba.edu.ar\"]}"))
+            .andExpect(status().isOk());
+
+        mvc.perform(post("/v1/users/create").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"dave@itba.edu.ar\",\"name\":\"Dave\"}"))
+            .andExpect(status().isCreated());
+
+        var dave = userRepo.findByEmail("dave@itba.edu.ar").orElseThrow();
+        assertThat(role(dave.getId(), "sabf")).isEqualTo("member");
+        assertThat(inviteRepo.count()).isZero();
+    }
+
+    @Test
     void adminRevokesPendingInvite() throws Exception {
         mvc.perform(post("/v1/organizations/sabf/members/invites").with(orgAdmin())
                 .contentType(MediaType.APPLICATION_JSON)

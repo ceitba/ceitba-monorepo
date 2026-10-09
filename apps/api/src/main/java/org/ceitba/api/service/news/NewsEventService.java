@@ -122,7 +122,11 @@ public class NewsEventService {
         var event = findById(id);
         applyExtras(event, extras);
         if (patch.getTitle()      != null) event.setTitle(patch.getTitle());
-        if (patch.getEventDate()  != null) event.setEventDate(patch.getEventDate());
+        if (patch.getEventDate() != null && !patch.getEventDate().equals(event.getEventDate())) {
+            event.setEventDate(patch.getEventDate());
+            // Rescheduled: the day-before reminder goes out again for the new date.
+            event.setReminderSentAt(null);
+        }
         if (patch.getStartTime()  != null) event.setStartTime(patch.getStartTime());
         if (patch.getEndTime()    != null) event.setEndTime(patch.getEndTime());
         if (patch.getLocation()   != null) event.setLocation(patch.getLocation());

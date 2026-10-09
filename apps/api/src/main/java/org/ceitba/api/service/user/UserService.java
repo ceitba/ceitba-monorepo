@@ -7,6 +7,7 @@ import org.ceitba.api.repository.CareerRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.UserOrganizationRepository;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.web.user.dto.CreateUserRequest;
 import org.ceitba.api.web.user.dto.UserResponse;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,15 +27,18 @@ public class UserService {
     private final CareerRepository careerRepository;
     private final CeitbaStaffRepository staffRepository;
     private final UserOrganizationRepository membershipRepository;
+    private final OrganizationMembershipService memberships;
 
     public UserService(UserRepository userRepository,
                        CareerRepository careerRepository,
                        CeitbaStaffRepository staffRepository,
-                       UserOrganizationRepository membershipRepository) {
+                       UserOrganizationRepository membershipRepository,
+                       OrganizationMembershipService memberships) {
         this.userRepository = userRepository;
         this.careerRepository = careerRepository;
         this.staffRepository = staffRepository;
         this.membershipRepository = membershipRepository;
+        this.memberships = memberships;
     }
 
     @Transactional
@@ -55,7 +59,10 @@ public class UserService {
         }
 
         try {
-            return toResponse(userRepository.save(user));
+            var saved = userRepository.save(user);
+            // Pending org invites of this email, as on a first login (UserProvisioningService).
+            memberships.claimInvites(saved.getId(), saved.getEmail());
+            return toResponse(saved);
         } catch (DataIntegrityViolationException e) {
             // Race or column-level constraint we didn't pre-check
             throw new ResourceAlreadyExistsException("User", req.email());

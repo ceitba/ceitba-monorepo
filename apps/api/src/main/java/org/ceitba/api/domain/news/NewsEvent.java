@@ -124,4 +124,5 @@ public class NewsEvent {
     public void setSignupMode(String signupMode) { this.signupMode = signupMode; }
     public void setSignupUrl(String signupUrl)   { this.signupUrl = signupUrl; }
     public void setCapacity(Integer capacity)    { this.capacity = capacity; }
+    public void setReminderSentAt(OffsetDateTime at) { this.reminderSentAt = at; }
 }

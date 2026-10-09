@@ -15,7 +15,7 @@ public final class OrgAnnouncementRenderer {
 
     public record Rendered(String html, String text) {}
 
-    private static final Pattern URL = Pattern.compile("https?://[^\\s<>\"]+[^\\s<>\".,;:!?)\\]]");
+    private static final Pattern URL = Pattern.compile("https?://[^\\s<>\"]+[^\\s<>\"'.,;:!?)\\]]");
     private static final Map<String, String> COLORS = Map.of(
         "blue", "#1A3C6E", "amber", "#B87005", "green", "#047857", "violet", "#6D28D9");
 
@@ -27,7 +27,7 @@ public final class OrgAnnouncementRenderer {
         for (String p : body.strip().split("\\R\\s*\\R")) {
             if (p.isBlank()) continue;
             paragraphs.add("<p style=\"margin:0 0 16px;line-height:1.6\">"
-                + linkify(HtmlUtils.htmlEscape(p.strip())).replaceAll("\\R", "<br>") + "</p>");
+                + linkify(p.strip()).replaceAll("\\R", "<br>") + "</p>");
         }
         String name = HtmlUtils.htmlEscape(orgName);
         String html = """
@@ -46,16 +46,18 @@ public final class OrgAnnouncementRenderer {
         return new Rendered(html, text);
     }
 
-    // On already-escaped text: '&amp;' inside a URL stays escaped in href.
-    static String linkify(String escaped) {
-        Matcher m = URL.matcher(escaped);
+    // Escapes `text` and links its URLs. URLs are found in the raw text, so
+    // one in quotes or angle brackets doesn't swallow the escaped delimiter.
+    static String linkify(String text) {
+        Matcher m = URL.matcher(text);
         var out = new StringBuilder();
+        int last = 0;
         while (m.find()) {
-            String url = m.group();
-            m.appendReplacement(out, Matcher.quoteReplacement(
-                "<a href=\"" + url + "\" style=\"color:#1A3C6E\">" + url + "</a>"));
+            String url = HtmlUtils.htmlEscape(m.group());
+            out.append(HtmlUtils.htmlEscape(text.substring(last, m.start())))
+                .append("<a href=\"").append(url).append("\" style=\"color:#1A3C6E\">").append(url).append("</a>");
+            last = m.end();
         }
-        m.appendTail(out);
-        return out.toString();
+        return out.append(HtmlUtils.htmlEscape(text.substring(last))).toString();
     }
 }

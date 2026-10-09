@@ -57,6 +57,17 @@ public interface OrgAnnouncementRepository extends JpaRepository<OrgAnnouncement
         """, nativeQuery = true)
     List<Object[]> findRecipients(@Param("org") String org);
 
+    // How many of those are within `domains` (same rule as
+    // DigestProperties.isAllowedRecipient: one '@', exact domain match).
+    @Query(value = """
+        SELECT count(*) FROM public."user" u
+        JOIN public.user_follows f ON f.user_id = u.id AND f.org_slug = :org
+        WHERE NOT EXISTS (SELECT 1 FROM public.org_mail_optouts o WHERE o.user_id = u.id AND o.org_slug = :org)
+          AND lower(trim(u.email)) ~ '^[^@]+@[^@]+$'
+          AND split_part(lower(trim(u.email)), '@', 2) IN (:domains)
+        """, nativeQuery = true)
+    long countRecipients(@Param("org") String org, @Param("domains") java.util.Collection<String> domains);
+
     // Still follows the org and hasn't opted out (re-checked at send time).
     @Query(value = """
         SELECT EXISTS (SELECT 1 FROM public.user_follows f WHERE f.user_id = :userId AND f.org_slug = :org)

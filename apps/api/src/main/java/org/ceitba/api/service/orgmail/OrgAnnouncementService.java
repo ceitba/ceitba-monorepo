@@ -103,7 +103,8 @@ public class OrgAnnouncementService {
         var account = accounts.orgAccount(org).orElse(null);
         var sender = account == null ? null : senders.forAccount(account.email(), o.getName());
         return new MailStatus(account, sender == null || sender.enabled(), sender == null ? null : sender.status(),
-            orgMail.weeklyLimit(), sentThisWeek(org), recipients(org).size(), orgMail.allowedDomain());
+            orgMail.weeklyLimit(), sentThisWeek(org), announcements.countRecipients(org, digest.allowedDomains()),
+            orgMail.allowedDomain());
     }
 
     @Transactional(readOnly = true)
@@ -161,7 +162,9 @@ public class OrgAnnouncementService {
     // draft -> sending, with the recipients snapshot.
     @Transactional
     public AnnouncementView send(String org, Long id) {
-        var o = requireOrg(org);
+        // The org's row lock serializes its sends, so two drafts sent at once
+        // can't both pass the weekly cap.
+        var o = orgs.findByIdForUpdate(org).orElseThrow(() -> new ResourceNotFoundException("Organization", org));
         var a = announcements.findForUpdate(id, org).orElseThrow(() -> notFound(id));
         if (!OrgAnnouncement.DRAFT.equals(a.getStatus())) throw new OrgMailException(OrgMailException.Reason.NOT_DRAFT);
         var sender = senderFor(o);
@@ -180,12 +183,14 @@ public class OrgAnnouncementService {
 
     // ---- worker side (OrgAnnouncementSender)
 
-    // The sender of an announcement's org, or empty when the org lost its account.
+    // The sender of an announcement's org: its account now, so deliveries left
+    // pending go out once the org reconnects (also with another address).
+    // Empty while the org has no account.
     @Transactional(readOnly = true)
     public Optional<MailSendService> senderOf(OrgAnnouncement a) {
         var o = orgs.findById(a.getOrgSlug()).orElse(null);
-        if (o == null || a.getSenderEmail() == null) return Optional.empty();
-        return Optional.of(senders.forAccount(a.getSenderEmail(), o.getName()));
+        if (o == null) return Optional.empty();
+        return accounts.orgAccount(o.getSlug()).map(account -> senders.forAccount(account.email(), o.getName()));
     }
 
     // Still follows the org, hasn't opted out and `email` is still allowed.

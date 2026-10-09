@@ -190,6 +190,13 @@ class EventSignupIT {
         assertThat(reminders.sendDueReminders()).isZero();
         assertThat(eventRepo.findById("tomorrow-evt").orElseThrow().getReminderSentAt()).isNotNull();
         assertThat(eventRepo.findById("rsvp-evt").orElseThrow().getReminderSentAt()).isNull();
+
+        // Rescheduled after its reminder went out: reminded again for the new date.
+        mvc.perform(patch("/v1/news/events/tomorrow-evt").with(as("alice@itba.edu.ar"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"eventDate\":\"%s\"}".formatted(today.plusDays(8))))
+            .andExpect(status().isOk());
+        assertThat(eventRepo.findById("tomorrow-evt").orElseThrow().getReminderSentAt()).isNull();
     }
 
     @Test
