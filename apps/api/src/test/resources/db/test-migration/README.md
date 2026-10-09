@@ -62,3 +62,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.47 push_log | V57 |
 | V4.48 org_mail | V58 |
 | V4.49 org_attendee_visibility | V59 |
+| V4.50 kb_page_embeddings | V61 (V60 is a reindex only) |

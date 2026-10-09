@@ -105,3 +105,6 @@ server-side Google OAuth code exchange.
 Database: Hibernate in `validate` mode; Flyway (`src/main/resources/db/migration/`) is the only schema tool. Two
 schemas, `public` and `wiki`. Do not set `hibernate.jdbc.time_zone` (it shifts `LocalTime` columns; a guard test
 enforces this).
+Postgres runs the `pgvector/pgvector` image (Debian) in compose and in the ITs: the wiki pages' embeddings live in
+`wiki.kb_page_chunk` (`docs/SUBJECT-WIKI.md` "Embeddings"), computed by the self-hosted `ceitba-embeddings` compose
+service (llama.cpp + EmbeddingGemma 2); the vector column is not JPA-mapped, only native queries touch it. New DDL migrations also need a `V4.x` mirror in `src/test/resources/db/test-migration` (see its README).

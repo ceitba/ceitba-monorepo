@@ -206,6 +206,22 @@ kb:
     execution-mode: ${KB_EXECUTION_MODE:auto}
     sync-concurrency: ${KB_SYNC_CONCURRENCY:16}
     request-timeout: ${KB_LLM_REQUEST_TIMEOUT:PT5M}
+  # Embeddings of the wiki pages for semantic search / RAG (docs/SUBJECT-WIKI.md
+  # "Embeddings"): self-hosted EmbeddingGemma 2 on llama.cpp (ceitba-embeddings in
+  # docker-compose.yml), or any OpenAI-compatible /v1. Empty base URL = off. The
+  # model must return 768-long vectors (kb_page_chunk.embedding); changing it
+  # re-embeds every page. Empty templates = EmbeddingGemma's retrieval prompts.
+  embeddings:
+    enabled: ${KB_EMBEDDINGS_ENABLED:true}
+    base-url: ${KB_EMBEDDING_BASE_URL:}
+    api-key: ${KB_EMBEDDING_API_KEY:}
+    model: ${KB_EMBEDDING_MODEL:embeddinggemma-2}
+    query-template: ${KB_EMBEDDING_QUERY_TEMPLATE:}
+    document-template: ${KB_EMBEDDING_DOCUMENT_TEMPLATE:}
+    use-fake: ${KB_EMBEDDING_USE_FAKE:${KB_LLM_USE_FAKE:false}}
+    interval: ${KB_EMBEDDING_INTERVAL:PT5M}
+    batch-size: ${KB_EMBEDDING_BATCH_SIZE:16}
+    request-timeout: ${KB_EMBEDDING_REQUEST_TIMEOUT:PT2M}
   # OPTIONAL override of the AES-GCM key for custom LLM endpoint tokens stored in the DB
   # (base64 of 32 bytes, openssl rand -base64 32). Empty = derived from AUTH_JWT_SECRET (HKDF).
   secrets:
