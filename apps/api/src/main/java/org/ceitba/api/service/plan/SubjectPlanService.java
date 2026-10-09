@@ -90,10 +90,11 @@ public class SubjectPlanService {
         // One query for the plan's subjects with times fetched in the same
         // statement (no N+1 on commission_time), then per subject only the
         // term to show (see CommissionTerms; same rule as /v1/commissions).
+        LocalDate today = LocalDate.now(clock);
         Map<String, List<Commission>> currentBySubject = subjectCodes.isEmpty()
             ? Map.of()
             : CommissionTerms.currentTermBySubject(
-                commissionRepository.findBySubjectCodeInWithTimes(subjectCodes), LocalDate.now(clock));
+                commissionRepository.findBySubjectCodeInWithTimes(subjectCodes), today);
         var overlay = scheduleCorrections.organizedCommissions(
             currentBySubject.values().stream().flatMap(List::stream).toList(), viewerId);
 
@@ -110,10 +111,10 @@ public class SubjectPlanService {
                 .toList();
 
             String courseStart = subjectCommissions.isEmpty()
-                ? LocalDate.now(clock).format(ISO_DATE)
+                ? today.format(ISO_DATE)
                 : subjectCommissions.get(0).getCourseStart().format(ISO_DATE);
             String courseEnd = subjectCommissions.isEmpty()
-                ? LocalDate.now(clock).format(ISO_DATE)
+                ? today.format(ISO_DATE)
                 : subjectCommissions.get(0).getCourseEnd().format(ISO_DATE);
 
             var detail = new OrganizedSubjectsResponse.SubjectDetail(
@@ -125,7 +126,10 @@ public class SubjectPlanService {
                 sp.creditsRequired(),
                 courseStart,
                 courseEnd,
-                commissionDtos
+                commissionDtos,
+                // Only the fallback serves commissions that have all ended.
+                !subjectCommissions.isEmpty()
+                    && subjectCommissions.stream().allMatch(c -> c.getCourseEnd().isBefore(today))
             );
 
             organized

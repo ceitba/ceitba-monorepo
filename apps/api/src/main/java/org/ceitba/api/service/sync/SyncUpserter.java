@@ -7,6 +7,7 @@ import org.ceitba.api.domain.PlanSubjectId;
 import org.ceitba.api.domain.Subject;
 import org.ceitba.api.domain.correction.CorrectionSlot;
 import org.ceitba.api.external.itba.CommissionProjection;
+import org.ceitba.api.external.itba.CommissionQuery;
 import org.ceitba.api.external.itba.SubjectPlanProjection;
 import org.ceitba.api.repository.CommissionRepository;
 import org.ceitba.api.repository.PlanSubjectRepository;
@@ -115,20 +116,44 @@ class SyncUpserter {
     // Returns true when the commission was created, false when updated. The
     // caller counts it only after this transaction has committed.
     //
+    // `term` is the filled query the commission came from (year and period
+    // set); it is stamped on the row, so the last term ITBA listed it in is
+    // known. Name, dates and type are refreshed too: they used to be frozen at
+    // first insert, so an ITBA date fix never reached the term filter
+    // (CommissionTerms). ITBA issues new ids every term, so refreshing in
+    // place never overwrites an older term's row; a change is logged anyway.
+    //
     // An existing commission is locked (SELECT ... FOR UPDATE) like every
     // schedule-correction write does, so a slot change and its correction
     // expiry can't interleave with a vote on the same commission.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean upsertCommission(CommissionProjection projection) {
+    public boolean upsertCommission(CommissionProjection projection, CommissionQuery term) {
         Optional<Commission> existing = commissionRepository.findForUpdate(projection.id());
         var commission = existing.orElseGet(() -> new Commission(
             projection.id(), projection.subjectCode(), projection.commissionName(),
             projection.courseStart(), projection.courseEnd(),
             projection.enrolledStudents(), projection.quota(), projection.subjectType()));
 
+        if (existing.isPresent() && (!commission.getCommissionName().equals(projection.commissionName())
+                || !commission.getCourseStart().equals(projection.courseStart())
+                || !commission.getCourseEnd().equals(projection.courseEnd())
+                || commission.getSubjectType() != projection.subjectType())) {
+            log.info("Commission {} ({}) changed upstream: {} {}..{} {} -> {} {}..{} {}",
+                projection.id(), projection.subjectCode(),
+                commission.getCommissionName(), commission.getCourseStart(), commission.getCourseEnd(),
+                commission.getSubjectType(),
+                projection.commissionName(), projection.courseStart(), projection.courseEnd(),
+                projection.subjectType());
+        }
+
         // Refresh mutable fields
+        commission.setCommissionName(projection.commissionName());
+        commission.setCourseStart(projection.courseStart());
+        commission.setCourseEnd(projection.courseEnd());
+        commission.setSubjectType(projection.subjectType());
         commission.setEnrolledStudents(projection.enrolledStudents());
         commission.setQuota(projection.quota());
+        commission.setTerm(term.year(), term.period());
 
         var newSlots = projection.times().stream()
             .map(t -> new CorrectionSlot(t.day().name(), t.hourFrom().format(HH_MM), t.hourTo().format(HH_MM)))

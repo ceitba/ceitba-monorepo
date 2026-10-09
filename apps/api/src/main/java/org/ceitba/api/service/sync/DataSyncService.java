@@ -90,11 +90,11 @@ public class DataSyncService {
     }
 
     public List<CommissionProjection> syncCommissionsBySubject(String subjectCode, CommissionQuery query) {
-        var commissions = itbaApiClient.getCommissionsBySubject(subjectCode,
-            query != null ? query : CommissionQuery.defaults());
+        var q = (query != null ? query : CommissionQuery.defaults()).withDefaultsFilled(clock);
+        var commissions = itbaApiClient.getCommissionsBySubject(subjectCode, q);
         var result = new DataSyncResult();
         for (var c : commissions) {
-            upsertCommission(c, result);
+            upsertCommission(c, q, result);
         }
         return commissions;
     }
@@ -121,7 +121,7 @@ public class DataSyncService {
 
         List<CommissionProjection> commissions;
         try {
-            commissions = itbaApiClient.getCommissions(query);
+            commissions = itbaApiClient.getCommissions(q);
         } catch (Exception e) {
             log.error("Failed to fetch commissions from ITBA API", e);
             throw e;
@@ -156,7 +156,7 @@ public class DataSyncService {
 
         for (var c : commissions) {
             try {
-                upsertCommission(c, result);
+                upsertCommission(c, q, result);
             } catch (Exception e) {
                 log.error("Failed to upsert commission {}", c.id(), e);
                 result.commissions().errors++;
@@ -164,8 +164,10 @@ public class DataSyncService {
         }
     }
 
-    private void upsertCommission(CommissionProjection projection, DataSyncResult result) {
-        if (upserter.upsertCommission(projection)) {
+    // `term` must be the filled query (see CommissionQuery.withDefaultsFilled):
+    // its year and period are stamped on the row.
+    private void upsertCommission(CommissionProjection projection, CommissionQuery term, DataSyncResult result) {
+        if (upserter.upsertCommission(projection, term)) {
             result.commissions().created++;
         } else {
             result.commissions().updated++;
