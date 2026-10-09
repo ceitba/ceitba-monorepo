@@ -202,12 +202,14 @@ public class RestClientItbaApiClient implements ItbaApiClient {
         }
     }
 
+    // Null when ITBA sends no type or one we don't know: the upsert then
+    // keeps the stored type (SEMESTRAL for a new row) instead of overwriting.
     private static SubjectType mapSubjectType(String type) {
-        if (type == null) return SubjectType.SEMESTRAL;
+        if (type == null) return null;
         try {
             return SubjectType.valueOf(type.toUpperCase());
         } catch (IllegalArgumentException e) {
-            return SubjectType.SEMESTRAL;
+            return null;
         }
     }
 

@@ -20,8 +20,10 @@ const slotKey = (slots: CommissionSchedule[]): string =>
     .sort()
     .join('|')
 
-// "YYYY-MM-DD" → "DD/MM" without going through Date (no time zone shift).
+// "YYYY-MM-DD" → "DD/MM" / "DD/MM/YYYY" without going through Date (no
+// time zone shift).
 const dayMonth = (date: string): string => `${date.slice(8, 10)}/${date.slice(5, 7)}`
+export const formatDay = (date: string): string => `${dayMonth(date)}/${date.slice(0, 4)}`
 
 // Unknown dates (an older API) count as overlapping: better a needless
 // warning than a missing one.
@@ -55,8 +57,10 @@ export function disambiguateCommissions(commissions: Commission[]): Commission[]
   const renamed = new Map<Commission, Commission>()
   byName.forEach((group, name) => {
     if (group.length < 2) return
+    // Compare the labels, not the dates: two cohorts starting on the same
+    // day of different years would otherwise get the same "A (10/03)".
     const starts = group.map((c) => c.course_start)
-    const byDate = starts.every(Boolean) && new Set(starts).size === group.length
+    const byDate = starts.every(Boolean) && new Set(starts.map((s) => dayMonth(s!))).size === group.length
     group.forEach((c, i) => {
       // Two commissions running at the same time under one name with
       // different timetables: the data can't say which one is real.

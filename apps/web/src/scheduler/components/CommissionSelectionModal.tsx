@@ -4,6 +4,7 @@ import { Alert, Button, Modal } from '@/components/ui'
 import CorrectionStatus from './corrections/CorrectionStatus'
 import SuggestCorrectionModal from './corrections/SuggestCorrectionModal'
 import { Subject } from '../hooks/useSubjects'
+import { formatDay } from '../services/commissionNames'
 import { Commission, CommissionSchedule } from '../types/scheduler'
 
 type Turn = 'morning' | 'afternoon' | 'evening'
@@ -23,9 +24,6 @@ const turnsForCommission = (c: Commission): Set<Turn> => {
   }
   return turns
 }
-
-// "YYYY-MM-DD" → "DD/MM/YYYY" without going through Date (no time zone shift).
-const formatDay = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`
 
 // Selection and turn filters start fresh on mount: render it only while
 // open and key it by subject so each subject gets a clean modal.

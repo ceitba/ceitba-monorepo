@@ -255,6 +255,26 @@ class DataSyncServiceIT {
         assertThat(c.getTermPeriod()).isEqualTo("FirstSemester");
     }
 
+    // ITBA leaving out the name or sending an unknown type (null in the
+    // projection) is not a change: the stored values stay.
+    @Test
+    void resyncKeepsNameAndTypeWhenUpstreamOmitsThem() {
+        fakeClient.stubPlan("S10-Rev23", List.of());
+        fakeClient.stubCommissions(List.of(new CommissionProjection("93.12-A", "93.12", "Algoritmos", "A",
+            LocalDate.of(2026, 3, 1), LocalDate.of(2026, 12, 31), 10, 30, SubjectType.ANNUAL, List.of())));
+        syncService.syncAll(CommissionQuery.defaults());
+
+        fakeClient.stubCommissions(List.of(new CommissionProjection("93.12-A", "93.12", "Algoritmos", null,
+            LocalDate.of(2026, 3, 1), LocalDate.of(2026, 12, 31), 12, 30, null, List.of())));
+        var second = syncService.syncCommissionsOnly(CommissionQuery.defaults());
+
+        assertThat(second.commissions().getErrors()).isZero();
+        var c = commissionRepository.findById("93.12-A").orElseThrow();
+        assertThat(c.getCommissionName()).isEqualTo("A");
+        assertThat(c.getSubjectType()).isEqualTo(SubjectType.ANNUAL);
+        assertThat(c.getEnrolledStudents()).isEqualTo(12);
+    }
+
     private static CommissionProjection commission(int enrolled, int quota,
                                                    List<CommissionProjection.TimeSlot> times) {
         return new CommissionProjection("93.12-A", "93.12", "Algoritmos", "A",

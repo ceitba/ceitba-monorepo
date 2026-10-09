@@ -127,9 +127,7 @@ public class SubjectPlanService {
                 courseStart,
                 courseEnd,
                 commissionDtos,
-                // Only the fallback serves commissions that have all ended.
-                !subjectCommissions.isEmpty()
-                    && subjectCommissions.stream().allMatch(c -> c.getCourseEnd().isBefore(today))
+                CommissionTerms.isPastTerm(subjectCommissions, today)
             );
 
             organized

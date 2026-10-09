@@ -8,10 +8,11 @@
 -- upsert) and backfill the rows already here from their course dates, so no
 -- existing row is dropped or rewritten beyond the new columns.
 --
--- Backfill rule: a course starting January-June belongs to that year's
--- FirstSemester, one starting July-December to its SecondSemester. (Unlike
--- CommissionQuery's default period, January counts as FirstSemester: a
--- summer course belongs with the year it runs in.) Year-long commissions
+-- Backfill rule: the same split CommissionQuery uses for the period the
+-- sync queries by default, so a backfilled row and one the sync stamps agree:
+-- a course starting February-June belongs to that year's FirstSemester, any
+-- other month (July-January) to that year's SecondSemester. A January summer
+-- course thus gets the same (year, SecondSemester) the January sync stamps. Year-long commissions
 -- (01/03-31/12) land in FirstSemester, the term they started in.
 -- =============================================================================
 
@@ -21,8 +22,6 @@ ALTER TABLE "public"."commission"
 
 UPDATE "public"."commission"
 SET "term_year" = EXTRACT(YEAR FROM "course_start")::SMALLINT,
-    "term_period" = CASE WHEN EXTRACT(MONTH FROM "course_start") <= 6
+    "term_period" = CASE WHEN EXTRACT(MONTH FROM "course_start") BETWEEN 2 AND 6
                          THEN 'FirstSemester'
                          ELSE 'SecondSemester' END;
-
-CREATE INDEX "commission_term_idx" ON "public"."commission" ("term_year", "term_period");

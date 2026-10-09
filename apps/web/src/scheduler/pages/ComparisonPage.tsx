@@ -38,8 +38,8 @@ const slotsFromSaved = (
     for (const slot of commission.schedule ?? []) {
       out.push({
         day: slot.day,
-        dateFrom: subject.course_start,
-        dateTo: subject.course_end,
+        dateFrom: commission.course_start ?? subject.course_start,
+        dateTo: commission.course_end ?? subject.course_end,
         timeFrom: slot.time_from,
         timeTo: slot.time_to,
         subject: subject.name,

@@ -3,6 +3,7 @@ package org.ceitba.api.web.sync;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.ceitba.api.external.itba.CommissionQuery;
+import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.service.sync.DataSyncResult;
 import org.ceitba.api.service.sync.DataSyncService;
 import org.ceitba.api.service.sync.FirestoreImportService;
@@ -97,6 +98,11 @@ public class DataSyncController {
     private CommissionQuery buildQuery(Integer year, String period, String levels) {
         if (year == null && period == null && (levels == null || levels.isBlank())) {
             return null; // service applies defaults
+        }
+        if (period != null && !CommissionQuery.PERIODS.contains(period)) {
+            // Stored on every synced commission (term_period), so reject
+            // anything ITBA wouldn't send back rather than store it.
+            throw new ValidationException("period", period, "must be one of " + CommissionQuery.PERIODS);
         }
         List<String> levelList = null;
         if (levels != null && !levels.isBlank()) {

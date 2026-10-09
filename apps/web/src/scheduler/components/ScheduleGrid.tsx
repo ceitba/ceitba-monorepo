@@ -128,7 +128,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
       <button
         type="button"
         onClick={() => corrections.openClassDetail(slot.subject_id, slot.commission)}
-        aria-label={t('corrections.viewDetailAria', { subject: slot.subject, commission: slot.commission })}
+        aria-label={t('corrections.viewDetailAria', { subject: slot.subject, commission: slot.label })}
         className={`${layout} items-stretch rounded-sm hover:ring-2 hover:ring-primary/40`}
       >
         {content}

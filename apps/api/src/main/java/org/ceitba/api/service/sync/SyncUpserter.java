@@ -5,6 +5,7 @@ import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.PlanSubject;
 import org.ceitba.api.domain.PlanSubjectId;
 import org.ceitba.api.domain.Subject;
+import org.ceitba.api.domain.SubjectType;
 import org.ceitba.api.domain.correction.CorrectionSlot;
 import org.ceitba.api.external.itba.CommissionProjection;
 import org.ceitba.api.external.itba.CommissionQuery;
@@ -122,6 +123,8 @@ class SyncUpserter {
     // first insert, so an ITBA date fix never reached the term filter
     // (CommissionTerms). ITBA issues new ids every term, so refreshing in
     // place never overwrites an older term's row; a change is logged anyway.
+    // A missing name or an unknown type (null from the client) keeps the
+    // stored value: ITBA omitting a field is not a change.
     //
     // An existing commission is locked (SELECT ... FOR UPDATE) like every
     // schedule-correction write does, so a slot change and its correction
@@ -132,25 +135,29 @@ class SyncUpserter {
         var commission = existing.orElseGet(() -> new Commission(
             projection.id(), projection.subjectCode(), projection.commissionName(),
             projection.courseStart(), projection.courseEnd(),
-            projection.enrolledStudents(), projection.quota(), projection.subjectType()));
+            projection.enrolledStudents(), projection.quota(),
+            projection.subjectType() != null ? projection.subjectType() : SubjectType.SEMESTRAL));
 
-        if (existing.isPresent() && (!commission.getCommissionName().equals(projection.commissionName())
+        String name = projection.commissionName() != null && !projection.commissionName().isBlank()
+            ? projection.commissionName()
+            : commission.getCommissionName();
+        SubjectType type = projection.subjectType() != null ? projection.subjectType() : commission.getSubjectType();
+        if (existing.isPresent() && (!commission.getCommissionName().equals(name)
                 || !commission.getCourseStart().equals(projection.courseStart())
                 || !commission.getCourseEnd().equals(projection.courseEnd())
-                || commission.getSubjectType() != projection.subjectType())) {
+                || commission.getSubjectType() != type)) {
             log.info("Commission {} ({}) changed upstream: {} {}..{} {} -> {} {}..{} {}",
                 projection.id(), projection.subjectCode(),
                 commission.getCommissionName(), commission.getCourseStart(), commission.getCourseEnd(),
                 commission.getSubjectType(),
-                projection.commissionName(), projection.courseStart(), projection.courseEnd(),
-                projection.subjectType());
+                name, projection.courseStart(), projection.courseEnd(), type);
         }
 
         // Refresh mutable fields
-        commission.setCommissionName(projection.commissionName());
+        commission.setCommissionName(name);
         commission.setCourseStart(projection.courseStart());
         commission.setCourseEnd(projection.courseEnd());
-        commission.setSubjectType(projection.subjectType());
+        commission.setSubjectType(type);
         commission.setEnrolledStudents(projection.enrolledStudents());
         commission.setQuota(projection.quota());
         commission.setTerm(term.year(), term.period());
