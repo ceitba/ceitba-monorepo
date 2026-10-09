@@ -1,5 +1,5 @@
 import { apiGet, apiSend } from '@/api/client'
-import type { IsoDate, IsoTime, NewsEvent, NewsEventInput, NewsEventResponse, Page } from '../types'
+import type { Attendee, IsoDate, IsoTime, NewsEvent, NewsEventInput, NewsEventResponse, Page, RsvpResult } from '../types'
 
 export interface EventFilters {
   category?: string
@@ -71,4 +71,23 @@ export async function fetchAllEvents(
     if (data.length < pageSize || all.length >= (meta?.total ?? 0)) break
   }
   return all
+}
+
+// Built-in sign-up. 409 EventFull / EventEnded / EventNotRsvp (ApiError.code).
+export async function rsvpEvent(id: string): Promise<RsvpResult> {
+  return apiSend<RsvpResult>('POST', `/news/events/${encodeURIComponent(id)}/rsvp`)
+}
+
+export async function cancelRsvp(id: string): Promise<RsvpResult> {
+  return apiSend<RsvpResult>('DELETE', `/news/events/${encodeURIComponent(id)}/rsvp`)
+}
+
+// Ids of the events the signed-in user is going to.
+export async function fetchMyRsvps(): Promise<string[]> {
+  return (await apiGet<{ eventIds: string[] }>('/me/rsvps')).eventIds
+}
+
+// Members of the event's organization and staff.
+export async function fetchAttendees(id: string): Promise<Attendee[]> {
+  return (await apiGet<{ data: Attendee[] }>(`/news/events/${encodeURIComponent(id)}/attendees`)).data
 }

@@ -84,6 +84,33 @@ export interface NewsEventResponse {
   organization: string | null
   description: string | null
   createdAt: IsoDateTime
+  coverImage: string | null
+  // Join link for online (or hybrid) events.
+  onlineUrl: string | null
+  signupMode: SignupMode
+  // The external form (signupMode 'external').
+  signupUrl: string | null
+  // Max RSVPs (signupMode 'rsvp'); null = no limit.
+  capacity: number | null
+  rsvpCount: number
+}
+
+// How people sign up for an event: not at all, on an external form, or
+// with the built-in RSVP.
+export type SignupMode = 'none' | 'external' | 'rsvp'
+
+// POST/DELETE /news/events/{id}/rsvp.
+export interface RsvpResult {
+  going: boolean
+  rsvpCount: number
+}
+
+// EventRsvpService.Attendee (GET /news/events/{id}/attendees → { data }).
+export interface Attendee {
+  userId: string
+  name: string | null
+  email: string | null
+  createdAt: IsoDateTime
 }
 
 // What api/events returns: the response plus `date` (= eventDate) and
@@ -105,6 +132,13 @@ export interface NewsEventInput {
   category?: string
   organization?: string | null
   description?: string | null
+  // In a PATCH '' clears these two.
+  coverImage?: string
+  onlineUrl?: string
+  // The sign-up is replaced as a whole when signupMode is sent.
+  signupMode?: SignupMode
+  signupUrl?: string | null
+  capacity?: number | null
 }
 
 // ── Organizations and follows ───────────────────────────────────────────────
@@ -220,6 +254,8 @@ export interface AnalyticsEvent {
   sessionId: string
   timestamp?: number | null
   articleId?: string | null
+  // 'event_view' on the event detail page.
+  eventId?: string | null
   category?: string | null
   path?: string | null
 }
@@ -407,4 +443,29 @@ export interface SenderAccount {
   connectedAt: IsoDateTime | null
   lastError: string | null
   lastUsedAt: IsoDateTime | null
+}
+
+// ── Organization stats ──────────────────────────────────────────────────────
+
+// OrgAnalyticsService.OrgAnalytics (GET /organizations/{slug}/analytics).
+export interface OrgAnalytics {
+  days: number
+  articleViews: number
+  eventViews: number
+  // Distinct browser sessions that viewed the org's articles or events.
+  uniqueVisitors: number
+  daily: { date: IsoDate; articleViews: number; eventViews: number }[]
+  topArticles: { articleId: string; title: string; views: number }[]
+  events: {
+    eventId: string
+    title: string
+    date: IsoDate
+    signupMode: SignupMode
+    capacity: number | null
+    rsvpCount: number
+    views: number
+  }[]
+  // `cumulative`: current followers by the day they followed.
+  followers: { total: number; newInPeriod: number; cumulative: { date: IsoDate; count: number }[] }
+  pushes: { pushes: number; devicesTargeted: number; devicesReached: number }
 }

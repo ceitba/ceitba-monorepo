@@ -62,7 +62,40 @@
     "timeRange": "{{start}}–{{end}}",
     "error": "We couldn't load the events. Check your connection and try again.",
     "monthError": "We couldn't load that month's events.",
-    "noEventsHint": "When organizations publish events, they will show up here."
+    "noEventsHint": "When organizations publish events, they will show up here.",
+    "going": "You are going",
+    "filteredBy": "Events by {{org}}.",
+    "showAll": "See all events",
+    "detail": {
+      "back": "← Events",
+      "notFoundTitle": "Event not found",
+      "notFound": "The event you are looking for does not exist or was deleted.",
+      "errorTitle": "We could not load the event",
+      "when": "When",
+      "where": "Where",
+      "joinOnline": "Join online",
+      "calendar": "Add to calendar",
+      "googleCalendar": "Google Calendar",
+      "downloadIcs": "Download .ics (Apple, Outlook)",
+      "past": "This event already took place.",
+      "externalHint": "Sign-up is on a form of the organization.",
+      "signUp": "Sign up",
+      "noSignup": "No sign-up needed: just come.",
+      "goingCount_one": "{{count}} going",
+      "goingCount_other": "{{count}} going",
+      "goingOf_one": "{{count}} of {{capacity}} spots",
+      "goingOf_other": "{{count}} of {{capacity}} spots",
+      "signInToRsvp": "Sign in to RSVP",
+      "rsvp": "I am going",
+      "cancelRsvp": "Not going anymore",
+      "youreGoing": "You are on the list.",
+      "full": "Full",
+      "reminderHint": "If you have the app, we remind you the day before.",
+      "errors": {
+        "full": "It filled up while you were looking: no spots left.",
+        "rsvp": "We could not save your spot. Try again."
+      }
+    }
   },
   "orgs": {
     "pageTitle": "Organizations",
@@ -208,7 +241,11 @@
         "title": "Delete this event?",
         "body": "“{{title}}” will be removed from the calendar for good. This cannot be undone.",
         "confirm": "Yes, delete"
-      }
+      },
+      "rsvps_one": "{{count}} going →",
+      "rsvps_other": "{{count}} going →",
+      "rsvpsOf_one": "{{count}}/{{capacity}} going →",
+      "rsvpsOf_other": "{{count}}/{{capacity}} going →"
     },
     "form": {
       "saving": "Saving…",
@@ -337,9 +374,29 @@
         "time": "Start time is required.",
         "endTime": "End time is required.",
         "location": "Location is required.",
-        "endBeforeStart": "End time must be after the start time."
+        "endBeforeStart": "End time must be after the start time.",
+        "signupUrl": "Paste the form link (http or https).",
+        "capacity": "Capacity must be a whole number above 0."
       },
-      "orgLocked": "Your events are published under your organization."
+      "orgLocked": "Your events are published under your organization.",
+      "onlineUrl": "Online link",
+      "onlineUrlHint": "Optional: Meet, Zoom or a stream.",
+      "cover": "Cover image",
+      "signup": "Sign-up",
+      "signupModes": {
+        "none": "No sign-up",
+        "external": "External form",
+        "rsvp": "RSVP on the site"
+      },
+      "signupHints": {
+        "none": "Anyone can come without signing up.",
+        "external": "We show a button that opens your form (Google Forms, Eventbrite…).",
+        "rsvp": "People sign up with their ITBA account; you see the list and we remind them the day before."
+      },
+      "signupUrl": "Form link",
+      "capacity": "Capacity",
+      "capacityHint": "Empty = no limit.",
+      "deleted": "Event deleted."
     },
     "analytics": {
       "title": "Statistics",
@@ -368,7 +425,8 @@
       "ranges": {
         "days7": "7 days",
         "days30": "30 days",
-        "allTime": "All time"
+        "allTime": "All time",
+        "days90": "90 days"
       },
       "sparkSummary": "Min {{min}} · Max {{max}} · Today {{last}}",
       "rangeLabel": "Period",
@@ -726,7 +784,8 @@
       "label": "Organization sections",
       "profile": "Profile",
       "members": "Members",
-      "followers": "Followers"
+      "followers": "Followers",
+      "stats": "Stats"
     },
     "members": {
       "title": "Members",
@@ -784,6 +843,46 @@
           "body": "You will no longer be able to publish or edit the profile of {{org}}.",
           "confirm": "Leave"
         }
+      }
+    },
+    "attendees": {
+      "title": "Attendees",
+      "export": "Export CSV",
+      "emptyTitle": "Nobody signed up yet",
+      "empty": "When someone RSVPs from the event page, they show up here.",
+      "forbidden": "Only the organization's members can see who signed up.",
+      "loadError": "We could not load the list."
+    },
+    "orgStats": {
+      "title": "Stats",
+      "loadError": "We could not load the stats.",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's members see its stats.",
+      "noViewsTitle": "No views in this period yet",
+      "noViews": "Views of your articles and events show up here shortly after someone opens them.",
+      "views": "Views",
+      "viewsSplit": "{{articles}} on articles · {{events}} on events",
+      "visitors": "Visitors",
+      "visitorsHint": "Distinct browser sessions.",
+      "followers": "Followers",
+      "newFollowers_one": "+{{count}} in the period",
+      "newFollowers_other": "+{{count}} in the period",
+      "pushReach": "Notifications delivered",
+      "pushes_one": "{{count}} send",
+      "pushes_other": "{{count}} sends",
+      "dailyViews": "Views per day",
+      "followersSeries": "Current followers by follow date",
+      "followersNote": "Counts the people following the organization today by the day they followed; people who unfollowed are not shown.",
+      "topArticles": "Most read articles",
+      "noArticleViews": "Nobody read the organization's articles in this period.",
+      "events": "Events",
+      "noEvents": "No events in this period.",
+      "noRsvp": "No RSVP on the site",
+      "columns": {
+        "event": "Event",
+        "date": "Date",
+        "views": "Views",
+        "rsvps": "Going"
       }
     }
   },

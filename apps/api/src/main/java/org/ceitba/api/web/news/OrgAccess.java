@@ -100,6 +100,11 @@ public class OrgAccess {
             .orElse(false);
     }
 
+    // An event's RSVP list (names, emails): the members of its organization.
+    public boolean canSeeAttendees(String eventId, Authentication auth) {
+        return canDeleteEvent(eventId, auth);
+    }
+
     // For PATCH: the caller must belong to the org that currently owns the
     // article and, when the patch moves it to another org, to that org too.
     // Org-less articles fail this check; their author is covered by

@@ -25,6 +25,9 @@ import EventFormPage       from './pages/mine/EventFormPage'
 import OrgProfilePage      from './pages/mine/OrgProfilePage'
 import OrgFollowersPage    from './pages/mine/OrgFollowersPage'
 import OrgMembersPage      from './pages/mine/OrgMembersPage'
+import OrgAnalyticsPage    from './pages/mine/OrgAnalyticsPage'
+import EventDetailPage     from './pages/EventDetailPage'
+import EventAttendeesPage  from './pages/mine/EventAttendeesPage'
 import UnsubscribePage     from './pages/UnsubscribePage'
 import CorrectionVotePage  from './pages/CorrectionVotePage'
 
@@ -90,7 +93,9 @@ export default function NewsletterApp() {
           <Route path="events"               element={<MyEventsPage />} />
           <Route path="events/new"           element={<EventFormPage />} />
           <Route path="events/:id/edit"      element={<EventFormPage />} />
+          <Route path="events/:id/attendees" element={<EventAttendeesPage />} />
           <Route path="org/:slug"            element={<OrgProfilePage />} />
+          <Route path="org/:slug/stats"      element={<OrgAnalyticsPage />} />
           <Route path="org/:slug/members"    element={<OrgMembersPage />} />
           <Route path="org/:slug/followers"  element={<OrgFollowersPage />} />
           <Route path="*"                    element={<Navigate to={MY_ARTICLES_PATH} replace />} />
@@ -131,6 +136,7 @@ export default function NewsletterApp() {
             <Route index                        element={<ArticlesPage />} />
             <Route path="articles/:id"        element={<ArticleDetailPage />} />
             <Route path="events"              element={<EventsPage />} />
+            <Route path="events/:id"          element={<EventDetailPage />} />
             <Route path="organizations"       element={<OrganizationsPage />} />
             <Route path="organizations/:slug" element={<OrgPortalPage />} />
             {/* One-click unsubscribe link from the weekly digest email. */}

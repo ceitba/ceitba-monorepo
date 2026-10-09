@@ -10,7 +10,7 @@ import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
 import { useAdminContext } from '../../admin/adminContext'
 import { formatDate, todayISO } from '../../utils/dates'
-import { newsletterPath } from '@/newsletter/paths'
+import { eventPath, newsletterPath } from '@/newsletter/paths'
 import { Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, buttonClass } from '@/components/ui'
 import type { NewsEvent } from '../../types'
 
@@ -73,7 +73,19 @@ export default function MyEventsPage() {
     return (
       <tr key={event.id} className={rowClass}>
         <td className="px-4 py-3">
-          <span className={`font-body text-body-sm font-semibold line-clamp-2 ${text}`}>{event.title}</span>
+          <Link to={eventPath(event.id)} className={`font-body text-body-sm font-semibold line-clamp-2 hover:underline underline-offset-2 ${text}`}>
+            {event.title}
+          </Link>
+          {event.signupMode === 'rsvp' && (
+            <Link
+              to={newsletterPath(`/mine/events/${encodeURIComponent(event.id)}/attendees`)}
+              className="inline-flex items-center min-h-[32px] font-mono text-label text-primary dark:text-primary-300 hover:underline underline-offset-2"
+            >
+              {event.capacity != null
+                ? t('admin.events.rsvpsOf', { count: event.rsvpCount, capacity: event.capacity })
+                : t('admin.events.rsvps', { count: event.rsvpCount })}
+            </Link>
+          )}
         </td>
         <td className="px-4 py-3">
           <div className="flex flex-col gap-0.5 whitespace-nowrap">

@@ -4,9 +4,10 @@ import { canViewFollowers } from '@/newsletter/utils/session'
 import { useAuth } from '@/hooks/useAuth'
 import { orgAreaPath } from '@/newsletter/paths'
 
-export type OrgPage = 'profile' | 'members' | 'followers'
+export type OrgPage = 'profile' | 'stats' | 'members' | 'followers'
 
-// Sibling pages of one organization (Perfil · Miembros · Seguidores), as
+// Sibling pages of one organization (Perfil · Estadísticas · Miembros ·
+// Seguidores), as
 // plain links under the section header: the "mine" area already has its tab
 // strip, and a page carries at most one (EDITORIAL_UI_SYSTEM §6). Members and
 // followers expose emails, so they are listed only for the org's admins and
@@ -17,6 +18,7 @@ export default function OrgSectionLinks({ slug, current }: { slug: string; curre
   const manage = canViewFollowers(slug, profile)
   const pages: { id: OrgPage; to: string }[] = [
     { id: 'profile', to: orgAreaPath(slug) },
+    { id: 'stats', to: orgAreaPath(slug, 'stats') },
     ...(manage ? [
       { id: 'members' as const, to: orgAreaPath(slug, 'members') },
       { id: 'followers' as const, to: orgAreaPath(slug, 'followers') },

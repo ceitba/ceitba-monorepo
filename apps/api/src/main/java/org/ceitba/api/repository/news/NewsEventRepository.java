@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -47,4 +48,18 @@ public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM NewsEvent e WHERE e.id = :id")
     Optional<NewsEvent> findByIdForUpdate(@Param("id") String id);
+
+    // RSVP events on `date` whose day-before reminder has not gone out.
+    @Query("""
+        SELECT e.id FROM NewsEvent e
+        WHERE e.signupMode = 'rsvp' AND e.eventDate = :date AND e.reminderSentAt IS NULL
+        ORDER BY e.id
+        """)
+    List<String> findReminderDue(@Param("date") LocalDate date);
+
+    // Claims the reminder: 1 if this call set reminder_sent_at, 0 if it was
+    // already set (another run got it first).
+    @Modifying
+    @Query("UPDATE NewsEvent e SET e.reminderSentAt = :now WHERE e.id = :id AND e.reminderSentAt IS NULL")
+    int claimReminder(@Param("id") String id, @Param("now") java.time.OffsetDateTime now);
 }

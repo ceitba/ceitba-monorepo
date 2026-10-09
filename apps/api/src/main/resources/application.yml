@@ -297,6 +297,10 @@ mail:
     tracking-events: ${MAIL_RETENTION_TRACKING:P180D}
 
 # Weekly digest "La semana en ITBA" (docs/WEEKLY-DIGEST.md).
+# Day-before push to the RSVPs of tomorrow's events (EventReminderJob).
+events:
+  reminders-enabled: ${EVENT_REMINDERS_ENABLED:true}
+
 digest:
   # ItbaNews public URL (article links, the unsubscribe page).
   public-base-url: ${DIGEST_PUBLIC_BASE_URL:https://ceitba.org.ar/newsletter}
@@ -406,6 +410,13 @@ rate-limit:
       methods: [GET, POST]
       capacity: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_CAPACITY:60}
       period: ${RATE_LIMIT_DIGEST_CORRECTION_VOTE_PERIOD:1m}
+    # Going to / cancelling an event RSVP: same budget as the newsletter votes.
+    event-rsvp:
+      paths:
+        - /v1/news/events/*/rsvp
+      methods: [POST, DELETE]
+      capacity: ${RATE_LIMIT_VOTES_CAPACITY:60}
+      period: ${RATE_LIMIT_VOTES_PERIOD:1m}
     # Digest open pixel / click redirects are NOT limited here: they must
     # always answer (GIF / redirect). MailTrackingService limits what it
     # records per client and per tracking id instead.

@@ -6,6 +6,7 @@ import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.media.MediaUploadService;
+import org.ceitba.api.service.news.OrgAnalyticsService;
 import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.service.news.OrganizationService;
 import org.ceitba.api.web.auth.CurrentUser;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -39,17 +41,20 @@ public class OrganizationController {
     private final FollowService followService;
     private final OrganizationMembershipService memberships;
     private final MediaUploadService uploads;
+    private final OrgAnalyticsService orgAnalytics;
 
     public OrganizationController(OrganizationService service,
                                    UserFollowRepository followRepo,
                                    FollowService followService,
                                    OrganizationMembershipService memberships,
-                                   MediaUploadService uploads) {
+                                   MediaUploadService uploads,
+                                   OrgAnalyticsService orgAnalytics) {
         this.service = service;
         this.followRepo = followRepo;
         this.followService = followService;
         this.memberships = memberships;
         this.uploads = uploads;
+        this.orgAnalytics = orgAnalytics;
     }
 
     @GetMapping
@@ -125,6 +130,14 @@ public class OrganizationController {
                                          @RequestBody @Valid SignUploadRequest req) {
         service.findBySlug(slug);
         return uploads.signOrgImage(slug, user.getId(), req);
+    }
+
+    // Stats for the org's members (docs/ORGANIZATIONS.md), last `days` days.
+    @GetMapping("/{slug}/analytics")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#slug, authentication)")
+    public OrgAnalyticsService.OrgAnalytics analytics(@PathVariable String slug,
+                                                      @RequestParam(defaultValue = "30") int days) {
+        return orgAnalytics.summary(slug, days);
     }
 
     private OrganizationResponse toResponse(Organization org) {

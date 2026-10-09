@@ -46,7 +46,7 @@ public class AnalyticsService {
                 e.timestamp() != null
                     ? OffsetDateTime.ofInstant(Instant.ofEpochMilli(e.timestamp()), ZoneOffset.UTC)
                     : OffsetDateTime.now(),
-                e.articleId(), e.category(), e.path(), ipHash))
+                e.articleId(), e.eventId(), e.category(), e.path(), ipHash))
             .toList();
         analyticsRepo.saveAll(entities);
     }
@@ -90,6 +90,7 @@ public class AnalyticsService {
         String sessionId,
         Long   timestamp,
         String articleId,
+        String eventId,
         String category,
         String path
     ) {}

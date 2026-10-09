@@ -75,3 +75,49 @@ it.
 jpeg, png or webp up to 5 MB, key `orgs/{slug}/{uuid}.{ext}`, rate-limited per user by
 `rate-limit.user-rules.org-images` (`RATE_LIMIT_ORG_IMAGES_CAPACITY`/`_PERIOD`, default 60 per hour). The web
 app uses it for the logo, the portal background and article covers/inline images of the org's articles.
+
+## Events: sign-up, reminders, calendar
+
+`news_events` (V55) adds `cover_image`, `online_url` and the sign-up: `signup_mode` is `none`, `external`
+(`signup_url` required, e.g. a Google Form) or `rsvp` (built-in, optional `capacity`). In a PATCH the sign-up is
+replaced as a whole only when `signupMode` is sent (`signupUrl`/`capacity` are then taken as sent, null clearing
+them); `coverImage`/`onlineUrl` follow null-leaves, blank-clears. Responses carry `rsvpCount`.
+
+| Method | Path | Who | |
+|---|---|---|---|
+| POST | `/v1/news/events/{id}/rsvp` | signed-in user | → `{going: true, rsvpCount}`; idempotent |
+| DELETE | `/v1/news/events/{id}/rsvp` | signed-in user | → `{going: false, rsvpCount}`; idempotent |
+| GET | `/v1/news/events/{id}/attendees` | members of the event's org, STAFF | `{data: [{userId, name, email, createdAt}]}` |
+| GET | `/v1/me/rsvps` | signed-in user | `{eventIds}` |
+
+RSVP answers 409 `EventNotRsvp` (another mode), `EventEnded` (the date is before today in ART) or `EventFull`. The
+capacity check runs under the event's row lock, so the last seat can't be taken twice. Both RSVP methods share the
+votes' per-IP rate limit (rule `event-rsvp`).
+
+**Reminders.** `EventReminderJob` runs hourly 18:00–23:00 ART (`EVENT_REMINDERS_ENABLED`, default true; off in
+tests). `EventReminderService` claims each RSVP event of tomorrow with a conditional
+`UPDATE … SET reminder_sent_at WHERE reminder_sent_at IS NULL`, then pushes "Mañana a las HH:mm · lugar" to the
+RSVPs' devices (`PushToUsers`). The later runs only catch what a restart missed. Users without the mobile app get no
+reminder.
+
+**Views.** The event page sends `event_view` analytics events with `eventId` (`analytics_events.event_id`).
+
+**Web.** `/newsletter/events/:id` shows the event with the sign-up block and add-to-calendar (Google Calendar link
+and an `.ics` download built by `apps/web/src/utils/ics.ts`, shared with the scheduler). The org's members see RSVP
+counts in Mis publicaciones → Eventos and the list (with CSV export) at `/newsletter/mine/events/:id/attendees`.
+
+## Stats
+
+`GET /v1/organizations/{slug}/analytics?days=30` (members and STAFF; `days` 1–365, the last N ART calendar days
+including today) → `OrgAnalyticsService.OrgAnalytics`:
+
+- `articleViews`, `eventViews`, `uniqueVisitors` (distinct browser sessions) and `daily` (per day, zero-filled),
+  counted toward the article's or event's *current* organization;
+- `topArticles` (10) and `events` (the org's events dated in the window or later, with views and RSVPs);
+- `followers`: `total`, `newInPeriod` and `cumulative`, the current followers by the day they followed (unfollows
+  are not recorded, so it is not a net-growth curve);
+- `pushes`: fan-outs and devices targeted/reached from `push_log` (V56). `PushTriggerListener` writes one row per
+  fan-out with the message's `org` data key (`PushToOrgFollowers` always; event reminders carry it too).
+
+The web page is `/newsletter/mine/org/:slug/stats` (Estadísticas), built from the same CSS charts as the staff
+analytics (`newsletter/components/admin/charts.tsx`).

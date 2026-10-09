@@ -1,9 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { EmptyState, ErrorState, LoadingRegion, toast } from '@/components/ui'
 import Calendar from '../components/Calendar'
 import EventCard from '../components/EventCard'
-import { fetchAllEvents } from '../api/events'
+import { fetchAllEvents, fetchMyRsvps } from '../api/events'
+import { useOrgDirectory } from '../hooks/useOrgDirectory'
+import { useAuth } from '@/hooks/useAuth'
+import { eventPath, newsletterPath } from '@/newsletter/paths'
 import { formatDate, monthStartISO, todayISO } from '../utils/dates'
 import type { TFunction } from 'i18next'
 import type { NewsEvent } from '../types'
@@ -16,6 +20,12 @@ interface ViewMonth {
 
 export default function EventsPage() {
   const { t, i18n } = useTranslation()
+  const { profile } = useAuth()
+  const { orgName } = useOrgDirectory()
+  // ?organization=<slug> (the org portal's "Ver todos") narrows the page to one org.
+  const [searchParams] = useSearchParams()
+  const organization = searchParams.get('organization') || undefined
+  const [going, setGoing] = useState<Set<string>>(new Set())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [allEvents, setAllEvents]       = useState<NewsEvent[]>([])
   const [status, setStatus]             = useState<'loading' | 'success' | 'error'>('loading')
@@ -34,11 +44,20 @@ export default function EventsPage() {
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
-    fetchAllEvents({ from: currentMonthStart })
+    fetchAllEvents({ from: currentMonthStart, organization })
       .then((data) => { if (!cancelled) { setAllEvents(data); setStatus('success') } })
       .catch(() => { if (!cancelled) setStatus('error') })
     return () => { cancelled = true }
-  }, [currentMonthStart, reloadKey])
+  }, [currentMonthStart, organization, reloadKey])
+
+  useEffect(() => {
+    if (!profile) { setGoing(new Set()); return }
+    let cancelled = false
+    fetchMyRsvps()
+      .then((ids) => { if (!cancelled) setGoing(new Set(ids)) })
+      .catch((err: unknown) => console.error('newsletter: my rsvps', err))
+    return () => { cancelled = true }
+  }, [profile])
 
   const viewedMonthStart = viewMonth ? monthStartISO(viewMonth.year, viewMonth.month) : currentMonthStart
   const viewingPastMonth = viewedMonthStart < currentMonthStart
@@ -49,7 +68,7 @@ export default function EventsPage() {
     let cancelled = false
     const next = new Date(viewMonth.year, viewMonth.month + 1, 1)
     const to = monthStartISO(next.getFullYear(), next.getMonth())
-    fetchAllEvents({ from: viewedMonthStart, to })
+    fetchAllEvents({ from: viewedMonthStart, to, organization })
       .then((data) => { if (!cancelled) setPastMonthEvents(data) })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -58,7 +77,7 @@ export default function EventsPage() {
         toast.error(t('events.monthError'))
       })
     return () => { cancelled = true }
-  }, [viewingPastMonth, viewedMonthStart, viewMonth, t])
+  }, [viewingPastMonth, viewedMonthStart, viewMonth, organization, t])
 
   const calendarEvents = viewingPastMonth ? pastMonthEvents : allEvents
 
@@ -81,6 +100,15 @@ export default function EventsPage() {
     <div className="py-section-mobile lg:py-section">
       <div className="container-content">
         <NewsletterPageHeader current="events" title={t('events.pageTitle')} subtitle={t('events.pageSubtitle')} />
+
+        {organization && (
+          <p className="-mt-4 mb-8 font-body text-body text-ink-secondary dark:text-night-muted">
+            {t('events.filteredBy', { org: orgName(organization) })}{' '}
+            <Link to={newsletterPath('/events')} className="text-primary dark:text-primary-300 underline underline-offset-2">
+              {t('events.showAll')}
+            </Link>
+          </p>
+        )}
 
         {status === 'loading' && <LoadingState />}
 
@@ -125,7 +153,7 @@ export default function EventsPage() {
                       <EmptyDayState selectedDate={selectedDate} t={t} />
                     ) : (
                       sidebarEvents.map((event) => (
-                        <EventCard key={event.id} event={event} compact />
+                        <EventCard key={event.id} event={event} compact to={eventPath(event.id)} />
                       ))
                     )}
                   </div>
@@ -146,7 +174,13 @@ export default function EventsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {allEvents.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      to={eventPath(event.id)}
+                      orgName={event.organization ? orgName(event.organization) : null}
+                      going={going.has(event.id)}
+                    />
                   ))}
                 </div>
               )}

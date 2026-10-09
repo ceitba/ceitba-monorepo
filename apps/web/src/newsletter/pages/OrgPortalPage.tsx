@@ -12,7 +12,7 @@ import { followOrganization, unfollowOrganization } from '../api/follows'
 import { getSession } from '@/store/authStore'
 import { isFollowing, refreshFollows } from '@/newsletter/utils/session'
 import { localeFor, todayISO } from '../utils/dates'
-import { newsletterPath } from '@/newsletter/paths'
+import { eventPath, newsletterPath } from '@/newsletter/paths'
 import type { Article, NewsEvent, Organization } from '../types'
 
 const GEO_BG: Record<string, string> = {
@@ -237,14 +237,14 @@ export default function OrgPortalPage() {
             <SectionHeader
               id="org-events-heading"
               label={t('orgs.upcomingEvents')}
-              linkTo={newsletterPath('/events')}
+              linkTo={`${newsletterPath('/events')}?organization=${encodeURIComponent(org.slug)}`}
               linkLabel={t('orgs.viewAll')}
             />
             {events.length === 0 ? (
               <EmptyState compact title={t('orgs.noEvents')} />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {events.map((e) => <EventCard key={e.id} event={e} />)}
+                {events.map((e) => <EventCard key={e.id} event={e} to={eventPath(e.id)} />)}
               </div>
             )}
           </section>

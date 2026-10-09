@@ -1,6 +1,7 @@
 // Calendar export (.ics file and Google Calendar links) for a generated
-// schedule. Pure functions only: no Date-in-local-time math, so the result
-// is the same whatever time zone the browser is in.
+// schedule, on top of the shared primitives in @/utils/ics. Pure functions
+// only: no Date-in-local-time math, so the result is the same whatever time
+// zone the browser is in.
 //
 // Classes happen in Buenos Aires wall time. Argentina is a fixed UTC-03:00
 // with no DST, so events are written with TZID=America/Argentina/Buenos_Aires
@@ -8,9 +9,14 @@
 // RFC 5545 requires in UTC when DTSTART has a TZID) is shifted by 3 hours.
 
 import type { ScheduleSlot } from "../types/scheduler"
+import {
+  CALENDAR_TIME_ZONE, UTC_OFFSET_HOURS, escapeText, foldLine, formatLocal, formatUtcStamp, pad, parseCalendarDate,
+  wrapCalendar, type CalendarDate,
+} from "@/utils/ics"
 
-export const CLASS_TIME_ZONE = "America/Argentina/Buenos_Aires"
-const UTC_OFFSET_HOURS = -3
+export { escapeText, foldLine, parseCalendarDate }
+
+export const CLASS_TIME_ZONE = CALENDAR_TIME_ZONE
 
 export interface CalendarEvent {
   uid: string
@@ -25,24 +31,8 @@ export interface CalendarEvent {
   description?: string
 }
 
-interface CalendarDate {
-  year: number
-  month: number // 1-12
-  day: number
-}
-
 const DAY_INDEX: Record<string, number> = {
   SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6,
-}
-
-const pad = (n: number, width = 2) => String(n).padStart(width, "0")
-
-// "YYYY-MM-DD" read as a calendar date (never through `new Date(str)`,
-// which parses it as UTC midnight and shifts the day west of Greenwich).
-export function parseCalendarDate(value: string | null | undefined): CalendarDate | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? "")
-  if (!match) return null
-  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) }
 }
 
 const toUtcMidnight = (d: CalendarDate) => Date.UTC(d.year, d.month - 1, d.day)
@@ -62,57 +52,11 @@ export function firstOccurrence(start: CalendarDate, dayName: string): CalendarD
   return fromUtcMs(toUtcMidnight(start) + daysUntil * 86_400_000)
 }
 
-const parseTime = (time: string) => {
-  const [h, m] = time.split(":").map(Number)
-  return { h: h || 0, m: m || 0 }
-}
-
-// Local (floating) date-time: 20260309T080000
-const formatLocal = (d: CalendarDate, time: string) => {
-  const { h, m } = parseTime(time)
-  return `${d.year}${pad(d.month)}${pad(d.day)}T${pad(h)}${pad(m)}00`
-}
-
 // End of the course's last day in Buenos Aires, expressed in UTC.
 const untilUtc = (end: CalendarDate) => {
   const ms = Date.UTC(end.year, end.month - 1, end.day, 23 - UTC_OFFSET_HOURS, 59, 59)
   const d = new Date(ms)
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
-}
-
-const formatUtcStamp = (date: Date) =>
-  date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
-
-// RFC 5545 §3.3.11 TEXT escaping.
-export function escapeText(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\r\n|\r|\n/g, "\\n")
-}
-
-// RFC 5545 §3.1: lines longer than 75 octets are folded with CRLF + space.
-// Splits on UTF-8 byte length without cutting a multi-byte character.
-export function foldLine(line: string): string {
-  const encoder = new TextEncoder()
-  const parts: string[] = []
-  let current = ""
-  let currentBytes = 0
-  let limit = 75
-  for (const char of line) {
-    const bytes = encoder.encode(char).length
-    if (currentBytes + bytes > limit) {
-      parts.push(current)
-      current = ""
-      currentBytes = 0
-      limit = 74 // continuation lines start with a space
-    }
-    current += char
-    currentBytes += bytes
-  }
-  parts.push(current)
-  return parts.join("\r\n ")
 }
 
 const sanitizeUidPart = (value: string) => value.replace(/[^A-Za-z0-9.-]/g, "_")
@@ -165,32 +109,13 @@ function resolveDates(event: CalendarEvent, today: CalendarDate): ResolvedEvent 
   return { first, end }
 }
 
-const VTIMEZONE = [
-  "BEGIN:VTIMEZONE",
-  `TZID:${CLASS_TIME_ZONE}`,
-  "BEGIN:STANDARD",
-  "DTSTART:19700101T000000",
-  "TZOFFSETFROM:-0300",
-  "TZOFFSETTO:-0300",
-  "TZNAME:-03",
-  "END:STANDARD",
-  "END:VTIMEZONE",
-]
-
 const todayFrom = (now: Date): CalendarDate =>
   ({ year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() })
 
 export function buildIcs(events: CalendarEvent[], now: Date = new Date()): string {
   const stamp = formatUtcStamp(now)
   const today = todayFrom(now)
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//CEITBA//Combinador de Horarios//ES",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    ...VTIMEZONE,
-  ]
+  const lines: string[] = []
   for (const event of events) {
     const dates = resolveDates(event, today)
     if (!dates) continue
@@ -207,8 +132,7 @@ export function buildIcs(events: CalendarEvent[], now: Date = new Date()): strin
       "END:VEVENT",
     )
   }
-  lines.push("END:VCALENDAR")
-  return lines.filter(Boolean).map(foldLine).join("\r\n") + "\r\n"
+  return wrapCalendar("-//CEITBA//Combinador de Horarios//ES", lines)
 }
 
 // "Add to Google Calendar" link for one recurring event. Times are passed

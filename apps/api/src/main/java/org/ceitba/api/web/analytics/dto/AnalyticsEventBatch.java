@@ -17,6 +17,7 @@ public record AnalyticsEventBatch(
         @NotNull String sessionId,
         Long   timestamp,
         String articleId,
+        @Size(max = 64) String eventId,
         String category,
         String path
     ) {}

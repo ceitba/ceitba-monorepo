@@ -1,6 +1,6 @@
 import { apiGet, apiSend } from '@/api/client'
 import type {
-  InviteResult, MembershipRole, Organization, OrganizationInput, OrganizationList, OrgMembers, OrgMember,
+  InviteResult, MembershipRole, Organization, OrganizationInput, OrganizationList, OrgAnalytics, OrgMembers, OrgMember,
 } from '../types'
 
 // GET /organizations answers { data: [...] } (OrganizationController.list).
@@ -62,4 +62,9 @@ export async function transferOrgAdmin(slug: string, userId: string): Promise<vo
 
 export async function leaveOrganization(slug: string): Promise<void> {
   await apiSend<void>('DELETE', `${membersPath(slug)}/me`)
+}
+
+// Members only: views, followers and push reach over the last `days` days.
+export async function fetchOrgAnalytics(slug: string, days: number): Promise<OrgAnalytics> {
+  return apiGet<OrgAnalytics>(`/organizations/${encodeURIComponent(slug)}/analytics?days=${days}`)
 }

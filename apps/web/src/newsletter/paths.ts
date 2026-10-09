@@ -37,8 +37,13 @@ export function articleEditPath(id: string, from: 'mine' | 'admin' = 'mine'): st
   return from === 'admin' ? `${REVIEW_PATH}/${id}` : `${MY_ARTICLES_PATH}/${id}/edit`
 }
 
-// An organization's pages in Mis publicaciones: profile ('' ), members,
-// followers.
-export function orgAreaPath(slug: string, page: '' | 'members' | 'followers' = ''): string {
+// An organization's pages in Mis publicaciones: profile (''), stats,
+// members, followers.
+export function orgAreaPath(slug: string, page: '' | 'stats' | 'members' | 'followers' = ''): string {
   return newsletterPath(`/mine/org/${encodeURIComponent(slug)}${page ? `/${page}` : ''}`)
+}
+
+// Public detail page of an event.
+export function eventPath(id: string): string {
+  return newsletterPath(`/events/${encodeURIComponent(id)}`)
 }
