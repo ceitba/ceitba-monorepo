@@ -289,7 +289,7 @@ export default function OrgProfilePage() {
           </ImageField>
 
           <fieldset className="flex flex-col gap-4">
-            <legend className="mb-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+            <legend className="mb-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('admin.orgProfile.contactTitle')}
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -309,7 +309,7 @@ export default function OrgProfilePage() {
           </fieldset>
 
           <fieldset className="flex flex-col gap-4">
-            <legend className="mb-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+            <legend className="mb-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('admin.orgProfile.recruitingTitle')}
             </legend>
             <Switch

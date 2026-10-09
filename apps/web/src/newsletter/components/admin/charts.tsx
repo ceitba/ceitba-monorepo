@@ -73,7 +73,7 @@ export function Sparkline({ id, title, data, fmtDay, fmtNum, valueLabel, barClas
       </div>
       <div className="flex items-end gap-1 h-20" aria-hidden="true">
         {data.map(({ date, value }) => (
-          <div key={date} className="flex-1 flex flex-col items-center">
+          <div key={date} className="flex-1 h-full flex flex-col justify-end items-center">
             <div className={`w-full rounded-sm ${barClass}`} style={{ height: `${Math.max(floor, (value / max) * 100)}%` }} />
           </div>
         ))}
