@@ -38,7 +38,7 @@ class UserMeServiceTest {
                 staffChecks.add((OffsetDateTime) args[1]);
                 return true;
             });
-        var memberships = new OrganizationMembershipService(null, null) {
+        var memberships = new OrganizationMembershipService(null, null, null, null, null, null) {
             @Override public List<UserOrganization> listForUser(UUID userId) { return List.of(); }
         };
         var follows = new FollowService(null, null, null) {

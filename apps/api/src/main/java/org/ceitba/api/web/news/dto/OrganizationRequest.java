@@ -24,5 +24,17 @@ public record OrganizationRequest(
     @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
     String  logoUrl,
     @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
-    String  backgroundUrl
+    String  backgroundUrl,
+    String  instagram,
+    @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
+    String  linkedinUrl,
+    @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
+    String  websiteUrl,
+    @Size(max = 320) @Pattern(regexp = "^(\\s*|[^@\\s]+@[^@\\s]+\\.[^@\\s]+)$", message = "must be an email address")
+    String  contactEmail,
+    Boolean recruitingOpen,
+    @Size(max = 2048) @Pattern(regexp = "^(\\s*|https?://\\S+)$", message = "must be an http(s) URL")
+    String  recruitingUrl,
+    @Size(max = 280)
+    String  recruitingText
 ) {}

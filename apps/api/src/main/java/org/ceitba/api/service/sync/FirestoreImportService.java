@@ -11,6 +11,7 @@ import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.PlanRepository;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.news.FollowService;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.service.sync.FirestoreImportReport.Outcome;
 import org.ceitba.api.service.user.SocialHandles;
 import org.ceitba.api.web.sync.dto.FirestoreBenefitDoc;
@@ -102,6 +103,7 @@ public class FirestoreImportService {
     private final BenefitRepository categories;
     private final BenefitCardRepository cards;
     private final FollowService follows;
+    private final OrganizationMembershipService memberships;
     private final FirestoreProposalImporter proposals;
     private final TransactionTemplate perDocumentTx;
     private final TransactionTemplate readOnlyTx;
@@ -114,6 +116,7 @@ public class FirestoreImportService {
                                   BenefitRepository categories,
                                   BenefitCardRepository cards,
                                   FollowService follows,
+                                  OrganizationMembershipService memberships,
                                   FirestoreProposalImporter proposals,
                                   PlatformTransactionManager txManager,
                                   Clock clock) {
@@ -124,6 +127,7 @@ public class FirestoreImportService {
         this.categories = categories;
         this.cards = cards;
         this.follows = follows;
+        this.memberships = memberships;
         this.proposals = proposals;
         this.perDocumentTx = new TransactionTemplate(txManager);
         this.perDocumentTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -273,6 +277,8 @@ public class FirestoreImportService {
         if (created) {
             user = users.save(user);
             follows.followIfMissing(user.getId(), CEITBA_ORG);
+            // Pending org invites of this email, as on a first login (UserProvisioningService).
+            memberships.claimInvites(user.getId(), email);
         } else if (changed) {
             user = users.save(user);
         }

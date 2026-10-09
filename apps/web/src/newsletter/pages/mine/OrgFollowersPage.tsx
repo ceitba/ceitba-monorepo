@@ -7,6 +7,7 @@ import { fetchOrganizationFollowers } from '../../api/follows'
 import { canViewFollowers } from '@/newsletter/utils/session'
 import { useAuth } from '@/hooks/useAuth'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
+import OrgSectionLinks from '../../components/admin/OrgSectionLinks'
 import { useAdminContext } from '../../admin/adminContext'
 import { localeFor } from '../../utils/dates'
 import { newsletterPath } from '@/newsletter/paths'
@@ -88,8 +89,8 @@ export default function OrgFollowersPage() {
       <AdminSectionHeader
         title={t('admin.followers.title')}
         subtitle={data ? t('admin.followers.subtitle', { org: orgName(slug), count }) : orgName(slug)}
-        back={back}
       />
+      <OrgSectionLinks slug={slug} current="followers" />
 
       {!data ? (
         <LoadingRegion className="flex flex-col gap-3">

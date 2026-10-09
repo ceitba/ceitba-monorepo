@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchAllEvents, deleteEvent } from '../../api/events'
 import { isStaff } from '@/store/authStore'
-import { getOrganizations } from '@/newsletter/utils/session'
+import { getOrganizations, isOrgAdmin } from '@/newsletter/utils/session'
 import { useAuth } from '@/hooks/useAuth'
 import CategoryBadge from '../../components/CategoryBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import { TableCard, Th, rowClass, theadRowClass } from '../../components/admin/AdminTable'
 import { useAdminContext } from '../../admin/adminContext'
 import { formatDate, todayISO } from '../../utils/dates'
-import { newsletterPath } from '@/newsletter/paths'
+import { eventPath, newsletterPath } from '@/newsletter/paths'
 import { Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, buttonClass } from '@/components/ui'
 import type { NewsEvent } from '../../types'
 
@@ -19,8 +19,12 @@ const COLS = 6
 export default function MyEventsPage() {
   const { t, i18n } = useTranslation()
   const { profile } = useAuth()
-  const { orgName } = useAdminContext()
+  const { orgName, orgs } = useAdminContext()
   const staff = isStaff(profile)
+  // The RSVP list: staff and the org's admins always; plain members unless
+  // the admins hid it (the API answers 403 then).
+  const seesAttendees = (slug: string | null) => Boolean(slug) && (staff || isOrgAdmin(slug as string, profile)
+    || (orgs.find((o) => o.slug === slug)?.attendeesVisibleToMembers ?? true))
   const [events, setEvents]     = useState<NewsEvent[]>([])
   const [status, setStatus]     = useState<'loading' | 'success' | 'error'>('loading')
   const [toDelete, setToDelete] = useState<NewsEvent | null>(null)
@@ -73,7 +77,26 @@ export default function MyEventsPage() {
     return (
       <tr key={event.id} className={rowClass}>
         <td className="px-4 py-3">
-          <span className={`font-body text-body-sm font-semibold line-clamp-2 ${text}`}>{event.title}</span>
+          <Link to={eventPath(event.id)} className={`font-body text-body-sm font-semibold line-clamp-2 hover:underline underline-offset-2 ${text}`}>
+            {event.title}
+          </Link>
+          {event.signupMode === 'rsvp' && !seesAttendees(event.organization) && (
+            <span className="block font-mono text-label text-ink-secondary dark:text-night-muted">
+              {event.capacity != null
+                ? t('admin.events.rsvpsOfText', { count: event.rsvpCount, capacity: event.capacity })
+                : t('admin.events.rsvpsText', { count: event.rsvpCount })}
+            </span>
+          )}
+          {event.signupMode === 'rsvp' && seesAttendees(event.organization) && (
+            <Link
+              to={newsletterPath(`/mine/events/${encodeURIComponent(event.id)}/attendees`)}
+              className="inline-flex items-center min-h-[32px] font-mono text-label text-primary dark:text-primary-300 hover:underline underline-offset-2"
+            >
+              {event.capacity != null
+                ? t('admin.events.rsvpsOf', { count: event.rsvpCount, capacity: event.capacity })
+                : t('admin.events.rsvps', { count: event.rsvpCount })}
+            </Link>
+          )}
         </td>
         <td className="px-4 py-3">
           <div className="flex flex-col gap-0.5 whitespace-nowrap">
@@ -101,17 +124,16 @@ export default function MyEventsPage() {
             >
               {t('admin.common.edit')}
             </Link>
-            {/* DELETE /news/events/{id} is STAFF-only on the API. */}
-            {staff && (
-              <Button
-                variant="dangerGhost"
-                size="sm"
-                onClick={() => { setDeleteError(''); setToDelete(event) }}
-                aria-label={t('admin.events.deleteAria', { title: event.title })}
-              >
-                {t('admin.common.delete')}
-              </Button>
-            )}
+            {/* Members delete their organizations' events (the only ones
+                listed to them); staff any. */}
+            <Button
+              variant="dangerGhost"
+              size="sm"
+              onClick={() => { setDeleteError(''); setToDelete(event) }}
+              aria-label={t('admin.events.deleteAria', { title: event.title })}
+            >
+              {t('admin.common.delete')}
+            </Button>
           </div>
         </td>
       </tr>
@@ -139,9 +161,6 @@ export default function MyEventsPage() {
 
       {status === 'success' && events.length > 0 && (
         <>
-          {!staff && (
-            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('admin.events.deleteStaffOnly')}</p>
-          )}
           <TableCard>
             <thead>
               <tr className={theadRowClass}>

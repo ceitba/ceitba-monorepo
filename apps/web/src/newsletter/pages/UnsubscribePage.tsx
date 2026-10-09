@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { unsubscribeFromDigest } from '../api/digests'
+import { unsubscribeFromOrgMail } from '../api/orgMail'
 import { newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
 import { Button, buttonClass } from '@/components/ui'
@@ -9,12 +10,17 @@ import { Button, buttonClass } from '@/components/ui'
 type UnsubscribeState = 'confirm' | 'loading' | 'done' | 'invalid' | 'error'
 
 // Target of the one-click unsubscribe link in "La semana en ITBA" emails
-// (/newsletter/unsubscribe?token=…). Works signed out: the token alone
-// identifies the subscriber.
+// (/newsletter/unsubscribe?token=…) and in organizations' emails
+// (?kind=org&token=…, which only opts out of that org). Works signed out:
+// the token alone identifies the subscriber.
 export default function UnsubscribePage() {
   const { t } = useTranslation()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
+  const org = params.get('kind') === 'org'
+  const [orgName, setOrgName] = useState('')
+  // The digest's keys, or the org-mail variants.
+  const k = (key: string) => (org ? `orgMail.unsubscribe.${key}` : `digest.unsubscribe.${key}`)
   // 'confirm' → 'loading' → 'done' | 'invalid' | 'error'. Nothing is sent on
   // page load: email link scanners that execute JS would otherwise
   // unsubscribe people. One-click unsubscribe for mail clients is handled by
@@ -23,7 +29,10 @@ export default function UnsubscribePage() {
 
   function handleConfirm() {
     setState('loading')
-    unsubscribeFromDigest(token)
+    const request = org
+      ? unsubscribeFromOrgMail(token).then((name) => setOrgName(name))
+      : unsubscribeFromDigest(token)
+    request
       .then(() => setState('done'))
       .catch((err: unknown) => {
         console.error(err)
@@ -32,10 +41,10 @@ export default function UnsubscribePage() {
   }
 
   const title = (key: string) => (
-    <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t(key)}</h1>
+    <h1 className="font-display text-h4 sm:text-h3 font-bold text-ink-primary">{t(key, { org: orgName })}</h1>
   )
   const hint = (key: string) => (
-    <p className="font-body text-body text-ink-secondary leading-relaxed">{t(key)}</p>
+    <p className="font-body text-body text-ink-secondary leading-relaxed">{t(key, { org: orgName })}</p>
   )
 
   return (
@@ -46,41 +55,41 @@ export default function UnsubscribePage() {
           <div className="absolute bottom-[-60%] left-[10%] w-1/3 h-full rotate-12 bg-accent/30" />
         </div>
         <div className="p-6 sm:p-8 flex flex-col gap-4" aria-live="polite">
-          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">{t('digest.name')}</p>
+          <p className="font-mono text-label uppercase tracking-widest text-ink-secondary">{org ? t('orgMail.name') : t('digest.name')}</p>
 
           {(state === 'confirm' || state === 'loading') && (
             <>
-              {title('digest.unsubscribe.confirmTitle')}
-              {hint('digest.unsubscribe.confirmHint')}
+              {title(k('confirmTitle'))}
+              {hint(k('confirmHint'))}
               <Button
                 onClick={handleConfirm}
                 loading={state === 'loading'}
-                loadingLabel={t('digest.unsubscribe.confirming')}
+                loadingLabel={t(k('confirming'))}
                 className="self-start"
               >
-                {t('digest.unsubscribe.confirm')}
+                {t(k('confirm'))}
               </Button>
             </>
           )}
 
           {state === 'done' && (
             <>
-              {title('digest.unsubscribe.doneTitle')}
-              {hint('digest.unsubscribe.doneHint')}
+              {title(k('doneTitle'))}
+              {hint(k('doneHint'))}
             </>
           )}
 
           {state === 'invalid' && (
             <>
-              {title('digest.unsubscribe.invalidTitle')}
-              {hint('digest.unsubscribe.invalidHint')}
+              {title(k('invalidTitle'))}
+              {hint(k('invalidHint'))}
             </>
           )}
 
           {state === 'error' && (
             <>
-              {title('digest.unsubscribe.errorTitle')}
-              {hint('digest.unsubscribe.errorHint')}
+              {title(k('errorTitle'))}
+              {hint(k('errorHint'))}
               <Button onClick={handleConfirm} className="self-start">
                 {t('errors.retry')}
               </Button>

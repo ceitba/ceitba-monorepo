@@ -3,6 +3,7 @@ package org.ceitba.api.service.mail;
 import org.ceitba.api.config.DigestProperties;
 import org.ceitba.api.config.EmailProperties;
 import org.ceitba.api.config.MailOAuthProperties;
+import org.ceitba.api.config.OrgMailProperties;
 import org.ceitba.api.domain.mail.MailSenderAccount;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.mail.MailSenderAccountRepository;
@@ -51,7 +52,8 @@ class MailSenderAccountServiceTest {
     private MailSenderAccountService service(MailSenderAccountRepository repo, String key) {
         return new MailSenderAccountService(repo, mock(CeitbaStaffRepository.class), null, null, null,
             new MailOAuthProperties("http://x/cb", key), new EmailProperties(true, null, null, false, null, null,
-                null, null, null), mock(DigestProperties.class), Clock.systemUTC());
+                null, null, null), mock(DigestProperties.class), new OrgMailProperties(null, null, null), null,
+            Clock.systemUTC());
     }
 
     @Test

@@ -29,6 +29,10 @@ public class AnalyticsEvent {
     @Column(name = "article_id")
     private String articleId;
 
+    // Event detail page views ('event_view'), V56.
+    @Column(name = "event_id")
+    private String eventId;
+
     @Column
     private String category;
 
@@ -41,11 +45,12 @@ public class AnalyticsEvent {
     protected AnalyticsEvent() {}
 
     public AnalyticsEvent(String type, String sessionId, OffsetDateTime ts,
-                          String articleId, String category, String path, String ipHash) {
+                          String articleId, String eventId, String category, String path, String ipHash) {
         this.type      = type;
         this.sessionId = sessionId;
         this.ts        = ts != null ? ts : OffsetDateTime.now();
         this.articleId = articleId;
+        this.eventId   = eventId;
         this.category  = category;
         this.path      = path;
         this.ipHash    = ipHash;

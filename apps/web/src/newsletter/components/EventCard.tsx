@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import CategoryBadge from './CategoryBadge'
 import { formatDate, parseLocalDate } from '../utils/dates'
@@ -18,9 +19,27 @@ interface EventCardEvent {
 interface EventCardProps {
   event: EventCardEvent
   compact?: boolean
+  // Detail page; the whole card becomes the link (stretched over the title).
+  to?: string
+  // Organization name, shown above the title.
+  orgName?: string | null
+  // Signed-in user's RSVP.
+  going?: boolean
 }
 
-export default function EventCard({ event, compact = false }: EventCardProps) {
+// The title, as a link stretched over the card when `to` is set.
+function Title({ to, className, children }: { to?: string; className: string; children: string }) {
+  if (!to) return <h3 className={className}>{children}</h3>
+  return (
+    <h3 className={className}>
+      <Link to={to} className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-card focus-visible:after:ring-2 focus-visible:after:ring-primary">
+        {children}
+      </Link>
+    </h3>
+  )
+}
+
+export default function EventCard({ event, compact = false, to, orgName, going = false }: EventCardProps) {
   const { t, i18n } = useTranslation()
   const { title, date, time, endTime, location, category, description } = event
   const day = parseLocalDate(date)
@@ -29,7 +48,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
 
   if (compact) {
     return (
-      <article className="group flex gap-4 py-4 border-b border-border dark:border-night-border last:border-b-0">
+      <article className="group relative flex gap-4 py-4 border-b border-border dark:border-night-border last:border-b-0">
         {/* Date block */}
         <div className="flex-shrink-0 w-12 flex flex-col items-center justify-start pt-0.5">
           <span className="font-mono text-label text-ink-secondary uppercase">
@@ -43,9 +62,9 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2 flex-wrap">
-            <h3 className="font-display text-body-lg font-bold text-ink-primary leading-snug group-hover:text-primary transition-colors duration-150 flex-1 min-w-0">
+            <Title to={to} className="font-display text-body-lg font-bold text-ink-primary leading-snug group-hover:text-primary transition-colors duration-150 flex-1 min-w-0">
               {title}
-            </h3>
+            </Title>
             <CategoryBadge category={category} className="flex-shrink-0" />
           </div>
 
@@ -64,7 +83,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
   }
 
   return (
-    <article className="group rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-5 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col gap-3">
+    <article className="group relative rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-5 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col gap-3">
       <div className="flex items-start gap-3">
         {/* Date stamp */}
         <div className="flex-shrink-0 w-14 h-14 rounded-sm bg-primary-50 dark:bg-primary-800 flex flex-col items-center justify-center border border-primary-100 dark:border-primary-800">
@@ -77,10 +96,18 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <CategoryBadge category={category} />
-          <h3 className="font-display text-h5 font-bold text-ink-primary mt-1 leading-snug group-hover:text-primary transition-colors duration-150">
+          <div className="flex flex-wrap items-center gap-2">
+            <CategoryBadge category={category} />
+            {going && (
+              <span className="font-mono text-label uppercase tracking-widest text-emerald-700 dark:text-emerald-300">{t('events.going')}</span>
+            )}
+          </div>
+          {orgName && (
+            <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mt-1 truncate">{orgName}</p>
+          )}
+          <Title to={to} className="font-display text-h5 font-bold text-ink-primary mt-1 leading-snug group-hover:text-primary transition-colors duration-150">
             {title}
-          </h3>
+          </Title>
         </div>
       </div>
 

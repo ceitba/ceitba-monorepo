@@ -93,9 +93,12 @@ function OrgCard({ org, t }: OrgCardProps) {
           <div className="absolute bottom-[-20%] left-[-5%] w-1/3 h-full rotate-12 bg-white/20" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/20" />
-        {/* Org name on the hero */}
-        <div className="absolute bottom-4 left-5">
-          <span className="font-display text-h4 font-bold text-white leading-none drop-shadow-sm">
+        {/* Logo and org name on the hero */}
+        <div className="absolute bottom-4 left-5 right-5 flex items-end gap-3">
+          {org.logoUrl && (
+            <img src={org.logoUrl} alt="" loading="lazy" className="w-10 h-10 rounded-sm object-cover bg-white flex-shrink-0 border border-white/40" />
+          )}
+          <span className="font-display text-h4 font-bold text-white leading-none drop-shadow-sm min-w-0 truncate">
             {org.name}
           </span>
         </div>

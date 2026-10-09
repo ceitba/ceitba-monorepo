@@ -37,13 +37,16 @@ public class ArticleService {
     private final OrganizationRepository orgRepo;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final OrganizationMembershipService memberships;
 
     public ArticleService(ArticleRepository articleRepo, OrganizationRepository orgRepo,
-                          ApplicationEventPublisher events, Clock clock) {
+                          ApplicationEventPublisher events, Clock clock,
+                          OrganizationMembershipService memberships) {
         this.articleRepo = articleRepo;
         this.orgRepo     = orgRepo;
         this.events      = events;
         this.clock       = clock;
+        this.memberships = memberships;
     }
 
     // status=null lists every status; the controller decides who may pass
@@ -139,6 +142,20 @@ public class ArticleService {
     @Transactional
     public void delete(String id, UUID independentAuthor) {
         articleRepo.delete(lockedForWrite(id, independentAuthor));
+    }
+
+    // DELETE by a member of the article's organization. Re-checked under the
+    // row lock, like lockedForWrite: if the article moved to another org (or
+    // the caller left it) after @PreAuthorize ran, 409 InvalidState.
+    @Transactional
+    public void deleteAsOrgMember(String id, UUID memberId) {
+        var article = articleRepo.findByIdForUpdate(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Article", id));
+        if (article.getOrganization() == null
+                || !memberships.userBelongsTo(memberId, article.getOrganization().getSlug())) {
+            throw new InvalidStateException("Article " + id + " no longer belongs to one of your organizations");
+        }
+        articleRepo.delete(article);
     }
 
     // Loads the article under a row lock so writes to it (an author's edit

@@ -62,7 +62,40 @@
     "timeRange": "{{start}}–{{end}}",
     "error": "We couldn't load the events. Check your connection and try again.",
     "monthError": "We couldn't load that month's events.",
-    "noEventsHint": "When organizations publish events, they will show up here."
+    "noEventsHint": "When organizations publish events, they will show up here.",
+    "going": "You are going",
+    "filteredBy": "Events by {{org}}.",
+    "showAll": "See all events",
+    "detail": {
+      "back": "← Events",
+      "notFoundTitle": "Event not found",
+      "notFound": "The event you are looking for does not exist or was deleted.",
+      "errorTitle": "We could not load the event",
+      "when": "When",
+      "where": "Where",
+      "joinOnline": "Join online",
+      "calendar": "Add to calendar",
+      "googleCalendar": "Google Calendar",
+      "downloadIcs": "Download .ics (Apple, Outlook)",
+      "past": "This event already took place.",
+      "externalHint": "Sign-up is on a form of the organization.",
+      "signUp": "Sign up",
+      "noSignup": "No sign-up needed: just come.",
+      "goingCount_one": "{{count}} going",
+      "goingCount_other": "{{count}} going",
+      "goingOf_one": "{{count}} of {{capacity}} spots",
+      "goingOf_other": "{{count}} of {{capacity}} spots",
+      "signInToRsvp": "Sign in to RSVP",
+      "rsvp": "I am going",
+      "cancelRsvp": "Not going anymore",
+      "youreGoing": "You are on the list.",
+      "full": "Full",
+      "reminderHint": "If you have the app, we remind you the day before.",
+      "errors": {
+        "full": "It filled up while you were looking: no spots left.",
+        "rsvp": "We could not save your spot. Try again."
+      }
+    }
   },
   "orgs": {
     "pageTitle": "Organizations",
@@ -90,7 +123,20 @@
       "title": "No organizations yet",
       "message": "When student groups join the newsletter, you will see them here."
     },
-    "backToList": "See organizations"
+    "backToList": "See organizations",
+    "board": "Board",
+    "recruiting": {
+      "eyebrow": "We are recruiting",
+      "default": "{{org}} is looking for new members.",
+      "cta": "Apply"
+    },
+    "links": {
+      "label": "Contact",
+      "website": "Website"
+    },
+    "receiveMail": "Get emails from {{org}}",
+    "receiveMailHint": "Notices the organization emails to its followers.",
+    "mailError": "We could not save your preference."
   },
   "categories": {
     "Académico": "Academic",
@@ -192,14 +238,21 @@
       },
       "editAria": "Edit “{{title}}”",
       "deleteAria": "Delete “{{title}}”",
-      "deleteStaffOnly": "Only CEITBA staff can delete events. If one needs to go, write to newsletter@ceitba.org.ar.",
       "noUpcoming": "No upcoming events.",
       "past": "Past",
       "deleteDialog": {
         "title": "Delete this event?",
         "body": "“{{title}}” will be removed from the calendar for good. This cannot be undone.",
         "confirm": "Yes, delete"
-      }
+      },
+      "rsvps_one": "{{count}} going →",
+      "rsvps_other": "{{count}} going →",
+      "rsvpsOf_one": "{{count}}/{{capacity}} going →",
+      "rsvpsOf_other": "{{count}}/{{capacity}} going →",
+      "rsvpsText_one": "{{count}} going",
+      "rsvpsText_other": "{{count}} going",
+      "rsvpsOfText_one": "{{count}}/{{capacity}} going",
+      "rsvpsOfText_other": "{{count}}/{{capacity}} going"
     },
     "form": {
       "saving": "Saving…",
@@ -328,9 +381,29 @@
         "time": "Start time is required.",
         "endTime": "End time is required.",
         "location": "Location is required.",
-        "endBeforeStart": "End time must be after the start time."
+        "endBeforeStart": "End time must be after the start time.",
+        "signupUrl": "Paste the form link (http or https).",
+        "capacity": "Capacity must be a whole number above 0."
       },
-      "orgLocked": "Your events are published under your organization."
+      "orgLocked": "Your events are published under your organization.",
+      "onlineUrl": "Online link",
+      "onlineUrlHint": "Optional: Meet, Zoom or a stream.",
+      "cover": "Cover image",
+      "signup": "Sign-up",
+      "signupModes": {
+        "none": "No sign-up",
+        "external": "External form",
+        "rsvp": "RSVP on the site"
+      },
+      "signupHints": {
+        "none": "Anyone can come without signing up.",
+        "external": "We show a button that opens your form (Google Forms, Eventbrite…).",
+        "rsvp": "People sign up with their ITBA account; you see the list and we remind them the day before."
+      },
+      "signupUrl": "Form link",
+      "capacity": "Capacity",
+      "capacityHint": "Empty = no limit.",
+      "deleted": "Event deleted."
     },
     "analytics": {
       "title": "Statistics",
@@ -359,7 +432,8 @@
       "ranges": {
         "days7": "7 days",
         "days30": "30 days",
-        "allTime": "All time"
+        "allTime": "All time",
+        "days90": "90 days"
       },
       "sparkSummary": "Min {{min}} · Max {{max}} · Today {{last}}",
       "rangeLabel": "Period",
@@ -642,8 +716,20 @@
         "categoryHint": "For example: student union, sports, culture.",
         "color": "Colour",
         "colorHint": "It's the colour of the organization's cover in ITBA News.",
-        "logoUrl": "Logo URL",
-        "backgroundUrl": "Background URL"
+        "logoUrl": "Logo",
+        "backgroundUrl": "Background image",
+        "logoHint": "Square; shown small next to the name.",
+        "backgroundHint": "Wide image for the portal cover.",
+        "instagram": "Instagram",
+        "instagramHint": "Username or profile link.",
+        "linkedinUrl": "LinkedIn",
+        "websiteUrl": "Website",
+        "contactEmail": "Contact email",
+        "recruitingOpen": "We are recruiting",
+        "recruitingOpenHint": "Shows a notice on the organization portal.",
+        "recruitingText": "Notice text",
+        "recruitingTextHint": "Up to 280 characters. Left empty, a generic one is used.",
+        "recruitingUrl": "Application link"
       },
       "namesStaffOnly": "Only CEITBA staff can change the name.",
       "preview": "Preview",
@@ -659,14 +745,18 @@
       "backToManage": "← Organizations",
       "errors": {
         "save": "Couldn't save the profile. Please try again.",
-        "forbidden": "You don't have permission to edit this organization."
+        "forbidden": "You don't have permission to edit this organization.",
+        "email": "Enter a valid email.",
+        "instagram": "That Instagram username is not valid."
       },
       "leave": {
         "title": "Leave without saving?",
         "body": "You have unsaved changes to the profile. If you leave now, they will be lost.",
         "discard": "Leave without saving",
         "stay": "Keep editing"
-      }
+      },
+      "contactTitle": "Contact",
+      "recruitingTitle": "Recruiting"
     },
     "review": {
       "title": "Articles to review",
@@ -696,6 +786,204 @@
       "undo": "Undo",
       "undoError": "Couldn't undo publishing «{{title}}». Try again from the editor.",
       "alreadyHandled": "Another staff member had already handled «{{title}}». We removed it from the list."
+    },
+    "orgPages": {
+      "label": "Organization sections",
+      "profile": "Profile",
+      "members": "Members",
+      "followers": "Followers",
+      "stats": "Stats",
+      "mail": "Email"
+    },
+    "members": {
+      "title": "Members",
+      "invite": "Invite",
+      "inviteTitle": "Invite members",
+      "emailsLabel": "Emails",
+      "emailsHint": "One per line or comma-separated. People who already used the site join right away; the rest when they first sign in.",
+      "roleField": "Role",
+      "inviteSubmit_one": "Invite {{count}}",
+      "inviteSubmit_other": "Invite {{count}}",
+      "invited": "Done: {{added}} added, {{pending}} pending.",
+      "roles": {
+        "member": "Member",
+        "admin": "Admin"
+      },
+      "roleLabel": "Role of {{name}}",
+      "titleLabel": "Position",
+      "titleHint": "For example, President.",
+      "showOnPortal": "Show on the portal",
+      "you": "you",
+      "remove": "Remove",
+      "removed": "Member removed.",
+      "transfer": "Hand over admin",
+      "transferred": "{{name}} is now admin. You are a member now.",
+      "leave": "Leave the organization",
+      "left": "You left {{org}}.",
+      "onlyYou": "You are the only member: invite someone before you can leave.",
+      "staffNote": "You are viewing this organization as staff.",
+      "pendingTitle_one": "{{count}} pending invite",
+      "pendingTitle_other": "{{count}} pending invites",
+      "pendingHint": "They join automatically when they first sign in with that email.",
+      "revoke": "Cancel invite",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's admins and staff can see and manage its members.",
+      "loadError": "We could not load the members.",
+      "errors": {
+        "lastAdmin": "The organization needs at least one admin. Make another member admin first.",
+        "forbidden": "You are not allowed to manage this organization's members.",
+        "save": "We could not save the change. Try again.",
+        "invalidEmails": "Some email is invalid or cannot sign in to the site (it must be @itba.edu.ar).",
+        "tooMany": "You can invite up to {{max}} emails at a time."
+      },
+      "confirm": {
+        "remove": {
+          "title": "Remove {{name}}?",
+          "body": "They will no longer be able to publish for {{org}}. You can invite them again any time.",
+          "confirm": "Remove"
+        },
+        "transfer": {
+          "title": "Hand over admin to {{name}}?",
+          "body": "{{name}} becomes admin of {{org}} and you stay as a member.",
+          "confirm": "Hand over"
+        },
+        "leave": {
+          "title": "Leave {{org}}?",
+          "body": "You will no longer be able to publish or edit the profile of {{org}}.",
+          "confirm": "Leave"
+        }
+      },
+      "attendeesVisible": "Members can see who signed up for events",
+      "attendeesVisibleHint": "Names and emails of the people who RSVP. Turned off, only admins see the list."
+    },
+    "attendees": {
+      "title": "Attendees",
+      "export": "Export CSV",
+      "emptyTitle": "Nobody signed up yet",
+      "empty": "When someone RSVPs from the event page, they show up here.",
+      "forbidden": "Only the organization's admins, and its members if the admins allow it, can see who signed up.",
+      "loadError": "We could not load the list."
+    },
+    "orgStats": {
+      "title": "Stats",
+      "loadError": "We could not load the stats.",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's members see its stats.",
+      "noViewsTitle": "No views in this period yet",
+      "noViews": "Views of your articles and events show up here shortly after someone opens them.",
+      "views": "Views",
+      "viewsSplit": "{{articles}} on articles · {{events}} on events",
+      "visitors": "Visitors",
+      "visitorsHint": "Distinct browser sessions.",
+      "followers": "Followers",
+      "newFollowers_one": "+{{count}} in the period",
+      "newFollowers_other": "+{{count}} in the period",
+      "pushReach": "Notifications delivered",
+      "pushes_one": "{{count}} send",
+      "pushes_other": "{{count}} sends",
+      "dailyViews": "Views per day",
+      "followersSeries": "Current followers by follow date",
+      "followersNote": "Counts the people following the organization today by the day they followed; people who unfollowed are not shown.",
+      "topArticles": "Most read articles",
+      "noArticleViews": "Nobody read the organization's articles in this period.",
+      "events": "Events",
+      "noEvents": "No events in this period.",
+      "noRsvp": "No RSVP on the site",
+      "columns": {
+        "event": "Event",
+        "date": "Date",
+        "views": "Views",
+        "rsvps": "Going"
+      },
+      "mailReach": "Emails delivered",
+      "mails_one": "{{count}} send",
+      "mails_other": "{{count}} sends"
+    },
+    "orgMail": {
+      "title": "Email",
+      "loadError": "We could not load the organization's email.",
+      "noAccessTitle": "No access",
+      "noAccess": "Only the organization's admins email its followers.",
+      "connected": "Account connected. You can send emails now.",
+      "connectErrors": {
+        "access_denied": "You cancelled the permission on Google.",
+        "invalid_state": "The attempt expired. Try connecting again.",
+        "not_org_admin": "Only an admin of the organization can connect its account.",
+        "wrong_domain": "Pick an @{{domain}} account of the organization.",
+        "account_in_use": "Another organization or CEITBA already uses that account.",
+        "missing_scope": "Google did not grant permission to send email. Connect again and accept every permission.",
+        "no_refresh_token": "Google did not return a lasting permission. Try again.",
+        "exchange_failed": "We could not connect the account. Try again."
+      },
+      "accountTitle": "Sending account",
+      "missing": "Connect the organization's Gmail account (@{{domain}}) to send emails from it.",
+      "missingHelp": "Google asks for permission to send email only; we never read the mailbox.",
+      "adminOnlyConnect": "Only an admin of the organization can connect the account.",
+      "statusConnected": "Connected",
+      "statusBroken": "Needs to be reconnected",
+      "quota": "Daily quota",
+      "quotaValue": "{{remaining}} of {{limit}} left",
+      "weekly": "Sends this week",
+      "weeklyValue": "{{left}} of {{limit}} left",
+      "audience": "Reaches",
+      "audienceValue_one": "{{count}} follower",
+      "audienceValue_other": "{{count}} followers",
+      "connect": "Connect Gmail account",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
+      "newTitle": "New email",
+      "editTitle": "Editing draft",
+      "subject": "Subject",
+      "body": "Message",
+      "bodyHint": "Plain text: a blank line starts a paragraph and links become clickable.",
+      "saveDraft": "Save draft",
+      "sendTest": "Send me a test",
+      "send": "Send to followers",
+      "newInstead": "Start a new one",
+      "footerNote": "Every email includes a link to stop getting the organization's emails.",
+      "saved": "Draft saved.",
+      "testSent": "We sent the test to {{email}}.",
+      "sending": "Sending. You can follow the progress here.",
+      "history": "Emails",
+      "noHistory": "No emails yet.",
+      "draftOf": "Draft · {{when}}",
+      "progress": "{{sent}} sent · {{failed}} failed · {{pending}} pending · {{when}}",
+      "status": {
+        "draft": "Draft",
+        "sending": "Sending",
+        "sent": "Sent"
+      },
+      "errors": {
+        "OrgMailNotConnected": "Connect the organization's Gmail account first.",
+        "OrgMailWeeklyLimit": "The organization already used its sends for this week.",
+        "OrgMailNoRecipients": "No follower can receive this email yet.",
+        "MailDisabled": "Sending email is turned off on the server.",
+        "OrgMailNotDraft": "That email was already sent.",
+        "OrgMailTestFailed": "The test could not be sent.",
+        "MAIL_QUOTA_EXHAUSTED": "The account's daily quota is used up. Try tomorrow.",
+        "MAIL_SENDER_NOT_CONNECTED": "The Gmail account is not available: reconnect it.",
+        "invalid": "Check the subject (one line, up to 150 characters) and the message.",
+        "empty": "Fill in the subject and the message.",
+        "generic": "We could not complete that. Try again."
+      },
+      "confirm": {
+        "send": {
+          "title": "Send to your followers?",
+          "body_one": "\"{{subject}}\" will reach {{count}} follower.",
+          "body_other": "\"{{subject}}\" will reach {{count}} followers.",
+          "confirm": "Send"
+        },
+        "delete": {
+          "title": "Delete the draft?",
+          "body": "\"{{subject}}\" is deleted for good.",
+          "confirm": "Delete"
+        },
+        "disconnect": {
+          "title": "Disconnect the account?",
+          "body": "{{email}} stops sending the organization's emails.",
+          "confirm": "Disconnect"
+        }
+      }
     }
   },
   "mine": {
@@ -795,7 +1083,6 @@
     "markdownHint": "Editing Markdown. Switch back to “Visual” to see the result.",
     "words_one": "{{count}} word",
     "words_other": "{{count}} words",
-    "pasteHint": "Paste from Claude, Docs or Markdown: formatting is kept",
     "errors": {
       "url": "Enter a valid URL (https://…).",
       "uploadForbidden": "Only staff can upload images; use a URL."
@@ -877,5 +1164,20 @@
     "notificationsUnread_other": "Notifications ({{count}} unread)",
     "markAllRead": "Mark all as read",
     "noNotifications": "You have no notifications"
+  },
+  "orgMail": {
+    "name": "Organization emails",
+    "unsubscribe": {
+      "confirmTitle": "Stop getting emails from this organization?",
+      "confirmHint": "You will still see it on ITBA News; you only stop getting its emails.",
+      "confirm": "Unsubscribe",
+      "confirming": "Saving…",
+      "doneTitle": "Done: no more emails from {{org}}",
+      "doneHint": "Changed your mind? Turn them back on from the organization portal.",
+      "invalidTitle": "This link is not valid",
+      "invalidHint": "It may be incomplete. Try opening it again from the email.",
+      "errorTitle": "We could not unsubscribe you",
+      "errorHint": "Try again in a while."
+    }
   }
 }

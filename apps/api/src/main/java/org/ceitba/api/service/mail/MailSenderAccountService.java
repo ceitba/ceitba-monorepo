@@ -5,9 +5,11 @@ import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.config.DigestProperties;
 import org.ceitba.api.config.EmailProperties;
 import org.ceitba.api.config.MailOAuthProperties;
+import org.ceitba.api.config.OrgMailProperties;
 import org.ceitba.api.domain.mail.MailSenderAccount;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.mail.MailSenderAccountRepository;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,11 +25,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 // Connected sender accounts (table mail_sender_account): the CEITBA account
-// now, per-organization ones later (owner_type 'organization').
+// and one per organization (owner_type 'organization', owner_ref = slug).
 //
 // Connect flow (staff): connect() -> Google consent -> handleCallback(), which
 // exchanges the code, requires the id_token email to be EXACTLY the configured
 // sender (MAIL_FROM) and stores the refresh token encrypted.
+// Organization flow (its admins, docs/ORGANIZATIONS.md): connectOrg() puts
+// the slug in the signed state; the callback then requires the user to still
+// be an admin of that org and a verified address of org-mail.allowed-domain
+// that no other owner uses, and redirects to the org's Correo page.
 @Service
 public class MailSenderAccountService {
 
@@ -45,6 +51,9 @@ public class MailSenderAccountService {
     public static final String ERR_MISSING_SCOPE = "missing_scope";
     public static final String ERR_NO_REFRESH_TOKEN = "no_refresh_token";
     public static final String ERR_EXCHANGE_FAILED = "exchange_failed";
+    public static final String ERR_NOT_ORG_ADMIN = "not_org_admin";
+    public static final String ERR_WRONG_DOMAIN = "wrong_domain";
+    public static final String ERR_ACCOUNT_IN_USE = "account_in_use";
 
     public record AccountView(Long id, String email, String ownerType, String ownerRef, String status,
                               OffsetDateTime connectedAt, String lastError, OffsetDateTime lastUsedAt) {}
@@ -60,11 +69,14 @@ public class MailSenderAccountService {
     private final MailOAuthProperties oauth;
     private final EmailProperties email;
     private final DigestProperties digest;
+    private final OrgMailProperties orgMail;
+    private final OrganizationMembershipService memberships;
     private final Clock clock;
 
     public MailSenderAccountService(MailSenderAccountRepository accounts, CeitbaStaffRepository staff,
                                     GoogleMailOAuthClient google, MailOAuthStateService states, MailLedger ledger,
                                     MailOAuthProperties oauth, EmailProperties email, DigestProperties digest,
+                                    OrgMailProperties orgMail, OrganizationMembershipService memberships,
                                     Clock clock) {
         this.accounts = accounts;
         this.staff = staff;
@@ -74,23 +86,37 @@ public class MailSenderAccountService {
         this.oauth = oauth;
         this.email = email;
         this.digest = digest;
+        this.orgMail = orgMail;
+        this.memberships = memberships;
         this.clock = clock;
     }
 
     public URI connect(UUID staffUserId) {
+        requireConfigured();
+        String sender = email.account();
+        return google.authorizationUri(states.issue(staffUserId), sender, domainOf(sender));
+    }
+
+    // An organization's admin picks any account of org-mail.allowed-domain.
+    public URI connectOrg(String orgSlug, UUID adminId) {
+        requireConfigured();
+        return google.authorizationUri(states.issue(adminId, orgSlug), null, orgMail.allowedDomain());
+    }
+
+    private void requireConfigured() {
         if (!google.configured()) {
             throw new FeatureNotConfiguredException("Gmail sender connection needs GOOGLE_CLIENT_ID, "
                 + "GOOGLE_CLIENT_SECRET and GOOGLE_MAIL_REDIRECT_URI");
         }
         cipher();  // fails fast without MAIL_TOKEN_ENCRYPTION_KEY
-        String sender = email.account();
-        return google.authorizationUri(states.issue(staffUserId), sender, domainOf(sender));
     }
 
     // Always returns where to send the browser; never throws.
     public URI handleCallback(String code, String state, String error) {
-        var staffUser = states.verify(state);
-        if (staffUser.isEmpty()) return redirect(ERR_INVALID_STATE);
+        var verified = states.verifyState(state);
+        if (verified.isEmpty()) return redirect(ERR_INVALID_STATE);
+        if (verified.get().orgSlug() != null) return handleOrgCallback(verified.get(), code, error);
+        var staffUser = verified.map(MailOAuthStateService.State::userId);
         if (!staff.isActiveStaff(staffUser.get(), OffsetDateTime.now(clock))) return redirect(ERR_NOT_STAFF);
         if (error != null) {
             return redirect("access_denied".equals(error) ? ERR_ACCESS_DENIED : ERR_EXCHANGE_FAILED);
@@ -115,6 +141,38 @@ public class MailSenderAccountService {
         }
     }
 
+    private URI handleOrgCallback(MailOAuthStateService.State state, String code, String error) {
+        String slug = state.orgSlug();
+        if (!memberships.userIsAdminOf(state.userId(), slug)) return redirectOrg(slug, ERR_NOT_ORG_ADMIN);
+        if (error != null) {
+            return redirectOrg(slug, "access_denied".equals(error) ? ERR_ACCESS_DENIED : ERR_EXCHANGE_FAILED);
+        }
+        if (code == null || code.isBlank()) return redirectOrg(slug, ERR_EXCHANGE_FAILED);
+        try {
+            var tokens = google.exchangeCode(code);
+            var claims = google.parseIdToken(tokens.idToken());
+            if (claims == null || !claims.emailVerified() || !orgMail.allows(claims.email())) {
+                return redirectOrg(slug, ERR_WRONG_DOMAIN);
+            }
+            String address = claims.email().trim().toLowerCase(Locale.ROOT);
+            var existing = accounts.findByEmailIgnoreCase(address);
+            if (existing.isPresent() && !(MailSenderAccount.OWNER_ORGANIZATION.equals(existing.get().getOwnerType())
+                    && slug.equals(existing.get().getOwnerRef()))) {
+                return redirectOrg(slug, ERR_ACCOUNT_IN_USE);
+            }
+            if (!hasSendScope(tokens.scope())) return redirectOrg(slug, ERR_MISSING_SCOPE);
+            if (tokens.refreshToken() == null || tokens.refreshToken().isBlank()) {
+                return redirectOrg(slug, ERR_NO_REFRESH_TOKEN);
+            }
+            storeOrg(slug, address, tokens.refreshToken(), tokens.scope(), state.userId());
+            log.info("Mail: org {} connected sender account {}", slug, address);
+            return redirectOrg(slug, null);
+        } catch (RuntimeException e) {
+            log.warn("Mail: connecting the sender account of org {} failed: {}", slug, e.getClass().getSimpleName());
+            return redirectOrg(slug, ERR_EXCHANGE_FAILED);
+        }
+    }
+
     // The address that connected must be exactly the configured sender, verified.
     static boolean isSenderAccount(GoogleMailOAuthClient.IdClaims claims, String expectedEmail) {
         return claims != null && claims.emailVerified() && claims.email() != null
@@ -130,7 +188,8 @@ public class MailSenderAccountService {
         String enc = cipher().encrypt(refreshToken, senderEmail);
         var row = accounts.findFirstByOwnerTypeAndOwnerRefIsNull(MailSenderAccount.OWNER_CEITBA).orElse(null);
         if (row == null || !row.getEmail().equalsIgnoreCase(senderEmail)) {
-            if (row != null) accounts.delete(row);
+            // The replaced address's token is revoked at Google too, like a disconnect.
+            if (row != null) delete(row.getId());
             accounts.flush();
             accounts.save(new MailSenderAccount(senderEmail, MailSenderAccount.OWNER_CEITBA, null, enc, scopes, by, now));
         } else {
@@ -139,6 +198,35 @@ public class MailSenderAccountService {
         }
         // A broken-sender backoff must not outlive the reconnection.
         ledger.saveState(senderEmail, MailLedger.State.CLEAR, clock.instant());
+    }
+
+    // One account per org: reconnecting with another address replaces it.
+    private void storeOrg(String slug, String senderEmail, String refreshToken, String scopes, UUID by) {
+        var now = OffsetDateTime.now(clock);
+        String enc = cipher().encrypt(refreshToken, senderEmail);
+        var row = accounts.findFirstByOwnerTypeAndOwnerRef(MailSenderAccount.OWNER_ORGANIZATION, slug).orElse(null);
+        if (row == null || !row.getEmail().equalsIgnoreCase(senderEmail)) {
+            // The replaced address's token is revoked at Google too, like a disconnect.
+            if (row != null) delete(row.getId());
+            accounts.flush();
+            accounts.save(new MailSenderAccount(senderEmail, MailSenderAccount.OWNER_ORGANIZATION, slug, enc, scopes,
+                by, now));
+        } else {
+            row.connect(enc, scopes, by, now);
+            accounts.save(row);
+        }
+        ledger.saveState(senderEmail, MailLedger.State.CLEAR, clock.instant());
+    }
+
+    public Optional<AccountView> orgAccount(String slug) {
+        return accounts.findFirstByOwnerTypeAndOwnerRef(MailSenderAccount.OWNER_ORGANIZATION, slug)
+            .map(MailSenderAccountService::view);
+    }
+
+    // Revokes and deletes the org's account; no-op without one.
+    public void disconnectOrg(String slug) {
+        accounts.findFirstByOwnerTypeAndOwnerRef(MailSenderAccount.OWNER_ORGANIZATION, slug)
+            .ifPresent(a -> delete(a.getId()));
     }
 
     public List<AccountView> list() {
@@ -229,6 +317,13 @@ public class MailSenderAccountService {
 
     private URI redirect(String errorReason) {
         var b = UriComponentsBuilder.fromUriString(digest.publicBaseUrl() + "/admin/digests");
+        if (errorReason == null) b.queryParam("mail", "connected");
+        else b.queryParam("mail", "error").queryParam("reason", errorReason);
+        return b.build().toUri();
+    }
+
+    private URI redirectOrg(String slug, String errorReason) {
+        var b = UriComponentsBuilder.fromUriString(digest.publicBaseUrl() + "/mine/org/" + slug + "/mail");
         if (errorReason == null) b.queryParam("mail", "connected");
         else b.queryParam("mail", "error").queryParam("reason", errorReason);
         return b.build().toUri();

@@ -84,6 +84,33 @@ export interface NewsEventResponse {
   organization: string | null
   description: string | null
   createdAt: IsoDateTime
+  coverImage: string | null
+  // Join link for online (or hybrid) events.
+  onlineUrl: string | null
+  signupMode: SignupMode
+  // The external form (signupMode 'external').
+  signupUrl: string | null
+  // Max RSVPs (signupMode 'rsvp'); null = no limit.
+  capacity: number | null
+  rsvpCount: number
+}
+
+// How people sign up for an event: not at all, on an external form, or
+// with the built-in RSVP.
+export type SignupMode = 'none' | 'external' | 'rsvp'
+
+// POST/DELETE /news/events/{id}/rsvp.
+export interface RsvpResult {
+  going: boolean
+  rsvpCount: number
+}
+
+// EventRsvpService.Attendee (GET /news/events/{id}/attendees → { data }).
+export interface Attendee {
+  userId: string
+  name: string | null
+  email: string | null
+  createdAt: IsoDateTime
 }
 
 // What api/events returns: the response plus `date` (= eventDate) and
@@ -105,6 +132,13 @@ export interface NewsEventInput {
   category?: string
   organization?: string | null
   description?: string | null
+  // In a PATCH '' clears these two.
+  coverImage?: string
+  onlineUrl?: string
+  // The sign-up is replaced as a whole when signupMode is sent.
+  signupMode?: SignupMode
+  signupUrl?: string | null
+  capacity?: number | null
 }
 
 // ── Organizations and follows ───────────────────────────────────────────────
@@ -120,10 +154,70 @@ export interface Organization {
   followerCount: number
   logoUrl: string | null
   backgroundUrl: string | null
+  // Bare handle; build the profile URL with instagramUrl().
+  instagram: string | null
+  linkedinUrl: string | null
+  websiteUrl: string | null
+  contactEmail: string | null
+  recruitingOpen: boolean
+  recruitingUrl: string | null
+  recruitingText: string | null
+  // Plain members see events' RSVP lists (admins always do).
+  attendeesVisibleToMembers: boolean
+  // Only on GET /organizations/{slug}; null in lists.
+  board?: BoardMember[] | null
 }
 
-// OrganizationRequest / OrganizationPatchRequest.
-export type OrganizationInput = Partial<Omit<Organization, 'followerCount'>>
+// OrganizationMembershipService.BoardMemberView: members shown on the portal.
+export interface BoardMember {
+  name: string | null
+  title: string | null
+  avatarUrl: string | null
+}
+
+// OrganizationRequest / OrganizationPatchRequest. In a PATCH a blank string
+// clears a contact or recruiting field.
+export type OrganizationInput = Partial<Omit<Organization, 'followerCount' | 'board' | 'attendeesVisibleToMembers'>>
+
+export type MembershipRole = 'member' | 'admin'
+
+// OrganizationMembershipService.MemberView.
+export interface OrgMember {
+  userId: string
+  name: string | null
+  email: string | null
+  avatarUrl: string | null
+  role: MembershipRole
+  title: string | null
+  showOnPortal: boolean
+  since: IsoDateTime
+}
+
+// OrganizationMembershipService.InviteView: an email that has not signed in yet.
+export interface OrgInvite {
+  email: string
+  role: MembershipRole
+  createdAt: IsoDateTime
+}
+
+// OrganizationMembershipService.MemberSettings: the admins' decisions.
+export interface OrgMemberSettings {
+  // Plain members see events' RSVP lists (admins always do).
+  attendeesVisibleToMembers: boolean
+}
+
+// GET /organizations/{slug}/members.
+export interface OrgMembers {
+  members: OrgMember[]
+  invites: OrgInvite[]
+  settings: OrgMemberSettings
+}
+
+// POST /organizations/{slug}/members/invites.
+export interface InviteResult {
+  added: OrgMember[]
+  pending: OrgInvite[]
+}
 
 // GET /organizations.
 export interface OrganizationList {
@@ -169,6 +263,8 @@ export interface AnalyticsEvent {
   sessionId: string
   timestamp?: number | null
   articleId?: string | null
+  // 'event_view' on the event detail page.
+  eventId?: string | null
   category?: string | null
   path?: string | null
 }
@@ -356,4 +452,70 @@ export interface SenderAccount {
   connectedAt: IsoDateTime | null
   lastError: string | null
   lastUsedAt: IsoDateTime | null
+}
+
+// ── Organization stats ──────────────────────────────────────────────────────
+
+// OrgAnalyticsService.OrgAnalytics (GET /organizations/{slug}/analytics).
+export interface OrgAnalytics {
+  days: number
+  articleViews: number
+  eventViews: number
+  // Distinct browser sessions that viewed the org's articles or events.
+  uniqueVisitors: number
+  daily: { date: IsoDate; articleViews: number; eventViews: number }[]
+  topArticles: { articleId: string; title: string; views: number }[]
+  events: {
+    eventId: string
+    title: string
+    date: IsoDate
+    signupMode: SignupMode
+    capacity: number | null
+    rsvpCount: number
+    views: number
+  }[]
+  // `cumulative`: current followers by the day they followed.
+  followers: { total: number; newInPeriod: number; cumulative: { date: IsoDate; count: number }[] }
+  pushes: { pushes: number; devicesTargeted: number; devicesReached: number }
+  mail: { announcements: number; recipients: number }
+}
+
+// ── Organization emails ─────────────────────────────────────────────────────
+
+// MailSendService.QuotaStatus of the org's account.
+export interface MailQuota {
+  account: string
+  limit: number
+  usedLast24h: number
+  remaining: number
+  pausedUntil: IsoDateTime | null
+  pauseReason: string | null
+  nextCapacityAt: IsoDateTime | null
+}
+
+// OrgAnnouncementService.MailStatus (GET /organizations/{slug}/mail).
+export interface OrgMailStatus {
+  account: SenderAccount | null
+  mailEnabled: boolean
+  quota: MailQuota | null
+  weeklyLimit: number
+  sentThisWeek: number
+  // Followers an email would reach now.
+  recipientEstimate: number
+  allowedDomain: string
+}
+
+// OrgAnnouncementService.AnnouncementView.
+export interface OrgAnnouncement {
+  id: number
+  subject: string
+  body: string
+  status: 'draft' | 'sending' | 'sent'
+  recipientCount: number | null
+  sent: number
+  failed: number
+  pending: number
+  createdAt: IsoDateTime
+  sentAt: IsoDateTime | null
+  finishedAt: IsoDateTime | null
 }

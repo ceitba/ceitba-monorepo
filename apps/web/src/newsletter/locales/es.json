@@ -62,7 +62,40 @@
     "timeRange": "{{start}}–{{end}}",
     "error": "No pudimos cargar los eventos. Revisá tu conexión e intentá de nuevo.",
     "monthError": "No pudimos cargar los eventos de ese mes.",
-    "noEventsHint": "Cuando las organizaciones publiquen eventos, van a aparecer acá."
+    "noEventsHint": "Cuando las organizaciones publiquen eventos, van a aparecer acá.",
+    "going": "Vas a ir",
+    "filteredBy": "Eventos de {{org}}.",
+    "showAll": "Ver todos los eventos",
+    "detail": {
+      "back": "← Eventos",
+      "notFoundTitle": "Evento no encontrado",
+      "notFound": "El evento que buscás no existe o fue eliminado.",
+      "errorTitle": "No pudimos cargar el evento",
+      "when": "Cuándo",
+      "where": "Dónde",
+      "joinOnline": "Unirse online",
+      "calendar": "Agendalo",
+      "googleCalendar": "Google Calendar",
+      "downloadIcs": "Descargar .ics (Apple, Outlook)",
+      "past": "Este evento ya pasó.",
+      "externalHint": "La inscripción es en un formulario de la organización.",
+      "signUp": "Inscribirme",
+      "noSignup": "No hace falta inscribirse: acercate.",
+      "goingCount_one": "{{count}} va",
+      "goingCount_other": "{{count}} van",
+      "goingOf_one": "{{count}} de {{capacity}} lugares",
+      "goingOf_other": "{{count}} de {{capacity}} lugares",
+      "signInToRsvp": "Iniciá sesión para anotarte",
+      "rsvp": "Voy",
+      "cancelRsvp": "Ya no voy",
+      "youreGoing": "Estás anotado.",
+      "full": "Completo",
+      "reminderHint": "Si tenés la app, te avisamos el día anterior.",
+      "errors": {
+        "full": "Se llenó mientras mirabas: no quedan lugares.",
+        "rsvp": "No pudimos guardar tu lugar. Probá de nuevo."
+      }
+    }
   },
   "orgs": {
     "pageTitle": "Organizaciones",
@@ -90,7 +123,20 @@
       "title": "Todavía no hay organizaciones",
       "message": "Cuando se sumen agrupaciones al newsletter, las vas a ver acá."
     },
-    "backToList": "Ver organizaciones"
+    "backToList": "Ver organizaciones",
+    "board": "Comisión directiva",
+    "recruiting": {
+      "eyebrow": "Buscamos gente",
+      "default": "{{org}} está sumando miembros.",
+      "cta": "Postularme"
+    },
+    "links": {
+      "label": "Contacto",
+      "website": "Sitio web"
+    },
+    "receiveMail": "Recibir correos de {{org}}",
+    "receiveMailHint": "Avisos que la organización manda por mail a quienes la siguen.",
+    "mailError": "No pudimos guardar tu preferencia."
   },
   "categories": {
     "Académico": "Académico",
@@ -192,14 +238,21 @@
       },
       "editAria": "Editar «{{title}}»",
       "deleteAria": "Eliminar «{{title}}»",
-      "deleteStaffOnly": "Solo el staff del CEITBA puede eliminar eventos. Si hay que borrar uno, escribinos a newsletter@ceitba.org.ar.",
       "noUpcoming": "No hay eventos próximos.",
       "past": "Pasados",
       "deleteDialog": {
         "title": "¿Eliminar este evento?",
         "body": "«{{title}}» se borra del calendario para siempre. No se puede deshacer.",
         "confirm": "Sí, eliminar"
-      }
+      },
+      "rsvps_one": "{{count}} anotado →",
+      "rsvps_other": "{{count}} anotados →",
+      "rsvpsOf_one": "{{count}}/{{capacity}} anotados →",
+      "rsvpsOf_other": "{{count}}/{{capacity}} anotados →",
+      "rsvpsText_one": "{{count}} anotado",
+      "rsvpsText_other": "{{count}} anotados",
+      "rsvpsOfText_one": "{{count}}/{{capacity}} anotados",
+      "rsvpsOfText_other": "{{count}}/{{capacity}} anotados"
     },
     "form": {
       "saving": "Guardando…",
@@ -328,9 +381,29 @@
         "time": "La hora de inicio es obligatoria.",
         "endTime": "La hora de fin es obligatoria.",
         "location": "El lugar es obligatorio.",
-        "endBeforeStart": "La hora de fin debe ser posterior al inicio."
+        "endBeforeStart": "La hora de fin debe ser posterior al inicio.",
+        "signupUrl": "Pegá el link del formulario (http o https).",
+        "capacity": "El cupo tiene que ser un número entero mayor que 0."
       },
-      "orgLocked": "Tus eventos se publican a nombre de tu organización."
+      "orgLocked": "Tus eventos se publican a nombre de tu organización.",
+      "onlineUrl": "Link online",
+      "onlineUrlHint": "Opcional: Meet, Zoom o transmisión.",
+      "cover": "Imagen de portada",
+      "signup": "Inscripción",
+      "signupModes": {
+        "none": "Sin inscripción",
+        "external": "Formulario externo",
+        "rsvp": "Anotarse en el sitio"
+      },
+      "signupHints": {
+        "none": "Cualquiera puede ir sin anotarse.",
+        "external": "Mostramos un botón que lleva a tu formulario (Google Forms, Eventbrite…).",
+        "rsvp": "La gente se anota con su cuenta del ITBA; ves la lista y les avisamos el día anterior."
+      },
+      "signupUrl": "Link del formulario",
+      "capacity": "Cupo",
+      "capacityHint": "Vacío = sin límite.",
+      "deleted": "Evento eliminado."
     },
     "analytics": {
       "title": "Estadísticas",
@@ -359,7 +432,8 @@
       "ranges": {
         "days7": "7 días",
         "days30": "30 días",
-        "allTime": "Todo"
+        "allTime": "Todo",
+        "days90": "90 días"
       },
       "sparkSummary": "Mín. {{min}} · Máx. {{max}} · Hoy {{last}}",
       "rangeLabel": "Período",
@@ -642,8 +716,20 @@
         "categoryHint": "Por ejemplo: centro de estudiantes, deporte, cultura.",
         "color": "Color",
         "colorHint": "Es el color de la portada de la organización en ITBA News.",
-        "logoUrl": "URL del logo",
-        "backgroundUrl": "URL del fondo"
+        "logoUrl": "Logo",
+        "backgroundUrl": "Imagen de fondo",
+        "logoHint": "Cuadrado, se muestra chico junto al nombre.",
+        "backgroundHint": "Imagen ancha para la portada del portal.",
+        "instagram": "Instagram",
+        "instagramHint": "Usuario o link al perfil.",
+        "linkedinUrl": "LinkedIn",
+        "websiteUrl": "Sitio web",
+        "contactEmail": "Mail de contacto",
+        "recruitingOpen": "Estamos sumando miembros",
+        "recruitingOpenHint": "Muestra un aviso en el portal de la organización.",
+        "recruitingText": "Texto del aviso",
+        "recruitingTextHint": "Hasta 280 caracteres. Si lo dejás vacío usamos uno genérico.",
+        "recruitingUrl": "Link para postularse"
       },
       "namesStaffOnly": "Solo el staff del CEITBA puede cambiar el nombre.",
       "preview": "Vista previa",
@@ -659,14 +745,18 @@
       "backToManage": "← Organizaciones",
       "errors": {
         "save": "No pudimos guardar el perfil. Probá de nuevo.",
-        "forbidden": "No tenés permiso para editar esta organización."
+        "forbidden": "No tenés permiso para editar esta organización.",
+        "email": "Ingresá un mail válido.",
+        "instagram": "El usuario de Instagram no es válido."
       },
       "leave": {
         "title": "¿Salir sin guardar?",
         "body": "Tenés cambios sin guardar en el perfil. Si salís ahora, se pierden.",
         "discard": "Salir sin guardar",
         "stay": "Seguir editando"
-      }
+      },
+      "contactTitle": "Contacto",
+      "recruitingTitle": "Convocatoria"
     },
     "review": {
       "title": "Artículos para revisar",
@@ -696,6 +786,204 @@
       "undo": "Deshacer",
       "undoError": "No se pudo deshacer la publicación de «{{title}}». Volvé a intentarlo desde el editor.",
       "alreadyHandled": "«{{title}}» ya lo había resuelto otra persona del staff. Lo sacamos de la lista."
+    },
+    "orgPages": {
+      "label": "Secciones de la organización",
+      "profile": "Perfil",
+      "members": "Miembros",
+      "followers": "Seguidores",
+      "stats": "Estadísticas",
+      "mail": "Correo"
+    },
+    "members": {
+      "title": "Miembros",
+      "invite": "Invitar",
+      "inviteTitle": "Invitar miembros",
+      "emailsLabel": "Mails",
+      "emailsHint": "Uno por línea o separados por comas. Quien ya usó el sitio se suma al instante; el resto, cuando entre por primera vez.",
+      "roleField": "Rol",
+      "inviteSubmit_one": "Invitar a {{count}}",
+      "inviteSubmit_other": "Invitar a {{count}}",
+      "invited": "Listo: {{added}} sumados, {{pending}} pendientes.",
+      "roles": {
+        "member": "Miembro",
+        "admin": "Admin"
+      },
+      "roleLabel": "Rol de {{name}}",
+      "titleLabel": "Cargo",
+      "titleHint": "Por ejemplo, Presidenta.",
+      "showOnPortal": "Mostrar en el portal",
+      "you": "vos",
+      "remove": "Quitar",
+      "removed": "Miembro quitado.",
+      "transfer": "Pasarle la administración",
+      "transferred": "{{name}} ahora es admin. Vos quedaste como miembro.",
+      "leave": "Salir de la organización",
+      "left": "Saliste de {{org}}.",
+      "onlyYou": "Sos el único miembro: invitá a alguien antes de poder salir.",
+      "staffNote": "Estás viendo esta organización como staff.",
+      "pendingTitle_one": "{{count}} invitación pendiente",
+      "pendingTitle_other": "{{count}} invitaciones pendientes",
+      "pendingHint": "Se suman solas cuando entren al sitio por primera vez con ese mail.",
+      "revoke": "Cancelar invitación",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los admins de la organización y el staff pueden ver y gestionar sus miembros.",
+      "loadError": "No pudimos cargar los miembros.",
+      "errors": {
+        "lastAdmin": "La organización tiene que tener al menos un admin. Hacé admin a otro miembro primero.",
+        "forbidden": "No tenés permiso para gestionar los miembros de esta organización.",
+        "save": "No pudimos guardar el cambio. Probá de nuevo.",
+        "invalidEmails": "Algún mail no es válido o no puede entrar al sitio (tiene que ser @itba.edu.ar).",
+        "tooMany": "Podés invitar hasta {{max}} mails por vez."
+      },
+      "confirm": {
+        "remove": {
+          "title": "¿Quitar a {{name}}?",
+          "body": "Deja de poder publicar para {{org}}. Lo podés volver a invitar cuando quieras.",
+          "confirm": "Quitar"
+        },
+        "transfer": {
+          "title": "¿Pasarle la administración a {{name}}?",
+          "body": "{{name}} pasa a ser admin de {{org}} y vos quedás como miembro.",
+          "confirm": "Pasar administración"
+        },
+        "leave": {
+          "title": "¿Salir de {{org}}?",
+          "body": "Vas a dejar de poder publicar y editar el perfil de {{org}}.",
+          "confirm": "Salir"
+        }
+      },
+      "attendeesVisible": "Los miembros pueden ver quién se anotó a los eventos",
+      "attendeesVisibleHint": "Nombres y mails de quienes se anotan. Si lo apagás, solo los admins ven la lista."
+    },
+    "attendees": {
+      "title": "Anotados",
+      "export": "Exportar CSV",
+      "emptyTitle": "Todavía nadie se anotó",
+      "empty": "Cuando alguien se anote desde la página del evento, lo vas a ver acá.",
+      "forbidden": "Solo los admins de la organización, y sus miembros si los admins lo permiten, pueden ver quién se anotó.",
+      "loadError": "No pudimos cargar la lista."
+    },
+    "orgStats": {
+      "title": "Estadísticas",
+      "loadError": "No pudimos cargar las estadísticas.",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los miembros de la organización ven sus estadísticas.",
+      "noViewsTitle": "Todavía no hay visitas en este período",
+      "noViews": "Las visitas a tus artículos y eventos aparecen acá al rato de que alguien los abre.",
+      "views": "Visitas",
+      "viewsSplit": "{{articles}} a artículos · {{events}} a eventos",
+      "visitors": "Visitantes",
+      "visitorsHint": "Sesiones de navegador distintas.",
+      "followers": "Seguidores",
+      "newFollowers_one": "+{{count}} en el período",
+      "newFollowers_other": "+{{count}} en el período",
+      "pushReach": "Notificaciones entregadas",
+      "pushes_one": "{{count}} envío",
+      "pushes_other": "{{count}} envíos",
+      "dailyViews": "Visitas por día",
+      "followersSeries": "Seguidores actuales por fecha de seguimiento",
+      "followersNote": "Cuenta a quienes siguen hoy a la organización según el día en que la siguieron; quien dejó de seguirla no aparece.",
+      "topArticles": "Artículos más leídos",
+      "noArticleViews": "Nadie leyó artículos de la organización en este período.",
+      "events": "Eventos",
+      "noEvents": "No hay eventos en este período.",
+      "noRsvp": "Sin inscripción en el sitio",
+      "columns": {
+        "event": "Evento",
+        "date": "Fecha",
+        "views": "Visitas",
+        "rsvps": "Anotados"
+      },
+      "mailReach": "Correos entregados",
+      "mails_one": "{{count}} envío",
+      "mails_other": "{{count}} envíos"
+    },
+    "orgMail": {
+      "title": "Correo",
+      "loadError": "No pudimos cargar el correo de la organización.",
+      "noAccessTitle": "Sin acceso",
+      "noAccess": "Solo los admins de la organización mandan correos a sus seguidores.",
+      "connected": "Cuenta conectada. Ya pueden mandar correos.",
+      "connectErrors": {
+        "access_denied": "Cancelaste el permiso en Google.",
+        "invalid_state": "El intento venció. Probá conectar de nuevo.",
+        "not_org_admin": "Solo un admin de la organización puede conectar su cuenta.",
+        "wrong_domain": "Elegí una cuenta @{{domain}} de la organización.",
+        "account_in_use": "Esa cuenta ya la usa otra organización o el CEITBA.",
+        "missing_scope": "Google no dio permiso para enviar mails. Volvé a conectar y aceptá todos los permisos.",
+        "no_refresh_token": "Google no devolvió un permiso duradero. Probá de nuevo.",
+        "exchange_failed": "No pudimos conectar la cuenta. Probá de nuevo."
+      },
+      "accountTitle": "Cuenta de envío",
+      "missing": "Conectá la cuenta de Gmail de la organización (@{{domain}}) para mandar correos desde ella.",
+      "missingHelp": "Google te va a pedir permiso solo para enviar mails; no leemos tu casilla.",
+      "adminOnlyConnect": "Solo un admin de la organización puede conectar la cuenta.",
+      "statusConnected": "Conectada",
+      "statusBroken": "Hay que volver a conectarla",
+      "quota": "Cupo diario",
+      "quotaValue": "{{remaining}} de {{limit}} disponibles",
+      "weekly": "Envíos esta semana",
+      "weeklyValue": "Quedan {{left}} de {{limit}}",
+      "audience": "Lo reciben",
+      "audienceValue_one": "{{count}} seguidor",
+      "audienceValue_other": "{{count}} seguidores",
+      "connect": "Conectar cuenta de Gmail",
+      "reconnect": "Volver a conectar",
+      "disconnect": "Desconectar",
+      "newTitle": "Nuevo correo",
+      "editTitle": "Editando borrador",
+      "subject": "Asunto",
+      "body": "Mensaje",
+      "bodyHint": "Texto plano: una línea en blanco separa párrafos y los links se vuelven clickeables.",
+      "saveDraft": "Guardar borrador",
+      "sendTest": "Enviarme una prueba",
+      "send": "Enviar a seguidores",
+      "newInstead": "Empezar uno nuevo",
+      "footerNote": "Cada correo incluye un link para dejar de recibir los de la organización.",
+      "saved": "Borrador guardado.",
+      "testSent": "Te mandamos la prueba a {{email}}.",
+      "sending": "Enviando. Podés seguir el progreso acá.",
+      "history": "Correos",
+      "noHistory": "Todavía no hay correos.",
+      "draftOf": "Borrador · {{when}}",
+      "progress": "{{sent}} enviados · {{failed}} fallidos · {{pending}} pendientes · {{when}}",
+      "status": {
+        "draft": "Borrador",
+        "sending": "Enviando",
+        "sent": "Enviado"
+      },
+      "errors": {
+        "OrgMailNotConnected": "Primero conectá la cuenta de Gmail de la organización.",
+        "OrgMailWeeklyLimit": "La organización ya usó sus envíos de esta semana.",
+        "OrgMailNoRecipients": "Ningún seguidor puede recibir este correo todavía.",
+        "MailDisabled": "El envío de mails está apagado en el servidor.",
+        "OrgMailNotDraft": "Ese correo ya se envió.",
+        "OrgMailTestFailed": "La prueba no se pudo enviar.",
+        "MAIL_QUOTA_EXHAUSTED": "Se terminó el cupo diario de la cuenta. Probá mañana.",
+        "MAIL_SENDER_NOT_CONNECTED": "La cuenta de Gmail no está disponible: volvé a conectarla.",
+        "invalid": "Revisá el asunto (una línea, hasta 150 caracteres) y el mensaje.",
+        "empty": "Completá el asunto y el mensaje.",
+        "generic": "No pudimos completar la acción. Probá de nuevo."
+      },
+      "confirm": {
+        "send": {
+          "title": "¿Enviar a tus seguidores?",
+          "body_one": "«{{subject}}» le va a llegar a {{count}} seguidor.",
+          "body_other": "«{{subject}}» les va a llegar a {{count}} seguidores.",
+          "confirm": "Enviar"
+        },
+        "delete": {
+          "title": "¿Borrar el borrador?",
+          "body": "«{{subject}}» se borra para siempre.",
+          "confirm": "Borrar"
+        },
+        "disconnect": {
+          "title": "¿Desconectar la cuenta?",
+          "body": "{{email}} deja de enviar los correos de la organización.",
+          "confirm": "Desconectar"
+        }
+      }
     }
   },
   "mine": {
@@ -795,7 +1083,6 @@
     "markdownHint": "Editando el Markdown. Volvé a «Visual» para ver el resultado.",
     "words_one": "{{count}} palabra",
     "words_other": "{{count}} palabras",
-    "pasteHint": "Pegá desde Claude, Docs o Markdown: se mantiene el formato",
     "errors": {
       "url": "Ingresá una URL válida (https://…).",
       "uploadForbidden": "Solo el staff puede subir imágenes; usá una URL."
@@ -877,5 +1164,20 @@
     "notificationsUnread_other": "Notificaciones ({{count}} sin leer)",
     "markAllRead": "Marcar todas como leídas",
     "noNotifications": "No tenés notificaciones"
+  },
+  "orgMail": {
+    "name": "Correos de organizaciones",
+    "unsubscribe": {
+      "confirmTitle": "¿Dejar de recibir correos de esta organización?",
+      "confirmHint": "Vas a seguir viéndola en ITBA News; solo dejás de recibir sus mails.",
+      "confirm": "Dejar de recibir",
+      "confirming": "Guardando…",
+      "doneTitle": "Listo: no vas a recibir más correos de {{org}}",
+      "doneHint": "Si cambiás de idea, activalos de nuevo desde el portal de la organización.",
+      "invalidTitle": "El link no es válido",
+      "invalidHint": "Puede que esté incompleto. Probá abrirlo de nuevo desde el mail.",
+      "errorTitle": "No pudimos completar la baja",
+      "errorHint": "Probá de nuevo en un rato."
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCachedSession } from '@/store/authStore'
+import { getCachedSession, isStaff } from '@/store/authStore'
 import {
   getArticleById,
   submitArticleSuggestion,
@@ -10,6 +10,7 @@ import {
 } from '../../store/articleStore'
 import { fetchOrganizations } from '../../api/organizations'
 import ImageUploader from '../../components/ImageUploader'
+import { STAFF_SIGN_PATH } from '../../api/media'
 import { todayISO } from '../../utils/dates'
 
 import { CATEGORIES, DEFAULT_CATEGORY } from '../../constants/categories'
@@ -267,7 +268,11 @@ export default function ContributorSuggestArticlePage() {
 
         {/* Cover image */}
         <Field label="Imagen de portada" hint="Opcional">
-          <ImageUploader value={form.coverImage} onChange={(v: string) => set('coverImage', v)} />
+          <ImageUploader
+            value={form.coverImage}
+            onChange={(v: string) => set('coverImage', v)}
+            signPath={isStaff(getCachedSession()) ? STAFF_SIGN_PATH : null}
+          />
         </Field>
 
         {/* Color scheme */}

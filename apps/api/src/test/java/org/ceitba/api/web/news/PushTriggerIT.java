@@ -166,6 +166,18 @@ class PushTriggerIT {
             OffsetDateTime.class)).isNotNull();
     }
 
+    // Each fan-out's reach is logged for the organization's stats (V57).
+    @Test
+    void publishingLogsThePushReachForTheOrg() throws Exception {
+        createArticle("art-5", "it", "published");
+        awaitCalls(1);
+        await().atMost(WAIT).until(() -> jdbc.queryForObject(
+            "SELECT count(*) FROM public.push_log WHERE org_slug = 'it' AND kind = 'article' AND ref_id = 'art-5'",
+            Integer.class) == 1);
+        assertThat(jdbc.queryForObject("SELECT targeted FROM public.push_log WHERE ref_id = 'art-5'", Integer.class))
+            .isEqualTo(2);
+    }
+
     // Runs the exact backfill statement of V27 (the test mirror V4.20 is
     // DDL-only): published articles count as announced, also legacy rows
     // whose nullable created_at is NULL; drafts stay unannounced.

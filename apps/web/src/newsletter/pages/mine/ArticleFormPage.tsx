@@ -13,6 +13,7 @@ import { allowNextNavigation, setUnsavedChanges, shouldBlockNavigation } from '.
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
 import ImageUploader from '../../components/ImageUploader'
+import { STAFF_SIGN_PATH, orgSignPath } from '../../api/media'
 import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
@@ -429,6 +430,10 @@ export default function ArticleFormPage() {
   // The current org may not be in the list yet (orgs still loading, or the
   // request failed): keep it selectable so the select shows the truth.
   const orgMissing = form.organization && !visibleOrgs.some((o) => o.slug === form.organization)
+  // Staff sign anywhere; members sign under the article's organization.
+  const signPath = staff ? STAFF_SIGN_PATH
+    : form.organization && allowedSlugs.has(form.organization) ? orgSignPath(form.organization)
+    : null
   const previewArticle = { ...form, readingTime, id: 'preview', body: [form.body] }
   const errorCount = Object.keys(errors).length
 
@@ -547,7 +552,7 @@ export default function ArticleFormPage() {
               key={editorKey}
               value={form.body}
               onChange={(md) => set('body', md)}
-              canUpload={isStaff(profile)}
+              signPath={signPath}
               invalid={Boolean(errors.body)}
             />
             {errors.body && <FieldError>{errors.body}</FieldError>}
@@ -639,7 +644,7 @@ export default function ArticleFormPage() {
           </SidebarCard>
 
           <SidebarCard title={t('admin.articleForm.cover')}>
-            <ImageUploader value={form.coverImage} onChange={(v) => set('coverImage', v)} />
+            <ImageUploader value={form.coverImage} onChange={(v) => set('coverImage', v)} signPath={signPath} />
             {!form.coverImage && (
               <fieldset className="mt-4">
                 <legend className="mb-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">

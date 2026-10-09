@@ -11,6 +11,8 @@ public record OutgoingEmail(String to, String subject, String html, String text,
     public static final String KIND_OTHER = "other";
     public static final String KIND_DIGEST = "digest";
     public static final String KIND_TEST = "test";
+    // An organization's announcement to its followers (service/orgmail).
+    public static final String KIND_ORG = "org";
 
     public OutgoingEmail {
         headers = headers == null ? Map.of() : Map.copyOf(headers);
