@@ -1,5 +1,5 @@
 import { apiGet, apiSend } from '@/api/client'
-import type { Article, ArticleInput, ArticleResponse, IsoDate, Page } from '../types'
+import type { Article, ArticleInput, ArticleResponse, ArticleStatus, IsoDate, Page } from '../types'
 
 export interface ArticleFilters {
   category?: string
@@ -38,15 +38,26 @@ export async function fetchArticleById(id: string): Promise<Article> {
 
 export async function createArticle(data: ArticleInput): Promise<Article> {
   const { date, ...rest } = data
-  return normalize(await apiSend<ArticleResponse>('POST', '/articles', { ...rest, publishedAt: date }))
+  return normalize(await apiSend<ArticleResponse>('POST', '/articles', { ...rest, publishedAt: date || null }))
 }
 
-// `date: null` empties the date (the API reads a null field as "unchanged",
-// so that's sent as clearPublishedAt).
-export async function updateArticle(id: string, data: ArticleInput): Promise<Article> {
-  const payload: ArticleInput & { publishedAt?: IsoDate | null; clearPublishedAt?: boolean } = { ...data }
+// `date: null` (or '', an emptied date input) empties the date: the API reads
+// a null field as "unchanged", so that's sent as clearPublishedAt.
+// `expectedStatus` makes the write conditional: the API answers 409 if the
+// article's status is no longer that one (someone else already moved it).
+export async function updateArticle(
+  id: string,
+  data: ArticleInput,
+  { expectedStatus }: { expectedStatus?: ArticleStatus } = {},
+): Promise<Article> {
+  const payload: ArticleInput & {
+    publishedAt?: IsoDate | null
+    clearPublishedAt?: boolean
+    expectedStatus?: ArticleStatus
+  } = { ...data }
   if (payload.date) { payload.publishedAt = payload.date; delete payload.date }
-  else if (payload.date === null) { payload.clearPublishedAt = true; delete payload.date }
+  else if (payload.date === null || payload.date === '') { payload.clearPublishedAt = true; delete payload.date }
+  if (expectedStatus) payload.expectedStatus = expectedStatus
   return normalize(await apiSend<ArticleResponse>('PATCH', `/articles/${encodeURIComponent(id)}`, payload))
 }
 

@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import AuthGuard from './AuthGuard'
-import { buttonClass } from './ui'
+import { EmptyState, buttonClass } from './ui'
 import PageFallback from './PageFallback'
 import { useCapability } from '../hooks/useCapability'
 
@@ -27,25 +27,15 @@ function CapabilityCheck({ capability, children }: { capability: string; childre
 
   return (
     <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
-      <div className="max-w-lg mx-auto flex flex-col items-center text-center gap-5 py-12 animate-fade-in">
-        <div className="relative w-20 h-20" aria-hidden="true">
-          <div className="absolute inset-0 rounded-full bg-accent-50 dark:bg-accent-900" />
-          <div className="absolute top-3 right-3 w-8 h-8 rotate-45 bg-primary-100 dark:bg-primary-800" />
-          <div className="absolute bottom-3 left-3 w-5 h-5 rounded-full bg-accent-200 dark:bg-accent-700" />
-        </div>
-        <h1 className="font-display font-bold text-h3 text-ink-primary dark:text-night-text">
-          {t(`capabilityGuard.${capability}.title`, { defaultValue: t('capabilityGuard.title') })}
-        </h1>
-        <p className="font-body text-body text-ink-secondary dark:text-night-muted">
-          {t(`capabilityGuard.${capability}.body`, { defaultValue: t('capabilityGuard.body') })}
-        </p>
-        <Link
-          to="/"
-          className={buttonClass()}
-        >
-          {t('capabilityGuard.home')}
-        </Link>
-      </div>
+      <EmptyState
+        title={
+          <span role="heading" aria-level={1}>
+            {t(`capabilityGuard.${capability}.title`, { defaultValue: t('capabilityGuard.title') })}
+          </span>
+        }
+        body={t(`capabilityGuard.${capability}.body`, { defaultValue: t('capabilityGuard.body') })}
+        action={<Link to="/" className={buttonClass()}>{t('capabilityGuard.home')}</Link>}
+      />
     </main>
   )
 }

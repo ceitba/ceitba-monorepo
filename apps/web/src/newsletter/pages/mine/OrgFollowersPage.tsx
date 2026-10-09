@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import { EmptyState, ErrorState, Field, LoadingRegion, Skeleton, buttonClass, inputClass } from '@/components/ui'
 import { fetchOrganizationFollowers } from '../../api/follows'
-import { canViewFollowers } from '../../store/authStore'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { canViewFollowers } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import { useAdminContext } from '../../admin/adminContext'
 import { localeFor } from '../../utils/dates'
@@ -25,7 +25,7 @@ export default function OrgFollowersPage() {
   // The route is /mine/org/:slug, so the param is always there.
   const { slug = '' } = useParams()
   const { t, i18n } = useTranslation()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const { orgName } = useAdminContext()
   const allowed = canViewFollowers(slug, profile)
 

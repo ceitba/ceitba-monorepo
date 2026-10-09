@@ -6,8 +6,9 @@ import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import ArticlesTable from '../../components/admin/ArticlesTable'
 import DeleteArticleDialog from '../../components/admin/DeleteArticleDialog'
 import { useAdminContext } from '../../admin/adminContext'
-import { isStaff, writerOrgSlugs } from '../../store/authStore'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { writerOrgSlugs } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import { NEW_ARTICLE_PATH, articleEditPath } from '@/newsletter/paths'
 import { EmptyState, ErrorState, SkeletonTable, ToggleGroup, buttonClass, type TabItem } from '@/components/ui'
 import type { UserProfile } from '@/store/authStore'
@@ -50,7 +51,7 @@ function sortNewestFirst(list: Article[]): Article[] {
 
 export default function MyArticlesPage() {
   const { t } = useTranslation()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const { orgName } = useAdminContext()
   const staff = isStaff(profile)
   const [articles, setArticles] = useState<Article[]>([])

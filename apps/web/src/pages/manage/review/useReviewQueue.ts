@@ -175,5 +175,10 @@ export function useReviewQueue(): ReviewQueue {
 
   const loading = ALL_SOURCES.some((s) => status[s] === 'loading')
 
-  return { data, status, counts, loading, reload, reloadSource: load, revalidate, remove }
+  // Stable identity: it is ReviewQueueContext's value, and consumers memoize
+  // on it.
+  return useMemo(
+    () => ({ data, status, counts, loading, reload, reloadSource: load, revalidate, remove }),
+    [data, status, counts, loading, reload, load, revalidate, remove],
+  )
 }

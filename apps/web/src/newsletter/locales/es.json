@@ -220,6 +220,7 @@
       "back": "← Artículos",
       "newTitle": "Nuevo artículo",
       "saveError": "No se pudo guardar el artículo. Intentá de nuevo.",
+      "conflict": "Alguien cambió el estado de este artículo mientras lo editabas, así que no lo guardamos. Recargá la página para ver la versión actual (copiá antes lo que quieras conservar).",
       "title": "Título",
       "titlePlaceholder": "Título del artículo",
       "excerpt": "Copete",
@@ -273,6 +274,8 @@
         "lockedForAuthor": "El staff ya lo publicó, así que no se puede editar desde acá. Para cambios, escribí a newsletter@ceitba.org.ar."
       },
       "date": "Fecha de publicación",
+      "dateHint": "Si la dejás vacía, se usa el día en que se publique.",
+      "dateOnPublish": "Sin fecha",
       "placement": "Ubicación",
       "byline": "Firma",
       "readingTimeEdit": "Editar",

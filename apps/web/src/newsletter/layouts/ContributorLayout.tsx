@@ -4,7 +4,7 @@ import { IconButton } from '@/components/ui'
 import { localeFor } from '../utils/dates'
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import type { UserProfile } from '@/store/authStore'
-import { getSession, signOut } from '../store/authStore'
+import { getSession, signOut } from '@/store/authStore'
 import {
   getNotificationsForUser,
   markNotificationRead,

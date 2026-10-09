@@ -11,6 +11,8 @@ import { Alert, Button, EmptyState, IconButton, LoadingRegion, toast } from "@/c
 
 // Why the last generation found nothing, worked out by CareerPage.
 export interface NoResultReasons {
+  // Subjects with no commissions at all.
+  noCommissions: string[]
   // Pairs of subject names that clash in every commission.
   clashes: [string, string][]
   // Subjects whose every commission hits a blocked time.
@@ -257,8 +259,12 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
     }
   }
 
-  const { clashes, blockedOut, hasBlockedTimes } = noResultReasons
-  const noResultItems = [
+  const { noCommissions, clashes, blockedOut, hasBlockedTimes } = noResultReasons
+  // A subject with no commissions rules out every combination on its own,
+  // and no option would help: say only that.
+  const noResultItems = noCommissions.length > 0 ? [
+    t('scheduler.noResult.noCommissions', { count: noCommissions.length, names: joinNames(noCommissions, t('scheduler.and')) }),
+  ] : [
     ...(blockedOut.length > 0
       ? [t('scheduler.noResult.blockedOut', { count: blockedOut.length, names: joinNames(blockedOut, t('scheduler.and')) })]
       : []),

@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { getOrganizations, isStaff } from '../store/authStore'
-import { useAuthSession } from '../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { getOrganizations } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import { newsletterPath, stripNewsletterBase } from '@/newsletter/paths'
 import { useOrgDirectory } from '../hooks/useOrgDirectory'
 import AreaShell, { type AreaTab } from './AreaShell'
@@ -12,7 +13,7 @@ import AreaShell, { type AreaTab } from './AreaShell'
 // articles, events and profiles.
 export default function WriterLayout() {
   const { t } = useTranslation()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const { pathname } = useLocation()
   const { orgs, orgName } = useOrgDirectory()
   const context = useMemo(() => ({ orgs, orgName }), [orgs, orgName])

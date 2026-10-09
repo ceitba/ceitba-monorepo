@@ -6,8 +6,9 @@ import {
   createArticle,
   updateArticle,
 } from '../../api/articles'
-import { STAFF_DEFAULT_ORG, getOrganizations, isStaff } from '../../store/authStore'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { STAFF_DEFAULT_ORG, getOrganizations } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import { allowNextNavigation, setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import { DEFAULT_CATEGORY, categoryOptions, isCanonicalCategory } from '../../constants/categories'
 import { useCategoryLabel } from '../../hooks/useCategoryLabel'
@@ -17,7 +18,7 @@ import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import RichTextEditor from '../../components/admin/editor/RichTextEditor'
 import { useAdminContext } from '../../admin/adminContext'
-import { formatDate, todayISO } from '../../utils/dates'
+import { formatDate } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
 import { ADMIN_PATH, MY_ARTICLES_PATH, REVIEW_PATH, articleEditPath, newsletterPath } from '@/newsletter/paths'
 import { ApiError } from '@/api/client'
@@ -26,7 +27,7 @@ import {
   buttonClass, iconButtonClass, inputClass, selectClass,
 } from '@/components/ui'
 import type { UserProfile } from '@/store/authStore'
-import type { ArticleInput, ArticleStatus } from '../../types'
+import type { ArticleInput, ArticleStatus, IsoDate } from '../../types'
 import { useQueueOptional } from '@/pages/manage/review/queueContext'
 
 const COLOR_SCHEMES = [
@@ -50,6 +51,7 @@ interface ArticleForm {
   // '' = independent.
   organization: string
   authors: string[]
+  // '' = no date yet: publishing fills in that day's.
   date: string
   readingTime: string
   featured: boolean
@@ -67,7 +69,7 @@ interface ArticlePayload extends ArticleInput {
   category: string
   organization: string | null
   authors: string[]
-  date: string
+  date: IsoDate | null
   readingTime: string
   featured: boolean
   colorScheme: string
@@ -86,7 +88,7 @@ function buildEmptyForm(profile: UserProfile | null): ArticleForm {
     // don't belong to one.
     organization: myOrgs[0]?.slug ?? (isStaff(profile) ? STAFF_DEFAULT_ORG : ''),
     authors:      profile?.name ? [profile.name] : [],
-    date:         todayISO(),
+    date:         '',
     readingTime:  '',
     featured:     false,
     colorScheme:  'blue',
@@ -95,7 +97,9 @@ function buildEmptyForm(profile: UserProfile | null): ArticleForm {
 }
 
 // Only what the API accepts — the loaded article also carries id, status,
-// timestamps, etc.
+// timestamps, etc. An empty date is sent as null (clearing one the writer
+// emptied): the API dates an article the day it's published. Filling in
+// today here would back-date a draft or submission that staff publish later.
 function toPayload(form: ArticleForm, status: ArticleStatus): ArticlePayload {
   return {
     title:        form.title.trim(),
@@ -104,7 +108,7 @@ function toPayload(form: ArticleForm, status: ArticleStatus): ArticlePayload {
     category:     form.category,
     organization: form.organization || null,
     authors:      form.authors.map((a) => a.trim()).filter(Boolean),
-    date:         form.date,
+    date:         form.date || null,
     readingTime:  form.readingTime,
     featured:     form.featured,
     colorScheme:  form.colorScheme,
@@ -129,7 +133,7 @@ export default function ArticleFormPage() {
   const fromReview = pathname.startsWith(`${ADMIN_PATH}/`)
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const { orgs } = useAdminContext()
 
   // The id of the article being edited. A new article gets one on its first
@@ -188,7 +192,7 @@ export default function ArticleFormPage() {
           category:     existing.category || DEFAULT_CATEGORY,
           organization: existing.organization ?? '',
           authors:      Array.isArray(existing.authors) ? existing.authors.filter(Boolean) : [],
-          date:         existing.date ?? todayISO(),
+          date:         existing.date ?? '',
           readingTime,
           featured:     Boolean(existing.featured),
           colorScheme:  existing.colorScheme ?? 'blue',
@@ -240,9 +244,9 @@ export default function ArticleFormPage() {
   // After a failed save attempt, errors follow the form as it is edited.
   useEffect(() => {
     if (attempted) setErrors(validate(form, attempted))
-    // validate only reads form/autoReading and the translations.
+    // validate only reads form/autoReading/savedStatus and the translations.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, autoReading, attempted])
+  }, [form, autoReading, savedStatus, attempted])
 
   // Leaving the editor for a new article (e.g. a future "Nuevo" link while
   // editing) reuses this instance: start over instead of editing the old one.
@@ -275,9 +279,13 @@ export default function ArticleFormPage() {
     if (status === 'published' || status === 'pending_review') {
       if (!values.excerpt.trim())                 e.excerpt  = t('admin.articleForm.errors.excerpt')
       if (!values.authors.some((a) => a.trim()))   e.authors  = t('admin.articleForm.errors.authors')
-      if (!values.date)                            e.date     = t('admin.articleForm.errors.date')
       if (!markdownToPlainText(values.body))       e.body     = t('admin.articleForm.errors.body')
       if (!autoReading && !values.readingTime.trim()) e.readingTime = t('admin.articleForm.errors.readingTime')
+    }
+    // An empty date only means "the day it's published" before the first
+    // publish: clearing it on a live article would silently move it to today.
+    if (status === 'published' && savedStatus === 'published' && !values.date) {
+      e.date = t('admin.articleForm.errors.date')
     }
     if (!isCanonicalCategory(values.category)) e.category = t('admin.form.errors.category')
     return e
@@ -304,8 +312,13 @@ export default function ArticleFormPage() {
       if (!payload.excerpt) payload.excerpt = markdownToPlainText(form.body).slice(0, EXCERPT_CARD_CHARS) || payload.title
       if (!payload.authors.length) payload.authors = [profile?.name || payload.organization || 'CEITBA']
 
-      // Non-null: isEdit means articleId is set.
-      const saved = isEdit ? await updateArticle(articleId!, payload) : await createArticle(payload)
+      // Non-null: isEdit means articleId is set. Conditional on the status
+      // this editor last saw: if someone moved the article since (an author
+      // pulling it back, staff publishing it), the API answers 409 instead of
+      // overwriting their change with this copy.
+      const saved = isEdit
+        ? await updateArticle(articleId!, payload, { expectedStatus: savedStatus ?? undefined })
+        : await createArticle(payload)
       // Inside Administración: publishing or re-filing changes the review queue.
       reviewQueue?.reloadSource('articles')
       setSavedStatus(saved?.status ?? status)
@@ -317,6 +330,7 @@ export default function ArticleFormPage() {
         ...f,
         excerpt: f.excerpt.trim() ? f.excerpt : payload.excerpt,
         authors: f.authors.length ? f.authors : payload.authors,
+        date:    f.date || (saved?.date ?? ''),
       }))
       setOriginalOrg(saved?.organization ?? (payload.organization || null))
       if (!isEdit && saved?.id) {
@@ -328,8 +342,12 @@ export default function ArticleFormPage() {
       // A confirmation with what to do next (no auto-redirect).
       if (status === 'published' || status === 'pending_review') setDoneStatus(status)
     } catch (err) {
-      console.error('newsletter admin: save article', err)
-      setApiError(t('admin.articleForm.saveError'))
+      if (err instanceof ApiError && err.status === 409) {
+        setApiError(t('admin.articleForm.conflict'))
+      } else {
+        console.error('newsletter admin: save article', err)
+        setApiError(t('admin.articleForm.saveError'))
+      }
     } finally {
       setSaving(null)
     }
@@ -519,7 +537,7 @@ export default function ArticleFormPage() {
               </strong>
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono text-label">{formatDate(form.date, i18n.language)}</span>
+            <span className="font-mono text-label">{form.date ? formatDate(form.date, i18n.language) : t('admin.articleForm.dateOnPublish')}</span>
             <span aria-hidden="true">·</span>
             <span className="font-mono text-label">{t('articles.meta.readingTime', { time: readingTime || '—' })}</span>
           </p>
@@ -543,7 +561,7 @@ export default function ArticleFormPage() {
               {statusHelp}
             </p>
             <div data-field="date">
-              <Field label={t('admin.articleForm.date')} error={errors.date}>
+              <Field label={t('admin.articleForm.date')} hint={t('admin.articleForm.dateHint')} error={errors.date}>
                 {(p) => <input {...p} type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass({ invalid: !!errors.date })} />}
               </Field>
             </div>

@@ -1,19 +1,14 @@
-import { createContext, useCallback, useContext } from 'react'
+import { useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { startGoogleSignIn } from '@/store/authStore'
 
-// Every "sign in" button goes through here. The career workspace provides
-// its own beginSignIn, which snapshots the unsaved workspace before
-// redirecting to Google; elsewhere it's a plain sign-in that comes back to
-// the current page.
-export const SignInContext = createContext<(() => void) | null>(null)
-
+// A sign-in that comes back to the current page. Pages with unsaved state
+// snapshot it through onBeforeSignIn (see CareerPage), so this works the
+// same from any button, the navbar's included.
 export function useBeginSignIn(): () => void {
-  const provided = useContext(SignInContext)
   const location = useLocation()
-  const fallback = useCallback(
+  return useCallback(
     () => startGoogleSignIn(location.pathname + location.search),
     [location.pathname, location.search],
   )
-  return provided ?? fallback
 }

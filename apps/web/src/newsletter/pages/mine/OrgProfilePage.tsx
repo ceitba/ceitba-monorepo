@@ -6,8 +6,9 @@ import {
   Alert, Button, ConfirmDialog, EmptyState, ErrorState, Field, SkeletonForm, buttonClass, inputClass, textareaClass, toast,
 } from '@/components/ui'
 import { fetchOrganizationBySlug, updateOrganization } from '../../api/organizations'
-import { canViewFollowers, getOrganizations, isStaff } from '../../store/authStore'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { isStaff } from '@/store/authStore'
+import { canViewFollowers, getOrganizations } from '@/newsletter/utils/session'
+import { useAuth } from '@/hooks/useAuth'
 import { setUnsavedChanges, shouldBlockNavigation } from '../../store/unsavedStore'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import { MY_ARTICLES_PATH, newsletterPath } from '@/newsletter/paths'
@@ -67,7 +68,7 @@ export default function OrgProfilePage() {
   // The route is /mine/org/:slug, so the param is always there.
   const { slug = '' } = useParams()
   const { t } = useTranslation()
-  const { profile } = useAuthSession()
+  const { profile } = useAuth()
   const staff = isStaff(profile)
   const allowed = staff || getOrganizations(profile).some((m) => m.slug === slug)
   // Plain members can edit the profile but not see followers (admins/staff only).

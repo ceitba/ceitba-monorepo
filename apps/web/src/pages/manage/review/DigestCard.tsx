@@ -5,6 +5,7 @@ import { ApiError } from '../../../api/client'
 import { fetchDigest, fetchDigests } from '../../../newsletter/api/digests'
 import type { DigestDetail } from '../../../newsletter/types'
 import { DIGESTS_PATH, digestPath } from '../../../newsletter/paths'
+import { formatDate } from '../../../newsletter/utils/dates'
 import { Alert, Badge, Button, LoadingRegion, Skeleton, buttonClass } from '../../../components/ui'
 
 type State =
@@ -41,8 +42,7 @@ export default function DigestCard() {
 
   if (state.kind === 'unavailable') return null
 
-  const fmtDate = (iso: string) =>
-    new Date(`${iso}T12:00:00`).toLocaleDateString(i18n.language, { day: 'numeric', month: 'long' })
+  const fmtDate = (iso: string) => formatDate(iso, i18n.language, { day: 'numeric', month: 'long' })
   const fmtWhen = (iso: string) =>
     new Date(iso).toLocaleString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 

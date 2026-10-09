@@ -144,7 +144,8 @@ public class ArticleController {
         // "published", so leaving it would publish on any PATCH that omits it.
         patch.setStatus(req.status());
         boolean clearPublishedAt = req.publishedAt() == null && Boolean.TRUE.equals(req.clearPublishedAt());
-        return ArticleResponse.from(service.update(id, patch, featured, req.organization(), independentAuthor, clearPublishedAt));
+        return ArticleResponse.from(service.update(id, patch, featured, req.organization(), independentAuthor,
+            clearPublishedAt, req.expectedStatus()));
     }
 
     @DeleteMapping("/{id}")

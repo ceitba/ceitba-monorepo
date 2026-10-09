@@ -10,17 +10,9 @@ import {
 import { fetchMyFollows } from '../api/follows'
 import { MINE_PATH } from '../paths'
 
-// The session itself is the app-wide store (@/store/authStore). This module
-// adds the newsletter's organization roles and follows on top of it.
-export {
-  getCachedSession,
-  getSession,
-  isAuthenticated,
-  isHydrated,
-  isStaff,
-  signOut,
-  subscribe,
-} from '@/store/authStore'
+// Newsletter helpers over the app-wide session store (@/store/authStore):
+// organization roles and follows. Read the session itself from there (or
+// useAuth in components).
 
 // `returnTo` is an app path (e.g. location.pathname, or
 // newsletterPath('/contribute')); without one the user lands on Mis
@@ -37,7 +29,7 @@ export function hasCapability(key: string, profile: UserProfile | null = getCach
 // ── Roles ───────────────────────────────────────────────────────────────────
 // /auth/me returns role 'staff' | 'user' plus org memberships. Every helper
 // takes an optional profile so React code can pass the one from
-// useAuthSession(); without it they read the cached session.
+// useAuth(); without it they read the cached session.
 
 export function getOrganizations(profile: UserProfile | null = getCachedSession()): UserMembership[] {
   return profile?.organizations ?? []

@@ -57,9 +57,8 @@ Rules for the sections:
 
 - **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/itbanews*` 301s to `/newsletter`,
   everything else → `/var/www/main` with `try_files … /index.html`. Production build env lives in
-  `.github/spa-apps.json`. Until the Caddy cutover ships (it must land in a release *after* the merged app is live),
-  `/scheduler*` and `/newsletter*` still serve the old standalone builds from `/var/www/scheduler` and
-  `/var/www/itbanews`.
+  `.github/spa-apps.json`. `/var/www/scheduler` and `/var/www/itbanews` (the old standalone builds) are no longer
+  served.
 - **Auth**: an **HttpOnly session cookie** (the API-issued JWT). Login = redirect to
   `${API}/auth/google?redirect_uri=<VITE_GOOGLE_REDIRECT_URI>` (`/auth/callback`; the old apps' callbacks
   `/scheduler/auth/callback` and `/newsletter/admin/callback` are still routed); the page to come back to travels in

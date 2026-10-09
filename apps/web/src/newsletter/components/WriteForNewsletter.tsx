@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuthSession } from '../hooks/useAuthSession'
-import { startGoogleSignIn } from '../store/authStore'
+import { useAuth } from '@/hooks/useAuth'
+import { startGoogleSignIn } from '@/newsletter/utils/session'
 import { Button, Modal, buttonClass } from '@/components/ui'
 import GoogleIcon from './GoogleIcon'
 import { NEW_ARTICLE_PATH, newsletterPath } from '@/newsletter/paths'
@@ -18,7 +18,7 @@ const WRITE_PARAM = 'write'
 export default function WriteForNewsletter() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { profile, loading } = useAuthSession()
+  const { profile, loading } = useAuth()
   const [params, setParams] = useSearchParams()
   const [open, setOpen] = useState(false)
   // Anyone signed in writes (from Mis publicaciones).

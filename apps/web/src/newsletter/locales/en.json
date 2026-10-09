@@ -220,6 +220,7 @@
       "back": "← Articles",
       "newTitle": "New article",
       "saveError": "Couldn't save the article. Please try again.",
+      "conflict": "Someone changed this article's status while you were editing, so it wasn't saved. Reload the page to see the current version (copy anything you want to keep first).",
       "title": "Title",
       "titlePlaceholder": "Article title",
       "excerpt": "Standfirst",
@@ -273,6 +274,8 @@
         "lockedForAuthor": "Staff already published it, so it can't be edited here. For changes, email newsletter@ceitba.org.ar."
       },
       "date": "Publication date",
+      "dateHint": "Leave it empty to use the day it's published.",
+      "dateOnPublish": "No date yet",
       "placement": "Placement",
       "byline": "Byline",
       "readingTimeEdit": "Edit",

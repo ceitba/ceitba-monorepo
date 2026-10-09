@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import './i18n'
 import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, matchPath, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -12,6 +13,7 @@ import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
 import { Toaster } from './components/ui/Toaster'
+import { ErrorState } from './components/ui'
 import { getSession, isSafeReturnPath, takeReturnTo } from './store/authStore'
 
 // Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
@@ -125,7 +127,22 @@ function Root() {
 // newsletter's article editor asks before any in-app navigation, back/forward
 // included, drops unsaved changes. Routes are still declared with <Routes>,
 // rendered under one catch-all route.
-const router = createBrowserRouter([{ path: '*', element: <Root /> }], { basename: import.meta.env.BASE_URL })
+const router = createBrowserRouter(
+  [{ path: '*', element: <Root />, errorElement: <RouteError /> }],
+  { basename: import.meta.env.BASE_URL },
+)
+
+// Anything that escapes a page (e.g. a lazy page whose chunk is gone after a
+// deploy and the one automatic reload in main.tsx didn't fix) lands here
+// instead of React Router's developer screen.
+function RouteError() {
+  const { t } = useTranslation()
+  return (
+    <main id="main-content" className="container-content py-section-mobile lg:py-section">
+      <ErrorState message={t('errors.pageFailed')} onRetry={() => window.location.reload()} />
+    </main>
+  )
+}
 
 export default function App() {
   return (

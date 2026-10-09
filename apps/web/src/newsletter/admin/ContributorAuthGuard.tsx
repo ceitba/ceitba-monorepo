@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { getSession } from '../store/authStore'
+import { getSession } from '@/store/authStore'
 import { newsletterPath } from '@/newsletter/paths'
 
 // Cookie auth: must await /me before deciding — we cannot read the HttpOnly

@@ -64,17 +64,25 @@ const getAvailableCommissions = (subject: SchedulerSubject): Commission[] => {
   return selected.length > 0 ? selected : subject.commissions;
 };
 
+// Subjects with no commissions at all: with any of these, generateSchedules
+// can't return a combination whatever the options. Used to explain an empty
+// result.
+export const subjectsWithoutCommissions = (subjects: SchedulerSubject[]): SchedulerSubject[] =>
+  subjects.filter(subject => getAvailableCommissions(subject).length === 0);
+
 // Subjects none of whose (selected) commissions avoid the blocked times:
 // with any of these, generateSchedules can't return a combination. Used to
-// explain an empty result.
+// explain an empty result. A subject with no commissions at all is not
+// blocked out (`every` on [] would say it is): the blocked times aren't why.
 export const subjectsBlockedOut = (subjects: SchedulerSubject[], blockedTimes: TimeBlock[]): SchedulerSubject[] =>
   blockedTimes.length === 0
     ? []
-    : subjects.filter(subject =>
-        getAvailableCommissions(subject).every(commission =>
+    : subjects.filter(subject => {
+        const commissions = getAvailableCommissions(subject);
+        return commissions.length > 0 && commissions.every(commission =>
           createSlotsFromCommission(subject, commission).some(slot => intersectsBlockedTime(slot, blockedTimes))
-        )
-      );
+        );
+      });
 
 const createSlotsFromCommission =(subject: SchedulerSubject, commission: Commission): ScheduleSlot[] =>
   commission.schedule.map((slot: CommissionSchedule) => ({

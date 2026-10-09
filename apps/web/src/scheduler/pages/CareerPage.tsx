@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { detectConflicts, liveSlotsFromCourses } from '../services/conflicts'
 import { normalizePlanId, denormalizePlanId } from '../utils/planUtils'
-import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, type GenerationResult } from '../services/scheduler'
+import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, subjectsWithoutCommissions, type GenerationResult } from '../services/scheduler'
 import { useScheduleGeneration } from '../hooks/useScheduleGeneration'
 import type { GenerationInputs } from '../workers/protocol'
 import { PossibleSchedule, SchedulerOptions, TimeBlock } from '../types/scheduler'
@@ -23,8 +23,7 @@ import { errorMessageKey } from '../services/apiErrors'
 import { CorrectionsContext, type CorrectionsContextValue } from '../context/correctionsContext'
 import { mergeCorrection, sameSlotSet } from '../services/corrections'
 import { discardPendingWorkspace, parsePayload, savePendingWorkspace, takePendingWorkspace, type SavedSchedulePayload } from '../services/workspaceSnapshot'
-import { SignInContext } from '../context/signInContext'
-import { startGoogleSignIn } from '@/store/authStore'
+import { onBeforeSignIn, startGoogleSignIn } from '@/store/authStore'
 import type { CommissionCorrection } from '../types/scheduler'
 import { SCHEDULER_BASE, schedulerPath } from '../paths'
 import { Button, Modal, Tabs, ToggleGroup, buttonClass, toast } from '@/components/ui'
@@ -183,8 +182,9 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   const conflictReport = useMemo(() => detectConflicts(selectedCourses), [selectedCourses])
   const liveConflictCount = conflictReport.totalConflicts
 
-  // Explains an empty generation: subjects that clash in every commission
-  // and subjects all of whose commissions hit a blocked time.
+  // Explains an empty generation: subjects with no commissions, subjects
+  // that clash in every commission and subjects all of whose commissions hit
+  // a blocked time.
   const noResultReasons = useMemo<NoResultReasons>(() => {
     const names = new Map(selectedCourses.map((c) => [c.subject_id, c.name]))
     const clashes: [string, string][] = []
@@ -194,6 +194,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       })
     })
     return {
+      noCommissions: subjectsWithoutCommissions(selectedCourses).map((c) => c.name),
       clashes,
       blockedOut: subjectsBlockedOut(selectedCourses, blockedTimes).map((c) => c.name),
       hasBlockedTimes: blockedTimes.length > 0,
@@ -246,11 +247,11 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     }
   }
 
-  // Every sign-in button on this page (navbar, corrections) goes through
-  // here: the workspace only lives in React state, so it's snapshotted to
-  // sessionStorage before the redirect to Google and restored on return
-  // (effect below).
-  const beginSignIn = () => {
+  // The workspace only lives in React state, so every sign-in from this page
+  // (the navbar's included: it renders outside the scheduler) snapshots it
+  // to sessionStorage before the redirect to Google; it's restored on return
+  // (effect below). Re-registered each render so it saves the current state.
+  const snapshotWorkspace = () => {
     savePendingWorkspace({
       career,
       plan: normalizedPlan,
@@ -259,8 +260,9 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       activeTab: TAB_IDS.indexOf(activeTab),
       payload: currentPayload(),
     })
-    startGoogleSignIn(location.pathname + location.search)
   }
+  useEffect(() => onBeforeSignIn(snapshotWorkspace))
+  const beginSignIn = () => startGoogleSignIn(location.pathname + location.search)
 
   // Restore the workspace snapshotted before a sign-in redirect, once the
   // catalog has loaded; the snapshot is deleted whether or not it applies.
@@ -511,7 +513,6 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
   }
 
   return (
-    <SignInContext.Provider value={beginSignIn}>
     <CorrectionsContext.Provider value={correctionsContext}>
       <div className="flex flex-col bg-surface dark:bg-night-bg">
         <main id="main-content" className="flex-1">
@@ -685,6 +686,5 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
         )}
       </div>
     </CorrectionsContext.Provider>
-    </SignInContext.Provider>
   )
 }

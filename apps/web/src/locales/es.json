@@ -630,6 +630,7 @@
   },
   "errors": {
     "somethingWrong": "Algo salió mal",
+    "pageFailed": "No se pudo cargar esta página. Recargala para seguir.",
     "retry": "Reintentar",
     "dismiss": "Cerrar"
   },
