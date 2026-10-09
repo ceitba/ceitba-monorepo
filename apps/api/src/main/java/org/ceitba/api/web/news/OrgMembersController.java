@@ -9,6 +9,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.service.news.OrganizationMembershipService.InviteResult;
 import org.ceitba.api.service.news.OrganizationMembershipService.InviteView;
+import org.ceitba.api.service.news.OrganizationMembershipService.MemberSettings;
 import org.ceitba.api.service.news.OrganizationMembershipService.MemberView;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.springframework.http.HttpStatus;
@@ -51,7 +52,7 @@ public class OrgMembersController {
     @PreAuthorize(MANAGE)
     @Operation(summary = "List the organization's members and pending invites (org admin or STAFF)")
     public MembersResponse list(@PathVariable String slug) {
-        return new MembersResponse(memberships.members(slug), memberships.invites(slug));
+        return new MembersResponse(memberships.members(slug), memberships.invites(slug), memberships.settings(slug));
     }
 
     @PostMapping("/invites")
@@ -106,7 +107,18 @@ public class OrgMembersController {
         return auth.getAuthorities().stream().anyMatch(a -> "ROLE_STAFF".equals(a.getAuthority()));
     }
 
-    public record MembersResponse(List<MemberView> members, List<InviteView> invites) {}
+    // Settings only the org's admins (and STAFF) change.
+    @PatchMapping("/settings")
+    @PreAuthorize(MANAGE)
+    @Operation(summary = "Change the org's member settings (who sees RSVP lists)")
+    public MemberSettings updateSettings(@PathVariable String slug, @RequestBody SettingsRequest req) {
+        return memberships.updateSettings(slug, req.attendeesVisibleToMembers());
+    }
+
+    public record MembersResponse(List<MemberView> members, List<InviteView> invites, MemberSettings settings) {}
+
+    // null = leave unchanged.
+    public record SettingsRequest(Boolean attendeesVisibleToMembers) {}
 
     public record InviteRequest(@NotEmpty @Size(max = 50) List<String> emails, String role) {}
 

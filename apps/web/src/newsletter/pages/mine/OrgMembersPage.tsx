@@ -12,7 +12,7 @@ import { canViewFollowers } from '@/newsletter/utils/session'
 import { MY_ARTICLES_PATH, orgAreaPath } from '@/newsletter/paths'
 import {
   fetchOrgMembers, inviteOrgMembers, leaveOrganization, removeOrgMember, revokeOrgInvite, transferOrgAdmin,
-  updateOrgMember, type OrgMemberPatch,
+  updateOrgMember, updateOrgMemberSettings, type OrgMemberPatch,
 } from '../../api/organizations'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import OrgSectionLinks from '../../components/admin/OrgSectionLinks'
@@ -89,6 +89,19 @@ export default function OrgMembersPage() {
       }
     } catch (e) {
       console.error('newsletter: update member', e)
+      toast.error(errorMessage(e))
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function setAttendeesVisible(visible: boolean) {
+    setBusyId('settings')
+    try {
+      const settings = await updateOrgMemberSettings(slug, { attendeesVisibleToMembers: visible })
+      setData((d) => d && { ...d, settings })
+    } catch (e) {
+      console.error('newsletter: member settings', e)
       toast.error(errorMessage(e))
     } finally {
       setBusyId('')
@@ -203,6 +216,16 @@ export default function OrgMembersPage() {
             ))}
           </ul>
 
+          <section className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border p-4">
+            <Switch
+              checked={data.settings.attendeesVisibleToMembers}
+              onChange={setAttendeesVisible}
+              label={t('admin.members.attendeesVisible')}
+              hint={t('admin.members.attendeesVisibleHint')}
+              disabled={busyId === 'settings'}
+            />
+          </section>
+
           {data.invites.length > 0 && (
             <section aria-labelledby="org-invites-title" className="flex flex-col gap-3">
               <h3 id="org-invites-title" className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
@@ -246,6 +269,7 @@ export default function OrgMembersPage() {
           onDone={(added, pending) => {
             setInviting(false)
             setData((d) => d && {
+              ...d,
               members: [...d.members, ...added],
               invites: [...d.invites.filter((i) => !pending.some((p) => p.email === i.email)), ...pending]
                 .sort((a, b) => a.email.localeCompare(b.email)),

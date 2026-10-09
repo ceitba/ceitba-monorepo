@@ -1,9 +1,11 @@
 package org.ceitba.api.web.news;
 
 import org.ceitba.api.domain.User;
+import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.NewsEventRepository;
+import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,15 +26,18 @@ public class OrgAccess {
     private final OrganizationMembershipService membership;
     private final ArticleRepository articleRepo;
     private final NewsEventRepository eventRepo;
+    private final OrganizationRepository orgRepo;
 
     public OrgAccess(UserRepository userRepo,
                      OrganizationMembershipService membership,
                      ArticleRepository articleRepo,
-                     NewsEventRepository eventRepo) {
+                     NewsEventRepository eventRepo,
+                     OrganizationRepository orgRepo) {
         this.userRepo   = userRepo;
         this.membership = membership;
         this.articleRepo = articleRepo;
         this.eventRepo  = eventRepo;
+        this.orgRepo    = orgRepo;
     }
 
     public boolean canEditOrg(String slug, Authentication auth) {
@@ -99,9 +104,20 @@ public class OrgAccess {
             .orElse(false);
     }
 
-    // An event's RSVP list (names, emails): the members of its organization.
+    // An event's RSVP list (names, emails): the admins of its organization,
+    // and its plain members unless the admins turned that off.
     public boolean canSeeAttendees(String eventId, Authentication auth) {
-        return canDeleteEvent(eventId, auth);
+        UUID userId = userIdOf(auth);
+        if (userId == null) return false;
+        // Only the slug of the lazy organization proxy (no session here); the
+        // setting comes from a fresh load.
+        return eventRepo.findById(eventId)
+            .filter(e -> e.getOrganization() != null)
+            .map(e -> e.getOrganization().getSlug())
+            .map(slug -> membership.userIsAdminOf(userId, slug)
+                || (membership.userBelongsTo(userId, slug)
+                    && orgRepo.findById(slug).map(Organization::isAttendeesVisibleToMembers).orElse(false)))
+            .orElse(false);
     }
 
     // For PATCH: the caller must belong to the org that currently owns the

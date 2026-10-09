@@ -165,6 +165,28 @@ class EventSignupIT {
     }
 
     @Test
+    void adminsCanHideRsvpListsFromPlainMembers() throws Exception {
+        var carol = userRepo.findByEmail("carol@itba.edu.ar").orElseThrow();
+        membershipRepo.save(new UserOrganization(carol.getId(), "sabf", "admin"));
+        mvc.perform(post("/v1/news/events/rsvp-evt/rsvp").with(as("bob@itba.edu.ar"))).andExpect(status().isOk());
+
+        mvc.perform(patch("/v1/organizations/sabf/members/settings").with(as("alice@itba.edu.ar"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"attendeesVisibleToMembers\":false}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(patch("/v1/organizations/sabf/members/settings").with(as("carol@itba.edu.ar"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"attendeesVisibleToMembers\":false}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.attendeesVisibleToMembers").value(false));
+
+        mvc.perform(get("/v1/news/events/rsvp-evt/attendees").with(as("alice@itba.edu.ar")))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/v1/news/events/rsvp-evt/attendees").with(as("carol@itba.edu.ar")))
+            .andExpect(status().isOk());
+        mvc.perform(get("/v1/organizations/sabf/members").with(as("carol@itba.edu.ar")))
+            .andExpect(jsonPath("$.settings.attendeesVisibleToMembers").value(false));
+    }
+
+    @Test
     void patchReplacesTheSignupOnlyWhenTheModeIsSent() throws Exception {
         mvc.perform(patch("/v1/news/events/rsvp-evt").with(as("alice@itba.edu.ar"))
                 .contentType(MediaType.APPLICATION_JSON)

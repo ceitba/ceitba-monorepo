@@ -848,14 +848,16 @@
           "body": "You will no longer be able to publish or edit the profile of {{org}}.",
           "confirm": "Leave"
         }
-      }
+      },
+      "attendeesVisible": "Members can see who signed up for events",
+      "attendeesVisibleHint": "Names and emails of the people who RSVP. Turned off, only admins see the list."
     },
     "attendees": {
       "title": "Attendees",
       "export": "Export CSV",
       "emptyTitle": "Nobody signed up yet",
       "empty": "When someone RSVPs from the event page, they show up here.",
-      "forbidden": "Only the organization's members can see who signed up.",
+      "forbidden": "The organization's admins made the attendee list admins-only.",
       "loadError": "We could not load the list."
     },
     "orgStats": {

@@ -848,14 +848,16 @@
           "body": "Vas a dejar de poder publicar y editar el perfil de {{org}}.",
           "confirm": "Salir"
         }
-      }
+      },
+      "attendeesVisible": "Los miembros pueden ver quién se anotó a los eventos",
+      "attendeesVisibleHint": "Nombres y mails de quienes se anotan. Si lo apagás, solo los admins ven la lista."
     },
     "attendees": {
       "title": "Anotados",
       "export": "Exportar CSV",
       "emptyTitle": "Todavía nadie se anotó",
       "empty": "Cuando alguien se anote desde la página del evento, lo vas a ver acá.",
-      "forbidden": "Solo los miembros de la organización pueden ver quién se anotó.",
+      "forbidden": "Los admins de la organización dejaron la lista de anotados solo para admins.",
       "loadError": "No pudimos cargar la lista."
     },
     "orgStats": {

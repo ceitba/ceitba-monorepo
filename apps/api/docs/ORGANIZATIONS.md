@@ -11,6 +11,7 @@ Membership lives in `user_organizations` (`role` is `member` or `admin`). STAFF 
 | Action | member | admin |
 |---|---|---|
 | Write, edit and publish the org's articles and events | yes | yes |
+| See events' RSVP lists (names, emails) | unless the admins turn it off | yes |
 | Delete the org's articles and events | yes | yes |
 | Edit the profile (description, colors, images, contact, recruiting); name and full name stay STAFF-only in the UI | yes | yes |
 | Upload org images (`POST /v1/organizations/{slug}/media/sign-upload`) | yes | yes |
@@ -168,3 +169,9 @@ with the digest's tracking data (`MAIL_RETENTION_TRACKING_EVENTS`, 180 days afte
 (`org_mail_optouts`, which survives unfollowing). A follower switches an org's emails on and off with
 `GET`/`PUT /v1/me/follows/{slug}/mail` `{enabled}` (the portal shows the switch). The stats count announcements
 and recipients (`mail`).
+
+## Member settings
+
+`PATCH /v1/organizations/{slug}/members/settings` `{attendeesVisibleToMembers}` (org admins, STAFF; also returned as
+`settings` by `GET …/members`). `attendees_visible_to_members` (V59, default true) decides whether plain members see
+events' RSVP lists; admins and STAFF always do.

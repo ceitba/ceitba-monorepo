@@ -54,6 +54,10 @@ public class Organization {
     @Column(name = "recruiting_text")
     private String recruitingText;
 
+    // Plain members see events' RSVP lists too (admins always do); V59.
+    @Column(name = "attendees_visible_to_members", nullable = false)
+    private boolean attendeesVisibleToMembers = true;
+
     protected Organization() {}
 
     public Organization(String slug, String name, String fullName) {
@@ -77,6 +81,7 @@ public class Organization {
     public boolean isRecruitingOpen(){ return recruitingOpen; }
     public String getRecruitingUrl() { return recruitingUrl; }
     public String getRecruitingText(){ return recruitingText; }
+    public boolean isAttendeesVisibleToMembers() { return attendeesVisibleToMembers; }
 
     public void setName(String name)                  { this.name = name; }
     public void setFullName(String fullName)           { this.fullName = fullName; }
@@ -92,4 +97,5 @@ public class Organization {
     public void setRecruitingOpen(boolean open)        { this.recruitingOpen = open; }
     public void setRecruitingUrl(String recruitingUrl) { this.recruitingUrl = recruitingUrl; }
     public void setRecruitingText(String text)         { this.recruitingText = text; }
+    public void setAttendeesVisibleToMembers(boolean v) { this.attendeesVisibleToMembers = v; }
 }

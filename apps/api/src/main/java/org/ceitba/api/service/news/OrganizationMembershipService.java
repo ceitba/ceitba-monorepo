@@ -109,6 +109,21 @@ public class OrganizationMembershipService {
             .toList();
     }
 
+    // The org's member settings (admins' decisions).
+    public record MemberSettings(boolean attendeesVisibleToMembers) {}
+
+    @Transactional(readOnly = true)
+    public MemberSettings settings(String orgSlug) {
+        return new MemberSettings(requireOrg(orgSlug).isAttendeesVisibleToMembers());
+    }
+
+    @Transactional
+    public MemberSettings updateSettings(String orgSlug, Boolean attendeesVisibleToMembers) {
+        var org = requireOrg(orgSlug);
+        if (attendeesVisibleToMembers != null) org.setAttendeesVisibleToMembers(attendeesVisibleToMembers);
+        return new MemberSettings(org.isAttendeesVisibleToMembers());
+    }
+
     @Transactional(readOnly = true)
     public List<InviteView> invites(String orgSlug) {
         requireOrg(orgSlug);

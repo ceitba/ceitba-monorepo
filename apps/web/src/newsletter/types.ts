@@ -198,10 +198,17 @@ export interface OrgInvite {
   createdAt: IsoDateTime
 }
 
+// OrganizationMembershipService.MemberSettings: the admins' decisions.
+export interface OrgMemberSettings {
+  // Plain members see events' RSVP lists (admins always do).
+  attendeesVisibleToMembers: boolean
+}
+
 // GET /organizations/{slug}/members.
 export interface OrgMembers {
   members: OrgMember[]
   invites: OrgInvite[]
+  settings: OrgMemberSettings
 }
 
 // POST /organizations/{slug}/members/invites.

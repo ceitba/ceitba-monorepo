@@ -1,6 +1,6 @@
 import { apiGet, apiSend } from '@/api/client'
 import type {
-  InviteResult, MembershipRole, Organization, OrganizationInput, OrganizationList, OrgAnalytics, OrgMembers, OrgMember,
+  InviteResult, MembershipRole, Organization, OrganizationInput, OrganizationList, OrgAnalytics, OrgMembers, OrgMember, OrgMemberSettings,
 } from '../types'
 
 // GET /organizations answers { data: [...] } (OrganizationController.list).
@@ -58,6 +58,10 @@ export async function removeOrgMember(slug: string, userId: string): Promise<voi
 // The calling admin makes `userId` admin and steps down to member.
 export async function transferOrgAdmin(slug: string, userId: string): Promise<void> {
   await apiSend<void>('POST', `${membersPath(slug)}/${encodeURIComponent(userId)}/transfer-admin`)
+}
+
+export async function updateOrgMemberSettings(slug: string, patch: Partial<OrgMemberSettings>): Promise<OrgMemberSettings> {
+  return apiSend<OrgMemberSettings>('PATCH', `${membersPath(slug)}/settings`, patch)
 }
 
 export async function leaveOrganization(slug: string): Promise<void> {
