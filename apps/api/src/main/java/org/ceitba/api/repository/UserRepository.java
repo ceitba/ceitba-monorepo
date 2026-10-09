@@ -57,6 +57,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     // `:q` is bound as an always-non-null lowercase string ("" means "match
     // anything") because Postgres can't infer the type of a null bind inside
     // `'%' || ? || '%'` and fails with `operator does not exist: text ~~ bytea`.
+    // `staffOnly` narrows to users with an active ceitba_staff row at `now`.
     @Query("""
         SELECT u FROM User u
         WHERE (LOWER(u.name)  LIKE CONCAT('%', :q, '%')
@@ -64,10 +65,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           AND (:organization IS NULL OR EXISTS (
                 SELECT 1 FROM UserOrganization m
                 WHERE m.userId = u.id AND m.organization = :organization))
+          AND (:staffOnly = false OR EXISTS (
+                SELECT 1 FROM CeitbaStaff cs
+                WHERE cs.userId = u.id AND cs.start <= :now AND cs.end >= :now))
         """)
     Page<User> findFiltered(
         @Param("q")            String q,
         @Param("organization") String organization,
+        @Param("staffOnly")    boolean staffOnly,
+        @Param("now")          OffsetDateTime now,
         Pageable pageable
     );
 

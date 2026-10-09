@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import ErrorBanner from './ErrorBanner'
+import { Alert } from './ui'
 
 // Error codes the API puts on the OAuth redirect (AuthController /
 // LoginRejectedException; access_denied = the user cancelled Google consent).
@@ -31,7 +31,7 @@ export default function AuthErrorBanner() {
   if (!code) return null
   return (
     <div className="container-content pt-4">
-      <ErrorBanner onDismiss={() => setCode(null)}>{t(`auth.errors.${code}`)}</ErrorBanner>
+      <Alert tone="error" onDismiss={() => setCode(null)}>{t(`auth.errors.${code}`)}</Alert>
     </div>
   )
 }

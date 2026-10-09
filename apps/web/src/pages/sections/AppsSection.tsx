@@ -11,9 +11,7 @@ interface AppCardProps {
   colorVar: string
 }
 
-// Other SPAs (/scheduler, /newsletter) are separate apps behind Caddy, so
-// they need a full page load; in-app routes (e.g. /apuntes) use the router.
-function AppCard({ href, label, description, cta, icon, colorVar, internal = false }: AppCardProps & { internal?: boolean }) {
+function AppCard({ href, label, description, cta, icon, colorVar }: AppCardProps) {
   const className = 'group flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden'
   const body = (
     <>
@@ -35,7 +33,7 @@ function AppCard({ href, label, description, cta, icon, colorVar, internal = fal
         </p>
         <div className="flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold">
           {cta}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="group-hover:translate-x-1 transition-transform duration-150">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="5" y1="12" x2="19" y2="12" />
             <polyline points="12 5 19 12 12 19" />
           </svg>
@@ -43,9 +41,7 @@ function AppCard({ href, label, description, cta, icon, colorVar, internal = fal
       </div>
     </>
   )
-  return internal
-    ? <Link to={href} className={className}>{body}</Link>
-    : <a href={href} className={className}>{body}</a>
+  return <Link to={href} className={className}>{body}</Link>
 }
 
 const SchedulerIcon = () => (
@@ -114,7 +110,6 @@ export default function AppsSection() {
           {apuntesEnabled && (
             <AppCard
               href="/apuntes"
-              internal
               label={t('apps.apuntes.label')}
               description={t('apps.apuntes.description')}
               cta={t('apps.apuntes.cta')}

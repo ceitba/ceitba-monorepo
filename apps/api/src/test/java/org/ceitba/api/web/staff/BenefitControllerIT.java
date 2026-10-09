@@ -94,6 +94,44 @@ class BenefitControllerIT {
     }
 
     @Test
+    void createRejectsInvalidSlugs() throws Exception {
+        var body = """
+            {"colorVar":"--dept-color-media","displayOrder":6,"nameEs":"Convenios"}""";
+        for (var slug : new String[] {"Convenios", "a", "con--venios", "-convenios", "convenios-", "con_venios",
+                "x".repeat(41)}) {
+            mvc.perform(post("/v1/benefits/{slug}", slug).with(staff())
+                    .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("InvalidSlug"));
+        }
+        assertThat(repository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void createDuplicateOfSeededSlugIs409() throws Exception {
+        mvc.perform(post("/v1/benefits/deportes").with(staff()).contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"colorVar":"--dept-color-it","displayOrder":9,"nameEs":"Otro"}"""))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("ResourceAlreadyExists"));
+        assertThat(repository.findById("deportes").orElseThrow().getNameEs()).isEqualTo("Deportes");
+    }
+
+    @Test
+    void createdCategoryAppearsInPublicList() throws Exception {
+        mvc.perform(post("/v1/benefits/idiomas-2").with(staff()).contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"colorVar":"--dept-color-direct","displayOrder":2,"nameEs":"Idiomas"}"""))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.slug").value("idiomas-2"))
+            .andExpect(jsonPath("$.colorVar").value("--dept-color-direct"))
+            .andExpect(jsonPath("$.displayOrder").value(2))
+            .andExpect(jsonPath("$.nameEn").doesNotExist());
+        mvc.perform(get("/v1/benefits"))
+            .andExpect(jsonPath("$[*].slug", contains("academico", "deportes", "idiomas-2")));
+    }
+
+    @Test
     void updateWithoutNamesKeepsThemAndBlankClears() throws Exception {
         // The SPA editor predates the name fields and omits them.
         mvc.perform(put("/v1/benefits/deportes").with(staff()).contentType(MediaType.APPLICATION_JSON)

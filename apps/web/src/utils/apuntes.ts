@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next'
-import { ApiError } from '../api/client'
 import type { ApunteAuthor } from '../api/drive'
 
 // Display helpers for the Apuntes (Drive notes) pages.
@@ -60,17 +59,6 @@ export function authorName(author: ApunteAuthor | null | undefined, t: TFunction
   return author?.anonymous || !author?.name ? t('apuntes.anonymousAuthor') : author.name
 }
 
-// Friendly message for an API failure: Drive error codes have their own copy
-// under apuntes.errors.<CODE>; anything else falls back to the server message.
-export function apuntesErrorMessage(e: unknown, t: TFunction): string {
-  if (e instanceof ApiError) {
-    return t(`apuntes.errors.${e.code}`, { defaultValue: e.message })
-  }
-  if (e instanceof Error && e.message) return e.message
-  return t('errors.somethingWrong')
-}
 
 // Only same-app paths are valid post-login destinations (no open redirects).
-export function isSafeReturnPath(path: string | null | undefined): path is string {
-  return !!path && path.startsWith('/') && !path.startsWith('//') && !path.startsWith('/\\')
-}
+export { isSafeReturnPath } from '../store/authStore'

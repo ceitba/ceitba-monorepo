@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { sanitizeHtml } from '../../../utils/sanitize'
 import { ViewerLoading } from './DocxViewer'
+import { Tabs } from '../../ui'
 
 // Rendering huge sheets as HTML would freeze the tab: cap what we show.
 const MAX_ROWS = 2000
@@ -19,6 +20,7 @@ export default function SheetViewer({ blob, isCsv, onError }: { blob: Blob; isCs
   const { t } = useTranslation()
   const [sheets, setSheets] = useState<Sheet[] | null>(null)
   const [active, setActive] = useState(0)
+  const tabsId = useId()
   const onErrorRef = useRef(onError)
   onErrorRef.current = onError
 
@@ -57,29 +59,26 @@ export default function SheetViewer({ blob, isCsv, onError }: { blob: Blob; isCs
   return (
     <div className="w-full rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden">
       {sheets.length > 1 && (
-        <div role="tablist" aria-label={t('apuntes.viewer.sheetsAria')} className="flex overflow-x-auto border-b border-border dark:border-night-border bg-page-bg dark:bg-night-bg">
-          {sheets.map((s, i) => (
-            <button
-              key={`${s.name}-${i}`}
-              type="button"
-              role="tab"
-              aria-selected={i === active}
-              onClick={() => setActive(i)}
-              className={`flex-shrink-0 px-4 py-2 font-mono text-label uppercase tracking-widest border-b-2 -mb-px ${
-                i === active ? 'border-primary text-primary' : 'border-transparent text-ink-secondary dark:text-night-muted hover:text-primary'
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="bg-page-bg dark:bg-night-bg"
+          items={sheets.map((s, i) => ({ id: String(i), label: s.name }))}
+          active={String(active)}
+          onChange={(id) => setActive(Number(id))}
+          label={t('apuntes.viewer.sheetsAria')}
+          idPrefix={tabsId}
+        />
       )}
       {sheet && sheet.truncated && (
         <p className="px-4 py-2 font-body text-body-sm text-amber-700 dark:text-amber-300 border-b border-border dark:border-night-border">
           {t('apuntes.viewer.sheetTruncated', { rows: MAX_ROWS, cols: MAX_COLS })}
         </p>
       )}
-      <div className="apunte-sheet max-h-[75vh] overflow-auto">
+      <div
+        className="apunte-sheet max-h-[75vh] overflow-auto"
+        role={sheets.length > 1 ? 'tabpanel' : undefined}
+        id={sheets.length > 1 ? `${tabsId}-panel-${active}` : undefined}
+        aria-labelledby={sheets.length > 1 ? `${tabsId}-tab-${active}` : undefined}
+      >
         {sheet && sheet.html ? (
           <div dangerouslySetInnerHTML={{ __html: sheet.html }} />
         ) : (

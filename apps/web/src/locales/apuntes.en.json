@@ -21,6 +21,7 @@
       "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet."
     },
     "sourceStatus": {
+      "unknown": "Other status",
       "PENDING_REVIEW": "In review",
       "ACTIVE": "Active",
       "BLOCKED": "Blocked",
@@ -29,6 +30,7 @@
       "ERROR": "Errors"
     },
     "publication": {
+      "unknown": "Other status",
       "PRIVATE": "Private",
       "NEEDS_REVIEW": "In review",
       "PUBLISHED": "Published",
@@ -60,6 +62,8 @@
       "allSubjects": "All subjects"
     },
     "tree": {
+      "emptyTitle": "No files yet",
+      "useSuggestionNamed": "Use suggested: {{name}}",
       "intro": "Pick the subject of each folder or file: whatever you set on a folder is inherited by its files. Only files with a subject that you don't hide get published.",
       "acceptAll": "Accept suggestions ({{count}})",
       "acceptedNotice_one": "Applied {{count}} suggestion.",
@@ -71,10 +75,8 @@
       "notMine": "Not yours",
       "notMineHint": "Someone else created it: CEITBA reviews it before publishing.",
       "hiddenLabel": "Hidden",
-      "syncError": "We couldn't sync it: {{error}}",
+      "syncError": "We couldn't sync this file. Try “Sync now” in a few minutes.",
       "subjectFor": "Subject for {{name}}",
-      "useSuggestion": "Use the suggested subject",
-      "suggestion": "Suggested: {{name}}",
       "hide": "Hide",
       "inMyPlan": "your plan",
       "recompute": "Recompute suggestions",
@@ -85,6 +87,8 @@
       "inheritedSuggestion": "Inherits the folder's suggestion: {{name}}"
     },
     "wizard": {
+      "needConsent": "Accept the terms to connect.",
+      "needUrl": "Paste the folder link to continue.",
       "title": "Connect a Drive folder",
       "stepsAria": "Steps",
       "step1Label": "1 · Share",
@@ -111,6 +115,7 @@
       "connecting": "Connecting…"
     },
     "report": {
+      "needReason": "Pick a reason to send the report.",
       "title": "Report file",
       "intro": "Tell us what's wrong with “{{name}}”. After several reports the file is hidden until CEITBA reviews it.",
       "reason": "Reason",
@@ -128,6 +133,7 @@
       "thanks": "Thanks, we got your report. CEITBA will review it."
     },
     "home": {
+      "mineFailed": "We couldn't load your plan's subjects.",
       "eyebrow": "Academic support",
       "title": "Notes",
       "subtitle": "Summaries, guides and past exams ITBA students share from their Google Drive, organized by subject.",
@@ -172,6 +178,8 @@
       "notFoundBody": "It may have been removed, hidden or unpublished."
     },
     "mine": {
+      "connectBlockedInfo": "We couldn't load what's needed to connect. Retry from the notice above.",
+      "connectBlockedUnconfigured": "Folders can't be connected yet: Google Drive isn't set up.",
       "title": "My notes",
       "subtitle": "The Drive folders you shared with CEITBA. Assign subjects, hide what you don't want published and sync whenever you want.",
       "connect": "Connect folder",
@@ -183,7 +191,7 @@
       "anonymousOn": "Anonymous",
       "lastSync": "Last sync: {{date}}",
       "neverSynced": "Not synced yet",
-      "lastError": "Last error: {{error}}",
+      "lastError": "The last sync ran into a problem. Try “Sync now” in a few minutes.",
       "statusHint": {
         "PENDING_REVIEW": "CEITBA is reviewing your folder. Meanwhile you can assign subjects: they're published once it's approved.",
         "BLOCKED": "CEITBA blocked this folder and its files aren't shown. Write to ceitba@itba.edu.ar if you think it's a mistake.",
@@ -239,15 +247,16 @@
       "subjectCount_other": "{{count}} subjects"
     },
     "pins": {
+      "unpinNamed": "Unpin {{name}}",
+      "pinNamed": "Pin {{name}}",
       "title": "Pinned",
-      "pin": "Pin",
-      "unpin": "Unpin",
       "wiki": "Wiki",
       "hint": "Pin subjects with the pin button to keep them handy here.",
       "limit": "You've reached the maximum of {{limit}} pinned subjects. Unpin one to add another.",
       "failed": "We couldn't update your pinned subjects. Please try again."
     },
     "year": {
+      "estimatedLegend": "≈ before the year: estimated from the file's date in Drive.",
       "source": {
         "USER": "Set by whoever shared the notes",
         "NAME": "Detected in the file name",
@@ -266,6 +275,9 @@
       "sortFolder": "By folder"
     },
     "corr": {
+      "miniFailed": "We couldn't draw your plan's preview. The full map is still available.",
+      "requiresList": "Prerequisites: {{list}}",
+      "emptyBody": "Once the plan has subjects, you'll see them here with their prerequisites.",
       "title": "Prerequisite map",
       "open": "View map",
       "seeMap": "View prerequisite map",
@@ -338,6 +350,9 @@
       "reportSource": "Source [{{n}}]: {{name}}"
     },
     "graphUi": {
+      "resetShort": "Reset",
+      "fitShort": "Fit",
+      "zoomAria": "Zoom",
       "search": "Search the graph…",
       "matches_one": "{{count}} match",
       "matches_other": "{{count}} matches",
@@ -362,7 +377,7 @@
   },
   "manage": {
     "drive": {
-      "intro": "Moderate the notes students share from Google Drive: approve new folders, review files that need a decision and see what was shared with the CEITBA account without being connected.",
+      "intro": "Approve new folders, decide on reported or pending files, and see what was shared with CEITBA without being connected.",
       "viewsAria": "Notes moderation views",
       "views": {
         "sources": "Folders",
@@ -397,7 +412,9 @@
         "blockTitle": "Block folder",
         "blockConfirm": "Block",
         "blockBody": "“{{name}}” ({{owner}}) stops syncing and its files are hidden. You can approve it again later.",
-        "comment": "Reason (optional, shown to the student)"
+        "comment": "Reason (optional, shown to the student)",
+        "syncFailed": "The last sync failed. It retries on its own; if it keeps failing, ask the student to reconnect the folder.",
+        "emptyHint": "When a student connects a Drive folder from “My notes”, it shows up here by status."
       },
       "files": {
         "queue": {
@@ -427,7 +444,11 @@
         },
         "unit": "files",
         "removeTitle": "Remove file",
-        "removeBody": "“{{name}}” is hidden from everyone and stays hidden across syncs. You can restore it later."
+        "removeBody": "“{{name}}” is hidden from everyone and stays hidden across syncs. You can restore it later.",
+        "emptyHint": {
+          "NEEDS_REVIEW": "Files shared by someone who isn't their Drive owner show up here so you can decide whether to publish them.",
+          "HIDDEN_REPORTED": "Files hidden automatically after piling up reports show up here so you can restore or remove them."
+        }
       },
       "unclaimed": {
         "intro": "Folders someone shared with the CEITBA account but nobody connected from “My notes”. If they linger, consider reaching out to whoever shared them.",
@@ -437,7 +458,8 @@
           "firstSeen": "First seen",
           "lastSeen": "Last seen"
         },
-        "empty": "No unclaimed shared folders."
+        "empty": "No unclaimed shared folders.",
+        "emptyHint": "If someone shares a folder with the CEITBA account and doesn't connect it from “My notes”, it shows up here."
       },
       "wiki": {
         "status": {
@@ -457,8 +479,14 @@
           "HIDDEN": "No hidden pages.",
           "PUBLISHED": "No published pages."
         },
-        "unit": "pages"
-      }
+        "unit": "pages",
+        "emptyHint": {
+          "HIDDEN": "Pages hidden by staff, or hidden because a file they cite was removed, show up here.",
+          "PUBLISHED": "Visible wiki pages show up here, with their reports."
+        }
+      },
+      "prev": "‹ Previous",
+      "next": "Next ›"
     },
     "wikiAi": {
       "intro": "Choose the models for each stage of the pipeline that writes the wikis, see what it costs, and compare models with evidence before switching.",
@@ -495,7 +523,8 @@
         "VALIDATE": "Validate",
         "PUBLISH": "Publish",
         "EVAL": "Eval",
-        "PROBE": "Probes"
+        "PROBE": "Probes",
+        "other": "Other stage"
       },
       "metrics": {
         "costPerValidPage": "Cost per valid page",
@@ -586,8 +615,6 @@
         "history": "Change history",
         "noHistory": "No saved changes yet.",
         "restore": "Restore",
-        "restoreTitle": "Restore settings",
-        "restoreBody": "Settings go back to that point. The change is kept in the history.",
         "confirmTitle": "Save settings",
         "confirmBody": "Changes apply from the next stage submitted; anything already running keeps its model.",
         "autoRefreshPrices": "Refresh DigitalOcean prices weekly",
@@ -596,7 +623,14 @@
         "costBudget": "Budget per run (US$)",
         "costBudgetInvalid": "Enter an amount between US$ 0.10 and US$ 100.",
         "costBudgetHint": "Subjects join the run only if their full cost (digests + plan + writing) fits the budget, cheapest first. Whatever does not fit waits for the next run.",
-        "budgetRequired": "Enter a token budget (0 or more)."
+        "budgetRequired": "Enter a token budget (0 or more).",
+        "noChanges": "No changes to save.",
+        "fixErrors": "Fix the highlighted fields to save.",
+        "restored": "Configuration restored.",
+        "historyWrite": "Writing: {{model}}",
+        "overrideAria": "{{stage}} for {{subject}}",
+        "pausedAria": "Pause {{subject}}",
+        "removeOverride": "Remove"
       },
       "endpoints": {
         "title": "Own endpoints",
@@ -625,7 +659,6 @@
         "noModels": "The server returned no models.",
         "discoverResult": "New: {{added}} · already known: {{existing}}",
         "discoverHint": "New models show up in the list as \"custom:…\", disabled and priced 0. Enable and probe them from there.",
-        "close": "Close",
         "formCreate": "New endpoint",
         "formEdit": "Edit endpoint",
         "name": "Name",
@@ -634,8 +667,8 @@
         "token": "Token",
         "tokenKeep": "Leave blank to keep the stored token.",
         "tokenUnreadable": "Unreadable token: enter it again",
-      "tokenUnreadableHint": "Click Edit and paste the token again.",
-      "tokenRemove": "Remove token",
+        "tokenUnreadableHint": "Click Edit and paste the token again.",
+        "tokenRemove": "Remove token",
         "tokenWillRemove": "The token will be removed on save.",
         "maxConcurrency": "Max concurrency (1–64)",
         "timeoutSec": "Timeout (seconds)",
@@ -656,17 +689,14 @@
           "tokPerSec": "Output tokens/s",
           "inFlight": "In flight",
           "pausedHint": "Refreshes every 10 s while the tab is visible."
-        }
+        },
+        "emptyBody": "Once you add one, you can test the connection, discover its models and see how it handles load here."
       },
       "models": {
         "intro": "Prices per million tokens. A model can only be picked once it's enabled and has passed the probe.",
         "sync": "Sync with DigitalOcean",
         "empty": "The catalog is empty.",
         "model": "Model",
-        "input": "Input / 1M",
-        "output": "Output / 1M",
-        "cache": "Cache / 1M",
-        "batch": "Batch",
         "enabled": "Enabled",
         "probe": "Probe",
         "probeBtn": "Probe",
@@ -677,20 +707,35 @@
         "probed": "probed",
         "notProbed": "not probed",
         "disabled": "disabled",
-        "batchBadge": "batch −{{pct}}%",
         "syncBadge": "sync",
-        "pricePer": "US$ {{input}} / {{output}} per 1M",
         "context": "{{k}}k context",
         "pricesAt": "prices from {{date}}",
-        "batchPlain": "batch"
+        "batchPlain": "batch",
+        "priceAria": "{{model}} {{field}}",
+        "enabledAria": "Enable {{model}}",
+        "batchAria": "{{model}} supports batch",
+        "discountAria": "{{model}} batch discount (%)",
+        "tools": "Uses tools: {{value}}",
+        "fields": {
+          "inputPerM": "Input",
+          "outputPerM": "Output",
+          "cacheReadPerM": "Cache",
+          "batchSupported": "Batch",
+          "batchDiscount": "Batch discount",
+          "other": "Other field"
+        }
       },
       "runs": {
-        "budget": {"title": "Budget", "summary": "US$ {{spent}} spent / US$ {{limit}} limit · admitted estimate US$ {{estimated}} · {{admitted}} subjects admitted, {{deferred}} deferred (US$ {{deferredEstimated}} estimated)", "oversized": "Run dedicated to {{subject}}: it did not fit the budget"},
+        "budget": {
+          "title": "Budget",
+          "summary": "US$ {{spent}} spent / US$ {{limit}} limit · admitted estimate US$ {{estimated}} · {{admitted}} subjects admitted, {{deferred}} deferred (US$ {{deferredEstimated}} estimated)",
+          "oversized": "Run dedicated to {{subject}}: it did not fit the budget"
+        },
         "runNow": "Run now",
-        "dryRun": "Simulation (dry run)",
+        "dryRun": "Simulation (no cost)",
         "preview": "Preview",
-        "runBody": "Starts a run for the subjects that changed. It uses tokens and costs money.",
-        "dryBody": "Builds and stores every request for review without submitting them or spending tokens.",
+        "runBody": "Starts a run for the subjects that changed. It uses tokens and costs real money; what's spent can't be recovered.",
+        "dryBody": "A simulation builds and stores every request for review without submitting them or spending tokens. It starts as soon as you tap it.",
         "started": "Run started.",
         "dryStarted": "Simulation started.",
         "alreadyActive": "A run is already in progress.",
@@ -723,7 +768,18 @@
         "previewSummary": "{{dirty}} subjects with changes, {{clean}} unchanged · ~{{tokens}} tokens (budget {{budget}})",
         "overBudget": "Over budget: the subjects with fewer changes wait for the next run.",
         "nothingToDo": "No changes: the next run wouldn't spend tokens.",
-        "diff": "+{{added}} new · {{changed}} changed · −{{removed}} removed · {{digests}} digests · ~{{tokens}} tokens"
+        "diff": "+{{added}} new · {{changed}} changed · −{{removed}} removed · {{digests}} digests · ~{{tokens}} tokens",
+        "runTitle": "Run the pipeline now?",
+        "runConfirm": "Yes, run now",
+        "cancelTitle": "Cancel the run?",
+        "keepRunning": "Keep running",
+        "tokens": "Tokens",
+        "triggers": {
+          "MANUAL": "Manual",
+          "SCHEDULED": "Weekly",
+          "EVAL": "Evaluation",
+          "other": "Other"
+        }
       },
       "evals": {
         "sets": "Benchmark sets",
@@ -767,7 +823,13 @@
         "refreezeBody": "“{{name}}” takes its subjects’ current inputs. New evaluations stop being comparable with earlier ones.",
         "refrozen": "“{{name}}” was re-frozen.",
         "frozenAt": "Frozen on {{date}} · {{files}} files",
-        "digestsMissing": "{{count}} digests to generate"
+        "digestsMissing": "{{count}} digests to generate",
+        "noSetsBody": "Create a benchmark set to compare configurations on the same material.",
+        "setNeeds": "Add a name and at least one subject.",
+        "removeSubject": "Remove {{subject}}",
+        "removeConfig": "Remove configuration {{config}}",
+        "modelAria": "{{stage}} model, configuration {{config}}",
+        "reasoningAria": "{{stage}} reasoning, configuration {{config}}"
       },
       "review": {
         "start": "Blind review",
@@ -792,7 +854,9 @@
         "remaining_one": "{{count}} left",
         "remaining_other": "{{count}} left",
         "scoresFor": "{{label}} scores",
-        "afterFinish": "Available once the evaluation finishes"
+        "afterFinish": "Available once the evaluation finishes",
+        "pickWinner": "Pick the better one (or a tie) to submit.",
+        "scoreAria": "{{label}} {{dimension}}"
       },
       "reasoning": {
         "label": "Reasoning",
@@ -805,21 +869,23 @@
           "low": "Low",
           "medium": "Medium",
           "high": "High"
-        }
+        },
+        "aria": "Reasoning for {{stage}}"
       },
       "prices": {
         "per1M": "per 1M",
         "upTo": "Batch discount of up to −{{pct}}% (estimated, not yet calibrated against billing)",
-        "verified": "Batch discount of −{{pct}}% verified against billing",
         "perWeek": "~{{cost}}/wk",
         "list": "List price",
         "inOutCache": "input / output / cache per 1M",
         "batch": "Batch",
         "effective": "effective price",
-        "discount": "batch discount",
         "sourceRule": "From the per-provider rule",
         "sourceProbe": "Verified by probe ({{date}})",
-        "effectiveNote": "at effective prices, batch where it applies"
+        "effectiveNote": "at effective prices, batch where it applies",
+        "estimateShort": "Estimated discount, not yet verified against billing",
+        "batchEstimate": "batch up to −{{pct}}%",
+        "batchVerified": "batch −{{pct}}% verified"
       },
       "forecast": {
         "title": "Expected spend",
@@ -842,7 +908,8 @@
           "corpus": "Estimated from how much material changes each week.",
           "blend_one": "Blends material volume with {{count}} run.",
           "blend_other": "Blends material volume with {{count}} runs."
-        }
+        },
+        "diff": "Difference"
       },
       "crashed": "This view failed to render the data the API returned.",
       "simulated": "Simulated costs (fake LLM client), not real billing.",
@@ -901,13 +968,14 @@
           "validating": "validating",
           "done": "done",
           "failed": "failed"
-        }
+        },
+        "tokensInOut": "{{in}} → {{out}} tokens"
       },
       "watch": {
         "evalDone": "The “{{name}}” evaluation finished: {{configs}} configurations, {{pages}} pages.",
-        "evalFailed": "The “{{name}}” evaluation ended with status {{status}}.",
+        "evalFailed": "The “{{name}}” evaluation didn't finish well ({{status}}).",
         "runDone": "The pipeline run finished: {{subjects}} subjects.",
-        "runFailed": "The pipeline run ended with status {{status}}.",
+        "runFailed": "The pipeline run didn't finish well ({{status}}).",
         "view": "View results",
         "notify": "Notify me when it finishes",
         "notifyOn": "You'll be notified",
@@ -940,10 +1008,48 @@
         "historyNote": "Costs already recorded keep the prices of their day; only estimates and what runs from now on change.",
         "fromDo": "DigitalOcean prices · updated {{date}}",
         "manual": "Manual price · {{date}}"
+      },
+      "unavailableTitle": "Not available yet",
+      "tokensN": "{{tokens}} tokens",
+      "yes": "Yes",
+      "no": "No",
+      "status": {
+        "DONE": "Done",
+        "SUCCEEDED": "Done",
+        "COMPLETED": "Done",
+        "PUBLISHED": "Published",
+        "OK": "OK",
+        "RUNNING": "Running",
+        "SUBMITTED": "Submitted",
+        "QUEUED": "Queued",
+        "PENDING": "Pending",
+        "IN_PROGRESS": "Running",
+        "VALIDATING": "Validating",
+        "FINALIZING": "Finalizing",
+        "WAITING": "Waiting",
+        "WAITING_BATCH": "Waiting for batch",
+        "PLANNING": "Planning",
+        "WRITING": "Writing",
+        "CANCELLING": "Cancelling",
+        "PARTIAL": "With failures",
+        "BLOCKED": "Blocked",
+        "BLOCKED_BY_COST_LIMIT": "Blocked by cost",
+        "DEFERRED": "Deferred",
+        "RATE_LIMITED": "Rate limited",
+        "EMPTY_TOOL": "Empty output",
+        "FAILED": "Failed",
+        "ERROR": "Error",
+        "CANCELLED": "Cancelled",
+        "CANCELED": "Cancelled",
+        "EXPIRED": "Expired",
+        "SKIPPED": "Skipped",
+        "other": "Other status"
       }
     }
   },
   "devLogin": {
+    "presetStaff": "{{user}} (staff)",
+    "email": "Email",
     "link": "Dev login",
     "eyebrow": "Local development only",
     "title": "Dev login",

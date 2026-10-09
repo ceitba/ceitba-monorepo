@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchApunteSubjects, fetchMyPlanSubjects, type ApunteSubject } from '../../api/drive'
 import { useDebounced } from '../../hooks/useDebounced'
 import { groupPlanSubjects, semesterLabel } from '../../utils/planGroups'
-import { INPUT } from './buttons'
+import { Skeleton, inputClass } from '../ui'
 
 export interface SubjectRef {
   id: string
@@ -154,7 +154,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
           disabled={disabled}
           onClick={openPicker}
           aria-label={label}
-          className="w-full min-h-[36px] px-3 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface text-left font-body text-body-sm flex items-center gap-2 hover:border-primary transition-colors disabled:opacity-50"
+          className="w-full min-h-[44px] px-3 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface text-left font-body text-body-sm flex items-center gap-2 hover:border-primary transition-colors disabled:opacity-50"
         >
           <span className="flex-1 min-w-0 truncate">
             {value ? (
@@ -189,7 +189,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={t('apuntes.picker.search')}
-            className={`${INPUT} min-h-[36px] py-1.5`}
+            className={inputClass()}
           />
           <ul
             id={listId}
@@ -203,7 +203,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
                 aria-selected={active === 0}
                 onMouseDown={(e) => { e.preventDefault(); choose(0) }}
                 onMouseEnter={() => setActive(0)}
-                className={`px-3 py-2 cursor-pointer font-body text-body-sm italic text-ink-secondary dark:text-night-muted ${active === 0 ? 'bg-primary-50 dark:bg-primary-900' : ''}`}
+                className={`flex items-center min-h-[44px] px-3 py-2 cursor-pointer font-body text-body-sm italic text-ink-secondary dark:text-night-muted ${active === 0 ? 'bg-primary-50 dark:bg-night-raised' : ''}`}
               >
                 {inherited ? t('apuntes.picker.clearInherit', { name: inherited.name }) : t('apuntes.picker.clear')}
               </li>
@@ -227,7 +227,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
                   aria-selected={active === idx}
                   onMouseDown={(e) => { e.preventDefault(); choose(idx) }}
                   onMouseEnter={() => setActive(idx)}
-                  className={`px-3 py-2 cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text ${active === idx ? 'bg-primary-50 dark:bg-primary-900' : ''}`}
+                  className={`flex flex-wrap items-center min-h-[44px] px-3 py-2 cursor-pointer font-body text-body-sm text-ink-primary dark:text-night-text ${active === idx ? 'bg-primary-50 dark:bg-night-raised' : ''}`}
                 >
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-1">{o.subjectId}</span>
                   {o.subjectName}
@@ -236,7 +236,12 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
               ]
             })}
             {loading && entries.length === 0 && (
-              <li className="px-3 py-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</li>
+              <li role="presentation" aria-busy="true" className="flex flex-col gap-2 px-3 py-2">
+                <span className="sr-only">{t('ui.loading')}</span>
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-2/3" />
+              </li>
             )}
             {!loading && failed && (
               <li className="px-3 py-2 font-body text-body-sm text-red-600 dark:text-red-400">{t('apuntes.picker.failed')}</li>

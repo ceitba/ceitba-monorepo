@@ -1,15 +1,30 @@
 import type { ReactElement } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import AuthGuard from './AuthGuard'
+import PageFallback from './PageFallback'
+import { EmptyState, buttonClass } from './ui'
 
 // Cookie auth is HttpOnly so we can't tell synchronously whether the visitor
-// is staff: wait for /me, then gate on profile.role === 'staff'. useAuth
-// subscribes to the auth store, so signing out (or losing STAFF and
-// refreshing the session) while on /manage redirects immediately instead of
-// leaving an admin UI whose every action 401s.
+// is staff: wait for /me, then gate on profile.role === 'staff'. Anonymous
+// visitors get AuthGuard's sign-in prompt; signed-in students are told in
+// place why they can't see the page (never a silent redirect). useAuth
+// subscribes to the auth store, so losing STAFF swaps the page immediately.
 export default function StaffGuard({ children }: { children: ReactElement }) {
-  const { loading, isStaff } = useAuth()
-  if (loading) return null
-  if (!isStaff) return <Navigate to="/" replace />
-  return children
+  const { t } = useTranslation()
+  const { loading, isAuthenticated, isStaff } = useAuth()
+  if (loading) return <PageFallback />
+  if (!isAuthenticated) return <AuthGuard>{children}</AuthGuard>
+  if (isStaff) return children
+
+  return (
+    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+      <EmptyState
+        title={<span role="heading" aria-level={1}>{t('staffGuard.title')}</span>}
+        body={t('staffGuard.body')}
+        action={<Link to="/" className={buttonClass({ variant: 'outline' })}>{t('staffGuard.home')}</Link>}
+      />
+    </main>
+  )
 }

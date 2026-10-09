@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 
 // Local only: DEV_API_PROXY (e.g. http://localhost:8081) and DEV_MEDIA_PROXY (e.g.
 // http://localhost:9002) make the dev server serve /api and /ceitba-media like Caddy
@@ -10,6 +11,9 @@ const mediaProxy = process.env.DEV_MEDIA_PROXY
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   base: process.env.VITE_BASE_PATH ?? '/',
   build: {
     // The largest chunk is SheetJS (~500 kB), which only loads when someone
