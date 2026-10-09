@@ -4,6 +4,7 @@ import org.ceitba.api.config.KbEmbeddingProperties;
 import org.ceitba.api.domain.kb.KbPage;
 import org.ceitba.api.domain.kb.KbPageType;
 import org.ceitba.api.external.llm.EmbeddingClient;
+import org.ceitba.api.external.llm.EmbeddingUnreachableException;
 import org.ceitba.api.external.llm.LlmApiException;
 import org.ceitba.api.repository.kb.KbPageChunkRepository;
 import org.ceitba.api.repository.kb.KbPageRepository;
@@ -36,7 +37,7 @@ class KbEmbeddingServiceTest {
     final KbPageChunkRepository chunks = mock(KbPageChunkRepository.class);
     final EmbeddingClient client = mock(EmbeddingClient.class);
     final KbEmbeddingProperties props =
-        new KbEmbeddingProperties("http://embeddings/v1", null, null, null, null, false, true, null, null, null);
+        new KbEmbeddingProperties("http://embeddings/v1", null, null, null, null, false, null, null);
     final UUID a = UUID.randomUUID();
     final UUID b = UUID.randomUUID();
     KbEmbeddingService service;
@@ -58,10 +59,25 @@ class KbEmbeddingServiceTest {
 
     @Test
     void anUnreachableServerStopsTheSweepAfterOneRequest() {
-        when(client.embed(anyString(), anyList())).thenThrow(new LlmApiException(0, "embeddings -> 0: refused"));
+        when(client.embed(anyString(), anyList())).thenThrow(new EmbeddingUnreachableException("embeddings -> 0: refused"));
 
         assertThat(service.embedPending().failed()).isEqualTo(1);
         verify(client, times(1)).embed(anyString(), anyList());
+    }
+
+    @Test
+    void aMalformedAnswerForOnePageDoesNotStopTheOthers() {
+        when(client.embed(anyString(), anyList()))
+            .thenThrow(new LlmApiException(0, "embeddings: malformed response"))
+            .thenAnswer(inv -> {
+                List<String> in = inv.getArgument(1);
+                return in.stream().map(t -> new float[768]).toList();
+            });
+
+        var r = service.embedPending();
+
+        assertThat(r.failed()).isEqualTo(1);
+        verify(client, times(2)).embed(anyString(), anyList());
     }
 
     @Test

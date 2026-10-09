@@ -6,6 +6,7 @@ import org.ceitba.api.config.KbEmbeddingProperties;
 import org.ceitba.api.domain.kb.KbPageChunk;
 import org.ceitba.api.domain.kb.KbPageStatus;
 import org.ceitba.api.external.llm.EmbeddingClient;
+import org.ceitba.api.external.llm.EmbeddingUnreachableException;
 import org.ceitba.api.external.llm.LlmApiException;
 import org.ceitba.api.repository.kb.KbPageChunkRepository;
 import org.ceitba.api.repository.kb.KbPageRepository;
@@ -71,16 +72,19 @@ public class KbEmbeddingService {
         return props.model();
     }
 
-    // Embeds every pending page. A page that fails is logged and skipped for
-    // the rest of this sweep (retried on the next); an endpoint problem ends it.
+    // Embeds every pending page. Each page is tried at most once per sweep: one
+    // that fails is logged and retried on the next sweep, and one that is still
+    // pending after its write (edited meanwhile) waits for it too. An endpoint
+    // problem ends the sweep.
     public SweepResult embedPending() {
         if (!client.available()) return new SweepResult(0, 0, 0);
+        var seen = new HashSet<UUID>();
         var failed = new HashSet<UUID>();
         int embedded = 0;
         sweep:
         while (true) {
-            var ids = readTx.execute(s -> chunks.findPageIdsToEmbed(props.model(), SWEEP_PAGE + failed.size()));
-            var todo = ids.stream().filter(id -> !failed.contains(id)).toList();
+            var ids = readTx.execute(s -> chunks.findPageIdsToEmbed(props.model(), SWEEP_PAGE + seen.size()));
+            var todo = ids.stream().filter(seen::add).toList();
             if (todo.isEmpty()) break;
             for (var id : todo) {
                 try {
@@ -109,9 +113,11 @@ public class KbEmbeddingService {
         return new SweepResult(embedded, failed.size(), (int) remaining);
     }
 
-    // status 0 = no HTTP answer (connection refused, timeout) after the client's retries.
+    // Errors about the endpoint, not the page: they end the sweep. Anything else
+    // (a 400 for one input, a malformed answer, a non-finite value) skips only
+    // that page, so one bad page can never hold the rest back.
     static boolean endpointProblem(LlmApiException e) {
-        return e instanceof DimensionMismatchException || e.status() == 0
+        return e instanceof EmbeddingUnreachableException || e instanceof DimensionMismatchException
             || e.status() == 401 || e.status() == 403 || e.status() == 404;
     }
 

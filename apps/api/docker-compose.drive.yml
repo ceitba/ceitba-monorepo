@@ -19,7 +19,8 @@ name: ceitba-drive
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Same image as docker-compose.yml: V61 needs pgvector.
+    image: pgvector/pgvector:0.8.6-pg16-bookworm@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     environment:
       POSTGRES_DB: ceitba_db
       POSTGRES_USER: postgres

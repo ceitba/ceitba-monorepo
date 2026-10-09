@@ -17,9 +17,11 @@ import java.util.concurrent.ThreadLocalRandom;
 // OpenAI-compatible POST {baseUrl}/embeddings: the self-hosted llama.cpp
 // server (ceitba-embeddings in docker-compose.yml), or TEI, vLLM or a hosted
 // API. A blank key sends no Authorization header. The body is only model, input
-// and encoding_format (some providers reject unknown fields). 429, 5xx and I/O
-// errors are retried like DoChatClient (up to 4 attempts, exponential back-off,
-// Retry-After honoured); after that an I/O error surfaces as status 0.
+// and encoding_format (some providers reject unknown fields). 429, 5xx and
+// connection errors are retried like DoChatClient (up to 4 attempts, exponential
+// back-off, Retry-After honoured). As there, a timeout is not retried: four more
+// full timeouts would only hold the sweep longer. No HTTP answer in the end
+// (timeout, refused, reset) throws EmbeddingUnreachableException.
 public class OpenAiEmbeddingClient implements EmbeddingClient {
 
     static final int MAX_ATTEMPTS = 4;
@@ -64,13 +66,13 @@ public class OpenAiEmbeddingClient implements EmbeddingClient {
                 if (apiKey != null && !apiKey.isBlank()) b.header("Authorization", "Bearer " + apiKey);
                 var res = http.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
                 status = res.statusCode();
-                if (status / 100 == 2) return parse(res.body(), inputs.size());
+                if (status / 100 == 2) return parse(res.body(), inputs.size());   // never retried
                 detail = res.body().length() > 500 ? res.body().substring(0, 500) : res.body();
                 retryAfter = res.headers().firstValue("Retry-After").map(v -> {
                     try { return Long.parseLong(v.trim()) * 1000; } catch (NumberFormatException e) { return -1L; }
                 }).orElse(-1L);
             } catch (java.net.http.HttpTimeoutException e) {
-                detail = "timed out after " + timeout.toSeconds() + " s";
+                throw new EmbeddingUnreachableException("embeddings -> 0: timed out after " + timeout.toSeconds() + " s");
             } catch (IOException e) {
                 detail = e.getMessage();
             } catch (InterruptedException e) {
@@ -79,6 +81,7 @@ public class OpenAiEmbeddingClient implements EmbeddingClient {
             }
             boolean transientError = status == 0 || status == 429 || status >= 500;
             if (!transientError || attempt >= MAX_ATTEMPTS) {
+                if (status == 0) throw new EmbeddingUnreachableException("embeddings -> 0: " + detail);
                 throw new LlmApiException(status, "embeddings -> " + status + ": " + detail);
             }
             sleep(retryAfter > 0 ? Math.min(retryAfter, 60_000) : delay + ThreadLocalRandom.current().nextLong(250));
@@ -87,8 +90,13 @@ public class OpenAiEmbeddingClient implements EmbeddingClient {
     }
 
     // data[] carries an index per vector; order by it, not by position.
-    private List<float[]> parse(String body, int expected) throws IOException {
-        var data = json.readTree(body).path("data");
+    private List<float[]> parse(String body, int expected) {
+        com.fasterxml.jackson.databind.JsonNode data;
+        try {
+            data = json.readTree(body).path("data");
+        } catch (IOException e) {
+            throw new LlmApiException(0, "embeddings: malformed response: " + e.getMessage(), e);
+        }
         var out = new ArrayList<float[]>(java.util.Collections.nCopies(expected, (float[]) null));
         for (var item : data) {
             int index = item.path("index").asInt(-1);

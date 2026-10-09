@@ -51,18 +51,21 @@ public interface KbPageChunkRepository extends JpaRepository<KbPageChunk, UUID> 
 
     // Lets an HNSW scan keep going until `k` rows pass the filters (pgvector
     // 0.8 iterative scans); otherwise a filtered search can return fewer than
-    // k hits. Transaction-local.
-    @Query(value = "SELECT set_config('hnsw.iterative_scan', 'relaxed_order', true)", nativeQuery = true)
+    // k hits. strict_order keeps results in exact distance order (relaxed_order
+    // may not). Transaction-local.
+    @Query(value = "SELECT set_config('hnsw.iterative_scan', 'strict_order', true)", nativeQuery = true)
     String enableIterativeScan();
 
     // [chunk id, page id, subject id, slug, page title, heading, anchor,
     // content, cosine distance] of the `k` chunks nearest to `query`, among
-    // PUBLISHED pages' current chunks for `model`; subjectId null = all subjects.
+    // PUBLISHED pages' chunks for `model`; subjectId null = all subjects. An
+    // edited page keeps its previous revision's chunks until the next sweep
+    // replaces them (better slightly stale than missing).
     @Query(value = """
         SELECT c.id, p.id AS page_id, p.subject_id, p.slug, p.title, c.heading, c.anchor, c.content,
                c.embedding <=> CAST(:query AS vector) AS distance
         FROM wiki.kb_page_chunk c
-        JOIN wiki.kb_page p ON p.id = c.page_id AND p.revision = c.page_revision
+        JOIN wiki.kb_page p ON p.id = c.page_id
         WHERE p.status = 'PUBLISHED' AND c.model = :model
           AND (CAST(:subjectId AS varchar) IS NULL OR p.subject_id = CAST(:subjectId AS varchar))
         ORDER BY c.embedding <=> CAST(:query AS vector)

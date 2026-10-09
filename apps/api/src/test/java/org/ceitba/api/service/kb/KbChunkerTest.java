@@ -84,4 +84,28 @@ class KbChunkerTest {
         var parts = KbChunker.chunk("T", "S", md).subList(1, 4);
         assertThat(parts).allSatisfy(c -> assertThat(c.text().length()).isLessThanOrEqualTo(KbChunker.MAX_CHARS));
     }
+
+    @Test
+    void aHugeTitleOrHeadingStillLeavesRoomForTheText() {
+        var heading = "Título ".repeat(1500).strip();       // ~10k chars
+        var chunks = KbChunker.chunk("T".repeat(7000), "S", "## " + heading + "\nTexto del cuerpo.\n");
+
+        assertThat(chunks).hasSize(2);
+        assertThat(chunks).allSatisfy(c -> {
+            assertThat(c.title().length()).isLessThanOrEqualTo(KbChunker.MAX_TITLE);
+            assertThat(c.text().length()).isLessThanOrEqualTo(KbChunker.MAX_CHARS);
+        });
+        assertThat(chunks.get(1).body()).isEqualTo("Texto del cuerpo.");
+        assertThat(chunks.get(1).anchor()).hasSizeLessThanOrEqualTo(KbChunker.MAX_ANCHOR);
+    }
+
+    @Test
+    void anchorsMatchTheOnesWikilinksResolveTo() {
+        var md = "## Fórmula " + FILE + "\nTexto.\n\n## Ver [[valor-actual|VAN]]\nMás.\n";
+        var chunks = KbChunker.chunk("T", "S", md);
+
+        assertThat(chunks.get(1).heading()).isEqualTo("Fórmula");
+        assertThat(KbWikilinks.headingAnchors(md))
+            .containsExactly(chunks.get(1).anchor(), chunks.get(2).anchor());
+    }
 }

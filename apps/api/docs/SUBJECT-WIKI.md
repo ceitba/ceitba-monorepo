@@ -130,7 +130,8 @@ retrieved by meaning (`KbEmbeddingService.search`). There is no HTTP endpoint ye
   chunks for its current `revision` and the configured model. Imports and pipeline runs only bump `revision`; the
   next sweep re-embeds the page and replaces its rows in one transaction (the HTTP call runs outside it, and a page
   edited meanwhile is left for the next sweep). Rows of `HIDDEN`/`REMOVED` pages stay; searches only return
-  `PUBLISHED` pages, and a restored page needs no new vectors. A failing page is skipped until the next sweep; an
+  `PUBLISHED` pages, and a restored page needs no new vectors. Until the sweep reaches an edited page, searches
+  still return its previous chunks (slightly stale rather than missing). A failing page is skipped until the next sweep; an
   endpoint problem (server unreachable, 401/403/404, wrong vector length) ends the sweep at once.
 - **Search**: cosine kNN (`<=>`) over an HNSW index, optionally limited to one subject (pgvector 0.8 iterative scans
   keep filtered searches from coming back short). Queries use the model's query prompt

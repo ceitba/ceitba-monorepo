@@ -15,15 +15,15 @@ import java.time.Duration;
 //   KB_EMBEDDING_QUERY_TEMPLATE / KB_EMBEDDING_DOCUMENT_TEMPLATE   the model's retrieval prompts
 //                                    ({query}; {title}, {text}); defaults are EmbeddingGemma's
 //   KB_EMBEDDING_USE_FAKE=false      deterministic in-memory vectors (default KB_LLM_USE_FAKE)
-//   KB_EMBEDDINGS_ENABLED=true       the background indexer (KbEmbeddingJob)
-//   KB_EMBEDDING_INTERVAL=PT5M       pause between indexer sweeps
 //   KB_EMBEDDING_BATCH_SIZE=16       inputs per /embeddings request
 //   KB_EMBEDDING_REQUEST_TIMEOUT=PT2M
+// KB_EMBEDDINGS_ENABLED and KB_EMBEDDING_INTERVAL (kb.embeddings.enabled /
+// .interval) are read by KbEmbeddingJob's annotations directly.
 // Unconfigured (no base URL) = nothing is embedded and search throws FeatureNotConfiguredException (501).
 @ConfigurationProperties(prefix = "kb.embeddings")
 public record KbEmbeddingProperties(String baseUrl, String apiKey, String model, String queryTemplate,
-                                    String documentTemplate, boolean useFake, boolean enabled, Duration interval,
-                                    Integer batchSize, Duration requestTimeout) {
+                                    String documentTemplate, boolean useFake, Integer batchSize,
+                                    Duration requestTimeout) {
 
     // EmbeddingGemma's retrieval prompts (model card, "SearchQuery" / "Document").
     public static final String GEMMA_QUERY = "task: search result | query: {query}";
@@ -35,7 +35,6 @@ public record KbEmbeddingProperties(String baseUrl, String apiKey, String model,
         model = model == null || model.isBlank() ? "embeddinggemma-2" : model.trim();
         queryTemplate = queryTemplate == null || queryTemplate.isBlank() ? GEMMA_QUERY : queryTemplate;
         documentTemplate = documentTemplate == null || documentTemplate.isBlank() ? GEMMA_DOCUMENT : documentTemplate;
-        interval = interval == null || interval.isNegative() || interval.isZero() ? Duration.ofMinutes(5) : interval;
         batchSize = batchSize == null || batchSize < 1 ? 16 : batchSize;
         requestTimeout = requestTimeout == null || requestTimeout.isNegative() || requestTimeout.isZero()
             ? Duration.ofMinutes(2) : requestTimeout;

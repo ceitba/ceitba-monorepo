@@ -18,6 +18,10 @@ public final class KbChunker {
     // ~1.5k tokens of Spanish prose: well inside the embedding model's input
     // window, small enough that one chunk is about one thing.
     public static final int MAX_CHARS = 6000;
+    // A chunk title longer than this is cut, so a section always has room.
+    static final int MAX_TITLE = 500;
+    // kb_page_chunk.anchor is VARCHAR(256).
+    static final int MAX_ANCHOR = 256;
 
     private static final Pattern H2 = Pattern.compile("^##(?!#)\\s+(.*?)\\s*#*\\s*$");
     private static final Pattern LINK_WITH_TEXT = Pattern.compile("\\[\\[[^\\[\\]|\\n]+\\|([^\\[\\]\\n]*)]]");
@@ -43,32 +47,39 @@ public final class KbChunker {
 
         var chunks = new ArrayList<Chunk>();
         String heading = null;
+        String anchor = null;
         var section = new StringBuilder();
         for (int i = 0; i < lines.length; i++) {
             var m = i < plain.length ? H2.matcher(plain[i]) : null;
             if (m != null && m.matches()) {
-                add(chunks, title, summary, heading, section.toString());
+                add(chunks, title, summary, heading, anchor, section.toString());
                 heading = linkText(m.group(1)).trim();
+                // Same anchor as the import validator and wikilinks (citations count by their text there).
+                anchor = cut(KbWikilinks.headingAnchor(m.group(1)), MAX_ANCHOR);
                 section.setLength(0);
                 continue;
             }
             section.append(lines[i]).append('\n');
         }
-        add(chunks, title, summary, heading, section.toString());
+        add(chunks, title, summary, heading, anchor, section.toString());
         return List.copyOf(chunks);
     }
 
-    private static void add(List<Chunk> out, String title, String summary, String heading, String body) {
+    private static void add(List<Chunk> out, String title, String summary, String heading, String anchor,
+                            String body) {
         var text = linkText(body).replaceAll("[ \\t]+\\n", "\n").replaceAll("\\n{3,}", "\n\n").strip();
         // Chunk 0 always exists (title and summary alone are worth a vector);
         // an empty ## section adds nothing.
         if (heading != null && text.isEmpty()) return;
-        var chunkTitle = heading == null ? title : title + " — " + heading;
+        var chunkTitle = cut(heading == null ? title : title + " — " + heading, MAX_TITLE);
         if (heading == null) text = text.isEmpty() ? summary : summary + "\n\n" + text;
-        var anchor = heading == null ? null : KbWikilinks.anchor(heading);
         for (var part : split(text, MAX_CHARS - chunkTitle.length() - 2)) {
             out.add(new Chunk(out.size(), heading, anchor, chunkTitle, part));
         }
+    }
+
+    private static String cut(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max);
     }
 
     // Wikilinks reduced to their text; bare citations dropped.

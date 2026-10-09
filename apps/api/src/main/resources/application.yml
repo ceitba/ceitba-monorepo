@@ -43,10 +43,11 @@ spring:
         await-termination: true
         await-termination-period: 60s
     scheduling:
-      # One thread per scheduled job (8 >= the @Scheduled methods): with Spring's default single thread a
-      # long Drive sync run delayed the wiki pipeline's sweep and batch polling.
+      # One thread per scheduled job (12 >= the @Scheduled methods): with Spring's default single thread a
+      # long Drive sync run delayed the wiki pipeline's sweep and batch polling, and the embedding sweep
+      # (KbEmbeddingJob) can take a while on its first run.
       pool:
-        size: 8
+        size: 12
       shutdown:
         await-termination: true
         await-termination-period: 30s
