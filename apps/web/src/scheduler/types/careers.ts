@@ -44,6 +44,10 @@ export const AVAILABLE_PLANS: Record<string, Plan[]> = {
   'X': [{ id: "IN23" }]
 };
 
+// Own keys only, so a stray id like "constructor" doesn't pass.
+export const isValidCareer = (careerId: string | null | undefined): careerId is string =>
+  careerId != null && Object.prototype.hasOwnProperty.call(AVAILABLE_PLANS, careerId);
+
 // Helper function to get the latest plan for a career
 export const getLatestPlan = (careerId: string): string => {
   const plans = AVAILABLE_PLANS[careerId];
