@@ -10,7 +10,8 @@ import java.util.UUID;
 // Response of GET /api/v1/subjects?plan=...
 //
 // Shape: { section: { year: { semester: [SubjectDetail, ...] } } }
-// Mirrors the NestJS SectionSubjectsDto byte-for-byte.
+// Started as the NestJS SectionSubjectsDto; since then commissions carry
+// their own dates and subjects a past_term flag.
 public final class OrganizedSubjectsResponse {
 
     public record SubjectDetail(
@@ -22,7 +23,11 @@ public final class OrganizedSubjectsResponse {
         Integer credits_required,
         String course_start,
         String course_end,
-        List<Commission> commissions
+        List<Commission> commissions,
+        // True when no commission of the subject is still running and the
+        // ones listed are its most recent ended term (the CommissionTerms
+        // fallback): the subject is probably not offered this term.
+        boolean past_term
     ) {}
 
     // `schedule` is the EFFECTIVE schedule: an applied student correction's
@@ -30,9 +35,13 @@ public final class OrganizedSubjectsResponse {
     // slots. `sga_schedule` (the original SGA slots) is present only when a
     // correction is applied. `corrections` lists the open (PENDING/APPLIED)
     // corrections, APPLIED first, then by confirms descending.
+    // course_start/course_end are this commission's own "YYYY-MM-DD" dates: a
+    // subject's commissions can differ (bimester modules, year-long cohorts).
     public record Commission(
         String commission_id,
         String name,
+        String course_start,
+        String course_end,
         List<Schedule> schedule,
         @JsonInclude(JsonInclude.Include.NON_NULL) List<Schedule> sga_schedule,
         List<Correction> corrections

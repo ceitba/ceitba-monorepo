@@ -121,7 +121,9 @@
     "noneSelectedBody": "Buscá o tocá materias de la lista para sumarlas.",
     "loadFailedTitle": "No pudimos cargar las materias",
     "loadFailed": "Revisá tu conexión y probá de nuevo.",
-    "undo": "Deshacer"
+    "undo": "Deshacer",
+    "pastTerm": "Sin cursada este cuatri",
+    "pastTermHint": "Las comisiones listadas son de una cursada que ya terminó"
   },
   "commission": {
     "title": "Seleccionar comisión",
@@ -136,7 +138,11 @@
     "turn_afternoon": "Tarde",
     "turn_evening": "Noche",
     "noMatchTurns": "Ninguna comisión coincide con el turno seleccionado.",
-    "addSelectedNone": "Elegí al menos una"
+    "addSelectedNone": "Elegí al menos una",
+    "pastTermTitle": "Esta materia no tiene comisiones este cuatrimestre",
+    "pastTerm": "Los horarios son de la última cursada, que ya terminó ({{from}} – {{to}}). Confirmá en SGA si se dicta y con qué horarios antes de armar tu horario con ella.",
+    "dates": "Cursada {{from}} – {{to}}",
+    "nameConflict": "Hay otra comisión {{name}} al mismo tiempo con otro horario. Los datos del ITBA no dicen cuál es la real: verificá en SGA."
   },
   "conflicts": {
     "status_clear": "Sin conflicto",

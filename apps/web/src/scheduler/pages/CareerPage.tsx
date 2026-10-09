@@ -8,11 +8,12 @@ import CommissionSelectionModal from '../components/CommissionSelectionModal'
 import SaveScheduleDialog from '../components/SaveScheduleDialog'
 import ClassDetailModal from '../components/corrections/ClassDetailModal'
 import { Subject, useSubjects } from '../hooks/useSubjects'
+import { knownSelection } from '../services/commissionNames'
 import { useAuth } from '@/hooks/useAuth'
 import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { detectConflicts, liveSlotsFromCourses } from '../services/conflicts'
 import { normalizePlanId, denormalizePlanId } from '../utils/planUtils'
-import { DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, subjectsWithoutCommissions, type GenerationResult } from '../services/scheduler'
+import { commissionLabel, DEFAULT_SCHEDULER_OPTIONS, subjectsBlockedOut, subjectsWithoutCommissions, type GenerationResult } from '../services/scheduler'
 import { useScheduleGeneration } from '../hooks/useScheduleGeneration'
 import type { GenerationInputs } from '../workers/protocol'
 import { PossibleSchedule, SchedulerOptions, TimeBlock } from '../types/scheduler'
@@ -220,7 +221,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
       .map((sc) => {
         const subject = byId.get(sc.subject_id)
         if (!subject) return null
-        return { ...subject, selectedCommissions: sc.selectedCommissions }
+        return { ...subject, selectedCommissions: knownSelection(subject.commissions, sc.selectedCommissions) }
       })
       .filter((x): x is SelectedCourse => x !== null)
     setSelectedCourses(restoredCourses)
@@ -438,7 +439,7 @@ function CareerWorkspace({ career, normalizedPlan }: { career: string; normalize
     setIsCalendarPanelOpen(true)
     const events = eventsFromSlots(
       currentSchedule.slots,
-      (slot) => t('calendar.commissionName', { name: slot.commission }),
+      (slot) => t('calendar.commissionName', { name: commissionLabel(slot) }),
     )
     setScheduleEvents(events)
     setRemainingCalendarUrls(

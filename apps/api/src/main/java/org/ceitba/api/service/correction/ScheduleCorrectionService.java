@@ -325,6 +325,8 @@ public class ScheduleCorrectionService {
             out.put(commission.getId(), new OrganizedSubjectsResponse.Commission(
                 commission.getId(),
                 commission.getCommissionName(),
+                commission.getCourseStart().toString(),
+                commission.getCourseEnd().toString(),
                 CorrectionSlots.toSchedule(schedule),
                 applied != null ? CorrectionSlots.toSchedule(sga) : null,
                 dtos));

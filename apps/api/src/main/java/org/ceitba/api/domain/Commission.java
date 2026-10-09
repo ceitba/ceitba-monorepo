@@ -47,6 +47,15 @@ public class Commission {
     @Column(name = "subject_type", nullable = false, columnDefinition = "subject_type")
     private SubjectType subjectType = SubjectType.SEMESTRAL;
 
+    // The (year, period) of the last sync query that returned this commission,
+    // e.g. 2026 / "SecondSemester". Null only for a row inserted outside the
+    // sync (tests, dev seeds); V54 backfilled older rows from course_start.
+    @Column(name = "term_year")
+    private Short termYear;
+
+    @Column(name = "term_period", length = 20)
+    private String termPeriod;
+
     @OneToMany(mappedBy = "commission", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("day ASC, hourFrom ASC")
     private List<CommissionTime> times = new ArrayList<>();
@@ -74,8 +83,19 @@ public class Commission {
     public int getEnrolledStudents() { return enrolledStudents; }
     public int getQuota() { return quota; }
     public SubjectType getSubjectType() { return subjectType; }
+    public Short getTermYear() { return termYear; }
+    public String getTermPeriod() { return termPeriod; }
     public List<CommissionTime> getTimes() { return times; }
 
     public void setEnrolledStudents(int enrolledStudents) { this.enrolledStudents = enrolledStudents; }
     public void setQuota(int quota) { this.quota = quota; }
+    public void setCommissionName(String commissionName) { this.commissionName = commissionName; }
+    public void setCourseStart(LocalDate courseStart) { this.courseStart = courseStart; }
+    public void setCourseEnd(LocalDate courseEnd) { this.courseEnd = courseEnd; }
+    public void setSubjectType(SubjectType subjectType) { this.subjectType = subjectType; }
+
+    public void setTerm(int year, String period) {
+        this.termYear = (short) year;
+        this.termPeriod = period;
+    }
 }

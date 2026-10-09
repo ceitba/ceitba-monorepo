@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScheduleSlot } from '../types/scheduler'
+import { commissionLabel } from '../services/scheduler'
 
 interface WallpaperLayoutProps {
   slots: ScheduleSlot[]
@@ -38,7 +39,7 @@ const WallpaperLayout = forwardRef<HTMLDivElement, WallpaperLayoutProps>(
       const block: DayBlock = {
         subject: s.subject,
         subject_id: s.subject_id,
-        commission: s.commission,
+        commission: commissionLabel(s),
         classroom: s.classroom,
         building: s.building,
         timeFrom: s.timeFrom.slice(0, 5),

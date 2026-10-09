@@ -132,8 +132,8 @@ export const liveSlotsFromCourses = (courses: CourseInput[]): ScheduleSlot[] => 
       for (const s of commission.schedule ?? []) {
         slots.push({
           day: s.day,
-          dateFrom: course.course_start,
-          dateTo: course.course_end,
+          dateFrom: commission.course_start ?? course.course_start,
+          dateTo: commission.course_end ?? course.course_end,
           timeFrom: s.time_from,
           timeTo: s.time_to,
           subject: course.name,
