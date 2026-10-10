@@ -287,7 +287,7 @@ class DigestCorrectionVoteIT {
             .doesNotContain("vista=wiki");   // no apuntes capability
 
         jdbc.execute("TRUNCATE public.digest_issues CASCADE");
-        assertThat(preview(READER)).contains("Armá tu horario en el combinador", "https://ceitba.org.ar/scheduler/")
+        assertThat(preview(READER)).contains("Armá tu horario en la app", "https://ceitba.org.ar/app/horario")
             .doesNotContain("Alguien reportó");
     }
 }

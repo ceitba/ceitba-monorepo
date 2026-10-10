@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["KM886L28U2.com.ceitba.app"],
+        "components": [
+          { "/": "/app", "comment": "CEITBApp home" },
+          { "/": "/app/*", "comment": "CEITBApp screens, e.g. /app/horario" }
+        ]
+      }
+    ]
+  }
+}

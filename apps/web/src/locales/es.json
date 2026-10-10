@@ -664,5 +664,13 @@
     "title": "Esta página es del staff del CEITBA",
     "body": "La administración la usa el equipo del CEITBA. Si sos parte del staff y no la ves, pedile a alguien del equipo que te dé acceso.",
     "home": "Ir al inicio"
+  },
+  "openInApp": {
+    "title": "Abrí CEITBApp",
+    "body": "Armá tu horario y seguí tu cuatrimestre desde la app del CEITBA.",
+    "open": "Abrir en la app",
+    "appStore": "Descargar en el App Store",
+    "playStore": "Descargar en Google Play",
+    "web": "Seguir en la web"
   }
 }

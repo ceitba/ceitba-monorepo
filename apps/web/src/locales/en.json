@@ -664,5 +664,13 @@
     "title": "This page is for CEITBA staff",
     "body": "Administration is used by the CEITBA team. If you are on the staff and can't see it, ask someone on the team to give you access.",
     "home": "Go home"
+  },
+  "openInApp": {
+    "title": "Open CEITBApp",
+    "body": "Build your schedule and follow your semester from the CEITBA app.",
+    "open": "Open in the app",
+    "appStore": "Download on the App Store",
+    "playStore": "Get it on Google Play",
+    "web": "Continue on the web"
   }
 }
