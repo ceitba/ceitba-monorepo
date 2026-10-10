@@ -45,7 +45,7 @@ public class ApiKeyService {
         return create(user, name, ttlDays, null);
     }
 
-    // scopeKeys: subset of read/write/staff; null → all (full power), [] → read only.
+    // scopeKeys: subset of read/report/write/staff; null → all (full power), [] → read only.
     // A request authenticated with a scoped key cannot create keys, so a key can
     // never mint a more powerful one. Checked here, not by path in ApiKeyFilter,
     // so an encoded path (api%2Dkeys) can't skip it.
@@ -123,7 +123,7 @@ public class ApiKeyService {
             try {
                 parsed.add(ApiKeyScope.fromKey(k == null ? "" : k));
             } catch (IllegalArgumentException e) {
-                throw new ValidationException("scopes", k, "must be one of read, write, staff");
+                throw new ValidationException("scopes", k, "must be one of read, report, write, staff");
             }
         }
         return ApiKeyScope.normalize(parsed);

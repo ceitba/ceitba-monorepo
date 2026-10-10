@@ -31,6 +31,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -148,6 +149,31 @@ class ApiKeyScopesIT {
         mvc.perform(delete(URI.create("/v1/auth/api%2Dkeys/" + other)).header(ApiKeyFilter.HEADER, scoped))
             .andExpect(status().isForbidden());
         assertThat(apiKeys.listActive(u)).hasSize(2);
+    }
+
+    // The "report" scope opens exactly the two report endpoints (PUT, UUID ids)
+    // and nothing else; past the filter the usual rules apply (here the
+    // capability check, since the user has no apuntes).
+    @Test
+    void aReportKeyMayOnlyReport() throws Exception {
+        String k = key(user("reporter-" + UUID.randomUUID() + "@itba.edu.ar"), "read", "report");
+        for (String path : new String[] {"/v1/wiki/kb/pages/" + UUID.randomUUID() + "/report",
+                                         "/v1/wiki/files/" + UUID.randomUUID() + "/report"}) {
+            mvc.perform(put(path).header(ApiKeyFilter.HEADER, k)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"OTHER\"}"))
+                .andExpect(r -> {
+                    String body = r.getResponse().getContentAsString();
+                    if (body.contains(ApiKeyFilter.INSUFFICIENT_SCOPE)) throw new AssertionError(path + " denied: " + body);
+                });
+        }
+        mvc.perform(post("/v1/auth/logout-all").header(ApiKeyFilter.HEADER, k))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value(ApiKeyFilter.INSUFFICIENT_SCOPE));
+        mvc.perform(post("/v1/wiki/kb/pages/" + UUID.randomUUID() + "/report").header(ApiKeyFilter.HEADER, k))
+            .andExpect(jsonPath("$.error").value(ApiKeyFilter.INSUFFICIENT_SCOPE));
+        mvc.perform(put(URI.create("/v1/wiki/kb/pages/" + UUID.randomUUID() + "/repor%74")).header(ApiKeyFilter.HEADER, k)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"OTHER\"}"))
+            .andExpect(jsonPath("$.error").value(ApiKeyFilter.INSUFFICIENT_SCOPE));
     }
 
     @Test

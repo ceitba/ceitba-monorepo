@@ -7,20 +7,30 @@ import org.ceitba.api.service.kb.KbEmbeddingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Wiki embeddings end to end on the real image: pgvector is installed by
 // Flyway (V61), the indexer chunks and embeds PUBLISHED pages (fake vectors:
 // hashed bag of words), re-embeds a page when its revision changes, skips
-// hidden pages, and kNN over the HNSW index finds the matching section.
+// hidden pages, and kNN over the HNSW index finds the matching section, also
+// through GET /v1/wiki/kb/search.
 @SpringBootTest
+@AutoConfigureMockMvc
 class KbEmbeddingIT {
 
+    @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired KbEmbeddingService embeddings;
     @Autowired EmbeddingClient client;
@@ -92,6 +102,36 @@ class KbEmbeddingIT {
         int calls = ((FakeEmbeddingClient) client).calls();
         assertThat(embeddings.embedPending().embedded()).isZero();
         assertThat(((FakeEmbeddingClient) client).calls()).isEqualTo(calls);
+    }
+
+    @Test
+    void searchEndpointReturnsPassagesForReadersWithApuntes() throws Exception {
+        embeddings.embedPending();
+        var reader = jwt().jwt(t -> t.claim("email", "lector-kb@itba.edu.ar").claim("name", "Lector"))
+            .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+
+        jdbc.update("DELETE FROM public.capability_settings WHERE capability = 'apuntes'");
+        mvc.perform(get("/v1/wiki/kb/search").param("q", "tasa de corte").with(reader))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value("CAPABILITY_REQUIRED"));
+
+        jdbc.update("INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)");
+        try {
+            mvc.perform(get("/v1/wiki/kb/search").param("q", "cómo se descuentan los flujos de fondos")
+                    .param("limit", "2").with(reader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results.length()").value(2))
+                .andExpect(jsonPath("$.results[0].slug").value("valor-actual-neto"))
+                .andExpect(jsonPath("$.results[0].subjectId").value("61.12"))
+                .andExpect(jsonPath("$.results[0].content").isNotEmpty());
+            mvc.perform(get("/v1/wiki/kb/search").param("q", "bien de uso").param("subjectId", "81.07").with(reader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results[0].subjectId").value("81.07"));
+            mvc.perform(get("/v1/wiki/kb/search").param("q", "  ").with(reader))
+                .andExpect(status().isBadRequest());
+        } finally {
+            jdbc.update("DELETE FROM public.capability_settings WHERE capability = 'apuntes'");
+        }
     }
 
     @Test

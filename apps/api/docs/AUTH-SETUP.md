@@ -325,6 +325,7 @@ enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, t
 | Scope | Effect |
 |---|---|
 | `read` | Always present. Safe methods (GET/HEAD) plus read-style POSTs (`/v1/classrooms/conflicts`). |
+| `report` | Also `PUT /v1/wiki/kb/pages/{id}/report` and `PUT /v1/wiki/files/{id}/report` (reporting wiki pages and Apuntes files), nothing else. Implied by `write`. |
 | `write` | Non-safe methods (POST/PUT/PATCH/DELETE). Without it they answer `403 INSUFFICIENT_SCOPE`. |
 | `staff` | Keeps the owner's staff powers: `ROLE_STAFF` / `ROLE_MODERATOR`, and the staff checks services make themselves (every capability, hidden wiki pages and unpublished Drive files, moderator status). Without it the key acts as a plain USER everywhere. |
 
@@ -340,7 +341,9 @@ enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, t
 - The key's owner must pass the same email allowlist as a JWT session; removing an email from the allowlist also
   disables their keys (`403`).
 
-The MCP server (`apps/mcp`) mints `["read"]` keys for students and `["read", "staff", "write"]` keys for staff.
+The MCP server (`apps/mcp`) mints `["read", "report"]` keys for students and `["read", "report", "staff", "write"]`
+keys for staff and moderators. The web app's connect page (`/ia`) lists a user's keys and MCP sign-ins, revokes them
+and creates `["read", "report"]` keys for clients without OAuth.
 
 ### Use the key
 

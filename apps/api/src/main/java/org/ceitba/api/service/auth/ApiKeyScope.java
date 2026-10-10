@@ -9,11 +9,13 @@ import java.util.stream.Collectors;
 
 // Scopes a user API key can carry (api_keys.scopes, V62). A key never grants
 // more than its owner has; scopes only take power away:
-//   READ   safe methods only (GET/HEAD); always present on every key
-//   WRITE  non-safe methods (POST/PUT/PATCH/DELETE)
-//   STAFF  keep ROLE_STAFF / ROLE_MODERATOR when the owner holds them
+//   READ    safe methods only (GET/HEAD); always present on every key
+//   REPORT  reporting wiki pages and Apuntes files (ApiKeyFilter.REPORT_PATHS),
+//           the only writes a student's MCP key may make; implied by WRITE
+//   WRITE   non-safe methods (POST/PUT/PATCH/DELETE)
+//   STAFF   keep ROLE_STAFF / ROLE_MODERATOR when the owner holds them
 public enum ApiKeyScope {
-    READ, WRITE, STAFF;
+    READ, REPORT, WRITE, STAFF;
 
     public static final Set<ApiKeyScope> ALL = EnumSet.allOf(ApiKeyScope.class);
 
@@ -34,6 +36,14 @@ public enum ApiKeyScope {
         if (requested == null) return EnumSet.copyOf(ALL);
         var set = EnumSet.of(READ);
         set.addAll(requested);
+        return implied(set);
+    }
+
+    // READ is always there and WRITE covers REPORT, so "read,write,staff"
+    // (the V62 default) still parses as full power.
+    private static Set<ApiKeyScope> implied(EnumSet<ApiKeyScope> set) {
+        set.add(READ);
+        if (set.contains(WRITE)) set.add(REPORT);
         return set;
     }
 
@@ -45,7 +55,6 @@ public enum ApiKeyScope {
         if (csv == null || csv.isBlank()) return EnumSet.copyOf(ALL);
         var set = EnumSet.noneOf(ApiKeyScope.class);
         Arrays.stream(csv.split(",")).filter(s -> !s.isBlank()).map(ApiKeyScope::fromKey).forEach(set::add);
-        set.add(READ);
-        return set;
+        return implied(set);
     }
 }

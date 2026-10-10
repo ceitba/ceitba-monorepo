@@ -37,7 +37,8 @@ import java.util.Set;
 //                     moderator grant), same as StaffAwareJwtAuthenticationConverter,
 //                     narrowed by the key's scopes (ApiKeyScope, V62):
 //                       - no "staff" scope → ROLE_STAFF / ROLE_MODERATOR are withheld
-//                       - no "write" scope → non-safe methods answer 403 INSUFFICIENT_SCOPE
+//                       - no "write" scope → non-safe methods answer 403 INSUFFICIENT_SCOPE,
+//                         except the report endpoints (REPORT_PATHS) for a "report" key
 //                       - a scoped (not full-power) key cannot create API keys or revoke
 //                         other keys (ApiKeyService, via ApiKeyCredential); any key may
 //                         revoke itself, even a read-only one
@@ -57,6 +58,11 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     // Non-safe methods that are read-style queries and stay open to read-only keys.
     private static final Set<String> READ_STYLE_POSTS = Set.of("/v1/classrooms/conflicts");
     private static final String API_KEYS_PATH = "/v1/auth/api-keys";
+    // PUT reports (wiki pages, Apuntes files): what the "report" scope opens.
+    // Matched on the raw URI like every exemption here, so an encoded or odd
+    // path only ever fails the match and is denied.
+    private static final java.util.regex.Pattern REPORT_PATHS = java.util.regex.Pattern.compile(
+        "^/v1/wiki/(kb/pages|files)/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/report$");
 
     private final AuthProperties auth;
     private final ApiKeyService apiKeyService;
@@ -128,7 +134,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return null;
         }
         if (!k.has(ApiKeyScope.WRITE) && !safe && !READ_STYLE_POSTS.contains(path)) {
-            return "This API key is read-only (missing scope: write)";
+            if (k.has(ApiKeyScope.REPORT) && "PUT".equalsIgnoreCase(method) && REPORT_PATHS.matcher(path).matches()) {
+                return null;
+            }
+            return k.has(ApiKeyScope.REPORT)
+                ? "This API key can only read and report content (missing scope: write)"
+                : "This API key is read-only (missing scope: write)";
         }
         return null;
     }

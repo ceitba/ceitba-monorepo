@@ -23,8 +23,9 @@ class ApiKeyScopeTest {
         var s = EnumSet.of(ApiKeyScope.READ, ApiKeyScope.STAFF);
         assertThat(ApiKeyScope.serialize(s)).isEqualTo("read,staff");
         assertThat(ApiKeyScope.parse("read,staff")).isEqualTo(s);
-        assertThat(ApiKeyScope.parse("read,write,staff")).isEqualTo(ApiKeyScope.ALL);
-        assertThat(ApiKeyScope.parse(" WRITE ")).containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.WRITE);
+        assertThat(ApiKeyScope.parse("read,write,staff")).isEqualTo(ApiKeyScope.ALL); // write implies report
+        assertThat(ApiKeyScope.parse("read,report")).containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.REPORT);
+        assertThat(ApiKeyScope.parse(" WRITE ")).containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.REPORT, ApiKeyScope.WRITE);
     }
 
     @Test
