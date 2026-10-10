@@ -34,6 +34,9 @@ ceitba.org.ar {
     # The web app: the site, /scheduler and /newsletter, all one SPA.
     handle {
         root * /var/www/main
+        # CEITBApp's Universal Links (iOS): the file has no extension, so
+        # Caddy can't infer the JSON type Apple expects.
+        header /.well-known/apple-app-site-association Content-Type application/json
         file_server
         try_files {path} /index.html
     }

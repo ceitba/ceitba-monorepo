@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PersonalDigestRendererTest {
 
-    static final String SCHEDULER = "https://ceitba.org.ar/scheduler/";
+    static final String SCHEDULER = "https://ceitba.org.ar/app/horario";
     static final UUID CORRECTION = UUID.randomUUID();
 
     static PersonalDigestRenderer.VoteLinks links(UUID id) {
@@ -48,9 +48,9 @@ class PersonalDigestRendererTest {
     @Test
     void needsScheduleIsJustTheCallToAction() {
         var s = PersonalDigestRenderer.render(PersonalDigest.needsSchedule(), SCHEDULER, PersonalDigestRendererTest::links);
-        assertThat(s.html()).contains("Armá tu horario en el combinador", "href=\"" + SCHEDULER + "\"")
+        assertThat(s.html()).contains("Armá tu horario en la app", "href=\"" + SCHEDULER + "\"")
             .doesNotContain("Alguien reportó");
-        assertThat(s.text()).contains("Armá tu horario en el combinador: " + SCHEDULER);
+        assertThat(s.text()).contains("Armá tu horario en la app: " + SCHEDULER);
     }
 
     @Test

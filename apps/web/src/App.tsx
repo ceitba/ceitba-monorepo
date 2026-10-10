@@ -8,6 +8,7 @@ import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
 import BenefitsPage from './pages/BenefitsPage'
 import ProfilePage from './pages/ProfilePage'
+import OpenInAppPage from './pages/OpenInAppPage'
 import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
@@ -85,6 +86,7 @@ function Layout() {
           <Route path="/benefits" element={<BenefitsPage />} />
           <Route path="/manage/*" element={<StaffGuard><Suspense fallback={<PageFallback />}><ManagePage /></Suspense></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/app/*" element={<OpenInAppPage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/correlativas" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></CapabilityGuard>} />

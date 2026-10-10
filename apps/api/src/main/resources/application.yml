@@ -343,8 +343,9 @@ digest:
   personal:
     # CeitbaPage's Apuntes reader: a subject's wiki is <url>/<subjectId>?vista=wiki.
     wiki-base-url: ${DIGEST_WIKI_BASE_URL:https://ceitba.org.ar/apuntes}
-    # "Armá tu horario en el combinador".
-    scheduler-url: ${DIGEST_SCHEDULER_URL:https://ceitba.org.ar/scheduler/}
+    # "Armá tu horario en la app": the web app's /app/* opens CEITBApp (or the
+    # store on a phone without it, or the combinador on a desktop).
+    scheduler-url: ${DIGEST_SCHEDULER_URL:https://ceitba.org.ar/app/horario}
     # Lifetime of the "¿Es así?" correction vote links.
     vote-token-ttl: ${DIGEST_VOTE_TOKEN_TTL:P14D}
     max-wiki-links: ${DIGEST_MAX_WIKI_LINKS:5}
