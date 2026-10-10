@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import BaseModal from '../BaseModal'
+import { Button, Modal } from '@/components/ui'
 import CorrectionStatus from './CorrectionStatus'
 import SuggestCorrectionModal from './SuggestCorrectionModal'
 import { useCorrections } from '../../context/correctionsContext'
@@ -28,7 +28,7 @@ export default function ClassDetailModal({ subjectId, commissionName, onClose }:
   }
 
   return (
-    <BaseModal isOpen onClose={onClose} title={subject.name}>
+    <Modal onClose={onClose} title={subject.name} footer={<Button variant="ghost" onClick={onClose}>{t('ui.close')}</Button>}>
       <div className="space-y-4">
         <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
           <span className="font-mono text-label">({subject.subject_id})</span>{' '}
@@ -49,6 +49,6 @@ export default function ClassDetailModal({ subjectId, commissionName, onClose }:
           <CorrectionStatus subject={subject} commission={commission} onSuggest={() => setSuggesting(true)} />
         </div>
       </div>
-    </BaseModal>
+    </Modal>
   )
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { Progress, StageProgress } from '../../../api/kbAdmin'
 import { ago, elapsed, tokens, usd } from './format'
 import QuotaCard from './QuotaCard'
+import { statusLabel } from './status'
 import { mentionsQuota } from './quota'
 
 function useNow(ms = 1000): number {
@@ -80,12 +82,12 @@ export default function ProgressPanel({ progress, stages, fallback }: {
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline justify-between gap-2 font-body text-body-sm">
           <span className="text-ink-primary dark:text-night-text">
-            {progress?.current ?? (fallback.stage ? t('manage.wikiAi.progress.inStage', { stage: t(`manage.wikiAi.progress.stages.${fallback.stage.toUpperCase()}`, { defaultValue: fallback.stage }) }) : t('manage.wikiAi.progress.starting'))}
+            {progress?.current ?? (fallback.stage ? t('manage.wikiAi.progress.inStage', { stage: t(`manage.wikiAi.progress.stages.${fallback.stage.toUpperCase()}`, { defaultValue: t('manage.wikiAi.stages.other') }) }) : t('manage.wikiAi.progress.starting'))}
           </span>
           {progress?.overall && <span className="font-display font-bold text-h5 tabular-nums">{Math.round(progress.overall.percent)}%</span>}
         </div>
         <ProgressBar percent={progress?.overall?.percent} indeterminate={!progress?.overall} />
-        <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.72rem] text-ink-secondary dark:text-night-muted">
+        <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-label text-ink-secondary dark:text-night-muted">
           {waiting ? (
             <span>{batchText(waiting, t)}</span>
           ) : progress?.etaSec != null ? (
@@ -94,7 +96,7 @@ export default function ProgressPanel({ progress, stages, fallback }: {
           {progress?.lastActivityAt && <span>{t('manage.wikiAi.progress.lastActivity', { ago: ago(progress.lastActivityAt, now, t) })}</span>}
           <span>{t('manage.wikiAi.progress.elapsed', { time: elapsed(fallback.startedAt, now) })}</span>
           {(fallback.tokensIn != null || fallback.tokensOut != null) && (
-            <span>{tokens(fallback.tokensIn ?? 0)} → {tokens(fallback.tokensOut ?? 0)} tokens</span>
+            <span>{t('manage.wikiAi.progress.tokensInOut', { in: tokens(fallback.tokensIn ?? 0), out: tokens(fallback.tokensOut ?? 0) })}</span>
           )}
           {fallback.costUsd != null && <span>{usd(fallback.costUsd)}</span>}
         </p>
@@ -109,9 +111,9 @@ export default function ProgressPanel({ progress, stages, fallback }: {
           const pct = p && p.total ? ((p.done ?? 0) / p.total) * 100 : status === 'done' ? 100 : status === 'running' || status === 'waiting_batch' ? null : 0
           return (
             <li key={st} className={`flex flex-col gap-1 px-2.5 py-2 rounded-sm border ${STATUS_STYLE[status] ?? STATUS_STYLE.pending}`}>
-              <span className="font-mono text-label uppercase tracking-widest truncate">{t(`manage.wikiAi.progress.stages.${st}`, { defaultValue: st })}</span>
-              <span className="font-body text-[0.72rem] text-ink-secondary dark:text-night-muted">
-                {t(`manage.wikiAi.progress.status.${status}`, { defaultValue: status })}
+              <span className="font-mono text-label uppercase tracking-widest truncate">{t(`manage.wikiAi.progress.stages.${st}`, { defaultValue: t('manage.wikiAi.stages.other') })}</span>
+              <span className="font-body text-label text-ink-secondary dark:text-night-muted">
+                {t(`manage.wikiAi.progress.status.${status}`, { defaultValue: t('manage.wikiAi.status.other') })}
                 {p?.total ? ` · ${p.done ?? 0}/${p.total}` : ''}
                 {p?.failed ? ` · ${t('manage.wikiAi.progress.failedN', { n: p.failed })}` : ''}
               </span>
@@ -128,10 +130,10 @@ export default function ProgressPanel({ progress, stages, fallback }: {
   )
 }
 
-function batchText(s: StageProgress, t: (k: string, o?: Record<string, unknown>) => string): string {
+function batchText(s: StageProgress, t: TFunction): string {
   const rc = s.batch?.requestCounts
   const st = (s.batch?.doStatus ?? '').toLowerCase()
   if (/in_progress|processing/.test(st) && rc?.total) return t('manage.wikiAi.progress.batchProcessing', { done: rc.completed ?? 0, total: rc.total })
   if (/queued|validating/.test(st) || !st) return t('manage.wikiAi.progress.batchQueued')
-  return t('manage.wikiAi.progress.batchStatus', { status: s.batch?.doStatus })
+  return t('manage.wikiAi.progress.batchStatus', { status: statusLabel(s.batch?.doStatus, t) })
 }

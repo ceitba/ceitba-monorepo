@@ -53,14 +53,15 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "List users with optional q/organization filter, sort, and pagination (STAFF only)")
+    @Operation(summary = "List users with optional q/organization/staff filter, sort, and pagination (STAFF only)")
     public PageResponse<UserResponse> getAllUsers(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String organization,
+            @RequestParam(defaultValue = "false") boolean staff,
             @RequestParam(defaultValue = "newest") String sort,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit) {
-        var result = userService.findPaged(q, organization, sort, page, limit);
+        var result = userService.findPaged(q, organization, staff, sort, page, limit);
         return new PageResponse<>(
             result.getContent(),
             PageResponse.Meta.of(result)

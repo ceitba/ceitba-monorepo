@@ -33,6 +33,9 @@ public class AccountDeletionRepository {
     public void deleteSocialData(UUID userId) {
         exec("DELETE FROM public.user_follows WHERE user_id = :u", userId);
         exec("DELETE FROM public.user_organizations WHERE user_id = :u", userId);
+        exec("DELETE FROM public.event_rsvps WHERE user_id = :u", userId);
+        exec("DELETE FROM public.org_mail_optouts WHERE user_id = :u", userId);
+        exec("DELETE FROM public.org_announcement_deliveries WHERE user_id = :u", userId);
     }
 
     public void deleteSchedulesAndShares(UUID userId) {
@@ -153,6 +156,14 @@ public class AccountDeletionRepository {
     public void deleteCapabilityGrants(UUID userId) {
         exec("""
             DELETE FROM public.capability_user_grants
+            WHERE email = (SELECT lower(u.email) FROM public."user" u WHERE u.id = :u)
+            """, userId);
+    }
+
+    // Pending org invites of the user's email: same reason as capability grants.
+    public void deleteOrgInvites(UUID userId) {
+        exec("""
+            DELETE FROM public.org_invites
             WHERE email = (SELECT lower(u.email) FROM public."user" u WHERE u.id = :u)
             """, userId);
     }

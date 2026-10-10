@@ -24,7 +24,7 @@ export default function HeroSection() {
           </span>
           <h1
             id="hero-heading"
-            className="font-display text-h1 lg:text-display font-extrabold text-primary mt-2 mb-4 tracking-tight"
+            className="font-display text-h2 sm:text-h1 lg:text-display font-extrabold text-primary mt-2 mb-4 tracking-tight"
           >
             {t('hero.title')}
           </h1>

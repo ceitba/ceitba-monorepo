@@ -1,21 +1,27 @@
 import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from './Modal'
+import Button from './ui/Button'
 
 export interface ConfirmDialogProps {
   title: ReactNode
   body: ReactNode
+  // Name the consequence: "Sí, eliminar", "Enviar a 1.240 personas".
   confirmLabel: string
   cancelLabel?: string
   // Red confirm button for destructive actions (default); primary otherwise.
   danger?: boolean
   busy?: boolean
+  // Shown inside the dialog when the action failed, so the user can retry
+  // without starting over.
+  error?: ReactNode
   onConfirm: () => void
   onCancel: () => void
 }
 
-// Reusable confirmation dialog for destructive /manage actions. Cancel gets
-// initial focus so Enter/Space never confirms by accident.
+// The site's single confirmation pattern. Only for actions that can't be
+// undone (deleting, sending, revoking): reversible changes don't ask.
+// Cancel gets initial focus so Enter/Space never confirms by accident.
 export default function ConfirmDialog({
   title,
   body,
@@ -23,6 +29,7 @@ export default function ConfirmDialog({
   cancelLabel,
   danger = true,
   busy = false,
+  error,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -37,29 +44,19 @@ export default function ConfirmDialog({
       initialFocusRef={cancelRef}
       footer={
         <>
-          <button
-            ref={cancelRef}
-            type="button"
-            disabled={busy}
-            onClick={onCancel}
-            className="px-3 py-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted disabled:opacity-50"
-          >
-            {cancelLabel ?? t('manage.cancel')}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onConfirm}
-            className={`px-3 py-1.5 rounded-sm text-white font-mono text-label uppercase tracking-widest disabled:opacity-50 ${
-              danger ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary-600'
-            }`}
-          >
-            {busy ? '…' : confirmLabel}
-          </button>
+          <Button ref={cancelRef} variant="ghost" disabled={busy} onClick={onCancel}>
+            {cancelLabel ?? t('ui.cancel')}
+          </Button>
+          <Button variant={danger ? 'danger' : 'primary'} loading={busy} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
         </>
       }
     >
-      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{body}</p>
+      <div className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{body}</div>
+      {error && (
+        <p role="alert" className="font-body text-body-sm text-red-700 dark:text-red-300">{error}</p>
+      )}
     </Modal>
   )
 }

@@ -30,7 +30,7 @@ import java.util.function.Predicate;
 //     can check whether SMTP is back. Any successful send clears it.
 //     (EmailSendException TRANSPORT; a TRANSIENT error is a 4.x.x reply
 //     scoped to one delivery and does not pause the account.)
-//   - Defense in depth: digest and test emails to an address outside the
+//   - Defense in depth: digest, test and org emails to an address outside the
 //     allowed domains (digest.allowed-domains) are refused here, whatever the
 //     caller checked (EmailSendException RECIPIENT, nothing sent or logged).
 // One process sends at a time per account (single API instance): the quota
@@ -131,7 +131,8 @@ public class MailSendService implements EmailSender {
     // exhausted rolling window, and the transport backoff. What background
     // senders check before touching SMTP.
     private static boolean guarded(String kind) {
-        return OutgoingEmail.KIND_DIGEST.equals(kind) || OutgoingEmail.KIND_TEST.equals(kind);
+        return OutgoingEmail.KIND_DIGEST.equals(kind) || OutgoingEmail.KIND_TEST.equals(kind)
+            || OutgoingEmail.KIND_ORG.equals(kind);
     }
 
     public Optional<Instant> readyAt() {

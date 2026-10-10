@@ -1,10 +1,17 @@
 package org.ceitba.api.web.news;
 
 import jakarta.validation.Valid;
+import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.news.FollowService;
+import org.ceitba.api.service.media.MediaUploadService;
+import org.ceitba.api.service.news.OrgAnalyticsService;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.service.news.OrganizationService;
+import org.ceitba.api.web.auth.CurrentUser;
+import org.ceitba.api.web.media.dto.SignUploadRequest;
+import org.ceitba.api.web.media.dto.SignUploadResponse;
 import org.ceitba.api.web.news.dto.FollowerResponse;
 import org.ceitba.api.web.news.dto.OrganizationPatchRequest;
 import org.ceitba.api.web.news.dto.OrganizationRequest;
@@ -19,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -31,13 +39,22 @@ public class OrganizationController {
     private final OrganizationService service;
     private final UserFollowRepository followRepo;
     private final FollowService followService;
+    private final OrganizationMembershipService memberships;
+    private final MediaUploadService uploads;
+    private final OrgAnalyticsService orgAnalytics;
 
     public OrganizationController(OrganizationService service,
                                    UserFollowRepository followRepo,
-                                   FollowService followService) {
+                                   FollowService followService,
+                                   OrganizationMembershipService memberships,
+                                   MediaUploadService uploads,
+                                   OrgAnalyticsService orgAnalytics) {
         this.service = service;
         this.followRepo = followRepo;
         this.followService = followService;
+        this.memberships = memberships;
+        this.uploads = uploads;
+        this.orgAnalytics = orgAnalytics;
     }
 
     @GetMapping
@@ -48,7 +65,8 @@ public class OrganizationController {
 
     @GetMapping("/{slug}")
     public OrganizationResponse get(@PathVariable String slug) {
-        return toResponse(service.findBySlug(slug));
+        var org = service.findBySlug(slug);
+        return OrganizationResponse.from(org, followRepo.countByOrganization(slug), memberships.board(slug));
     }
 
     @PostMapping
@@ -60,6 +78,9 @@ public class OrganizationController {
         org.setColor(req.color());
         org.setLogoUrl(req.logoUrl());
         org.setBackgroundUrl(req.backgroundUrl());
+        var profile = new OrganizationService.ProfileFields(req.instagram(), req.linkedinUrl(), req.websiteUrl(),
+            req.contactEmail(), req.recruitingOpen(), req.recruitingUrl(), req.recruitingText());
+        service.applyProfile(org, profile);
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(toResponse(service.create(org)));
     }
@@ -75,7 +96,9 @@ public class OrganizationController {
         patch.setColor(req.color());
         patch.setLogoUrl(req.logoUrl());
         patch.setBackgroundUrl(req.backgroundUrl());
-        return toResponse(service.update(slug, patch));
+        var profile = new OrganizationService.ProfileFields(req.instagram(), req.linkedinUrl(), req.websiteUrl(),
+            req.contactEmail(), req.recruitingOpen(), req.recruitingUrl(), req.recruitingText());
+        return toResponse(service.update(slug, patch, profile));
     }
 
     @DeleteMapping("/{slug}")
@@ -96,6 +119,25 @@ public class OrganizationController {
             "data",  followers,
             "count", (long) followers.size()
         );
+    }
+
+    // Presigned upload of an org image (logo, background, article or event
+    // cover) by any member: jpeg/png/webp up to 5 MB, under orgs/{slug}/,
+    // rate-limited per user (rate-limit.user-rules.org-images).
+    @PostMapping("/{slug}/media/sign-upload")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#slug, authentication)")
+    public SignUploadResponse signUpload(@PathVariable String slug, @CurrentUser User user,
+                                         @RequestBody @Valid SignUploadRequest req) {
+        service.findBySlug(slug);
+        return uploads.signOrgImage(slug, user.getId(), req);
+    }
+
+    // Stats for the org's members (docs/ORGANIZATIONS.md), last `days` days.
+    @GetMapping("/{slug}/analytics")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canWriteForOrg(#slug, authentication)")
+    public OrgAnalyticsService.OrgAnalytics analytics(@PathVariable String slug,
+                                                      @RequestParam(defaultValue = "30") int days) {
+        return orgAnalytics.summary(slug, days);
     }
 
     private OrganizationResponse toResponse(Organization org) {

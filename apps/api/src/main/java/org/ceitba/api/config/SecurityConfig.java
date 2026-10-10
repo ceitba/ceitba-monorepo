@@ -50,6 +50,7 @@ import java.util.List;
 //                  POST /v1/auth/review-login  (store review account; 404 unless configured)
 //                  GET /v1/app/config
 //                  POST /v1/digests/unsubscribe  (HMAC-signed token, docs/WEEKLY-DIGEST.md)
+//                  POST /v1/org-mail/unsubscribe (HMAC-signed token, docs/ORGANIZATIONS.md)
 //                  GET/POST /v1/digests/correction-vote  (HMAC-signed, expiring token)
 //                  GET/HEAD /v1/mail/o/*, /v1/mail/c/*/*  (digest open pixel / click redirects)
 //                  POST /v1/auth/dev-login  (only with the dev profile AND AUTH_DEV_LOGIN_ENABLED=true)
@@ -187,6 +188,7 @@ public class SecurityConfig {
                 // Weekly digest one-click unsubscribe (signed token; also the
                 // RFC 8058 List-Unsubscribe-Post target mail clients call).
                 .requestMatchers(HttpMethod.POST, "/v1/digests/unsubscribe").permitAll()
+                .requestMatchers(HttpMethod.POST, "/v1/org-mail/unsubscribe").permitAll()
                 // "¿Es así?" correction votes from the digest (signed per-reader token).
                 .requestMatchers(HttpMethod.GET, "/v1/digests/correction-vote").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/digests/correction-vote").permitAll()

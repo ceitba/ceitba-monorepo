@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { buttonClass } from '../../components/ui'
 
 export default function HomeJoinCTA() {
   const { t } = useTranslation()
@@ -35,7 +36,7 @@ export default function HomeJoinCTA() {
             <div className="flex flex-wrap gap-3 mt-6">
               <a
                 href="mailto:ceitba@itba.edu.ar"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-card bg-primary text-white dark:bg-primary-300 dark:text-night-navy font-mono text-label uppercase tracking-widest font-bold hover:opacity-90 transition-opacity duration-150"
+                className={buttonClass({ variant: 'primary' })}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -47,7 +48,7 @@ export default function HomeJoinCTA() {
                 href="https://instagram.com/ceitba"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-card border border-primary text-primary dark:text-primary-300 dark:border-primary-300 font-mono text-label uppercase tracking-widest font-bold hover:bg-primary hover:text-white dark:hover:bg-primary-300 dark:hover:text-night-navy transition-colors duration-150"
+                className={buttonClass({ variant: 'outline' })}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />

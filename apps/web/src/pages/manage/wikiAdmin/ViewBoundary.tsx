@@ -16,7 +16,7 @@ export default class ViewBoundary extends Component<{ children: ReactNode }, { e
 
   render() {
     if (this.state.error) {
-      return <ViewBoundaryFallback error={this.state.error} onRetry={() => this.setState((s) => ({ error: null, attempt: s.attempt + 1 }))} />
+      return <ViewBoundaryFallback onRetry={() => this.setState((s) => ({ error: null, attempt: s.attempt + 1 }))} />
     }
     // Remount the subtree on retry so it refetches.
     return <div key={this.state.attempt}>{this.props.children}</div>

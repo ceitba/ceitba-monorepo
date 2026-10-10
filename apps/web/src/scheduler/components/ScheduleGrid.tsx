@@ -2,6 +2,7 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { ScheduleSlot, TimeBlock } from "../types/scheduler"
 import { useCorrections } from "../context/correctionsContext"
+import { commissionLabel } from "../services/scheduler"
 
 interface ScheduleGridProps {
   slots: ScheduleSlot[]
@@ -14,6 +15,8 @@ interface GroupedSlot {
   subject: string
   subject_id: string
   commission: string
+  // The commission plus its interchangeable alternatives, for display.
+  label: string
   rooms: Array<{ classroom: string; building: string }>
   timeFrom: string
   timeTo: string
@@ -70,6 +73,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
         subject: slot.subject,
         subject_id: slot.subject_id,
         commission: slot.commission,
+        label: commissionLabel(slot),
         timeFrom: slot.timeFrom,
         timeTo: slot.timeTo,
         rooms: [{ classroom: slot.classroom, building: slot.building }],
@@ -101,20 +105,22 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
     return colorClass
   }
 
+  // Class blocks use the pastel subject colors in both themes, so their
+  // text stays ink (no dark: variant).
   const renderBlock = (slot: GroupedSlot) => {
     const content = (
       <>
-        <div className="font-body font-semibold text-[#1c1c1e] text-center truncate sm:overflow-visible sm:whitespace-normal mb-1">
+        <div className="font-body font-semibold text-ink-primary text-center truncate sm:overflow-visible sm:whitespace-normal mb-1">
           {slot.subject}
         </div>
-        <div className="space-y-0.5 text-[#374151] text-center text-[9px] lg:text-[11px]">
-          <div>{t('courses.commissionAbbr')} {slot.commission}</div>
+        <div className="space-y-0.5 text-ink-primary/80 text-center text-[11px]">
+          <div>{t('courses.commissionAbbr')} {slot.label}</div>
           <div>{formatRooms(slot.rooms)}</div>
           <div>{slot.timeFrom.slice(0, 5)} - {slot.timeTo.slice(0, 5)}</div>
         </div>
       </>
     )
-    const layout = "w-full h-full justify-center flex flex-col gap-0.5 text-[10px] lg:text-xs"
+    const layout = "w-full h-full justify-center flex flex-col gap-0.5 text-[11px] lg:text-xs"
     if (!corrections?.findCommission(slot.subject_id, slot.commission)) {
       return <div className={layout}>{content}</div>
     }
@@ -122,7 +128,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
       <button
         type="button"
         onClick={() => corrections.openClassDetail(slot.subject_id, slot.commission)}
-        aria-label={t('corrections.viewDetailAria', { subject: slot.subject, commission: slot.commission })}
+        aria-label={t('corrections.viewDetailAria', { subject: slot.subject, commission: slot.label })}
         className={`${layout} items-stretch rounded-sm hover:ring-2 hover:ring-primary/40`}
       >
         {content}
@@ -246,7 +252,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
                             style={{ top: `${labelTop - top}px`, height: '48px' }}
                           >
                             {block.label && (
-                              <div className="font-body font-semibold text-ink-primary dark:text-night-text text-center break-words text-[10px] lg:text-xs pt-2">
+                              <div className="font-body font-semibold text-ink-primary dark:text-night-text text-center break-words text-[11px] lg:text-xs pt-2">
                                 {block.label}
                               </div>
                             )}

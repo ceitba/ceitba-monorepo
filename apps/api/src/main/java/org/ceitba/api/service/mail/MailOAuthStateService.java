@@ -17,8 +17,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 // Signed, short-lived OAuth `state` of the sender-account connect flow; binds
-// the staff user who started it.
-//   state = b64url(userId|expiresAtEpochSec|nonce) + "." + b64url(HMAC-SHA256)
+// the user who started it and, for an organization's account, the org.
+//   state = b64url(userId|expiresAtEpochSec|nonce[|orgSlug]) + "." + b64url(HMAC-SHA256)
 // The key is the JWT secret under its own domain prefix, so this can never be
 // confused with a login state or a session JWT.
 @Service
@@ -41,25 +41,37 @@ public class MailOAuthStateService {
         this.clock = clock;
     }
 
+    // userId and, for an organization's sender account, its slug (null = the CEITBA account).
+    public record State(UUID userId, String orgSlug) {}
+
     public String issue(UUID staffUserId) {
+        return issue(staffUserId, null);
+    }
+
+    public String issue(UUID userId, String orgSlug) {
         byte[] n = new byte[12];
         random.nextBytes(n);
-        String payload = staffUserId + "|" + clock.instant().plus(TTL).getEpochSecond() + "|" + B64.encodeToString(n);
+        String payload = userId + "|" + clock.instant().plus(TTL).getEpochSecond() + "|" + B64.encodeToString(n)
+            + (orgSlug == null ? "" : "|" + orgSlug);
         return B64.encodeToString(payload.getBytes(StandardCharsets.UTF_8)) + "." + B64.encodeToString(sign(payload));
     }
 
-    // The staff user bound to `state` when it is authentic and unexpired.
+    // The user bound to `state` when it is authentic and unexpired.
     public Optional<UUID> verify(String state) {
+        return verifyState(state).map(State::userId);
+    }
+
+    public Optional<State> verifyState(String state) {
         if (state == null) return Optional.empty();
         int dot = state.indexOf('.');
         if (dot <= 0 || dot == state.length() - 1) return Optional.empty();
         try {
             String payload = new String(B64D.decode(state.substring(0, dot)), StandardCharsets.UTF_8);
             if (!MessageDigest.isEqual(B64D.decode(state.substring(dot + 1)), sign(payload))) return Optional.empty();
-            String[] parts = payload.split("\\|", 3);
-            if (parts.length != 3) return Optional.empty();
+            String[] parts = payload.split("\\|", 4);
+            if (parts.length < 3) return Optional.empty();
             if (clock.instant().getEpochSecond() > Long.parseLong(parts[1])) return Optional.empty();
-            return Optional.of(UUID.fromString(parts[0]));
+            return Optional.of(new State(UUID.fromString(parts[0]), parts.length == 4 ? parts[3] : null));
         } catch (IllegalArgumentException e) {
             return Optional.empty();
         }

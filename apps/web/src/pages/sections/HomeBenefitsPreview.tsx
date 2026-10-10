@@ -1,39 +1,12 @@
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useBenefits } from '../../hooks/useContent'
-import LoadError from '../../components/LoadError'
+import SeeAllButton from '../../components/SeeAllButton'
+import { ErrorState, SkeletonCards } from '../../components/ui'
 import { benefitCategoryName } from '../../utils/benefits'
+import BenefitIcon from './BenefitIcon'
 
-const ICONS: Record<string, React.ReactNode> = {
-  deportes: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  ),
-  membresias: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-      <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" />
-    </svg>
-  ),
-  eventos: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  ),
-  academico: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  ),
-  representacion: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-}
-
-export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void }) {
+export default function HomeBenefitsPreview() {
   const { t, i18n } = useTranslation()
   const lang: 'es' | 'en' = i18n.language === 'en' ? 'en' : 'es'
   const { data, loading, error, reload } = useBenefits()
@@ -60,44 +33,27 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
               {t('home.benefits.subtitle')}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onSeeAll}
-            className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold hover:gap-2.5 transition-all duration-150 self-start sm:self-auto"
-          >
-            {t('home.benefits.seeAll')}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
+          <SeeAllButton to="/benefits" label={t('home.benefits.seeAll')} />
         </div>
 
         {error && !loading ? (
-          <LoadError onRetry={() => void reload()} />
+          <ErrorState onRetry={() => void reload()} />
+        ) : loading ? (
+          <SkeletonCards count={5} cardClassName="h-40" />
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading
-            ? Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-40 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface skeleton"
-                />
-              ))
-            : categories.map((cat, i) => (
-                <button
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+          {categories.map((cat) => (
+                <Link
+                  to="/benefits"
                   key={cat.slug}
-                  type="button"
-                  onClick={onSeeAll}
-                  className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface hover:border-primary hover:-translate-y-0.5 transition-all duration-200 text-left animate-slide-up"
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="group flex flex-col gap-3 p-5 rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 text-left"
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className="w-10 h-10 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
                       style={{ backgroundColor: `var(${cat.colorVar})` }}
                     >
-                      {ICONS[cat.slug]}
+                      <BenefitIcon slug={cat.slug} size={22} />
                     </span>
                     <h3 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text group-hover:text-primary transition-colors duration-150">
                       {benefitCategoryName(cat.slug, cat, lang, t)}
@@ -106,7 +62,7 @@ export default function HomeBenefitsPreview({ onSeeAll }: { onSeeAll: () => void
                   <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted line-clamp-3">
                     {t(`benefits.${cat.slug}.description`, { defaultValue: '' })}
                   </p>
-                </button>
+                </Link>
               ))
           }
         </div>

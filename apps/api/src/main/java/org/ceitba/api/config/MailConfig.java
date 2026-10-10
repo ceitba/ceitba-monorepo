@@ -9,6 +9,8 @@ import org.ceitba.api.service.mail.MailSenderAccountService;
 import org.ceitba.api.service.mail.LoggingEmailSender;
 import org.ceitba.api.service.mail.MailLedger;
 import org.ceitba.api.service.mail.MailSendService;
+import org.ceitba.api.service.mail.OrgMailSenders;
+import org.ceitba.api.service.mail.UnavailableEmailSender;
 import org.ceitba.api.service.mail.SmtpEmailSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +36,7 @@ import java.time.Clock;
 // the quota.
 @Configuration
 @EnableConfigurationProperties({EmailProperties.class, DigestProperties.class, DigestPersonalProperties.class,
-    MailOAuthProperties.class, MailRetentionProperties.class})
+    MailOAuthProperties.class, MailRetentionProperties.class, OrgMailProperties.class})
 public class MailConfig {
 
     private static final Logger log = LoggerFactory.getLogger(MailConfig.class);
@@ -49,6 +51,27 @@ public class MailConfig {
         log.info("Mail: sending account {}, {} recipients per rolling 24h", account, limit);
         return new MailSendService(transport(props, javaMailSender, senderAccounts, googleMail, clock), ledger, account, limit,
             props.backoffInitial(), props.backoffMax(), props.quotaPause(), clock, digest::isAllowedRecipient);
+    }
+
+    // Organizations' Gmail accounts (OrgMailSenders), on the same transport
+    // switches as the CEITBA sender.
+    @Bean
+    public OrgMailSenders orgMailSenders(EmailProperties props, OrgMailProperties orgMail, DigestProperties digest,
+                                         MailLedger ledger, Clock clock, MailSenderAccountService senderAccounts,
+                                         GoogleMailOAuthClient googleMail) {
+        var tokens = new MailAccessTokenCache(googleMail::refresh, clock);
+        return new OrgMailSenders(from -> orgTransport(props, senderAccounts, tokens, from), ledger, props, orgMail,
+            clock, digest::isAllowedRecipient);
+    }
+
+    static EmailSender orgTransport(EmailProperties props, MailSenderAccountService senderAccounts,
+                                    MailAccessTokenCache tokens, String from) {
+        if (!props.enabled()) return props.logSends() ? new LoggingEmailSender() : new DisabledEmailSender();
+        if (EmailProperties.TRANSPORT_LOG.equals(props.transport())) return new LoggingEmailSender();
+        if (EmailProperties.TRANSPORT_GMAIL_API.equals(props.transport())) {
+            return new GmailApiEmailSender(senderAccounts, tokens, from);
+        }
+        return new UnavailableEmailSender("Organizations send through the Gmail API only (MAIL_TRANSPORT=gmail-api)");
     }
 
     private static EmailSender transport(EmailProperties props, ObjectProvider<JavaMailSender> javaMailSender,

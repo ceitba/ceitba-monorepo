@@ -1,107 +1,215 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import ManageStaffSection from './manage/ManageStaffSection'
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { SkeletonTable } from '../components/ui'
 import ManageBenefitsSection from './manage/ManageBenefitsSection'
 import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
 import ManageCapabilitiesSection from './manage/ManageCapabilitiesSection'
-// Apuntes moderation pulls in the Drive/wiki APIs and badges: load on demand.
-const ManageDriveSection = lazy(() => import('./manage/ManageDriveSection'))
-const ManageWikiAiSection = lazy(() => import('./manage/ManageWikiAiSection'))
-// Watches evals/runs seen RUNNING and toasts when they finish, from any tab.
-const JobWatcher = lazy(() => import('./manage/wikiAdmin/JobWatcher'))
+import ManageReviewSection from './manage/review/ManageReviewSection'
+import { ReviewQueueContext, useQueue } from './manage/review/queueContext'
+import { useReviewQueue, type QueueKind } from './manage/review/useReviewQueue'
+import { HOME_AREA, LEGACY_TABS, RAIL, areaPath, isArea, type Area } from './manage/areas'
 import { activeJobs, unseenCount } from './manage/wikiAdmin/jobWatchStore'
 import { useJobWatch } from './manage/wikiAdmin/useJobWatch'
 import type { OrganizationSummary } from '../api/admin'
 
-type Tab = 'staff' | 'benefits' | 'users' | 'organizations' | 'corrections' | 'capabilities' | 'drive' | 'wikiAi'
+// Apuntes moderation pulls in the Drive/wiki APIs and badges: load on demand.
+const ManageDriveSection = lazy(() => import('./manage/ManageDriveSection'))
+const ManageWikiAiSection = lazy(() => import('./manage/ManageWikiAiSection'))
+// The newsletter's staff side (review queue, digest, analytics) ships with
+// the newsletter chunk.
+const StaffNewsletterApp = lazy(() => import('../newsletter/StaffNewsletterApp'))
+// Watches evals/runs seen RUNNING and toasts when they finish, from any area.
+const JobWatcher = lazy(() => import('./manage/wikiAdmin/JobWatcher'))
 
+// Which queue count each rail item shows (areas without a queue show none).
+const AREA_QUEUE: Partial<Record<Area, QueueKind | 'total'>> = {
+  review: 'total',
+  newsletter: 'articles',
+  corrections: 'corrections',
+  apuntes: 'apuntes',
+  wiki: 'wiki',
+}
+
+// Administración: one place for everything staff run, grouped by job in a
+// side rail (the one exception to "one navigation bar per page", see
+// docs/EDITORIAL_UI_SYSTEM.md §6). Its home, Para revisar, lists everything
+// waiting on a decision. The area lives in the URL (/manage/:area).
 export default function ManagePage() {
-  const { t } = useTranslation()
-  const [tab, setTab] = useState<Tab>('staff')
-  // Org to open the Users tab in "adding members" mode for (set by
-  // "Agregar miembros" after creating an org). Picking a tab from the nav
-  // clears it.
-  const [addingTo, setAddingTo] = useState<OrganizationSummary | undefined>(undefined)
+  const queue = useReviewQueue()
+  const navigate = useNavigate()
   const watch = useJobWatch()
-  const wikiUnseen = unseenCount()
   const watching = activeJobs().length > 0 || watch.toasts.length > 0
 
-  function selectTab(next: Tab) {
-    setAddingTo(undefined)
-    setTab(next)
-  }
+  return (
+    <ReviewQueueContext.Provider value={queue}>
+      <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+        <Routes>
+          <Route index element={<LegacyRedirect />} />
+          <Route path=":area/*" element={<AreaLayout />} />
+        </Routes>
+        {watching && (
+          <Suspense fallback={null}>
+            <JobWatcher onOpen={() => navigate(areaPath('wiki'))} />
+          </Suspense>
+        )}
+      </main>
+    </ReviewQueueContext.Provider>
+  )
+}
 
-  function addMembers(org: OrganizationSummary) {
-    setAddingTo(org)
-    setTab('users')
-  }
+// /manage → Para revisar; the old /manage?tab=drive links → their area.
+function LegacyRedirect() {
+  const [params] = useSearchParams()
+  const legacy = LEGACY_TABS[params.get('tab') ?? '']
+  return <Navigate to={areaPath(legacy ?? HOME_AREA)} replace />
+}
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'staff',    label: t('manage.tabs.staff') },
-    { id: 'benefits', label: t('manage.tabs.benefits') },
-    { id: 'users',    label: t('manage.tabs.users') },
-    { id: 'organizations', label: t('manage.tabs.organizations') },
-    { id: 'corrections', label: t('manage.tabs.corrections') },
-    { id: 'capabilities', label: t('manage.tabs.capabilities') },
-    { id: 'drive', label: t('manage.tabs.drive') },
-    { id: 'wikiAi', label: t('manage.tabs.wikiAi') },
-  ]
+function AreaLayout() {
+  const { area } = useParams()
+  const { t } = useTranslation()
+  const { pathname } = useLocation()
+  const { revalidate } = useQueue()
+  // Safety net for decisions the areas don't report (e.g. made in another
+  // tab): moving around Administración refreshes a queue that's gone stale.
+  useEffect(() => { revalidate() }, [pathname, revalidate])
+  if (!isArea(area)) return <Navigate to={areaPath(HOME_AREA)} replace />
+  const home = area === HOME_AREA
 
   return (
-    <main className="container-content py-section-mobile lg:py-section">
-      <header className="mb-6">
-        <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">
-          {t('manage.title')}
-        </h1>
-        <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">
-          {t('manage.subtitle')}
-        </p>
-      </header>
-
-      <nav className="flex gap-2 overflow-x-auto border-b border-border dark:border-night-border mb-6" aria-label={t('manage.tabsAria')}>
-        {tabs.map((it) => (
-          <button
-            key={it.id}
-            type="button"
-            onClick={() => selectTab(it.id)}
-            aria-current={tab === it.id ? 'page' : undefined}
-            className={`flex-shrink-0 whitespace-nowrap px-4 py-2 font-mono text-label uppercase tracking-widest transition-colors duration-150 -mb-px border-b-2 ${
-              tab === it.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-ink-secondary dark:text-night-muted hover:text-primary'
-            }`}
+    <div className="flex flex-wrap items-start gap-x-10 gap-y-8">
+      {/* On phones the rail is the home's list of areas, under the queue;
+          inside an area it gives way to a link back. */}
+      <div className={`${home ? 'order-2 md:order-none' : 'hidden md:block'} w-full md:w-auto md:flex-[1_1_220px] md:max-w-[250px]`}>
+        <Rail current={area} />
+      </div>
+      <div className="flex-[999_1_560px] min-w-0">
+        {!home && (
+          <Link
+            to={areaPath(HOME_AREA)}
+            className="md:hidden inline-flex items-center gap-1.5 min-h-[44px] mb-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary"
           >
-            {it.label}
-            {it.id === 'wikiAi' && wikiUnseen > 0 && (
-              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-accent align-middle" aria-label={t('manage.tabs.wikiAiUnseen', { count: wikiUnseen })} />
-            )}
-          </button>
-        ))}
-      </nav>
+            <span aria-hidden="true">←</span>
+            {t('manage.rail.back')}
+          </Link>
+        )}
+        <AreaContent area={area} />
+      </div>
+    </div>
+  )
+}
 
-      {tab === 'staff'    && <ManageStaffSection />}
-      {tab === 'benefits' && <ManageBenefitsSection />}
-      {tab === 'users'    && <ManageUsersSection initialAddingTo={addingTo} />}
-      {tab === 'organizations' && <ManageOrganizationsSection onAddMembers={addMembers} />}
-      {tab === 'corrections' && <ManageCorrectionsSection />}
-      {tab === 'capabilities' && <ManageCapabilitiesSection />}
-      {tab === 'drive' && (
-        <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
-          <ManageDriveSection />
+function Rail({ current }: { current: Area }) {
+  const { t } = useTranslation()
+  const { counts } = useQueue()
+  const wikiUnseen = unseenCount()
+
+  return (
+    <nav aria-label={t('manage.rail.aria')} className="flex flex-col gap-6">
+      <div className="hidden md:block">
+        <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.rail.eyebrow')}</p>
+        <p className="font-display font-bold text-h4 text-ink-primary dark:text-night-text">CEITBA</p>
+      </div>
+      <p className="md:hidden font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('manage.rail.areas')}</p>
+      {RAIL.map(({ group, areas }) => (
+        <div key={group ?? 'home'} className={`flex flex-col gap-0.5 ${group == null ? 'hidden md:flex' : ''}`}>
+          {group && (
+            <p className="hidden md:block mb-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+              {t(`manage.rail.groups.${group}`)}
+            </p>
+          )}
+          {areas.map((a) => {
+            const kind = AREA_QUEUE[a]
+            const count = kind ? counts[kind] : 0
+            return (
+              <NavLink
+                key={a}
+                to={areaPath(a)}
+                aria-current={a === current ? 'page' : undefined}
+                className={() => [
+                  'flex items-center gap-2 min-h-[44px] px-3 rounded-sm font-body text-body-sm transition-colors duration-150',
+                  a === current
+                    ? 'bg-primary-50 dark:bg-night-raised text-primary dark:text-primary-300 font-bold'
+                    : 'text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised',
+                ].join(' ')}
+              >
+                <span className="flex-1">{t(`manage.areas.${a}.label`)}</span>
+                {a === 'wiki' && wikiUnseen > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-accent" role="img" aria-label={t('manage.tabs.wikiAiUnseen', { count: wikiUnseen })} />
+                )}
+                {count > 0 && (
+                  <span className="min-w-[24px] px-1.5 py-0.5 rounded-sm bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-mono text-label font-bold text-center">
+                    <span className="sr-only">{t('manage.rail.pending', { count })}</span>
+                    <span aria-hidden="true">{count}</span>
+                  </span>
+                )}
+              </NavLink>
+            )
+          })}
+        </div>
+      ))}
+    </nav>
+  )
+}
+
+function AreaContent({ area }: { area: Area }) {
+  const lazyFallback = <SkeletonTable rows={6} cols={4} />
+  const navigate = useNavigate()
+
+  switch (area) {
+    case 'review':
+      return <ManageReviewSection />
+    case 'newsletter':
+      return (
+        <Suspense fallback={lazyFallback}>
+          <StaffNewsletterApp />
         </Suspense>
-      )}
-      {tab === 'wikiAi' && (
-        <Suspense fallback={<p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.loading')}</p>}>
-          <ManageWikiAiSection />
-        </Suspense>
-      )}
-      {watching && (
-        <Suspense fallback={null}>
-          <JobWatcher onOpen={() => selectTab('wikiAi')} />
-        </Suspense>
-      )}
-    </main>
+      )
+    case 'benefits':
+      return <AreaFrame area={area} withSubtitle><ManageBenefitsSection /></AreaFrame>
+    case 'people':
+      return <AreaFrame area={area} withSubtitle><PeopleArea /></AreaFrame>
+    case 'organizations':
+      return (
+        <AreaFrame area={area}>
+          <ManageOrganizationsSection
+            onAddMembers={(org: OrganizationSummary) => navigate(areaPath('people'), { state: { addingTo: org } })}
+          />
+        </AreaFrame>
+      )
+    case 'corrections':
+      return <AreaFrame area={area}><ManageCorrectionsSection /></AreaFrame>
+    case 'apuntes':
+      return <AreaFrame area={area}><Suspense fallback={lazyFallback}><ManageDriveSection /></Suspense></AreaFrame>
+    case 'wiki':
+      return <AreaFrame area={area}><Suspense fallback={lazyFallback}><ManageWikiAiSection /></Suspense></AreaFrame>
+    case 'capabilities':
+      return <AreaFrame area={area}><ManageCapabilitiesSection /></AreaFrame>
+  }
+}
+
+// "Agregar miembros" in Organizaciones opens Personas in "adding to <org>"
+// mode; the org travels in the navigation state.
+function PeopleArea() {
+  const { state } = useLocation() as { state: { addingTo?: OrganizationSummary } | null }
+  return <ManageUsersSection initialAddingTo={state?.addingTo} />
+}
+
+// The area's title. Sections that already open with their own intro don't
+// get a subtitle on top of it.
+function AreaFrame({ area, withSubtitle = false, children }: { area: Area; withSubtitle?: boolean; children: ReactNode }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{t(`manage.areas.${area}.label`)}</h1>
+        {withSubtitle && (
+          <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1 max-w-2xl">{t(`manage.areas.${area}.subtitle`)}</p>
+        )}
+      </header>
+      {children}
+    </div>
   )
 }

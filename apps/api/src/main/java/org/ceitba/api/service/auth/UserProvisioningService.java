@@ -3,6 +3,7 @@ package org.ceitba.api.service.auth;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.news.FollowService;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,12 +28,15 @@ public class UserProvisioningService {
     // isn't loaded (or the ceitba org isn't seeded) we silently skip the
     // auto-follow — login must never fail because of newsletter wiring.
     private final FollowService followService;
+    private final OrganizationMembershipService memberships;
 
     @Autowired
     public UserProvisioningService(UserRepository userRepository,
-                                    FollowService followService) {
+                                    FollowService followService,
+                                    OrganizationMembershipService memberships) {
         this.userRepository = userRepository;
         this.followService = followService;
+        this.memberships = memberships;
     }
 
     // REQUIRES_NEW so this commits even if the calling controller fails;
@@ -48,6 +52,8 @@ public class UserProvisioningService {
                     u.setAvatarUrl(avatarUrl);
                     var saved = userRepository.save(u);
                     autoFollowCeitba(saved.getId());
+                    // Pending org invites of this email (docs/ORGANIZATIONS.md).
+                    memberships.claimInvites(saved.getId(), email);
                     return saved;
                 } catch (DataIntegrityViolationException race) {
                     return userRepository.findByEmail(email).orElseThrow(() -> race);

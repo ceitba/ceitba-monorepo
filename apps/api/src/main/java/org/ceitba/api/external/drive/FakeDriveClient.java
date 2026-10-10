@@ -46,7 +46,8 @@ public class FakeDriveClient implements DriveClient {
     private final Set<String> sharedWithBot = ConcurrentHashMap.newKeySet();
     private final Set<String> exportTooLarge = ConcurrentHashMap.newKeySet();
     private final Set<String> downloadBlocked = ConcurrentHashMap.newKeySet();
-    private final AtomicLong clock = new AtomicLong(Instant.parse("2026-01-01T00:00:00Z").toEpochMilli());
+    private static final long EPOCH = Instant.parse("2026-01-01T00:00:00Z").toEpochMilli();
+    private final AtomicLong clock = new AtomicLong(EPOCH);
     private final Map<String, Integer> fetches = new ConcurrentHashMap<>();
 
     private static final class Node {
@@ -73,6 +74,7 @@ public class FakeDriveClient implements DriveClient {
         exportTooLarge.clear();
         downloadBlocked.clear();
         fetches.clear();
+        clock.set(EPOCH);
     }
 
     // How many exports + downloads hit this item (tests assert "no refetch").

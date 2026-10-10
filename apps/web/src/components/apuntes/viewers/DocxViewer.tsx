@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { sanitizeElement, sanitizeGeneratedCss, sanitizeInlineStyles } from '../../../utils/sanitize'
+import { Skeleton, SkeletonText } from '../../ui'
 
 // Page chrome for docx-preview's output. It lives inside the shadow root
 // (global CSS can't reach it): pages keep their paper look (white, the
@@ -77,18 +78,25 @@ export default function DocxViewer({ blob, onError }: { blob: Blob; onError: (e:
   }, [blob])
 
   return (
-    <div className="w-full overflow-x-auto rounded-card border border-border dark:border-night-border bg-[#f3f3f1] dark:bg-night-raised">
+    <div className="w-full overflow-x-auto rounded-card border border-border dark:border-night-border bg-page-bg dark:bg-night-raised">
       {!ready && <ViewerLoading label={t('apuntes.viewer.rendering')} />}
       <div ref={hostRef} hidden={!ready} />
     </div>
   )
 }
 
+// Page-shaped placeholder while a viewer downloads or renders the file; the
+// caption says which of the two (both can take a few seconds).
 export function ViewerLoading({ label }: { label: string }) {
   return (
-    <div aria-busy="true" className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="w-full max-w-2xl h-[50vh] rounded-card skeleton" aria-hidden="true" />
-      <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{label}</p>
+    <div role="status" aria-busy="true" className="flex flex-col items-center gap-3 px-4 py-8">
+      <div className="w-full max-w-2xl flex flex-col gap-3 p-6 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface" aria-hidden="true">
+        <Skeleton className="h-6 w-2/3" />
+        <SkeletonText lines={8} />
+        <Skeleton className="h-32 w-full" />
+        <SkeletonText lines={4} />
+      </div>
+      <p className="font-body text-label text-ink-secondary dark:text-night-muted">{label}</p>
     </div>
   )
 }

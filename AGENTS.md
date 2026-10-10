@@ -55,14 +55,15 @@ version updates against `dev`.
 ## Cross-app rules
 
 - **Specs and docs are written in English** unless a doc says otherwise. Only UI copy is bilingual (es/en).
-- **UI work**: read `docs/EDITORIAL_UI_SYSTEM.md` first. It is binding.
+- **UI work**: read `docs/EDITORIAL_UI_SYSTEM.md` first. It is binding. Build UI from the shared kit in
+  `apps/web/src/components/ui` instead of hand-rolling markup, and keep one navigation bar per page (§6 "Navigation
+  depth").
 - **Auth**: the web app authenticates against the API with an **HttpOnly session cookie** (the API-issued JWT);
   JS never reads or writes tokens and every fetch uses `credentials: 'include'`. Details in `apps/web/AGENTS.md`;
   the mobile app uses the token endpoints in `apps/api/docs/AUTH-SETUP.md`.
 - **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/itbanews*` 301s to `/newsletter`,
-  everything else → `/var/www/main` with `try_files … /index.html`. Until the Caddy cutover ships (it must land in a
-  release *after* the merged app is live), `/scheduler*` and `/newsletter*` still serve the old standalone builds
-  from `/var/www/scheduler` and `/var/www/itbanews`. Production build env lives in `.github/spa-apps.json`.
+  everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
+  (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
 - **Secrets** never enter the repo: `.env`/`.env.local` stay local, `.env.example` gets placeholders only.
   `.gitleaks.toml` is the scanner config; rotate a leaked secret rather than allowlisting it.
 

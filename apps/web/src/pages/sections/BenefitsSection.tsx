@@ -2,41 +2,12 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBenefitCards, useBenefits } from '../../hooks/useContent'
 import type { BenefitCard, BenefitEntry } from '../../api/content'
-import LoadError from '../../components/LoadError'
+import { Button, EmptyState, ErrorState, SkeletonCards, ToggleGroup } from '../../components/ui'
 import { benefitCategoryName } from '../../utils/benefits'
+import BenefitIcon from './BenefitIcon'
 import { safeHttpUrl, safeLinkUrl } from '../../utils/url'
 
 const ALL = '__all__'
-
-const ICONS: Record<string, React.ReactNode> = {
-  deportes: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  ),
-  membresias: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-      <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" />
-    </svg>
-  ),
-  eventos: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  ),
-  academico: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  ),
-  representacion: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-}
 
 export default function BenefitsSection() {
   const { t, i18n } = useTranslation()
@@ -64,53 +35,48 @@ export default function BenefitsSection() {
     <section className="py-section-mobile lg:py-section" aria-labelledby="benefits-heading">
       <div className="container-content">
         <div className="mb-8">
-          <h2 id="benefits-heading" className="font-display font-bold text-h3 text-ink-primary dark:text-night-text mb-2">
+          <h1 id="benefits-heading" className="font-display font-bold text-h2 text-ink-primary dark:text-night-text mb-2">
             {t('benefits.sectionTitle')}
-          </h2>
+          </h1>
           <p className="font-body text-body text-ink-secondary dark:text-night-muted">
             {t('benefits.sectionSubtitle')}
           </p>
         </div>
 
         {categoryList.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-8" role="group" aria-label={t('benefits.filterLabel')}>
-            <Chip
-              label={t('benefits.all')}
-              active={active === ALL}
-              onClick={() => setActive(ALL)}
-            />
-            {categoryList.map((c) => (
-              <Chip
-                key={c.slug}
-                label={benefitCategoryName(c.slug, c, lang, t)}
-                colorVar={c.colorVar}
-                icon={ICONS[c.slug]}
-                active={active === c.slug}
-                onClick={() => setActive(c.slug)}
-              />
-            ))}
-          </div>
+          <ToggleGroup
+            className="mb-8"
+            label={t('benefits.filterLabel')}
+            value={active}
+            onChange={setActive}
+            options={[
+              { value: ALL, label: t('benefits.all') },
+              ...categoryList.map((c) => ({
+                value: c.slug,
+                label: <CategoryLabel label={benefitCategoryName(c.slug, c, lang, t)} icon={<BenefitIcon slug={c.slug} />} colorVar={c.colorVar} active={active === c.slug} />,
+              })),
+            ]}
+          />
         )}
 
         {failed && !loading ? (
-          <LoadError onRetry={retry} />
+          <ErrorState onRetry={retry} />
         ) : loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-72 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface skeleton" />
-            ))}
-          </div>
+          <SkeletonCards count={6} cardClassName="h-72" />
         ) : visibleCards.length === 0 ? (
-          <EmptyState message={t('benefits.empty')} />
+          <EmptyState
+            title={t(active === ALL ? 'benefits.emptyTitle' : 'benefits.emptyFilteredTitle')}
+            body={t(active === ALL ? 'benefits.empty' : 'benefits.emptyFiltered')}
+            action={active !== ALL ? <Button variant="outline" onClick={() => setActive(ALL)}>{t('benefits.showAll')}</Button> : undefined}
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleCards.map((card, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+            {visibleCards.map((card) => (
               <BenefitCardView
                 key={card.id}
                 card={card}
                 category={categoryList.find((c) => c.slug === card.categorySlug)}
                 lang={lang}
-                animationDelay={i * 60}
               />
             ))}
           </div>
@@ -120,30 +86,20 @@ export default function BenefitsSection() {
   )
 }
 
-function Chip({
+// Category filter label: the category's colour dot + icon, then its name.
+function CategoryLabel({
   label,
   active,
   colorVar,
   icon,
-  onClick,
 }: {
   label: string
   active: boolean
   colorVar?: string
   icon?: React.ReactNode
-  onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-mono text-label uppercase tracking-widest transition-colors duration-150 ${
-        active
-          ? 'bg-primary dark:bg-primary-300 text-white dark:text-night-navy border border-primary'
-          : 'border border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary hover:text-primary'
-      }`}
-    >
+    <span className="inline-flex items-center gap-2">
       {icon && (
         <span
           className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${active ? '' : 'text-primary-800'}`}
@@ -154,7 +110,7 @@ function Chip({
         </span>
       )}
       {label}
-    </button>
+    </span>
   )
 }
 
@@ -162,12 +118,10 @@ function BenefitCardView({
   card,
   category,
   lang,
-  animationDelay,
 }: {
   card: BenefitCard
   category?: BenefitEntry
   lang: 'es' | 'en'
-  animationDelay: number
 }) {
   const { t } = useTranslation()
   const title = lang === 'es' ? card.titleEs : card.titleEn
@@ -180,9 +134,7 @@ function BenefitCardView({
 
   return (
     <article
-      className="flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden animate-slide-up"
-      style={{ animationDelay: `${animationDelay}ms` }}
-    >
+      className="flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
       {imageUrl && (
         <div className="w-full aspect-[16/9] bg-page-bg dark:bg-night-bg overflow-hidden">
           <img
@@ -200,7 +152,7 @@ function BenefitCardView({
             className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-label uppercase tracking-widest text-primary-800"
             style={category ? { backgroundColor: `var(${category.colorVar})` } : undefined}
           >
-            {ICONS[card.categorySlug]}
+            <BenefitIcon slug={card.categorySlug} />
             {categoryLabel}
           </span>
           {card.price && (
@@ -236,7 +188,7 @@ function BenefitCardView({
             href={ctaUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-auto inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold self-start"
+            className="mt-auto min-h-[44px] inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest text-primary font-bold self-start"
           >
             {ctaLabel || t('benefits.learnMore')}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -247,22 +199,5 @@ function BenefitCardView({
         )}
       </div>
     </article>
-  )
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-12 px-6 rounded-card border border-dashed border-border dark:border-night-border text-center">
-      <div className="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2.5" />
-        </svg>
-      </div>
-      <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-        {message}
-      </p>
-    </div>
   )
 }

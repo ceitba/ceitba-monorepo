@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCachedSession } from '../../store/authStore'
+import { getCachedSession } from '@/store/authStore'
 import { getEventById, submitEventSuggestion, resubmitEventSuggestion, type StoredEvent } from '../../store/eventStore'
 import { fetchOrganizations } from '../../api/organizations'
 import { todayISO } from '../../utils/dates'
@@ -108,8 +108,8 @@ export default function ContributorSuggestEventPage() {
   if (done) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3 animate-fade-in">
-        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900 flex items-center justify-center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-emerald-600 dark:text-emerald-400" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <p className="font-display text-h5 font-bold text-ink-primary">
           {isEdit ? 'Sugerencia re-enviada' : 'Sugerencia enviada'}
@@ -134,13 +134,13 @@ export default function ContributorSuggestEventPage() {
         </h1>
       </div>
 
-      <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3">
+      <div className="rounded-card border border-amber-200 bg-amber-50 dark:bg-amber-950 px-4 py-3">
         <p className="font-body text-body-sm text-amber-800">
           Tu sugerencia quedará pendiente de aprobación. El staff puede aceptarla, proponer cambios o rechazarla.
         </p>
       </div>
 
-      <div className="bg-white rounded-card border border-border shadow-card p-6 flex flex-col gap-5">
+      <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card p-6 flex flex-col gap-5">
         <Field label="Título" error={errors.title} required>
           <input
             type="text"
@@ -207,7 +207,7 @@ export default function ContributorSuggestEventPage() {
         </button>
         <Link
           to={newsletterPath('/contribute')}
-          className="min-h-[44px] px-6 inline-flex items-center bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+          className="min-h-[44px] px-6 inline-flex items-center bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-secondary font-body font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
         >
           Cancelar
         </Link>
@@ -233,7 +233,7 @@ function Field({ label, hint, error, required, children }: FieldProps) {
           {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
         </label>
         {hint && <span className="font-body text-body-sm text-ink-secondary">{hint}</span>}
-        {error && <span className="font-body text-body-sm text-red-600">{error}</span>}
+        {error && <span className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</span>}
       </div>
       {children}
     </div>
@@ -242,10 +242,10 @@ function Field({ label, hint, error, required, children }: FieldProps) {
 
 function inputClass(error: string | null | undefined) {
   return [
-    'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white',
+    'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary bg-white dark:bg-night-surface',
     'focus:outline-none focus:ring-1 transition-colors duration-150',
     error
       ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-border focus:border-primary focus:ring-primary/30',
+      : 'border-border dark:border-night-border focus:border-primary focus:ring-primary/30 dark:focus:ring-primary-300/30',
   ].join(' ')
 }

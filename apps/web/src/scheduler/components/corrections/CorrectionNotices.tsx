@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/hooks/useAuth'
 import { listMyCorrections, markCorrectionSeen, type MyCorrection } from '../../api/corrections'
+import { CloseIcon, IconButton } from '@/components/ui'
 
 // The "applied" notices are fetched once per page load and signed-in
 // user; effects (re)subscribe to the same request.
@@ -71,14 +72,9 @@ export default function CorrectionNotices() {
             </p>
             <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('corrections.noticeBody')}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => dismiss(n.id)}
-            aria-label={t('corrections.noticeDismiss')}
-            className="text-ink-secondary dark:text-night-muted hover:text-ink-primary"
-          >
-            ×
-          </button>
+          <IconButton size="sm" onClick={() => dismiss(n.id)} aria-label={t('corrections.noticeDismiss')}>
+            <CloseIcon size={16} />
+          </IconButton>
         </div>
       ))}
     </div>

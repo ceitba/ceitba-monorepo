@@ -1,6 +1,5 @@
 package org.ceitba.api.web.auth;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.CeitbaBranch;
 import org.ceitba.api.domain.CeitbaStaff;
 import org.ceitba.api.domain.CeitbaStaffRole;
@@ -10,12 +9,10 @@ import org.ceitba.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -31,17 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 // Allowlist enforcement is tested at the HTTP layer in SubjectBookmarkAuthIT
 // and UserEndpointsIT (via the AuthorizationManager in SecurityConfig).
 @SpringBootTest
-@TestPropertySource(properties = "auth.allowed-domains=itba.edu.ar")
+// Not used here; declared so this class shares the common IT context.
+@AutoConfigureMockMvc
 class StaffRoleDetectionIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired StaffAwareJwtAuthenticationConverter converter;
     @Autowired UserRepository userRepository;

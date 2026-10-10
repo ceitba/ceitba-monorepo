@@ -241,20 +241,21 @@
                 </executions>
                 <configuration>
                     <!-- One JVM by default: CI's private-repo runner has 2 vCPUs
-                         and 8 GB, and 3 parallel forks made the whole test run slower
-                         (8:11 -> 10:34 min) because every class boots its own
-                         Spring context. On a bigger machine run e.g.
-                         -Dit.forkCount=3; forks are safe (each JVM starts its
-                         own SharedPostgres, containers use mapped ports and
-                         per-class networks). -->
+                         and 8 GB. Before ITs shared Spring contexts, 3 parallel
+                         forks made the run slower (8:11 -> 10:34 min). On a
+                         bigger machine try e.g. -Dit.forkCount=3; forks are
+                         safe (each JVM starts its own SharedPostgres,
+                         containers use mapped ports and per-class networks). -->
                     <forkCount>${it.forkCount}</forkCount>
                     <reuseForks>true</reuseForks>
                     <systemPropertyVariables>
                         <api.version>1.44</api.version>
-                        <!-- Each IT class has its own database, so its context
-                             is never reused; close old ones promptly instead of
-                             keeping up to 32 alive (heap, pooled connections to
-                             SharedPostgres, background jobs). -->
+                        <!-- ITs with the same configuration share one context
+                             (and database, reset between classes); the
+                             SpringContextClassOrderer runs them back to back,
+                             so a context is done once the next group starts.
+                             Keep the cache small: every live context holds a
+                             connection pool and its executors. -->
                         <spring.test.context.cache.maxSize>2</spring.test.context.cache.maxSize>
                     </systemPropertyVariables>
                     <environmentVariables>

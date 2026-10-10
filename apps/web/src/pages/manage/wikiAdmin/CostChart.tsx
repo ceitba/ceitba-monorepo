@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CostRow } from '../../../api/kbAdmin'
+import { Button } from '@/components/ui'
 import { weeklyStacks } from './costStacks'
 import { usd } from './format'
 
@@ -49,9 +50,9 @@ export default function CostChart({ rows, order, labelOf }: { rows: CostRow[]; o
           </li>
         ))}
         <li className="ml-auto">
-          <button type="button" onClick={() => setTable((v) => !v)} className="font-mono text-label uppercase tracking-widest hover:text-primary">
+          <Button variant="ghost" size="sm" onClick={() => setTable((v) => !v)}>
             {table ? t('manage.wikiAi.chart.showChart') : t('manage.wikiAi.chart.showTable')}
-          </button>
+          </Button>
         </li>
       </ul>
       {table ? (

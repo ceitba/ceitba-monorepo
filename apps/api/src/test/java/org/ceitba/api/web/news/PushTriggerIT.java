@@ -1,6 +1,6 @@
 package org.ceitba.api.web.news;
 
-import org.ceitba.api.support.SharedPostgres;
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.service.push.FakePushGateway;
@@ -12,6 +12,7 @@ import org.ceitba.api.service.push.PushNotificationService;
 import org.ceitba.api.service.push.events.PushToOrgFollowers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,9 +22,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,28 +43,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(FakePushGatewayConfig.class)
-@TestPropertySource(properties = {
-    "auth.allowed-domains=itba.edu.ar",
-    "itba.api.use-fake=true"
-})
 class PushTriggerIT {
 
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
-
     private static final Duration WAIT = Duration.ofSeconds(10);
-    private static final Duration QUIET = Duration.ofMillis(700);
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired UserRepository users;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
     @Autowired PushNotificationService pushService;
     @Autowired ApplicationEventPublisher events;
     @Autowired TransactionTemplate tx;
@@ -120,8 +105,9 @@ class PushTriggerIT {
         await().atMost(WAIT).until(() -> gateway.calls().size() >= n);
     }
 
-    private void assertNoPushFor(Duration quiet) {
-        await().during(quiet).atMost(quiet.plusSeconds(2)).until(() -> gateway.calls().isEmpty());
+    private void assertNoPush() {
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).isEmpty();
     }
 
     @Test
@@ -146,7 +132,7 @@ class PushTriggerIT {
     @Test
     void aDraftDoesNotPushUntilItIsPublishedAndEditsDoNotRepush() throws Exception {
         createArticle("art-2", "it", "draft");
-        assertNoPushFor(QUIET);
+        assertNoPush();
 
         mvc.perform(patch("/v1/articles/art-2").with(staff())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -180,6 +166,18 @@ class PushTriggerIT {
             OffsetDateTime.class)).isNotNull();
     }
 
+    // Each fan-out's reach is logged for the organization's stats (V57).
+    @Test
+    void publishingLogsThePushReachForTheOrg() throws Exception {
+        createArticle("art-5", "it", "published");
+        awaitCalls(1);
+        await().atMost(WAIT).until(() -> jdbc.queryForObject(
+            "SELECT count(*) FROM public.push_log WHERE org_slug = 'it' AND kind = 'article' AND ref_id = 'art-5'",
+            Integer.class) == 1);
+        assertThat(jdbc.queryForObject("SELECT targeted FROM public.push_log WHERE ref_id = 'art-5'", Integer.class))
+            .isEqualTo(2);
+    }
+
     // Runs the exact backfill statement of V27 (the test mirror V4.20 is
     // DDL-only): published articles count as announced, also legacy rows
     // whose nullable created_at is NULL; drafts stay unannounced.
@@ -211,7 +209,7 @@ class PushTriggerIT {
     @Test
     void anArticleWithoutOrganizationDoesNotPush() throws Exception {
         createArticle("art-3", null, "published");
-        assertNoPushFor(QUIET);
+        assertNoPush();
     }
 
     @Test
@@ -240,7 +238,7 @@ class PushTriggerIT {
                      "organization":"missing-org","authors":["IT"],"status":"published"}
                     """))
             .andExpect(status().isNotFound());
-        assertNoPushFor(QUIET);
+        assertNoPush();
     }
 
     @Test
@@ -251,7 +249,7 @@ class PushTriggerIT {
             events.publishEvent(trigger);
             status.setRollbackOnly();
         });
-        assertNoPushFor(QUIET);
+        assertNoPush();
 
         tx.executeWithoutResult(status -> events.publishEvent(trigger));
         awaitCalls(1);
@@ -271,6 +269,7 @@ class PushTriggerIT {
     }
 
     private void assertNoMoreCallsThan(int n) {
-        await().during(QUIET).atMost(QUIET.plusSeconds(2)).until(() -> gateway.calls().size() == n);
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).hasSize(n);
     }
 }

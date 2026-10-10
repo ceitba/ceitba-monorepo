@@ -4,17 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { fetchFile, fileAssetsBaseUrl, fileDownloadUrl, type FileDetail } from '../../api/drive'
 import { ApiError } from '../../api/client'
-import { apuntesErrorMessage, authorName, formatDate, formatSize, isCommunity } from '../../utils/apuntes'
+import { authorName, formatDate, formatSize, isCommunity } from '../../utils/apuntes'
+import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
 import CommunityBadge from '../../components/apuntes/CommunityBadge'
-import EmptyState from '../../components/apuntes/EmptyState'
+import { Alert, Button, EmptyState, ErrorState, LoadingRegion, Skeleton, buttonClass } from '../../components/ui'
 import FileViewer from '../../components/apuntes/viewers/FileViewer'
 import { sanitizeHtml } from '../../utils/sanitize'
 import { safeHttpUrl, trustedImageSrc } from '../../utils/url'
 import KindIcon from '../../components/apuntes/KindIcon'
 import YearBadge from '../../components/apuntes/YearBadge'
 import ReportDialog from '../../components/apuntes/ReportDialog'
-import Notice from '../../components/Notice'
-import { BTN_OUTLINE, BTN_PRIMARY } from '../../components/apuntes/buttons'
 
 // Doc HTML is sanitized server-side; sanitize again (defence in depth) and
 // point embedded images at the API: they come as root-relative
@@ -57,7 +56,7 @@ export default function FilePage() {
         if (reqRef.current !== id) return
         setFile(null)
         if (e instanceof ApiError && (e.status === 404 || e.status === 403)) setNotFound(true)
-        else setError(apuntesErrorMessage(e, t))
+        else setError(apuntesErrorCopy(e, t))
       })
       .finally(() => { if (reqRef.current === id) setLoading(false) })
   }, [fileId, tick, t])
@@ -69,11 +68,11 @@ export default function FilePage() {
 
   if (notFound) {
     return (
-      <main id="main-content" className="container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
         <EmptyState
           title={t('apuntes.file.notFoundTitle')}
           body={t('apuntes.file.notFoundBody')}
-          action={<Link to="/apuntes" className={BTN_PRIMARY}>{t('apuntes.backToSearch')}</Link>}
+          action={<Link to="/apuntes" className={buttonClass()}>{t('apuntes.backToSearch')}</Link>}
         />
       </main>
     )
@@ -103,20 +102,15 @@ export default function FilePage() {
       </nav>
 
       {error && (
-        <div role="alert" className="flex flex-col items-start gap-3 py-6">
-          <p className="font-body text-body-sm text-red-600 dark:text-red-400">{error}</p>
-          <button type="button" onClick={() => setTick((n) => n + 1)} className="font-mono text-label uppercase tracking-widest text-primary hover:underline">
-            {t('errors.retry')}
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={() => setTick((n) => n + 1)} backTo="/apuntes" backLabel={t('apuntes.backToSearch')} />
       )}
 
       {loading && !file && !error && (
-        <div aria-busy="true" aria-hidden="true" className="flex flex-col gap-4">
-          <div className="h-10 w-2/3 rounded-sm skeleton" />
-          <div className="h-4 w-48 rounded-sm skeleton" />
-          <div className="h-[60vh] rounded-card skeleton" />
-        </div>
+        <LoadingRegion className="flex flex-col gap-4">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-[60vh] !rounded-card" />
+        </LoadingRegion>
       )}
 
       {file && (
@@ -125,7 +119,7 @@ export default function FilePage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                 <KindIcon kind={file.kind} size={16} />
-                <span>{t(`apuntes.kind.${file.kind}`, { defaultValue: file.kind })}</span>
+                <span>{t(`apuntes.kind.${file.kind}`, { defaultValue: t('apuntes.kind.OTHER') })}</span>
                 <YearBadge year={file.academicYear} source={file.academicYearSource} className="normal-case tracking-normal" />
                 {file.path && <span className="normal-case tracking-normal truncate">· {file.path}</span>}
               </div>
@@ -140,33 +134,28 @@ export default function FilePage() {
             </div>
             <div className="flex flex-wrap gap-2 flex-shrink-0">
               {file.hasPdf && !file.exportBlocked && (
-                <a href={fileDownloadUrl(file.id, 'pdf', 'attachment')} className={BTN_OUTLINE}>
+                <a href={fileDownloadUrl(file.id, 'pdf', 'attachment')} className={buttonClass({ variant: 'outline' })}>
                   {t('apuntes.file.downloadPdf')}
                 </a>
               )}
               {file.hasOriginal && !file.exportBlocked && (
-                <a href={fileDownloadUrl(file.id, 'original', 'attachment')} className={BTN_OUTLINE}>
+                <a href={fileDownloadUrl(file.id, 'original', 'attachment')} className={buttonClass({ variant: 'outline' })}>
                   {t('apuntes.file.downloadOriginal')}
                 </a>
               )}
               {safeHttpUrl(file.driveUrl) && (
-                <a href={safeHttpUrl(file.driveUrl)!} target="_blank" rel="noopener noreferrer" className={BTN_OUTLINE}>
+                <a href={safeHttpUrl(file.driveUrl)!} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: 'outline' })}>
                   {t('apuntes.viewer.openInDrive')}
                 </a>
               )}
-              <button
-                type="button"
-                onClick={() => setReporting(true)}
-                disabled={file.reportedByMe}
-                title={file.reportedByMe ? t('apuntes.file.alreadyReported') : undefined}
-                className="inline-flex items-center min-h-[40px] px-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 disabled:hover:text-ink-secondary"
-              >
+              {/* Once reported, the label itself says why it's disabled. */}
+              <Button variant="ghost" onClick={() => setReporting(true)} disabled={file.reportedByMe}>
                 {file.reportedByMe ? t('apuntes.file.alreadyReported') : t('apuntes.file.report')}
-              </button>
+              </Button>
             </div>
           </header>
 
-          {notice && <Notice className="mb-6" onDismiss={() => setNotice(null)}>{notice}</Notice>}
+          {notice && <Alert tone="success" className="mb-6" onDismiss={() => setNotice(null)}>{notice}</Alert>}
 
           <FileViewer file={file} html={html} />
         </article>

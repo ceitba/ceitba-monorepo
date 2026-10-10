@@ -3,12 +3,9 @@ import {
   fetchBenefitCards,
   fetchBenefits,
   fetchDepartments,
-  fetchStaffMembers,
-  fetchStaffYears,
   type BenefitCard,
   type BenefitEntry,
   type DepartmentEntry,
-  type StaffMember,
 } from '../api/content'
 
 interface AsyncState<T> {
@@ -62,12 +59,4 @@ export function useBenefits(): FetchResult<BenefitEntry[]> {
 
 export function useBenefitCards(): FetchResult<BenefitCard[]> {
   return useFetch(fetchBenefitCards)
-}
-
-export function useStaffYears(): FetchResult<number[]> {
-  return useFetch(fetchStaffYears)
-}
-
-export function useStaffMembers(year: number | null): FetchResult<StaffMember[]> {
-  return useFetch(() => (year == null ? Promise.resolve([]) : fetchStaffMembers(year)), year)
 }

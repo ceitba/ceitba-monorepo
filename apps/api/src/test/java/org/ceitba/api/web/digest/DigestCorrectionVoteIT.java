@@ -33,15 +33,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -70,9 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // counts toward the 3-confirm rule; replay, change, expired, invalid, closed).
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import({FakePushGatewayConfig.class, DigestCorrectionVoteIT.FixedClock.class})
-@TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar"})
 class DigestCorrectionVoteIT {
 
     // Monday 2026-10-05, 12:00 ART: the second semester is running.
@@ -85,16 +77,6 @@ class DigestCorrectionVoteIT {
         Clock fixedClock() {
             return Clock.fixed(NOW, ZoneId.of("America/Argentina/Buenos_Aires"));
         }
-    }
-
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
     static final String SUBJECT = "93.41";
@@ -305,7 +287,7 @@ class DigestCorrectionVoteIT {
             .doesNotContain("vista=wiki");   // no apuntes capability
 
         jdbc.execute("TRUNCATE public.digest_issues CASCADE");
-        assertThat(preview(READER)).contains("Armá tu horario en el combinador", "https://ceitba.org.ar/scheduler/")
+        assertThat(preview(READER)).contains("Armá tu horario en la app", "https://ceitba.org.ar/app/horario")
             .doesNotContain("Alguien reportó");
     }
 }

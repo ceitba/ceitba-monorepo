@@ -52,6 +52,32 @@ public class NewsEvent {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @Column(name = "cover_image")
+    private String coverImage;
+
+    @Column(name = "online_url")
+    private String onlineUrl;
+
+    // SIGNUP_* (V56 CHECK): how people sign up.
+    @Column(name = "signup_mode", nullable = false)
+    private String signupMode = SIGNUP_NONE;
+
+    // The external form, for SIGNUP_EXTERNAL.
+    @Column(name = "signup_url")
+    private String signupUrl;
+
+    // Max RSVPs for SIGNUP_RSVP; null = no limit.
+    @Column
+    private Integer capacity;
+
+    // Set once the day-before reminder went out (EventReminderService).
+    @Column(name = "reminder_sent_at")
+    private OffsetDateTime reminderSentAt;
+
+    public static final String SIGNUP_NONE = "none";
+    public static final String SIGNUP_EXTERNAL = "external";
+    public static final String SIGNUP_RSVP = "rsvp";
+
     protected NewsEvent() {}
 
     public NewsEvent(String id, String title, LocalDate eventDate,
@@ -77,6 +103,12 @@ public class NewsEvent {
     public String getDescription()     { return description; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public User getCreatedBy()         { return createdBy; }
+    public String getCoverImage()      { return coverImage; }
+    public String getOnlineUrl()       { return onlineUrl; }
+    public String getSignupMode()      { return signupMode; }
+    public String getSignupUrl()       { return signupUrl; }
+    public Integer getCapacity()       { return capacity; }
+    public OffsetDateTime getReminderSentAt() { return reminderSentAt; }
 
     public void setTitle(String title)           { this.title = title; }
     public void setEventDate(LocalDate eventDate){ this.eventDate = eventDate; }
@@ -87,4 +119,10 @@ public class NewsEvent {
     public void setOrganization(Organization o)  { this.organization = o; }
     public void setDescription(String description){ this.description = description; }
     public void setCreatedBy(User createdBy)     { this.createdBy = createdBy; }
+    public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
+    public void setOnlineUrl(String onlineUrl)   { this.onlineUrl = onlineUrl; }
+    public void setSignupMode(String signupMode) { this.signupMode = signupMode; }
+    public void setSignupUrl(String signupUrl)   { this.signupUrl = signupUrl; }
+    public void setCapacity(Integer capacity)    { this.capacity = capacity; }
+    public void setReminderSentAt(OffsetDateTime at) { this.reminderSentAt = at; }
 }

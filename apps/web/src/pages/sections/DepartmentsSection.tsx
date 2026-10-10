@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useDepartments } from '../../hooks/useContent'
-import LoadError from '../../components/LoadError'
+import { ErrorState, SkeletonCards } from '../../components/ui'
 
 const ICONS: Record<string, React.ReactNode> = {
   it: (
@@ -61,18 +61,15 @@ export default function DepartmentsSection() {
           </p>
         </div>
         {error && !loading ? (
-          <LoadError onRetry={() => void reload()} />
+          <ErrorState onRetry={() => void reload()} />
+        ) : loading ? (
+          <SkeletonCards count={6} cardClassName="h-36" />
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-36 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface skeleton" />
-              ))
-            : departments.map((dept, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+          {departments.map((dept) => (
                 <article
                   key={dept.slug}
-                  className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
-                  style={{ animationDelay: `${i * 60}ms` }}
+                  className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200"
                 >
                   <div
                     className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"

@@ -1,6 +1,5 @@
 package org.ceitba.api.domain;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.news.NewsEvent;
 import org.ceitba.api.external.itba.FakeItbaApiClient;
 import org.ceitba.api.external.itba.SubjectPlanProjection;
@@ -18,8 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.file.Files;
@@ -54,19 +52,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The default zone is switched before the Spring context of this class
  * starts (@BeforeAll runs before the test instance is injected) and restored
  * afterwards, so it does not leak into other ITs in the same JVM.
+ *
+ * <p>The context must also be this class's own: the shared IT context was
+ * started under the CI zone, and one started here must not be reused by
+ * others. The marker property gives it a cache key nobody else has, and
+ * {@code @DirtiesContext} closes it when the class is done.
  */
-@SpringBootTest(properties = "itba.api.use-fake=true")
+@SpringBootTest(properties = "it.context=local-temporal-zone")
 @AutoConfigureMockMvc
+@DirtiesContext
 class LocalTemporalZoneIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     private static TimeZone originalZone;
 

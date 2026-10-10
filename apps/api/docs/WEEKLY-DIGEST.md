@@ -79,7 +79,7 @@ Otherwise, per reader:
 1. **Subjects** of their **primary** saved schedule (`saved_schedules`,
    `is_primary`), if it belongs to the current term. Otherwise (no primary
    schedule, unparsable payload, or a stale one) only a call to action:
-   "Armá tu horario en el combinador" → `DIGEST_SCHEDULER_URL`.
+   "Armá tu horario en la app" → `DIGEST_SCHEDULER_URL`.
 2. **Wiki links**: for each of those subjects with a `PUBLISHED`
    `wiki.kb_page`, a link to CeitbaPage's Apuntes reader,
    `${DIGEST_WIKI_BASE_URL}/<subjectId>?vista=wiki` (the subject's wiki tab;
@@ -427,7 +427,7 @@ Transport matrix:
 | `DIGEST_TICK_INTERVAL` | `PT5M` | Auto-send check and resume of stalled sends |
 | `DIGEST_JOBS_ENABLED` | `true` | Weekly draft + auto-send + worker (tests set `false`) |
 | `DIGEST_WIKI_BASE_URL` | `https://ceitba.org.ar/apuntes` | CeitbaPage Apuntes reader (`/apuntes/:subjectId`, routes in `CeitbaPage/src/App.tsx`) |
-| `DIGEST_SCHEDULER_URL` | `https://ceitba.org.ar/scheduler/` | "Armá tu horario" call to action |
+| `DIGEST_SCHEDULER_URL` | `https://ceitba.org.ar/app/horario` | "Armá tu horario en la app" call to action: opens CEITBApp, or the store / the web combinador (`/app/*` in the web app) |
 | `DIGEST_VOTE_TOKEN_TTL` | `P14D` | Lifetime of the correction vote links |
 | `DIGEST_MAX_WIKI_LINKS` / `DIGEST_MAX_CORRECTIONS` | `5` / `3` | Caps per email (`0` hides that part) |
 

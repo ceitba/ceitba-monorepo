@@ -1,22 +1,31 @@
 package org.ceitba.api.support;
 
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * One Postgres container per test JVM, with a fresh, empty database per IT
- * class.
+ * One Postgres container per test JVM, with a fresh, empty database per
+ * consumer.
  *
  * <p>Starting a container for every IT class cost about 1.5 s each (~100 s per
- * CI run). The server is shared, but each class still gets its own database, so
- * schemas, data and Flyway history never leak between classes. Nothing in the
- * schema is cluster-wide (no roles, tablespaces or extensions), and advisory
- * locks are scoped per database.
+ * CI run). The server is shared, but each consumer gets its own database, so
+ * schemas, data and Flyway history never leak between them. Nothing in the
+ * schema is cluster-wide (no roles or tablespaces; extensions such as pgvector
+ * are created per database by Flyway), and advisory locks are scoped per
+ * database.
  *
- * <p>Usage, in place of a {@code @Container PostgreSQLContainer}:
+ * <p>The image is the one production runs (apps/api/docker-compose.yml):
+ * pgvector for the wiki embeddings (V61).
+ *
+ * <p>{@code @SpringBootTest} classes do not call this: every Spring test
+ * context gets its own database automatically
+ * ({@link ItDatabaseContextCustomizerFactory}). Plain JUnit ITs that drive
+ * Flyway or Hibernate themselves use:
  * <pre>{@code
  * static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
  * }</pre>
@@ -29,10 +38,22 @@ public final class SharedPostgres {
 
     @SuppressWarnings("resource")
     private static final PostgreSQLContainer<?> CONTAINER =
-        new PostgreSQLContainer<>("postgres:16-alpine")
-            // Spring keeps up to 32 test contexts (10 pooled connections each)
-            // open, and they all point at this one server.
-            .withCommand("postgres", "-c", "max_connections=500", "-c", "fsync=off");
+        new PostgreSQLContainer<>(DockerImageName.parse(
+                "pgvector/pgvector:0.8.6-pg16-bookworm@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b")
+                .asCompatibleSubstituteFor("postgres"))
+            // Throwaway data: keep it in RAM and skip every durability step.
+            // Capped so a leak fails loudly instead of eating the runner's RAM;
+            // each context's database is dropped when the context closes.
+            .withTmpFs(Map.of("/var/lib/postgresql/data", "rw,size=2g"))
+            .withCommand("postgres",
+                // A few cached test contexts (10 pooled connections each) plus
+                // the plain-JUnit ITs all point at this one server.
+                "-c", "max_connections=200",
+                "-c", "fsync=off",
+                "-c", "synchronous_commit=off",
+                "-c", "full_page_writes=off",
+                // WAL lives on the tmpfs too; the 1 GB default is wasted RAM.
+                "-c", "max_wal_size=128MB");
 
     static {
         CONTAINER.start();
@@ -53,11 +74,22 @@ public final class SharedPostgres {
         }
         var url = "jdbc:postgresql://" + CONTAINER.getHost() + ":"
             + CONTAINER.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT) + "/" + name;
-        return new Database(url, CONTAINER.getUsername(), CONTAINER.getPassword());
+        return new Database(name, url, CONTAINER.getUsername(), CONTAINER.getPassword());
+    }
+
+    /** Drops a database made by {@link #newDatabase()}, closing any connection still open on it. */
+    public static void dropDatabase(Database database) {
+        try (var c = DriverManager.getConnection(
+                 CONTAINER.getJdbcUrl(), CONTAINER.getUsername(), CONTAINER.getPassword());
+             var s = c.createStatement()) {
+            s.execute("DROP DATABASE IF EXISTS " + database.name() + " WITH (FORCE)");
+        } catch (SQLException e) {
+            throw new IllegalStateException("Could not drop test database " + database.name(), e);
+        }
     }
 
     /** Connection details for one per-class database; mirrors the container getters. */
-    public record Database(String jdbcUrl, String username, String password) {
+    public record Database(String name, String jdbcUrl, String username, String password) {
         public String getJdbcUrl() {
             return jdbcUrl;
         }

@@ -10,9 +10,11 @@ const FOCUSABLE = [
 ].join(',')
 
 const WIDTHS = {
+  sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
   '2xl': 'max-w-2xl',
+  '4xl': 'max-w-4xl',
 } as const
 
 export interface ModalProps {
@@ -28,7 +30,7 @@ export interface ModalProps {
   initialFocusRef?: RefObject<HTMLElement>
 }
 
-// Accessible modal shell shared by the /manage editors and ConfirmDialog:
+// The site's one modal shell (every dialog, in every section, uses it):
 // role=dialog + aria-modal + aria-labelledby, Escape and backdrop dismiss,
 // initial focus, a Tab focus trap, focus restore on close and scroll lock.
 export default function Modal({ title, children, footer, onClose, busy = false, size = 'md', initialFocusRef }: ModalProps) {
@@ -115,7 +117,7 @@ export default function Modal({ title, children, footer, onClose, busy = false, 
             {title}
           </h3>
           {children}
-          {footer && <div className="flex justify-end gap-2 pt-2">{footer}</div>}
+          {footer && <div className="flex flex-wrap justify-end gap-2 pt-2">{footer}</div>}
         </div>
       </div>
     </div>

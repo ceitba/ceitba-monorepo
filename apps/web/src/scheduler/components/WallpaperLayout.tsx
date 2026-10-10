@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScheduleSlot } from '../types/scheduler'
+import { commissionLabel } from '../services/scheduler'
 
 interface WallpaperLayoutProps {
   slots: ScheduleSlot[]
@@ -28,7 +29,7 @@ const timeKey = (s: ScheduleSlot) => `${s.day}|${s.subject_id}|${s.commission}|$
 // position the wrapper offscreen.
 const WallpaperLayout = forwardRef<HTMLDivElement, WallpaperLayoutProps>(
   ({ slots, title, subtitle }, ref) => {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
 
     const byDay: Record<string, DayBlock[]> = {}
     const dedup = new Map<string, DayBlock>()
@@ -38,7 +39,7 @@ const WallpaperLayout = forwardRef<HTMLDivElement, WallpaperLayoutProps>(
       const block: DayBlock = {
         subject: s.subject,
         subject_id: s.subject_id,
-        commission: s.commission,
+        commission: commissionLabel(s),
         classroom: s.classroom,
         building: s.building,
         timeFrom: s.timeFrom.slice(0, 5),
@@ -238,7 +239,7 @@ const WallpaperLayout = forwardRef<HTMLDivElement, WallpaperLayoutProps>(
           borderTop: '1px solid #E5E7EB',
           marginTop: 'auto',
         }}>
-          ceitba.org.ar · {new Date().toLocaleDateString()}
+          ceitba.org.ar · {new Date().toLocaleDateString(i18n.language)}
         </footer>
       </div>
     )

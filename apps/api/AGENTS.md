@@ -51,6 +51,10 @@ schemas, `public` and `wiki`. Never edit a migration that has merged; add a new 
 skill (it also handles the test mirror in `src/test/resources/db/test-migration/`). Do not set
 `hibernate.jdbc.time_zone` (it shifts `LocalTime` columns; `LocalTemporalZoneIT` enforces this).
 
+Postgres runs the `pgvector/pgvector` image (Debian) in compose and in the ITs: the wiki pages' embeddings live in
+`wiki.kb_page_chunk` (`docs/SUBJECT-WIKI.md` "Embeddings"), computed by the self-hosted `ceitba-embeddings` compose
+service (llama.cpp + EmbeddingGemma 2); the vector column is not JPA-mapped, only native queries touch it.
+
 ## Tests
 
 - `*Test` = unit (Surefire), `*IT` = integration (Failsafe, Testcontainers).

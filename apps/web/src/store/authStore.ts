@@ -59,7 +59,7 @@ const RETURN_TO_KEY = 'auth.returnTo'
 
 // OAuth callback routes: /auth/callback, plus the redirect URIs of the old
 // standalone scheduler and newsletter apps (still routed, see App.tsx).
-const CALLBACK_PATHS = ['/auth/', '/scheduler/auth/', '/newsletter/admin/callback', '/newsletter/admin/login']
+const CALLBACK_PATHS = ['/auth/', '/scheduler/auth/', '/newsletter/admin/callback']
 
 // Only in-app paths are valid post-login destinations (no open redirects,
 // no bouncing back into a callback).
@@ -68,10 +68,24 @@ export function isSafeReturnPath(path: unknown): path is string {
     && !path.startsWith('/\\') && !CALLBACK_PATHS.some((p) => path.startsWith(p))
 }
 
+// Pages whose unsaved work lives only in React state (the scheduler's
+// workspace) register a callback that snapshots it. Every sign-in runs them
+// before leaving for Google, including the navbar's, which renders outside
+// those pages. Returns the unregister function (an effect's cleanup).
+const _beforeSignIn = new Set<() => void>()
+
+export function onBeforeSignIn(fn: () => void): () => void {
+  _beforeSignIn.add(fn)
+  return () => { _beforeSignIn.delete(fn) }
+}
+
 // `returnTo` is an in-app path (e.g. "/apuntes", "/scheduler/S?plan=...") to
 // land on after the OAuth round-trip; AuthCallback reads it back with
 // takeReturnTo().
 export function startGoogleSignIn(returnTo?: string): void {
+  for (const fn of _beforeSignIn) {
+    try { fn() } catch (e) { console.error('auth: before sign-in', e) }
+  }
   try {
     if (isSafeReturnPath(returnTo)) sessionStorage.setItem(RETURN_TO_KEY, returnTo)
     else sessionStorage.removeItem(RETURN_TO_KEY)

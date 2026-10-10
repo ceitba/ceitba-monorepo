@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/api/client'
 import type { Commission, CommissionSchedule as Schedule } from '../types/scheduler'
+import { disambiguateCommissions } from '../services/commissionNames'
 
 export interface Subject {
   subject_id: string
@@ -15,6 +16,9 @@ export interface Subject {
   section: string
   year?: number
   semester?: number
+  // True when every commission listed has already ended: the API fell back
+  // to the subject's last term, so it is probably not offered this term.
+  past_term?: boolean
 }
 
 interface SubjectsResponse {
@@ -46,19 +50,13 @@ export async function fetchSubjectsByPlan(plan: string): Promise<Subject[]> {
         subjs.forEach((subject) => {
           if (seen.has(subject.subject_id)) return
           seen.add(subject.subject_id)
-          const seenCommissions = new Set<string>()
-          const uniqueCommissions = (subject.commissions ?? [])
-            .filter((c) => {
-              if (seenCommissions.has(c.name)) return false
-              seenCommissions.add(c.name)
-              return true
-            })
+          const uniqueCommissions = disambiguateCommissions((subject.commissions ?? [])
             .map((commission) => ({
               ...commission,
               schedule: cleanSlots(commission.schedule),
               sga_schedule: commission.sga_schedule ? cleanSlots(commission.sga_schedule) : undefined,
               corrections: (commission.corrections ?? []).map((c) => ({ ...c, schedule: cleanSlots(c.schedule) })),
-            }))
+            })))
           flattened.push({
             ...subject,
             year: parseInt(year),
@@ -95,7 +93,9 @@ export function useSubjects(plan: string | null) {
   // Outcome of the last request, tagged with its plan: until the current
   // plan's request settles we report loading and an empty catalog, so a
   // previous plan's subjects are never shown for the new one.
-  const [state, setState] = useState<{ plan: string; subjects: Subject[]; error: string | null } | null>(null)
+  const [state, setState] = useState<{ plan: string; subjects: Subject[]; failed: boolean } | null>(null)
+  // Bumped by refetch() to run the request again after a failure.
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!plan) return
@@ -103,14 +103,19 @@ export function useSubjects(plan: string | null) {
     // overwrite the current plan's catalog.
     let ignore = false
     fetchSubjectsByPlan(plan)
-      .then((subjects) => { if (!ignore) setState({ plan, subjects, error: null }) })
+      .then((subjects) => { if (!ignore) setState({ plan, subjects, failed: false }) })
       .catch((err) => {
         if (ignore) return
-        const error = err instanceof Error ? err.message : 'An error occurred while fetching subjects'
-        setState({ plan, subjects: [], error })
+        console.error('Could not load subjects', err)
+        setState({ plan, subjects: [], failed: true })
       })
     return () => { ignore = true }
-  }, [plan])
+  }, [plan, attempt])
+
+  const refetch = useCallback(() => {
+    setState(null)
+    setAttempt((n) => n + 1)
+  }, [])
 
   // Replaces one commission in place (e.g. after a schedule correction
   // vote) without refetching the whole plan. `update` must be pure.
@@ -135,7 +140,9 @@ export function useSubjects(plan: string | null) {
   return {
     subjects: current?.subjects ?? NO_SUBJECTS,
     loading: current === null,
-    error: current?.error ?? null,
+    // True when the catalog request failed; the UI shows its own copy.
+    error: current?.failed ?? false,
     updateCommission,
+    refetch,
   }
 }

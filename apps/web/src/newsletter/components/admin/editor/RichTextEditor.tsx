@@ -14,6 +14,7 @@ import EditorToolbar from './EditorToolbar'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, uploadViaSignedUrl } from '../../../api/media'
 import { looksLikeMarkdown } from '../../../utils/articleBody'
 import { ApiError } from '@/api/client'
+import { Alert } from '@/components/ui'
 
 // The fence must be longer than any backtick run inside the code, or a
 // ``` line in the code would end the block early.
@@ -86,7 +87,8 @@ interface RichTextEditorProps {
   // Markdown; only read on mount.
   value?: string | null
   onChange: (markdown: string) => void
-  canUpload: boolean
+  // Endpoint that signs image uploads; null = images by URL only.
+  signPath: string | null
   invalid?: boolean
 }
 
@@ -97,8 +99,10 @@ interface RichTextEditorProps {
 // Pasting keeps formatting: HTML on the clipboard (Claude, Google Docs, Word,
 // web pages) goes through ProseMirror's HTML parser; plain text that looks
 // like Markdown is parsed as Markdown. Images can be pasted, dropped or
-// picked — uploaded when the user may upload (staff), otherwise by URL.
-export default function RichTextEditor({ value, onChange, canUpload, invalid }: RichTextEditorProps) {
+// picked — uploaded when the user may upload (staff, or a member of the
+// article's organization), otherwise by URL.
+export default function RichTextEditor({ value, onChange, signPath, invalid }: RichTextEditorProps) {
+  const canUpload = signPath !== null
   const { t } = useTranslation()
   const [mode, setMode] = useState<'visual' | 'markdown'>('visual')
   const [source, setSource] = useState('')
@@ -121,7 +125,7 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }: 
       for (const file of files) {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) { setUploadError(t('imageUploader.errors.type')); continue }
         if (file.size > MAX_IMAGE_BYTES) { setUploadError(t('imageUploader.errors.size')); continue }
-        const src = await uploadViaSignedUrl(file)
+        const src = await uploadViaSignedUrl(file, signPath ?? undefined)
         // At the cursor as it is now: the user may have kept typing.
         editor.chain().focus().insertContent({ type: 'image', attrs: { src, alt: file.name.replace(/\.[^.]+$/, '') } }).run()
       }
@@ -229,7 +233,7 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }: 
   }
 
   return (
-    <div className={['article-editor-shell rounded-card border bg-white shadow-card', invalid ? 'border-red-400' : 'border-border'].join(' ')}>
+    <div className={['article-editor-shell rounded-card border bg-white dark:bg-night-surface shadow-card', invalid ? 'border-red-400 dark:border-red-500' : 'border-border dark:border-night-border'].join(' ')}>
       <EditorToolbar
         editor={editor}
         mode={mode}
@@ -239,27 +243,26 @@ export default function RichTextEditor({ value, onChange, canUpload, invalid }: 
         onPickImages={(files) => uploadImages(files)}
       />
       {uploadError && (
-        <p role="alert" className="mx-4 mt-3 font-body text-body-sm text-red-600 bg-red-50 px-3 py-2 rounded-sm">{uploadError}</p>
+        <Alert tone="error" className="mx-4 mt-3" onDismiss={() => setUploadError('')}>{uploadError}</Alert>
       )}
       {mode === 'visual' ? (
         <EditorContent editor={editor} className="px-5 sm:px-8 py-6" />
       ) : (
         <div className="px-5 sm:px-8 py-6">
-          <p className="mb-3 font-mono text-label text-ink-secondary">{t('editor.markdownHint')}</p>
+          <p className="mb-3 font-mono text-label text-ink-secondary dark:text-night-muted">{t('editor.markdownHint')}</p>
           <textarea
             value={source}
             onChange={(e) => { setSource(e.target.value); onChangeRef.current(e.target.value) }}
             spellCheck
             aria-label={t('editor.markdownSource')}
-            className="w-full min-h-[28rem] font-mono text-body-sm text-ink-primary bg-transparent focus:outline-none resize-y"
+            className="w-full min-h-[28rem] font-mono text-body-sm text-ink-primary dark:text-night-text bg-transparent focus:outline-none resize-y"
           />
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 px-5 sm:px-8 py-2 border-t border-border">
-        <span className="font-mono text-label text-ink-secondary">
+      <div className="flex items-center gap-3 px-5 sm:px-8 py-2 border-t border-border dark:border-night-border">
+        <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
           {t('editor.words', { count: mode === 'visual' ? counts?.words ?? 0 : (source.trim() ? source.trim().split(/\s+/).length : 0) })}
         </span>
-        <span className="font-mono text-label text-ink-secondary hidden sm:inline">{t('editor.pasteHint')}</span>
       </div>
     </div>
   )

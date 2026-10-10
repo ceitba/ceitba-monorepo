@@ -1,110 +1,6 @@
-/* Newsletter section styles, loaded with its lazy chunk. The shared base,
-   component and dark-mode remaps live in src/index.css. */
-
-/* === Extended dark mode surface & border overrides ===
-   The newsletter pages use plain bg-white / border-border etc. and rely on
-   these remaps for dark mode. Scoped to .newsletter-scope (NewsletterApp) so
-   they don't restyle the rest of the app, which uses dark: variants. */
-
-/* Cards, modals, inputs: bg-white → zinc-800 */
-.dark .newsletter-scope .bg-white {
-  background-color: #27272a;
-}
-
-/* Layout page backgrounds and sunken sections (table headers, preview panels inside cards) */
-.dark .newsletter-scope .bg-surface {
-  background-color: #18181b;
-}
-.dark .newsletter-scope .hover\:bg-surface:hover {
-  background-color: #18181b;
-}
-
-/* All border-border / divide-border usages */
-.dark .newsletter-scope .border-border {
-  border-color: #3f3f46;
-}
-.dark .newsletter-scope .divide-border > :not([hidden]) ~ :not([hidden]) {
-  border-color: #3f3f46;
-}
-.dark .newsletter-scope .border-primary-100 {
-  border-color: #0e2243;
-}
-
-/* bg-border and text-border (separator dots, empty-day accent) */
-.dark .newsletter-scope .bg-border {
-  background-color: #3f3f46;
-}
-.dark .newsletter-scope .text-border {
-  color: #71717a;
-}
-
-/* Primary-50 tinted hover/accent backgrounds */
-.dark .newsletter-scope .bg-primary-50 {
-  background-color: #0e2243;
-}
-.dark .newsletter-scope .hover\:bg-primary-50:hover {
-  background-color: #0e2243;
-}
-
-/* Primary-500 explicit shade — same hex as primary DEFAULT but different class */
-html.dark .newsletter-scope .text-primary-500 {
-  color: #7FA1D4;
-}
-
-/* Primary-100 badge backgrounds and their text */
-.dark .newsletter-scope .bg-primary-100 {
-  background-color: #122b52;
-}
-.dark .newsletter-scope .text-primary-700 {
-  color: #7FA1D4;
-}
-
-/* Focus ring on primary inputs */
-html.dark .newsletter-scope .focus\:ring-primary\/30:focus {
-  --tw-ring-color: rgba(127, 161, 212, 0.3);
-}
-
-/* Category badge tinted backgrounds */
-.dark .bg-accent-50,
-.dark .newsletter-scope .bg-accent-100 {
-  background-color: #341f01;
-}
-.dark .bg-emerald-50,
-.dark .newsletter-scope .bg-emerald-100 {
-  background-color: #064e3b;
-}
-.dark .newsletter-scope .bg-violet-50 {
-  background-color: #2e1065;
-}
-.dark .newsletter-scope .bg-orange-50 {
-  background-color: #431407;
-}
-
-/* Category badge text on dark tinted backgrounds */
-.dark .newsletter-scope .text-accent-600 {
-  color: #f59e0b;
-}
-.dark .newsletter-scope .text-emerald-700 {
-  color: #34d399;
-}
-.dark .newsletter-scope .text-violet-700 {
-  color: #a78bfa;
-}
-.dark .newsletter-scope .text-orange-700 {
-  color: #fb923c;
-}
-
-/* Semantic state backgrounds */
-.dark .bg-red-50,
-.dark .newsletter-scope .bg-red-100 {
-  background-color: #450a0a;
-}
-.dark .newsletter-scope .hover\:bg-red-50:hover {
-  background-color: #450a0a;
-}
-.dark .newsletter-scope .bg-amber-50 {
-  background-color: #451a03;
-}
+/* Newsletter section styles, loaded with its lazy chunk: the article body
+   shared by the reader, the editor preview and the editor. Dark mode is
+   dark: classes in the components, like the rest of the app. */
 
 /* === Article body ===
    One stylesheet for the published article (ArticleBody), the editor
@@ -157,14 +53,14 @@ html.dark .newsletter-scope .focus\:ring-primary\/30:focus {
 .article-prose .mermaid-diagram--error { flex-direction: column; }
 .article-prose .mermaid-diagram--error figcaption { @apply font-mono text-label text-amber-700; margin-bottom: 0.5rem; }
 
-html.dark .article-prose { color: #f4f4f5; }
-html.dark .article-prose h1, html.dark .article-prose h2, html.dark .article-prose h3, html.dark .article-prose h4 { color: #f4f4f5; }
-html.dark .article-prose a { color: #7FA1D4; }
-html.dark .article-prose blockquote { color: #a1a1aa; }
-html.dark .article-prose code { background-color: #0e2243; color: #ADC5E7; }
-html.dark .article-prose pre { background-color: #09090b; color: #e4e4e7; }
-html.dark .article-prose th { background-color: #18181b; }
-html.dark .article-prose th, html.dark .article-prose td, html.dark .article-prose img, html.dark .article-prose hr { border-color: #3f3f46; }
+html.dark .article-prose { color: theme('colors.night.text'); }
+html.dark .article-prose h1, html.dark .article-prose h2, html.dark .article-prose h3, html.dark .article-prose h4 { color: theme('colors.night.text'); }
+html.dark .article-prose a { color: theme('colors.primary.300'); }
+html.dark .article-prose blockquote { color: theme('colors.night.muted'); }
+html.dark .article-prose code { background-color: theme('colors.primary.800'); color: theme('colors.primary.200'); }
+html.dark .article-prose pre { background-color: theme('colors.zinc.950'); color: theme('colors.zinc.200'); }
+html.dark .article-prose th { background-color: theme('colors.night.bg'); }
+html.dark .article-prose th, html.dark .article-prose td, html.dark .article-prose img, html.dark .article-prose hr { border-color: theme('colors.night.border'); }
 
 /* === Editor (TipTap / ProseMirror) === */
 .article-editor { min-height: 24rem; outline: none; }
@@ -176,7 +72,7 @@ html.dark .article-prose th, html.dark .article-prose td, html.dark .article-pro
   @apply text-ink-secondary;
   opacity: 0.6;
 }
-.article-editor img.ProseMirror-selectednode { outline: 3px solid #F5A623; }
+.article-editor img.ProseMirror-selectednode { outline: 3px solid theme('colors.accent.DEFAULT'); }
 .article-editor .selectedCell { background-color: rgba(245, 166, 35, 0.15); }
 .article-editor .tableWrapper { overflow-x: auto; }
 .article-editor .code-block-node { margin-top: 1.25rem; }
@@ -192,8 +88,8 @@ html.dark .article-prose th, html.dark .article-prose td, html.dark .article-pro
 .code-block-node__preview { @apply border border-t-0 border-border rounded-b-card bg-white; padding: 1rem; }
 .code-block-node__preview > p { @apply font-mono text-label text-ink-secondary; margin: 0; }
 .code-block-node:has(.code-block-node__preview) pre { border-radius: 0; }
-html.dark .code-block-node__preview { background-color: #27272a; border-color: #3f3f46; }
+html.dark .code-block-node__preview { background-color: theme('colors.night.surface'); border-color: theme('colors.night.border'); }
 html.dark .code-block-node__preview > p,
-html.dark .article-editor p.is-editor-empty:first-child::before { color: #a1a1aa; }
-html.dark .article-prose .mermaid-diagram--loading { background-color: #18181b; }
-html.dark .article-prose .mermaid-diagram--error figcaption { color: #fbbf24; }
+html.dark .article-editor p.is-editor-empty:first-child::before { color: theme('colors.night.muted'); }
+html.dark .article-prose .mermaid-diagram--loading { background-color: theme('colors.night.bg'); }
+html.dark .article-prose .mermaid-diagram--error figcaption { color: theme('colors.amber.400'); }

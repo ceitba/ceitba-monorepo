@@ -47,7 +47,7 @@ public class UserMembershipsController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Add a user to an organization (STAFF only)")
     public MembershipResponse add(@PathVariable UUID userId,
-                                   @RequestBody AddMembershipRequest req) {
+                                   @Valid @RequestBody AddMembershipRequest req) {
         var saved = memberships.add(userId, req.slug(), req.role());
         return new MembershipResponse(saved.getOrganization(), saved.getRole());
     }

@@ -23,30 +23,20 @@ ceitba.org.ar {
         reverse_proxy ceitba-minio:9000
     }
 
-    handle /scheduler* {
-        root * /var/www/scheduler
-        uri strip_prefix /scheduler
-        file_server
-        try_files {path} /index.html
-    }
-
-    # ItbaNews is built with base /newsletter/ (and its Google redirect URI
-    # lives there), so that is its canonical path. /itbanews is kept as a
-    # permanent redirect for old links.
-    handle /newsletter* {
-        root * /var/www/itbanews
-        uri strip_prefix /newsletter
-        file_server
-        try_files {path} /index.html
-    }
-
+    # The newsletter's canonical path is /newsletter (served by the web app
+    # below, like /scheduler). /itbanews is kept as a permanent redirect for
+    # old links.
     @itbanews path_regexp itbanews ^/itbanews(/.*)?$
     handle @itbanews {
         redir * /newsletter{re.itbanews.1}{?query} permanent
     }
 
+    # The web app: the site, /scheduler and /newsletter, all one SPA.
     handle {
         root * /var/www/main
+        # CEITBApp's Universal Links (iOS): the file has no extension, so
+        # Caddy can't infer the JSON type Apple expects.
+        header /.well-known/apple-app-site-association Content-Type application/json
         file_server
         try_files {path} /index.html
     }

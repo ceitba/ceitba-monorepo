@@ -1,16 +1,20 @@
 import { lazy, Suspense, useEffect } from 'react'
 import './i18n'
 import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, matchPath, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
-import ManagePage from './pages/ManagePage'
+import BenefitsPage from './pages/BenefitsPage'
 import ProfilePage from './pages/ProfilePage'
+import OpenInAppPage from './pages/OpenInAppPage'
 import StaffGuard from './components/StaffGuard'
 import CapabilityGuard from './components/CapabilityGuard'
 import PageFallback from './components/PageFallback'
 import AuthErrorBanner from './components/AuthErrorBanner'
+import { Toaster } from './components/ui/Toaster'
+import { ErrorState } from './components/ui'
 import { getSession, isSafeReturnPath, takeReturnTo } from './store/authStore'
 
 // Apuntes pages (and what they pull in: DOMPurify, the viewers, the wiki)
@@ -24,6 +28,8 @@ const WikiGraphPage = lazy(() => import('./pages/apuntes/WikiGraphPage'))
 const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 
 // Sections that used to be separate SPAs, each in its own chunk.
+// Administración (staff only): its own chunk, with the queue and its areas.
+const ManagePage = lazy(() => import('./pages/ManagePage'))
 const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
 const NewsletterApp = lazy(() => import('./newsletter/NewsletterApp'))
 
@@ -56,8 +62,9 @@ function AuthCallback() {
 }
 
 // Pages with their own full-screen chrome instead of the app's Navbar and
-// Footer: the newsletter's admin dashboard and its sign-in page.
-const CHROMELESS = ['/newsletter/admin/*', '/newsletter/contribute/*']
+// Footer: the newsletter's contributor portal (behind a feature flag). The
+// newsletter admin renders inside the site chrome, like /manage.
+const CHROMELESS = ['/newsletter/contribute/*']
 
 function Layout() {
   const { pathname } = useLocation()
@@ -76,8 +83,10 @@ function Layout() {
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/manage" element={<StaffGuard><ManagePage /></StaffGuard>} />
+          <Route path="/benefits" element={<BenefitsPage />} />
+          <Route path="/manage/*" element={<StaffGuard><Suspense fallback={<PageFallback />}><ManagePage /></Suspense></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/app/*" element={<OpenInAppPage />} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/correlativas" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></CapabilityGuard>} />
@@ -94,6 +103,7 @@ function Layout() {
         </Routes>
       </div>
       <Footer />
+      <Toaster />
     </div>
   )
 }
@@ -119,7 +129,22 @@ function Root() {
 // newsletter's article editor asks before any in-app navigation, back/forward
 // included, drops unsaved changes. Routes are still declared with <Routes>,
 // rendered under one catch-all route.
-const router = createBrowserRouter([{ path: '*', element: <Root /> }], { basename: import.meta.env.BASE_URL })
+const router = createBrowserRouter(
+  [{ path: '*', element: <Root />, errorElement: <RouteError /> }],
+  { basename: import.meta.env.BASE_URL },
+)
+
+// Anything that escapes a page (e.g. a lazy page whose chunk is gone after a
+// deploy and the one automatic reload in main.tsx didn't fix) lands here
+// instead of React Router's developer screen.
+function RouteError() {
+  const { t } = useTranslation()
+  return (
+    <main id="main-content" className="container-content py-section-mobile lg:py-section">
+      <ErrorState message={t('errors.pageFailed')} onRetry={() => window.location.reload()} />
+    </main>
+  )
+}
 
 export default function App() {
   return (

@@ -50,6 +50,8 @@ public class ContentHmac {
     // In-memory rate-limit keys of the digest open pixel / click redirects
     // (never stored).
     public static final String MAIL_TRACKING_IP = "mail-tracking-ip";
+    // One-click unsubscribe links of organizations' emails (service/orgmail).
+    public static final String ORG_MAIL_UNSUBSCRIBE = "org-mail-unsubscribe";
 
     static final int MIN_DEDICATED_SECRET_BYTES = 32;
     private static final String ALGORITHM = "HmacSHA256";

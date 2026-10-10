@@ -1,11 +1,17 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { EmptyState, ErrorState, LoadingRegion, toast } from '@/components/ui'
 import Calendar from '../components/Calendar'
 import EventCard from '../components/EventCard'
-import { fetchAllEvents } from '../api/events'
+import { fetchAllEvents, fetchMyRsvps } from '../api/events'
+import { useOrgDirectory } from '../hooks/useOrgDirectory'
+import { useAuth } from '@/hooks/useAuth'
+import { eventPath, newsletterPath } from '@/newsletter/paths'
 import { formatDate, monthStartISO, todayISO } from '../utils/dates'
 import type { TFunction } from 'i18next'
 import type { NewsEvent } from '../types'
+import NewsletterPageHeader from '../components/NewsletterPageHeader'
 
 interface ViewMonth {
   year: number
@@ -14,6 +20,12 @@ interface ViewMonth {
 
 export default function EventsPage() {
   const { t, i18n } = useTranslation()
+  const { profile } = useAuth()
+  const { orgName } = useOrgDirectory()
+  // ?organization=<slug> (the org portal's "Ver todos") narrows the page to one org.
+  const [searchParams] = useSearchParams()
+  const organization = searchParams.get('organization') || undefined
+  const [going, setGoing] = useState<Set<string>>(new Set())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [allEvents, setAllEvents]       = useState<NewsEvent[]>([])
   const [status, setStatus]             = useState<'loading' | 'success' | 'error'>('loading')
@@ -21,6 +33,7 @@ export default function EventsPage() {
   // on demand (the main list only covers this month onwards).
   const [viewMonth, setViewMonth]       = useState<ViewMonth | null>(null)
   const [pastMonthEvents, setPastMonthEvents] = useState<NewsEvent[]>([])
+  const [reloadKey, setReloadKey] = useState(0)
 
   const now = new Date()
   const currentMonthStart = monthStartISO(now.getFullYear(), now.getMonth())
@@ -30,11 +43,21 @@ export default function EventsPage() {
   // from the start of the current month on (every page).
   useEffect(() => {
     let cancelled = false
-    fetchAllEvents({ from: currentMonthStart })
+    setStatus('loading')
+    fetchAllEvents({ from: currentMonthStart, organization })
       .then((data) => { if (!cancelled) { setAllEvents(data); setStatus('success') } })
       .catch(() => { if (!cancelled) setStatus('error') })
     return () => { cancelled = true }
-  }, [currentMonthStart])
+  }, [currentMonthStart, organization, reloadKey])
+
+  useEffect(() => {
+    if (!profile) { setGoing(new Set()); return }
+    let cancelled = false
+    fetchMyRsvps()
+      .then((ids) => { if (!cancelled) setGoing(new Set(ids)) })
+      .catch((err: unknown) => console.error('newsletter: my rsvps', err))
+    return () => { cancelled = true }
+  }, [profile])
 
   const viewedMonthStart = viewMonth ? monthStartISO(viewMonth.year, viewMonth.month) : currentMonthStart
   const viewingPastMonth = viewedMonthStart < currentMonthStart
@@ -45,11 +68,16 @@ export default function EventsPage() {
     let cancelled = false
     const next = new Date(viewMonth.year, viewMonth.month + 1, 1)
     const to = monthStartISO(next.getFullYear(), next.getMonth())
-    fetchAllEvents({ from: viewedMonthStart, to })
+    fetchAllEvents({ from: viewedMonthStart, to, organization })
       .then((data) => { if (!cancelled) setPastMonthEvents(data) })
-      .catch(() => { if (!cancelled) setPastMonthEvents([]) })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        console.error(err)
+        setPastMonthEvents([])
+        toast.error(t('events.monthError'))
+      })
     return () => { cancelled = true }
-  }, [viewingPastMonth, viewedMonthStart, viewMonth])
+  }, [viewingPastMonth, viewedMonthStart, viewMonth, organization, t])
 
   const calendarEvents = viewingPastMonth ? pastMonthEvents : allEvents
 
@@ -71,21 +99,21 @@ export default function EventsPage() {
   return (
     <div className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <header className="mb-8 lg:mb-12">
-          <h1 className="font-display text-h1 lg:text-display font-bold text-ink-primary leading-tight">
-            {t('events.pageTitle')}
-          </h1>
-          <p className="font-body text-body-lg text-ink-secondary mt-2">
-            {t('events.pageSubtitle')}
+        <NewsletterPageHeader current="events" title={t('events.pageTitle')} subtitle={t('events.pageSubtitle')} />
+
+        {organization && (
+          <p className="-mt-4 mb-8 font-body text-body text-ink-secondary dark:text-night-muted">
+            {t('events.filteredBy', { org: orgName(organization) })}{' '}
+            <Link to={newsletterPath('/events')} className="text-primary dark:text-primary-300 underline underline-offset-2">
+              {t('events.showAll')}
+            </Link>
           </p>
-        </header>
+        )}
 
         {status === 'loading' && <LoadingState />}
 
         {status === 'error' && (
-          <p role="alert" className="font-body text-body text-ink-secondary">
-            {t('events.error')}
-          </p>
+          <ErrorState message={t('events.error')} onRetry={() => setReloadKey((k) => k + 1)} />
         )}
 
         {status === 'success' && (
@@ -103,7 +131,7 @@ export default function EventsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedDate(null)}
-                    className="mt-3 font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2"
+                    className="mt-1 min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 underline underline-offset-2"
                   >
                     {t('events.clearSelection')}
                   </button>
@@ -112,8 +140,8 @@ export default function EventsPage() {
 
               {/* Sidebar */}
               <aside className="lg:w-80 xl:w-96 flex-shrink-0" aria-label={t('events.upcoming')}>
-                <div className="bg-white rounded-card border border-border shadow-card">
-                  <div className="px-5 py-4 border-b border-border">
+                <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card">
+                  <div className="px-5 py-4 border-b border-border dark:border-night-border">
                     <h2 className="font-display text-h5 font-bold text-ink-primary">
                       {selectedLabel
                         ? t('events.eventsOn', { date: selectedLabel })
@@ -125,7 +153,7 @@ export default function EventsPage() {
                       <EmptyDayState selectedDate={selectedDate} t={t} />
                     ) : (
                       sidebarEvents.map((event) => (
-                        <EventCard key={event.id} event={event} compact />
+                        <EventCard key={event.id} event={event} compact to={eventPath(event.id)} />
                       ))
                     )}
                   </div>
@@ -142,11 +170,17 @@ export default function EventsPage() {
                 {t('events.allEvents')}
               </h2>
               {allEvents.length === 0 ? (
-                <p className="font-body text-body text-ink-secondary">{t('events.noEvents')}</p>
+                <EmptyState compact title={t('events.noEvents')} body={t('events.noEventsHint')} />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {allEvents.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      to={eventPath(event.id)}
+                      orgName={event.organization ? orgName(event.organization) : null}
+                      going={going.has(event.id)}
+                    />
                   ))}
                 </div>
               )}
@@ -165,10 +199,10 @@ interface EmptyDayStateProps {
 
 function EmptyDayState({ selectedDate, t }: EmptyDayStateProps) {
   return (
-    <div className="py-10 flex flex-col items-center gap-3 text-center animate-fade-in">
+    <div className="py-10 flex flex-col items-center gap-3 text-center">
       <div className="relative w-12 h-12">
-        <div className="absolute inset-0 rounded-full bg-border" />
-        <div className="absolute top-2 left-2 w-4 h-4 rotate-45 bg-accent-100" />
+        <div className="absolute inset-0 rounded-full bg-border dark:bg-night-border" />
+        <div className="absolute top-2 left-2 w-4 h-4 rotate-45 bg-accent-100 dark:bg-accent-900" />
       </div>
       <p className="font-body text-body-sm text-ink-secondary">
         {selectedDate ? t('events.noEventsOnDay') : t('events.noUpcoming')}
@@ -179,20 +213,20 @@ function EmptyDayState({ selectedDate, t }: EmptyDayStateProps) {
 
 function LoadingState() {
   return (
-    <div className="flex flex-col gap-6" aria-busy="true">
+    <LoadingRegion className="flex flex-col gap-6">
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-10">
         <div className="lg:flex-1 lg:max-w-[580px] skeleton rounded-card h-72" />
         <div className="lg:w-80 xl:w-96 skeleton rounded-card h-64" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {[1,2,3].map((i) => (
-          <div key={i} className="rounded-card border border-border p-5 flex flex-col gap-3">
+          <div key={i} className="rounded-card border border-border dark:border-night-border p-5 flex flex-col gap-3">
             <div className="skeleton h-14 w-14 rounded-sm" />
-            <div className="skeleton h-5 w-3/4 rounded" />
-            <div className="skeleton h-4 w-1/2 rounded" />
+            <div className="skeleton h-5 w-3/4 rounded-sm" />
+            <div className="skeleton h-4 w-1/2 rounded-sm" />
           </div>
         ))}
       </div>
-    </div>
+    </LoadingRegion>
   )
 }

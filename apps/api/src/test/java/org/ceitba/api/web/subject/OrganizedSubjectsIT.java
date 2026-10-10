@@ -1,6 +1,5 @@
 package org.ceitba.api.web.subject;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
 import org.ceitba.api.domain.DayOfWeek;
@@ -17,8 +16,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -36,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "itba.api.use-fake=true")
+@SpringBootTest
 @AutoConfigureMockMvc
 @Import({OrganizedSubjectsIT.FixedClock.class, OrganizedSubjectsIT.TxRecordingClient.class})
 class OrganizedSubjectsIT {
@@ -73,15 +70,6 @@ class OrganizedSubjectsIT {
             txActiveDuringLastPlanCall = TransactionSynchronizationManager.isActualTransactionActive();
             return super.getSubjectsByPlan(planId);
         }
-    }
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
     @Autowired MockMvc mvc;
@@ -149,12 +137,14 @@ class OrganizedSubjectsIT {
             .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].commissions", hasSize(2)))
             .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].commissions[*].name", contains("B", "G")))
             .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].course_start").value("2026-07-26"))
-            .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].course_end").value("2026-12-31"));
+            .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].course_end").value("2026-12-31"))
+            .andExpect(jsonPath("$['Ciclo Básico']['1']['1'][0].past_term").value(false));
     }
 
     // Two offerings that are both still running (e.g. consecutive bimesters)
-    // are distinct and both kept; a subject with only ended terms shows its
-    // most recent term instead of going empty between terms.
+    // are distinct and both kept, each with its own dates; a subject with only
+    // ended terms shows its most recent term instead of going empty between
+    // terms, flagged past_term so the scheduler can say so.
     @Test
     void keepsConcurrentTermsAndFallsBackToMostRecentEndedTerm() throws Exception {
         fakeClient.stubPlan("S10-Rev23", List.of(
@@ -173,7 +163,13 @@ class OrganizedSubjectsIT {
             .andExpect(jsonPath("$['Electivas']['0']['0'][0].subject_id").value("81.74"))
             .andExpect(jsonPath("$['Electivas']['0']['0'][0].commissions", hasSize(2)))
             .andExpect(jsonPath("$['Electivas']['0']['0'][0].course_start").value("2026-09-14"))
+            .andExpect(jsonPath("$['Electivas']['0']['0'][0].past_term").value(false))
+            .andExpect(jsonPath("$['Electivas']['0']['0'][0].commissions[*].course_start",
+                contains("2026-09-14", "2026-10-26")))
+            .andExpect(jsonPath("$['Electivas']['0']['0'][0].commissions[*].course_end",
+                contains("2026-10-23", "2026-11-30")))
             .andExpect(jsonPath("$['Electivas']['0']['0'][1].subject_id").value("72.99"))
+            .andExpect(jsonPath("$['Electivas']['0']['0'][1].past_term").value(true))
             .andExpect(jsonPath("$['Electivas']['0']['0'][1].commissions", hasSize(1)))
             .andExpect(jsonPath("$['Electivas']['0']['0'][1].commissions[0].schedule[0].classroom").value("102T"))
             .andExpect(jsonPath("$['Electivas']['0']['0'][1].course_start").value("2026-03-01"));

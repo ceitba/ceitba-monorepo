@@ -116,6 +116,49 @@ student, moved to another subject, source revoked or disconnected, account delet
 `scripts/kb-import.sh <dir> [baseUrl]` — for each `<dir>/<subjectId>/` folder, POSTs all `.md` files to the import
 endpoint using a dev-login staff session cookie, and prints accepted/rejected pages.
 
+## Embeddings (semantic search / RAG)
+
+Every `PUBLISHED` page is cut into chunks and embedded into `wiki.kb_page_chunk` (pgvector, V61), so pages can be
+retrieved by meaning (`KbEmbeddingService.search`). There is no HTTP endpoint yet; it is the building block for RAG.
+
+- **Chunks** (`KbChunker`): chunk 0 = title, summary and the text before the first `##`; then one chunk per `##`
+  section (its `###` subsections included), split at blank lines above 6000 characters. Every chunk carries a title
+  (the page title, plus its heading), so it is self-describing; title and body go into the model's document prompt
+  (`title: {title} | text: {text}` for EmbeddingGemma). Wikilinks are reduced to their text and bare `[[file:…]]`
+  citations dropped. Each row keeps the heading and its anchor, so a hit links to `subject/slug#anchor`.
+- **Indexing** (`KbEmbeddingJob`, every `KB_EMBEDDING_INTERVAL`, default 5 min): a page is pending when it has no
+  chunks for its current `revision` and the configured model. Imports and pipeline runs only bump `revision`; the
+  next sweep re-embeds the page and replaces its rows in one transaction (the HTTP call runs outside it, and a page
+  edited meanwhile is left for the next sweep). Rows of `HIDDEN`/`REMOVED` pages stay; searches only return
+  `PUBLISHED` pages, and a restored page needs no new vectors. Until the sweep reaches an edited page, searches
+  still return its previous chunks (slightly stale rather than missing). A failing page is skipped until the next sweep; an
+  endpoint problem (server unreachable, 401/403/404, wrong vector length) ends the sweep at once.
+- **Search**: cosine kNN (`<=>`) over an HNSW index, optionally limited to one subject (pgvector 0.8 iterative scans
+  keep filtered searches from coming back short). Queries use the model's query prompt
+  (`task: search result | query: {query}`).
+- **Model (self-hosted)**: [EmbeddingGemma 2](https://huggingface.co/google/embeddinggemma-2) (Google, Apache 2.0,
+  Oct 2026): 740M parameters (270M text + vision/audio encoders), 100+ languages, 768 dimensions, 8k-token context.
+  It is multimodal: text, images, audio and video share one vector space, so image embeddings (e.g. scanned Apuntes)
+  can be added later next to the existing text vectors without re-embedding anything.
+- **Serving**: the `ceitba-embeddings` compose service, llama.cpp's server (`ghcr.io/ggml-org/llama.cpp:server-b11515`,
+  pinned by digest) on the CPU with the `Q8_0` GGUF (310 MB), reachable only inside the compose network at
+  `http://ceitba-embeddings:8080/v1`. `ceitba-embeddings-model` downloads the GGUF once into the `embedding_models`
+  volume, pinned to a Hugging Face commit and checked against its sha256. Measured (2 threads): ~220 MB RAM, ~30 ms per
+  query. Text only for now: images need the model's `mmproj` file and `--mmproj` (~+500 MB RAM) and a call to
+  llama.cpp's native `/embedding` (the media marker comes from `GET /props`); tried by hand, a Spanish text query
+  ranked the right image first in 4/4 cases.
+- **Other servers**: any OpenAI-compatible `/v1/embeddings` works (`KB_EMBEDDING_BASE_URL`, `KB_EMBEDDING_API_KEY`,
+  and `KB_EMBEDDING_QUERY_TEMPLATE` / `KB_EMBEDDING_DOCUMENT_TEMPLATE` for another model's prompts). Empty base URL
+  (the default outside compose) = nothing is embedded and `search` throws `FeatureNotConfiguredException`.
+- **Changing the model**: rows record their model, so a new `KB_EMBEDDING_MODEL` re-embeds every page on the next
+  sweeps (old rows are replaced page by page; until then searches only see pages already re-embedded). The column is
+  `vector(768)`: a model with another length needs a migration (and `KbPageChunk.DIMENSIONS`).
+- **Database image**: `pgvector/pgvector:0.8.6-pg16-bookworm` (Debian) replaced `postgres:16-alpine` in
+  `docker-compose.yml` and in the tests (`SharedPostgres`). The existing volume works as is (same PG16 format; the
+  entrypoint re-chowns the data directory), but musl and glibc sort `en_US.utf8` text differently, so text indexes
+  built under alpine are out of order under glibc. V60 rebuilds every index of `public`/`wiki` before V61 installs
+  the extension; nothing has to be run by hand.
+
 ## Implementation notes (as built)
 
 - `sourceYears` = min/max `academicYear` of the listed sources (both `null` without any); `stale` = `max` is older than

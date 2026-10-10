@@ -239,5 +239,14 @@ jobs:
           script: |
             set -e
             STAGE=/tmp/${{ matrix.app }}-deploy-${{ github.sha }}
-            rsync -r --delete "$STAGE/dist/" /var/www/${{ matrix.www }}/
+            WWW=/var/www/${{ matrix.www }}
+            # 1. Add the new build's files without removing anything, and
+            #    index.html last, so it never points at chunks not yet there.
+            rsync -rt --exclude=/index.html "$STAGE/dist/" "$WWW/"
+            rsync -t "$STAGE/dist/index.html" "$WWW/index.html"
+            # 2. Only now drop the previous build's files (-t keeps mtimes, so
+            #    this pass copies nothing again). Tabs opened before
+            #    the deploy that then lazy-load one of them reload once
+            #    (vite:preloadError in apps/web/src/main.tsx).
+            rsync -rt --delete "$STAGE/dist/" "$WWW/"
             rm -rf "$STAGE"

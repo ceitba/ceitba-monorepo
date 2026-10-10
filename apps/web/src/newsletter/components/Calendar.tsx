@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { IconButton } from '@/components/ui'
 import { formatDate, localeFor, parseLocalDate, todayISO, weekdayNames } from '../utils/dates'
 import type { IsoDate } from '../types'
 
@@ -68,34 +69,24 @@ export default function Calendar({ events, selectedDate, onSelectDate, onMonthCh
   const todayStr = todayISO()
 
   return (
-    <div className="bg-white rounded-card border border-border shadow-card select-none">
+    <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card select-none">
       {/* Month navigation */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <button
-          type="button"
-          onClick={prevMonth}
-          aria-label={t('calendar.prevMonth')}
-          className="w-9 h-9 flex items-center justify-center rounded text-ink-secondary hover:text-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded"
-        >
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border dark:border-night-border">
+        <IconButton onClick={prevMonth} aria-label={t('calendar.prevMonth')}>
           <ChevronLeft />
-        </button>
+        </IconButton>
 
         <h2 className="font-display text-h5 font-bold text-ink-primary tabular-nums">
           {formatMonth(viewYear, viewMonth, i18n.language)}
         </h2>
 
-        <button
-          type="button"
-          onClick={nextMonth}
-          aria-label={t('calendar.nextMonth')}
-          className="w-9 h-9 flex items-center justify-center rounded text-ink-secondary hover:text-primary hover:bg-primary-50 transition-colors duration-150 focus-visible:rounded"
-        >
+        <IconButton onClick={nextMonth} aria-label={t('calendar.nextMonth')}>
           <ChevronRight />
-        </button>
+        </IconButton>
       </div>
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-7 border-b border-border dark:border-night-border">
         {weekdays.map((d, i) => (
           <div
             key={i}
@@ -110,7 +101,7 @@ export default function Calendar({ events, selectedDate, onSelectDate, onMonthCh
       <div className="grid grid-cols-7">
         {/* Leading empty cells */}
         {Array.from({ length: firstWeekday }).map((_, i) => (
-          <div key={`empty-${i}`} className="h-12 border-b border-r border-border last:border-r-0" />
+          <div key={`empty-${i}`} className="h-12 border-b border-r border-border dark:border-night-border last:border-r-0" />
         ))}
 
         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -132,14 +123,14 @@ export default function Calendar({ events, selectedDate, onSelectDate, onMonthCh
               aria-pressed={isSelected}
               className={[
                 'h-12 flex flex-col items-center justify-center gap-0.5',
-                'border-b border-r border-border transition-colors duration-100',
+                'border-b border-r border-border dark:border-night-border transition-colors duration-100',
                 colIndex === 6 ? 'border-r-0' : '',
                 'focus-visible:z-10 focus-visible:relative',
                 isSelected
                   ? 'bg-primary text-surface'
                   : isToday
-                  ? 'bg-accent-50 text-primary font-bold'
-                  : 'hover:bg-primary-50 text-ink-primary',
+                  ? 'bg-accent-50 dark:bg-accent-900 text-primary font-bold'
+                  : 'hover:bg-primary-50 dark:hover:bg-primary-800 text-ink-primary',
               ].join(' ')}
             >
               <span className="font-mono text-sm leading-none tabular-nums">{day}</span>
@@ -162,7 +153,7 @@ export default function Calendar({ events, selectedDate, onSelectDate, onMonthCh
           const remainder = totalCells % 7
           const trailing = remainder === 0 ? 0 : 7 - remainder
           return Array.from({ length: trailing }).map((_, i) => (
-            <div key={`trail-${i}`} className="h-12 border-b border-r border-border last:border-r-0" />
+            <div key={`trail-${i}`} className="h-12 border-b border-r border-border dark:border-night-border last:border-r-0" />
           ))
         })()}
       </div>

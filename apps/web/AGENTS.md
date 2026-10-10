@@ -2,7 +2,10 @@
 
 The whole frontend, one SPA: the main site + `/manage` staff admin + Apuntes at `/`, the "Combinador de Horarios"
 at `/scheduler`, the student newsletter at `/newsletter`. React 18 + Vite + TypeScript. UI follows
-`docs/EDITORIAL_UI_SYSTEM.md` (binding; read it before UI work).
+`docs/EDITORIAL_UI_SYSTEM.md` (binding; read it before UI work). Build UI from the shared kit in
+`src/components/ui` (buttons, fields, tabs, toggles, badges, alerts, toasts, skeletons, empty/error states;
+`Modal`/`ConfirmDialog`) instead of hand-rolling markup, and keep one navigation bar per page (§6 "Navigation
+depth").
 
 ## Commands (repo root)
 

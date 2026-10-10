@@ -74,7 +74,7 @@ export default function ArticleCard({ article, featured = false }: ArticleCardPr
     return (
       <Link
         to={newsletterPath(`/articles/${id}`)}
-        className="group rounded-card border border-border bg-white overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col lg:flex-row animate-fade-in focus-visible:rounded-card"
+        className="group rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col lg:flex-row focus-visible:rounded-card"
       >
         <CoverMedia
           coverImage={coverImage}
@@ -94,13 +94,13 @@ export default function ArticleCard({ article, featured = false }: ArticleCardPr
               {excerpt}
             </p>
           </div>
-          <footer className="flex items-center gap-4 pt-2 border-t border-border">
+          <footer className="flex items-center gap-4 pt-2 border-t border-border dark:border-night-border">
             <time className="font-mono text-label text-ink-secondary" dateTime={date ?? undefined}>
               {formatDate(date, i18n.language)}
             </time>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
             <span className="font-body text-body-sm text-ink-secondary">{authorLine}</span>
-            <span className="text-border" aria-hidden="true">·</span>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
             <span className="font-mono text-label text-ink-secondary">
               {t('articles.meta.readingTime', { time: readingTime })}
             </span>
@@ -113,7 +113,7 @@ export default function ArticleCard({ article, featured = false }: ArticleCardPr
   return (
     <Link
       to={newsletterPath(`/articles/${id}`)}
-      className="group rounded-card border border-border bg-white overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col animate-fade-in focus-visible:rounded-card"
+      className="group rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col focus-visible:rounded-card"
     >
       <CoverMedia coverImage={coverImage} colorScheme={colorScheme} className="h-44" />
       <div className="p-5 flex flex-col gap-3 flex-1">
@@ -124,11 +124,11 @@ export default function ArticleCard({ article, featured = false }: ArticleCardPr
         <p className="font-body text-body-sm text-ink-secondary leading-relaxed line-clamp-2 flex-1">
           {excerpt}
         </p>
-        <footer className="flex items-center gap-3 pt-2 border-t border-border mt-auto">
+        <footer className="flex items-center gap-3 pt-2 border-t border-border dark:border-night-border mt-auto">
           <time className="font-mono text-label text-ink-secondary" dateTime={date ?? undefined}>
             {formatDate(date, i18n.language)}
           </time>
-          <span className="text-border" aria-hidden="true">·</span>
+          <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
           <span className="font-body text-body-sm text-ink-secondary truncate">{authorLine}</span>
         </footer>
       </div>

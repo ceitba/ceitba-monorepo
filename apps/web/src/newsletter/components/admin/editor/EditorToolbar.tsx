@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode, type SVGProps } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorState, type Editor } from '@tiptap/react'
 import { ALLOWED_IMAGE_TYPES } from '../../../api/media'
+import { Button, buttonClass, iconButtonClass, inputClass, selectClass } from '@/components/ui'
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -102,7 +103,8 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
   }
 
   return (
-    <div className="sticky top-14 z-10 bg-white border-b border-border rounded-t-card">
+    // Sticks under the site navbar (4rem).
+    <div className="sticky top-16 z-10 bg-white dark:bg-night-surface border-b border-border dark:border-night-border rounded-t-card">
       <div className="flex flex-wrap items-center gap-1 px-2 sm:px-3 py-2" role="toolbar" aria-label={t('editor.toolbar')}>
         {visual && (
           <>
@@ -110,7 +112,7 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
               value={state.block}
               onChange={(e) => setBlock(e.target.value)}
               aria-label={t('editor.blockType')}
-              className="min-h-[34px] pl-2 pr-7 border border-border rounded-sm bg-white font-body text-body-sm text-ink-primary focus:outline-none focus:border-primary"
+              className={selectClass({ className: '!w-auto' })}
             >
               <option value="p">{t('editor.blocks.p')}</option>
               <option value="h2">{t('editor.blocks.h2')}</option>
@@ -135,7 +137,7 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
               disabled={uploading}
               onClick={() => (canUpload ? fileRef.current?.click() : openUrl('image'))}
             >
-              {uploading ? <span className="font-mono text-label">…</span> : <IconImage />}
+              {uploading ? <span className="font-mono text-label" aria-hidden="true">…</span> : <IconImage />}
             </Btn>
             {canUpload && (
               <Btn label={t('editor.imageUrl')} active={urlMode === 'image'} onClick={() => openUrl('image')}><IconImageLink /></Btn>
@@ -152,20 +154,18 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
           type="button"
           onClick={onToggleMode}
           aria-pressed={!visual}
-          title={t('editor.markdownToggleHint')}
-          className={[
-            'ml-auto min-h-[34px] px-2.5 flex items-center gap-1.5 rounded-sm border font-mono text-label uppercase tracking-widest transition-colors duration-150',
-            visual ? 'border-border text-ink-secondary hover:border-primary hover:text-primary' : 'border-primary bg-primary text-white',
-          ].join(' ')}
+          aria-describedby="editor-mode-hint"
+          className={buttonClass({ variant: visual ? 'outline' : 'primary', size: 'sm', className: 'ml-auto' })}
         >
           <IconMarkdown />
           {visual ? t('editor.markdown') : t('editor.visual')}
         </button>
+        <span id="editor-mode-hint" className="sr-only">{t('editor.markdownToggleHint')}</span>
       </div>
 
       {visual && state.table && (
-        <div className="flex flex-wrap items-center gap-1 px-3 pb-2 font-body text-body-sm">
-          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary mr-1">{t('editor.tableTools')}</span>
+        <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
+          <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mr-1">{t('editor.tableTools')}</span>
           <TextBtn onClick={() => chain().addRowAfter().run()}>{t('editor.addRow')}</TextBtn>
           <TextBtn onClick={() => chain().addColumnAfter().run()}>{t('editor.addColumn')}</TextBtn>
           <TextBtn onClick={() => chain().deleteRow().run()}>{t('editor.deleteRow')}</TextBtn>
@@ -187,17 +187,18 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
             }}
             placeholder={urlMode === 'link' ? t('editor.linkPlaceholder') : t('editor.imagePlaceholder')}
             aria-label={urlMode === 'link' ? t('editor.link') : t('editor.imageUrl')}
-            className="flex-1 min-w-[12rem] min-h-[36px] px-3 border border-border rounded-sm font-body text-body-sm text-ink-primary bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+            aria-invalid={urlError ? true : undefined}
+            className={inputClass({ invalid: !!urlError, className: '!w-auto flex-1 min-w-[12rem]' })}
           />
-          <button type="button" onClick={applyUrl} className="min-h-[36px] px-3 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150">
+          <Button variant="outline" size="sm" onClick={applyUrl}>
             {t('editor.apply')}
-          </button>
+          </Button>
           {urlMode === 'link' && state.link && (
-            <button type="button" onClick={() => { chain().extendMarkRange('link').unsetLink().run(); setUrlMode(null) }} className="min-h-[36px] px-3 font-body text-body-sm text-red-600 hover:bg-red-50 rounded-sm">
+            <Button variant="dangerGhost" size="sm" onClick={() => { chain().extendMarkRange('link').unsetLink().run(); setUrlMode(null) }}>
               {t('editor.removeLink')}
-            </button>
+            </Button>
           )}
-          {urlError && <span className="w-full font-body text-body-sm text-red-600">{urlError}</span>}
+          {urlError && <span role="alert" className="w-full font-body text-body-sm text-red-600 dark:text-red-400">{urlError}</span>}
         </div>
       )}
 
@@ -231,12 +232,13 @@ function Btn({ label, shortcut, active, disabled, onClick, children }: BtnProps)
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
+      aria-keyshortcuts={shortcut ? shortcut.replace('⇧', 'Shift+').replace('⌘', 'Meta+') : undefined}
       aria-pressed={active ?? undefined}
       title={shortcut ? `${label} (${shortcut})` : label}
-      className={[
-        'w-[34px] h-[34px] flex items-center justify-center rounded-sm transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none',
-        active ? 'bg-primary-50 text-primary' : 'text-ink-secondary hover:bg-surface hover:text-primary',
-      ].join(' ')}
+      className={iconButtonClass({
+        size: 'sm',
+        className: active ? '!bg-primary-50 !text-primary dark:!bg-primary-900 dark:!text-primary-200' : '',
+      })}
     >
       <span className="w-4 h-4 flex items-center justify-center text-[15px] leading-none">{children}</span>
     </button>
@@ -255,14 +257,14 @@ function TextBtn({ danger, onClick, children }: TextBtnProps) {
       type="button"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={['min-h-[30px] px-2 rounded-sm transition-colors duration-150', danger ? 'text-red-600 hover:bg-red-50' : 'text-ink-secondary hover:bg-surface hover:text-primary'].join(' ')}
+      className={buttonClass({ variant: danger ? 'dangerGhost' : 'ghost', size: 'sm' })}
     >
       {children}
     </button>
   )
 }
 
-function Sep() { return <span className="w-px h-5 bg-border mx-1" aria-hidden="true" /> }
+function Sep() { return <span className="w-px h-5 bg-border dark:bg-night-border mx-1" aria-hidden="true" /> }
 
 const svg: SVGProps<SVGSVGElement> = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
 function IconCode()      { return <svg {...svg}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> }
