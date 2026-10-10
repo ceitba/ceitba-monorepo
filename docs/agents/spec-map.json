@@ -101,6 +101,7 @@
       "paths": [
         "apps/api/src/main/java/org/ceitba/api/web/news/OrgAccess.java",
         "apps/api/src/main/java/org/ceitba/api/web/news/OrgMembersController.java",
+        "apps/api/src/main/java/org/ceitba/api/web/news/OrganizationController.java",
         "apps/api/src/main/java/org/ceitba/api/**/orgmail/**"
       ],
       "docs": [

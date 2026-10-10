@@ -27,9 +27,10 @@ CI runs the same scripts, so skipping a hook only moves the failure to the PR. T
 
 ## PR checks
 
-`.github/workflows/pr-checks.yml` runs on every PR (and when its title or body is edited): the repo checks above,
-the PR title as a Conventional Commit, the living-docs check (into `dev` only; tick "No spec impact" with a reason
-in the template to opt out) and a gitleaks scan of the PR's commits. `ci.yml` still runs lint + build for the web app
+`.github/workflows/pr-checks.yml` runs on every PR: the repo checks above, the PR title as a Conventional Commit,
+the living-docs check (into `dev` only, skipped for Dependabot; tick "No spec impact" with a reason on the same line
+to opt out) and a gitleaks scan of the PR's commits. Editing the title or body reruns only the title and living-docs
+checks. `ci.yml` still runs lint + build for the web app
 and the API tests when they are touched. Dependabot opens grouped weekly updates against `dev`; security updates go to `main`.
 
 ## Coding standards

@@ -1,12 +1,15 @@
 name: PR checks
 
-# Repo guardrails that are cheap and app-independent, so they run on every PR
-# (and again when its title or body is edited). Same scripts as the local git
-# hooks and agent hooks: scripts/checks/*.mjs. Runs with no secrets.
+# Repo guardrails that are cheap and app-independent, so they run on every PR.
+# Editing the title or body reruns only pr-title and living-docs (unless the base
+# branch changed), in its own concurrency group so it never cancels a code run.
+# Same scripts as the local git hooks and agent hooks: scripts/checks/*.mjs.
+# Runs with no secrets.
 #   - repo-checks: locale parity, Flyway rules, action pins + bun version, agent files
 #   - pr-title:    Conventional Commits (docs/adr/0003-conventional-commits.md)
 #   - living-docs: changed code mapped in docs/agents/spec-map.json updated its doc,
-#                  or the PR ticks "No spec impact" with a reason (feature PRs only)
+#                  or the PR ticks "No spec impact" with a reason (feature PRs only;
+#                  not Dependabot's, whose dependency bumps carry no spec)
 #   - secrets:     gitleaks over the PR's commits with .gitleaks.toml
 on:
   pull_request:
@@ -19,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && !github.event.changes.base && 'body' || 'code' }}
   cancel-in-progress: true
 
 env:
@@ -28,6 +31,7 @@ env:
 
 jobs:
   repo-checks:
+    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -55,7 +59,9 @@ jobs:
 
   living-docs:
     # Release PRs (dev -> main) bundle PRs that were each checked into dev.
-    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    if: >-
+      github.event_name == 'pull_request' && github.base_ref == 'dev'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -71,6 +77,7 @@ jobs:
           node scripts/checks/spec-sync.mjs --base "$BASE_REF" --body-file "$RUNNER_TEMP/pr-body.md"
 
   secrets:
+    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     env:
       GITLEAKS_VERSION: 8.30.1

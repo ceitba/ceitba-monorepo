@@ -1,5 +1,5 @@
 # Git hooks (https://lefthook.dev). Installed by `bun install` at the repo root
-# (lefthook's postinstall); re-install with `bunx lefthook install`.
+# (lefthook's postinstall); re-install with `bun run hooks`.
 # The same checks run in CI, so skipping a hook only moves the failure to the PR.
 
 pre-commit:
@@ -11,7 +11,7 @@ pre-commit:
     - name: eslint web
       root: apps/web/
       glob: "*.{ts,tsx,js,jsx}"
-      run: bunx eslint --max-warnings 0 --no-warn-ignored {staged_files}
+      run: node ../../scripts/hooks/eslint.mjs {staged_files}
 
     - name: locales
       glob: "apps/*/src/**/locales/*.json"

@@ -18,9 +18,11 @@ const changed = changedFiles(base);
 const changedSet = new Set(changed);
 
 const bodyFile = arg('--body-file');
-const body = bodyFile ? readFileSync(bodyFile, 'utf8') : '';
-const optOut = body.match(/-\s*\[x\]\s*No spec impact\b[:\s-]*(.*)/i);
-const optOutReason = optOut?.[1]?.replace(/<!--.*?-->/g, '').trim();
+// HTML comments (the template's hints, possibly multi-line) are not part of the answer.
+const body = (bodyFile ? readFileSync(bodyFile, 'utf8') : '').replace(/<!--[\s\S]*?(-->|$)/g, '');
+// The reason must sit on the checkbox's own line: [ \t] instead of \s so it can't run into the next line.
+const optOut = body.match(/^[ \t]*[-*][ \t]*\[x\][ \t]*No spec impact\b[ \t:-]*([^\r\n]*)/im);
+const optOutReason = optOut?.[1]?.trim();
 
 const errors = [];
 const warnings = [];
