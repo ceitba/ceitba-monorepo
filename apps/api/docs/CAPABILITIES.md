@@ -20,7 +20,8 @@ Staff endpoints (`/v1/staff/drive/**`, `/v1/staff/kb/**`) and wiki bookmarks/not
 
 A user has a capability when any of these holds:
 
-1. they are active STAFF (`ceitba_staff`, same check as `StaffAwareJwtAuthenticationConverter`);
+1. they are active STAFF (`ceitba_staff`, same check as `StaffAwareJwtAuthenticationConverter`), unless the request
+   uses an API key without the `staff` scope (`ApiKeyCredential`, see `AUTH-SETUP.md` § Scopes);
 2. `capability_settings.enabled_for_all` is true;
 3. their lowercased email has a row in `capability_user_grants`;
 4. they belong (`user_organizations`) to an org with a row in `capability_org_grants`.

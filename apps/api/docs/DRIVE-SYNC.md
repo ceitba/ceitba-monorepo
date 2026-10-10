@@ -276,7 +276,8 @@ Only `PUBLISHED`/`HIDDEN_REPORTED` files can be reported (else 404); re-reportin
 
 Readers only see `PUBLISHED` files. STAFF can open any file, and the source's student can open the files of their
 source that they own in Drive (`ownedByMe`), so they can preview before publishing (`GET /v1/wiki/files/{id}` and
-downloads). A file owned by someone else that sits in the student's folder is not previewable by them.
+downloads). A file owned by someone else that sits in the student's folder is not previewable by them. A staff
+member calling with an API key without the `staff` scope reads like a student (`DriveAccess.isStaff`).
 
 ### Staff (`/v1/staff/**`, STAFF role)
 
