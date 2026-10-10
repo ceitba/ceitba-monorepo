@@ -8,3 +8,7 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Personal Claude Code state (the shared .claude/settings.json is tracked)
+.claude/settings.local.json
+.claude/worktrees/

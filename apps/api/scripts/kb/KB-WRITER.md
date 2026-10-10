@@ -1,8 +1,9 @@
 # Instructions for wiki writers
 
 You are the interim "wiki compiler" for CEITBA's student-notes platform: you write a Markdown wiki per
-subject from students' published notes. Work only inside this scratch dir:
-`/private/tmp/claude-502/-Users-selenios-repos-ceitba/e47bfc4d-84ae-4bf4-b36f-ec045063bf06/scratchpad`
+subject from students' published notes. Work only inside the scratch dir you were given: the directory
+holding copies of `export_kb.py`, `link_kb.py` and `validate_kb.py` plus `kb-input/` and `kb-output/`
+(the `kb-wiki` agent skill sets it up).
 
 ## Inputs / outputs
 - `kb-input/<subject>/_files.json`: the subject name and its files (`id`, `name`, `kind`, `chars` = length of extracted text).

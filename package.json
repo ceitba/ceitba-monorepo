@@ -1,12 +1,19 @@
 {
   "name": "ceitba",
   "private": true,
+  "packageManager": "bun@1.4.2",
   "workspaces": [
     "apps/web"
   ],
   "scripts": {
     "dev": "bun run --filter '@ceitba/*' dev",
     "build": "bun run --filter '@ceitba/*' build",
-    "lint": "bun run --filter '@ceitba/*' lint"
+    "lint": "bun run --filter '@ceitba/*' lint",
+    "check": "node scripts/checks/run-all.mjs",
+    "hooks": "lefthook install",
+    "agents:sync": "node scripts/agents/sync.mjs"
+  },
+  "devDependencies": {
+    "lefthook": "2.1.17"
   }
 }

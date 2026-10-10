@@ -1,0 +1,97 @@
+name: PR checks
+
+# Repo guardrails that are cheap and app-independent, so they run on every PR.
+# Editing the title or body reruns only pr-title and living-docs (unless the base
+# branch changed), in its own concurrency group so it never cancels a code run.
+# Same scripts as the local git hooks and agent hooks: scripts/checks/*.mjs.
+# Runs with no secrets.
+#   - repo-checks: locale parity, Flyway rules, action pins + bun version, agent files
+#   - pr-title:    Conventional Commits (docs/adr/0003-conventional-commits.md)
+#   - living-docs: changed code mapped in docs/agents/spec-map.json updated its doc,
+#                  or the PR ticks "No spec impact" with a reason (feature PRs only;
+#                  not Dependabot's, whose dependency bumps carry no spec)
+#   - secrets:     gitleaks over the PR's commits with .gitleaks.toml
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && !github.event.changes.base && 'body' || 'code' }}
+  cancel-in-progress: true
+
+env:
+  # The ref the branch is compared against: the PR base, or the commit before the push.
+  BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+
+jobs:
+  repo-checks:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - run: node scripts/checks/locales.mjs
+      - run: node scripts/checks/migrations.mjs --base "$BASE_REF"
+      - run: node scripts/checks/workflows.mjs
+      - run: node scripts/checks/agents.mjs
+
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/checks/commit-msg.mjs --title "$TITLE"
+
+  living-docs:
+    # Release PRs (dev -> main) bundle PRs that were each checked into dev.
+    if: >-
+      github.event_name == 'pull_request' && github.base_ref == 'dev'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$BODY" > "$RUNNER_TEMP/pr-body.md"
+          node scripts/checks/spec-sync.mjs --base "$BASE_REF" --body-file "$RUNNER_TEMP/pr-body.md"
+
+  secrets:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (pinned, checksum-verified)
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks && rm gitleaks.tgz
+      - name: Scan new commits
+        run: |
+          if git rev-parse --verify --quiet "$BASE_REF^{commit}" >/dev/null; then RANGE="$BASE_REF..HEAD"; else RANGE="HEAD"; fi
+          ./gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts="$RANGE" .
