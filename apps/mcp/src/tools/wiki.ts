@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "../i18n";
 import { clampLimit, compact, cut } from "../trim";
 import { defineTool } from "./define";
 
@@ -99,7 +100,7 @@ export const getWikiPage = defineTool({
     const body = cut(p.markdown, args.maxChars ?? 12000, args.offset ?? 0);
     return compact({
       subject: `${p.subjectId} ${p.subjectName}`,
-      slug: p.slug, title: p.title, type: p.type, summary: p.summary,
+      pageId: p.id, slug: p.slug, title: p.title, type: p.type, summary: p.summary,
       stale: p.stale || undefined,
       sourceYears: p.sourceYears?.min ? `${p.sourceYears.min}-${p.sourceYears.max}` : undefined,
       sources: p.sources?.length,
@@ -108,6 +109,90 @@ export const getWikiPage = defineTool({
       totalChars: body.totalChars,
       nextOffset: body.truncated ? body.offset + body.text.length : undefined
     });
+  }
+});
+
+interface KbSearchHit {
+  pageId: string; subjectId: string; slug: string; title: string; heading: string | null; anchor: string | null;
+  content: string; score: number;
+}
+
+export const searchWiki = defineTool({
+  name: "search_wiki",
+  title: "Buscar en las wikis",
+  description:
+    "Búsqueda semántica (por significado, no por palabras exactas) en las wikis de las materias: devuelve los " +
+    "fragmentos más relevantes con su página y sección. Usala para responder preguntas sobre contenidos; citá " +
+    "título y materia, y abrí la página completa con get_wiki_page si hace falta más contexto. " +
+    "EN: Semantic search over the subject wikis; returns the most relevant passages with their page and section.",
+  access: "user",
+  capability: CAP,
+  input: {
+    query: z.string().min(2).max(500).describe("Pregunta o tema en lenguaje natural. / Question or topic in plain words."),
+    subjectId: subjectId.optional().describe("Limitar a una materia. / Limit to one subject."),
+    limit: z.number().int().min(1).max(20).optional().describe("Fragmentos (por defecto 8). / Passages (default 8).")
+  },
+  async run(args, ctx) {
+    const res = await ctx.api.get<{ query: string; results: KbSearchHit[] }>("/v1/wiki/kb/search",
+      { q: args.query, subjectId: args.subjectId, limit: clampLimit(args.limit, 8, 20) });
+    if (res.results.length === 0) return { results: [], note: t(ctx.lang, "noWikiResults") };
+    return {
+      results: res.results.map(h => compact({
+        subjectId: h.subjectId, slug: h.slug, title: h.title, section: h.heading ?? undefined,
+        score: h.score, passage: cut(h.content, 1500).text,
+        pageId: h.pageId, resource: `ceitba://wiki/${encodeURIComponent(h.subjectId)}/${encodeURIComponent(h.slug)}`
+      }))
+    };
+  }
+});
+
+const comment = z.string().max(2000).optional()
+  .describe("Qué está mal, con las palabras del usuario. / What is wrong, in the user's words.");
+
+export const reportWikiPage = defineTool({
+  name: "report_wiki_page",
+  title: "Reportar página de wiki",
+  description:
+    "Reporta una página de wiki con un error, contenido con derechos de autor, datos personales o spam. Usala solo " +
+    "cuando el usuario pida reportarla, con el motivo que da. Cada persona tiene un reporte por página (uno nuevo lo " +
+    "reemplaza); con 3 reportes la página se oculta hasta que la revise CEITBA. pageId sale de get_wiki_page o " +
+    "search_wiki. EN: Report a wiki page (error, copyright, personal data, spam) when the user asks to.",
+  access: "user",
+  capability: CAP,
+  report: true,
+  annotations: { destructiveHint: false, idempotentHint: true },
+  input: {
+    pageId: z.string().uuid(),
+    reason: z.enum(["CONTENT_ERROR", "COPYRIGHT", "PERSONAL_DATA", "SPAM", "OTHER"])
+      .describe("CONTENT_ERROR = contenido incorrecto. / CONTENT_ERROR = wrong content."),
+    comment
+  },
+  async run(args, ctx) {
+    await ctx.api.send("PUT", `/v1/wiki/kb/pages/${args.pageId}/report`, { reason: args.reason, comment: args.comment });
+    return { reported: true, note: t(ctx.lang, "reported") };
+  }
+});
+
+export const reportWikiFile = defineTool({
+  name: "report_apuntes_file",
+  title: "Reportar archivo de apuntes",
+  description:
+    "Reporta un archivo de apuntes (derechos de autor, datos personales, materia equivocada o spam). Usala solo " +
+    "cuando el usuario pida reportarlo, con el motivo que da. Un reporte por persona y archivo; con 3 reportes se " +
+    "oculta hasta que lo revise CEITBA. fileId sale de list_subject_files. " +
+    "EN: Report an Apuntes file (copyright, personal data, wrong subject, spam) when the user asks to.",
+  access: "user",
+  capability: CAP,
+  report: true,
+  annotations: { destructiveHint: false, idempotentHint: true },
+  input: {
+    fileId: z.string().uuid(),
+    reason: z.enum(["COPYRIGHT", "PERSONAL_DATA", "WRONG_SUBJECT", "SPAM", "OTHER"]),
+    comment
+  },
+  async run(args, ctx) {
+    await ctx.api.send("PUT", `/v1/wiki/files/${args.fileId}/report`, { reason: args.reason, comment: args.comment });
+    return { reported: true, note: t(ctx.lang, "reported") };
   }
 });
 
@@ -123,4 +208,6 @@ export const listMyBookmarks = defineTool({
   }
 });
 
-export const wikiTools = [searchApuntes, listSubjectFiles, getSubjectWiki, getWikiPage, listMyBookmarks];
+export const wikiTools = [
+  searchApuntes, listSubjectFiles, getSubjectWiki, getWikiPage, searchWiki, reportWikiPage, reportWikiFile, listMyBookmarks
+];

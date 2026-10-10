@@ -23,12 +23,14 @@ JSON with trimmed fields, short times (`Lun 08:00-10:00 SDF 101`), and long text
 |---|---|
 | Public | `list_careers`, `get_plan_subjects`, `get_subject`, `get_subject_commissions`, `find_free_classrooms`, `check_classroom_conflicts`, `generate_schedules`, `get_share_session`, `list_articles`, `get_article`, `list_events`, `list_organizations`, `get_organization`, `list_benefits`, `list_staff_members`, `list_highlights` |
 | Signed in | `whoami`, `list_my_schedules`, `list_my_follows`, `get_digest_subscription`, `list_my_schedule_corrections`, `list_study_groups`, `get_study_group`, `list_my_study_groups`, `list_proposals`, `get_proposal`, `list_my_bookmarks` |
-| Signed in + `apuntes` capability | `search_apuntes`, `list_subject_files`, `get_subject_wiki`, `get_wiki_page` |
+| Signed in + `apuntes` capability | `search_apuntes`, `list_subject_files`, `get_subject_wiki`, `get_wiki_page`, `search_wiki` (semantic search over the wikis: passages with page, section and `ceitba://wiki/...` resource, for RAG) |
+| **Reports**: signed in + `apuntes` + `report` scope | `report_wiki_page`, `report_apuntes_file` (one report per user; 3 reports hide the content until CEITBA reviews it) |
 | Staff (`staff` scope) | `staff_list_schedule_corrections`, `staff_search_users`, `staff_list_digests`, `staff_analytics_summary` |
 | Moderator or staff (`staff` scope) | `moderation_list_proposals` |
 | **Writes**: staff/moderator + `write` scope | `staff_review_schedule_correction` (apply/reject), `moderation_review_proposal` (approve/reject) |
 
-Students are read-only by design. Only staff and moderators get write tools, and those tools are marked
+Students can read and report content, nothing else: their keys carry `["read", "report"]`, and the API's `report`
+scope only opens the two report endpoints. Only staff and moderators get write tools, and those tools are marked
 `destructiveHint`.
 
 Resources: `ceitba://plan/{planId}` (a plan's subjects) and `ceitba://wiki/{subjectId}/{slug}` (a wiki page as
@@ -43,6 +45,7 @@ are anonymous and deduplicated by IP, so every user of the hosted server would c
 **Scoped API keys (API side).** User API keys carry scopes (`apps/api/docs/AUTH-SETUP.md` § Scopes):
 
 - `read`: GET only.
+- `report`: also the two report endpoints (wiki pages, Apuntes files); implied by `write`.
 - `write`: non-safe methods.
 - `staff`: keeps STAFF/MODERATOR and every staff power services check; without it a staff member's key acts as a student's.
 
@@ -61,7 +64,7 @@ revoke. `src/oauth/provider.ts` does the CEITBA part:
    and send a student an authorize link that ends with the code, and a CEITBA API key, at their own redirect URI.
 3. `POST /api/v1/auth/google/mobile {idToken, nonce}`. The API verifies the token, the allowlist and the `hd` domain,
    then returns a short session.
-4. With that session we create a **scoped API key**: `["read"]` for students, `["read","staff","write"]` for staff and
+4. With that session we create a **scoped API key**: `["read","report"]` for students, `["read","report","staff","write"]` for staff and
    moderators (narrowed further if the client asked for fewer scopes). Then we log the session out.
 5. We store the grant and its authorization code in one transaction; if that fails, the new API key is revoked.
    Then we issue our own opaque access token (1 h) and refresh token (rotating, lives as long as the grant, 90 days

@@ -23,6 +23,9 @@ export interface ToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   // Non-safe call (POST/PUT/PATCH/DELETE). Needs the "write" scope and an
   // explicit opt-in (allowWrites). Only staff/moderator tools may write.
   write?: boolean;
+  // Reports content (PUT .../report): needs the "report" scope (write implies
+  // it), which students hold too. The only change a student's session can make.
+  report?: boolean;
   // CEITBA capability required (e.g. "apuntes"), see apps/api/docs/CAPABILITIES.md.
   capability?: string;
   input: S;
@@ -36,8 +39,9 @@ export class ToolError extends Error {}
 
 export function isVisible(def: ToolDef, ctx: SessionContext): boolean {
   const id = ctx.identity;
-  if (def.write && (def.access === "public" || def.access === "user")) return false; // students are read-only
+  if (def.write && (def.access === "public" || def.access === "user")) return false; // students only ever report (def.report)
   if (def.write && !(ctx.allowWrites && ctx.scopes.has("write"))) return false;
+  if (def.report && !ctx.scopes.has("report")) return false;
   switch (def.access) {
     case "public":
       break;
@@ -75,6 +79,7 @@ export function errorMessage(e: unknown, ctx: SessionContext, def?: ToolDef): st
     if (e.status === 403) return t(lang, "forbidden");
     if (e.status === 404) return t(lang, "notFound", { detail: e.message });
     if (e.status === 429) return t(lang, "rateLimited");
+    if (e.status === 501 && def?.name === "search_wiki") return t(lang, "wikiSearchUnavailable");
     if (e.status === 400) return t(lang, "validation", { detail: e.message });
     return t(lang, "upstream", { detail: `${e.status} ${e.code}` });
   }
@@ -94,7 +99,7 @@ export function registerTools(server: McpServer, ctx: SessionContext, defs: Tool
         inputSchema: def.input,
         annotations: {
           title: def.title,
-          readOnlyHint: !def.write,
+          readOnlyHint: !def.write && !def.report,
           openWorldHint: false,
           ...def.annotations
         }

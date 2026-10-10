@@ -74,7 +74,8 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
 
   const resourceUrl = new URL(cfg.publicUrl);
   const base = resourceUrl.pathname; // e.g. "/mcp"
-  const docsUrl = new URL("https://github.com/ceitba/ceitba-monorepo/blob/main/apps/mcp/CONECTAR.md");
+  // The connect page of the web app (apps/web /ia), on the same origin.
+  const docsUrl = new URL("/ia", resourceUrl);
 
   const health = (_req: Request, res: Response) => {
     res.json({ status: "ok", version: cfg.version });
@@ -190,13 +191,10 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
   });
 
   // Stateless server: no SSE stream to resume and no session to delete.
-  // A browser opening the URL gets a pointer to the connect guide instead.
+  // A browser opening the URL is sent to the connect page instead.
   const notAllowed = (req: Request, res: Response) => {
     if (req.method === "GET" && req.accepts(["text/html", "application/json"]) === "text/html") {
-      res.type("text/plain").send(
-        `CEITBA MCP server\n\nAgregá esta dirección como servidor MCP (remoto, OAuth) en tu asistente:\n` +
-        `Add this URL as a remote MCP server (OAuth) in your assistant:\n\n  ${cfg.publicUrl}\n\n` +
-        `Guía / guide: ${docsUrl.href}\n`);
+      res.redirect(302, docsUrl.href);
       return;
     }
     res.status(405).set("Allow", "POST").json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null });

@@ -17,7 +17,16 @@ beforeAll(() => {
     }),
     "GET /v1/wiki/subjects/:id/kb": () => error(403, "CAPABILITY_REQUIRED"),
     "GET /v1/staff/schedule-corrections": () => ({ data: [], meta: { total: 0, page: 1, limit: 20 } }),
-    "GET /v1/staff-members/years": () => []
+    "GET /v1/staff-members/years": () => [],
+    "GET /v1/wiki/kb/search": req => ({
+      query: req.query.get("q"),
+      results: req.query.get("q") === "nada" ? [] : [{
+        pageId: "22222222-2222-4222-8222-222222222222", subjectId: "93.41", slug: "cinematica", title: "Cinemática",
+        heading: "Movimiento rectilíneo", anchor: "movimiento-rectilineo", content: "x(t) = x0 + v t", score: 0.83
+      }]
+    }),
+    "PUT /v1/wiki/kb/pages/:id/report": () => undefined,
+    "PUT /v1/wiki/files/:id/report": () => undefined
   });
 });
 
@@ -63,12 +72,27 @@ describe("tool visibility", () => {
     await noOptIn.close();
   });
 
+  test("students with the report scope may report content, read-only sessions may not", async () => {
+    const student = { ...ME_STUDENT, capabilities: ["apuntes"] };
+    const reader = await connect({ apiUrl: api.url, me: student, scopes: ["read"] });
+    expect(reader.tools).toContain("search_wiki");
+    expect(reader.tools).not.toContain("report_wiki_page");
+    await reader.close();
+
+    const reporter = await connect({ apiUrl: api.url, me: student, scopes: ["read", "report"] });
+    expect(reporter.tools).toContain("report_wiki_page");
+    expect(reporter.tools).toContain("report_apuntes_file");
+    // Reporting does not open any other write.
+    expect(reporter.tools.some(t => t.startsWith("staff_") || t.startsWith("moderation_"))).toBe(false);
+    await reporter.close();
+  });
+
   test("every tool description is Spanish first with an English part", async () => {
     const s = await connect({ apiUrl: api.url, me: ME_STAFF, scopes: ["read", "staff", "write"], allowWrites: true });
     const { tools } = await s.client.listTools();
     for (const t of tools) {
       expect(t.description).toContain("EN:");
-      expect(t.annotations?.readOnlyHint).toBe(!t.name.includes("review"));
+      expect(t.annotations?.readOnlyHint).toBe(!t.name.includes("review") && !t.name.startsWith("report_"));
     }
     await s.close();
   });
@@ -145,6 +169,32 @@ describe("tool calls", () => {
     expect(data.members).toEqual([]);
     expect(data.note).toContain("integrantes");
     expect(api.calls.some(c => c.path === "/v1/staff-members")).toBe(false);
+    await s.close();
+  });
+
+  test("search_wiki returns passages with page references", async () => {
+    const s = await connect({ apiUrl: api.url, me: { ...ME_STUDENT, capabilities: ["apuntes"] } });
+    const r = await s.call("search_wiki", { query: "ecuación de posición", subjectId: "93.41" });
+    expect(r.isError).toBe(false);
+    const hit = (r.data as { results: Record<string, unknown>[] }).results[0];
+    expect(hit).toMatchObject({ slug: "cinematica", section: "Movimiento rectilíneo", resource: "ceitba://wiki/93.41/cinematica" });
+    const call = api.calls.findLast(c => c.path === "/v1/wiki/kb/search")!;
+    expect(call.query.get("subjectId")).toBe("93.41");
+    const none = await s.call("search_wiki", { query: "nada" });
+    expect((none.data as { note: string }).note).toContain("No hay");
+    await s.close();
+  });
+
+  test("report_wiki_page sends the reason and comment", async () => {
+    const s = await connect({ apiUrl: api.url, me: { ...ME_STUDENT, capabilities: ["apuntes"] }, scopes: ["read", "report"] });
+    const r = await s.call("report_wiki_page", {
+      pageId: "22222222-2222-4222-8222-222222222222", reason: "CONTENT_ERROR", comment: "La fórmula está mal"
+    });
+    expect(r.isError).toBe(false);
+    const call = api.calls.findLast(c => c.path.endsWith("/report"))!;
+    expect(call.method).toBe("PUT");
+    expect(call.path).toBe("/v1/wiki/kb/pages/22222222-2222-4222-8222-222222222222/report");
+    expect(call.body).toEqual({ reason: "CONTENT_ERROR", comment: "La fórmula está mal" });
     await s.close();
   });
 

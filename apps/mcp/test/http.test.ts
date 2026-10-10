@@ -192,10 +192,10 @@ describe("discovery", () => {
     }
   });
 
-  test("a browser opening /mcp gets a pointer to the guide", async () => {
-    const res = await fetch(`${base}/mcp`, { headers: { Accept: "text/html" } });
-    expect(res.status).toBe(200);
-    expect(await res.text()).toContain("CONECTAR.md");
+  test("a browser opening /mcp is sent to the connect page", async () => {
+    const res = await fetch(`${base}/mcp`, { headers: { Accept: "text/html" }, redirect: "manual" });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(`${base}/ia`);
     expect((await fetch(`${base}/mcp`, { headers: { Accept: "application/json" } })).status).toBe(405);
   });
 
@@ -208,9 +208,9 @@ describe("discovery", () => {
 
 describe("OAuth bridge", () => {
   test("decideScopes: students are read-only, staff get what they ask for", () => {
-    expect(decideScopes(undefined, { role: "user", moderator: false })).toEqual(["read"]);
+    expect(decideScopes(undefined, { role: "user", moderator: false })).toEqual(["read", "report"]);
     expect(decideScopes(["read", "staff", "write"], { role: "user", moderator: false })).toEqual(["read"]);
-    expect(decideScopes(undefined, { role: "staff", moderator: true })).toEqual(["read", "staff", "write"]);
+    expect(decideScopes(undefined, { role: "staff", moderator: true })).toEqual(["read", "report", "staff", "write"]);
     expect(decideScopes(["read", "staff"], { role: "staff", moderator: true })).toEqual(["read", "staff"]);
   });
 
@@ -222,11 +222,11 @@ describe("OAuth bridge", () => {
     // The API session was closed and a read-only key minted.
     expect(api.calls.some(c => c.path === "/v1/auth/logout")).toBe(true);
     const minted = api.calls.findLast(c => c.path === "/v1/auth/api-keys")!;
-    expect((minted.body as { scopes: string[] }).scopes).toEqual(["read"]);
+    expect((minted.body as { scopes: string[] }).scopes).toEqual(["read", "report"]);
 
     const t1 = await token({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: client.client_id, redirect_uri: "http://localhost:9999/cb" });
     expect(t1.status).toBe(200);
-    expect(t1.body.scope).toBe("read");
+    expect(t1.body.scope).toBe("read report");
     // Codes are single use.
     const again = await token({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: client.client_id });
     expect(again.status).toBe(400);
@@ -267,7 +267,7 @@ describe("OAuth bridge", () => {
   test("staff get staff + write tools", async () => {
     const { client, verifier, back } = await login("staff");
     const t = await token({ grant_type: "authorization_code", code: back.searchParams.get("code")!, code_verifier: verifier, client_id: client.client_id });
-    expect(t.body.scope).toBe("read staff write");
+    expect(t.body.scope).toBe("read report staff write");
     const list = await (await rpc(String(t.body.access_token), "tools/list")).json() as { result: { tools: { name: string }[] } };
     expect(list.result.tools.map(x => x.name)).toContain("staff_review_schedule_correction");
   });

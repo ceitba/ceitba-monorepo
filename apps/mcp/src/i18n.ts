@@ -20,7 +20,10 @@ const messages = {
     unknownSubjects: "Estas materias no están en el plan {plan}: {ids}",
     noCommissions: "Estas materias no tienen comisiones cargadas este cuatrimestre: {ids}",
     unknownPlan: "No existe el plan {plan}. Usá list_careers para ver los planes de cada carrera.",
-    noStaffMembers: "Todavía no hay integrantes cargados."
+    noStaffMembers: "Todavía no hay integrantes cargados.",
+    noWikiResults: "No hay fragmentos de las wikis que coincidan. Probá con otras palabras o sin limitar la materia.",
+    reported: "Reporte enviado. Gracias: CEITBA lo revisa, y con 3 reportes el contenido se oculta.",
+    wikiSearchUnavailable: "La búsqueda en las wikis no está disponible en este momento."
   },
   en: {
     signInRequired: "This tool needs a CEITBA session. Connect with OAuth or set CEITBA_API_KEY.",
@@ -37,7 +40,10 @@ const messages = {
     unknownSubjects: "These subjects are not in plan {plan}: {ids}",
     noCommissions: "These subjects have no commissions loaded this term: {ids}",
     unknownPlan: "There is no plan {plan}. Use list_careers to see each degree's plans.",
-    noStaffMembers: "No team members have been loaded yet."
+    noStaffMembers: "No team members have been loaded yet.",
+    noWikiResults: "No wiki passages match. Try other words or drop the subject filter.",
+    reported: "Report sent. Thanks: CEITBA reviews it, and 3 reports hide the content.",
+    wikiSearchUnavailable: "Wiki search is not available right now."
   }
 } as const;
 

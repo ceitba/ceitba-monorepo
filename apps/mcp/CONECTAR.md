@@ -1,15 +1,19 @@
 # Conectar CEITBA a tu asistente de IA
 
+> La guía con los pasos para cada asistente, y tus conexiones y claves, está en
+> **[ceitba.org.ar/ia](https://ceitba.org.ar/ia)**. Abrir `https://ceitba.org.ar/mcp` en el navegador te lleva ahí.
+
 El servidor MCP de CEITBA le da a tu asistente (Claude, ChatGPT, Cursor, VS Code, Kiro...) acceso a:
 
 - **Sin iniciar sesión:** planes y materias, comisiones y horarios, aulas libres, el **Combinador de Horarios**,
   noticias, eventos, organizaciones, beneficios y el equipo del CEITBA.
 - **Con tu cuenta @itba.edu.ar:** tus horarios guardados, grupos de estudio, propuestas, organizaciones que seguís y,
-  si tenés Apuntes habilitado, los apuntes y la wiki de cada materia.
+  si tenés Apuntes habilitado, los apuntes y la wiki de cada materia, con búsqueda por significado para responder
+  dudas citando las páginas.
 - **Personal de CEITBA:** también la cola de correcciones de horario y de propuestas, usuarios y el resumen semanal.
 
-Para estudiantes la conexión es de **solo lectura**: el asistente no puede publicar, votar ni modificar nada en tu
-nombre.
+Para estudiantes la conexión es de **lectura**: el asistente no puede publicar, votar ni modificar nada en tu nombre.
+Lo único que puede hacer es **reportar** una página de wiki o un archivo de apuntes con errores, cuando se lo pedís.
 
 **Dirección del servidor:** `https://ceitba.org.ar/mcp`
 
@@ -79,28 +83,19 @@ En `~/.kiro/settings/mcp.json` (para todos tus proyectos) o en `.kiro/settings/m
 
 ## Clientes sin OAuth: usar una clave de API
 
-Si tu cliente no soporta el inicio de sesión OAuth, podés usar una **clave de API de solo lectura**.
+Si tu cliente no soporta el inicio de sesión OAuth, podés usar una **clave de API** de lectura y reportes.
 
-1. Entrá a [ceitba.org.ar](https://ceitba.org.ar) con tu cuenta.
-2. Abrí la consola del navegador (F12 → Consola) y pegá:
-
-   ```js
-   fetch('/api/v1/auth/api-keys', {
-     method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({ name: 'MCP', ttlDays: 90, scopes: ['read'] })
-   }).then(r => r.json()).then(k => console.log(k.key))
-   ```
-
-3. Guardá la clave `ceitba_...`: se muestra **una sola vez**. Tratala como una contraseña.
-4. Configurá el servidor con el header `Authorization: Bearer ceitba_...`. Por ejemplo, en Cursor:
+1. Entrá a [ceitba.org.ar/ia](https://ceitba.org.ar/ia) con tu cuenta y tocá **Crear clave**.
+2. Guardá la clave `ceitba_...`: se muestra **una sola vez**. Tratala como una contraseña.
+3. Configurá el servidor con el header `Authorization: Bearer ceitba_...`. Por ejemplo, en Cursor:
 
    ```json
    { "mcpServers": { "ceitba": { "url": "https://ceitba.org.ar/mcp",
      "headers": { "Authorization": "Bearer ceitba_..." } } } }
    ```
 
-Para revocar una clave: `GET /api/v1/auth/api-keys` lista tus claves y `DELETE /api/v1/auth/api-keys/<id>` borra una.
-Las sesiones OAuth del servidor MCP aparecen ahí como `MCP · <cliente>`.
+En [ceitba.org.ar/ia](https://ceitba.org.ar/ia) ves tus claves y los asistentes conectados (`MCP · <cliente>`), y
+podés revocarlos.
 
 ## Modo local (stdio), para desarrolladores
 
@@ -132,12 +127,14 @@ Sin `CEITBA_API_KEY` solo aparecen las herramientas públicas.
 - "Armame un horario con 93.41, 72.11 y 81.02 del plan S10-Rev23 sin clases los viernes."
 - "¿Qué eventos hay esta semana?"
 - "Explicame los temas de la wiki de Física I." (requiere Apuntes)
+- "¿Cómo se calcula el VAN según la wiki de Matemática Financiera?" (requiere Apuntes)
+- "La fórmula de esta página está mal, reportala." (requiere Apuntes)
 
 ## Privacidad
 
 - El servidor guarda, cifrada, una clave de API con los permisos mínimos de tu sesión, nunca tu contraseña de Google.
 - Los registros incluyen tu id de usuario, la herramienta usada y si funcionó. No incluyen tus preguntas ni tu email.
-- Para desconectarte, quitá el conector en tu cliente o revocá la clave como se explica arriba.
+- Para desconectarte, quitá el conector en tu cliente o revocá la conexión en [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
 
 ---
 
@@ -146,7 +143,8 @@ Sin `CEITBA_API_KEY` solo aparecen las herramientas públicas.
 The CEITBA MCP server gives AI assistants access to ITBA's study plans, commissions and timetables, free classrooms,
 the schedule combiner, news, events, organizations and benefits. If you sign in with your @itba.edu.ar account, it
 also reaches your saved schedules, study groups, proposals and, with Apuntes enabled, subject notes and wikis.
-Student connections are **read-only**.
+Student connections can read and, when you ask, **report** a wiki page or Apuntes file with mistakes; nothing
+else. Step-by-step instructions, your connections and your keys are at [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
 
 - **Server URL:** `https://ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client.
   CEITBA shows which assistant is asking and where it will send you back; if you started the connection, continue
@@ -154,7 +152,7 @@ Student connections are **read-only**.
 - **Claude Code:** `claude mcp add --transport http ceitba https://ceitba.org.ar/mcp`
 - **Cursor / Kiro:** `{"mcpServers":{"ceitba":{"url":"https://ceitba.org.ar/mcp"}}}`
 - **VS Code:** `{"servers":{"ceitba":{"type":"http","url":"https://ceitba.org.ar/mcp"}}}`
-- **No OAuth support?** Create a read-only API key (see the browser-console snippet above) and send it as
+- **No OAuth support?** Create an API key at [ceitba.org.ar/ia](https://ceitba.org.ar/ia) and send it as
   `Authorization: Bearer ceitba_...`.
 - **Local stdio:** `bun apps/mcp/src/stdio.ts` with `CEITBA_API_KEY` set.
 

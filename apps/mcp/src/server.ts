@@ -23,6 +23,9 @@ herramientas [Staff]/[Moderación].
 - Respondé en el idioma de la persona (por defecto español). Las fechas son de Argentina (YYYY-MM-DD).
 - Usá list_careers para conocer los ids de plan (p. ej. "S10-Rev23") y whoami para el plan del usuario.
 - Para armar horarios usá generate_schedules en lugar de combinar a mano.
+- Para preguntas sobre contenidos de una materia usá search_wiki (búsqueda semántica) y citá las páginas.
+- Si la persona encuentra un error en una página o archivo, ofrecé reportarlo (report_wiki_page,
+  report_apuntes_file) con el motivo que ella da; no reportes por tu cuenta.
 - Las herramientas de escritura cambian datos reales: confirmá con la persona antes de usarlas.
 EN: CEITBA (ITBA student union) data. Reply in the user's language; dates are Argentina time.`;
 
@@ -123,8 +126,9 @@ function registerPrompts(server: McpServer): void {
           type: "text",
           text:
             `Ayudame a estudiar ${materia}. Usá get_subject para ubicarla, get_subject_wiki y get_wiki_page para los` +
-            " temas y list_subject_files para los apuntes disponibles. Armá un plan de estudio por temas, citando las" +
-            " páginas de la wiki que uses y avisando si alguna está desactualizada (stale)."
+            " temas, search_wiki para dudas puntuales y list_subject_files para los apuntes disponibles. Armá un plan" +
+            " de estudio por temas, citando las páginas de la wiki que uses y avisando si alguna está desactualizada" +
+            " (stale)."
         }
       }]
     })

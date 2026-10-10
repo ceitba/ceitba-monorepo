@@ -1,10 +1,11 @@
 # apps/mcp: agent rules
 
-Read `README.md` here first (dev, ops, OAuth bridge); `CONECTAR.md` is the connection guide for students.
+Read `README.md` here first (dev, ops, OAuth bridge). Users connect from the web app's `/ia` page (`apps/web/src/pages/AiConnectPage.tsx`,
+where opening `/mcp` in a browser lands); `CONECTAR.md` is the same guide as Markdown.
 
 - Tools live in `src/tools/*` and are declared with `defineTool` (access: public, user, staff or moderator; plus
-  `write` and `capability`). Sessions only list the tools they can use. Students are read-only: `write` tools must
-  be staff or moderator tools.
+  `write`, `report` and `capability`). Sessions only list the tools they can use. Students only read and report:
+  `write` tools must be staff or moderator tools, and `report` tools are the only changes a student session makes.
 - Descriptions are Spanish first, then `EN:`. Return compact, trimmed JSON (`src/trim.ts`), never raw API payloads.
 - Hosted mode is stateless Streamable HTTP and acts as its own OAuth 2.1 server. It bridges Google sign-in through
   `POST /v1/auth/google/mobile` and stores only an encrypted, scoped API key per login (`src/oauth/provider.ts`).

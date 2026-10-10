@@ -6,10 +6,11 @@ import type { Logger } from "./log";
 import type { RateLimiter } from "./ratelimit";
 
 // Scopes of the credential behind a session. They mirror the API key scopes
-// (ApiKeyScope.java): read is always present, write allows non-safe methods,
-// staff keeps the owner's STAFF/MODERATOR roles.
-export type Scope = "read" | "write" | "staff";
-export const ALL_SCOPES: Scope[] = ["read", "write", "staff"];
+// (ApiKeyScope.java): read is always present, report allows reporting wiki
+// pages and Apuntes files, write allows every non-safe method (and implies
+// report), staff keeps the owner's STAFF/MODERATOR roles.
+export type Scope = "read" | "report" | "write" | "staff";
+export const ALL_SCOPES: Scope[] = ["read", "report", "write", "staff"];
 
 export interface Identity {
   id: string;
@@ -62,5 +63,6 @@ export function parseScopes(raw: Iterable<string>): Set<Scope> {
     const k = s.replace(/^ceitba[.:]/, "") as Scope;
     if (ALL_SCOPES.includes(k)) out.add(k);
   }
+  if (out.has("write")) out.add("report");
   return out;
 }
