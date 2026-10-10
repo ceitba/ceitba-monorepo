@@ -30,7 +30,6 @@ const provider = new CeitbaOAuthProvider({
   resourceUrl: new URL(cfg.publicUrl),
   accessTokenTtlSeconds: cfg.accessTokenTtlSeconds,
   grantTtlDays: cfg.grantTtlDays,
-  allowApiKeyBearer: cfg.allowApiKeyBearer,
   clientIp: req => req.ip
 });
 

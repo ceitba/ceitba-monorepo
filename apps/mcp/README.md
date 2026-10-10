@@ -5,7 +5,7 @@ Cursor, VS Code, Kiro, ...) access to CEITBA data through the API (`apps/api`). 
 
 | Mode | Entry | Auth | For |
 |---|---|---|---|
-| **Hosted**: Streamable HTTP at `https://ceitba.org.ar/mcp` | `src/http.ts` | OAuth 2.1 (sign in with the ITBA Google account), or a `ceitba_` API key as the bearer token | Everyone: Claude.ai and ChatGPT connectors, and any client that supports remote servers |
+| **Hosted**: Streamable HTTP at `https://ceitba.org.ar/mcp` | `src/http.ts` | OAuth 2.1 (sign in with the ITBA Google account); the only way in | Everyone: Claude.ai and ChatGPT connectors, and any client that supports remote servers |
 | **Local**: stdio | `src/stdio.ts` | Optional `CEITBA_API_KEY` | Desktop clients, offline development |
 
 User-facing setup guide (Spanish, then English): **[CONECTAR.md](CONECTAR.md)**.
@@ -80,9 +80,9 @@ hashes in SQLite (`MCP_DB_PATH`).
 
 The API's JWT secret never leaves the API, and the API remains the only judge of who can sign in.
 
-**Raw API keys.** `Authorization: Bearer ceitba_...` is also accepted, for clients without OAuth. Disable it with
-`MCP_ALLOW_API_KEY_BEARER=false`. The tools listed are those of the key's real scopes, as `GET /v1/auth/me` reports
-them (`apiKeyScopes`), and the API enforces them on every call.
+**OAuth only.** The hosted server accepts only its own access tokens. A raw `ceitba_` API key sent as the bearer token
+gets `401`, so clients must support OAuth. Users see and disconnect their sign-ins on the web app's `/ia` page.
+Only the local stdio mode (developers) uses an API key, `CEITBA_API_KEY`.
 
 **Rate limits and client IP.** Each user gets a token bucket, `MCP_RATE_LIMIT_PER_MINUTE` (60) tool calls per minute.
 Every API call carries `X-Forwarded-For: <end-user IP>`. The API trusts the right-most entry from private peers, and
@@ -161,7 +161,7 @@ One-time setup:
    `MCP_ENCRYPTION_KEY`: losing it invalidates every MCP sign-in, and users only need to connect again.
 
 The SQLite store lives in the `mcp_data` volume. Deleting it signs everyone out of MCP. The API keys it held expire on
-their own, and users can revoke them from `GET /api/v1/auth/api-keys`; they are named `MCP · <client>`.
+their own, and users can disconnect them on the `/ia` page; they are named `MCP · <client>`.
 
 ## Layout
 

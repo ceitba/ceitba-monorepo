@@ -342,8 +342,8 @@ enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, t
   disables their keys (`403`).
 
 The MCP server (`apps/mcp`) mints `["read", "report"]` keys for students and `["read", "report", "staff", "write"]`
-keys for staff and moderators. The web app's connect page (`/ia`) lists a user's keys and MCP sign-ins, revokes them
-and creates `["read", "report"]` keys for clients without OAuth.
+keys for staff and moderators, one per OAuth sign-in, named `MCP · <client>`. The web app's connect page (`/ia`)
+lists those sign-ins and revokes them. The hosted MCP server accepts only its own OAuth tokens, never a raw key.
 
 ### Use the key
 

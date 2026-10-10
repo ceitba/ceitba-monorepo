@@ -65,7 +65,7 @@ beforeAll(async () => {
     apiUrl: api.url, defaultLang: "es", rateLimitPerMinute: 0, logLevel: "error", version: "test",
     port, host: "127.0.0.1", publicUrl: `${base}/mcp`, dbPath: ":memory:", encryptionKey: randomBytes(32).toString("base64"),
     googleClientId: "g", googleClientSecret: "s", googleHostedDomain: "itba.edu.ar", trustProxy: 1,
-    accessTokenTtlSeconds: 3600, grantTtlDays: 30, allowApiKeyBearer: true, allowedHosts: ["localhost", "127.0.0.1"]
+    accessTokenTtlSeconds: 3600, grantTtlDays: 30, allowedHosts: ["localhost", "127.0.0.1"]
   };
   store = new OAuthStore(":memory:");
   const ceitba = new CeitbaApi({ baseUrl: api.url });
@@ -75,7 +75,7 @@ beforeAll(async () => {
       authorizationUrl: (state, nonce) => `https://google.test/auth?state=${state}&nonce=${nonce}`,
       exchangeCode: async code => `id-token-${code}`
     },
-    resourceUrl: new URL(`${base}/mcp`), accessTokenTtlSeconds: 3600, grantTtlDays: 30, allowApiKeyBearer: true
+    resourceUrl: new URL(`${base}/mcp`), accessTokenTtlSeconds: 3600, grantTtlDays: 30
   });
   const app = createApp({ cfg, api: ceitba, provider, log: silentLogger, limiter: new RateLimiter(0) });
   await new Promise<void>(r => { server = app.listen(port, "127.0.0.1", () => r()); });
@@ -349,30 +349,22 @@ describe("OAuth bridge", () => {
     expect(back.searchParams.get("code")).toBeNull();
   });
 
-  test("a raw ceitba_ API key works as the bearer token", async () => {
+  test("a raw ceitba_ API key is not a bearer token: OAuth is the only way in", async () => {
     const key = "ceitba_rawkey";
     keys.set(key, { me: ME_STUDENT, scopes: ["read"], id: crypto.randomUUID() });
-    const list = await rpc(key, "tools/list");
-    expect(list.status).toBe(200);
-    expect(((await list.json()) as { result: { tools: unknown[] } }).result.tools.length).toBeGreaterThan(5);
+    const res = await rpc(key, "tools/list");
+    expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toContain("resource_metadata=");
   });
 
-  test("a raw API key gets the tools of its real scopes, not every scope", async () => {
-    const key = "ceitba_staffreadonly";
-    keys.set(key, { me: ME_STAFF, scopes: ["read"], id: crypto.randomUUID() });
-    const list = await (await rpc(key, "tools/list")).json() as { result: { tools: { name: string }[] } };
-    const names = list.result.tools.map(t => t.name);
-    expect(names.some(n => n.startsWith("staff_") || n.startsWith("moderation_"))).toBe(false);
-    const who = await (await rpc(key, "tools/call", { name: "whoami", arguments: {} })).json() as { result: { content: { text: string }[] } };
-    expect(JSON.parse(who.result.content[0].text).connectionScopes).toEqual(["read"]);
-
-    const full = "ceitba_stafffull";
-    keys.set(full, { me: ME_STAFF, scopes: ["read", "staff", "write"], id: crypto.randomUUID() });
-    const fullList = await (await rpc(full, "tools/list")).json() as { result: { tools: { name: string }[] } };
-    expect(fullList.result.tools.map(t => t.name)).toContain("staff_review_schedule_correction");
-  });
-
-  test("a key the API rejects yields 401 so the client signs in again", async () => {
-    expect((await rpc("ceitba_unknown", "tools/list")).status).toBe(401);
+  test("when the API stops accepting a sign-in's key, the client gets 401 and the sign-in is dropped", async () => {
+    const { client, verifier, back } = await login("student");
+    const t = await token({ grant_type: "authorization_code", code: back.searchParams.get("code")!, code_verifier: verifier, client_id: client.client_id });
+    const minted = api.calls.findLast(c => c.path === "/v1/auth/api-keys" && c.method === "POST")!;
+    // Revoked on the API side (e.g. from the /ia page, or the user left the allowlist).
+    for (const [k, v] of keys) if (v.me.id === ME_STUDENT.id && JSON.stringify(v.scopes) === JSON.stringify((minted.body as { scopes: string[] }).scopes)) keys.delete(k);
+    expect((await rpc(String(t.body.access_token), "tools/list")).status).toBe(401);
+    const refresh = await token({ grant_type: "refresh_token", refresh_token: String(t.body.refresh_token), client_id: client.client_id });
+    expect(refresh.status).toBe(400);
   });
 });

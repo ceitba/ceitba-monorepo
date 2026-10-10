@@ -51,7 +51,6 @@ export interface ProviderOptions {
   resourceUrl: URL;
   accessTokenTtlSeconds: number;
   grantTtlDays: number;
-  allowApiKeyBearer: boolean;
   // Client IP for API calls made during the Google callback.
   clientIp?: (req: Request) => string | undefined;
 }
@@ -60,7 +59,7 @@ export interface ProviderOptions {
 export interface ResolvedCredential {
   apiKey: string;
   scopes: Scope[];
-  grantId: string | null;
+  grantId: string;
 }
 
 const PENDING_TTL_MS = 10 * 60_000;
@@ -333,17 +332,8 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
   }
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {
-    if (token.startsWith("ceitba_")) {
-      if (!this.o.allowApiKeyBearer) throw new InvalidTokenError("API keys are not accepted as bearer tokens here");
-      // Raw user API key (clients without OAuth). The API validates it on every
-      // call; its real scopes come from /auth/me (apiKeyScopes) and replace
-      // this minimum in app.ts before any tool is listed.
-      return {
-        token, clientId: "api-key", scopes: ["read"],
-        expiresAt: Math.floor(Date.now() / 1000) + 3600, resource: this.o.resourceUrl,
-        extra: { apiKey: token, grantId: null }
-      };
-    }
+    // OAuth only: our own access tokens. A raw ceitba_ API key is not a valid
+    // bearer here (the hosted server has no other way in).
     const row = this.o.store.getToken(sha256hex(token));
     if (!row || row.kind !== "access" || row.expiresAt < Date.now()) throw new InvalidTokenError("Invalid or expired access token");
     const grant = this.o.store.getGrant(row.grantId);
@@ -357,8 +347,7 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
 
   // The CEITBA API key behind a verified token.
   resolve(auth: AuthInfo): ResolvedCredential {
-    const extra = (auth.extra ?? {}) as { apiKey?: string; grantId?: string | null };
-    if (extra.apiKey) return { apiKey: extra.apiKey, scopes: auth.scopes as Scope[], grantId: null };
+    const extra = (auth.extra ?? {}) as { grantId?: string };
     const grant = extra.grantId ? this.o.store.getGrant(extra.grantId) : undefined;
     if (!grant) throw new InvalidTokenError("The sign-in was revoked");
     return { apiKey: this.o.box.open(grant.apiKeySealed, grant.id), scopes: grant.scopes as Scope[], grantId: grant.id };

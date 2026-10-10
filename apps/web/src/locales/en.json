@@ -732,30 +732,21 @@
       "write": "Write",
       "staff": "Staff"
     },
-    "keys": {
-      "title": "Connections and API keys",
-      "signInHint": "Sign in to see the assistants connected to your account or create a key for clients without OAuth.",
-      "body": "Connected assistants (\"MCP · …\") and your keys are listed here. If your client can't sign in with OAuth, create a read-and-report key, valid for {{days}} days.",
-      "create": "Create key",
-      "creating": "Creating key",
-      "createError": "Could not create the key. Try again.",
-      "manualName": "AI assistant key",
-      "loadError": "Could not load your keys.",
-      "empty": "You have no connected assistants or keys.",
-      "meta": "Created {{created}} · expires {{expires}} · last used: {{used}}",
+    "connections": {
+      "title": "Connected assistants",
+      "signInHint": "Sign in to see the assistants connected to your account.",
+      "body": "Every assistant you connected with your account is listed here. Disconnecting one removes its access right away; you'd have to connect it again from the assistant.",
+      "loadError": "Could not load your connected assistants.",
+      "empty": "You have no connected assistants.",
+      "meta": "Connected {{created}} · expires {{expires}} · last used: {{used}}",
       "never": "never",
-      "revoke": "Revoke",
-      "revokeTitle": "Revoke this key?",
-      "revokeBody": "\"{{name}}\" stops working right away. If it is a connected assistant, it is disconnected and you will have to connect it again.",
-      "revoked": "Key revoked",
-      "revokeError": "Could not revoke the key.",
-      "createdTitle": "Your new key",
-      "createdWarning": "Copy it now: it won't be shown again. Treat it like a password.",
-      "copyKey": "Copy the key",
-      "headerHint": "Set it in your client as an Authorization: Bearer header. For example, in Cursor or Kiro:",
-      "done": "Done"
+      "revoke": "Disconnect",
+      "revokeTitle": "Disconnect this assistant?",
+      "revokeBody": "\"{{name}}\" loses access to your CEITBA account right away.",
+      "revoked": "Assistant disconnected",
+      "revokeError": "Could not disconnect the assistant."
     },
     "privacyTitle": "Privacy",
-    "privacy": "CEITBA stores, encrypted, a key with your account's minimum permissions, never your Google password. Logs include your user id, the tool used and whether it worked; they don't include your questions or your email. To disconnect an assistant, remove the connector in your client or revoke it above."
+    "privacy": "CEITBA stores, encrypted, a key with your account's minimum permissions, never your Google password. Logs include your user id, the tool used and whether it worked; they don't include your questions or your email. To disconnect an assistant, remove the connector in your client or disconnect it above."
   }
 }

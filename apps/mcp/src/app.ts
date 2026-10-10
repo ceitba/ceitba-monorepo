@@ -151,7 +151,7 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
       if (isAuthRejection(e)) {
         // The API no longer accepts the key (revoked, expired, user removed from the allowlist).
         identities.delete(cacheKey);
-        if (cred.grantId) await provider.revokeGrant(cred.grantId);
+        await provider.revokeGrant(cred.grantId);
         unauthorized(res, "CEITBA rejected this sign-in; connect again");
         return;
       }
@@ -163,9 +163,7 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
     const ctx: SessionContext = {
       api: userApi,
       identity,
-      // A raw API key's scopes are whatever the API says the key carries (read
-      // only if it doesn't say); OAuth grants carry the scopes they were minted with.
-      scopes: parseScopes(cred.grantId === null ? identity?.apiKeyScopes ?? ["read"] : cred.scopes),
+      scopes: parseScopes(cred.scopes),
       allowWrites: true,
       lang: identity?.lang ?? cfg.defaultLang,
       log,

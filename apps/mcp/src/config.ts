@@ -58,8 +58,6 @@ export interface HttpConfig extends CommonConfig {
   accessTokenTtlSeconds: number;
   // Lifetime of the scoped API key (and of the grant/refresh token) per login.
   grantTtlDays: number;
-  // Accept a raw ceitba_ API key as the bearer token (clients without OAuth).
-  allowApiKeyBearer: boolean;
   allowedHosts: string[];
 }
 
@@ -109,7 +107,6 @@ export function httpConfig(): HttpConfig {
     trustProxy: int("MCP_TRUST_PROXY_HOPS", 1),
     accessTokenTtlSeconds: int("MCP_ACCESS_TOKEN_TTL_SECONDS", 3600),
     grantTtlDays: Math.min(365, Math.max(1, int("MCP_GRANT_TTL_DAYS", 90))),
-    allowApiKeyBearer: bool("MCP_ALLOW_API_KEY_BEARER", true),
     // Loopback names are always allowed (container healthcheck, local dev);
     // DNS rebinding sends the attacker's hostname, never these.
     allowedHosts: [...new Set([

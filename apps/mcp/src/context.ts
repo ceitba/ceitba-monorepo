@@ -38,7 +38,7 @@ export interface SessionContext {
   lang: Lang;
   log: Logger;
   limiter: RateLimiter;
-  // OAuth client id or "stdio"/"api-key", for logs.
+  // OAuth client id or "stdio", for logs.
   client: string;
 }
 

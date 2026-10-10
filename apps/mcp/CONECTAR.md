@@ -1,6 +1,6 @@
 # Conectar CEITBA a tu asistente de IA
 
-> La guía con los pasos para cada asistente, y tus conexiones y claves, está en
+> La guía con los pasos para cada asistente, y los asistentes conectados a tu cuenta, está en
 > **[ceitba.org.ar/ia](https://ceitba.org.ar/ia)**. Abrir `https://ceitba.org.ar/mcp` en el navegador te lleva ahí.
 
 El servidor MCP de CEITBA le da a tu asistente (Claude, ChatGPT, Cursor, VS Code, Kiro...) acceso a:
@@ -81,21 +81,10 @@ En `~/.kiro/settings/mcp.json` (para todos tus proyectos) o en `.kiro/settings/m
 }
 ```
 
-## Clientes sin OAuth: usar una clave de API
+## Desconectar un asistente
 
-Si tu cliente no soporta el inicio de sesión OAuth, podés usar una **clave de API** de lectura y reportes.
-
-1. Entrá a [ceitba.org.ar/ia](https://ceitba.org.ar/ia) con tu cuenta y tocá **Crear clave**.
-2. Guardá la clave `ceitba_...`: se muestra **una sola vez**. Tratala como una contraseña.
-3. Configurá el servidor con el header `Authorization: Bearer ceitba_...`. Por ejemplo, en Cursor:
-
-   ```json
-   { "mcpServers": { "ceitba": { "url": "https://ceitba.org.ar/mcp",
-     "headers": { "Authorization": "Bearer ceitba_..." } } } }
-   ```
-
-En [ceitba.org.ar/ia](https://ceitba.org.ar/ia) ves tus claves y los asistentes conectados (`MCP · <cliente>`), y
-podés revocarlos.
+En [ceitba.org.ar/ia](https://ceitba.org.ar/ia) ves los asistentes conectados a tu cuenta (`MCP · <cliente>`) y podés
+desconectarlos. Tu cliente tiene que soportar el inicio de sesión **OAuth**: el servidor no acepta claves de API.
 
 ## Modo local (stdio), para desarrolladores
 
@@ -144,7 +133,7 @@ The CEITBA MCP server gives AI assistants access to ITBA's study plans, commissi
 the schedule combiner, news, events, organizations and benefits. If you sign in with your @itba.edu.ar account, it
 also reaches your saved schedules, study groups, proposals and, with Apuntes enabled, subject notes and wikis.
 Student connections can read and, when you ask, **report** a wiki page or Apuntes file with mistakes; nothing
-else. Step-by-step instructions, your connections and your keys are at [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
+else. Step-by-step instructions and your connected assistants are at [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
 
 - **Server URL:** `https://ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client.
   CEITBA shows which assistant is asking and where it will send you back; if you started the connection, continue
@@ -152,8 +141,8 @@ else. Step-by-step instructions, your connections and your keys are at [ceitba.o
 - **Claude Code:** `claude mcp add --transport http ceitba https://ceitba.org.ar/mcp`
 - **Cursor / Kiro:** `{"mcpServers":{"ceitba":{"url":"https://ceitba.org.ar/mcp"}}}`
 - **VS Code:** `{"servers":{"ceitba":{"type":"http","url":"https://ceitba.org.ar/mcp"}}}`
-- **No OAuth support?** Create an API key at [ceitba.org.ar/ia](https://ceitba.org.ar/ia) and send it as
-  `Authorization: Bearer ceitba_...`.
+- Your client must support **OAuth**; the hosted server doesn't accept API keys. See and disconnect your connected
+  assistants at [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
 - **Local stdio:** `bun apps/mcp/src/stdio.ts` with `CEITBA_API_KEY` set.
 
 Replies follow your language. Spanish is the default; your CEITBA profile language switches the server's own messages

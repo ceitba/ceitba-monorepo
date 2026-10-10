@@ -732,30 +732,21 @@
       "write": "Escritura",
       "staff": "Staff"
     },
-    "keys": {
-      "title": "Conexiones y claves de API",
-      "signInHint": "Iniciá sesión para ver los asistentes conectados a tu cuenta o crear una clave para clientes sin OAuth.",
-      "body": "Acá aparecen los asistentes conectados (\"MCP · …\") y tus claves. Si tu cliente no soporta iniciar sesión con OAuth, creá una clave de lectura y reportes, válida {{days}} días.",
-      "create": "Crear clave",
-      "creating": "Creando clave",
-      "createError": "No se pudo crear la clave. Probá de nuevo.",
-      "manualName": "Clave para asistente de IA",
-      "loadError": "No se pudieron cargar tus claves.",
-      "empty": "No tenés asistentes conectados ni claves.",
-      "meta": "Creada {{created}} · vence {{expires}} · último uso: {{used}}",
+    "connections": {
+      "title": "Asistentes conectados",
+      "signInHint": "Iniciá sesión para ver los asistentes conectados a tu cuenta.",
+      "body": "Cada asistente que conectaste con tu cuenta aparece acá. Si desconectás uno, deja de tener acceso enseguida y tenés que volver a conectarlo desde el asistente.",
+      "loadError": "No se pudieron cargar tus asistentes conectados.",
+      "empty": "No tenés asistentes conectados.",
+      "meta": "Conectado {{created}} · vence {{expires}} · último uso: {{used}}",
       "never": "nunca",
-      "revoke": "Revocar",
-      "revokeTitle": "¿Revocar esta clave?",
-      "revokeBody": "\"{{name}}\" deja de funcionar enseguida. Si es un asistente conectado, se desconecta y vas a tener que volver a conectarlo.",
-      "revoked": "Clave revocada",
-      "revokeError": "No se pudo revocar la clave.",
-      "createdTitle": "Tu nueva clave",
-      "createdWarning": "Copiala ahora: no se vuelve a mostrar. Tratala como una contraseña.",
-      "copyKey": "Copiar la clave",
-      "headerHint": "Configurala en tu cliente como encabezado Authorization: Bearer. Por ejemplo, en Cursor o Kiro:",
-      "done": "Listo"
+      "revoke": "Desconectar",
+      "revokeTitle": "¿Desconectar este asistente?",
+      "revokeBody": "\"{{name}}\" deja de tener acceso a tu cuenta de CEITBA enseguida.",
+      "revoked": "Asistente desconectado",
+      "revokeError": "No se pudo desconectar el asistente."
     },
     "privacyTitle": "Privacidad",
-    "privacy": "CEITBA guarda, cifrada, una clave con los permisos mínimos de tu cuenta, nunca tu contraseña de Google. Los registros incluyen tu id de usuario, la herramienta usada y si funcionó; no incluyen tus preguntas ni tu email. Para desconectar un asistente, quitá el conector en tu cliente o revocalo arriba."
+    "privacy": "CEITBA guarda, cifrada, una clave con los permisos mínimos de tu cuenta, nunca tu contraseña de Google. Los registros incluyen tu id de usuario, la herramienta usada y si funcionó; no incluyen tus preguntas ni tu email. Para desconectar un asistente, quitá el conector en tu cliente o desconectalo arriba."
   }
 }

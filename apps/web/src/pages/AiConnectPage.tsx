@@ -2,19 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { startGoogleSignIn } from '../store/authStore'
-import { createApiKey, fetchApiKeys, revokeApiKey, type ApiKey, type CreatedApiKey } from '../api/apiKeys'
+import { fetchApiKeys, revokeApiKey, type ApiKey } from '../api/apiKeys'
 import { formatDate } from '../utils/apuntes'
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Modal, SkeletonText, Tabs, toast } from '../components/ui'
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonText, Tabs, toast } from '../components/ui'
 
 // How to connect an AI assistant to CEITBA's MCP server (apps/mcp, served at
-// <origin>/mcp; opening that URL in a browser redirects here), plus the
-// user's API keys: manual keys for clients without OAuth, and the MCP
-// sign-ins ("MCP · <client>"), which can be revoked from here.
+// <origin>/mcp; opening that URL in a browser redirects here). Assistants
+// sign in with OAuth; signed-in users see their connected assistants here and
+// can disconnect them.
 
 type Client = 'claude' | 'chatgpt' | 'claudeCode' | 'cursor' | 'vscode' | 'kiro'
 const CLIENTS: Client[] = ['claude', 'chatgpt', 'claudeCode', 'cursor', 'vscode', 'kiro']
-
-const MANUAL_KEY_TTL_DAYS = 90
 
 const serverUrl = () => `${window.location.origin}/mcp`
 
@@ -58,121 +56,84 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-display font-bold text-h4 text-ink-primary dark:text-night-text mb-3">{children}</h2>
 }
 
-function ApiKeys() {
+// MCP sign-ins are API keys the MCP server mints per login, named
+// "MCP · <client>" (apps/mcp/src/oauth/provider.ts). Other keys are not shown.
+const MCP_KEY_PREFIX = 'MCP · '
+
+function ConnectedAssistants() {
   const { t, i18n } = useTranslation()
-  const [keys, setKeys] = useState<ApiKey[] | null>(null)
+  const [connections, setConnections] = useState<ApiKey[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const [created, setCreated] = useState<CreatedApiKey | null>(null)
   const [revoking, setRevoking] = useState<ApiKey | null>(null)
   const [revokeBusy, setRevokeBusy] = useState(false)
 
   const load = useCallback(() => {
     setLoadFailed(false)
     fetchApiKeys()
-      .then(setKeys)
+      .then((keys) => setConnections(keys.filter((k) => k.name.startsWith(MCP_KEY_PREFIX))))
       .catch((e) => { console.error(e); setLoadFailed(true) })
   }, [])
 
   useEffect(() => { load() }, [load])
-
-  async function create() {
-    setCreating(true)
-    try {
-      const key = await createApiKey({ name: t('ai.keys.manualName'), ttlDays: MANUAL_KEY_TTL_DAYS, scopes: ['read', 'report'] })
-      setCreated(key)
-      load()
-    } catch (e) {
-      console.error(e)
-      toast.error(t('ai.keys.createError'))
-    } finally {
-      setCreating(false)
-    }
-  }
 
   async function revoke() {
     if (!revoking) return
     setRevokeBusy(true)
     try {
       await revokeApiKey(revoking.id)
-      toast.success(t('ai.keys.revoked'))
+      toast.success(t('ai.connections.revoked'))
       setRevoking(null)
       load()
     } catch (e) {
       console.error(e)
-      toast.error(t('ai.keys.revokeError'))
+      toast.error(t('ai.connections.revokeError'))
     } finally {
       setRevokeBusy(false)
     }
   }
 
-  const headerSnippet = created
-    ? JSON.stringify({ mcpServers: { ceitba: { url: serverUrl(), headers: { Authorization: `Bearer ${created.key}` } } } }, null, 2)
-    : ''
-
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-        <p className="flex-1 font-body text-body text-ink-secondary dark:text-night-muted">
-          {t('ai.keys.body', { days: MANUAL_KEY_TTL_DAYS })}
-        </p>
-        <Button onClick={() => void create()} loading={creating} loadingLabel={t('ai.keys.creating')}>
-          {t('ai.keys.create')}
-        </Button>
-      </div>
+      <p className="font-body text-body text-ink-secondary dark:text-night-muted mb-4 max-w-prose">{t('ai.connections.body')}</p>
 
       {loadFailed ? (
-        <ErrorState compact message={t('ai.keys.loadError')} onRetry={load} />
-      ) : keys == null ? (
+        <ErrorState compact message={t('ai.connections.loadError')} onRetry={load} />
+      ) : connections == null ? (
         <SkeletonText lines={2} />
-      ) : keys.length === 0 ? (
-        <EmptyState compact title={t('ai.keys.empty')} />
+      ) : connections.length === 0 ? (
+        <EmptyState compact title={t('ai.connections.empty')} />
       ) : (
         <ul className="divide-y divide-border dark:divide-night-border border border-border dark:border-night-border rounded-card bg-white dark:bg-night-surface">
-          {keys.map((k) => (
+          {connections.map((k) => (
             <li key={k.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
               <div className="flex-1 min-w-0">
-                <p className="font-body text-body text-ink-primary dark:text-night-text truncate">{k.name}</p>
+                <p className="font-body text-body text-ink-primary dark:text-night-text truncate">
+                  {k.name.slice(MCP_KEY_PREFIX.length)}
+                </p>
                 <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">
-                  {t('ai.keys.meta', {
+                  {t('ai.connections.meta', {
                     created: formatDate(k.createdAt, i18n.language),
                     expires: formatDate(k.expiresAt, i18n.language),
-                    used: k.lastUsedAt ? formatDate(k.lastUsedAt, i18n.language) : t('ai.keys.never'),
+                    used: k.lastUsedAt ? formatDate(k.lastUsedAt, i18n.language) : t('ai.connections.never'),
                   })}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {k.scopes.map((s) => <Badge key={s}>{t(`ai.scopes.${s}`)}</Badge>)}
+                  {(k.scopes ?? []).map((s) => <Badge key={s}>{t(`ai.scopes.${s}`)}</Badge>)}
                 </div>
               </div>
               <Button size="sm" variant="dangerGhost" onClick={() => setRevoking(k)}>
-                {t('ai.keys.revoke')}
+                {t('ai.connections.revoke')}
               </Button>
             </li>
           ))}
         </ul>
       )}
 
-      {created && (
-        <Modal
-          title={t('ai.keys.createdTitle')}
-          onClose={() => setCreated(null)}
-          size="lg"
-          footer={<Button onClick={() => setCreated(null)}>{t('ai.keys.done')}</Button>}
-        >
-          <div className="flex flex-col gap-4">
-            <Alert tone="warning">{t('ai.keys.createdWarning')}</Alert>
-            <CopyBlock text={created.key} label={t('ai.keys.copyKey')} />
-            <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('ai.keys.headerHint')}</p>
-            <CopyBlock text={headerSnippet} label={t('ai.copySnippet')} />
-          </div>
-        </Modal>
-      )}
-
       {revoking && (
         <ConfirmDialog
-          title={t('ai.keys.revokeTitle')}
-          body={t('ai.keys.revokeBody', { name: revoking.name })}
-          confirmLabel={t('ai.keys.revoke')}
+          title={t('ai.connections.revokeTitle')}
+          body={t('ai.connections.revokeBody', { name: revoking.name.slice(MCP_KEY_PREFIX.length) })}
+          confirmLabel={t('ai.connections.revoke')}
           danger
           busy={revokeBusy}
           onConfirm={() => void revoke()}
@@ -224,8 +185,8 @@ export default function AiConnectPage() {
           idPrefix="ai-client"
           className="mb-4"
         />
-        <div role="tabpanel" id={`ai-client-panel-${client}`} aria-labelledby={`ai-client-tab-${client}`} className="flex flex-col gap-4 max-w-prose">
-          <ol className="list-decimal pl-5 flex flex-col gap-2 font-body text-body text-ink-primary dark:text-night-text">
+        <div role="tabpanel" id={`ai-client-panel-${client}`} aria-labelledby={`ai-client-tab-${client}`} className="flex flex-col gap-4">
+          <ol className="list-decimal pl-5 flex flex-col gap-2 font-body text-body text-ink-primary dark:text-night-text max-w-prose">
             {Array.from({ length: STEP_COUNT[client] }, (_, i) => (
               <li key={i}>{t(`ai.clients.${client}.step${i + 1}`, { url })}</li>
             ))}
@@ -236,14 +197,14 @@ export default function AiConnectPage() {
       </section>
 
       <section className="mb-10">
-        <SectionTitle>{t('ai.keys.title')}</SectionTitle>
+        <SectionTitle>{t('ai.connections.title')}</SectionTitle>
         {loading ? (
           <SkeletonText lines={2} />
         ) : profile ? (
-          <ApiKeys />
+          <ConnectedAssistants />
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <p className="flex-1 font-body text-body text-ink-secondary dark:text-night-muted">{t('ai.keys.signInHint')}</p>
+            <p className="flex-1 font-body text-body text-ink-secondary dark:text-night-muted">{t('ai.connections.signInHint')}</p>
             <Button onClick={() => startGoogleSignIn('/ia')}>{t('auth.signIn')}</Button>
           </div>
         )}
