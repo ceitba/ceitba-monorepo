@@ -6,7 +6,8 @@ import { buttonClass } from '../components/ui'
 // https://ceitba.org.ar/app/<screen> opens CEITBApp, e.g. the weekly digest's
 // "Armá tu horario en la app" (/app/horario). With the app installed, the
 // link is a Universal Link (iOS) / App Link (Android) and never reaches this
-// page: the OS opens the app (public/.well-known/ declares the paths). Here
+// page: the OS opens the app (public/.well-known/: apple-app-site-association
+// declares the paths, assetlinks.json the Play App Signing key). Here
 // we only see visitors without the app, on a desktop, or whose mail client
 // opened the link in its own browser.
 //   desktop → the same screen on the website
