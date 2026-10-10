@@ -45,9 +45,15 @@ public class ApiKeyService {
         return create(user, name, ttlDays, null);
     }
 
-    // scopeKeys: subset of read/write/staff; null/empty → all (full power).
+    // scopeKeys: subset of read/write/staff; null → all (full power), [] → read only.
+    // A request authenticated with a scoped key cannot create keys, so a key can
+    // never mint a more powerful one. Checked here, not by path in ApiKeyFilter,
+    // so an encoded path (api%2Dkeys) can't skip it.
     @Transactional
     public ApiKeyCreatedResponse create(User user, String name, Integer ttlDays, List<String> scopeKeys) {
+        if (ApiKeyCredential.current().filter(k -> !k.isFullPower()).isPresent()) {
+            throw new InsufficientScopeException("Scoped API keys cannot create API keys");
+        }
         // Keep the review account keyless: a key is a long-lived credential and
         // the account only exists for store review.
         if (reviewLogin.isReviewEmail(user.getEmail())) {
@@ -80,8 +86,13 @@ public class ApiKeyService {
             .toList();
     }
 
+    // A scoped key may only revoke itself (apps/mcp cleans up on logout).
     @Transactional
     public boolean revoke(User user, UUID keyId) {
+        var caller = ApiKeyCredential.current();
+        if (caller.isPresent() && !caller.get().isFullPower() && !keyId.equals(caller.get().keyId())) {
+            throw new InsufficientScopeException("Scoped API keys can only revoke themselves");
+        }
         return apiKeyRepository.deleteByIdAndUserId(keyId, user.getId()) > 0;
     }
 
@@ -106,7 +117,7 @@ public class ApiKeyService {
     }
 
     private static Set<ApiKeyScope> parseScopes(List<String> scopeKeys) {
-        if (scopeKeys == null || scopeKeys.isEmpty()) return ApiKeyScope.normalize(null);
+        if (scopeKeys == null) return ApiKeyScope.normalize(null);
         var parsed = EnumSet.noneOf(ApiKeyScope.class);
         for (String k : scopeKeys) {
             try {

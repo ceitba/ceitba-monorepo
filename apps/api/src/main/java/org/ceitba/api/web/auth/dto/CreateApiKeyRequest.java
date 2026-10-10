@@ -10,8 +10,8 @@ import java.util.List;
 public record CreateApiKeyRequest(
     @NotBlank String name,
     @Positive @Max(365) Integer ttlDays,   // null → default 365 days
-    // Subset of "read", "write", "staff" (ApiKeyScope). null/empty → all three
-    // (full power, the pre-scopes behaviour). "read" is always implied.
+    // Subset of "read", "write", "staff" (ApiKeyScope). null → all three (full
+    // power, the pre-scopes behaviour); [] → read only. "read" is always implied.
     @Size(max = 3) List<String> scopes
 ) {
     public CreateApiKeyRequest(String name, Integer ttlDays) {

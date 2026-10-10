@@ -319,24 +319,26 @@ Default expiry is **365 days**. `ttlDays` is optional; omit it to use the defaul
 ### Scopes
 
 `scopes` narrows what the key can do (`V62__api_key_scopes.sql`, `service/auth/ApiKeyScope`,
-enforced in `web/auth/ApiKeyFilter`). Scopes only take power away; a key never has more than its owner.
+enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, through
+`service/auth/ApiKeyCredential`). Scopes only take power away; a key never has more than its owner.
 
 | Scope | Effect |
 |---|---|
 | `read` | Always present. Safe methods (GET/HEAD) plus read-style POSTs (`/v1/classrooms/conflicts`). |
 | `write` | Non-safe methods (POST/PUT/PATCH/DELETE). Without it they answer `403 INSUFFICIENT_SCOPE`. |
-| `staff` | Keeps the owner's `ROLE_STAFF` / `ROLE_MODERATOR`. Without it the key acts as a plain USER. |
+| `staff` | Keeps the owner's staff powers: `ROLE_STAFF` / `ROLE_MODERATOR`, and the staff checks services make themselves (every capability, hidden wiki pages and unpublished Drive files, moderator status). Without it the key acts as a plain USER everywhere. |
 
-- Omitting `scopes` (or `[]`) creates a full-power key (`read`, `write`, `staff`), the behaviour before scopes
-  existed. Existing keys were migrated to full power.
+- Omitting `scopes` (`null`) creates a full-power key (`read`, `write`, `staff`), the behaviour before scopes
+  existed. Existing keys were migrated to full power. An explicit list is taken literally: `[]` is a read-only key.
 - Unknown scope names → `400 ValidationError`.
-- A key that is not full power cannot `POST`/`DELETE` `/v1/auth/api-keys` (so it cannot mint a stronger key),
-  but **any key may revoke itself** with `DELETE /v1/auth/api-keys/{its own id}`, even a read-only one.
+- A request made with a key that is not full power cannot create keys or revoke other keys (`403
+  INSUFFICIENT_SCOPE`, checked in `ApiKeyService`, so an encoded path such as `api%2Dkeys` can't skip it), so it
+  cannot mint a stronger key. **Any key may revoke itself** with `DELETE /v1/auth/api-keys/{its own id}`, even a
+  read-only one.
+- `GET /v1/auth/me` with a key reports what the key can do: `role`, `moderator` and `capabilities` without the
+  staff powers when it lacks `staff`, and `apiKeyScopes` (sorted; `null` for sessions).
 - The key's owner must pass the same email allowlist as a JWT session; removing an email from the allowlist also
   disables their keys (`403`).
-- Known limit: a few services decide *visibility* with a direct staff lookup (e.g. hidden wiki pages and
-  unpublished Drive files in `DriveAccess.isStaff`), so a staff user's key without `staff` still sees those in
-  reads. Writes and every role-gated route follow the scopes.
 
 The MCP server (`apps/mcp`) mints `["read"]` keys for students and `["read", "staff", "write"]` keys for staff.
 

@@ -7,6 +7,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.auth.ApiKeyCredential;
 import org.ceitba.api.web.staff.dto.ModeratorResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,7 @@ public class ModeratorService {
 
     @Transactional(readOnly = true)
     public boolean isModerator(UUID userId) {
+        if (ApiKeyCredential.staffWithheld()) return false;
         return moderators.isActiveModerator(userId)
             || staff.isActiveStaff(userId, OffsetDateTime.now(clock));
     }

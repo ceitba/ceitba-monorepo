@@ -6,6 +6,7 @@ import org.ceitba.api.domain.drive.DrivePublication;
 import org.ceitba.api.domain.drive.DriveSource;
 import org.ceitba.api.external.drive.DriveClient;
 import org.ceitba.api.repository.CeitbaStaffRepository;
+import org.ceitba.api.service.auth.ApiKeyCredential;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -29,7 +30,9 @@ public class DriveAccess {
         this.clock = clock;
     }
 
+    // Staff power of the caller: an API key without the "staff" scope has none.
     public boolean isStaff(UUID userId) {
+        if (ApiKeyCredential.staffWithheld()) return false;
         return staff.isActiveStaff(userId, OffsetDateTime.now(clock));
     }
 

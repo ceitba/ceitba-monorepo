@@ -235,11 +235,12 @@ ApiKeyFilter (custom, runs before Spring Security)
        hash key, look up in api_keys table
        if found and not expired: mark last_used_at
            scopes lack "write" and the method is not safe → 403 INSUFFICIENT_SCOPE (stop)
-           scoped key writing /v1/auth/api-keys (except revoking itself) → 403 (stop)
            scopes include "staff":
                DB lookup: active CeitbaStaff? → add ROLE_STAFF (+ ROLE_MODERATOR)
                DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
-           set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR, SCOPE_*) principal = User entity
+           set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR, SCOPE_*) principal = User entity,
+               details = the key (ApiKeyCredential: services drop staff powers without "staff",
+               ApiKeyService refuses key creation / revoking other keys to scoped keys)
    else if X-Api-Key matches AUTH_SYNC_API_KEY (static):
        set Authentication = ROLE_SYNC principal "sync-job"
    │
@@ -398,7 +399,7 @@ Guards:
 | Protected endpoint, no token → 401 | `AuthIT.protectedEndpointWithoutTokenReturns401` |
 | `/sync` no/wrong/correct key → 401/401/200 | `AuthIT.sync*ApiKey*` |
 | Allowlist admits ITBA domain | `AuthIT.allowlistAdmitsItbaDomain` |
-| API-key scopes (read-only, staff, key minting, self-revoke, allowlisted owner) | `ApiKeyScopesIT`, `ApiKeyFilterTest` |
+| API-key scopes (read-only, `[]` = read-only, staff incl. `/auth/me` and capabilities, key minting incl. encoded paths, self-revoke, allowlisted owner) | `ApiKeyScopesIT`, `ApiKeyFilterTest`, `CapabilityServiceTest` |
 | Allowlist admits explicit external email | `AuthIT.allowlistAdmitsExplicitlyListedExternalEmail` |
 | Allowlist rejects unknown domain | `AuthIT.allowlistRejectsUnknownDomain` |
 | Allowlist case-insensitive | `AuthIT.allowlistIsCaseInsensitive` |
@@ -442,4 +443,4 @@ Guards:
 - **Enforce `iss`/`aud`** — see the dated follow-up in [§ Sessions and tokens](#sessions-and-tokens).
 - **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `StaffAwareJwtAuthenticationConverter` (which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
 - **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). Caffeine with TTL ≤ minimum role-validity window would be enough.
-- **Narrower API-key scopes.** Keys carry `read` / `write` / `staff` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per controller. A few read paths still check staff directly in services (`DriveAccess.isStaff`), so a staff user's key without `staff` still sees hidden wiki pages/unpublished files.
+- **Narrower API-key scopes.** Keys carry `read` / `write` / `staff` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per controller. New code that grants staff powers from a direct `ceitba_staff`/moderator lookup must check `ApiKeyCredential.staffWithheld()` too.

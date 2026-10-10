@@ -38,9 +38,13 @@ import java.util.Set;
 //                     narrowed by the key's scopes (ApiKeyScope, V62):
 //                       - no "staff" scope → ROLE_STAFF / ROLE_MODERATOR are withheld
 //                       - no "write" scope → non-safe methods answer 403 INSUFFICIENT_SCOPE
-//                       - a scoped (not full-power) key cannot create or revoke API keys,
-//                         so it can never mint a more powerful key; any key may revoke itself
-//                     Each scope is also exposed as a SCOPE_<name> authority.
+//                       - a scoped (not full-power) key cannot create API keys or revoke
+//                         other keys (ApiKeyService, via ApiKeyCredential); any key may
+//                         revoke itself, even a read-only one
+//                     Each scope is also exposed as a SCOPE_<name> authority, and the
+//                     ValidatedKey is the authentication's details (ApiKeyCredential).
+//                     Path rules here only ever exempt an exact path, so an
+//                     encoded or odd path can only be denied, never let through.
 //                     The owner's email must still pass the session allowlist
 //                     (enforced in SecurityConfig for User principals).
 //   anything else  →  sync job static key: compared to auth.sync-api-key;
@@ -85,8 +89,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                         deny(req, res, denial);
                         return;
                     }
-                    SecurityContextHolder.getContext().setAuthentication(
-                        new UsernamePasswordAuthenticationToken(k.user(), null, authorities(k)));
+                    var authentication = new UsernamePasswordAuthenticationToken(k.user(), null, authorities(k));
+                    authentication.setDetails(k);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } else if (matchesSyncKey(key)) {
                 SecurityContextHolder.getContext().setAuthentication(
@@ -121,9 +126,6 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         if (k.keyId() != null && "DELETE".equalsIgnoreCase(method)
                 && path.equals(API_KEYS_PATH + "/" + k.keyId())) {
             return null;
-        }
-        if (!k.isFullPower() && !safe && (path.equals(API_KEYS_PATH) || path.startsWith(API_KEYS_PATH + "/"))) {
-            return "Scoped API keys cannot create or revoke API keys";
         }
         if (!k.has(ApiKeyScope.WRITE) && !safe && !READ_STYLE_POSTS.contains(path)) {
             return "This API key is read-only (missing scope: write)";

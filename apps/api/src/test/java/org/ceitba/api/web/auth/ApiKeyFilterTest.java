@@ -84,13 +84,14 @@ class ApiKeyFilterTest {
         assertThat(ApiKeyFilter.scopeDenial(key(ApiKeyScope.WRITE), "POST", "/v1/me/schedules")).isNull();
     }
 
+    // Key management is guarded in ApiKeyService (ApiKeyScopesIT), not by path
+    // here: the raw request URI may be encoded (api%2Dkeys) while routing decodes it.
+    // The filter's only path rule is the exact self-revoke exemption, so an
+    // encoded variant falls through to the write rule and is denied.
     @Test
-    void onlyFullPowerKeysManageKeys() {
-        var scoped = key(ApiKeyScope.READ, ApiKeyScope.WRITE);
-        assertThat(ApiKeyFilter.scopeDenial(scoped, "POST", "/v1/auth/api-keys")).isNotNull();
-        assertThat(ApiKeyFilter.scopeDenial(scoped, "DELETE", "/v1/auth/api-keys/abc")).isNotNull();
-        assertThat(ApiKeyFilter.scopeDenial(scoped, "GET", "/v1/auth/api-keys")).isNull();
-        var full = key();
-        assertThat(ApiKeyFilter.scopeDenial(full, "POST", "/v1/auth/api-keys")).isNull();
+    void anEncodedSelfRevokePathIsNotExempt() {
+        var id = java.util.UUID.randomUUID();
+        var self = new ApiKeyService.ValidatedKey(id, null, ApiKeyScope.normalize(List.of(ApiKeyScope.READ)));
+        assertThat(ApiKeyFilter.scopeDenial(self, "DELETE", "/v1/auth/api%2Dkeys/" + id)).isNotNull();
     }
 }

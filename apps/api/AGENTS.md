@@ -45,8 +45,8 @@ server-side Google OAuth code exchange. Every route is authenticated + allowlist
 otherwise: a new public, STAFF, MODERATOR or SYNC route needs an explicit matcher there.
 
 User API keys (`ceitba_`, `X-Api-Key`) carry scopes `read`/`write`/`staff` (V62, `ApiKeyScope`, enforced in
-`ApiKeyFilter`); see `docs/AUTH-SETUP.md` § Scopes. Code that decides staff powers must go through
-`CurrentUserRoles` (it honours a key without `staff`), not a direct `ceitba_staff`/moderator lookup.
+`ApiKeyFilter`); see `docs/AUTH-SETUP.md` § Scopes. Service code that grants the caller staff powers from a direct
+`ceitba_staff`/moderator lookup must also check `ApiKeyCredential.staffWithheld()` (a key without `staff`).
 
 ## Database
 

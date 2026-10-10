@@ -11,9 +11,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ApiKeyScopeTest {
 
     @Test
-    void emptyMeansFullPowerAndReadIsImplied() {
+    void nullMeansFullPowerEmptyMeansReadOnlyAndReadIsImplied() {
         assertThat(ApiKeyScope.normalize(null)).isEqualTo(ApiKeyScope.ALL);
-        assertThat(ApiKeyScope.normalize(List.of())).isEqualTo(ApiKeyScope.ALL);
+        assertThat(ApiKeyScope.normalize(List.of())).containsExactly(ApiKeyScope.READ);
         assertThat(ApiKeyScope.normalize(List.of(ApiKeyScope.STAFF)))
             .containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.STAFF);
     }

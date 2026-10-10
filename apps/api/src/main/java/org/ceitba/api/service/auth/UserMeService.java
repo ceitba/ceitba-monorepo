@@ -45,7 +45,10 @@ public class UserMeService {
 
     @Transactional(readOnly = true)
     public UserMeResponse describe(User user) {
-        boolean isStaff = staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock));
+        // An API key without the staff scope reports the powers it really has.
+        var key = ApiKeyCredential.current();
+        boolean staffWithheld = key.map(k -> !k.has(ApiKeyScope.STAFF)).orElse(false);
+        boolean isStaff = !staffWithheld && staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock));
         var orgs = memberships.listForUser(user.getId()).stream()
             .map(m -> new UserMeResponse.MembershipDto(m.getOrganization(), m.getRole()))
             .toList();
@@ -57,7 +60,7 @@ public class UserMeService {
             user.getName(),
             user.getEmail(),
             isStaff ? "staff" : "user",
-            isStaff || moderatorRepository.isActiveModerator(user.getId()),
+            isStaff || (!staffWithheld && moderatorRepository.isActiveModerator(user.getId())),
             user.getAvatarUrl(),
             user.getTheme(),
             user.getPreferredLanguage(),
@@ -69,7 +72,8 @@ public class UserMeService {
             user.getDiscord(),
             orgs,
             followSlugs,
-            List.copyOf(capabilities.effective(user))
+            List.copyOf(capabilities.effective(user)),
+            key.map(k -> k.scopes().stream().sorted().map(ApiKeyScope::key).toList()).orElse(null)
         );
     }
 }

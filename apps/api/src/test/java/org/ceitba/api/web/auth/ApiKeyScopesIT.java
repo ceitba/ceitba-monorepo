@@ -21,10 +21,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -130,6 +132,49 @@ class ApiKeyScopesIT {
         mvc.perform(get("/v1/auth/api-keys").header(ApiKeyFilter.HEADER, scoped))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].scopes[0]").value("read"));
+    }
+
+    // An encoded path (api%2Dkeys) is decoded for routing but not by a raw
+    // getRequestURI() comparison; the rule lives in ApiKeyService so it holds.
+    @Test
+    void scopedKeysCannotManageKeysThroughAnEncodedPath() throws Exception {
+        var u = user("encoded-" + UUID.randomUUID() + "@itba.edu.ar");
+        String scoped = key(u, "read", "write");
+        mvc.perform(post(URI.create("/v1/auth/api%2Dkeys")).header(ApiKeyFilter.HEADER, scoped)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"escalate\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value(ApiKeyFilter.INSUFFICIENT_SCOPE));
+        String other = apiKeys.create(u, "other", 30, List.of("read")).id().toString();
+        mvc.perform(delete(URI.create("/v1/auth/api%2Dkeys/" + other)).header(ApiKeyFilter.HEADER, scoped))
+            .andExpect(status().isForbidden());
+        assertThat(apiKeys.listActive(u)).hasSize(2);
+    }
+
+    @Test
+    void anEmptyScopeListMeansReadOnly() throws Exception {
+        var u = user("empty-" + UUID.randomUUID() + "@itba.edu.ar");
+        var created = apiKeys.create(u, "bot", 30, List.of());
+        assertThat(created.scopes()).containsExactly("read");
+        mvc.perform(post("/v1/auth/logout-all").header(ApiKeyFilter.HEADER, created.key()))
+            .andExpect(status().isForbidden());
+    }
+
+    // Services that read the staff row directly (capabilities, /auth/me,
+    // DriveAccess, ModeratorService) also honour a key without "staff".
+    @Test
+    void aStaffMembersKeyWithoutStaffScopeReportsAPlainUser() throws Exception {
+        var s = staffUser("narrow-" + UUID.randomUUID() + "@itba.edu.ar");
+        mvc.perform(get("/v1/auth/me").header(ApiKeyFilter.HEADER, key(s, "read")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.role").value("user"))
+            .andExpect(jsonPath("$.moderator").value(false))
+            .andExpect(jsonPath("$.apiKeyScopes.length()").value(1))
+            .andExpect(jsonPath("$.apiKeyScopes[0]").value("read"));
+        mvc.perform(get("/v1/auth/me").header(ApiKeyFilter.HEADER, key(s, "read", "staff")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.role").value("staff"))
+            .andExpect(jsonPath("$.moderator").value(true))
+            .andExpect(jsonPath("$.apiKeyScopes[1]").value("staff"));
     }
 
     @Test

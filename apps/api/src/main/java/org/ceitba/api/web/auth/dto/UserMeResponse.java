@@ -22,7 +22,9 @@ public record UserMeResponse(
     List<MembershipDto> organizations,
     List<String> follows,
     // Effective capability keys (docs/CAPABILITIES.md), sorted.
-    List<String> capabilities
+    List<String> capabilities,
+    // Scopes of the API key the request used (sorted); null for sessions.
+    List<String> apiKeyScopes
 ) {
     public record MembershipDto(String slug, String role) {}
 }

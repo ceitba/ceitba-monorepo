@@ -5,6 +5,7 @@ import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.capability.CapabilityOrgGrantRepository;
 import org.ceitba.api.repository.capability.CapabilitySettingRepository;
 import org.ceitba.api.repository.capability.CapabilityUserGrantRepository;
+import org.ceitba.api.service.auth.ApiKeyCredential;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +50,11 @@ public class CapabilityService {
     public Set<String> effective(User user) {
         if (user == null) return Set.of();
         Set<String> known = Arrays.stream(Capability.values()).map(Capability::key).collect(Collectors.toSet());
-        if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock))) return new TreeSet<>(known);
+        // Staff hold every capability, unless the caller's API key lacks the staff scope.
+        if (!ApiKeyCredential.staffWithheld()
+                && staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock))) {
+            return new TreeSet<>(known);
+        }
         Set<String> granted = new HashSet<>(settings.findEnabledForAll());
         if (user.getEmail() != null) {
             granted.addAll(userGrants.findCapabilitiesByEmail(user.getEmail().toLowerCase(Locale.ROOT)));

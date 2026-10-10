@@ -5,7 +5,11 @@ import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.capability.CapabilityOrgGrantRepository;
 import org.ceitba.api.repository.capability.CapabilitySettingRepository;
 import org.ceitba.api.repository.capability.CapabilityUserGrantRepository;
+import org.ceitba.api.service.auth.ApiKeyScope;
+import org.ceitba.api.service.auth.ApiKeyService;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.lang.reflect.Proxy;
 import java.time.Clock;
@@ -33,6 +37,21 @@ class CapabilityServiceTest {
 
         assertThatThrownBy(() -> service(false, List.of(), List.of(), List.of()).require(USER, Capability.APUNTES))
             .isInstanceOf(CapabilityRequiredException.class);
+    }
+
+    // A staff member calling with an API key that lacks the "staff" scope only
+    // gets the capabilities a student would.
+    @Test
+    void aKeyWithoutStaffScopeDropsStaffCapabilities() {
+        var key = new ApiKeyService.ValidatedKey(UUID.randomUUID(), USER, ApiKeyScope.normalize(List.of()));
+        var auth = new UsernamePasswordAuthenticationToken(USER, null, List.of());
+        auth.setDetails(key);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        try {
+            assertThat(service(true, List.of(), List.of(), List.of()).effective(USER)).isEmpty();
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private static CapabilityService service(boolean staff, List<String> forAll, List<String> byEmail, List<String> byOrg) {

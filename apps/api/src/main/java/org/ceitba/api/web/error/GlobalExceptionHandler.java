@@ -13,6 +13,7 @@ import org.ceitba.api.common.exception.ValidationException;
 import org.ceitba.api.service.auth.InvalidCredentialsException;
 import org.ceitba.api.service.auth.InvalidTokenException;
 import org.ceitba.api.service.auth.LoginRejectedException;
+import org.ceitba.api.service.auth.InsufficientScopeException;
 import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.capability.CapabilityRequiredException;
@@ -265,6 +266,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ReviewLoginDisabledException.class)
     public ResponseEntity<ErrorResponse> handleReviewLoginDisabled(ReviewLoginDisabledException ex, HttpServletRequest req) {
         return build(HttpStatus.NOT_FOUND, "NotFound", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(InsufficientScopeException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientScope(InsufficientScopeException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, InsufficientScopeException.CODE, ex.getMessage(), req);
     }
 
     @ExceptionHandler(ReviewAccountRestrictedException.class)

@@ -28,11 +28,12 @@ public enum ApiKeyScope {
         throw new IllegalArgumentException("Unknown API key scope: " + key);
     }
 
-    // null/empty means "full power" (the pre-V62 behaviour); READ is implied.
+    // null means "full power" (the pre-V62 behaviour). Any list, even an empty
+    // one, is taken literally; READ is always implied, so [] is a read-only key.
     public static Set<ApiKeyScope> normalize(Collection<ApiKeyScope> requested) {
-        if (requested == null || requested.isEmpty()) return EnumSet.copyOf(ALL);
-        var set = EnumSet.copyOf(requested);
-        set.add(READ);
+        if (requested == null) return EnumSet.copyOf(ALL);
+        var set = EnumSet.of(READ);
+        set.addAll(requested);
         return set;
     }
 
