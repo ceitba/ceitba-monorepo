@@ -161,14 +161,14 @@ export default function CitationMarker({ fileId, n, label, section, source }: Pr
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 border-t border-border dark:border-night-border">
             <Link
               to={`/apuntes/archivo/${encodeURIComponent(fileId)}`}
-              className="font-mono text-label uppercase tracking-widest text-primary hover:underline"
+              className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-primary dark:text-primary-300 hover:underline"
             >
               {t('wiki.cite.open')}
             </Link>
             <button
               type="button"
               onClick={report}
-              className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-red-600 dark:hover:text-red-400"
+              className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-red-600 dark:hover:text-red-400"
             >
               {t('wiki.cite.report')}
             </button>

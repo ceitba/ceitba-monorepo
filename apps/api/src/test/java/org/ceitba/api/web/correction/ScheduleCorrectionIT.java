@@ -1,8 +1,8 @@
 package org.ceitba.api.web.correction;
 
-import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.support.AsyncWork;
 import org.ceitba.api.domain.Career;
 import org.ceitba.api.domain.Commission;
 import org.ceitba.api.domain.CommissionTime;
@@ -32,6 +32,7 @@ import org.ceitba.api.service.push.events.PushToUsers;
 import org.ceitba.api.service.sync.DataSyncService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,9 +44,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
@@ -89,7 +87,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @RecordApplicationEvents
 @Import({FakePushGatewayConfig.class, ScheduleCorrectionIT.FixedClock.class})
-@TestPropertySource(properties = {"auth.allowed-domains=itba.edu.ar", "itba.api.use-fake=true"})
 class ScheduleCorrectionIT {
 
     // 2026-10-02 in ART: the second semester is running.
@@ -101,15 +98,6 @@ class ScheduleCorrectionIT {
             return Clock.fixed(Instant.parse("2026-10-02T15:00:00Z"),
                 ZoneId.of("America/Argentina/Buenos_Aires"));
         }
-    }
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
     static final String PLAN = "S10-Rev23";
@@ -141,6 +129,7 @@ class ScheduleCorrectionIT {
     @Autowired DataSyncService sync;
     @Autowired FakeItbaApiClient itba;
     @Autowired FakePushGateway gateway;
+    @Autowired ApplicationContext context;
     @Autowired ApplicationEvents events;
 
     @BeforeEach
@@ -774,8 +763,8 @@ class ScheduleCorrectionIT {
 
         // More confirms: no second push.
         vote(student(4), id, "CONFIRM");
-        await().during(Duration.ofMillis(700)).atMost(Duration.ofSeconds(3))
-            .until(() -> gateway.calls().size() == 1);
+        AsyncWork.awaitIdle(context);
+        assertThat(gateway.calls()).hasSize(1);
     }
 
     @Test

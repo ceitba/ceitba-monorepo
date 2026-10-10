@@ -7,7 +7,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// Scopes a user API key can carry (api_keys.scopes, V54). A key never grants
+// Scopes a user API key can carry (api_keys.scopes, V62). A key never grants
 // more than its owner has; scopes only take power away:
 //   READ   safe methods only (GET/HEAD); always present on every key
 //   WRITE  non-safe methods (POST/PUT/PATCH/DELETE)
@@ -28,7 +28,7 @@ public enum ApiKeyScope {
         throw new IllegalArgumentException("Unknown API key scope: " + key);
     }
 
-    // null/empty means "full power" (the pre-V54 behaviour); READ is implied.
+    // null/empty means "full power" (the pre-V62 behaviour); READ is implied.
     public static Set<ApiKeyScope> normalize(Collection<ApiKeyScope> requested) {
         if (requested == null || requested.isEmpty()) return EnumSet.copyOf(ALL);
         var set = EnumSet.copyOf(requested);

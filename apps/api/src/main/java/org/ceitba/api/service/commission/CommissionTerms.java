@@ -15,10 +15,11 @@ import java.util.Map;
 // (CommissionService) so both endpoints always agree.
 //
 // The commission table accumulates every term the sync job has ever seen
-// (rows are upserted by ITBA id and never pruned), and a commission row
-// carries no year/period: ITBA's courseCommissions payload has no such field
-// and the (year, period) the sync queried with is not stored. The only term
-// signal is the course dates, so a term is identified by course_start:
+// (rows are upserted by ITBA id and never pruned). Since V54 a row records
+// the (year, period) of the last sync query that listed it (term_year /
+// term_period), but rows inserted outside the sync have none and ITBA's
+// payload itself carries no term, so this still selects by the course dates,
+// identifying a term by course_start:
 //
 //   1. Candidates are the commissions that have not ended (course_end >=
 //      today). If there are none — between terms, before the next term is
@@ -63,6 +64,12 @@ public final class CommissionTerms {
             .filter(c -> !c.getCourseEnd().isBefore(today))
             .toList();
         return newestTerm(notEnded.isEmpty() ? commissions : notEnded);
+    }
+
+    // Whether currentTerm fell back to an ended term for these (already
+    // selected) commissions: none of them is still running.
+    public static boolean isPastTerm(List<Commission> selected, LocalDate today) {
+        return !selected.isEmpty() && selected.stream().allMatch(c -> c.getCourseEnd().isBefore(today));
     }
 
     // Commissions of any number of subjects → per subject code (in order of

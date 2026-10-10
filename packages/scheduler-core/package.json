@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Pure, DOM-free schedule combination generator shared by apps/scheduler and apps/mcp",
+  "description": "Pure, DOM-free schedule combination generator shared by apps/web (scheduler) and apps/mcp",
   "exports": {
     ".": "./src/index.ts"
   },

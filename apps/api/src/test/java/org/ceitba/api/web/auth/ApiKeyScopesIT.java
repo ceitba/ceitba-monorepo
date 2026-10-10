@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Scoped user API keys (V54, ApiKeyScope): read-only keys cannot write, keys
+// Scoped user API keys (V62, ApiKeyScope): read-only keys cannot write, keys
 // without "staff" lose STAFF powers, scoped keys cannot mint keys, and the
 // owner must pass the session allowlist.
 @SpringBootTest

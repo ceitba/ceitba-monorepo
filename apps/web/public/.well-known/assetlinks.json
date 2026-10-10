@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.ceitba.app",
+      "sha256_cert_fingerprints": [
+        "D1:3B:B3:C1:CD:E9:2B:3B:7C:91:46:E5:3B:AC:C8:FB:37:24:00:EA:D8:84:92:10:38:4A:DD:58:D2:91:88:D2"
+      ]
+    }
+  }
+]

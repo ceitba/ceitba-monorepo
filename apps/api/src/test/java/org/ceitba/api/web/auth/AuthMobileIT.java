@@ -1,6 +1,5 @@
 package org.ceitba.api.web.auth;
 
-import org.ceitba.api.support.SharedPostgres;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.repository.RefreshTokenRepository;
@@ -13,8 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -37,21 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestGoogleIdTokens.LocalKeyVerifier.class)
 @TestPropertySource(properties = {
-    "auth.allowed-domains=itba.edu.ar",
     "auth.allowed-emails=friend@gmail.com,boss@acme.com",
-    "auth.google.mobile-audiences=" + TestGoogleIdTokens.WEB_CLIENT + "," + TestGoogleIdTokens.IOS_CLIENT,
-    "itba.api.use-fake=true"
+    "auth.google.mobile-audiences=" + TestGoogleIdTokens.WEB_CLIENT + "," + TestGoogleIdTokens.IOS_CLIENT
 })
 class AuthMobileIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;

@@ -20,7 +20,8 @@ public class FakeSyncChatClient implements SyncChatClient {
     private volatile Function<FakeLlmRequest, JsonNode> responder = r -> null;
     private volatile boolean toolCalls = true;
     private volatile boolean proseUnlessJsonObject;
-    private volatile List<String> models = List.of("glm-5.3", "glm-5.3-flash", "anthropic-claude-haiku-4.5");
+    private static final List<String> DEFAULT_MODELS = List.of("glm-5.3", "glm-5.3-flash", "anthropic-claude-haiku-4.5");
+    private volatile List<String> models = DEFAULT_MODELS;
 
     public FakeSyncChatClient(ObjectMapper json) {
         this.json = json;
@@ -31,6 +32,7 @@ public class FakeSyncChatClient implements SyncChatClient {
         responder = r -> null;
         toolCalls = true;
         proseUnlessJsonObject = false;
+        models = DEFAULT_MODELS;
     }
 
     public void respond(Function<FakeLlmRequest, JsonNode> responder) {

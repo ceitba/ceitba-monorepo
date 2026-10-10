@@ -1,0 +1,51 @@
+# Git hooks (https://lefthook.dev). Installed by `bun install` at the repo root
+# (lefthook's postinstall); re-install with `bun run hooks`.
+# The same checks run in CI, so skipping a hook only moves the failure to the PR.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: secrets
+      run: sh scripts/hooks/gitleaks.sh
+
+    - name: eslint web
+      root: apps/web/
+      glob: "*.{ts,tsx,js,jsx}"
+      run: node ../../scripts/hooks/eslint.mjs {staged_files}
+
+    - name: locales
+      glob: "apps/*/src/**/locales/*.json"
+      run: node scripts/checks/locales.mjs
+
+    - name: migrations
+      glob:
+        - "apps/api/src/main/resources/db/migration/*"
+        - "apps/api/src/test/resources/db/test-migration/*"
+        - "apps/api/src/test/resources/application.yml"
+      run: node scripts/checks/migrations.mjs
+
+    - name: workflows
+      glob:
+        - ".github/workflows/*"
+        - "package.json"
+      run: node scripts/checks/workflows.mjs
+
+    - name: agents
+      glob:
+        - "**/AGENTS.md"
+        - "**/CLAUDE.md"
+        - ".agents/**"
+        - ".claude/**"
+        - ".kiro/**"
+        - ".codex/**"
+      run: node scripts/checks/agents.mjs
+
+commit-msg:
+  jobs:
+    - name: conventional commits
+      run: node scripts/checks/commit-msg.mjs {1}
+
+pre-push:
+  jobs:
+    - name: repo checks
+      run: node scripts/checks/run-all.mjs

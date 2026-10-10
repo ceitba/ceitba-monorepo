@@ -17,6 +17,7 @@ import org.ceitba.api.service.auth.ReviewAccountRestrictedException;
 import org.ceitba.api.service.auth.ReviewLoginDisabledException;
 import org.ceitba.api.service.capability.CapabilityRequiredException;
 import org.ceitba.api.service.correction.ScheduleCorrectionException;
+import org.ceitba.api.service.staff.InvalidBenefitSlugException;
 import org.ceitba.api.service.digest.DigestException;
 import org.ceitba.api.service.mail.MailQuotaExhaustedException;
 import org.ceitba.api.service.mail.MailSenderNotConnectedException;
@@ -27,6 +28,9 @@ import org.ceitba.api.service.studygroup.StudyGroupConflictException;
 import org.ceitba.api.service.studygroup.StudyGroupForbiddenException;
 import org.ceitba.api.service.user.FileNumberAlreadySetException;
 import org.ceitba.api.service.user.FileNumberTakenException;
+import org.ceitba.api.service.news.EventRsvpException;
+import org.ceitba.api.service.orgmail.OrgMailException;
+import org.ceitba.api.service.news.LastOrgAdminException;
 import org.ceitba.api.service.user.LastActiveStaffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +70,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(LastActiveStaffException.class)
     public ResponseEntity<ErrorResponse> handleLastActiveStaff(LastActiveStaffException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "LastActiveStaff", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(OrgMailException.class)
+    public ResponseEntity<ErrorResponse> handleOrgMail(OrgMailException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, ex.reason().code(), ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(EventRsvpException.class)
+    public ResponseEntity<ErrorResponse> handleEventRsvp(EventRsvpException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, ex.reason().code(), ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(LastOrgAdminException.class)
+    public ResponseEntity<ErrorResponse> handleLastOrgAdmin(LastOrgAdminException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "LastOrgAdmin", ex.getMessage(), req);
     }
 
     @ExceptionHandler(FileNumberAlreadySetException.class)
@@ -173,6 +192,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
             .header("Retry-After", Long.toString(ex.retryAfterSeconds()))
             .body(ErrorResponse.of("TooManyRequests", ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidBenefitSlugException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBenefitSlug(InvalidBenefitSlugException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "InvalidSlug", ex.getMessage(), req);
     }
 
     @ExceptionHandler(ValidationException.class)

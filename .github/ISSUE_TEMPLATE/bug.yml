@@ -1,0 +1,29 @@
+name: Bug report
+description: Something in the API or a web app behaves wrong.
+labels: [bug, needs-triage]
+body:
+  - type: dropdown
+    id: app
+    attributes:
+      label: Where
+      options: [API, Web (ceitba.org.ar / manage), Scheduler, Newsletter, Infra / deploy, Not sure]
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you saw, and what you expected instead.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Click …
+    validations: { required: true }
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: URL, browser/device, logged in or not (role), screenshots, request ids. Never paste tokens or cookies.

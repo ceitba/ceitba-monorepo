@@ -35,7 +35,7 @@ public class ApiKey {
     @Column(name = "last_used_at")
     private OffsetDateTime lastUsedAt;
 
-    // Comma-separated scope keys (read,write,staff); see ApiKeyScope and V54.
+    // Comma-separated scope keys (read,write,staff); see ApiKeyScope and V62.
     @Column(nullable = false, length = 64)
     private String scopes;
 

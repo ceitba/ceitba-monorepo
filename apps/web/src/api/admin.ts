@@ -42,6 +42,8 @@ export interface FetchUsersParams {
   q?: string
   sort?: 'newest' | 'oldest'
   organization?: string
+  // Only users with STAFF right now.
+  staff?: boolean
 }
 
 export function fetchUsers(params: FetchUsersParams = {}): Promise<UsersPage> {
@@ -51,6 +53,7 @@ export function fetchUsers(params: FetchUsersParams = {}): Promise<UsersPage> {
   if (params.q)            qs.set('q',            params.q)
   if (params.sort)         qs.set('sort',         params.sort)
   if (params.organization) qs.set('organization', params.organization)
+  if (params.staff)        qs.set('staff',        'true')
   const suffix = qs.toString() ? `?${qs}` : ''
   return apiGet<UsersPage>(`/users${suffix}`)
 }

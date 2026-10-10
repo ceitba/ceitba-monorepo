@@ -22,7 +22,7 @@ public record DigestPersonalProperties(
 
     public DigestPersonalProperties {
         wikiBaseUrl = blank(wikiBaseUrl) ? "https://ceitba.org.ar/apuntes" : wikiBaseUrl.trim().replaceAll("/+$", "");
-        schedulerUrl = blank(schedulerUrl) ? "https://ceitba.org.ar/scheduler/" : schedulerUrl.trim();
+        schedulerUrl = blank(schedulerUrl) ? "https://ceitba.org.ar/app/horario" : schedulerUrl.trim();
         if (voteTokenTtl == null || voteTokenTtl.isZero() || voteTokenTtl.isNegative()) voteTokenTtl = Duration.ofDays(14);
         if (maxWikiLinks == null || maxWikiLinks < 0) maxWikiLinks = 5;
         if (maxCorrections == null || maxCorrections < 0) maxCorrections = 3;

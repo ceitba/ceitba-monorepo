@@ -1,6 +1,6 @@
 // Types the schedule generator needs. They are the minimal shapes of the API's
 // GET /v1/subjects catalog (snake_case), so callers can pass the richer app
-// types (apps/scheduler) or a trimmed copy (apps/mcp) without mapping.
+// types (apps/web) or a trimmed copy (apps/mcp) without mapping.
 
 export interface SchedulerOptions {
   allowOverlap: boolean;
@@ -27,6 +27,10 @@ export interface ScheduleSlot {
   subject: string;
   subject_id: string;
   commission: string;
+  // Other commissions of the subject with the very same timetable, building
+  // and dates. Generation treats them as one option (they make no difference
+  // to the schedule) and lists their names here; `commission` is the first.
+  alternatives?: string[];
   building: string;
   classroom: string;
 }
@@ -50,6 +54,9 @@ export interface CommissionSchedule {
 
 export interface CommissionInput {
   name: string;
+  // This commission's own "YYYY-MM-DD" dates; the subject's when missing.
+  course_start?: string;
+  course_end?: string;
   // EFFECTIVE slots (an applied correction's slots if any, else SGA's).
   schedule: CommissionSchedule[];
 }

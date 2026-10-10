@@ -1,0 +1,28 @@
+{
+  "description": "CEITBA repo guardrails: same scripts as .claude/settings.json and .kiro/hooks/. Trust them once with /hooks.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/guard.mjs\"",
+            "statusMessage": "Checking repo guardrails"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/stop.mjs\"",
+            "statusMessage": "Running repo checks"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -10,6 +10,7 @@ import java.util.List;
 public record CommissionQuery(Integer year, String period, List<String> levels) {
 
     public static final List<String> DEFAULT_LEVELS = List.of("GRADUATE", "UNDERGRADUATE");
+    public static final List<String> PERIODS = List.of("FirstSemester", "SecondSemester");
 
     public static CommissionQuery defaults() {
         return new CommissionQuery(null, null, null);

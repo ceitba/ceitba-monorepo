@@ -145,7 +145,7 @@ One-time setup:
 1. **Google Cloud Console.** Use a new OAuth web client (recommended) or the existing one. Add the authorized redirect
    URI `https://ceitba.org.ar/mcp/oauth/google/callback`.
 2. **API.** Add that client id to `AUTH_GOOGLE_MOBILE_AUDIENCES` in `~/CEITBA-API/.env` (comma separated), and deploy
-   the API first, since V54 adds key scopes.
+   the API first, since V62 adds key scopes.
 3. **VPS.** Run `mkdir ~/CEITBA-MCP`, then create `~/CEITBA-MCP/.env` from [.env.example](.env.example)
    (`MCP_ENCRYPTION_KEY=$(openssl rand -base64 32)`, plus the Google client id and secret). Back up
    `MCP_ENCRYPTION_KEY`: losing it invalidates every MCP sign-in, and users only need to connect again.

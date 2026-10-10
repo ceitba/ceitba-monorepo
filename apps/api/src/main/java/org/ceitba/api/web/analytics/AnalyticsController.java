@@ -36,7 +36,7 @@ public class AnalyticsController {
                                         HttpServletRequest http) {
         List<EventPayload> payloads = batch.events().stream()
             .map(e -> new EventPayload(e.type(), e.sessionId(), e.timestamp(),
-                                       e.articleId(), e.category(), e.path()))
+                                       e.articleId(), e.eventId(), e.category(), e.path()))
             .toList();
         service.ingestBatch(payloads, clientIp(http));
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();

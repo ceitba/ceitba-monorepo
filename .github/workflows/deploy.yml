@@ -2,8 +2,9 @@ name: Deploy
 
 # Every push to main deploys the apps it changed, to the same VPS paths as the
 # old per-repo workflows: API image + compose (~/CEITBA-API), Caddy (~/infra),
-# MCP server image + compose (~/CEITBA-MCP), SPAs (/var/www/{main,scheduler,itbanews}).
-# The API ships first; MCP and SPA deploys wait for it, so nothing goes live
+# MCP server image + compose (~/CEITBA-MCP), the web app (/var/www/main; it
+# serves the site, /scheduler and /newsletter).
+# The API ships first; MCP and web deploys wait for it, so nothing goes live
 # ahead of the API it depends on.
 # Deploy credentials live only in the `production` environment.
 #
@@ -51,12 +52,6 @@ jobs:
             web:
               - 'apps/web/**'
               - *shared
-            scheduler:
-              - 'apps/scheduler/**'
-              - *shared
-            newsletter:
-              - 'apps/newsletter/**'
-              - *shared
             mcp:
               - 'apps/mcp/**'
               - 'packages/**'
@@ -65,7 +60,7 @@ jobs:
       - id: spas
         env:
           # Manual runs deploy every app.
-          CHANGES: ${{ github.event_name == 'workflow_dispatch' && '["web","scheduler","newsletter"]' || steps.filter.outputs.changes }}
+          CHANGES: ${{ github.event_name == 'workflow_dispatch' && '["web"]' || steps.filter.outputs.changes }}
         run: echo "matrix=$(jq -c --argjson changes "$CHANGES" '[.[] | select(.app as $a | $changes | index($a))]' .github/spa-apps.json)" >> "$GITHUB_OUTPUT"
 
   # Hosted MCP server (apps/mcp): test, image, deploy to ~/CEITBA-MCP. It
@@ -79,7 +74,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: 1.4.2 # the version that wrote bun.lock; bump both together
+          bun-version-file: package.json # packageManager: the bun that writes bun.lock
       - run: bun install --frozen-lockfile
       - run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' lint
       - run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' test
@@ -313,7 +308,7 @@ jobs:
           node-version: 20
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: 1.4.2 # the version that wrote bun.lock; bump both together
+          bun-version-file: package.json # packageManager: the bun that writes bun.lock
       - run: bun install --frozen-lockfile
       - run: bun run --filter '${{ matrix.package }}' lint
       - name: Production env
@@ -341,5 +336,14 @@ jobs:
           script: |
             set -e
             STAGE=/tmp/${{ matrix.app }}-deploy-${{ github.sha }}
-            rsync -r --delete "$STAGE/dist/" /var/www/${{ matrix.www }}/
+            WWW=/var/www/${{ matrix.www }}
+            # 1. Add the new build's files without removing anything, and
+            #    index.html last, so it never points at chunks not yet there.
+            rsync -rt --exclude=/index.html "$STAGE/dist/" "$WWW/"
+            rsync -t "$STAGE/dist/index.html" "$WWW/index.html"
+            # 2. Only now drop the previous build's files (-t keeps mtimes, so
+            #    this pass copies nothing again). Tabs opened before
+            #    the deploy that then lazy-load one of them reload once
+            #    (vite:preloadError in apps/web/src/main.tsx).
+            rsync -rt --delete "$STAGE/dist/" "$WWW/"
             rm -rf "$STAGE"

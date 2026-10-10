@@ -1,6 +1,5 @@
 package org.ceitba.api;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.repository.CareerRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.CommissionRepository;
@@ -20,10 +19,9 @@ import org.ceitba.api.repository.wiki.SubjectWikiEditProposalRepository;
 import org.ceitba.api.repository.wiki.SubjectWikiPageRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,16 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 // V1__baseline.sql, then Hibernate validates every entity mapping against
 // the schema. If any @Entity / @Column is wrong, this test fails on startup.
 @SpringBootTest
+// Not used here; declared so this class shares the common IT context.
+@AutoConfigureMockMvc
 class SchemaValidationIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired CareerRepository careerRepository;
     @Autowired PlanRepository planRepository;

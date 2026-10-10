@@ -3,6 +3,7 @@ package org.ceitba.api.service.mail;
 import org.ceitba.api.config.MailRetentionProperties;
 import org.ceitba.api.repository.digest.DigestDeliveryLinkRepository;
 import org.ceitba.api.repository.mail.MailSendLogRepository;
+import org.ceitba.api.repository.orgmail.OrgAnnouncementDeliveryRepository;
 import org.ceitba.api.repository.mail.MailTrackingEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,14 +29,17 @@ public class MailRetentionService {
     private final MailTrackingEventRepository events;
     private final DigestDeliveryLinkRepository deliveryLinks;
     private final MailSendLogRepository sendLog;
+    private final OrgAnnouncementDeliveryRepository orgDeliveries;
     private final MailRetentionProperties props;
     private final Clock clock;
 
     public MailRetentionService(MailTrackingEventRepository events, DigestDeliveryLinkRepository deliveryLinks,
-                                MailSendLogRepository sendLog, MailRetentionProperties props, Clock clock) {
+                                MailSendLogRepository sendLog, OrgAnnouncementDeliveryRepository orgDeliveries,
+                                MailRetentionProperties props, Clock clock) {
         this.events = events;
         this.deliveryLinks = deliveryLinks;
         this.sendLog = sendLog;
+        this.orgDeliveries = orgDeliveries;
         this.props = props;
         this.clock = clock;
     }
@@ -47,6 +51,9 @@ public class MailRetentionService {
         int e = events.deleteOlderThan(trackingCutoff);
         int l = deliveryLinks.deleteOfDeliveriesSentBefore(trackingCutoff);
         int s = sendLog.deleteOlderThan(now.minus(props.sendLog()));
-        log.info("Mail retention: deleted {} tracking events, {} delivery links, {} send-log rows", e, l, s);
+        // Who got an org's email (names the recipients): kept as long as tracking data.
+        int o = orgDeliveries.deleteFinishedBefore(trackingCutoff);
+        log.info("Mail retention: deleted {} tracking events, {} delivery links, {} send-log rows, "
+            + "{} org email deliveries", e, l, s, o);
     }
 }

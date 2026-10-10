@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Repo guardrails",
+      "trigger": "PreToolUse",
+      "description": "Blocks pushes to main/dev, --no-verify, force pushes, edits to merged migrations, env files, bun.lock and generated agent files (scripts/agent-hooks/guard.mjs).",
+      "action": {
+        "type": "command",
+        "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/guard.mjs\"",
+        "timeout": 10
+      }
+    }
+  ]
+}

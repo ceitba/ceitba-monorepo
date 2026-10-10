@@ -318,7 +318,7 @@ Default expiry is **365 days**. `ttlDays` is optional; omit it to use the defaul
 
 ### Scopes
 
-`scopes` narrows what the key can do (`V54__api_key_scopes.sql`, `service/auth/ApiKeyScope`,
+`scopes` narrows what the key can do (`V62__api_key_scopes.sql`, `service/auth/ApiKeyScope`,
 enforced in `web/auth/ApiKeyFilter`). Scopes only take power away; a key never has more than its owner.
 
 | Scope | Effect |

@@ -143,14 +143,22 @@ public class ArticleController {
         // Always copied, even when null: Article.status defaults to
         // "published", so leaving it would publish on any PATCH that omits it.
         patch.setStatus(req.status());
-        return ArticleResponse.from(service.update(id, patch, featured, req.organization(), independentAuthor));
+        boolean clearPublishedAt = req.publishedAt() == null && Boolean.TRUE.equals(req.clearPublishedAt());
+        return ArticleResponse.from(service.update(id, patch, featured, req.organization(), independentAuthor,
+            clearPublishedAt, req.expectedStatus()));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteOwnIndependentArticle(#id, authentication)")
+    @PreAuthorize("hasRole('STAFF') or @orgAccess.canDeleteArticle(#id, authentication)"
+        + " or @orgAccess.canDeleteOwnIndependentArticle(#id, authentication)")
     public ResponseEntity<Void> delete(@PathVariable String id, Authentication auth) {
-        UUID independentAuthor = hasRole(auth, "ROLE_STAFF") ? null : orgAccess.currentUserId(auth);
-        service.delete(id, independentAuthor);
+        if (hasRole(auth, "ROLE_STAFF")) {
+            service.delete(id, null);
+        } else if (orgAccess.canDeleteArticle(id, auth)) {
+            service.deleteAsOrgMember(id, orgAccess.currentUserId(auth));
+        } else {
+            service.delete(id, orgAccess.currentUserId(auth));
+        }
         return ResponseEntity.noContent().build();
     }
 

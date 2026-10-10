@@ -1,6 +1,10 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector for the wiki embeddings (V61). Debian-based: the move from
+    # postgres:16-alpine is safe on the existing volume (same PG16 format; the
+    # entrypoint re-chowns the data dir) and V60 rebuilds the text indexes for
+    # the glibc collation.
+    image: pgvector/pgvector:0.8.6-pg16-bookworm@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     container_name: ceitba-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ceitba_db}
@@ -135,6 +139,61 @@ services:
       - ceitba-network
     restart: "no"
 
+  # Downloads the embedding model once into the embedding_models volume: pinned to
+  # a Hugging Face commit and checked against its sha256, so a changed upstream file
+  # can never be served silently. Re-runs are a no-op while the file checks out.
+  ceitba-embeddings-model:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11515@sha256:f8f71e3be397e868cdddfb9c404e3a263d9697f82fd7205f4737ac981feea4b8
+    container_name: ceitba-embeddings-model
+    entrypoint: ["/bin/sh", "-c"]
+    environment:
+      MODEL_URL: https://huggingface.co/unsloth/embeddinggemma-2-GGUF/resolve/031f0d4b35536f69ab3509d4893c923264fcf253/embeddinggemma-2-Q8_0.gguf
+      MODEL_SHA256: 6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc
+      MODEL_FILE: /models/embeddinggemma-2-Q8_0.gguf
+    command:
+      - |
+        set -eu
+        if [ -f "$$MODEL_FILE" ] && echo "$$MODEL_SHA256  $$MODEL_FILE" | sha256sum -c --status; then
+          echo "embedding model present"; exit 0
+        fi
+        curl -fsSL --retry 5 -o "$$MODEL_FILE.part" "$$MODEL_URL"
+        echo "$$MODEL_SHA256  $$MODEL_FILE.part" | sha256sum -c
+        mv "$$MODEL_FILE.part" "$$MODEL_FILE"
+    volumes:
+      - embedding_models:/models
+    restart: "no"
+
+  # Self-hosted text embeddings for the wiki (docs/SUBJECT-WIKI.md "Embeddings"):
+  # llama.cpp serving EmbeddingGemma 2 (Q8_0, 768 dimensions, 100+ languages) on
+  # the CPU, OpenAI-compatible at http://ceitba-embeddings:8080/v1 inside the
+  # compose network only (never published). ~200 MB RAM; a query takes ~30 ms on
+  # 2 threads. 2 slots x 4096 tokens: a chunk is at most ~2k tokens. Images: add
+  # the model's mmproj file and `--mmproj` (≈ +500 MB RAM) once the API embeds them;
+  # they land in the same vector space as the text.
+  ceitba-embeddings:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11515@sha256:f8f71e3be397e868cdddfb9c404e3a263d9697f82fd7205f4737ac981feea4b8
+    container_name: ceitba-embeddings
+    command: ["-m", "/models/embeddinggemma-2-Q8_0.gguf", "--embedding", "-np", "2", "-c", "8192",
+              "-b", "4096", "-ub", "4096", "-t", "${EMBEDDINGS_THREADS:-2}", "--host", "0.0.0.0", "--port", "8080"]
+    volumes:
+      - embedding_models:/models:ro
+    networks:
+      - ceitba-network
+    depends_on:
+      ceitba-embeddings-model:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   ceitba-api:
     image: ghcr.io/ceitba/ceitba-api:latest
     build:
@@ -157,6 +216,7 @@ services:
       ITBA_API_TOKEN: ${ITBA_API_TOKEN:-}
       ITBA_API_TIMEOUT: ${ITBA_API_TIMEOUT:-30000}
       ITBA_API_USE_FAKE: ${ITBA_API_USE_FAKE:-false}
+      ITBA_API_FAKE_FROM_DB: ${ITBA_API_FAKE_FROM_DB:-false}
       AUTH_ALLOWED_DOMAINS: ${AUTH_ALLOWED_DOMAINS:-itba.edu.ar}
       AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:-}
       AUTH_SYNC_API_KEY: ${AUTH_SYNC_API_KEY:-}
@@ -238,6 +298,15 @@ services:
       KB_EXECUTION_MODE: ${KB_EXECUTION_MODE:-auto}
       KB_SYNC_CONCURRENCY: ${KB_SYNC_CONCURRENCY:-16}
       KB_LLM_REQUEST_TIMEOUT: ${KB_LLM_REQUEST_TIMEOUT:-PT5M}
+      # Wiki page embeddings (docs/SUBJECT-WIKI.md "Embeddings"): the self-hosted
+      # ceitba-embeddings service below. The fake falls back to the LLM one here (an
+      # empty env var would not fall through Spring's default).
+      KB_EMBEDDINGS_ENABLED: ${KB_EMBEDDINGS_ENABLED:-true}
+      KB_EMBEDDING_BASE_URL: ${KB_EMBEDDING_BASE_URL:-http://ceitba-embeddings:8080/v1}
+      KB_EMBEDDING_API_KEY: ${KB_EMBEDDING_API_KEY:-}
+      KB_EMBEDDING_MODEL: ${KB_EMBEDDING_MODEL:-embeddinggemma-2}
+      KB_EMBEDDING_USE_FAKE: ${KB_EMBEDDING_USE_FAKE:-${KB_LLM_USE_FAKE:-false}}
+      KB_EMBEDDING_INTERVAL: ${KB_EMBEDDING_INTERVAL:-PT5M}
       # Optional override of the key that encrypts custom LLM endpoint tokens (default: derived from AUTH_JWT_SECRET).
       KB_SECRETS_KEY: ${KB_SECRETS_KEY:-}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
@@ -312,6 +381,8 @@ volumes:
   postgres_data:
     driver: local
   minio_data:
+    driver: local
+  embedding_models:
     driver: local
 
 networks:

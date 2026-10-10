@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useTranslation } from 'react-i18next'
 import type { KbPageType } from '../../../api/kb'
 import { forceLayout, type LayoutNode } from '../../../utils/forceLayout'
+import { Button, CloseIcon, IconButton, Skeleton, SkeletonText, inputClass } from '../../ui'
+import ZoomControls from '../ZoomControls'
 
 // Interactive wiki graph (subject graph, global map and their previews).
 //
@@ -382,6 +384,19 @@ export default function GraphView({
     else setSelected(node.id)
   }
 
+  // Closing the focus card hands keyboard focus back to the node that
+  // opened it (or the canvas if that node is no longer drawn).
+  function closeSelected() {
+    const id = selected
+    setSelected(null)
+    if (!id || mode !== 'full') return
+    window.requestAnimationFrame(() => {
+      const node = svgRef.current?.querySelector<SVGGElement>(`[data-id="${CSS.escape(id)}"]`)
+      if (node) node.focus()
+      else wrapRef.current?.focus()
+    })
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (!interactive || (e.target as HTMLElement).tagName === 'INPUT') return
     const { w, h } = size.current
@@ -394,7 +409,7 @@ export default function GraphView({
       case 'ArrowRight': view.current.x -= pan; apply(); break
       case 'ArrowUp': view.current.y += pan; apply(); break
       case 'ArrowDown': view.current.y -= pan; apply(); break
-      case 'Escape': setSelected(null); setQuery(''); break
+      case 'Escape': closeSelected(); setQuery(''); break
       case 'Enter': if (selectedNode) onOpen?.(selectedNode); break
       default: return
     }
@@ -508,7 +523,7 @@ export default function GraphView({
   if (mode !== 'full') {
     return (
       <div ref={wrapRef} className={`relative ${className}`}>
-        {!layout && <div className="absolute inset-0 skeleton rounded-card" aria-hidden="true" />}
+        {!layout && <Skeleton className="absolute inset-0 !rounded-card" />}
         {svg}
       </div>
     )
@@ -529,7 +544,7 @@ export default function GraphView({
             }}
             placeholder={t('wiki.graphUi.search')}
             aria-label={t('wiki.graphUi.search')}
-            className="w-full px-3 py-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface font-body text-body-sm focus:outline-none focus:border-primary"
+            className={inputClass({ className: 'pr-28' })}
           />
           {matches && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-label text-ink-secondary dark:text-night-muted" aria-live="polite">
@@ -540,7 +555,7 @@ export default function GraphView({
         <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <legend className="sr-only">{t('wiki.graphUi.typeFilter')}</legend>
           {TYPES.map((type) => (
-            <label key={type} className="inline-flex items-center gap-1.5 cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+            <label key={type} className="inline-flex items-center gap-1.5 min-h-[44px] cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               <input
                 type="checkbox"
                 className="h-3.5 w-3.5 accent-primary"
@@ -554,7 +569,7 @@ export default function GraphView({
             </label>
           ))}
           {hasMuted && (
-            <label className="inline-flex items-center gap-1.5 cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
+            <label className="inline-flex items-center gap-1.5 min-h-[44px] cursor-pointer font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={!hideMuted} onChange={() => setHideMuted((v) => !v)} />
               <svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="4" className="kbg-swatch-muted" /></svg>
               {mutedLabel ?? t('wiki.otherSubjects')}
@@ -570,28 +585,16 @@ export default function GraphView({
         aria-label={t('wiki.graphUi.canvasAria')}
         className="relative flex-1 min-h-[60vh] rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        {!layout && <div className="absolute inset-0 skeleton" aria-hidden="true" />}
+        {!layout && <Skeleton className="absolute inset-0 !rounded-none" />}
         {svg}
 
-        <div className="absolute bottom-3 right-3 flex flex-col rounded-sm border border-border dark:border-night-border bg-white/95 dark:bg-night-surface/95 shadow-card overflow-hidden">
-          {[
-            { label: t('wiki.graphUi.zoomIn'), icon: '+', on: () => zoomAt(1.3, size.current.w / 2, size.current.h / 2) },
-            { label: t('wiki.graphUi.zoomOut'), icon: '−', on: () => zoomAt(1 / 1.3, size.current.w / 2, size.current.h / 2) },
-            { label: t('wiki.graphUi.fit'), icon: '⤢', on: () => fitTo(null) },
-            { label: t('wiki.graphUi.reset'), icon: '1:1', on: reset },
-          ].map((b) => (
-            <button
-              key={b.label}
-              type="button"
-              onClick={b.on}
-              title={b.label}
-              aria-label={b.label}
-              className="w-10 h-10 flex items-center justify-center font-mono text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-primary-900 border-b last:border-b-0 border-border dark:border-night-border"
-            >
-              {b.icon}
-            </button>
-          ))}
-        </div>
+        <ZoomControls
+          className="absolute bottom-3 right-3 shadow-card"
+          onZoomIn={() => zoomAt(1.3, size.current.w / 2, size.current.h / 2)}
+          onZoomOut={() => zoomAt(1 / 1.3, size.current.w / 2, size.current.h / 2)}
+          onFit={() => fitTo(null)}
+          onReset={reset}
+        />
 
         <p className="hidden sm:block absolute bottom-3 left-3 font-mono text-label text-ink-secondary dark:text-night-muted pointer-events-none">
           {t('wiki.graphUi.keysHint')}
@@ -611,14 +614,9 @@ export default function GraphView({
                   {subjectLabel ? subjectLabel(selectedNode) : selectedNode.subjectId} · {t(`wiki.typeOne.${selectedNode.type}`)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                aria-label={t('errors.dismiss')}
-                className="leading-none text-h5 text-ink-secondary dark:text-night-muted hover:text-primary"
-              >
-                ×
-              </button>
+              <IconButton size="sm" onClick={closeSelected} aria-label={t('errors.dismiss')} className="-mt-2 -mr-2">
+                <CloseIcon size={16} />
+              </IconButton>
             </div>
             {loadSummary && (
               summaries.has(selectedNode.id) ? (
@@ -626,16 +624,12 @@ export default function GraphView({
                   <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{summaries.get(selectedNode.id)}</p>
                 )
               ) : (
-                <div className="h-8 rounded-sm skeleton" aria-hidden="true" />
+                <SkeletonText lines={2} />
               )
             )}
-            <button
-              type="button"
-              onClick={() => onOpen?.(selectedNode)}
-              className="self-start mt-1 inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-sm bg-primary text-white font-mono text-label uppercase tracking-widest hover:bg-primary-600"
-            >
-              {t('wiki.graphUi.open')} →
-            </button>
+            <Button size="sm" className="self-start mt-1" onClick={() => onOpen?.(selectedNode)}>
+              {t('wiki.graphUi.open')} <span aria-hidden="true">→</span>
+            </Button>
           </div>
         )}
       </div>

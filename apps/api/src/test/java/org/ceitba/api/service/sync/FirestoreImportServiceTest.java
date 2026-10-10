@@ -15,6 +15,7 @@ import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
 import org.ceitba.api.repository.news.UserFollowRepository;
 import org.ceitba.api.service.news.FollowService;
+import org.ceitba.api.service.news.OrganizationMembershipService;
 import org.ceitba.api.service.sync.FirestoreImportReport.Outcome;
 import org.ceitba.api.web.sync.dto.FirestoreBenefitDoc;
 import org.ceitba.api.web.sync.dto.FirestoreExport;
@@ -129,7 +130,7 @@ class FirestoreImportServiceTest {
 
         var clock = Clock.fixed(Instant.parse("2026-03-01T12:00:00Z"), ZoneOffset.UTC);
         service = new FirestoreImportService(users, careers, plans, moderators, categories, cards,
-            follows, proposals, txManager, clock);
+            follows, mock(OrganizationMembershipService.class), proposals, txManager, clock);
     }
 
     private static FirestoreUserDoc userDoc(String uid, String email, String degree, String plan) {

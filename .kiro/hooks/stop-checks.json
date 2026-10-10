@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Repo checks on stop",
+      "trigger": "Stop",
+      "description": "Runs scripts/checks and ESLint on touched web apps when the agent finishes with uncommitted changes; blocks the stop on failure.",
+      "action": {
+        "type": "command",
+        "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/stop.mjs\"",
+        "timeout": 180
+      }
+    }
+  ]
+}

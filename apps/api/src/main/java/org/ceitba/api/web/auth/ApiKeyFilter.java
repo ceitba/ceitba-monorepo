@@ -35,7 +35,7 @@ import java.util.Set;
 //                     grants ROLE_USER (+ ROLE_STAFF and ROLE_MODERATOR if an
 //                     active staff row exists, + ROLE_MODERATOR for an active
 //                     moderator grant), same as StaffAwareJwtAuthenticationConverter,
-//                     narrowed by the key's scopes (ApiKeyScope, V54):
+//                     narrowed by the key's scopes (ApiKeyScope, V62):
 //                       - no "staff" scope → ROLE_STAFF / ROLE_MODERATOR are withheld
 //                       - no "write" scope → non-safe methods answer 403 INSUFFICIENT_SCOPE
 //                       - a scoped (not full-power) key cannot create or revoke API keys,

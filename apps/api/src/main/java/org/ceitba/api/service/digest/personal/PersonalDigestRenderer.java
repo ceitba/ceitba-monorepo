@@ -20,7 +20,7 @@ public final class PersonalDigestRenderer {
     public record VoteLinks(String confirm, String reject) {}
 
     static final String TITLE = "Tu cuatrimestre";
-    static final String CTA = "Armá tu horario en el combinador";
+    static final String CTA = "Armá tu horario en la app";
     static final String YES = "Sí, es así";
     static final String NO = "No";
     static final String UPDATED = "actualizado esta semana";

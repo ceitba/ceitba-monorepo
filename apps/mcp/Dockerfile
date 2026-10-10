@@ -9,8 +9,6 @@ WORKDIR /app
 # MCP app's production dependencies are installed.
 COPY package.json bun.lock ./
 COPY apps/web/package.json apps/web/
-COPY apps/scheduler/package.json apps/scheduler/
-COPY apps/newsletter/package.json apps/newsletter/
 COPY apps/mcp/package.json apps/mcp/
 COPY packages/scheduler-core/package.json packages/scheduler-core/
 RUN bun install --frozen-lockfile --production --filter '@ceitba/mcp'

@@ -1,6 +1,5 @@
 package org.ceitba.api.web.sync;
 
-import org.ceitba.api.support.SharedPostgres;
 import org.ceitba.api.domain.Benefit;
 import org.ceitba.api.domain.Career;
 import org.ceitba.api.domain.Plan;
@@ -27,8 +26,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -56,22 +53,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 // POST /v1/sync/import/firestore end to end against Postgres, with the
 // PII-free fixture in src/test/resources/fixtures/firestore-export.json.
-@SpringBootTest(properties = {
-    "auth.sync-api-key=test-sync-key",
-    "auth.allowed-domains=itba.edu.ar",
-    "itba.api.use-fake=true"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
 class FirestoreImportIT {
-
-    static final SharedPostgres.Database POSTGRES = SharedPostgres.newDatabase();
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
