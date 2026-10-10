@@ -18,7 +18,9 @@ const messages = {
     truncated: "Resultado recortado. Pedí la siguiente página u otro offset para ver más.",
     noSchedules: "No hay combinaciones posibles con esas restricciones. Probá permitir superposición, quitar bloqueos o elegir otras comisiones.",
     unknownSubjects: "Estas materias no están en el plan {plan}: {ids}",
-    noCommissions: "Estas materias no tienen comisiones cargadas este cuatrimestre: {ids}"
+    noCommissions: "Estas materias no tienen comisiones cargadas este cuatrimestre: {ids}",
+    unknownPlan: "No existe el plan {plan}. Usá list_careers para ver los planes de cada carrera.",
+    noStaffMembers: "Todavía no hay integrantes cargados."
   },
   en: {
     signInRequired: "This tool needs a CEITBA session. Connect with OAuth or set CEITBA_API_KEY.",
@@ -33,7 +35,9 @@ const messages = {
     truncated: "Result truncated. Ask for the next page or another offset to see more.",
     noSchedules: "No possible combinations with those constraints. Try allowing overlap, removing blocked times or picking other commissions.",
     unknownSubjects: "These subjects are not in plan {plan}: {ids}",
-    noCommissions: "These subjects have no commissions loaded this term: {ids}"
+    noCommissions: "These subjects have no commissions loaded this term: {ids}",
+    unknownPlan: "There is no plan {plan}. Use list_careers to see each degree's plans.",
+    noStaffMembers: "No team members have been loaded yet."
   }
 } as const;
 

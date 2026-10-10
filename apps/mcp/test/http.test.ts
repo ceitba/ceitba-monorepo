@@ -15,6 +15,7 @@ let api: FakeApi;
 let server: Server;
 let base: string;
 let store: OAuthStore;
+let provider: CeitbaOAuthProvider;
 const keys = new Map<string, { me: typeof ME_STUDENT; scopes: string[]; id: string }>();
 const deletedKeys: string[] = [];
 
@@ -44,7 +45,10 @@ beforeAll(async () => {
       return { id, name: "x", key, expiresAt: new Date(Date.now() + body.ttlDays * 86_400_000).toISOString(), scopes: body.scopes };
     },
     "POST /v1/auth/logout": () => undefined,
-    "GET /v1/auth/me": req => keys.get(req.headers.get("x-api-key") ?? "")?.me ?? error(401, "invalid_token"),
+    "GET /v1/auth/me": req => {
+      const k = keys.get(req.headers.get("x-api-key") ?? "");
+      return k ? { ...k.me, apiKeyScopes: k.scopes } : error(401, "invalid_token");
+    },
     "DELETE /v1/auth/api-keys/:id": req => {
       const id = req.path.split("/").pop()!;
       deletedKeys.push(id);
@@ -65,7 +69,7 @@ beforeAll(async () => {
   };
   store = new OAuthStore(":memory:");
   const ceitba = new CeitbaApi({ baseUrl: api.url });
-  const provider = new CeitbaOAuthProvider({
+  provider = new CeitbaOAuthProvider({
     store, api: ceitba, box: new SecretBox(cfg.encryptionKey), log: silentLogger,
     google: {
       authorizationUrl: (state, nonce) => `https://google.test/auth?state=${state}&nonce=${nonce}`,
@@ -96,29 +100,58 @@ const rpc = (token: string | null, method: string, params: Record<string, unknow
 
 const initParams = { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } };
 
-async function login(googleCode: string, scope?: string) {
+async function register() {
   const reg = await fetch(`${base}/mcp/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ client_name: "Test client", redirect_uris: ["http://localhost:9999/cb"], token_endpoint_auth_method: "none" })
   });
   expect(reg.status).toBe(201);
-  const client = (await reg.json()) as { client_id: string };
+  return (await reg.json()) as { client_id: string };
+}
 
-  const verifier = randomBytes(32).toString("base64url");
-  const challenge = createHash("sha256").update(verifier).digest("base64url");
+// GET /authorize: the consent page plus the browser-binding cookie.
+async function startAuthorize(clientId: string, challenge: string, scope?: string) {
   const authorize = new URL(`${base}/mcp/authorize`);
   Object.entries({
-    response_type: "code", client_id: client.client_id, redirect_uri: "http://localhost:9999/cb",
+    response_type: "code", client_id: clientId, redirect_uri: "http://localhost:9999/cb",
     code_challenge: challenge, code_challenge_method: "S256", state: "st4te", resource: `${base}/mcp`,
     ...(scope ? { scope } : {})
   }).forEach(([k, v]) => authorize.searchParams.set(k, v));
   const a = await fetch(authorize, { redirect: "manual" });
-  expect(a.status).toBe(302);
-  const google = new URL(a.headers.get("location")!);
+  expect(a.status).toBe(200);
+  const html = await a.text();
+  const pending = /name="pending" value="([^"]+)"/.exec(html)![1];
+  const setCookie = a.headers.get("set-cookie")!;
+  const cookie = setCookie.split(";")[0];
+  return { a, html, pending, cookie, setCookie };
+}
+
+const consent = (pending: string, decision: string, cookie?: string) =>
+  fetch(`${base}/mcp/oauth/consent`, {
+    method: "POST",
+    redirect: "manual",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", ...(cookie ? { Cookie: cookie } : {}) },
+    body: new URLSearchParams({ pending, decision })
+  });
+
+const callback = (code: string, state: string, cookie?: string) =>
+  fetch(`${base}/mcp/oauth/google/callback?code=${code}&state=${state}`, {
+    redirect: "manual", headers: cookie ? { Cookie: cookie } : {}
+  });
+
+async function login(googleCode: string, scope?: string) {
+  const client = await register();
+
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const { pending, cookie } = await startAuthorize(client.client_id, challenge, scope);
+  const ok = await consent(pending, "allow", cookie);
+  expect(ok.status).toBe(303);
+  const google = new URL(ok.headers.get("location")!);
   expect(google.host).toBe("google.test");
 
-  const cb = await fetch(`${base}/mcp/oauth/google/callback?code=${googleCode}&state=${google.searchParams.get("state")}`, { redirect: "manual" });
+  const cb = await callback(googleCode, google.searchParams.get("state")!, cookie);
   expect(cb.status).toBe(302);
   const back = new URL(cb.headers.get("location")!);
   expect(back.searchParams.get("state")).toBe("st4te");
@@ -239,6 +272,77 @@ describe("OAuth bridge", () => {
     expect(list.result.tools.map(x => x.name)).toContain("staff_review_schedule_correction");
   });
 
+  test("authorize shows a consent page naming the client and where it sends the user back", async () => {
+    const client = await register();
+    const { a, html, setCookie } = await startAuthorize(client.client_id, "x".repeat(43));
+    expect(a.headers.get("content-type")).toContain("text/html");
+    expect(a.headers.get("x-frame-options")).toBe("DENY");
+    expect(a.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(html).toContain("Test client");
+    expect(html).toContain("localhost:9999");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Path=/mcp");
+  });
+
+  test("the flow only completes in the browser that started it", async () => {
+    const client = await register();
+    const { pending, cookie } = await startAuthorize(client.client_id, "x".repeat(43));
+    const mintedBefore = api.calls.filter(c => c.path === "/v1/auth/api-keys").length;
+    // Someone else's browser (no cookie, or a wrong one) can't approve...
+    expect((await consent(pending, "allow")).status).toBe(400);
+    expect((await consent(pending, "allow", `mcp_oauth_${pending}=forged`)).status).toBe(400);
+    // ...nor skip the consent page straight to the Google callback.
+    expect((await callback("student", pending)).status).toBe(400);
+    expect((await callback("student", pending, cookie)).status).toBe(400); // not approved yet
+    expect(api.calls.filter(c => c.path === "/v1/auth/api-keys").length).toBe(mintedBefore);
+  });
+
+  test("an approved request still needs the cookie at the Google callback", async () => {
+    const client = await register();
+    const { pending, cookie } = await startAuthorize(client.client_id, "x".repeat(43));
+    expect((await consent(pending, "allow", cookie)).status).toBe(303);
+    expect((await callback("student", pending)).status).toBe(400);
+  });
+
+  test("declining the consent page sends access_denied back to the client", async () => {
+    const client = await register();
+    const { pending, cookie } = await startAuthorize(client.client_id, "x".repeat(43));
+    const res = await consent(pending, "deny", cookie);
+    expect(res.status).toBe(303);
+    const back = new URL(res.headers.get("location")!);
+    expect(back.origin).toBe("http://localhost:9999");
+    expect(back.searchParams.get("error")).toBe("access_denied");
+    expect(back.searchParams.get("state")).toBe("st4te");
+    // The request is gone.
+    expect((await consent(pending, "allow", cookie)).status).toBe(400);
+  });
+
+  test("a refresh token presented by another client stays usable by its owner", async () => {
+    const { client, verifier, back } = await login("student");
+    const t = await token({ grant_type: "authorization_code", code: back.searchParams.get("code")!, code_verifier: verifier, client_id: client.client_id });
+    const other = await register();
+    const stolen = await token({ grant_type: "refresh_token", refresh_token: String(t.body.refresh_token), client_id: other.client_id });
+    expect(stolen.status).toBe(400);
+    const own = await token({ grant_type: "refresh_token", refresh_token: String(t.body.refresh_token), client_id: client.client_id });
+    expect(own.status).toBe(200);
+  });
+
+  test("if the grant can't be stored, the freshly minted API key is revoked", async () => {
+    const original = store.saveGrantWithCode.bind(store);
+    store.saveGrantWithCode = () => { throw new Error("SQLITE_BUSY"); };
+    try {
+      const before = deletedKeys.length;
+      const { back } = await login("student");
+      expect(back.searchParams.get("error")).toBe("server_error");
+      expect(deletedKeys.length).toBe(before + 1);
+      const minted = api.calls.findLast(c => c.path === "/v1/auth/api-keys" && c.method === "POST")!;
+      expect(minted).toBeTruthy();
+    } finally {
+      store.saveGrantWithCode = original;
+    }
+  });
+
   test("accounts the API rejects come back as access_denied", async () => {
     const { back } = await login("outsider");
     expect(back.searchParams.get("error")).toBe("access_denied");
@@ -251,6 +355,21 @@ describe("OAuth bridge", () => {
     const list = await rpc(key, "tools/list");
     expect(list.status).toBe(200);
     expect(((await list.json()) as { result: { tools: unknown[] } }).result.tools.length).toBeGreaterThan(5);
+  });
+
+  test("a raw API key gets the tools of its real scopes, not every scope", async () => {
+    const key = "ceitba_staffreadonly";
+    keys.set(key, { me: ME_STAFF, scopes: ["read"], id: crypto.randomUUID() });
+    const list = await (await rpc(key, "tools/list")).json() as { result: { tools: { name: string }[] } };
+    const names = list.result.tools.map(t => t.name);
+    expect(names.some(n => n.startsWith("staff_") || n.startsWith("moderation_"))).toBe(false);
+    const who = await (await rpc(key, "tools/call", { name: "whoami", arguments: {} })).json() as { result: { content: { text: string }[] } };
+    expect(JSON.parse(who.result.content[0].text).connectionScopes).toEqual(["read"]);
+
+    const full = "ceitba_stafffull";
+    keys.set(full, { me: ME_STAFF, scopes: ["read", "staff", "write"], id: crypto.randomUUID() });
+    const fullList = await (await rpc(full, "tools/list")).json() as { result: { tools: { name: string }[] } };
+    expect(fullList.result.tools.map(t => t.name)).toContain("staff_review_schedule_correction");
   });
 
   test("a key the API rejects yields 401 so the client signs in again", async () => {

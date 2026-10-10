@@ -13,6 +13,8 @@ export interface UserMe {
   organizations: { slug: string; role: string }[];
   follows: string[];
   capabilities: string[];
+  // Scopes of the API key the request used; null/absent for sessions.
+  apiKeyScopes?: string[] | null;
 }
 
 export interface TokenResponse {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Page } from "../api/types";
 import type { Lang } from "../config";
+import { t } from "../i18n";
 import { clampLimit, compact, cut, hhmm } from "../trim";
 import { defineTool } from "./define";
 
@@ -186,7 +187,12 @@ export const listStaffMembers = defineTool({
   access: "public",
   input: { year: z.number().int().min(2000).max(2100).optional() },
   async run(args, ctx) {
-    const year = args.year ?? Math.max(...(await ctx.api.get<number[]>("/v1/staff-members/years")), new Date().getFullYear() - 50);
+    let year = args.year;
+    if (year === undefined) {
+      const years = await ctx.api.get<number[]>("/v1/staff-members/years");
+      if (years.length === 0) return { year: null, members: [], note: t(ctx.lang, "noStaffMembers") };
+      year = Math.max(...years);
+    }
     const members = await ctx.api.get<{ name: string; departmentSlug: string; roleEs: string; roleEn: string; email: string | null; linkedinUrl: string | null }[]>(
       "/v1/staff-members", { year });
     return {

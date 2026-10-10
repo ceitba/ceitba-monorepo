@@ -5,7 +5,8 @@ import type { OAuthClientInformationFull } from "@modelcontextprotocol/sdk/share
 
 // Persistent OAuth state (SQLite, one file on a Docker volume).
 //   clients   dynamically registered MCP clients (RFC 7591)
-//   pending   /authorize requests waiting for the Google round trip (10 min)
+//   pending   /authorize requests waiting for consent and the Google round trip
+//             (10 min), bound to the starting browser by a cookie hash
 //   codes     authorization codes (5 min, single use)
 //   grants    one per user login: the encrypted, scoped CEITBA API key
 //   tokens    access/refresh tokens, stored as SHA-256 hashes only
@@ -19,6 +20,10 @@ export interface PendingAuth {
   scopes: string[];
   resource: string | null;
   nonce: string;
+  // SHA-256 of the browser-binding cookie set by /authorize (oauth/consent.ts).
+  bindingHash: string;
+  // Set when the user approves the consent page.
+  approved: boolean;
   expiresAt: number;
 }
 
@@ -60,12 +65,17 @@ export class OAuthStore {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true, strict: true });
     this.db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
+    // Pending rows live 10 minutes, so a pending table from before the consent
+    // page (no binding_hash) is simply recreated.
+    const pendingCols = this.db.query<{ name: string }, []>("PRAGMA table_info(pending)").all().map(c => c.name);
+    if (pendingCols.length > 0 && !pendingCols.includes("binding_hash")) this.db.exec("DROP TABLE pending");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS clients (
         client_id TEXT PRIMARY KEY, info TEXT NOT NULL, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS pending (
         id TEXT PRIMARY KEY, client_id TEXT NOT NULL, redirect_uri TEXT NOT NULL, code_challenge TEXT NOT NULL,
-        state TEXT, scopes TEXT NOT NULL, resource TEXT, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL);
+        state TEXT, scopes TEXT NOT NULL, resource TEXT, nonce TEXT NOT NULL, binding_hash TEXT NOT NULL,
+        approved INTEGER NOT NULL DEFAULT 0, expires_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS grants (
         id TEXT PRIMARY KEY, client_id TEXT NOT NULL, user_id TEXT NOT NULL, scopes TEXT NOT NULL,
         api_key_sealed TEXT NOT NULL, api_key_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
@@ -98,20 +108,36 @@ export class OAuthStore {
 
   // ---- pending authorizations
   savePending(p: PendingAuth): void {
-    this.db.query(`INSERT INTO pending (id, client_id, redirect_uri, code_challenge, state, scopes, resource, nonce, expires_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(p.id, p.clientId, p.redirectUri, p.codeChallenge, p.state, JSON.stringify(p.scopes), p.resource, p.nonce, p.expiresAt);
+    this.db.query(`INSERT INTO pending (id, client_id, redirect_uri, code_challenge, state, scopes, resource, nonce,
+                                        binding_hash, approved, expires_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(p.id, p.clientId, p.redirectUri, p.codeChallenge, p.state, JSON.stringify(p.scopes), p.resource, p.nonce,
+        p.bindingHash, p.approved ? 1 : 0, p.expiresAt);
+  }
+
+  getPending(id: string): PendingAuth | undefined {
+    const row = this.db.query<Record<string, unknown>, [string]>("SELECT * FROM pending WHERE id = ?").get(id);
+    return row ? this.pendingFrom(row) : undefined;
+  }
+
+  approvePending(id: string): void {
+    this.db.query("UPDATE pending SET approved = 1 WHERE id = ?").run(id);
   }
 
   // Single use: returns and deletes.
   takePending(id: string): PendingAuth | undefined {
     const row = this.db.query<Record<string, unknown>, [string]>("DELETE FROM pending WHERE id = ? RETURNING *").get(id);
-    if (!row || (row.expires_at as number) < now()) return undefined;
+    return row ? this.pendingFrom(row) : undefined;
+  }
+
+  private pendingFrom(row: Record<string, unknown>): PendingAuth | undefined {
+    if ((row.expires_at as number) < now()) return undefined;
     return {
       id: row.id as string, clientId: row.client_id as string, redirectUri: row.redirect_uri as string,
       codeChallenge: row.code_challenge as string, state: (row.state as string) ?? null,
       scopes: JSON.parse(row.scopes as string), resource: (row.resource as string) ?? null,
-      nonce: row.nonce as string, expiresAt: row.expires_at as number
+      nonce: row.nonce as string, bindingHash: row.binding_hash as string, approved: row.approved === 1,
+      expiresAt: row.expires_at as number
     };
   }
 
@@ -120,6 +146,14 @@ export class OAuthStore {
     this.db.query(`INSERT INTO grants (id, client_id, user_id, scopes, api_key_sealed, api_key_id, created_at, expires_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(g.id, g.clientId, g.userId, JSON.stringify(g.scopes), g.apiKeySealed, g.apiKeyId, g.createdAt, g.expiresAt);
+  }
+
+  // A new grant and its first authorization code, atomically.
+  saveGrantWithCode(g: Grant, c: AuthCode): void {
+    this.db.transaction(() => {
+      this.saveGrant(g);
+      this.saveCode(c);
+    })();
   }
 
   getGrant(id: string): Grant | undefined {
@@ -176,11 +210,15 @@ export class OAuthStore {
     };
   }
 
-  // Single use (refresh rotation): returns and deletes.
+  // Single use (refresh rotation): returns and deletes, atomically, so two
+  // concurrent refreshes can't both get the row.
   takeToken(tokenHash: string): TokenRow | undefined {
-    const row = this.getToken(tokenHash);
-    if (row) this.deleteToken(tokenHash);
-    return row;
+    const row = this.db.query<Record<string, unknown>, [string]>("DELETE FROM tokens WHERE token_hash = ? RETURNING *").get(tokenHash);
+    if (!row) return undefined;
+    return {
+      tokenHash: row.token_hash as string, kind: row.kind as TokenRow["kind"], grantId: row.grant_id as string,
+      clientId: row.client_id as string, expiresAt: row.expires_at as number
+    };
   }
 
   deleteToken(tokenHash: string): void {

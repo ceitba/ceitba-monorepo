@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ApiError } from "../api/client";
+import { UnknownPlanError } from "../catalog";
 import type { SessionContext } from "../context";
 import { t } from "../i18n";
 
@@ -63,6 +64,7 @@ const fail = (message: string): CallToolResult => ({ isError: true, content: [{ 
 export function errorMessage(e: unknown, ctx: SessionContext, def?: ToolDef): string {
   const lang = ctx.lang;
   if (e instanceof ToolError) return e.message;
+  if (e instanceof UnknownPlanError) return t(lang, "unknownPlan", { plan: e.plan });
   if (e instanceof ApiError) {
     if (e.status === 0) return t(lang, "unreachable");
     if (e.status === 401) return t(lang, "signInRequired");

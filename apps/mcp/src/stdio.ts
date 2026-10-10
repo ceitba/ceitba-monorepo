@@ -32,9 +32,9 @@ async function main() {
       { error: e instanceof Error ? e.message : String(e) });
   }
 
-  // The key's real scopes are enforced by the API; locally we assume what the
-  // user opted into so the right tools are listed.
-  const scopes = parseScopes(cfg.allowWrites ? ALL_SCOPES : ["read", "staff"]);
+  // The key's real scopes are enforced by the API and reported by /auth/me;
+  // an older API that doesn't report them gets what the user opted into.
+  const scopes = parseScopes(identity?.apiKeyScopes ?? (cfg.allowWrites ? ALL_SCOPES : ["read", "staff"]));
   const ctx: SessionContext = {
     api: identity ? api : api.withCredentials({}),
     identity,

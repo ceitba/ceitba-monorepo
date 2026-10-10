@@ -13,7 +13,9 @@ nombre.
 
 **Dirección del servidor:** `https://ceitba.org.ar/mcp`
 
-La primera vez, tu cliente abre el navegador para que inicies sesión con Google. Usá tu cuenta **@itba.edu.ar**.
+La primera vez, tu cliente abre el navegador. CEITBA te muestra qué asistente pide acceso y a dónde te va a devolver:
+si lo reconocés, tocá **Continuar con Google** e iniciá sesión con tu cuenta **@itba.edu.ar**. Si no empezaste vos la
+conexión (por ejemplo, alguien te mandó el link), tocá **Cancelar**.
 
 ## Claude (claude.ai y Claude Desktop)
 
@@ -146,8 +148,9 @@ the schedule combiner, news, events, organizations and benefits. If you sign in 
 also reaches your saved schedules, study groups, proposals and, with Apuntes enabled, subject notes and wikis.
 Student connections are **read-only**.
 
-- **Server URL:** `https://ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client
-  and sign in with Google.
+- **Server URL:** `https://ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client.
+  CEITBA shows which assistant is asking and where it will send you back; if you started the connection, continue
+  and sign in with Google, otherwise cancel.
 - **Claude Code:** `claude mcp add --transport http ceitba https://ceitba.org.ar/mcp`
 - **Cursor / Kiro:** `{"mcpServers":{"ceitba":{"url":"https://ceitba.org.ar/mcp"}}}`
 - **VS Code:** `{"servers":{"ceitba":{"type":"http","url":"https://ceitba.org.ar/mcp"}}}`

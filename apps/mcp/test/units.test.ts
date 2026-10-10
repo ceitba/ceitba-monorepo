@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
+import { CeitbaApi } from "../src/api/client";
+import { CatalogCache, UnknownPlanError } from "../src/catalog";
 import { normalizePublicUrl } from "../src/config";
 import { parseScopes } from "../src/context";
 import { createLogger } from "../src/log";
@@ -8,6 +10,38 @@ import { OAuthStore } from "../src/oauth/store";
 import { RateLimiter } from "../src/ratelimit";
 import { todayInArgentina } from "../src/tools/news";
 import { compact, cut, slot } from "../src/trim";
+
+describe("CatalogCache", () => {
+  test("rejects made-up plans without fetching them, and caps the cache", async () => {
+    const plans = Array.from({ length: 5 }, (_, i) => `P${i}`);
+    const fetched: string[] = [];
+    const server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const u = new URL(req.url);
+        if (u.pathname === "/api/v1/careers/plans") return Response.json({ X: { id: "X", name: "X", plans } });
+        fetched.push(u.searchParams.get("plan") ?? "");
+        return Response.json({});
+      }
+    });
+    try {
+      const api = new CeitbaApi({ baseUrl: `http://localhost:${server.port}/api` });
+      const cache = new CatalogCache(60_000, Date.now, 2);
+      for (const bogus of ["nope", "../x", "P99"]) {
+        await expect(cache.planSubjects(api, bogus)).rejects.toBeInstanceOf(UnknownPlanError);
+      }
+      expect(fetched).toEqual([]);
+      for (const p of plans) await cache.planSubjects(api, p);
+      expect(fetched).toEqual(plans);
+      // Only the 2 most recently used plans stay cached.
+      await cache.planSubjects(api, "P4");
+      await cache.planSubjects(api, "P0");
+      expect(fetched).toEqual([...plans, "P0"]);
+    } finally {
+      server.stop(true);
+    }
+  });
+});
 
 describe("SecretBox", () => {
   test("round trips and binds the AAD", () => {

@@ -16,7 +16,8 @@ beforeAll(() => {
         options: { allowOverlap: false }, blockedTimes: [] }
     }),
     "GET /v1/wiki/subjects/:id/kb": () => error(403, "CAPABILITY_REQUIRED"),
-    "GET /v1/staff/schedule-corrections": () => ({ data: [], meta: { total: 0, page: 1, limit: 20 } })
+    "GET /v1/staff/schedule-corrections": () => ({ data: [], meta: { total: 0, page: 1, limit: 20 } }),
+    "GET /v1/staff-members/years": () => []
   });
 });
 
@@ -121,6 +122,29 @@ describe("tool calls", () => {
     const r = await s.call("generate_schedules", { plan: "S10-Rev23", subjects: [{ subjectId: "99.99" }] });
     expect(r.isError).toBe(true);
     expect(r.text).toContain("99.99");
+    await s.close();
+  });
+
+  test("unknown plans are rejected before any catalog call", async () => {
+    const s = await connect({ apiUrl: api.url });
+    const before = api.calls.filter(c => c.path === "/v1/subjects").length;
+    const r = await s.call("get_plan_subjects", { plan: "made-up-plan" });
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain("made-up-plan");
+    expect(r.text).toContain("list_careers");
+    expect(api.calls.filter(c => c.path === "/v1/subjects").length).toBe(before);
+    await s.close();
+  });
+
+  test("list_staff_members says there is no data instead of inventing a year", async () => {
+    const s = await connect({ apiUrl: api.url });
+    const r = await s.call("list_staff_members");
+    expect(r.isError).toBe(false);
+    const data = r.data as { year: number | null; members: unknown[]; note: string };
+    expect(data.year).toBeNull();
+    expect(data.members).toEqual([]);
+    expect(data.note).toContain("integrantes");
+    expect(api.calls.some(c => c.path === "/v1/staff-members")).toBe(false);
     await s.close();
   });
 

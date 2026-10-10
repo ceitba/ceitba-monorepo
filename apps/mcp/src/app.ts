@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { authorizationHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
 import { metadataHandler } from "@modelcontextprotocol/sdk/server/auth/handlers/metadata.js";
@@ -34,6 +34,7 @@ import { IdentityCache, isAuthRejection, resolveIdentity } from "./session";
 //   /mcp/.well-known/{openid-configuration,oauth-authorization-server}
 //                                                           same metadata, for clients that try those
 //   /mcp/authorize /mcp/token /mcp/register /mcp/revoke     OAuth 2.1 (PKCE, DCR) handlers from the SDK
+//   /mcp/oauth/consent                                      consent form POST (oauth/consent.ts)
 //   /mcp/oauth/google/callback                              Google → us (bridge step)
 //   /healthz, /mcp/healthz                                  liveness
 //
@@ -106,6 +107,13 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
   app.use(`${base}/register`, clientRegistrationHandler({ clientsStore: provider.clientsStore }));
   app.use(`${base}/revoke`, revocationHandler({ provider }));
 
+  app.post(`${base}/oauth/consent`, express.urlencoded({ extended: false, limit: "4kb" }), (req, res) => {
+    provider.handleConsent(req, res).catch(e => {
+      log.error("oauth consent crashed", { error: e instanceof Error ? e.message : String(e) });
+      if (!res.headersSent) res.status(500).type("text/plain").send("Error interno");
+    });
+  });
+
   app.get(`${base}/oauth/google/callback`, (req, res) => {
     provider.handleGoogleCallback(req, res).catch(e => {
       log.error("google callback crashed", { error: e instanceof Error ? e.message : String(e) });
@@ -154,7 +162,9 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
     const ctx: SessionContext = {
       api: userApi,
       identity,
-      scopes: parseScopes(cred.scopes),
+      // A raw API key's scopes are whatever the API says the key carries (read
+      // only if it doesn't say); OAuth grants carry the scopes they were minted with.
+      scopes: parseScopes(cred.grantId === null ? identity?.apiKeyScopes ?? ["read"] : cred.scopes),
       allowWrites: true,
       lang: identity?.lang ?? cfg.defaultLang,
       log,

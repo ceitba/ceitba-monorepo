@@ -21,6 +21,9 @@ export interface Identity {
   careerId: string | null;
   plan: string | null;
   lang: Lang;
+  // The API key's real scopes as the API reports them (null: not a key, or an
+  // older API that doesn't say).
+  apiKeyScopes: Scope[] | null;
 }
 
 // Everything a tool call needs; built once per MCP session (stdio) or per
@@ -48,7 +51,8 @@ export function identityFrom(me: UserMe, fallbackLang: Lang): Identity {
     capabilities: me.capabilities ?? [],
     careerId: me.careerId ?? null,
     plan: me.plan ?? null,
-    lang: langFrom(me.language, fallbackLang)
+    lang: langFrom(me.language, fallbackLang),
+    apiKeyScopes: me.apiKeyScopes ? [...parseScopes(me.apiKeyScopes)] : null
   };
 }
 

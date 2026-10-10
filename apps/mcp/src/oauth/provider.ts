@@ -17,7 +17,8 @@ import { ApiError, type CeitbaApi } from "../api/client";
 import type { ApiKeyCreated, TokenResponse, UserMe } from "../api/types";
 import type { Scope } from "../context";
 import type { Logger } from "../log";
-import { randomToken, SecretBox, sha256hex } from "./crypto";
+import { clearBindingCookie, readBindingCookie, renderConsent, sendConsent, setBindingCookie } from "./consent";
+import { randomToken, safeEqual, SecretBox, sha256hex } from "./crypto";
 import type { GoogleClient } from "./google";
 import type { Grant, OAuthStore } from "./store";
 
@@ -25,8 +26,11 @@ import type { Grant, OAuthStore } from "./store";
 // registration are handled by the SDK's mcpAuthRouter; this is the logic).
 //
 // The bridge, per login:
-//   1. MCP client → /authorize → we remember the request and send the user to Google.
-//   2. Google → /oauth/google/callback with a code → we get the ID token.
+//   1. MCP client → /authorize → we remember the request, bind it to the browser
+//      with a cookie and show a consent page naming the client and its redirect
+//      URI (oauth/consent.ts). Approving it sends the user to Google.
+//   2. Google → /oauth/google/callback with a code (same browser, cookie checked)
+//      → we get the ID token.
 //   3. POST /api/v1/auth/google/mobile {idToken, nonce}: the API verifies it and
 //      the allowlist and returns a short-lived session for that user.
 //   4. With that session we mint a SCOPED API key (read; + staff, write for staff),
@@ -110,6 +114,7 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
     }
     const pendingId = randomToken("", 24);
     const nonce = randomToken("", 16);
+    const binding = randomToken("", 32);
     this.o.store.savePending({
       id: pendingId,
       clientId: client.client_id,
@@ -119,19 +124,75 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
       scopes: params.scopes ?? [],
       resource: params.resource?.href ?? null,
       nonce,
+      bindingHash: sha256hex(binding),
+      approved: false,
       expiresAt: Date.now() + PENDING_TTL_MS
     });
-    res.redirect(302, this.o.google.authorizationUrl(pendingId, nonce));
+    setBindingCookie(res, pendingId, binding, this.cookiePath, this.secureCookies, PENDING_TTL_MS);
+    sendConsent(res, renderConsent({
+      pendingId,
+      clientName: client.client_name || client.client_id,
+      redirectUri: params.redirectUri,
+      action: `${this.cookiePath}/oauth/consent`
+    }));
+  }
+
+  // The OAuth endpoints live under the resource path (/mcp); the cookie is scoped to it.
+  private get cookiePath(): string {
+    return this.o.resourceUrl.pathname.replace(/\/$/, "") || "/";
+  }
+
+  private get secureCookies(): boolean {
+    return this.o.resourceUrl.protocol === "https:";
+  }
+
+  // The pending request, if this browser is the one that started it.
+  private boundPending(req: Request, pendingId: string, take: boolean) {
+    const cookie = readBindingCookie(req, pendingId);
+    const pending = this.o.store.getPending(pendingId);
+    if (!pending || !cookie || !safeEqual(sha256hex(cookie), pending.bindingHash)) return undefined;
+    return take ? this.o.store.takePending(pendingId) : pending;
+  }
+
+  private static expired(res: Response): void {
+    res.status(400).type("text/plain").send(
+      "La solicitud de inicio de sesión expiró, no es válida o se abrió en otro navegador. Volvé a conectar desde tu cliente MCP.\n" +
+      "This sign-in request expired, is invalid or was opened in another browser. Connect again from your MCP client.");
+  }
+
+  // POST /oauth/consent (form on the consent page): decision=allow|deny.
+  async handleConsent(req: Request, res: Response): Promise<void> {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const pendingId = typeof body.pending === "string" ? body.pending : "";
+    const pending = pendingId ? this.boundPending(req, pendingId, false) : undefined;
+    if (!pending) {
+      CeitbaOAuthProvider.expired(res);
+      return;
+    }
+    if (body.decision !== "allow") {
+      this.o.store.takePending(pending.id);
+      clearBindingCookie(res, pending.id, this.cookiePath, this.secureCookies);
+      const u = new URL(pending.redirectUri);
+      u.searchParams.set("error", "access_denied");
+      u.searchParams.set("error_description", "The user did not allow the connection");
+      if (pending.state) u.searchParams.set("state", pending.state);
+      res.redirect(303, u.href);
+      return;
+    }
+    this.o.store.approvePending(pending.id);
+    res.redirect(303, this.o.google.authorizationUrl(pending.id, pending.nonce));
   }
 
   // GET /oauth/google/callback?code&state (Google redirects the browser here).
   async handleGoogleCallback(req: Request, res: Response): Promise<void> {
     const state = typeof req.query.state === "string" ? req.query.state : "";
-    const pending = state ? this.o.store.takePending(state) : undefined;
-    if (!pending) {
-      res.status(400).type("text/plain").send("La solicitud de inicio de sesión expiró o no es válida. Volvé a conectar desde tu cliente MCP.");
+    // Only the browser that started /authorize, after approving the consent page.
+    const pending = state ? this.boundPending(req, state, true) : undefined;
+    if (!pending || !pending.approved) {
+      CeitbaOAuthProvider.expired(res);
       return;
     }
+    clearBindingCookie(res, pending.id, this.cookiePath, this.secureCookies);
     const back = (params: Record<string, string>) => {
       const u = new URL(pending.redirectUri);
       for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
@@ -150,13 +211,17 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
 
     const client = this.o.store.getClient(pending.clientId);
     const ip = this.o.clientIp?.(req);
+    let grant: Grant | undefined;
     try {
       const idToken = await this.o.google.exchangeCode(code);
-      const grant = await this.bridge(idToken, pending.nonce, pending.scopes, client?.client_name ?? pending.clientId, ip);
+      grant = await this.bridge(idToken, pending.nonce, pending.scopes, client?.client_name ?? pending.clientId, ip);
       grant.clientId = pending.clientId;
-      this.o.store.saveGrant(grant);
       const authCode = randomToken("mcp_ac_");
-      this.o.store.saveCode({
+      // The API key already exists: store its grant and the code together, and
+      // revoke the key below if that fails, so no key outlives a lost grant row.
+      // (A crash between minting and this write still leaves the key alive until
+      // it expires; the user can revoke it, it is named "MCP · <client>".)
+      this.o.store.saveGrantWithCode(grant, {
         codeHash: sha256hex(authCode),
         grantId: grant.id,
         clientId: pending.clientId,
@@ -166,8 +231,10 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
         expiresAt: Date.now() + CODE_TTL_MS
       });
       this.o.log.info("oauth login", { event: "oauth_login", userId: grant.userId, client: pending.clientId, scopes: grant.scopes });
+      grant = undefined; // persisted: nothing to roll back from here on
       back({ code: authCode });
     } catch (e) {
+      if (grant) await this.revokeApiKey(grant);
       const denied = e instanceof ApiError && (e.status === 401 || e.status === 403);
       this.o.log.warn("oauth login failed", {
         event: "oauth_login", client: pending.clientId, status: "error",
@@ -235,10 +302,15 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
 
   async exchangeRefreshToken(client: OAuthClientInformationFull, refreshToken: string, _scopes?: string[], resource?: URL): Promise<OAuthTokens> {
     this.checkResource(resource);
-    const row = this.o.store.takeToken(sha256hex(refreshToken));
+    const hash = sha256hex(refreshToken);
+    const row = this.o.store.getToken(hash);
     if (!row || row.kind !== "refresh" || row.expiresAt < Date.now()) throw new InvalidGrantError("Invalid or expired refresh token");
+    // Checked before the token is consumed: another client presenting it must
+    // not be able to burn the owner's refresh token.
     if (row.clientId !== client.client_id) throw new InvalidGrantError("Refresh token was issued to another client");
     if (!this.o.store.getGrant(row.grantId)) throw new InvalidGrantError("The sign-in was revoked");
+    // Single use (rotation). Only the request that actually deletes it wins.
+    if (!this.o.store.takeToken(hash)) throw new InvalidGrantError("Invalid or expired refresh token");
     return this.issueTokens(row.grantId, client.client_id);
   }
 
@@ -264,9 +336,10 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
     if (token.startsWith("ceitba_")) {
       if (!this.o.allowApiKeyBearer) throw new InvalidTokenError("API keys are not accepted as bearer tokens here");
       // Raw user API key (clients without OAuth). The API validates it on every
-      // call and enforces its real scopes; tools are listed for all three.
+      // call; its real scopes come from /auth/me (apiKeyScopes) and replace
+      // this minimum in app.ts before any tool is listed.
       return {
-        token, clientId: "api-key", scopes: [...SUPPORTED_SCOPES],
+        token, clientId: "api-key", scopes: ["read"],
         expiresAt: Math.floor(Date.now() / 1000) + 3600, resource: this.o.resourceUrl,
         extra: { apiKey: token, grantId: null }
       };

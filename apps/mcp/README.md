@@ -11,7 +11,7 @@ Cursor, VS Code, Kiro, ...) access to CEITBA data through the API (`apps/api`). 
 User-facing setup guide (Spanish, then English): **[CONECTAR.md](CONECTAR.md)**.
 
 Stack: Bun 1.4, TypeScript, `@modelcontextprotocol/sdk`, zod, express (from the SDK), `bun:sqlite`.
-The schedule combiner comes from `packages/scheduler-core`, the same code `apps/scheduler` runs.
+The schedule combiner comes from `packages/scheduler-core`, the same code the web scheduler (`apps/web/src/scheduler`) runs.
 
 ## Tools
 
@@ -44,7 +44,7 @@ are anonymous and deduplicated by IP, so every user of the hosted server would c
 
 - `read`: GET only.
 - `write`: non-safe methods.
-- `staff`: keeps STAFF/MODERATOR.
+- `staff`: keeps STAFF/MODERATOR and every staff power services check; without it a staff member's key acts as a student's.
 
 A scoped key cannot mint keys, but can revoke itself. The owner must still pass the email allowlist.
 
@@ -52,14 +52,20 @@ A scoped key cannot mint keys, but can revoke itself. The owner must still pass 
 `https://ceitba.org.ar/mcp`. The SDK's handlers provide metadata, dynamic client registration, PKCE, token and
 revoke. `src/oauth/provider.ts` does the CEITBA part:
 
-1. The MCP client calls `/mcp/authorize`. We store the request (10 min) and redirect the user to Google.
-2. Google redirects to `/mcp/oauth/google/callback`, and we exchange the code for an ID token.
+1. The MCP client calls `/mcp/authorize`. We store the request (10 min), set an HttpOnly `SameSite=Lax` cookie that
+   binds it to this browser, and show a consent page with the client's name and where it will send the user back
+   (`src/oauth/consent.ts`). Approving it (`POST /mcp/oauth/consent`, cookie required) redirects to Google; declining
+   sends `access_denied` to the client.
+2. Google redirects to `/mcp/oauth/google/callback` (only an approved request, in the browser holding its cookie),
+   and we exchange the code for an ID token. Without the consent page and the cookie, anyone could register a client
+   and send a student an authorize link that ends with the code, and a CEITBA API key, at their own redirect URI.
 3. `POST /api/v1/auth/google/mobile {idToken, nonce}`. The API verifies the token, the allowlist and the `hd` domain,
    then returns a short session.
 4. With that session we create a **scoped API key**: `["read"]` for students, `["read","staff","write"]` for staff and
    moderators (narrowed further if the client asked for fewer scopes). Then we log the session out.
-5. We issue our own opaque access token (1 h) and refresh token (rotating, lives as long as the grant, 90 days by
-   default) to the MCP client.
+5. We store the grant and its authorization code in one transaction; if that fails, the new API key is revoked.
+   Then we issue our own opaque access token (1 h) and refresh token (rotating, lives as long as the grant, 90 days
+   by default) to the MCP client. A refresh token presented by another client is rejected without consuming it.
 
 **Storage.** Only the encrypted API key is stored (AES-256-GCM, `MCP_ENCRYPTION_KEY`). Tokens are stored as SHA-256
 hashes in SQLite (`MCP_DB_PATH`).
@@ -72,7 +78,8 @@ hashes in SQLite (`MCP_DB_PATH`).
 The API's JWT secret never leaves the API, and the API remains the only judge of who can sign in.
 
 **Raw API keys.** `Authorization: Bearer ceitba_...` is also accepted, for clients without OAuth. Disable it with
-`MCP_ALLOW_API_KEY_BEARER=false`. The API enforces the key's real scopes.
+`MCP_ALLOW_API_KEY_BEARER=false`. The tools listed are those of the key's real scopes, as `GET /v1/auth/me` reports
+them (`apiKeyScopes`), and the API enforces them on every call.
 
 **Rate limits and client IP.** Each user gets a token bucket, `MCP_RATE_LIMIT_PER_MINUTE` (60) tool calls per minute.
 Every API call carries `X-Forwarded-For: <end-user IP>`. The API trusts the right-most entry from private peers, and
@@ -162,8 +169,8 @@ src/
   server.ts               McpServer: tools, resources, prompts, instructions
   tools/                  define.ts (visibility, errors, logging) + one file per domain
   api/                    fetch client (X-Api-Key, X-Forwarded-For, {error,message} errors) + response types
-  oauth/                  provider (bridge), store (SQLite), google, crypto
-  catalog.ts              cached public plan catalog / commissions
+  oauth/                  provider (bridge), consent (page + browser binding), store (SQLite), google, crypto
+  catalog.ts              cached public plan catalog / commissions (plan ids checked against /v1/careers/plans)
   session.ts, context.ts  identity (/auth/me) and per-session context
   trim.ts, i18n.ts, ratelimit.ts, log.ts, config.ts
 test/                     bun test with an in-process fake API
