@@ -519,7 +519,8 @@
     "myApuntes": "My notes",
     "accountMenu": "Account menu",
     "savedSchedules": "My saved schedules",
-    "myPosts": "My posts"
+    "myPosts": "My posts",
+    "ai": "AI assistants"
   },
   "hero": {
     "eyebrow": "Student Center",
@@ -626,7 +627,8 @@
     "github": "GitHub",
     "contact": "Contact",
     "rights": "All rights reserved.",
-    "navAria": "Footer links"
+    "navAria": "Footer links",
+    "ai": "AI assistants"
   },
   "errors": {
     "somethingWrong": "Something went wrong",
@@ -672,5 +674,88 @@
     "appStore": "Download on the App Store",
     "playStore": "Get it on Google Play",
     "web": "Continue on the web"
+  },
+  "ai": {
+    "title": "Connect CEITBA to your AI assistant",
+    "subtitle": "With CEITBA's MCP server, assistants such as Claude, ChatGPT, Cursor or VS Code can look up study plans, timetables, free classrooms and events and, with your account, your saved schedules and the Apuntes wikis.",
+    "serverTitle": "Server URL",
+    "consentNote": "When you connect, CEITBA shows which assistant is asking and where it will send you back. Only continue if you started the connection, and sign in with your @itba.edu.ar account.",
+    "copy": "Copy",
+    "copyUrl": "Copy the server URL",
+    "copySnippet": "Copy the configuration",
+    "copied": "Copied",
+    "copyFailed": "Could not copy. Select the text and copy it by hand.",
+    "whatTitle": "What your assistant can do",
+    "what": {
+      "public": "Without signing in: study plans and subjects, commissions and timetables, free classrooms, the schedule combiner, news, events, organizations and benefits.",
+      "signedIn": "With your account: your saved schedules, study groups, proposals and the organizations you follow.",
+      "apuntes": "With Apuntes enabled: each subject's notes and wiki, with meaning-based search to answer questions citing the pages.",
+      "report": "If you find a mistake in a wiki page or an Apuntes file, you can ask it to report it. That is the only change it can make on your behalf.",
+      "staff": "CEITBA staff: also the review and moderation queues."
+    },
+    "clientsTitle": "Step by step",
+    "clients": {
+      "claude": {
+        "name": "Claude",
+        "step1": "In claude.ai or Claude Desktop, go to Settings → Connectors → Add custom connector.",
+        "step2": "Name: CEITBA. URL: {{url}}",
+        "step3": "Click Connect, approve access and sign in with Google. In each conversation, turn the connector on from the tools menu."
+      },
+      "chatgpt": {
+        "name": "ChatGPT",
+        "step1": "Go to Settings → Connectors → Create (or Add MCP server).",
+        "step2": "URL: {{url}}. Authentication: OAuth.",
+        "step3": "Approve access and sign in with Google.",
+        "note": "Custom MCP connectors depend on your ChatGPT plan and on developer mode being enabled."
+      },
+      "claudeCode": {
+        "name": "Claude Code",
+        "step1": "Run this command in your terminal:",
+        "step2": "Inside Claude Code, run /mcp and pick ceitba to sign in."
+      },
+      "cursor": {
+        "name": "Cursor",
+        "step1": "Add this to ~/.cursor/mcp.json and open the server from the MCP settings to sign in:"
+      },
+      "vscode": {
+        "name": "VS Code",
+        "step1": "Add this to .vscode/mcp.json (or use the MCP: Add Server command) and sign in when asked:"
+      },
+      "kiro": {
+        "name": "Kiro",
+        "step1": "Add this to ~/.kiro/settings/mcp.json (all your projects) or .kiro/settings/mcp.json (one project):"
+      }
+    },
+    "scopes": {
+      "read": "Read",
+      "report": "Reports",
+      "write": "Write",
+      "staff": "Staff"
+    },
+    "keys": {
+      "title": "Connections and API keys",
+      "signInHint": "Sign in to see the assistants connected to your account or create a key for clients without OAuth.",
+      "body": "Connected assistants (\"MCP · …\") and your keys are listed here. If your client can't sign in with OAuth, create a read-and-report key, valid for {{days}} days.",
+      "create": "Create key",
+      "creating": "Creating key",
+      "createError": "Could not create the key. Try again.",
+      "manualName": "AI assistant key",
+      "loadError": "Could not load your keys.",
+      "empty": "You have no connected assistants or keys.",
+      "meta": "Created {{created}} · expires {{expires}} · last used: {{used}}",
+      "never": "never",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke this key?",
+      "revokeBody": "\"{{name}}\" stops working right away. If it is a connected assistant, it is disconnected and you will have to connect it again.",
+      "revoked": "Key revoked",
+      "revokeError": "Could not revoke the key.",
+      "createdTitle": "Your new key",
+      "createdWarning": "Copy it now: it won't be shown again. Treat it like a password.",
+      "copyKey": "Copy the key",
+      "headerHint": "Set it in your client as an Authorization: Bearer header. For example, in Cursor or Kiro:",
+      "done": "Done"
+    },
+    "privacyTitle": "Privacy",
+    "privacy": "CEITBA stores, encrypted, a key with your account's minimum permissions, never your Google password. Logs include your user id, the tool used and whether it worked; they don't include your questions or your email. To disconnect an assistant, remove the connector in your client or revoke it above."
   }
 }
