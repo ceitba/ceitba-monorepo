@@ -18,7 +18,8 @@ import java.util.List;
 // token endpoints, which return the same shape under `user`.
 // Role is "staff" when the user has an active CeitbaStaff row, otherwise "user".
 // `moderator` is true for active staff (STAFF implies MODERATOR) or an active
-// ceitba_moderators grant.
+// ceitba_moderators grant. Called with an API key that lacks the "staff" scope,
+// both report a plain user; `apiKeyScopes` lists the key's scopes (null for sessions).
 @Service
 public class UserMeService {
 

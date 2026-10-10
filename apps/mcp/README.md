@@ -138,7 +138,7 @@ pulls and starts the container). It runs after the API deploy.
 
 | Path | What |
 |---|---|
-| `/mcp`, `/mcp/*` | MCP endpoint, OAuth endpoints (`/mcp/authorize`, `/mcp/token`, `/mcp/register`, `/mcp/revoke`), Google callback, `/mcp/healthz` |
+| `/mcp`, `/mcp/*` | MCP endpoint, OAuth endpoints (`/mcp/authorize`, `/mcp/token`, `/mcp/register`, `/mcp/revoke`), consent form (`/mcp/oauth/consent`), Google callback, `/mcp/healthz` |
 | `/.well-known/oauth-protected-resource/mcp` | RFC 9728 resource metadata (the 401 `WWW-Authenticate` points here) |
 | `/.well-known/oauth-authorization-server/mcp`, `/.well-known/openid-configuration/mcp` | RFC 8414 metadata for issuer `https://ceitba.org.ar/mcp` |
 
