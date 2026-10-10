@@ -92,11 +92,15 @@ public final class KbWikilinks {
         for (var line : stripCode(body).split("\n", -1)) {
             var m = HEADING.matcher(line);
             if (!m.matches()) continue;
-            var text = m.group(1).replaceAll("\\[\\[[^\\[\\]|\\n]+\\|([^\\[\\]\\n]*)]]", "$1")
-                .replaceAll("\\[\\[([^\\[\\]\\n]+)]]", "$1");
-            out.add(anchor(text));
+            out.add(headingAnchor(m.group(1)));
         }
         return out;
+    }
+
+    // The anchor of a heading's text (wikilinks in it count by their text).
+    public static String headingAnchor(String headingText) {
+        return anchor(headingText.replaceAll("\\[\\[[^\\[\\]|\\n]+\\|([^\\[\\]\\n]*)]]", "$1")
+            .replaceAll("\\[\\[([^\\[\\]\\n]+)]]", "$1"));
     }
 
     // Body with code blocks/spans blanked out (line structure kept).
