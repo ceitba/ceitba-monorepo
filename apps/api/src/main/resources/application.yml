@@ -84,6 +84,12 @@ server:
   servlet:
     context-path: /api
 
+# Before the graceful shutdown, report DOWN on /actuator/health and keep
+# serving this long, so Caddy moves traffic to the other blue/green color
+# first (config/ShutdownDrain, docs/DEPLOY.md). docker-compose.yml sets 5s.
+shutdown:
+  drain: ${SHUTDOWN_DRAIN:PT0S}
+
 management:
   endpoints:
     web:
