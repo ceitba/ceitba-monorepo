@@ -13,9 +13,10 @@ x-api: &api
   # docker-compose.override.yml (never copied to the VPS).
   environment:
     SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-    # On stop, report DOWN and keep serving this long before the graceful
-    # shutdown: more than Caddy's health_interval + health_timeout (2s + 2s),
-    # so traffic has moved to the other color first (config/ShutdownDrain).
+    # On stop, refuse traffic on /actuator/health/readiness and keep serving
+    # this long before the graceful shutdown: more than Caddy's
+    # health_interval + health_timeout (2s + 2s), so traffic has moved to the
+    # other color first (config/ShutdownDrain).
     SHUTDOWN_DRAIN: ${SHUTDOWN_DRAIN:-PT5S}
     DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ceitba_db}
     POSTGRES_USER: ${POSTGRES_USER:-postgres}

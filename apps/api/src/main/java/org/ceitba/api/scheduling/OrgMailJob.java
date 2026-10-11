@@ -26,13 +26,10 @@ public class OrgMailJob {
 
     private final OrgAnnouncementSender sender;
     private final TaskExecutor executor;
-    private final JobLock jobLock;
 
-    public OrgMailJob(OrgAnnouncementSender sender, @Qualifier("applicationTaskExecutor") TaskExecutor executor,
-                      JobLock jobLock) {
+    public OrgMailJob(OrgAnnouncementSender sender, @Qualifier("applicationTaskExecutor") TaskExecutor executor) {
         this.sender = sender;
         this.executor = executor;
-        this.jobLock = jobLock;
     }
 
     void kick() {
@@ -50,9 +47,9 @@ public class OrgMailJob {
 
     @Scheduled(fixedDelayString = "${org-mail.tick-interval:PT2M}", initialDelayString = "PT1M")
     public void tick() {
-        jobLock.runExclusively(JobLock.Job.ORG_MAIL, () -> {
-            kick();
-        });
+        // No JobLock: this only hands work to the executor, and the sender's
+        // delivery claims keep two processes from sending the same email.
+        kick();
     }
 
     @EventListener(ApplicationReadyEvent.class)

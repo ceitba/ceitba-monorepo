@@ -9,12 +9,13 @@ migrates.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Two colors | `apps/api/docker-compose.yml` | Same image and env. No `container_name` and no published port (two can't share either): Caddy reaches them by service name over the `ceitba-proxy` network. Health check every 5s (`/api/actuator/health`), `stop_grace_period: 90s` |
-| Caddy | `infra/caddy/Caddyfile` | `reverse_proxy ceitba-api-blue:8080 ceitba-api-green:8080` with `lb_policy first` and active health checks (`health_uri /api/actuator/health`, every 2s, 2s timeout). Traffic goes to the first healthy color; a request that can't reach an upstream is retried for up to 15s (`lb_try_duration`). A color that isn't running doesn't resolve and counts as down (Caddy logs a failed check every 2s for it: expected) |
+| Two colors | `apps/api/docker-compose.yml` | Same image and env. No `container_name` and no published port (two can't share either): Caddy reaches them by service name over the `ceitba-proxy` network. Docker health check every 5s on the aggregate `/api/actuator/health` (includes the database: the deploy's gate), `stop_grace_period: 90s` |
+| Caddy | `infra/caddy/Caddyfile` (snippet `api_upstreams`) | `ceitba-api-blue:8080 ceitba-api-green:8080` with `lb_policy first` and active health checks on **readiness** (`/api/actuator/health/readiness`, every 2s, 2s timeout). Traffic goes to the first ready color; a request that can't reach an upstream is retried for up to 15s (`lb_try_duration`). A color that isn't running doesn't resolve and counts as down (Caddy logs a failed check every 2s for it: expected). Readiness rather than the aggregate: a database or disk problem shared by both colors must not take the whole API out of rotation (requests then fail fast, as before) |
+| Private entrance | `infra/caddy/Caddyfile` (`http://:8081`) | The same upstreams for services on `ceitba-proxy` (the MCP server: `CEITBA_API_URL=http://ceitba-caddy:8081/api`). Not published on the host. Passes the caller's `X-Forwarded-For` through, so the API still keys rate limits on the MCP user's IP |
 | Caddy reload | `infra/caddy/docker-compose.yml`, `deploy.yml` | `~/infra` is bind-mounted as a directory at `/etc/caddy`, so a new Caddyfile is visible in the container and the deploy runs `caddy reload` (no restart). An invalid file is refused and the running config stays |
-| Deploy script | `infra/scripts/deploy-api.sh` (copied to `~/CEITBA-API/deploy-api.sh`) | Picks the idle color, pulls and starts it, waits for `healthy` (timeout 300s), waits 6s for Caddy's checks, stops the old color. If the new one never gets healthy it is stopped, the old one keeps serving and the job fails |
-| Drain | `config/ShutdownDrain` | On SIGTERM the instance reports DOWN on `/actuator/health` and keeps serving for `SHUTDOWN_DRAIN` (5s in compose) before Tomcat's graceful shutdown, so Caddy has moved traffic away before the connector closes |
-| Job locks | `scheduling/JobLock` | Every `@Scheduled` job runs under a Postgres advisory lock, so it runs once while two colors (or the API and another process) are up. See below |
+| Deploy script | `infra/scripts/deploy-api.sh` (copied to `~/CEITBA-API/deploy-api.sh`) | Picks the idle color, pulls and starts it, waits for `healthy` (timeout 300s), waits 6s for Caddy's checks, stops the old color. If the new one never gets healthy, crashes (any restart counts) or times out, it is stopped, the old one keeps serving and the job fails |
+| Drain | `config/ShutdownDrain` | On SIGTERM Spring Boot switches readiness to REFUSING_TRAFFIC (`/actuator/health/readiness` → 503); `ShutdownDrain` then keeps the instance serving for `SHUTDOWN_DRAIN` (5s in compose) before Tomcat's graceful shutdown, so Caddy has moved traffic away before the connector closes |
+| Job locks | `scheduling/JobLock` | Every `@Scheduled` job runs once per tick in one process, while two colors (or the API and another process) are up. See below |
 
 ### The deploy, step by step
 
@@ -24,12 +25,12 @@ migrates.
 1. `docker compose config -q` in `~/CEITBA-API` (fails early on a missing `.env` variable).
 2. `docker compose up -d` in `~/infra` (Caddy), then `caddy reload` (a no-op when the Caddyfile didn't change).
 3. `bash deploy-api.sh` in `~/CEITBA-API`:
-   1. the running color is the old one (both running, after an interrupted deploy: the newer keeps serving and the
-      older is redeployed; none running: blue);
+   1. the running color is the old one (both running, after an interrupted deploy: the healthy one keeps serving
+      and the other is redeployed, or the newer one if both or neither are healthy; none running: blue);
    2. `docker compose up -d` of every other service (postgres, MinIO, minio-init, embeddings), then `pull` and
       `up -d --no-deps` of the new color;
-   3. poll its Docker health status every 2s until `healthy`; on `unhealthy`, exit or timeout: print its logs,
-      stop it, exit 1;
+   3. poll its Docker state every 2s until `healthy`; on `unhealthy`, a restart (crash loop: the restart policy
+      resets health to `starting`), exit or timeout: print its logs, stop it, exit 1;
    4. sleep `CADDY_SETTLE` (6s, more than Caddy's interval + timeout), then `docker compose stop` the old color
       (drain 5s, then graceful shutdown: requests in flight and the digest email being sent finish).
 4. `docker image prune -f`.
@@ -41,8 +42,8 @@ the newer one) and never waits for health.
 
 Operating on the running API: `docker compose ps` shows which color is up; logs and shell go through the service
 name, e.g. `docker compose logs -f ceitba-api-blue`, `docker compose exec ceitba-api-green sh`. From the host the
-API is reachable only through Caddy (`curl https://ceitba.org.ar/api/actuator/health`); there is no
-`127.0.0.1:8080` on the VPS any more.
+API is reachable only through Caddy (`curl https://ceitba.org.ar/api/actuator/health`, or from a container on
+`ceitba-proxy`, `http://ceitba-caddy:8081/api/...`); there is no `127.0.0.1:8080` on the VPS any more.
 
 Memory: during a deploy both colors run for ~20–60s, each with `limits: 2G` (heap 75%).
 
@@ -59,11 +60,22 @@ and a deploy with both colors up). Result: no 502/503/504, no request slower tha
 
 ## Scheduled jobs
 
-While two colors run, every `@Scheduled` method would fire in both. `JobLock.runExclusively(job, task)` takes
-`pg_try_advisory_lock(NAMESPACE, job.id)` on a dedicated pool connection, runs the task, and unlocks on the same
-connection (a session-level lock is held by the connection that took it; if unlocking fails, the connection is
-evicted rather than returned to the pool). If another session holds the lock the run is skipped and logged; the next
-tick tries again. If the process dies, Postgres ends the session and frees the lock.
+While two colors run, every `@Scheduled` method fires in both. `JobLock.runExclusively(job, task)`:
+
+1. opens a dedicated JDBC connection, outside the Hikari pool (a long job doesn't pin a connection web requests
+   need), and takes `pg_try_advisory_lock(NAMESPACE, job.id)` on it. If another session holds it, the run is skipped:
+   runs never overlap;
+2. under that lock, claims the job's row in `public.scheduled_job_run` (V63): if another run *started* less than
+   `MIN_GAP` (30s) ago, this one is skipped. This is what stops the other color from repeating the same cron tick
+   after the first one already finished (the lock alone would let it run again);
+3. runs the task, unlocks and closes the connection. If the process dies, Postgres ends the session and frees the
+   lock.
+
+Skips are logged at INFO; the next tick tries again. 30s is shorter than every job's period (the shortest is 1
+minute).
+
+`JobLockCoverageTest` fails when a `@Scheduled` method (including ones whose bean is off by default) has no
+`JobLock.Job` or explicit exemption, so a new job can't silently run twice.
 
 `NAMESPACE` is `0x43454954` ("CEIT"). Ids are stable and shared with any other process that runs these jobs (e.g. a
 Bun worker during a migration): never reuse or renumber one.
@@ -77,8 +89,8 @@ Bun worker during a migration): never reuse or renumber one.
 | 5 | `KB_EMBEDDINGS` | `KbEmbeddingJob.run` | revision re-check on write |
 | 6 | `DIGEST_SCHEDULE` | `DigestJob.createWeeklyDraft` | skips a week that already has a draft (check, then insert) |
 | 7 | `DIGEST_TICK` | `DigestJob.tick` | delivery claims (`DigestDeliveryRepository`) |
-| 8 | `ORG_MAIL` | `OrgMailJob.tick` | delivery claims |
-| 9 | `DRIVE_SYNC` | `DriveSyncJob.run` | in-process flag |
+| 8 | *(retired)* | `OrgMailJob.tick` is exempt: it only hands off to the sender | delivery claims (`FOR UPDATE SKIP LOCKED`) |
+| 9 | `DRIVE_SYNC` | `DriveSyncJob.run` | none |
 | 10 | `KB_PIPELINE_BATCHES` | `KbPipelineJob.pollBatches` | run lease (`V37__kb_run_lease`) |
 | 11 | `KB_PIPELINE_POLL` | `KbPipelineJob.sweep` | run lease |
 | 12 | `KB_PIPELINE_SCHEDULE` | `KbPipelineJob.tick` | run lease |
@@ -86,8 +98,7 @@ Bun worker during a migration): never reuse or renumber one.
 The lock covers the scheduled entry point. Work it hands to the task executor (digest and org-mail senders, wiki
 pipeline runs) is protected by those claims and leases, which also cover the `ApplicationReadyEvent` kicks.
 
-Each running job holds one extra pool connection (`DB_POOL_SIZE`, default 20) for its lock; the long ones (Drive
-sync, data sync, embeddings, the pipeline tick) rarely overlap.
+Each running job holds one extra Postgres connection (not from the pool) for its lock.
 
 ## Migrations: expand/contract
 
@@ -107,8 +118,15 @@ The rule is also in `AGENTS.md` and `apps/api/AGENTS.md`; the `flyway-migration`
 
 ## First deploy after switching to blue/green (one time)
 
-The Caddyfile keeps the pre-blue/green `ceitba-api:8080` as a third, last upstream: while blue boots next to the old
-`ceitba-api` container, Caddy keeps serving from the old one. The script treats a running `ceitba-api` as the old
-color, then stops and removes it. Also on this deploy only, Caddy's container is recreated once (its volume changes
-from the single Caddyfile to the directory): a ~1–2s cut of the whole site. Remove `ceitba-api:8080` from the
-Caddyfile in the next release.
+The Caddyfile keeps the pre-blue/green `ceitba-api` container as a third, last upstream, through a loopback adapter
+site (`127.0.0.1:8082`) that answers its readiness check with the old container's `/actuator/health` (it has no
+probes): while blue boots next to the old container, Caddy keeps serving from it. The script treats a running
+`ceitba-api` as the old color, then stops and removes it. The legacy jar has no `JobLock`, so a job firing during
+that overlap can run twice (this deploy only). Also on this deploy only, Caddy's container is recreated once (its
+volume changes from the single Caddyfile to the directory): a ~1–2s cut of the whole site.
+
+The MCP server deploys after the API in the same push, now pointed at `ceitba-caddy:8081`. **Before merging**, update
+or remove `CEITBA_API_URL` in `~/CEITBA-MCP/.env` if it still says `http://ceitba-api:8080/api` (the old example
+value): that name stops resolving once the old container is removed.
+
+Next release (contract): remove the `127.0.0.1:8082` upstream and its site from the Caddyfile.

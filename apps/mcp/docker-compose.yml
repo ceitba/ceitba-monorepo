@@ -2,14 +2,16 @@
 # Secrets live in ~/CEITBA-MCP/.env (see .env.example), never in the repo.
 # Caddy reaches it as ceitba-mcp:8787 over ceitba-proxy and forwards only
 # https://ceitba.org.ar/mcp* and /.well-known/*/mcp to it (infra/caddy/Caddyfile);
-# it reaches the API as ceitba-api:8080 on the same network (private peer, so
-# the API trusts the X-Forwarded-For it sends).
+# it reaches the API through Caddy's private entrance ceitba-caddy:8081 on the
+# same network (the API runs as two blue/green colors behind Caddy's health
+# checks, apps/api/docs/DEPLOY.md); that entrance passes the X-Forwarded-For
+# it sends through, so the API keeps keying limits on the end user's IP.
 services:
   ceitba-mcp:
     image: ghcr.io/ceitba/ceitba-mcp:latest
     container_name: ceitba-mcp
     environment:
-      CEITBA_API_URL: ${CEITBA_API_URL:-http://ceitba-api:8080/api}
+      CEITBA_API_URL: ${CEITBA_API_URL:-http://ceitba-caddy:8081/api}
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-https://ceitba.org.ar/mcp}
       MCP_ENCRYPTION_KEY: ${MCP_ENCRYPTION_KEY:?set MCP_ENCRYPTION_KEY in .env (openssl rand -base64 32)}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID in .env}

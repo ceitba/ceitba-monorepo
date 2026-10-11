@@ -29,15 +29,21 @@ log() { echo "deploy-api: $*"; }
 # Container id of a running service, empty if it isn't running.
 running_id() { docker compose ps -q --status running "$1" 2>/dev/null || true; }
 created_at() { docker inspect -f '{{.Created}}' "$1"; }
+health() { docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$1"; }
 
 blue_id=$(running_id "$BLUE")
 green_id=$(running_id "$GREEN")
 legacy_id=$(docker ps -q --filter "name=^${LEGACY}\$" --filter status=running)
 
 if [ -n "$blue_id" ] && [ -n "$green_id" ]; then
-  # A previous deploy died between steps 2 and 4: keep the newer one serving
-  # and redeploy the older one.
-  if [[ "$(created_at "$blue_id")" < "$(created_at "$green_id")" ]]; then new=$BLUE old=$GREEN; else new=$GREEN old=$BLUE; fi
+  # A previous deploy died between steps 2 and 4. Keep the healthy one
+  # serving and redeploy the other; if both (or neither) are healthy, keep the
+  # newer one.
+  blue_health=$(health "$blue_id") green_health=$(health "$green_id")
+  if [ "$blue_health" = healthy ] && [ "$green_health" != healthy ]; then new=$GREEN old=$BLUE
+  elif [ "$green_health" = healthy ] && [ "$blue_health" != healthy ]; then new=$BLUE old=$GREEN
+  elif [[ "$(created_at "$blue_id")" < "$(created_at "$green_id")" ]]; then new=$BLUE old=$GREEN
+  else new=$GREEN old=$BLUE; fi
 elif [ -n "$blue_id" ]; then
   new=$GREEN old=$BLUE
 elif [ -n "$green_id" ]; then
@@ -60,11 +66,17 @@ new_id=$(docker compose ps -q "$new")
 
 log "waiting for $new to be healthy (timeout ${HEALTH_TIMEOUT}s)"
 deadline=$((SECONDS + HEALTH_TIMEOUT))
+restarts=$(docker inspect -f '{{.RestartCount}}' "$new_id")
 while :; do
-  status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$new_id")
+  # "<state> <restart count> <health>": a container that crashes is restarted
+  # by its restart policy and its health goes back to "starting", so a crash
+  # loop shows as a growing restart count, not as an exited state.
+  read -r state count status < <(docker inspect -f \
+    '{{.State.Status}} {{.RestartCount}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$new_id")
   [ "$status" = healthy ] && break
-  if [ "$status" = unhealthy ] || [ "$status" = exited ] || [ "$status" = dead ] || [ "$SECONDS" -ge "$deadline" ]; then
-    log "$new did not become healthy (status: $status); keeping ${old:-$LEGACY} and rolling back"
+  if [ "$status" = unhealthy ] || [ "$count" -gt "$restarts" ] || [ "$state" = exited ] || [ "$state" = dead ] \
+      || [ "$SECONDS" -ge "$deadline" ]; then
+    log "$new did not become healthy (state: $state, restarts: $((count - restarts)), health: $status); keeping ${old:-$LEGACY} and rolling back"
     docker compose logs --no-color --tail 150 "$new" || true
     docker compose stop "$new" || true
     exit 1
