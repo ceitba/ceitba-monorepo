@@ -83,7 +83,7 @@ const ApuntesIcon = () => (
 
 export default function AppsSection() {
   const { t } = useTranslation()
-  // Apuntes is capability-gated (and hidden while logged out).
+  // Apuntes is capability-gated; logged out, it shows once it's enabled for everyone.
   const { enabled: apuntesEnabled } = useCapability('apuntes')
   const { enabled: aiEnabled } = useCapability('asistentes_ia')
   const cards = 2 + (apuntesEnabled ? 1 : 0) + (aiEnabled ? 1 : 0)

@@ -65,6 +65,16 @@ public class CapabilityService {
         return new TreeSet<>(granted);
     }
 
+    // Keys switched on for everyone, so anonymous visitors see the features
+    // they'd have once signed in (GET /v1/capabilities). Sorted.
+    @Transactional(readOnly = true)
+    public Set<String> enabledForAll() {
+        Set<String> known = Arrays.stream(Capability.values()).map(Capability::key).collect(Collectors.toSet());
+        Set<String> out = new TreeSet<>(settings.findEnabledForAll());
+        out.retainAll(known);
+        return out;
+    }
+
     // Of `users`, the ids of those who have `capability`, in at most four
     // queries whatever the number of users (weekly digest batches).
     @Transactional(readOnly = true)

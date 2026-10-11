@@ -38,6 +38,10 @@ The email allowlist still governs login; granting does not bypass it.
 get 401 from SecurityConfig first. `GET /v1/auth/me` returns
 `capabilities: string[]` (the effective set, sorted).
 
+`GET /v1/capabilities` is public and returns `{enabledForAll: string[]}` (sorted, registry keys only), so the web
+app can show features switched on for everyone (e.g. the Apuntes card on the home page) to visitors who haven't
+signed in. The gated endpoints themselves still require a session.
+
 ## Tables (V39)
 
 - `capability_settings(capability pk, enabled_for_all, updated_at, updated_by)` — no row = off.

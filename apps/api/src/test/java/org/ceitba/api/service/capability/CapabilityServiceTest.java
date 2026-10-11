@@ -55,6 +55,13 @@ class CapabilityServiceTest {
         }
     }
 
+    @Test
+    void enabledForAllIgnoresUnknownKeys() {
+        assertThat(service(false, List.of(), List.of(), List.of()).enabledForAll()).isEmpty();
+        assertThat(service(false, List.of("resumen_semanal", "gone", "apuntes"), List.of(), List.of()).enabledForAll())
+            .containsExactly("apuntes", "resumen_semanal");
+    }
+
     private static CapabilityService service(boolean staff, List<String> forAll, List<String> byEmail, List<String> byOrg) {
         return new CapabilityService(
             stub(CeitbaStaffRepository.class, "isActiveStaff", args -> staff),
