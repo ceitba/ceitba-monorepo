@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,13 +37,18 @@ public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
         Pageable pageable
     );
 
-    // Weekly digest candidates (service/digest): every event on [from, to].
+    // Weekly digest candidates (service/digest): every event on [from, to],
+    // plus the ones created in [announcedFrom, announcedTo) that happen later.
     @Query("""
         SELECT e FROM NewsEvent e LEFT JOIN FETCH e.organization
-        WHERE e.eventDate >= :from AND e.eventDate <= :to
+        WHERE e.eventDate >= :from
+          AND (e.eventDate <= :to
+               OR (e.createdAt >= :announcedFrom AND e.createdAt < :announcedTo))
         ORDER BY e.eventDate ASC, e.startTime ASC, e.id ASC
         """)
-    List<NewsEvent> findBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+    List<NewsEvent> findDigestCandidates(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                         @Param("announcedFrom") OffsetDateTime announcedFrom,
+                                         @Param("announcedTo") OffsetDateTime announcedTo);
 
     // Row-locked load for delete (an org member's delete re-checks membership under it).
     @Lock(LockModeType.PESSIMISTIC_WRITE)

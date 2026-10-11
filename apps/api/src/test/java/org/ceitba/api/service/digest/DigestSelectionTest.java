@@ -20,7 +20,7 @@ class DigestSelectionTest {
 
     static DigestContent.Event event(String id, DigestContent.Org org) {
         return new DigestContent.Event(id, "Ev " + id, LocalDate.of(2026, 10, 6),
-            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", org);
+            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", org, false);
     }
 
     static final DigestContent.Candidates CANDIDATES = new DigestContent.Candidates(WEEK,

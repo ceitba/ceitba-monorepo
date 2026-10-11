@@ -1,12 +1,16 @@
 package org.ceitba.api.service.digest;
 
+import org.ceitba.api.config.ClockConfig;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.format.TextStyle;
 import java.util.Locale;
 
 // The covered week of an issue (Monday..Sunday) and the following week, whose
-// events the issue announces.
+// events the issue announces. Events created during the covered week are
+// announced too, whatever their date.
 public record DigestWeek(LocalDate weekStart) {
 
     static final Locale ES = Locale.forLanguageTag("es-AR");
@@ -31,6 +35,14 @@ public record DigestWeek(LocalDate weekStart) {
     public LocalDate weekEnd()     { return weekStart.plusDays(6); }
     public LocalDate eventsFrom()  { return weekStart.plusDays(7); }
     public LocalDate eventsTo()    { return weekStart.plusDays(13); }
+
+    // [Monday 00:00, next Monday 00:00) ART: consecutive issues split
+    // created_at with no gap or overlap.
+    public OffsetDateTime announcedFrom() { return weekStart.atStartOfDay(ClockConfig.ZONE).toOffsetDateTime(); }
+    public OffsetDateTime announcedTo()   { return eventsFrom().atStartOfDay(ClockConfig.ZONE).toOffsetDateTime(); }
+
+    // An event after the next week, in the issue because it was announced in the covered one.
+    public boolean isLaterEvent(LocalDate eventDate) { return eventDate.isAfter(eventsTo()); }
 
     // "5 al 11 de octubre", "29 de septiembre al 5 de octubre".
     public String rangeLabel() {

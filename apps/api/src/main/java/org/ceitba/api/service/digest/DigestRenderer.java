@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.util.List;
 import java.util.Locale;
 
 // Renders an issue as table-based, inline-styled HTML (what email clients
@@ -120,11 +121,16 @@ public final class DigestRenderer {
         }
 
         var next = new DigestWeek(in.week().eventsFrom());
+        var nextWeek = nextWeekEvents(in);
+        var later = laterEvents(in);
         sectionLabel(sb, "Lo que viene", "Eventos del " + next.rangeLabel());
-        if (d.events().isEmpty()) {
-            emptyRow(sb, "No hay eventos anunciados para la semana que viene.");
-        } else {
-            for (var e : d.events()) event(sb, e);
+        if (nextWeek.isEmpty()) emptyRow(sb, NO_EVENTS_NEXT_WEEK);
+        for (var e : nextWeek) event(sb, e, in.publicBaseUrl());
+        if (!later.isEmpty()) {
+            sectionLabel(sb, NEW_EVENTS, NEW_EVENTS_SUBTITLE);
+            for (var e : later) event(sb, e, in.publicBaseUrl());
+        }
+        if (!d.events().isEmpty()) {
             sb.append("<tr><td class=\"px\" style=\"padding:4px 40px 8px 40px;\">")
               .append(link(in.publicBaseUrl() + "/events", "Ver todos los eventos →",
                   "font-family:" + BODY + ";font-size:15px;font-weight:600;color:" + PRIMARY + ";text-decoration:none;"))
@@ -197,7 +203,8 @@ public final class DigestRenderer {
           .append("</td></tr>");
     }
 
-    private static void event(StringBuilder sb, DigestContent.Event e) {
+    private static void event(StringBuilder sb, DigestContent.Event e, String base) {
+        String url = eventUrl(base, e.id());
         LocalDate date = e.eventDate();
         sb.append("<tr><td class=\"px\" style=\"padding:12px 40px;\">")
           .append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>")
@@ -213,8 +220,8 @@ public final class DigestRenderer {
           .append("</div></td>")
           // Details
           .append("<td valign=\"top\" style=\"padding-left:16px;\">")
-          .append("<div style=\"font-family:").append(DISPLAY).append(";font-size:18px;line-height:24px;font-weight:700;color:")
-          .append(INK).append(";\">").append(esc(e.title())).append("</div>")
+          .append("<div style=\"font-family:").append(DISPLAY).append(";font-size:18px;line-height:24px;font-weight:700;\">")
+          .append(link(url, e.title(), "color:" + INK + ";text-decoration:none;")).append("</div>")
           .append("<div style=\"font-family:").append(MONO).append(";font-size:12px;line-height:20px;color:").append(INK_2)
           .append(";padding-top:4px;\">").append(esc(timeRange(e.startTime(), e.endTime())));
         if (e.location() != null && !e.location().isBlank()) sb.append(" · ").append(esc(e.location()));
@@ -223,7 +230,11 @@ public final class DigestRenderer {
             sb.append("<div style=\"font-family:").append(BODY).append(";font-size:14px;color:").append(INK_2)
               .append(";padding-top:2px;\">").append(esc(e.organization().name())).append("</div>");
         }
-        sb.append("</td></tr></table></td></tr>");
+        sb.append("<div style=\"padding-top:6px;\">")
+          .append(link(url, eventCta(e),
+              "font-family:" + BODY + ";font-size:14px;font-weight:600;color:" + PRIMARY + ";text-decoration:none;"))
+          .append("</div>")
+          .append("</td></tr></table></td></tr>");
     }
 
     // ---------------------------------------------------------------- text
@@ -245,21 +256,49 @@ public final class DigestRenderer {
             sb.append("  ").append(articleUrl(in.publicBaseUrl(), a.id())).append('\n');
         }
 
+        var nextWeek = nextWeekEvents(in);
+        var later = laterEvents(in);
         sb.append("\nLO QUE VIENE\n").append("------------\n");
-        if (d.events().isEmpty()) sb.append("No hay eventos anunciados para la semana que viene.\n");
-        for (var e : d.events()) {
-            sb.append("\n* ").append(oneLine(e.title())).append('\n')
-              .append("  ").append(capitalize(DigestWeek.longDate(e.eventDate())))
-              .append(" · ").append(timeRange(e.startTime(), e.endTime()));
-            if (e.location() != null && !e.location().isBlank()) sb.append(" · ").append(oneLine(e.location()));
-            sb.append('\n');
-            if (e.organization() != null) sb.append("  ").append(oneLine(e.organization().name())).append('\n');
+        if (nextWeek.isEmpty()) sb.append(NO_EVENTS_NEXT_WEEK).append('\n');
+        for (var e : nextWeek) textEvent(sb, e, in.publicBaseUrl());
+        if (!later.isEmpty()) {
+            sb.append('\n').append(NEW_EVENTS.toUpperCase(DigestWeek.ES)).append('\n')
+              .append(NEW_EVENTS_SUBTITLE).append('\n');
+            for (var e : later) textEvent(sb, e, in.publicBaseUrl());
         }
         if (!d.events().isEmpty()) sb.append("\nTodos los eventos: ").append(in.publicBaseUrl()).append("/events\n");
         return sb.toString();
     }
 
+    private static void textEvent(StringBuilder sb, DigestContent.Event e, String base) {
+        sb.append("\n* ").append(oneLine(e.title())).append('\n')
+          .append("  ").append(capitalize(DigestWeek.longDate(e.eventDate())))
+          .append(" · ").append(timeRange(e.startTime(), e.endTime()));
+        if (e.location() != null && !e.location().isBlank()) sb.append(" · ").append(oneLine(e.location()));
+        sb.append('\n');
+        if (e.organization() != null) sb.append("  ").append(oneLine(e.organization().name())).append('\n');
+        sb.append("  ").append(eventUrl(base, e.id())).append('\n');
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    static final String NO_EVENTS_NEXT_WEEK = "No hay eventos anunciados para la semana que viene.";
+    static final String NEW_EVENTS = "Nuevos eventos";
+    static final String NEW_EVENTS_SUBTITLE = "Anunciados esta semana: anotate con tiempo";
+
+    // The events of the week after the covered one.
+    private static List<DigestContent.Event> nextWeekEvents(Input in) {
+        return in.digest().events().stream().filter(e -> !in.week().isLaterEvent(e.eventDate())).toList();
+    }
+
+    // Later events, in the issue because they were announced in the covered week.
+    private static List<DigestContent.Event> laterEvents(Input in) {
+        return in.digest().events().stream().filter(e -> in.week().isLaterEvent(e.eventDate())).toList();
+    }
+
+    private static String eventCta(DigestContent.Event e) {
+        return e.signup() ? "Ver evento e inscribirse →" : "Ver evento →";
+    }
 
     private static String orgLabel(DigestContent.Org org) {
         return org != null ? org.name() : "Independiente";
@@ -273,6 +312,10 @@ public final class DigestRenderer {
 
     static String articleUrl(String base, String id) {
         return base + "/articles/" + URLEncoder.encode(id, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    static String eventUrl(String base, String id) {
+        return base + "/events/" + URLEncoder.encode(id, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     static boolean isAbsoluteHttpUrl(String url) {
