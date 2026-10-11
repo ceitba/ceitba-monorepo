@@ -198,6 +198,26 @@ class OrgMembersEndpointsIT {
         assertThat(inviteRepo.count()).isZero();
     }
 
+    // The /manage "Invitar por email" flow: STAFF who isn't a member of the org.
+    @Test
+    void staffInvitesListsAndRevokesPendingInvites() throws Exception {
+        mvc.perform(post("/v1/organizations/sabf/members/invites").with(staff())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"emails\":[\"dave@itba.edu.ar\"],\"role\":\"admin\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.pending[0].email").value("dave@itba.edu.ar"));
+
+        mvc.perform(get("/v1/organizations/sabf/members").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.invites.length()").value(1))
+            .andExpect(jsonPath("$.invites[0].role").value("admin"));
+
+        mvc.perform(delete("/v1/organizations/sabf/members/invites").param("email", "dave@itba.edu.ar")
+                .with(staff()))
+            .andExpect(status().isNoContent());
+        assertThat(inviteRepo.count()).isZero();
+    }
+
     @Test
     void adminRevokesPendingInvite() throws Exception {
         mvc.perform(post("/v1/organizations/sabf/members/invites").with(orgAdmin())

@@ -21,11 +21,13 @@ import {
   inputClass, selectClass, toast,
 } from '../../components/ui'
 import { adminErrorMessage } from './adminErrors'
+import { InviteToOrgModal, PendingOrgInvites } from './ManageOrgInvites'
 
 const STAFF_BRANCH = 'DIRECTIVES'
 const STAFF_ROLE = 'MEMBER'
 const PAGE_SIZE = 20
 const SEARCH_DEBOUNCE_MS = 300
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 // One year is the default tenure; staff can re-assign with a custom range
 // directly via /v1/staff if they need precision.
@@ -45,7 +47,8 @@ type Scope = 'all' | 'staff'
 // "Agregar miembros" in the Organizations tab): every user is listed, as
 // usual, and each row that isn't in that org gets a one-click
 // "Agregar a <org>" button. A new org has no members, so filtering by it
-// would only show an empty table.
+// would only show an empty table. People who never signed in aren't listed:
+// "Invitar por email" adds them as pending invites, claimed on first login.
 export default function ManageUsersSection({ initialAddingTo }: { initialAddingTo?: OrganizationSummary } = {}) {
   const { t } = useTranslation()
   const [page, setPage]       = useState<UsersPage | null>(null)
@@ -71,6 +74,9 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
   const [scope, setScope]     = useState<Scope>('all')
   const [pageNum, setPageNum] = useState(1)
   const [addingTo, setAddingTo] = useState<OrganizationSummary | null>(initialAddingTo ?? null)
+  // Invite-by-email dialog: null = closed, otherwise its prefilled text.
+  const [inviting, setInviting] = useState<string | null>(null)
+  const [invitesTick, setInvitesTick] = useState(0)
 
   // The tab can be re-opened in "adding" mode for another org while mounted.
   useEffect(() => { setAddingTo(initialAddingTo ?? null) }, [initialAddingTo])
@@ -243,11 +249,17 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
       {addingTo && (
         <Alert
           tone="info"
-          action={<Button size="sm" variant="outline" onClick={() => setAddingTo(null)}>{t('manage.users.addingDone')}</Button>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setInviting('')}>{t('manage.users.invites.open')}</Button>
+              <Button size="sm" variant="outline" onClick={() => setAddingTo(null)}>{t('manage.users.addingDone')}</Button>
+            </div>
+          }
         >
           {t('manage.users.addingBanner', { org: addingTo.name })}
         </Alert>
       )}
+      {addingTo && <PendingOrgInvites org={addingTo} tick={invitesTick} />}
 
       <ToggleGroup<Scope>
         joined
@@ -434,6 +446,18 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
                             </Button>
                           }
                         />
+                      ) : addingTo && EMAIL.test(q) ? (
+                        // Nobody signed in with that email yet: invite it.
+                        <EmptyState
+                          compact
+                          title={t('manage.users.invites.notFound', { email: q })}
+                          body={t('manage.users.invites.notFoundHint', { org: addingTo.name })}
+                          action={
+                            <Button variant="outline" onClick={() => setInviting(q)}>
+                              {t('manage.users.invites.inviteOne', { email: q, org: addingTo.name })}
+                            </Button>
+                          }
+                        />
                       ) : (
                         <EmptyState
                           compact
@@ -490,6 +514,20 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
             )}
           </Field>
         </Modal>
+      )}
+
+      {addingTo && inviting !== null && (
+        <InviteToOrgModal
+          org={addingTo}
+          initial={inviting}
+          onClose={() => setInviting(null)}
+          onDone={() => {
+            setInviting(null)
+            setInvitesTick((n) => n + 1)
+            // Emails of people who already signed in were added right away.
+            reload()
+          }}
+        />
       )}
 
       {staffChange && (
