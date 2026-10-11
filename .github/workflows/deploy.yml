@@ -269,8 +269,13 @@ jobs:
             # ~/infra is mounted as a directory, so Caddy sees the new
             # Caddyfile. `caddy reload` swaps the config without dropping
             # connections; an invalid file is refused (the job fails) and the
-            # running config stays. It is a no-op when nothing changed.
-            docker exec ceitba-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+            # running config stays. It is a no-op when nothing changed. Retried
+            # because a just-recreated Caddy may not listen on its admin port yet.
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              docker exec ceitba-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile && break
+              [ "$i" = 10 ] && exit 1
+              sleep 2
+            done
 
             # Deploy the API without downtime: start the idle color (blue or
             # green), wait until it is healthy, then stop the other one. It
