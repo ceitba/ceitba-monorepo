@@ -97,7 +97,18 @@ export default function WikiPage() {
         <WikiArticle
           key={page.id}
           page={page}
-          aside={<PagesPanel subjectId={page.subjectId} pages={pages} currentSlug={page.slug} />}
+          aside={
+            <>
+              <PagesPanel subjectId={page.subjectId} pages={pages} currentSlug={page.slug} />
+              <Link
+                to="/ia"
+                className="block rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-4 hover:border-primary transition-colors duration-150"
+              >
+                <span className="block font-display font-bold text-h5 text-ink-primary dark:text-night-text">{t('wiki.askAi.title')}</span>
+                <span className="block font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{t('wiki.askAi.body')}</span>
+              </Link>
+            </>
+          }
         />
       )}
     </main>

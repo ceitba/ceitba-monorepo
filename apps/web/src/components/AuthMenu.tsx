@@ -147,14 +147,6 @@ export default function AuthMenu() {
           >
             {t('auth.profile')}
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { setOpen(false); navigate('/ia') }}
-            className="w-full min-h-[44px] text-left px-3 py-2 font-body text-body-sm text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised focus-visible:bg-primary-50 dark:focus-visible:bg-night-raised"
-          >
-            {t('auth.ai')}
-          </button>
           {apuntesEnabled && (
             <>
               <button

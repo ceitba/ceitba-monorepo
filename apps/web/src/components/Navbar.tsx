@@ -11,6 +11,7 @@ const SECTIONS = [
   { to: '/scheduler', label: 'nav.scheduler' },
   { to: '/newsletter', label: 'nav.newsletter' },
   { to: '/apuntes', label: 'nav.apuntes', capability: 'apuntes' },
+  { to: '/ia', label: 'nav.ai' },
 ] as const
 
 function SectionLinks({ className, linkClassName }: { className: string; linkClassName: string }) {

@@ -11,7 +11,8 @@
     "sectionsAria": "Secciones",
     "scheduler": "Horarios",
     "newsletter": "Newsletter",
-    "benefits": "Beneficios"
+    "benefits": "Beneficios",
+    "ai": "IA"
   },
   "manage": {
     "loading": "Cargando…",
@@ -519,8 +520,7 @@
     "myApuntes": "Mis apuntes",
     "accountMenu": "Menú de cuenta",
     "savedSchedules": "Mis horarios guardados",
-    "myPosts": "Mis publicaciones",
-    "ai": "Asistentes de IA"
+    "myPosts": "Mis publicaciones"
   },
   "hero": {
     "eyebrow": "Centro de Estudiantes",
@@ -560,6 +560,11 @@
       "label": "Apuntes",
       "description": "Apuntes, resúmenes y finales que comparten otros estudiantes desde su Google Drive, ordenados por materia.",
       "cta": "Abrir"
+    },
+    "ai": {
+      "label": "Asistentes de IA",
+      "description": "Conectá Claude o ChatGPT a CEITBA y preguntale por horarios, aulas libres, eventos y apuntes.",
+      "cta": "Conectar"
     }
   },
   "departments": {
@@ -676,77 +681,55 @@
     "web": "Seguir en la web"
   },
   "ai": {
-    "title": "Conectá CEITBA con tu asistente de IA",
-    "subtitle": "Con el servidor MCP de CEITBA, asistentes como Claude, ChatGPT, Cursor o VS Code pueden consultar planes, horarios, aulas libres, eventos y, con tu cuenta, tus horarios guardados y las wikis de Apuntes.",
-    "serverTitle": "Dirección del servidor",
-    "consentNote": "Al conectarte, CEITBA te muestra qué asistente pide acceso y a dónde te va a devolver. Continuá solo si empezaste vos la conexión, e iniciá sesión con tu cuenta @itba.edu.ar.",
+    "title": "Usá CEITBA desde tu IA",
+    "subtitle": "Conectá Claude, ChatGPT u otro asistente y preguntale por tus horarios, aulas libres, eventos y apuntes.",
+    "step1": "Copiá la dirección",
+    "step2": "Agregala en tu asistente",
+    "step3": "Iniciá sesión",
+    "step3Body": "Tu asistente abre CEITBA: aprobá el acceso y entrá con tu cuenta @itba.edu.ar.",
     "copy": "Copiar",
-    "copyUrl": "Copiar la dirección del servidor",
-    "copySnippet": "Copiar la configuración",
+    "copyUrl": "Copiar la dirección",
     "copied": "Copiado",
     "copyFailed": "No se pudo copiar. Seleccioná el texto y copialo a mano.",
-    "whatTitle": "Qué puede hacer tu asistente",
-    "what": {
-      "public": "Sin iniciar sesión: planes y materias, comisiones y horarios, aulas libres, el Combinador de Horarios, noticias, eventos, organizaciones y beneficios.",
-      "signedIn": "Con tu cuenta: tus horarios guardados, grupos de estudio, propuestas y organizaciones que seguís.",
-      "apuntes": "Con Apuntes habilitado: los apuntes y la wiki de cada materia, con búsqueda por significado para responder dudas citando las páginas.",
-      "report": "Si encontrás un error en una página de wiki o un archivo de apuntes, podés pedirle que lo reporte. Es lo único que puede cambiar en tu nombre.",
-      "staff": "Personal de CEITBA: además, las colas de revisión y moderación."
-    },
-    "clientsTitle": "Paso a paso",
     "clients": {
       "claude": {
         "name": "Claude",
-        "step1": "En claude.ai o Claude Desktop, andá a Configuración → Conectores → Agregar conector personalizado.",
-        "step2": "Nombre: CEITBA. URL: {{url}}",
-        "step3": "Tocá Conectar, aprobá el acceso e iniciá sesión con Google. En cada conversación, activá el conector desde el menú de herramientas."
+        "how": "Configuración → Conectores → Agregar conector personalizado, y pegá la dirección."
       },
       "chatgpt": {
         "name": "ChatGPT",
-        "step1": "Andá a Configuración → Conectores → Crear (o Agregar servidor MCP).",
-        "step2": "URL: {{url}}. Autenticación: OAuth.",
-        "step3": "Aprobá el acceso e iniciá sesión con Google.",
-        "note": "Los conectores MCP personalizados dependen de tu plan de ChatGPT y de tener habilitado el modo desarrollador."
+        "how": "Configuración → Conectores → Crear, y pegá la dirección. Requiere el modo desarrollador."
       },
       "claudeCode": {
         "name": "Claude Code",
-        "step1": "Corré este comando en tu terminal:",
-        "step2": "Dentro de Claude Code, corré /mcp y elegí ceitba para iniciar sesión."
+        "how": "Corré esto y después /mcp para iniciar sesión:"
       },
       "cursor": {
         "name": "Cursor",
-        "step1": "Agregá esto a ~/.cursor/mcp.json y abrí el servidor desde la configuración de MCP para iniciar sesión:"
+        "how": "Agregalo a ~/.cursor/mcp.json:"
       },
       "vscode": {
         "name": "VS Code",
-        "step1": "Agregá esto a .vscode/mcp.json (o usá el comando MCP: Add Server) e iniciá sesión cuando lo pida:"
-      },
-      "kiro": {
-        "name": "Kiro",
-        "step1": "Agregá esto a ~/.kiro/settings/mcp.json (todos tus proyectos) o a .kiro/settings/mcp.json (un proyecto):"
+        "how": "Agregalo a .vscode/mcp.json:"
       }
     },
-    "scopes": {
-      "read": "Lectura",
-      "report": "Reportes",
-      "write": "Escritura",
-      "staff": "Staff"
+    "examplesTitle": "Probá preguntarle",
+    "examples": {
+      "schedule": "Armame un horario con Física I y Programación I sin clases los viernes",
+      "classrooms": "¿Qué aulas hay libres ahora en SDF?",
+      "wiki": "Explicame el VAN según la wiki de Matemática Financiera",
+      "events": "¿Qué eventos hay esta semana?"
     },
     "connections": {
       "title": "Asistentes conectados",
-      "signInHint": "Iniciá sesión para ver los asistentes conectados a tu cuenta.",
-      "body": "Cada asistente que conectaste con tu cuenta aparece acá. Si desconectás uno, deja de tener acceso enseguida y tenés que volver a conectarlo desde el asistente.",
-      "loadError": "No se pudieron cargar tus asistentes conectados.",
-      "empty": "No tenés asistentes conectados.",
-      "meta": "Conectado {{created}} · vence {{expires}} · último uso: {{used}}",
-      "never": "nunca",
+      "connected": "Conectado el {{date}}",
+      "lastUsed": "Último uso: {{date}}",
       "revoke": "Desconectar",
-      "revokeTitle": "¿Desconectar este asistente?",
-      "revokeBody": "\"{{name}}\" deja de tener acceso a tu cuenta de CEITBA enseguida.",
+      "revokeTitle": "¿Desconectar {{name}}?",
+      "revokeBody": "Pierde el acceso a tu cuenta enseguida. Para volver a usarlo, conectalo de nuevo.",
       "revoked": "Asistente desconectado",
       "revokeError": "No se pudo desconectar el asistente."
     },
-    "privacyTitle": "Privacidad",
-    "privacy": "CEITBA guarda, cifrada, una clave con los permisos mínimos de tu cuenta, nunca tu contraseña de Google. Los registros incluyen tu id de usuario, la herramienta usada y si funcionó; no incluyen tus preguntas ni tu email. Para desconectar un asistente, quitá el conector en tu cliente o desconectalo arriba."
+    "privacy": "Tu asistente solo puede leer tus datos y reportar errores en Apuntes si se lo pedís. CEITBA no guarda tus preguntas."
   }
 }

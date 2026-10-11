@@ -373,6 +373,10 @@
     "years": {
       "basedOn": "Based on notes from {{range}}",
       "stale": "These notes are more than 3 years old; the subject's syllabus may have changed."
+    },
+    "askAi": {
+      "title": "Ask your AI",
+      "body": "Connect your assistant and ask it about this subject."
     }
   },
   "manage": {

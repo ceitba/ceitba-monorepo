@@ -65,6 +65,13 @@ const NewsletterIcon = () => (
   </svg>
 )
 
+const AiIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    <path d="M12 7l1.2 2.6L16 11l-2.8 1.4L12 15l-1.2-2.6L8 11l2.8-1.4z" />
+  </svg>
+)
+
 const ApuntesIcon = () => (
   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -90,7 +97,7 @@ export default function AppsSection() {
             {t('apps.sectionSubtitle')}
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${apuntesEnabled ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
           <AppCard
             href="/scheduler"
             label={t('apps.scheduler.label')}
@@ -117,6 +124,14 @@ export default function AppsSection() {
               colorVar="--dept-color-infra"
             />
           )}
+          <AppCard
+            href="/ia"
+            label={t('apps.ai.label')}
+            description={t('apps.ai.description')}
+            cta={t('apps.ai.cta')}
+            icon={<AiIcon />}
+            colorVar="--dept-color-media"
+          />
         </div>
       </div>
     </section>
