@@ -39,6 +39,20 @@ ceitba.org.ar {
         reverse_proxy ceitba-minio:9000
     }
 
+    # Link previews: chat apps' crawlers (WhatsApp, Telegram, Slack…) don't
+    # run JavaScript, so the SPA would hand them an empty page. For an article
+    # they get the API's Open Graph page instead (ArticleLinkPreviewController);
+    # browsers still get the SPA. iMessage previews with the facebookexternalhit
+    # and Twitterbot user agents.
+    @articlePreview {
+        path_regexp article ^/newsletter/articles/([A-Za-z0-9-]+)/?$
+        header_regexp User-Agent (?i)(whatsapp|facebookexternalhit|facebot|meta-externalagent|twitterbot|telegrambot|slackbot|discordbot|linkedinbot|skypeuripreview|pinterest|redditbot|embedly|vkshare|bluesky|mastodon)
+    }
+    handle @articlePreview {
+        rewrite * /api/v1/articles/{re.article.1}/preview
+        reverse_proxy ceitba-api:8080
+    }
+
     # The newsletter's canonical path is /newsletter (served by the web app
     # below, like /scheduler). /itbanews is kept as a permanent redirect for
     # old links.

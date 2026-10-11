@@ -65,7 +65,8 @@ version updates against `dev`.
   the mobile app uses the token endpoints in `apps/api/docs/AUTH-SETUP.md`.
 - **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/mcp`, `/mcp/*` and
   `/.well-known/{oauth-protected-resource,oauth-authorization-server,openid-configuration}/mcp` → MCP server,
-  `/itbanews*` 301s to `/newsletter`,
+  `/itbanews*` 301s to `/newsletter`, link-preview crawlers (WhatsApp, Telegram, Slack…) asking for
+  `/newsletter/articles/{id}` → the API's Open Graph page (`GET /v1/articles/{id}/preview`),
   everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
   (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
 - **Secrets** never enter the repo: `.env`/`.env.local` stay local, `.env.example` gets placeholders only.
