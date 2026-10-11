@@ -15,6 +15,8 @@ El servidor MCP de CEITBA le da a tu asistente (Claude, ChatGPT, Cursor, VS Code
 Para estudiantes la conexión es de **lectura**: el asistente no puede publicar, votar ni modificar nada en tu nombre.
 Lo único que puede hacer es **reportar** una página de wiki o un archivo de apuntes con errores, cuando se lo pedís.
 
+Los asistentes de IA se están habilitando de a poco: si tu cuenta todavía no los tiene, la conexión se rechaza.
+
 **Dirección del servidor:** `https://ceitba.org.ar/mcp`
 
 La primera vez, tu cliente abre el navegador. CEITBA te muestra qué asistente pide acceso y a dónde te va a devolver:

@@ -31,7 +31,9 @@ beforeAll(async () => {
     "POST /v1/auth/google/mobile": req => {
       const { idToken } = req.body as { idToken: string };
       if (idToken === "id-token-outsider") return error(403, "LoginRejected");
-      const user = idToken === "id-token-staff" ? ME_STAFF : ME_STUDENT;
+      const user = idToken === "id-token-staff" ? ME_STAFF
+        : idToken === "id-token-nocap" ? { ...ME_STUDENT, id: "u-3", capabilities: [] }
+        : ME_STUDENT;
       return { accessToken: `jwt-${user.id}`, accessTokenExpiresAt: "", refreshToken: `rt-${user.id}`, refreshTokenExpiresAt: "", user };
     },
     "POST /v1/auth/api-keys": req => {
@@ -341,6 +343,29 @@ describe("OAuth bridge", () => {
     } finally {
       store.saveGrantWithCode = original;
     }
+  });
+
+  test("accounts without the asistentes_ia capability can't connect", async () => {
+    const minted = api.calls.filter(c => c.path === "/v1/auth/api-keys" && c.method === "POST").length;
+    const logouts = api.calls.filter(c => c.path === "/v1/auth/logout").length;
+    const { back } = await login("nocap");
+    expect(back.searchParams.get("error")).toBe("access_denied");
+    expect(back.searchParams.get("error_description")).toContain("not enabled");
+    expect(api.calls.filter(c => c.path === "/v1/auth/api-keys" && c.method === "POST").length).toBe(minted);
+    // The short API session is still closed.
+    expect(api.calls.filter(c => c.path === "/v1/auth/logout").length).toBe(logouts + 1);
+  });
+
+  test("losing the capability ends the sign-in on the next call", async () => {
+    const { client, verifier, back } = await login("student");
+    const t = await token({ grant_type: "authorization_code", code: back.searchParams.get("code")!, code_verifier: verifier, client_id: client.client_id });
+    const before = deletedKeys.length;
+    for (const [k, v] of keys) if (v.me.id === ME_STUDENT.id) keys.set(k, { ...v, me: { ...v.me, capabilities: [] } });
+    const res = await rpc(String(t.body.access_token), "tools/list");
+    expect(res.status).toBe(401);
+    expect(deletedKeys.length).toBe(before + 1);
+    const refresh = await token({ grant_type: "refresh_token", refresh_token: String(t.body.refresh_token), client_id: client.client_id });
+    expect(refresh.status).toBe(400);
   });
 
   test("accounts the API rejects come back as access_denied", async () => {

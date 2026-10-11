@@ -28,7 +28,7 @@ class CapabilityServiceTest {
     void effectiveCapabilityRule() {
         assertThat(service(false, List.of(), List.of(), List.of()).effective(USER)).isEmpty();
         assertThat(service(true, List.of(), List.of(), List.of()).effective(USER))
-            .containsExactly("apuntes", "resumen_semanal");
+            .containsExactly("apuntes", "asistentes_ia", "resumen_semanal");
         assertThat(service(false, List.of("apuntes"), List.of(), List.of()).effective(USER)).containsExactly("apuntes");
         // Email grants are looked up lowercased; unknown keys in the tables are ignored.
         assertThat(service(false, List.of(), List.of("apuntes", "gone"), List.of()).effective(USER))

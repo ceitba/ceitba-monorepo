@@ -15,7 +15,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { ApiError, type CeitbaApi } from "../api/client";
 import type { ApiKeyCreated, TokenResponse, UserMe } from "../api/types";
-import type { Scope } from "../context";
+import { MCP_CAPABILITY, type Scope } from "../context";
 import type { Logger } from "../log";
 import { clearBindingCookie, readBindingCookie, renderConsent, sendConsent, setBindingCookie } from "./consent";
 import { randomToken, safeEqual, SecretBox, sha256hex } from "./crypto";
@@ -60,6 +60,13 @@ export interface ResolvedCredential {
   apiKey: string;
   scopes: Scope[];
   grantId: string;
+}
+
+// The account signed in but doesn't have the asistentes_ia capability.
+export class CapabilityMissingError extends Error {
+  constructor() {
+    super(`missing capability ${MCP_CAPABILITY}`);
+  }
 }
 
 const PENDING_TTL_MS = 10 * 60_000;
@@ -239,9 +246,11 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
         event: "oauth_login", client: pending.clientId, status: "error",
         error: e instanceof ApiError ? `${e.status} ${e.code}` : e instanceof Error ? e.message : String(e)
       });
-      back(denied
-        ? { error: "access_denied", error_description: "This Google account is not allowed to use CEITBA (use your @itba.edu.ar account)" }
-        : { error: "server_error", error_description: "Could not complete the CEITBA sign-in" });
+      back(e instanceof CapabilityMissingError
+        ? { error: "access_denied", error_description: "AI assistants are not enabled for this CEITBA account yet" }
+        : denied
+          ? { error: "access_denied", error_description: "This Google account is not allowed to use CEITBA (use your @itba.edu.ar account)" }
+          : { error: "server_error", error_description: "Could not complete the CEITBA sign-in" });
     }
   }
 
@@ -255,6 +264,8 @@ export class CeitbaOAuthProvider implements OAuthServerProvider {
     const asUser = base.withCredentials({ bearer: session.accessToken });
     let key: ApiKeyCreated;
     try {
+      // Checked on the session (not a key), so staff report every capability.
+      if (!(session.user.capabilities ?? []).includes(MCP_CAPABILITY)) throw new CapabilityMissingError();
       key = await asUser.send<ApiKeyCreated>("POST", "/v1/auth/api-keys", {
         name: `MCP · ${clientName}`.slice(0, 120),
         ttlDays: this.o.grantTtlDays,

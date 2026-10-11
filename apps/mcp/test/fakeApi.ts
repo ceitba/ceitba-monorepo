@@ -83,7 +83,7 @@ export const CATALOG = {
 
 export const ME_STUDENT: UserMe = {
   id: "u-1", name: "Ana", email: "ana@itba.edu.ar", role: "user", moderator: false, language: "es",
-  careerId: "S", plan: "S10-Rev23", organizations: [], follows: [], capabilities: []
+  careerId: "S", plan: "S10-Rev23", organizations: [], follows: [], capabilities: ["asistentes_ia"]
 };
 
-export const ME_STAFF: UserMe = { ...ME_STUDENT, id: "u-2", name: "Sol", email: "sol@itba.edu.ar", role: "staff", moderator: true, capabilities: ["apuntes"] };
+export const ME_STAFF: UserMe = { ...ME_STUDENT, id: "u-2", name: "Sol", email: "sol@itba.edu.ar", role: "staff", moderator: true, capabilities: ["apuntes", "asistentes_ia"] };

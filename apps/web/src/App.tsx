@@ -88,7 +88,7 @@ function Layout() {
           <Route path="/manage/*" element={<StaffGuard><Suspense fallback={<PageFallback />}><ManagePage /></Suspense></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/app/*" element={<OpenInAppPage />} />
-          <Route path="/ia" element={<Suspense fallback={<PageFallback />}><AiConnectPage /></Suspense>} />
+          <Route path="/ia" element={<CapabilityGuard capability="asistentes_ia"><Suspense fallback={<PageFallback />}><AiConnectPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/correlativas" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></CapabilityGuard>} />

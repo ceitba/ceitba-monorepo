@@ -85,6 +85,8 @@ export default function AppsSection() {
   const { t } = useTranslation()
   // Apuntes is capability-gated (and hidden while logged out).
   const { enabled: apuntesEnabled } = useCapability('apuntes')
+  const { enabled: aiEnabled } = useCapability('asistentes_ia')
+  const cards = 2 + (apuntesEnabled ? 1 : 0) + (aiEnabled ? 1 : 0)
 
   return (
     <section className="py-section-mobile lg:py-section bg-white dark:bg-night-raised" aria-labelledby="apps-heading">
@@ -97,7 +99,7 @@ export default function AppsSection() {
             {t('apps.sectionSubtitle')}
           </p>
         </div>
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${apuntesEnabled ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${cards === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
           <AppCard
             href="/scheduler"
             label={t('apps.scheduler.label')}
@@ -124,14 +126,16 @@ export default function AppsSection() {
               colorVar="--dept-color-infra"
             />
           )}
-          <AppCard
-            href="/ia"
-            label={t('apps.ai.label')}
-            description={t('apps.ai.description')}
-            cta={t('apps.ai.cta')}
-            icon={<AiIcon />}
-            colorVar="--dept-color-media"
-          />
+          {aiEnabled && (
+            <AppCard
+              href="/ia"
+              label={t('apps.ai.label')}
+              description={t('apps.ai.description')}
+              cta={t('apps.ai.cta')}
+              icon={<AiIcon />}
+              colorVar="--dept-color-media"
+            />
+          )}
         </div>
       </div>
     </section>

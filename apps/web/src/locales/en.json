@@ -653,6 +653,10 @@
     "apuntes": {
       "title": "Notes isn't enabled for your account yet",
       "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu."
+    },
+    "asistentes_ia": {
+      "title": "AI assistants are not enabled for your account yet",
+      "body": "We are opening AI assistants gradually. Once they are enabled for your account or organization, you will see them in the menu."
     }
   },
   "digest": {

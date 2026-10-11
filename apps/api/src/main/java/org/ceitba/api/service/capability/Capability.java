@@ -8,7 +8,8 @@ import java.util.Optional;
 public enum Capability {
 
     APUNTES("apuntes", "Apuntes", "Compartir carpetas de Drive, ver apuntes y wikis por materia"),
-    RESUMEN_SEMANAL("resumen_semanal", "Resumen semanal", "Recibir el mail semanal 'La semana en ITBA'");
+    RESUMEN_SEMANAL("resumen_semanal", "Resumen semanal", "Recibir el mail semanal 'La semana en ITBA'"),
+    ASISTENTES_IA("asistentes_ia", "Asistentes de IA", "Conectar asistentes de IA (Claude, ChatGPT...) a CEITBA por el servidor MCP");
 
     private final String key;
     private final String label;

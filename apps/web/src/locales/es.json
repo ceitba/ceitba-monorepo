@@ -653,6 +653,10 @@
     "apuntes": {
       "title": "Apuntes todavía no está habilitado para tu cuenta",
       "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
+    },
+    "asistentes_ia": {
+      "title": "Los asistentes de IA todavía no están habilitados para tu cuenta",
+      "body": "Estamos abriendo los asistentes de IA de a poco. Cuando se habiliten para tu cuenta o tu organización, vas a verlos en el menú."
     }
   },
   "digest": {

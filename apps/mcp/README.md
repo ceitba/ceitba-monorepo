@@ -80,6 +80,11 @@ hashes in SQLite (`MCP_DB_PATH`).
 
 The API's JWT secret never leaves the API, and the API remains the only judge of who can sign in.
 
+**Capability.** Connecting needs the `asistentes_ia` capability (`apps/api/docs/CAPABILITIES.md`; staff hold all).
+The bridge refuses the sign-in without it (`access_denied`), and every MCP request re-checks it through `/auth/me`: once
+it's gone, the sign-in is revoked and the client gets `401`. Turn it on for everyone or grant it per user/org from the
+staff Capabilities page.
+
 **OAuth only.** The hosted server accepts only its own access tokens. A raw `ceitba_` API key sent as the bearer token
 gets `401`, so clients must support OAuth. Users see and disconnect their sign-ins on the web app's `/ia` page.
 Only the local stdio mode (developers) uses an API key, `CEITBA_API_KEY`.

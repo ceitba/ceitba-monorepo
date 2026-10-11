@@ -11,7 +11,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { OAuthMetadata, OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { CeitbaApi } from "./api/client";
 import type { HttpConfig } from "./config";
-import { parseScopes, type SessionContext } from "./context";
+import { MCP_CAPABILITY, parseScopes, type SessionContext } from "./context";
 import type { Logger } from "./log";
 import { sha256hex } from "./oauth/crypto";
 import { CeitbaOAuthProvider, SUPPORTED_SCOPES } from "./oauth/provider";
@@ -157,6 +157,14 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
       }
       log.error("identity lookup failed", { error: e instanceof Error ? e.message : String(e) });
       res.status(502).json({ jsonrpc: "2.0", error: { code: -32603, message: "CEITBA API unavailable" }, id: null });
+      return;
+    }
+    if (!identity?.capabilities.includes(MCP_CAPABILITY)) {
+      // The asistentes_ia capability was taken away: end the sign-in. Signing in
+      // again explains why it is refused.
+      identities.delete(cacheKey);
+      await provider.revokeGrant(cred.grantId);
+      unauthorized(res, "AI assistants are not enabled for this CEITBA account");
       return;
     }
 

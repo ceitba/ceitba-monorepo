@@ -10,6 +10,7 @@ where opening `/mcp` in a browser lands); `CONECTAR.md` is the same guide as Mar
 - Hosted mode is stateless Streamable HTTP and acts as its own OAuth 2.1 server. It bridges Google sign-in through
   `POST /v1/auth/google/mobile` and stores only an encrypted, scoped API key per login (`src/oauth/provider.ts`).
   Every authorization goes through the consent page (`src/oauth/consent.ts`), bound to the browser that started it.
+  Connecting needs the `asistentes_ia` capability (`MCP_CAPABILITY`), checked at sign-in and on every request.
 - The schedule generator comes from `@ceitba/scheduler-core` (`packages/scheduler-core`), the same code the web
   scheduler runs. Change it there, never copy it.
 - Tests: `bun test` (from `apps/mcp`) runs against an in-process fake API (`test/fakeApi.ts`) and a fake Google.

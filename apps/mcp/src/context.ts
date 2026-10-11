@@ -10,6 +10,10 @@ import type { RateLimiter } from "./ratelimit";
 // pages and Apuntes files, write allows every non-safe method (and implies
 // report), staff keeps the owner's STAFF/MODERATOR roles.
 export type Scope = "read" | "report" | "write" | "staff";
+
+// CEITBA capability (apps/api/docs/CAPABILITIES.md) a user needs to connect an
+// assistant to the hosted server. Staff hold every capability.
+export const MCP_CAPABILITY = "asistentes_ia";
 export const ALL_SCOPES: Scope[] = ["read", "report", "write", "staff"];
 
 export interface Identity {
