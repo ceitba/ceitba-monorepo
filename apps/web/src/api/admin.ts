@@ -125,3 +125,30 @@ export function updateUserOrganizationRole(userId: string, slug: string, role: M
 export function removeUserOrganization(userId: string, slug: string): Promise<void> {
   return apiSend('DELETE', `/users/${userId}/organizations/${slug}`)
 }
+
+// Emails invited to an org that haven't signed in yet: they join it on their
+// first login (OrgMembersController, STAFF or the org's admins).
+export interface OrgInvite {
+  email: string
+  role: MembershipRole
+  createdAt: string
+}
+
+const orgMembersPath = (slug: string) => `/organizations/${encodeURIComponent(slug)}/members`
+
+export function fetchOrgInvites(slug: string): Promise<OrgInvite[]> {
+  return apiGet<{ invites: OrgInvite[] }>(orgMembersPath(slug)).then((r) => r.invites)
+}
+
+// Emails of people who already signed in are added right away (`added`);
+// the rest stay `pending` until their first login. 400 if one is malformed
+// or outside the login allowlist; at most 50 per request.
+export function inviteToOrganization(
+  slug: string, emails: string[], role: MembershipRole,
+): Promise<{ added: { userId: string }[]; pending: OrgInvite[] }> {
+  return apiSend('POST', `${orgMembersPath(slug)}/invites`, { emails, role })
+}
+
+export function revokeOrgInvite(slug: string, email: string): Promise<void> {
+  return apiSend('DELETE', `${orgMembersPath(slug)}/invites?email=${encodeURIComponent(email)}`)
+}
