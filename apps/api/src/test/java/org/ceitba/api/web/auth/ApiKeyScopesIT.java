@@ -135,6 +135,24 @@ class ApiKeyScopesIT {
             .andExpect(jsonPath("$[0].scopes[0]").value("read"));
     }
 
+    // What apps/mcp mints for staff: every scope but "keys". Still no key management.
+    @Test
+    void aStaffMcpKeyCannotManageKeys() throws Exception {
+        var s = staffUser("mcpstaff-" + UUID.randomUUID() + "@itba.edu.ar");
+        String mcp = key(s, "read", "report", "staff", "write");
+        String other = apiKeys.create(s, "other", 30, null).id().toString();
+        mvc.perform(post("/v1/auth/api-keys").header(ApiKeyFilter.HEADER, mcp)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"escalate\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value(ApiKeyFilter.INSUFFICIENT_SCOPE));
+        mvc.perform(delete("/v1/auth/api-keys/" + other).header(ApiKeyFilter.HEADER, mcp))
+            .andExpect(status().isForbidden());
+        // A full-power key (no scopes given) still may.
+        mvc.perform(post("/v1/auth/api-keys").header(ApiKeyFilter.HEADER, key(s))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"ok\"}"))
+            .andExpect(status().is2xxSuccessful());
+    }
+
     // An encoded path (api%2Dkeys) is decoded for routing but not by a raw
     // getRequestURI() comparison; the rule lives in ApiKeyService so it holds.
     @Test
@@ -185,8 +203,9 @@ class ApiKeyScopesIT {
             .andExpect(status().isForbidden());
     }
 
-    // Services that read the staff row directly (capabilities, /auth/me,
-    // DriveAccess, ModeratorService) also honour a key without "staff".
+    // Services that check staff powers (StaffPowers: /auth/me, DriveAccess,
+    // ModeratorService) also honour a key without "staff". Capabilities are
+    // kept: apps/mcp checks asistentes_ia with such keys.
     @Test
     void aStaffMembersKeyWithoutStaffScopeReportsAPlainUser() throws Exception {
         var s = staffUser("narrow-" + UUID.randomUUID() + "@itba.edu.ar");
@@ -195,7 +214,8 @@ class ApiKeyScopesIT {
             .andExpect(jsonPath("$.role").value("user"))
             .andExpect(jsonPath("$.moderator").value(false))
             .andExpect(jsonPath("$.apiKeyScopes.length()").value(1))
-            .andExpect(jsonPath("$.apiKeyScopes[0]").value("read"));
+            .andExpect(jsonPath("$.apiKeyScopes[0]").value("read"))
+            .andExpect(jsonPath("$.capabilities").value(org.hamcrest.Matchers.hasItem("asistentes_ia")));
         mvc.perform(get("/v1/auth/me").header(ApiKeyFilter.HEADER, key(s, "read", "staff")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.role").value("staff"))

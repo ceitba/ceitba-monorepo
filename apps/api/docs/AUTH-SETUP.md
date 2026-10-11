@@ -320,29 +320,31 @@ Default expiry is **365 days**. `ttlDays` is optional; omit it to use the defaul
 
 `scopes` narrows what the key can do (`V62__api_key_scopes.sql`, `service/auth/ApiKeyScope`,
 enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, through
-`service/auth/ApiKeyCredential`). Scopes only take power away; a key never has more than its owner.
+`service/auth/StaffPowers`). Scopes only take power away; a key never has more than its owner.
 
 | Scope | Effect |
 |---|---|
 | `read` | Always present. Safe methods (GET/HEAD) plus read-style POSTs (`/v1/classrooms/conflicts`). |
 | `report` | Also `PUT /v1/wiki/kb/pages/{id}/report` and `PUT /v1/wiki/files/{id}/report` (reporting wiki pages and Apuntes files), nothing else. Implied by `write`. |
 | `write` | Non-safe methods (POST/PUT/PATCH/DELETE). Without it they answer `403 INSUFFICIENT_SCOPE`. |
-| `staff` | Keeps the owner's staff powers: `ROLE_STAFF` / `ROLE_MODERATOR`, and the staff checks services make themselves (every capability, hidden wiki pages and unpublished Drive files, moderator status). Without it the key acts as a plain USER everywhere. |
+| `staff` | Keeps the owner's staff powers: `ROLE_STAFF` / `ROLE_MODERATOR`, and the staff checks services make themselves (hidden wiki pages and unpublished Drive files, moderator status). Without it the key acts as a plain USER everywhere, except that a staff member keeps every capability (capabilities are features, not powers). |
+| `keys` | Create API keys and revoke other keys. Only a full-power key (every scope) may do either. |
 
-- Omitting `scopes` (`null`) creates a full-power key (`read`, `write`, `staff`), the behaviour before scopes
+- Omitting `scopes` (`null`) creates a full-power key (every scope), the behaviour before scopes
   existed. Existing keys were migrated to full power. An explicit list is taken literally: `[]` is a read-only key.
 - Unknown scope names → `400 ValidationError`.
-- A request made with a key that is not full power cannot create keys or revoke other keys (`403
+- A request made with a key that is not full power (missing any scope, `keys` included) cannot create keys or revoke other keys (`403
   INSUFFICIENT_SCOPE`, checked in `ApiKeyService`, so an encoded path such as `api%2Dkeys` can't skip it), so it
   cannot mint a stronger key. **Any key may revoke itself** with `DELETE /v1/auth/api-keys/{its own id}`, even a
   read-only one.
-- `GET /v1/auth/me` with a key reports what the key can do: `role`, `moderator` and `capabilities` without the
-  staff powers when it lacks `staff`, and `apiKeyScopes` (sorted; `null` for sessions).
+- `GET /v1/auth/me` with a key reports what the key can do: `role` and `moderator` without the staff powers when it
+  lacks `staff` (`capabilities` stay the owner's), and `apiKeyScopes` (sorted; `null` for sessions).
 - The key's owner must pass the same email allowlist as a JWT session; removing an email from the allowlist also
   disables their keys (`403`).
 
 The MCP server (`apps/mcp`) mints `["read", "report"]` keys for students and `["read", "report", "staff", "write"]`
-keys for staff and moderators, one per OAuth sign-in, named `MCP · <client>`. The web app's connect page (`/ia`)
+keys for staff and moderators, one per OAuth sign-in, named `MCP · <client>`. It never asks for `keys`, so no MCP
+key is full power: none can create keys or revoke other keys. The web app's connect page (`/ia`)
 lists those sign-ins and revokes them. The hosted MCP server accepts only its own OAuth tokens, never a raw key.
 
 ### Use the key

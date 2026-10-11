@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_SCHEDULER_OPTIONS, generateSchedules, type SubjectInput } from "../src";
+import { DEFAULT_SCHEDULER_OPTIONS, disambiguateCommissions, generateSchedules, knownSelection, type SubjectInput } from "../src";
 
 const subj = (id: string, commissions: [string, string, string, string][]): SubjectInput => ({
   subject_id: id, name: id, course_start: "2026-08-10", course_end: "2026-11-28",
@@ -40,5 +40,40 @@ describe("generateSchedules", () => {
     const r = generateSchedules([A, B], { ...DEFAULT_SCHEDULER_OPTIONS, allowUnlimitedOverlap: true }, [], { maxResults: 2 });
     expect(r.schedules).toHaveLength(2);
     expect(r.truncated).toBe(true);
+  });
+});
+
+describe("commission names", () => {
+  const slot = (day: string) => ({ day, time_from: "08:00", time_to: "10:00" });
+
+  test("disambiguates same-named runs by start date and keeps their own dates", () => {
+    const out = disambiguateCommissions([
+      { name: "A", course_start: "2026-09-14", course_end: "2026-10-23", schedule: [slot("MONDAY")] },
+      { name: "A", course_start: "2026-10-26", course_end: "2026-11-30", schedule: [slot("MONDAY")] },
+      { name: "B", schedule: [slot("TUESDAY")] }
+    ]);
+    expect(out.map(c => c.name)).toEqual(["A (14/09)", "A (26/10)", "B"]);
+    expect(out[1]).toMatchObject({ sga_name: "A", course_start: "2026-10-26" });
+  });
+
+  test("falls back to ordinals and drops true duplicates", () => {
+    const out = disambiguateCommissions([
+      { name: "M4", commission_id: "1", schedule: [slot("MONDAY")] },
+      { name: "M4", commission_id: "1", schedule: [slot("MONDAY")] },
+      { name: "M4", commission_id: "2", schedule: [slot("FRIDAY")] }
+    ]);
+    expect(out.map(c => c.name)).toEqual(["M4 (1)", "M4 (2)"]);
+    expect(out[0].name_conflict).toBe(true);
+  });
+
+  test("matches saved selections by their SGA name", () => {
+    const cs = disambiguateCommissions([
+      { name: "A", course_start: "2026-09-14", course_end: "2026-10-23", schedule: [slot("MONDAY")] },
+      { name: "A", course_start: "2026-10-26", course_end: "2026-11-30", schedule: [slot("MONDAY")] },
+      { name: "B", schedule: [slot("TUESDAY")] }
+    ]);
+    expect(knownSelection(cs, ["A"]).sort()).toEqual(["A (14/09)", "A (26/10)"]);
+    expect(knownSelection(cs, ["B (02/03)"])).toEqual(["B"]);
+    expect(knownSelection(cs, ["Z"])).toEqual(["any"]);
   });
 });

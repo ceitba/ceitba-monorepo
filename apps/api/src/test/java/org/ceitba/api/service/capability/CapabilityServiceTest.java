@@ -39,16 +39,17 @@ class CapabilityServiceTest {
             .isInstanceOf(CapabilityRequiredException.class);
     }
 
-    // A staff member calling with an API key that lacks the "staff" scope only
-    // gets the capabilities a student would.
+    // Capabilities are not staff powers: a staff member's key without the
+    // "staff" scope keeps them (apps/mcp checks asistentes_ia with such keys).
     @Test
-    void aKeyWithoutStaffScopeDropsStaffCapabilities() {
+    void aKeyWithoutStaffScopeKeepsStaffCapabilities() {
         var key = new ApiKeyService.ValidatedKey(UUID.randomUUID(), USER, ApiKeyScope.normalize(List.of()));
         var auth = new UsernamePasswordAuthenticationToken(USER, null, List.of());
         auth.setDetails(key);
         SecurityContextHolder.getContext().setAuthentication(auth);
         try {
-            assertThat(service(true, List.of(), List.of(), List.of()).effective(USER)).isEmpty();
+            assertThat(service(true, List.of(), List.of(), List.of()).effective(USER))
+                .containsExactly("apuntes", "asistentes_ia", "resumen_semanal");
         } finally {
             SecurityContextHolder.clearContext();
         }

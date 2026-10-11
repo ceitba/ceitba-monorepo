@@ -1,6 +1,9 @@
 import {
+  commissionLabel,
   DEFAULT_SCHEDULER_OPTIONS,
+  disambiguateCommissions,
   generateSchedules,
+  knownSelection,
   type PossibleSchedule,
   type SchedulerOptions,
   type SubjectInput,
@@ -41,10 +44,12 @@ export function scheduleView(s: PossibleSchedule, rank: number) {
   const slots = [...s.slots].sort((a, b) =>
     ORDER.indexOf(a.day) - ORDER.indexOf(b.day) || a.timeFrom.localeCompare(b.timeFrom));
   for (const x of slots) {
-    commissions[x.subject_id] = x.commission;
+    // "S / S2" when interchangeable commissions were merged into this option.
+    const label = commissionLabel(x);
+    commissions[x.subject_id] = label;
     const place = [x.building, x.classroom].filter(Boolean).join(" ");
     (week[dayShort(x.day)] ??= []).push(
-      `${hhmm(x.timeFrom)}-${hhmm(x.timeTo)} ${x.subject_id} ${x.subject} (${x.commission})${place ? " " + place : ""}`);
+      `${hhmm(x.timeFrom)}-${hhmm(x.timeTo)} ${x.subject_id} ${x.subject} (${label})${place ? " " + place : ""}`);
   }
   return compact({
     rank,
@@ -89,7 +94,7 @@ export const generateSchedulesTool = defineTool({
   },
   async run(args, ctx) {
     let planId = args.plan;
-    let wanted = (args.subjects ?? []).map(s => ({ id: s.subjectId, commissions: s.commissions ?? [] }));
+    let wanted = (args.subjects ?? []).map(s => ({ id: s.subjectId, commissions: s.commissions ?? [], explicit: true }));
     let blocked: TimeBlock[] = (args.blocked ?? []).map(b => ({ day: b.day, from: b.from, to: b.to }));
     let options: SchedulerOptions = { ...DEFAULT_SCHEDULER_OPTIONS };
 
@@ -97,7 +102,7 @@ export const generateSchedulesTool = defineTool({
       const saved = await loadSaved(ctx, args.savedScheduleId);
       planId ??= saved.plan ?? undefined;
       if (wanted.length === 0) {
-        wanted = (saved.payload?.selectedCourses ?? []).map(c => ({ id: c.subject_id, commissions: c.selectedCommissions }));
+        wanted = (saved.payload?.selectedCourses ?? []).map(c => ({ id: c.subject_id, commissions: c.selectedCommissions ?? [], explicit: false }));
       }
       if (!args.blocked) blocked = saved.payload?.blockedTimes ?? [];
       options = {
@@ -120,20 +125,35 @@ export const generateSchedulesTool = defineTool({
     const empty = wanted.filter(w => byId.get(w.id)!.commissions.length === 0).map(w => w.id);
     if (empty.length) throw new ToolError(t(ctx.lang, "noCommissions", { ids: empty.join(", ") }));
 
+    // Same commission names as the web scheduler: colliding names get a
+    // suffix ("A (26/10)"), and a selection is matched like a restored
+    // workspace's (knownSelection), so a saved schedule means the same here.
+    const unmatched: string[] = [];
     const input: SubjectInput[] = wanted.map(w => {
       const s = byId.get(w.id)!;
+      const commissions = disambiguateCommissions(s.commissions.map(c => ({
+        name: c.name,
+        commission_id: c.commission_id,
+        course_start: c.course_start,
+        course_end: c.course_end,
+        schedule: c.schedule.map(e => ({ ...e, building: e.building ?? "", classroom: e.classroom ?? "" })),
+        sga_schedule: c.sga_schedule
+      })));
+      const selected = knownSelection(commissions, w.commissions);
+      // Explicitly named commissions that match nothing are an error, not "any".
+      if (w.explicit && w.commissions.length > 0 && !w.commissions.includes("any") && selected.includes("any")) {
+        unmatched.push(`${s.subject_id} (${commissions.map(c => c.name).join(", ")})`);
+      }
       return {
         subject_id: s.subject_id,
         name: s.name,
         course_start: s.course_start,
         course_end: s.course_end,
-        commissions: s.commissions.map(c => ({
-          name: c.name,
-          schedule: c.schedule.map(e => ({ ...e, building: e.building ?? "", classroom: e.classroom ?? "" }))
-        })),
-        selectedCommissions: w.commissions
+        commissions: commissions.map(c => ({ name: c.name, course_start: c.course_start, course_end: c.course_end, schedule: c.schedule })),
+        selectedCommissions: selected
       };
     });
+    if (unmatched.length) throw new ToolError(t(ctx.lang, "unknownCommissions", { list: unmatched.join("; ") }));
 
     const result = generateSchedules(input, options, blocked);
     const limit = args.limit ?? 5;

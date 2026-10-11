@@ -4,7 +4,9 @@ import { dirname } from "node:path";
 import type { OAuthClientInformationFull } from "@modelcontextprotocol/sdk/shared/auth.js";
 
 // Persistent OAuth state (SQLite, one file on a Docker volume).
-//   clients   dynamically registered MCP clients (RFC 7591)
+//   clients   dynamically registered MCP clients (RFC 7591); registration is
+//             open, so clients that never complete a sign-in are swept after a
+//             day, and ones without a sign-in for STALE_CLIENT_MS too
 //   pending   /authorize requests waiting for consent and the Google round trip
 //             (10 min), bound to the starting browser by a cookie hash
 //   codes     authorization codes (5 min, single use)
@@ -58,6 +60,12 @@ export interface TokenRow {
 
 const now = () => Date.now();
 
+const DAY_MS = 86_400_000;
+// Registered but never used for a sign-in: gone after a day.
+const UNUSED_CLIENT_MS = DAY_MS;
+// Used, but no sign-in left and none for this long: gone too.
+const STALE_CLIENT_MS = 180 * DAY_MS;
+
 export class OAuthStore {
   readonly db: Database;
 
@@ -71,7 +79,7 @@ export class OAuthStore {
     if (pendingCols.length > 0 && !pendingCols.includes("binding_hash")) this.db.exec("DROP TABLE pending");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS clients (
-        client_id TEXT PRIMARY KEY, info TEXT NOT NULL, created_at INTEGER NOT NULL);
+        client_id TEXT PRIMARY KEY, info TEXT NOT NULL, created_at INTEGER NOT NULL, used_at INTEGER);
       CREATE TABLE IF NOT EXISTS pending (
         id TEXT PRIMARY KEY, client_id TEXT NOT NULL, redirect_uri TEXT NOT NULL, code_challenge TEXT NOT NULL,
         state TEXT, scopes TEXT NOT NULL, resource TEXT, nonce TEXT NOT NULL, binding_hash TEXT NOT NULL,
@@ -88,7 +96,14 @@ export class OAuthStore {
         client_id TEXT NOT NULL, expires_at INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS tokens_grant ON tokens(grant_id);
       CREATE INDEX IF NOT EXISTS grants_user ON grants(user_id);
+      CREATE INDEX IF NOT EXISTS grants_client ON grants(client_id);
     `);
+    // Stores from before client sweeping: their clients count as used now.
+    const clientCols = this.db.query<{ name: string }, []>("PRAGMA table_info(clients)").all().map(c => c.name);
+    if (!clientCols.includes("used_at")) {
+      this.db.exec("ALTER TABLE clients ADD COLUMN used_at INTEGER");
+      this.db.query("UPDATE clients SET used_at = ?").run(now());
+    }
   }
 
   // ---- clients
@@ -146,6 +161,7 @@ export class OAuthStore {
     this.db.query(`INSERT INTO grants (id, client_id, user_id, scopes, api_key_sealed, api_key_id, created_at, expires_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(g.id, g.clientId, g.userId, JSON.stringify(g.scopes), g.apiKeySealed, g.apiKeyId, g.createdAt, g.expiresAt);
+    this.db.query("UPDATE clients SET used_at = ? WHERE client_id = ?").run(now(), g.clientId);
   }
 
   // A new grant and its first authorization code, atomically.
@@ -239,6 +255,15 @@ export class OAuthStore {
              AND NOT EXISTS (SELECT 1 FROM codes c WHERE c.grant_id = g.id))`).all(at, at - orphanAfterMs);
     const gone = ids.map(r => this.getGrant(r.id)).filter((g): g is Grant => Boolean(g));
     for (const g of gone) this.deleteGrant(g.id);
+    // Clients with no sign-in and none in progress: never used after a day,
+    // or idle for STALE_CLIENT_MS. Keeps open registration from filling the
+    // table up to the cap for good.
+    this.db.query(`
+      DELETE FROM clients WHERE
+        (CASE WHEN used_at IS NULL THEN created_at < ? ELSE used_at < ? END)
+        AND NOT EXISTS (SELECT 1 FROM grants g WHERE g.client_id = clients.client_id)
+        AND NOT EXISTS (SELECT 1 FROM pending p WHERE p.client_id = clients.client_id)`)
+      .run(at - UNUSED_CLIENT_MS, at - STALE_CLIENT_MS);
     return gone;
   }
 

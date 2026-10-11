@@ -5,7 +5,6 @@ import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.capability.CapabilityOrgGrantRepository;
 import org.ceitba.api.repository.capability.CapabilitySettingRepository;
 import org.ceitba.api.repository.capability.CapabilityUserGrantRepository;
-import org.ceitba.api.service.auth.ApiKeyCredential;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,9 +49,11 @@ public class CapabilityService {
     public Set<String> effective(User user) {
         if (user == null) return Set.of();
         Set<String> known = Arrays.stream(Capability.values()).map(Capability::key).collect(Collectors.toSet());
-        // Staff hold every capability, unless the caller's API key lacks the staff scope.
-        if (!ApiKeyCredential.staffWithheld()
-                && staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock))) {
+        // Staff hold every capability. Capabilities turn features on; they are
+        // not staff powers, so an API key without the "staff" scope keeps them
+        // (StaffPowers withholds the powers). apps/mcp checks asistentes_ia with
+        // such keys on every request.
+        if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock))) {
             return new TreeSet<>(known);
         }
         Set<String> granted = new HashSet<>(settings.findEnabledForAll());

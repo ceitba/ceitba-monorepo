@@ -5,6 +5,7 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.auth.StaffPowers;
 import org.ceitba.api.web.staff.dto.ModeratorResponse;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class ModeratorServiceTest {
     private final CeitbaModeratorRepository moderators = mock(CeitbaModeratorRepository.class);
     private final UserRepository users = mock(UserRepository.class);
     private final ModeratorService service = new ModeratorService(moderators,
-        mock(CeitbaStaffRepository.class), users, Clock.systemUTC());
+        new StaffPowers(mock(CeitbaStaffRepository.class), moderators, Clock.systemUTC()), users, Clock.systemUTC());
 
     @Test
     void listActiveLoadsUsersInOneBatchAndKeepsGrantOrder() {

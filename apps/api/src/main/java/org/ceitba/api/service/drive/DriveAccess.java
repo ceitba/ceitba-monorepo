@@ -5,12 +5,9 @@ import org.ceitba.api.domain.drive.DriveFile;
 import org.ceitba.api.domain.drive.DrivePublication;
 import org.ceitba.api.domain.drive.DriveSource;
 import org.ceitba.api.external.drive.DriveClient;
-import org.ceitba.api.repository.CeitbaStaffRepository;
-import org.ceitba.api.service.auth.ApiKeyCredential;
+import org.ceitba.api.service.auth.StaffPowers;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 // Who may see what. Readers see PUBLISHED files only; STAFF can open any
@@ -20,20 +17,17 @@ import java.util.UUID;
 @Component
 public class DriveAccess {
 
-    private final CeitbaStaffRepository staff;
+    private final StaffPowers staff;
     private final DriveClient drive;
-    private final Clock clock;
 
-    public DriveAccess(CeitbaStaffRepository staff, DriveClient drive, Clock clock) {
+    public DriveAccess(StaffPowers staff, DriveClient drive) {
         this.staff = staff;
         this.drive = drive;
-        this.clock = clock;
     }
 
     // Staff power of the caller: an API key without the "staff" scope has none.
     public boolean isStaff(UUID userId) {
-        if (ApiKeyCredential.staffWithheld()) return false;
-        return staff.isActiveStaff(userId, OffsetDateTime.now(clock));
+        return staff.isStaff(userId);
     }
 
     public boolean canView(UUID userId, DriveFile file, DriveSource source) {

@@ -1,8 +1,6 @@
 package org.ceitba.api.service.auth;
 
 import org.ceitba.api.domain.User;
-import org.ceitba.api.repository.CeitbaModeratorRepository;
-import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.news.FollowService;
 import org.ceitba.api.service.news.OrganizationMembershipService;
@@ -10,8 +8,6 @@ import org.ceitba.api.web.auth.dto.UserMeResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.OffsetDateTime;
 import java.util.List;
 
 // Builds the /v1/auth/me payload. Shared by GET /v1/auth/me and the mobile
@@ -23,33 +19,25 @@ import java.util.List;
 @Service
 public class UserMeService {
 
-    private final CeitbaStaffRepository staffRepository;
+    private final StaffPowers staffPowers;
     private final OrganizationMembershipService memberships;
     private final FollowService follows;
-    private final CeitbaModeratorRepository moderatorRepository;
     private final CapabilityService capabilities;
-    private final Clock clock;
 
-    public UserMeService(CeitbaStaffRepository staffRepository,
+    public UserMeService(StaffPowers staffPowers,
                          OrganizationMembershipService memberships,
                          FollowService follows,
-                         CeitbaModeratorRepository moderatorRepository,
-                         CapabilityService capabilities,
-                         Clock clock) {
-        this.staffRepository     = staffRepository;
-        this.memberships         = memberships;
-        this.follows             = follows;
-        this.moderatorRepository = moderatorRepository;
-        this.capabilities        = capabilities;
-        this.clock               = clock;
+                         CapabilityService capabilities) {
+        this.staffPowers  = staffPowers;
+        this.memberships  = memberships;
+        this.follows      = follows;
+        this.capabilities = capabilities;
     }
 
     @Transactional(readOnly = true)
     public UserMeResponse describe(User user) {
-        // An API key without the staff scope reports the powers it really has.
-        var key = ApiKeyCredential.current();
-        boolean staffWithheld = key.map(k -> !k.has(ApiKeyScope.STAFF)).orElse(false);
-        boolean isStaff = !staffWithheld && staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock));
+        // An API key without the staff scope reports the powers it really has (StaffPowers).
+        boolean isStaff = staffPowers.isStaff(user.getId());
         var orgs = memberships.listForUser(user.getId()).stream()
             .map(m -> new UserMeResponse.MembershipDto(m.getOrganization(), m.getRole()))
             .toList();
@@ -61,7 +49,7 @@ public class UserMeService {
             user.getName(),
             user.getEmail(),
             isStaff ? "staff" : "user",
-            isStaff || (!staffWithheld && moderatorRepository.isActiveModerator(user.getId())),
+            isStaff || staffPowers.isModerator(user.getId()),
             user.getAvatarUrl(),
             user.getTheme(),
             user.getPreferredLanguage(),
@@ -74,7 +62,7 @@ public class UserMeService {
             orgs,
             followSlugs,
             List.copyOf(capabilities.effective(user)),
-            key.map(k -> k.scopes().stream().sorted().map(ApiKeyScope::key).toList()).orElse(null)
+            ApiKeyCredential.current().map(k -> ApiKeyScope.keys(k.scopes())).orElse(null)
         );
     }
 }

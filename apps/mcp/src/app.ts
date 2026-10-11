@@ -161,7 +161,8 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
     }
     if (!identity?.capabilities.includes(MCP_CAPABILITY)) {
       // The asistentes_ia capability was taken away: end the sign-in. Signing in
-      // again explains why it is refused.
+      // again explains why it is refused. Staff hold it through any key, even one
+      // without the "staff" scope (capabilities aren't staff powers, CAPABILITIES.md).
       identities.delete(cacheKey);
       await provider.revokeGrant(cred.grantId);
       unauthorized(res, "AI assistants are not enabled for this CEITBA account");
@@ -179,6 +180,10 @@ export function createApp({ cfg, api, provider, log, limiter, identities = new I
       client: req.auth!.clientId
     };
 
+    // A fresh server per request is the SDK's stateless pattern (a server binds
+    // one transport). Building it and opening the sealed key cost ~0.2 ms
+    // (measured with every tool registered), next to tool calls that each
+    // reach the API, so neither is cached.
     const { server } = createCeitbaServer(ctx, cfg.version);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {

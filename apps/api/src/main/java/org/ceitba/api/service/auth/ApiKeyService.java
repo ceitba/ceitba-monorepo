@@ -45,9 +45,9 @@ public class ApiKeyService {
         return create(user, name, ttlDays, null);
     }
 
-    // scopeKeys: subset of read/report/write/staff; null → all (full power), [] → read only.
-    // A request authenticated with a scoped key cannot create keys, so a key can
-    // never mint a more powerful one. Checked here, not by path in ApiKeyFilter,
+    // scopeKeys: subset of read/report/write/staff/keys; null → all (full power), [] → read only.
+    // A request authenticated with a key that isn't full power (lacks any scope,
+    // keys included) cannot create keys, so a key can never mint a more powerful one. Checked here, not by path in ApiKeyFilter,
     // so an encoded path (api%2Dkeys) can't skip it.
     @Transactional
     public ApiKeyCreatedResponse create(User user, String name, Integer ttlDays, List<String> scopeKeys) {
@@ -73,7 +73,7 @@ public class ApiKeyService {
             ApiKeyScope.serialize(scopes)
         );
         apiKeyRepository.save(apiKey);
-        return new ApiKeyCreatedResponse(apiKey.getId(), name, rawKey, apiKey.getExpiresAt(), keys(scopes));
+        return new ApiKeyCreatedResponse(apiKey.getId(), name, rawKey, apiKey.getExpiresAt(), ApiKeyScope.keys(scopes));
     }
 
     @Transactional(readOnly = true)
@@ -82,11 +82,11 @@ public class ApiKeyService {
             .stream()
             .map(k -> new ApiKeyResponse(k.getId(), k.getName(),
                                          k.getCreatedAt(), k.getExpiresAt(), k.getLastUsedAt(),
-                                         keys(ApiKeyScope.parse(k.getScopes()))))
+                                         ApiKeyScope.keys(ApiKeyScope.parse(k.getScopes()))))
             .toList();
     }
 
-    // A scoped key may only revoke itself (apps/mcp cleans up on logout).
+    // A key that isn't full power may only revoke itself (apps/mcp cleans up on logout).
     @Transactional
     public boolean revoke(User user, UUID keyId) {
         var caller = ApiKeyCredential.current();
@@ -123,14 +123,10 @@ public class ApiKeyService {
             try {
                 parsed.add(ApiKeyScope.fromKey(k == null ? "" : k));
             } catch (IllegalArgumentException e) {
-                throw new ValidationException("scopes", k, "must be one of read, report, write, staff");
+                throw new ValidationException("scopes", k, "must be one of read, report, write, staff, keys");
             }
         }
         return ApiKeyScope.normalize(parsed);
-    }
-
-    private static List<String> keys(Set<ApiKeyScope> scopes) {
-        return scopes.stream().sorted().map(ApiKeyScope::key).toList();
     }
 
     static String sha256hex(String input) {

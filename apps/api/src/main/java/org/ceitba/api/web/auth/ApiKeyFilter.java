@@ -1,8 +1,6 @@
 package org.ceitba.api.web.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,9 +37,9 @@ import java.util.Set;
 //                       - no "staff" scope → ROLE_STAFF / ROLE_MODERATOR are withheld
 //                       - no "write" scope → non-safe methods answer 403 INSUFFICIENT_SCOPE,
 //                         except the report endpoints (REPORT_PATHS) for a "report" key
-//                       - a scoped (not full-power) key cannot create API keys or revoke
-//                         other keys (ApiKeyService, via ApiKeyCredential); any key may
-//                         revoke itself, even a read-only one
+//                       - a key that isn't full power (every scope, "keys" included) cannot
+//                         create API keys or revoke other keys (ApiKeyService, via
+//                         ApiKeyCredential); any key may revoke itself, even a read-only one
 //                     Each scope is also exposed as a SCOPE_<name> authority, and the
 //                     ValidatedKey is the authentication's details (ApiKeyCredential).
 //                     Path rules here only ever exempt an exact path, so an
@@ -68,17 +66,19 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     private final ApiKeyService apiKeyService;
     private final CeitbaStaffRepository staffRepository;
     private final CeitbaModeratorRepository moderatorRepository;
-    private final ObjectMapper json = new ObjectMapper()
-        .registerModule(new JavaTimeModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    // Spring's configured mapper, so the 403 body is serialized like every
+    // other error response (GlobalExceptionHandler).
+    private final ObjectMapper json;
 
     public ApiKeyFilter(AuthProperties auth, ApiKeyService apiKeyService,
                         CeitbaStaffRepository staffRepository,
-                        CeitbaModeratorRepository moderatorRepository) {
+                        CeitbaModeratorRepository moderatorRepository,
+                        ObjectMapper json) {
         this.auth                = auth;
         this.apiKeyService       = apiKeyService;
         this.staffRepository     = staffRepository;
         this.moderatorRepository = moderatorRepository;
+        this.json                = json;
     }
 
     @Override
@@ -112,6 +112,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         var authorities = new ArrayList<GrantedAuthority>();
         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         for (var s : k.scopes()) authorities.add(new SimpleGrantedAuthority("SCOPE_" + s.key()));
+        // Same rule as StaffPowers (services); here the key isn't in the context yet.
         if (!k.has(ApiKeyScope.STAFF)) return authorities;
         var userId = k.user().getId();
         boolean isStaff = staffRepository.isActiveStaff(userId, OffsetDateTime.now());

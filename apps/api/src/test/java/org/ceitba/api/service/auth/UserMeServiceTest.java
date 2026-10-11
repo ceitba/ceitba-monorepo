@@ -53,8 +53,8 @@ class UserMeServiceTest {
         var capabilities = new CapabilityService(null, null, null, null, null) {
             @Override public Set<String> effective(User user) { return Set.of(); }
         };
-        var service = new UserMeService(staff, memberships, follows, moderators, capabilities,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+        var service = new UserMeService(new StaffPowers(staff, moderators, Clock.fixed(NOW, ZoneOffset.UTC)),
+            memberships, follows, capabilities);
 
         var me = service.describe(new User(UUID.randomUUID(), "a@itba.edu.ar", "A"));
 

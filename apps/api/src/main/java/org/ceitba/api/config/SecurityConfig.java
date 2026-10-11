@@ -1,5 +1,6 @@
 package org.ceitba.api.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
@@ -117,6 +118,7 @@ public class SecurityConfig {
                                                    CeitbaStaffRepository staffRepository,
                                                    CeitbaModeratorRepository moderatorRepository,
                                                    RateLimitProperties rateLimit,
+                                                   ObjectMapper objectMapper,
                                                    Environment env) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
@@ -153,7 +155,7 @@ public class SecurityConfig {
             // Per-IP rate limiting runs right after CORS (so 429s are readable
             // by browsers) and before any authentication work.
             .addFilterAfter(new RateLimitFilter(rateLimit), CorsFilter.class)
-            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository, moderatorRepository),
+            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository, moderatorRepository, objectMapper),
                              UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(reg -> {
                 // Local dev sign-in; otherwise the path is not even permitted.

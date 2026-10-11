@@ -47,9 +47,10 @@ are anonymous and deduplicated by IP, so every user of the hosted server would c
 - `read`: GET only.
 - `report`: also the two report endpoints (wiki pages, Apuntes files); implied by `write`.
 - `write`: non-safe methods.
-- `staff`: keeps STAFF/MODERATOR and every staff power services check; without it a staff member's key acts as a student's.
+- `staff`: keeps STAFF/MODERATOR and every staff power services check; without it a staff member's key acts as a student's (capabilities are kept).
+- `keys`: manage API keys. This server never asks for it.
 
-A scoped key cannot mint keys, but can revoke itself. The owner must still pass the email allowlist.
+So no MCP key is full power: none can mint keys or revoke other keys, but each can revoke itself. The owner must still pass the email allowlist.
 
 **OAuth bridge (hosted mode).** This server is its own OAuth 2.1 authorization server, with issuer
 `https://ceitba.org.ar/mcp`. The SDK's handlers provide metadata, dynamic client registration, PKCE, token and

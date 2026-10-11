@@ -239,8 +239,9 @@ ApiKeyFilter (custom, runs before Spring Security)
                DB lookup: active CeitbaStaff? → add ROLE_STAFF (+ ROLE_MODERATOR)
                DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
            set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR, SCOPE_*) principal = User entity,
-               details = the key (ApiKeyCredential: services drop staff powers without "staff",
-               ApiKeyService refuses key creation / revoking other keys to scoped keys)
+               details = the key (ApiKeyCredential: StaffPowers drops staff powers without "staff",
+               ApiKeyService refuses key creation / revoking other keys unless the key is full power,
+               i.e. holds every scope including "keys")
    else if X-Api-Key matches AUTH_SYNC_API_KEY (static):
        set Authentication = ROLE_SYNC principal "sync-job"
    │
@@ -443,4 +444,4 @@ Guards:
 - **Enforce `iss`/`aud`** — see the dated follow-up in [§ Sessions and tokens](#sessions-and-tokens).
 - **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `StaffAwareJwtAuthenticationConverter` (which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
 - **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). Caffeine with TTL ≤ minimum role-validity window would be enough.
-- **Narrower API-key scopes.** Keys carry `read` / `write` / `staff` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per controller. New code that grants staff powers from a direct `ceitba_staff`/moderator lookup must check `ApiKeyCredential.staffWithheld()` too.
+- **Narrower API-key scopes.** Keys carry `read` / `report` / `write` / `staff` / `keys` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per controller. New code that grants staff powers asks `StaffPowers` instead of the staff/moderator repositories.

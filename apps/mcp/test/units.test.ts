@@ -9,6 +9,7 @@ import { SecretBox } from "../src/oauth/crypto";
 import { OAuthStore } from "../src/oauth/store";
 import { RateLimiter } from "../src/ratelimit";
 import { todayInArgentina } from "../src/tools/news";
+import { scheduleView } from "../src/tools/schedules";
 import { compact, cut, slot } from "../src/trim";
 
 describe("CatalogCache", () => {
@@ -69,6 +70,24 @@ describe("OAuthStore.sweep", () => {
     expect(s.getGrant("fresh")).toBeDefined();
     s.close();
   });
+
+  test("drops clients that never signed in after a day, and idle ones", () => {
+    const s = new OAuthStore(":memory:");
+    const t0 = Date.now();
+    const day = 86_400_000;
+    const client = (id: string) => s.saveClient({ client_id: id, redirect_uris: ["http://localhost/cb"] } as never);
+    for (const id of ["unused", "signed-in", "idle"]) client(id);
+    s.saveGrant({ id: "g", clientId: "signed-in", userId: "u", scopes: ["read"], apiKeySealed: "x", apiKeyId: "k", createdAt: t0, expiresAt: t0 + day });
+    s.saveToken({ tokenHash: "h", kind: "refresh", grantId: "g", clientId: "signed-in", expiresAt: t0 + day });
+    s.db.query("UPDATE clients SET used_at = ? WHERE client_id = 'idle'").run(t0 - 200 * day);
+    s.sweep(t0);
+    expect(s.getClient("idle")).toBeUndefined();
+    expect(s.getClient("unused")).toBeDefined(); // still within its day
+    s.sweep(t0 + day + 1);
+    expect(s.getClient("unused")).toBeUndefined();
+    expect(s.getClient("signed-in")).toBeDefined(); // its grant expired, but it was used recently
+    s.close();
+  });
 });
 
 describe("helpers", () => {
@@ -108,5 +127,17 @@ describe("helpers", () => {
     log.info("tool call", { tool: "x", userId: "u" });
     expect(lines).toHaveLength(1);
     expect(JSON.parse(lines[0])).toMatchObject({ level: "info", msg: "tool call", tool: "x", userId: "u" });
+  });
+});
+
+describe("scheduleView", () => {
+  test("names every interchangeable commission", () => {
+    const v = scheduleView({
+      slots: [{ day: "MONDAY", timeFrom: "08:00", timeTo: "10:00", subject: "Física", subject_id: "93.41",
+        commission: "S", alternatives: ["S2"], building: "SDF", classroom: "101 / 102", dateFrom: "", dateTo: "" }],
+      maxOverlap: 0, hasBuildingConflict: false, hasFreeDay: true, freeDays: 4, gapMinutes: 0
+    }, 1) as { commissions: Record<string, string>; week: Record<string, string[]> };
+    expect(v.commissions["93.41"]).toBe("S / S2");
+    expect(Object.values(v.week)[0][0]).toContain("(S / S2)");
   });
 });

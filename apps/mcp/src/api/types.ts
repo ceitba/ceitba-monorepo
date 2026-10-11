@@ -60,6 +60,9 @@ export interface CatalogCorrection {
 export interface CatalogCommission {
   commission_id?: string;
   name: string;
+  // This commission's own "YYYY-MM-DD" dates; the subject's when missing.
+  course_start?: string;
+  course_end?: string;
   schedule: ScheduleEntry[];
   sga_schedule?: ScheduleEntry[];
   corrections?: CatalogCorrection[];

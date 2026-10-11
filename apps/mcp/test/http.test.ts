@@ -294,6 +294,7 @@ describe("OAuth bridge", () => {
     // Someone else's browser (no cookie, or a wrong one) can't approve...
     expect((await consent(pending, "allow")).status).toBe(400);
     expect((await consent(pending, "allow", `mcp_oauth_${pending}=forged`)).status).toBe(400);
+    expect((await consent(pending, "allow", `mcp_oauth_${pending}=%E0%A4%A`)).status).toBe(400); // bad escape
     // ...nor skip the consent page straight to the Google callback.
     expect((await callback("student", pending)).status).toBe(400);
     expect((await callback("student", pending, cookie)).status).toBe(400); // not approved yet

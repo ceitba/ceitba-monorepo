@@ -24,7 +24,7 @@ class ApiKeyFilterTest {
 
     private static ApiKeyFilter filter(String syncKey) {
         var props = new AuthProperties(null, null, syncKey, null, null, null, null);
-        return new ApiKeyFilter(props, null, null, null);
+        return new ApiKeyFilter(props, null, null, null, new com.fasterxml.jackson.databind.ObjectMapper());
     }
 
     private static void call(ApiKeyFilter f, String header) throws Exception {

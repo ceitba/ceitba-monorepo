@@ -141,6 +141,14 @@ describe("tool calls", () => {
     await s.close();
   });
 
+  test("generate_schedules rejects commission names that match nothing", async () => {
+    const s = await connect({ apiUrl: api.url });
+    const r = await s.call("generate_schedules", { plan: "S10-Rev23", subjects: [{ subjectId: "93.41", commissions: ["Z"] }] });
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain("93.41 (A, B)");
+    await s.close();
+  });
+
   test("generate_schedules reports unknown subjects", async () => {
     const s = await connect({ apiUrl: api.url });
     const r = await s.call("generate_schedules", { plan: "S10-Rev23", subjects: [{ subjectId: "99.99" }] });

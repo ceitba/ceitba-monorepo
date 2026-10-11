@@ -23,9 +23,22 @@ class ApiKeyScopeTest {
         var s = EnumSet.of(ApiKeyScope.READ, ApiKeyScope.STAFF);
         assertThat(ApiKeyScope.serialize(s)).isEqualTo("read,staff");
         assertThat(ApiKeyScope.parse("read,staff")).isEqualTo(s);
-        assertThat(ApiKeyScope.parse("read,write,staff")).isEqualTo(ApiKeyScope.ALL); // write implies report
+        // write implies report; without "keys" it is still not full power
+        assertThat(ApiKeyScope.parse("read,write,staff"))
+            .containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.REPORT, ApiKeyScope.WRITE, ApiKeyScope.STAFF);
+        assertThat(ApiKeyScope.parse("keys,read,staff,write")).isEqualTo(ApiKeyScope.ALL);
+        assertThat(ApiKeyScope.serialize(ApiKeyScope.ALL)).isEqualTo("read,report,write,staff,keys");
         assertThat(ApiKeyScope.parse("read,report")).containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.REPORT);
         assertThat(ApiKeyScope.parse(" WRITE ")).containsExactlyInAnyOrder(ApiKeyScope.READ, ApiKeyScope.REPORT, ApiKeyScope.WRITE);
+    }
+
+    // apps/mcp gives staff read, report, staff and write: never full power.
+    @Test
+    void everyScopeButKeysIsNotFullPower() {
+        var mcpStaff = new ApiKeyService.ValidatedKey(null, null,
+            ApiKeyScope.normalize(List.of(ApiKeyScope.REPORT, ApiKeyScope.STAFF, ApiKeyScope.WRITE)));
+        assertThat(mcpStaff.isFullPower()).isFalse();
+        assertThat(new ApiKeyService.ValidatedKey(null, null, ApiKeyScope.normalize(null)).isFullPower()).isTrue();
     }
 
     @Test
