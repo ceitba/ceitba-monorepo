@@ -46,12 +46,15 @@ public class KbPipelineJob {
     private final TaskExecutor executor;
     private final org.springframework.scheduling.TaskScheduler scheduler;
     private final java.time.Clock clock;
+    private final JobLock jobLock;
 
     public KbPipelineJob(KbRunEngine engine, KbPipelineService pipeline, KbModelCatalogService catalog,
                          KbEvalService evals, KbBatchJobRepository jobs,
                          @Qualifier("applicationTaskExecutor") TaskExecutor executor,
-                         org.springframework.scheduling.TaskScheduler scheduler, java.time.Clock clock) {
+                         org.springframework.scheduling.TaskScheduler scheduler, java.time.Clock clock,
+                         JobLock jobLock) {
         this.clock = clock;
+        this.jobLock = jobLock;
         this.scheduler = scheduler;
         this.engine = engine;
         this.pipeline = pipeline;
@@ -85,35 +88,41 @@ public class KbPipelineJob {
 
     @Scheduled(fixedDelayString = "${kb.pipeline.batch-poll-interval:PT1M}", initialDelayString = "PT30S")
     public void pollBatches() {
-        try {
-            jobs.runsWithOpenBatches(java.time.OffsetDateTime.now(clock)).forEach(this::kick);
-            engine.quotaResumeDue().forEach(this::kick);   // sync runs paused on the daily token quota
-        } catch (RuntimeException e) {
-            log.warn("KB batch poll failed: {}", e.getMessage());
-        }
-        try {
-            catalog.refreshPendingProbes();
-        } catch (RuntimeException e) {
-            log.warn("KB probe refresh failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.KB_PIPELINE_BATCHES, () -> {
+            try {
+                jobs.runsWithOpenBatches(java.time.OffsetDateTime.now(clock)).forEach(this::kick);
+                engine.quotaResumeDue().forEach(this::kick);   // sync runs paused on the daily token quota
+            } catch (RuntimeException e) {
+                log.warn("KB batch poll failed: {}", e.getMessage());
+            }
+            try {
+                catalog.refreshPendingProbes();
+            } catch (RuntimeException e) {
+                log.warn("KB probe refresh failed: {}", e.getMessage());
+            }
+        });
     }
 
     @Scheduled(fixedDelayString = "${kb.pipeline.poll-interval:PT10M}", initialDelayString = "${kb.pipeline.poll-interval:PT10M}")
     public void sweep() {
-        try {
-            engine.activeRunIds().forEach(this::kick);
-        } catch (RuntimeException e) {
-            log.warn("KB pipeline sweep failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.KB_PIPELINE_POLL, () -> {
+            try {
+                engine.activeRunIds().forEach(this::kick);
+            } catch (RuntimeException e) {
+                log.warn("KB pipeline sweep failed: {}", e.getMessage());
+            }
+        });
     }
 
     @Scheduled(cron = "0 * * * * *", zone = "America/Argentina/Buenos_Aires")
     public void tick() {
-        try {
-            pipeline.schedulerTick();
-        } catch (RuntimeException e) {
-            log.warn("KB pipeline scheduler tick failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.KB_PIPELINE_SCHEDULE, () -> {
+            try {
+                pipeline.schedulerTick();
+            } catch (RuntimeException e) {
+                log.warn("KB pipeline scheduler tick failed: {}", e.getMessage());
+            }
+        });
     }
 
     @EventListener(ApplicationReadyEvent.class)

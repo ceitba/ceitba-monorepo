@@ -7,7 +7,11 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # This directory (Caddyfile sits next to this file, here and in ~/infra
+      # on the VPS), not the single file: the deploy replaces Caddyfile with a
+      # new inode, which a file bind mount would never show, and then runs
+      # `caddy reload` (no restart, no dropped connections).
+      - .:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
       - /var/www:/var/www:ro

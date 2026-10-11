@@ -109,6 +109,18 @@
       ]
     },
     {
+      "name": "deploy (blue/green, job locks)",
+      "paths": [
+        "infra/scripts/**",
+        "apps/api/docker-compose*.yml",
+        "apps/api/src/main/java/org/ceitba/api/scheduling/**",
+        "apps/api/src/main/java/org/ceitba/api/config/ShutdownDrain.java"
+      ],
+      "docs": [
+        "apps/api/docs/DEPLOY.md"
+      ]
+    },
+    {
       "name": "hosting and CI",
       "paths": [
         "infra/**",

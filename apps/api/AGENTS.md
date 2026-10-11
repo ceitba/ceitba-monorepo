@@ -53,8 +53,11 @@ from a key without `staff`.
 
 Hibernate runs in `validate` mode; Flyway (`src/main/resources/db/migration/`) is the only schema tool. Two
 schemas, `public` and `wiki`. Never edit a migration that has merged; add a new one with the `flyway-migration`
-skill (it also handles the test mirror in `src/test/resources/db/test-migration/`). Do not set
-`hibernate.jdbc.time_zone` (it shifts `LocalTime` columns; `LocalTemporalZoneIT` enforces this).
+skill (it also handles the test mirror in `src/test/resources/db/test-migration/`). Migrations are
+**expand/contract**: two API colors overlap during a deploy, so the old jar runs against the new schema. Add tables,
+nullable/defaulted columns and indexes together with the code; `DROP`, `RENAME`, `NOT NULL` on existing columns and
+type changes go one release later (`docs/DEPLOY.md`). Do not set `hibernate.jdbc.time_zone` (it shifts `LocalTime`
+columns; `LocalTemporalZoneIT` enforces this).
 
 Postgres runs the `pgvector/pgvector` image (Debian) in compose and in the ITs: the wiki pages' embeddings live in
 `wiki.kb_page_chunk` (`docs/SUBJECT-WIKI.md` "Embeddings"), computed by the self-hosted `ceitba-embeddings` compose

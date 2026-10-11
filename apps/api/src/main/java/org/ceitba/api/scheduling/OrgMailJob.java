@@ -47,6 +47,8 @@ public class OrgMailJob {
 
     @Scheduled(fixedDelayString = "${org-mail.tick-interval:PT2M}", initialDelayString = "PT1M")
     public void tick() {
+        // No JobLock: this only hands work to the executor, and the sender's
+        // delivery claims keep two processes from sending the same email.
         kick();
     }
 

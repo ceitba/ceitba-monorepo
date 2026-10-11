@@ -11,7 +11,7 @@ Student and reader endpoints require the `apuntes` capability (see [CAPABILITIES
 | Env var | Default | Meaning |
 |---|---|---|
 | `DRIVE_SYNC_ENABLED` | `false` | Turns on the scheduled job |
-| `DRIVE_SYNC_INTERVAL` | `PT30M` | Delay between runs |
+| `DRIVE_SYNC_INTERVAL` | `PT30M` | Delay between runs (`DriveSyncJob`; one process at a time via `JobLock`, `DEPLOY.md`) |
 | `DRIVE_SYNC_RUN_BUDGET` | `PT10M` | Max wall time per run |
 | `DRIVE_SYNC_SERVICE_ACCOUNT_JSON` | — | Base64 of the service-account key JSON |
 | `DRIVE_SYNC_USE_FAKE` | `false` | Use the in-memory `FakeDriveClient` (tests / offline dev) |

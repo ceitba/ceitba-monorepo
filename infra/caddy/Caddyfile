@@ -1,3 +1,26 @@
+# The API runs as two colors (blue/green, apps/api/docs/DEPLOY.md): a deploy
+# starts the idle one, waits for it to be healthy and stops the other. Caddy
+# checks each upstream's readiness every 2s and sends traffic only to the
+# first ready one; while one is booting or gone, requests that can't reach an
+# upstream are retried for up to 15s instead of failing. A color that isn't
+# running doesn't resolve and simply counts as down. Readiness, not the
+# aggregate /actuator/health: it turns 503 as soon as an instance starts
+# shutting down (ShutdownDrain), and a db or disk problem shared by both
+# colors must not take the whole API out of rotation.
+#
+# 127.0.0.1:8082 is the pre-blue/green ceitba-api container (see the site
+# below): the fallback for the first blue/green deploy, while blue boots next
+# to it. Remove it and that site in the next release (expand/contract).
+(api_upstreams) {
+    to ceitba-api-blue:8080 ceitba-api-green:8080 127.0.0.1:8082
+    lb_policy first
+    lb_try_duration 15s
+    lb_try_interval 250ms
+    health_uri /api/actuator/health/readiness
+    health_interval 2s
+    health_timeout 2s
+}
+
 www.ceitba.org.ar {
     redir https://ceitba.org.ar{uri} permanent
 }
@@ -19,8 +42,11 @@ ceitba.org.ar {
             flush_interval -1
         }
     }
+    # The API: blue/green behind health checks (snippet api_upstreams above).
     handle /api/* {
-        reverse_proxy ceitba-api:8080
+        reverse_proxy {
+            import api_upstreams
+        }
     }
 
     # Object storage (MinIO, in the CEITBA-API compose project, reachable here
@@ -55,5 +81,34 @@ ceitba.org.ar {
         header /.well-known/apple-app-site-association Content-Type application/json
         file_server
         try_files {path} /index.html
+    }
+}
+
+# Private entrance to the API for services on the ceitba-proxy network (the
+# hosted MCP server: CEITBA_API_URL=http://ceitba-caddy:8081/api). Not
+# published on the host. Same upstreams and health checks as /api/* above.
+# X-Forwarded-For is passed through as the caller sent it: the MCP server
+# forwards its end user's IP, and the API keys rate limits on the right-most
+# entry from private peers (ClientIp), like when it reached the API directly.
+http://:8081 {
+    handle /api/* {
+        reverse_proxy {
+            import api_upstreams
+            header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
+        }
+    }
+    handle {
+        respond 404
+    }
+}
+
+# Pre-blue/green adapter (remove in the next release): the old ceitba-api
+# container has no readiness probe, so its health check is answered by its
+# /actuator/health. Loopback only.
+http://127.0.0.1:8082 {
+    bind 127.0.0.1
+    rewrite /api/actuator/health/readiness /api/actuator/health
+    reverse_proxy ceitba-api:8080 {
+        header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
     }
 }

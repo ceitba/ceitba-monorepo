@@ -163,7 +163,7 @@ public class SecurityConfig {
                 reg
                 .requestMatchers(HttpMethod.GET,
                     "/", "/health",
-                    "/actuator/health", "/actuator/info",
+                    "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness", "/actuator/info",
                     "/docs", "/docs/**", "/docs.json", "/docs.json/**", "/v3/api-docs/**", "/swagger-ui/**",
                     "/v1/careers/**",
                     "/v1/subjects/**",

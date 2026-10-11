@@ -16,17 +16,21 @@ public class MailRetentionJob {
     private static final Logger log = LoggerFactory.getLogger(MailRetentionJob.class);
 
     private final MailRetentionService retention;
+    private final JobLock jobLock;
 
-    public MailRetentionJob(MailRetentionService retention) {
+    public MailRetentionJob(MailRetentionService retention, JobLock jobLock) {
         this.retention = retention;
+        this.jobLock = jobLock;
     }
 
     @Scheduled(cron = "0 40 3 * * *", zone = "America/Argentina/Buenos_Aires")
     public void run() {
-        try {
-            retention.cleanup();
-        } catch (RuntimeException e) {
-            log.warn("Mail retention cleanup failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.MAIL_RETENTION, () -> {
+            try {
+                retention.cleanup();
+            } catch (RuntimeException e) {
+                log.warn("Mail retention cleanup failed: {}", e.getMessage());
+            }
+        });
     }
 }
