@@ -21,23 +21,27 @@ public class DriveSyncJob {
 
     private final DriveSyncService driveSync;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final JobLock jobLock;
 
-    public DriveSyncJob(DriveSyncService driveSync) {
+    public DriveSyncJob(DriveSyncService driveSync, JobLock jobLock) {
         this.driveSync = driveSync;
+        this.jobLock = jobLock;
     }
 
     @Scheduled(initialDelayString = "PT1M", fixedDelayString = "${drive-sync.interval:PT30M}")
     public void run() {
-        if (!running.compareAndSet(false, true)) {
-            log.info("Drive sync still running; skipping this tick");
-            return;
-        }
-        try {
-            driveSync.runAll();
-        } catch (Exception e) {
-            log.error("Scheduled Drive sync failed", e);
-        } finally {
-            running.set(false);
-        }
+        jobLock.runExclusively(JobLock.Job.DRIVE_SYNC, () -> {
+            if (!running.compareAndSet(false, true)) {
+                log.info("Drive sync still running; skipping this tick");
+                return;
+            }
+            try {
+                driveSync.runAll();
+            } catch (Exception e) {
+                log.error("Scheduled Drive sync failed", e);
+            } finally {
+                running.set(false);
+            }
+        });
     }
 }

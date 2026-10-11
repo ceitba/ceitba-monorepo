@@ -26,10 +26,13 @@ public class OrgMailJob {
 
     private final OrgAnnouncementSender sender;
     private final TaskExecutor executor;
+    private final JobLock jobLock;
 
-    public OrgMailJob(OrgAnnouncementSender sender, @Qualifier("applicationTaskExecutor") TaskExecutor executor) {
+    public OrgMailJob(OrgAnnouncementSender sender, @Qualifier("applicationTaskExecutor") TaskExecutor executor,
+                      JobLock jobLock) {
         this.sender = sender;
         this.executor = executor;
+        this.jobLock = jobLock;
     }
 
     void kick() {
@@ -47,7 +50,9 @@ public class OrgMailJob {
 
     @Scheduled(fixedDelayString = "${org-mail.tick-interval:PT2M}", initialDelayString = "PT1M")
     public void tick() {
-        kick();
+        jobLock.runExclusively(JobLock.Job.ORG_MAIL, () -> {
+            kick();
+        });
     }
 
     @EventListener(ApplicationReadyEvent.class)

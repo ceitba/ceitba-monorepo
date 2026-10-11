@@ -34,12 +34,14 @@ public class DigestJob {
     private final DigestService service;
     private final DigestSender sender;
     private final TaskExecutor executor;
+    private final JobLock jobLock;
 
     public DigestJob(DigestService service, DigestSender sender,
-                     @Qualifier("applicationTaskExecutor") TaskExecutor executor) {
+                     @Qualifier("applicationTaskExecutor") TaskExecutor executor, JobLock jobLock) {
         this.service = service;
         this.sender = sender;
         this.executor = executor;
+        this.jobLock = jobLock;
     }
 
     void kick() {
@@ -57,22 +59,26 @@ public class DigestJob {
 
     @Scheduled(cron = "0 5 0 * * MON", zone = "America/Argentina/Buenos_Aires")
     public void createWeeklyDraft() {
-        try {
-            service.createScheduledDraft();
-        } catch (RuntimeException e) {
-            log.warn("Weekly digest draft could not be created: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.DIGEST_SCHEDULE, () -> {
+            try {
+                service.createScheduledDraft();
+            } catch (RuntimeException e) {
+                log.warn("Weekly digest draft could not be created: {}", e.getMessage());
+            }
+        });
     }
 
     @Scheduled(fixedDelayString = "${digest.tick-interval:PT5M}", initialDelayString = "PT1M")
     public void tick() {
-        createWeeklyDraft();
-        try {
-            service.startDueAutoSends();
-        } catch (RuntimeException e) {
-            log.warn("Digest auto-send check failed: {}", e.getMessage());
-        }
-        kick();
+        jobLock.runExclusively(JobLock.Job.DIGEST_TICK, () -> {
+            createWeeklyDraft();
+            try {
+                service.startDueAutoSends();
+            } catch (RuntimeException e) {
+                log.warn("Digest auto-send check failed: {}", e.getMessage());
+            }
+            kick();
+        });
     }
 
     @EventListener(ApplicationReadyEvent.class)
