@@ -334,7 +334,7 @@ Success is `200` with **exactly the same body as `POST /v1/auth/google/mobile`**
 
 The endpoint is hidden from the Swagger/OpenAPI docs.
 
-**Enable / disable.** Set both env vars (passed through by `docker-compose.yml`), then recreate the `ceitba-api` container:
+**Enable / disable.** Set both env vars (passed through by `docker-compose.yml`), then redeploy so a fresh API container reads them (`cd ~/CEITBA-API && bash deploy-api.sh`, `DEPLOY.md`):
 
 ```bash
 REVIEW_LOGIN_EMAIL=appreview@example.com

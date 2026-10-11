@@ -131,8 +131,9 @@ embedding call; `501` when no embedding server is configured). It returns
   (the page title, plus its heading), so it is self-describing; title and body go into the model's document prompt
   (`title: {title} | text: {text}` for EmbeddingGemma). Wikilinks are reduced to their text and bare `[[file:…]]`
   citations dropped. Each row keeps the heading and its anchor, so a hit links to `subject/slug#anchor`.
-- **Indexing** (`KbEmbeddingJob`, every `KB_EMBEDDING_INTERVAL`, default 5 min): a page is pending when it has no
-  chunks for its current `revision` and the configured model. Imports and pipeline runs only bump `revision`; the
+- **Indexing** (`KbEmbeddingJob`, every `KB_EMBEDDING_INTERVAL`, default 5 min; one process at a time via
+  `JobLock`, `DEPLOY.md`): a page is pending when it has no chunks for its current `revision` and the configured
+  model. Imports and pipeline runs only bump `revision`; the
   next sweep re-embeds the page and replaces its rows in one transaction (the HTTP call runs outside it, and a page
   edited meanwhile is left for the next sweep). Rows of `HIDDEN`/`REMOVED` pages stay; searches only return
   `PUBLISHED` pages, and a restored page needs no new vectors. Until the sweep reaches an edited page, searches

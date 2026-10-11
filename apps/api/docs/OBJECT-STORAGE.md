@@ -58,8 +58,9 @@ unset. `docker compose` requires `MINIO_ROOT_*` and `STORAGE_ACCESS_KEY_ID`/
 
 ## What `minio-init` sets up
 
-A one-shot container that runs on every `docker compose up` (idempotent) and
-must succeed before `ceitba-api` starts:
+A one-shot container that runs on every `docker compose up` (idempotent; the
+deploy script brings it up before the new API color) and must succeed before
+the API (`ceitba-api-blue`/`-green`) starts:
 
 1. Creates the bucket (`STORAGE_BUCKET`, default `ceitba-media`).
 2. Sets an anonymous bucket policy allowing **only `s3:GetObject`** on

@@ -378,7 +378,7 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 
 ## Retention
 
-A nightly job (03:40 ART, `MailRetentionJob`, off with `DIGEST_JOBS_ENABLED=
+A nightly job (03:40 ART, `MailRetentionJob`, one process at a time via `JobLock` (`DEPLOY.md`), off with `DIGEST_JOBS_ENABLED=
 false`) keeps the bookkeeping bounded:
 
 - `mail_tracking_event` rows older than `MAIL_RETENTION_TRACKING` (180 days)
@@ -508,8 +508,8 @@ There are no google-api-client libraries: plain `RestClient`.
    redirect URI stays as is.
 5. **Secrets on the VPS `.env`**: `MAIL_TOKEN_ENCRYPTION_KEY=$(openssl rand
    -base64 32)`, `GOOGLE_MAIL_REDIRECT_URI`, `MAIL_ENABLED=true`
-   (`MAIL_TRANSPORT` defaults to `gmail-api`); `docker compose up -d
-   ceitba-api`.
+   (`MAIL_TRANSPORT` defaults to `gmail-api`); then redeploy
+   (`cd ~/CEITBA-API && bash deploy-api.sh`, `DEPLOY.md`).
 6. **Who clicks "Conectar".** A STAFF member who can sign in as
    `ceitba@itba.edu.ar` (they will pick that Google account on the consent
    screen; any other account is refused with `wrong_account`). Then use

@@ -19,8 +19,25 @@ ceitba.org.ar {
             flush_interval -1
         }
     }
+    # The API runs as two colors (blue/green, apps/api/docs/DEPLOY.md): a
+    # deploy starts the idle one, waits for it to be healthy and stops the
+    # other. Caddy health-checks each upstream every 2s and sends traffic only
+    # to the first healthy one; while one is booting or gone, requests that
+    # can't reach an upstream are retried for up to 15s instead of failing.
+    # A color that isn't running doesn't resolve and simply counts as down.
+    #
+    # ceitba-api:8080 is the pre-blue/green container: the fallback for the
+    # first blue/green deploy, while blue boots next to it. Remove it in the
+    # next release (expand/contract).
     handle /api/* {
-        reverse_proxy ceitba-api:8080
+        reverse_proxy ceitba-api-blue:8080 ceitba-api-green:8080 ceitba-api:8080 {
+            lb_policy first
+            lb_try_duration 15s
+            lb_try_interval 250ms
+            health_uri /api/actuator/health
+            health_interval 2s
+            health_timeout 2s
+        }
     }
 
     # Object storage (MinIO, in the CEITBA-API compose project, reachable here

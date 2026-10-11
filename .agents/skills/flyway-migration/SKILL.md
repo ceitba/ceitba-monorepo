@@ -20,6 +20,11 @@ Paths (under `apps/api/src`):
    highest `V4.<n>` mirror + 1. Flyway compares per segment, so `4.10` sorts after `4.9`.
 2. **Write the prod migration** `V<N>__<desc>.sql`. Name tables/columns in `snake_case`; schema-qualify `wiki.`
    tables. Never edit or rename a migration that already exists on `dev` or `main`: fix forward with a new one.
+   **Expand/contract** (`apps/api/docs/DEPLOY.md`): during a deploy the old jar keeps serving against the new
+   schema. Additive changes (new table, nullable or defaulted column, index, new value old code ignores) ship with
+   the code that uses them. `DROP`, `RENAME`, `NOT NULL` on an existing column and type changes ship one release
+   later, when no deployed code uses the old shape (a rename = add, backfill, switch code, then drop). Big indexes on
+   hot tables: `CREATE INDEX CONCURRENTLY`, so the serving color isn't blocked.
 3. **Classify it.** DDL = any `CREATE`, `ALTER`, `DROP`, `RENAME` or `COMMENT ON`. Pure seed/backfill
    (`INSERT`/`UPDATE`/`DELETE` only) → skip to step 6.
 4. **Mirror the DDL** as `V4.<n>__<same desc>.sql`: copy the DDL statements only, no seeds or `INSERT`s.

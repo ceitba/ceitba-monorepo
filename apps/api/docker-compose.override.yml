@@ -1,0 +1,15 @@
+# Local development only: Docker Compose loads this file automatically next to
+# docker-compose.yml. The deploy copies docker-compose.yml alone, so production
+# never sees it.
+#
+# Publishes blue on 127.0.0.1:8080 (README, Swagger, Vite's DEV_API_PROXY and
+# the OAuth redirect URIs expect it there). Green has no port, so
+# `docker compose up -d` locally starts blue only (green is in the "green"
+# profile below; naming it on the command line still starts it).
+services:
+  ceitba-api-blue:
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  ceitba-api-green:
+    profiles: ["green"]
