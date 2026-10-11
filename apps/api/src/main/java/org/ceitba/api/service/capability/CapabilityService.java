@@ -49,7 +49,13 @@ public class CapabilityService {
     public Set<String> effective(User user) {
         if (user == null) return Set.of();
         Set<String> known = Arrays.stream(Capability.values()).map(Capability::key).collect(Collectors.toSet());
-        if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock))) return new TreeSet<>(known);
+        // Staff hold every capability. Capabilities turn features on; they are
+        // not staff powers, so an API key without the "staff" scope keeps them
+        // (StaffPowers withholds the powers). apps/mcp checks asistentes_ia with
+        // such keys on every request.
+        if (staffRepository.isActiveStaff(user.getId(), OffsetDateTime.now(clock))) {
+            return new TreeSet<>(known);
+        }
         Set<String> granted = new HashSet<>(settings.findEnabledForAll());
         if (user.getEmail() != null) {
             granted.addAll(userGrants.findCapabilitiesByEmail(user.getEmail().toLowerCase(Locale.ROOT)));

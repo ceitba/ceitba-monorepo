@@ -10,7 +10,7 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 |---|---|---|
 | **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`, and `/v1/auth/review-login` [while enabled](#app-store--play-review-login)) |
 | **USER** | `Authorization: Bearer <jwt>` or the web session cookie (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys, `POST /v1/auth/logout-all`, `DELETE /v1/me` (JWT session only, not API keys) |
-| **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER |
+| **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER, narrowed by the key's scopes (`read` / `write` / `staff`, see [AUTH-SETUP.md § Scopes](AUTH-SETUP.md#scopes)) |
 | **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (`/v1/staff/proposals/**`, editing/deleting any study group) |
 | **STAFF** | Same JWT or API key, plus an active `ceitba_staff` row | Everything USER and MODERATOR can do, **plus** assign/revoke STAFF and MODERATOR on others, create users and correct a user's file number (`/v1/users/**`) |
 | **SYNC** (machine, not human) | `X-Api-Key: <AUTH_SYNC_API_KEY>` | Trigger `/v1/sync/**` jobs |
@@ -234,9 +234,14 @@ ApiKeyFilter (custom, runs before Spring Security)
    if X-Api-Key starts with "ceitba_":
        hash key, look up in api_keys table
        if found and not expired: mark last_used_at
-           DB lookup: active CeitbaStaff? → add ROLE_STAFF (+ ROLE_MODERATOR)
-           DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
-           set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR) principal = User entity
+           scopes lack "write" and the method is not safe → 403 INSUFFICIENT_SCOPE (stop)
+           scopes include "staff":
+               DB lookup: active CeitbaStaff? → add ROLE_STAFF (+ ROLE_MODERATOR)
+               DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
+           set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR, SCOPE_*) principal = User entity,
+               details = the key (ApiKeyCredential: StaffPowers drops staff powers without "staff",
+               ApiKeyService refuses key creation / revoking other keys unless the key is full power,
+               i.e. holds every scope including "keys")
    else if X-Api-Key matches AUTH_SYNC_API_KEY (static):
        set Authentication = ROLE_SYNC principal "sync-job"
    │
@@ -265,8 +270,9 @@ authorizeHttpRequests() — per-route policy from SecurityConfig
    /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
    /v1/staff/**              -> hasRole("STAFF") AND email in allowlist
                                 (incl. /v1/staff/moderators, /v1/staff/schedule-corrections)
-   anyRequest()              -> authenticated() AND email in allowlist (JWT only;
-                                allowlist + review email while review login is on)
+   anyRequest()              -> authenticated() AND email in allowlist (JWT email, or the
+                                API-key owner's email; allowlist + review email while
+                                review login is on)
    │
    ▼
 @PreAuthorize evaluation (if used on the controller method)
@@ -345,7 +351,7 @@ Generate the hash with `htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'` (no `
 - The password is only ever stored as a bcrypt hash. Every attempt runs exactly one bcrypt check (against a dummy hash of the same cost when the email does not match), so timing does not reveal the email; the email itself is compared in constant time. Passwords longer than 72 bytes are rejected.
 - It is JIT-provisioned on the first login as `App Review` (the name is reset to that on every login) and goes through normal onboarding: no career, plan or file number until the reviewer picks them.
 - Nothing grants it STAFF or MODERATOR: those come only from `ceitba_staff` / `ceitba_moderators` rows. Never add one for this account.
-- It **cannot create API keys** (`POST /v1/auth/api-keys` → `403`), because API keys skip the allowlist and would outlive disabling review login.
+- It **cannot create API keys** (`POST /v1/auth/api-keys` → `403`): a key is a long-lived credential and this account only exists for store review.
 
 **What the reviewer can do.** Everything any student can: onboarding (career/plan/legajo), schedules, classrooms, benefits, news, study groups, proposals, push-notification registration, logout, and account deletion (`DELETE /v1/me`, which App Store rule 5.1.1(v) requires them to be able to test; the next review login simply provisions a fresh account).
 
@@ -394,6 +400,7 @@ Guards:
 | Protected endpoint, no token → 401 | `AuthIT.protectedEndpointWithoutTokenReturns401` |
 | `/sync` no/wrong/correct key → 401/401/200 | `AuthIT.sync*ApiKey*` |
 | Allowlist admits ITBA domain | `AuthIT.allowlistAdmitsItbaDomain` |
+| API-key scopes (read-only, `[]` = read-only, staff incl. `/auth/me` and capabilities, key minting incl. encoded paths, self-revoke, allowlisted owner) | `ApiKeyScopesIT`, `ApiKeyFilterTest`, `CapabilityServiceTest` |
 | Allowlist admits explicit external email | `AuthIT.allowlistAdmitsExplicitlyListedExternalEmail` |
 | Allowlist rejects unknown domain | `AuthIT.allowlistRejectsUnknownDomain` |
 | Allowlist case-insensitive | `AuthIT.allowlistIsCaseInsensitive` |
@@ -437,4 +444,4 @@ Guards:
 - **Enforce `iss`/`aud`** — see the dated follow-up in [§ Sessions and tokens](#sessions-and-tokens).
 - **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `StaffAwareJwtAuthenticationConverter` (which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
 - **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). Caffeine with TTL ≤ minimum role-validity window would be enough.
-- **Allowlist check for API keys.** JWT requests pass the email allowlist gate in `SecurityConfig`; API-key requests bypass it (the email was already validated at key-creation time). If a user is later removed from the allowlist, their existing API keys stay valid until they expire. Revoke them manually if needed.
+- **Narrower API-key scopes.** Keys carry `read` / `report` / `write` / `staff` / `keys` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per controller. New code that grants staff powers asks `StaffPowers` instead of the staff/moderator repositories.

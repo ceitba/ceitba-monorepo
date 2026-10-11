@@ -1,5 +1,7 @@
 package org.ceitba.api.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.service.auth.ApiKeyService;
@@ -56,6 +58,8 @@ import java.util.List;
 //                  POST /v1/auth/dev-login  (only with the dev profile AND AUTH_DEV_LOGIN_ENABLED=true)
 //   API key:       /v1/sync/**                       -> ROLE_SYNC  (X-Api-Key header)
 //                  /v1/auth/api-keys/**              -> ROLE_USER  (X-Api-Key header, user keys)
+//                  user keys carry scopes (read/write/staff, ApiKeyFilter) and their
+//                  owner must pass the same allowlist as JWT sessions
 //   Bearer JWT:    POST/PUT/DELETE on wiki bookmarks -> ROLE_USER (any allowlisted)
 //                  /v1/staff/proposals/**            -> ROLE_MODERATOR (+ allowlist), carved out of:
 //                  /v1/staff/**                      -> ROLE_STAFF (path matcher; incl. /v1/staff/moderators
@@ -114,6 +118,7 @@ public class SecurityConfig {
                                                    CeitbaStaffRepository staffRepository,
                                                    CeitbaModeratorRepository moderatorRepository,
                                                    RateLimitProperties rateLimit,
+                                                   ObjectMapper objectMapper,
                                                    Environment env) throws Exception {
         // Allowlist gate runs only AFTER `authenticated()` accepts. Order matters:
         // chaining via allOf lets the framework return 401 for missing auth and
@@ -126,7 +131,12 @@ public class SecurityConfig {
                     String email = jwt.getClaimAsString("email");
                     return new AuthorizationDecision(sessionAllowlist.admits(email));
                 }
-                // Non-JWT authentications (e.g. ROLE_SYNC API-key principal) pass through
+                // User API keys (ApiKeyFilter): the owner must still be allowlisted,
+                // so dropping an email from the allowlist also disables their keys.
+                if (a != null && a.getPrincipal() instanceof User user) {
+                    return new AuthorizationDecision(sessionAllowlist.admits(user.getEmail()));
+                }
+                // Other non-JWT authentications (the ROLE_SYNC principal) pass through
                 return new AuthorizationDecision(true);
             };
 
@@ -145,7 +155,7 @@ public class SecurityConfig {
             // Per-IP rate limiting runs right after CORS (so 429s are readable
             // by browsers) and before any authentication work.
             .addFilterAfter(new RateLimitFilter(rateLimit), CorsFilter.class)
-            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository, moderatorRepository),
+            .addFilterBefore(new ApiKeyFilter(auth, apiKeyService, staffRepository, moderatorRepository, objectMapper),
                              UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(reg -> {
                 // Local dev sign-in; otherwise the path is not even permitted.

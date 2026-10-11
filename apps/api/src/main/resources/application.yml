@@ -465,6 +465,10 @@ rate-limit:
     org-images:
       capacity: ${RATE_LIMIT_ORG_IMAGES_CAPACITY:60}
       period: ${RATE_LIMIT_ORG_IMAGES_PERIOD:1h}
+    # GET /v1/wiki/kb/search (each query is an embedding call)
+    wiki-search:
+      capacity: ${RATE_LIMIT_WIKI_SEARCH_CAPACITY:120}
+      period: ${RATE_LIMIT_WIKI_SEARCH_PERIOD:1h}
     # POST /v1/proposals/attachments/sign-upload
     proposal-attachments:
       capacity: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:30}

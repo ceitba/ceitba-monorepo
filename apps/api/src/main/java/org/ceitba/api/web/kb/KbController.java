@@ -9,16 +9,19 @@ import org.ceitba.api.domain.User;
 import org.ceitba.api.service.capability.Capability;
 import org.ceitba.api.service.capability.CapabilityService;
 import org.ceitba.api.service.kb.KbReaderService;
+import org.ceitba.api.service.kb.KbSearchService;
 import org.ceitba.api.web.auth.CurrentUser;
 import org.ceitba.api.web.kb.dto.KbGraphResponse;
 import org.ceitba.api.web.kb.dto.KbPageResponse;
 import org.ceitba.api.web.kb.dto.KbReportRequest;
+import org.ceitba.api.web.kb.dto.KbSearchResponse;
 import org.ceitba.api.web.kb.dto.KbSubjectResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,11 +35,24 @@ import java.util.UUID;
 public class KbController {
 
     private final KbReaderService service;
+    private final KbSearchService search;
     private final CapabilityService capabilities;
 
-    public KbController(KbReaderService service, CapabilityService capabilities) {
+    public KbController(KbReaderService service, KbSearchService search, CapabilityService capabilities) {
         this.service = service;
+        this.search = search;
         this.capabilities = capabilities;
+    }
+
+    @GetMapping("/v1/wiki/kb/search")
+    @Operation(summary = "Semantic search over published wiki pages (passages nearest to the query, best first)")
+    @ApiResponse(responseCode = "200", description = "OK")
+    public KbSearchResponse search(@CurrentUser User user,
+                                   @RequestParam("q") String query,
+                                   @RequestParam(required = false) String subjectId,
+                                   @RequestParam(required = false) Integer limit) {
+        capabilities.require(user, Capability.APUNTES);
+        return search.search(user, query, subjectId, limit);
     }
 
     @GetMapping("/v1/wiki/subjects/{subjectId}/kb")

@@ -1,6 +1,7 @@
 package org.ceitba.api.web.auth.dto;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record ApiKeyResponse(
@@ -8,5 +9,6 @@ public record ApiKeyResponse(
     String name,
     OffsetDateTime createdAt,
     OffsetDateTime expiresAt,
-    OffsetDateTime lastUsedAt
+    OffsetDateTime lastUsedAt,
+    List<String> scopes
 ) {}

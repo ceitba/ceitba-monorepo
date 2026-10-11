@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
+import { useCapability } from '../hooks/useCapability'
 
 const SOCIALS = [
   {
@@ -40,6 +42,7 @@ const SOCIALS = [
 export default function Footer() {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
+  const { enabled: aiEnabled } = useCapability('asistentes_ia')
 
   return (
     <footer className="border-t border-border dark:border-night-border bg-surface dark:bg-night-bg py-8 mt-auto">
@@ -70,6 +73,12 @@ export default function Footer() {
 
           {/* Text links */}
           <nav className="flex flex-wrap items-center justify-center gap-x-6" aria-label={t('footer.navAria')}>
+            {aiEnabled && <Link
+              to="/ia"
+              className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+            >
+              {t('footer.ai')}
+            </Link>}
             <a
               href="https://github.com/ceitba"
               target="_blank"

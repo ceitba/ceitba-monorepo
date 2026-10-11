@@ -11,7 +11,8 @@
     "sectionsAria": "Sections",
     "scheduler": "Schedules",
     "newsletter": "Newsletter",
-    "benefits": "Benefits"
+    "benefits": "Benefits",
+    "ai": "AI"
   },
   "manage": {
     "loading": "Loading…",
@@ -559,6 +560,11 @@
       "label": "Notes",
       "description": "Notes, summaries and past exams other students share from their Google Drive, organized by subject.",
       "cta": "Open"
+    },
+    "ai": {
+      "label": "AI assistants",
+      "description": "Connect Claude or ChatGPT to CEITBA and ask about schedules, free classrooms, events and notes.",
+      "cta": "Connect"
     }
   },
   "departments": {
@@ -626,7 +632,8 @@
     "github": "GitHub",
     "contact": "Contact",
     "rights": "All rights reserved.",
-    "navAria": "Footer links"
+    "navAria": "Footer links",
+    "ai": "AI assistants"
   },
   "errors": {
     "somethingWrong": "Something went wrong",
@@ -646,6 +653,10 @@
     "apuntes": {
       "title": "Notes isn't enabled for your account yet",
       "body": "We're rolling Notes out gradually. Once it's enabled for your account or your organization, you'll see it here and in the menu."
+    },
+    "asistentes_ia": {
+      "title": "AI assistants are not enabled for your account yet",
+      "body": "We are opening AI assistants gradually. Once they are enabled for your account or organization, you will see them in the menu."
     }
   },
   "digest": {
@@ -672,5 +683,57 @@
     "appStore": "Download on the App Store",
     "playStore": "Get it on Google Play",
     "web": "Continue on the web"
+  },
+  "ai": {
+    "title": "Use CEITBA from your AI",
+    "subtitle": "Connect Claude, ChatGPT or another assistant and ask it about your schedule, free classrooms, events and notes.",
+    "step1": "Copy the address",
+    "step2": "Add it to your assistant",
+    "step3": "Sign in",
+    "step3Body": "Your assistant opens CEITBA: approve access and sign in with your @itba.edu.ar account.",
+    "copy": "Copy",
+    "copyUrl": "Copy the address",
+    "copied": "Copied",
+    "copyFailed": "Could not copy. Select the text and copy it by hand.",
+    "clients": {
+      "claude": {
+        "name": "Claude",
+        "how": "Settings → Connectors → Add custom connector, and paste the address."
+      },
+      "chatgpt": {
+        "name": "ChatGPT",
+        "how": "Settings → Connectors → Create, and paste the address. Needs developer mode."
+      },
+      "claudeCode": {
+        "name": "Claude Code",
+        "how": "Run this, then /mcp to sign in:"
+      },
+      "cursor": {
+        "name": "Cursor",
+        "how": "Add it to ~/.cursor/mcp.json:"
+      },
+      "vscode": {
+        "name": "VS Code",
+        "how": "Add it to .vscode/mcp.json:"
+      }
+    },
+    "examplesTitle": "Try asking",
+    "examples": {
+      "schedule": "Build me a schedule with Physics I and Programming I and no Friday classes",
+      "classrooms": "Which classrooms are free right now in SDF?",
+      "wiki": "Explain NPV using the Financial Math wiki",
+      "events": "What events are on this week?"
+    },
+    "connections": {
+      "title": "Connected assistants",
+      "connected": "Connected on {{date}}",
+      "lastUsed": "Last used: {{date}}",
+      "revoke": "Disconnect",
+      "revokeTitle": "Disconnect {{name}}?",
+      "revokeBody": "It loses access to your account right away. Connect it again to use it.",
+      "revoked": "Assistant disconnected",
+      "revokeError": "Could not disconnect the assistant."
+    },
+    "privacy": "Your assistant can only read your data, and report Apuntes mistakes when you ask. CEITBA doesn't store your questions."
   }
 }

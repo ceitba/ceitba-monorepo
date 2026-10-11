@@ -11,14 +11,17 @@ const SECTIONS = [
   { to: '/scheduler', label: 'nav.scheduler' },
   { to: '/newsletter', label: 'nav.newsletter' },
   { to: '/apuntes', label: 'nav.apuntes', capability: 'apuntes' },
+  { to: '/ia', label: 'nav.ai', capability: 'asistentes_ia' },
 ] as const
 
 function SectionLinks({ className, linkClassName }: { className: string; linkClassName: string }) {
   const { t } = useTranslation()
   const { enabled: apuntesEnabled } = useCapability('apuntes')
+  const { enabled: aiEnabled } = useCapability('asistentes_ia')
+  const enabled: Record<string, boolean> = { apuntes: apuntesEnabled, asistentes_ia: aiEnabled }
   return (
     <nav aria-label={t('nav.sectionsAria')} className={className}>
-      {SECTIONS.filter((s) => !('capability' in s) || apuntesEnabled).map(({ to, label }) => (
+      {SECTIONS.filter((s) => !('capability' in s) || enabled[s.capability]).map(({ to, label }) => (
         <NavLink
           key={to}
           to={to}

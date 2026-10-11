@@ -373,6 +373,10 @@
     "years": {
       "basedOn": "Basada en apuntes de {{range}}",
       "stale": "Estos apuntes son de hace más de 3 años; el programa de la materia pudo haber cambiado."
+    },
+    "askAi": {
+      "title": "Preguntale a tu IA",
+      "body": "Conectá tu asistente y hacele preguntas sobre esta materia."
     }
   },
   "manage": {

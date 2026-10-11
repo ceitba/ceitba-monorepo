@@ -3,8 +3,10 @@ package org.ceitba.api.service.drive;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.drive.DriveSourceStatus;
 import org.ceitba.api.external.drive.DriveClient;
+import org.ceitba.api.repository.CeitbaModeratorRepository;
 import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.drive.DriveSourceRepository;
+import org.ceitba.api.service.auth.StaffPowers;
 import org.ceitba.api.web.drive.dto.RegisterSourceRequest;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +28,7 @@ class DriveSourceServiceTest {
         var drive = mock(DriveClient.class);
         when(drive.available()).thenReturn(true);
         var clock = Clock.systemUTC();
-        var access = new DriveAccess(mock(CeitbaStaffRepository.class), drive, clock);
+        var access = new DriveAccess(new StaffPowers(mock(CeitbaStaffRepository.class), mock(CeitbaModeratorRepository.class), clock), drive);
         var service = new DriveSourceService(sources, null, null, null, drive, access, null, null, null, null,
             null, null, clock);
         var folderId = "1AbCdEfGhIjKlMnOp";

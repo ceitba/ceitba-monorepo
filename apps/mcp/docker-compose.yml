@@ -1,0 +1,42 @@
+# Hosted MCP server, deployed to ~/CEITBA-MCP on the VPS (deploy.yml).
+# Secrets live in ~/CEITBA-MCP/.env (see .env.example), never in the repo.
+# Caddy reaches it as ceitba-mcp:8787 over ceitba-proxy and forwards only
+# https://ceitba.org.ar/mcp* and /.well-known/*/mcp to it (infra/caddy/Caddyfile);
+# it reaches the API as ceitba-api:8080 on the same network (private peer, so
+# the API trusts the X-Forwarded-For it sends).
+services:
+  ceitba-mcp:
+    image: ghcr.io/ceitba/ceitba-mcp:latest
+    container_name: ceitba-mcp
+    environment:
+      CEITBA_API_URL: ${CEITBA_API_URL:-http://ceitba-api:8080/api}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-https://ceitba.org.ar/mcp}
+      MCP_ENCRYPTION_KEY: ${MCP_ENCRYPTION_KEY:?set MCP_ENCRYPTION_KEY in .env (openssl rand -base64 32)}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID in .env}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set GOOGLE_CLIENT_SECRET in .env}
+      GOOGLE_HOSTED_DOMAIN: ${GOOGLE_HOSTED_DOMAIN:-itba.edu.ar}
+      CEITBA_MCP_LANG: ${CEITBA_MCP_LANG:-es}
+      MCP_RATE_LIMIT_PER_MINUTE: ${MCP_RATE_LIMIT_PER_MINUTE:-60}
+      MCP_ACCESS_TOKEN_TTL_SECONDS: ${MCP_ACCESS_TOKEN_TTL_SECONDS:-3600}
+      MCP_GRANT_TTL_DAYS: ${MCP_GRANT_TTL_DAYS:-90}
+      # One proxy hop (Caddy) in front of the container.
+      MCP_TRUST_PROXY_HOPS: ${MCP_TRUST_PROXY_HOPS:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - mcp_data:/data
+    # No published port: only Caddy (ceitba-proxy) reaches it.
+    networks:
+      - ceitba-proxy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  mcp_data:
+    driver: local
+
+networks:
+  ceitba-proxy:
+    external: true

@@ -5,8 +5,8 @@ import org.ceitba.api.common.exception.ResourceNotFoundException;
 import org.ceitba.api.domain.CeitbaModerator;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.repository.CeitbaModeratorRepository;
-import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.UserRepository;
+import org.ceitba.api.service.auth.StaffPowers;
 import org.ceitba.api.web.staff.dto.ModeratorResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,24 +26,23 @@ import java.util.stream.Collectors;
 public class ModeratorService {
 
     private final CeitbaModeratorRepository moderators;
-    private final CeitbaStaffRepository staff;
+    private final StaffPowers staffPowers;
     private final UserRepository users;
     private final Clock clock;
 
     public ModeratorService(CeitbaModeratorRepository moderators,
-                            CeitbaStaffRepository staff,
+                            StaffPowers staffPowers,
                             UserRepository users,
                             Clock clock) {
         this.moderators = moderators;
-        this.staff = staff;
+        this.staffPowers = staffPowers;
         this.users = users;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public boolean isModerator(UUID userId) {
-        return moderators.isActiveModerator(userId)
-            || staff.isActiveStaff(userId, OffsetDateTime.now(clock));
+        return staffPowers.isModerator(userId);
     }
 
     // Explicit grants only; staff-implied moderators are listed by GET /v1/staff.

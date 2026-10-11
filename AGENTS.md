@@ -6,12 +6,14 @@ before changing that app.
 
 ## Repository layout
 
-One repo, two apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
+One repo, three apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
 
 | Dir | What | Stack |
 |---|---|---|
 | `apps/api` | Backend for everything below | Spring Boot 3, Java 21, Postgres, Maven (not part of the JS workspace) |
 | `apps/web` | The whole frontend, one SPA: main site + `/manage` staff admin + Apuntes at `/`, the "Combinador de Horarios" at `/scheduler`, the student newsletter at `/newsletter` | React 18 + Vite + TS |
+| `apps/mcp` | MCP server for AI assistants: stdio + Streamable HTTP with OAuth, served at `/mcp` (plus `/.well-known/*/mcp`) | Bun + TS, `@modelcontextprotocol/sdk` |
+| `packages/scheduler-core` | Pure schedule generator shared by `apps/web` (scheduler) and `apps/mcp` | TS (source-only package) |
 
 `infra/caddy/` is the production reverse proxy. Domain vocabulary is in `GLOSSARY.md`; lasting decisions are in
 `docs/adr/`.
@@ -47,7 +49,7 @@ included) updates the mapped doc in the same PR, or the PR states "No spec impac
 
 `.github/workflows/ci.yml` runs on PRs and `dev` pushes; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
 to run only what a change touches (`packages/**`, the root `package.json`/`bun.lock` and `.github/spa-apps.json`
-count for web). The API deploys before the web app in the same push. Keep actions pinned to full commit SHAs with a
+count for web and MCP). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
 `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
 living-docs check against the PR body and a gitleaks scan. Dependabot (`.github/dependabot.yml`) opens weekly
 version updates against `dev`.
@@ -61,7 +63,9 @@ version updates against `dev`.
 - **Auth**: the web app authenticates against the API with an **HttpOnly session cookie** (the API-issued JWT);
   JS never reads or writes tokens and every fetch uses `credentials: 'include'`. Details in `apps/web/AGENTS.md`;
   the mobile app uses the token endpoints in `apps/api/docs/AUTH-SETUP.md`.
-- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/itbanews*` 301s to `/newsletter`,
+- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/mcp`, `/mcp/*` and
+  `/.well-known/{oauth-protected-resource,oauth-authorization-server,openid-configuration}/mcp` → MCP server,
+  `/itbanews*` 301s to `/newsletter`,
   everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
   (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
 - **Secrets** never enter the repo: `.env`/`.env.local` stay local, `.env.example` gets placeholders only.
@@ -71,7 +75,8 @@ version updates against `dev`.
 
 ```
 bun install                                  # web deps + git hooks (repo root)
-bun run dev | build | lint                   # the web app (apps/web)
+bun run dev | build | lint                   # the web app (apps/web), apps/mcp and packages/*
+bun run test                                 # bun test in apps/mcp and packages/scheduler-core
 cd apps/api && ./mvnw -B -ntp verify         # API unit + integration tests (needs Docker)
 bun run check                                # repo checks: locales, migrations, workflows, agents, living docs
 bun run agents:sync                          # regenerate per-tool subagent files from .agents/agents/

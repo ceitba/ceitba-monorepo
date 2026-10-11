@@ -5,7 +5,11 @@ import org.ceitba.api.repository.CeitbaStaffRepository;
 import org.ceitba.api.repository.capability.CapabilityOrgGrantRepository;
 import org.ceitba.api.repository.capability.CapabilitySettingRepository;
 import org.ceitba.api.repository.capability.CapabilityUserGrantRepository;
+import org.ceitba.api.service.auth.ApiKeyScope;
+import org.ceitba.api.service.auth.ApiKeyService;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.lang.reflect.Proxy;
 import java.time.Clock;
@@ -24,7 +28,7 @@ class CapabilityServiceTest {
     void effectiveCapabilityRule() {
         assertThat(service(false, List.of(), List.of(), List.of()).effective(USER)).isEmpty();
         assertThat(service(true, List.of(), List.of(), List.of()).effective(USER))
-            .containsExactly("apuntes", "resumen_semanal");
+            .containsExactly("apuntes", "asistentes_ia", "resumen_semanal");
         assertThat(service(false, List.of("apuntes"), List.of(), List.of()).effective(USER)).containsExactly("apuntes");
         // Email grants are looked up lowercased; unknown keys in the tables are ignored.
         assertThat(service(false, List.of(), List.of("apuntes", "gone"), List.of()).effective(USER))
@@ -33,6 +37,22 @@ class CapabilityServiceTest {
 
         assertThatThrownBy(() -> service(false, List.of(), List.of(), List.of()).require(USER, Capability.APUNTES))
             .isInstanceOf(CapabilityRequiredException.class);
+    }
+
+    // Capabilities are not staff powers: a staff member's key without the
+    // "staff" scope keeps them (apps/mcp checks asistentes_ia with such keys).
+    @Test
+    void aKeyWithoutStaffScopeKeepsStaffCapabilities() {
+        var key = new ApiKeyService.ValidatedKey(UUID.randomUUID(), USER, ApiKeyScope.normalize(List.of()));
+        var auth = new UsernamePasswordAuthenticationToken(USER, null, List.of());
+        auth.setDetails(key);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        try {
+            assertThat(service(true, List.of(), List.of(), List.of()).effective(USER))
+                .containsExactly("apuntes", "asistentes_ia", "resumen_semanal");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private static CapabilityService service(boolean staff, List<String> forAll, List<String> byEmail, List<String> byOrg) {

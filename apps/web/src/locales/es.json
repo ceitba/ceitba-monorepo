@@ -11,7 +11,8 @@
     "sectionsAria": "Secciones",
     "scheduler": "Horarios",
     "newsletter": "Newsletter",
-    "benefits": "Beneficios"
+    "benefits": "Beneficios",
+    "ai": "IA"
   },
   "manage": {
     "loading": "Cargando…",
@@ -559,6 +560,11 @@
       "label": "Apuntes",
       "description": "Apuntes, resúmenes y finales que comparten otros estudiantes desde su Google Drive, ordenados por materia.",
       "cta": "Abrir"
+    },
+    "ai": {
+      "label": "Asistentes de IA",
+      "description": "Conectá Claude o ChatGPT a CEITBA y preguntale por horarios, aulas libres, eventos y apuntes.",
+      "cta": "Conectar"
     }
   },
   "departments": {
@@ -626,7 +632,8 @@
     "github": "GitHub",
     "contact": "Contacto",
     "rights": "Todos los derechos reservados.",
-    "navAria": "Enlaces del pie de página"
+    "navAria": "Enlaces del pie de página",
+    "ai": "Asistentes de IA"
   },
   "errors": {
     "somethingWrong": "Algo salió mal",
@@ -646,6 +653,10 @@
     "apuntes": {
       "title": "Apuntes todavía no está habilitado para tu cuenta",
       "body": "Estamos abriendo Apuntes de a poco. Cuando se habilite para tu cuenta o tu organización, vas a verlo acá y en el menú."
+    },
+    "asistentes_ia": {
+      "title": "Los asistentes de IA todavía no están habilitados para tu cuenta",
+      "body": "Estamos abriendo los asistentes de IA de a poco. Cuando se habiliten para tu cuenta o tu organización, vas a verlos en el menú."
     }
   },
   "digest": {
@@ -672,5 +683,57 @@
     "appStore": "Descargar en el App Store",
     "playStore": "Descargar en Google Play",
     "web": "Seguir en la web"
+  },
+  "ai": {
+    "title": "Usá CEITBA desde tu IA",
+    "subtitle": "Conectá Claude, ChatGPT u otro asistente y preguntale por tus horarios, aulas libres, eventos y apuntes.",
+    "step1": "Copiá la dirección",
+    "step2": "Agregala en tu asistente",
+    "step3": "Iniciá sesión",
+    "step3Body": "Tu asistente abre CEITBA: aprobá el acceso y entrá con tu cuenta @itba.edu.ar.",
+    "copy": "Copiar",
+    "copyUrl": "Copiar la dirección",
+    "copied": "Copiado",
+    "copyFailed": "No se pudo copiar. Seleccioná el texto y copialo a mano.",
+    "clients": {
+      "claude": {
+        "name": "Claude",
+        "how": "Configuración → Conectores → Agregar conector personalizado, y pegá la dirección."
+      },
+      "chatgpt": {
+        "name": "ChatGPT",
+        "how": "Configuración → Conectores → Crear, y pegá la dirección. Requiere el modo desarrollador."
+      },
+      "claudeCode": {
+        "name": "Claude Code",
+        "how": "Corré esto y después /mcp para iniciar sesión:"
+      },
+      "cursor": {
+        "name": "Cursor",
+        "how": "Agregalo a ~/.cursor/mcp.json:"
+      },
+      "vscode": {
+        "name": "VS Code",
+        "how": "Agregalo a .vscode/mcp.json:"
+      }
+    },
+    "examplesTitle": "Probá preguntarle",
+    "examples": {
+      "schedule": "Armame un horario con Física I y Programación I sin clases los viernes",
+      "classrooms": "¿Qué aulas hay libres ahora en SDF?",
+      "wiki": "Explicame el VAN según la wiki de Matemática Financiera",
+      "events": "¿Qué eventos hay esta semana?"
+    },
+    "connections": {
+      "title": "Asistentes conectados",
+      "connected": "Conectado el {{date}}",
+      "lastUsed": "Último uso: {{date}}",
+      "revoke": "Desconectar",
+      "revokeTitle": "¿Desconectar {{name}}?",
+      "revokeBody": "Pierde el acceso a tu cuenta enseguida. Para volver a usarlo, conectalo de nuevo.",
+      "revoked": "Asistente desconectado",
+      "revokeError": "No se pudo desconectar el asistente."
+    },
+    "privacy": "Tu asistente solo puede leer tus datos y reportar errores en Apuntes si se lo pedís. CEITBA no guarda tus preguntas."
   }
 }

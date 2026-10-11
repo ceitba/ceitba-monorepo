@@ -5,6 +5,7 @@ name: CI
 #     release is tested again by the push to main it produces (deploy.yml).
 #   - web (the site, scheduler and newsletter, one app): lint + production
 #     build (its only gate; there is no JS test runner).
+#   - mcp (apps/mcp + packages/scheduler-core): typecheck + bun test + image build.
 # Runs with no secrets: fork PRs must never reach deploy credentials.
 on:
   pull_request:
@@ -28,6 +29,7 @@ jobs:
       pull-requests: read
     outputs:
       api: ${{ steps.filter.outputs.api }}
+      mcp: ${{ steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -48,6 +50,12 @@ jobs:
             web:
               - 'apps/web/**'
               - *shared
+            mcp:
+              - 'apps/mcp/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'bun.lock'
+              - '.github/workflows/ci.yml'
       - id: spas
         env:
           CHANGES: ${{ steps.filter.outputs.changes }}
@@ -104,3 +112,21 @@ jobs:
           APP_ENV: ${{ toJSON(matrix.env) }}
         run: jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$APP_ENV" >> "$GITHUB_ENV"
       - run: bun run --filter '${{ matrix.package }}' build
+
+
+  mcp-test:
+    needs: changes
+    if: needs.changes.outputs.mcp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json # packageManager: the bun that writes bun.lock
+      - run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' lint
+      - name: Test
+        run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' test
+      - name: Image builds
+        run: docker build -f apps/mcp/Dockerfile -t ceitba-mcp:ci .

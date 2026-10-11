@@ -6,6 +6,7 @@ The platform of CEITBA, the student center of ITBA, served at [ceitba.org.ar](ht
 |---|---|---|---|
 | API | `apps/api` | `/api` | Spring Boot 3, Java 21, Postgres |
 | Web: main site + staff admin, Combinador de Horarios, Newsletter | `apps/web` | `/`, `/scheduler`, `/newsletter` | React 18, Vite, TypeScript |
+| MCP server for AI assistants ([connect guide](apps/mcp/CONECTAR.md)) | `apps/mcp` | `/mcp` | Bun, TypeScript, MCP SDK |
 
 The mobile app lives in its own repo, [ceitba/CEITBApp](https://github.com/ceitba/CEITBApp).
 
@@ -41,7 +42,8 @@ To click through everything without real ITBA data or a Google login:
 ## Repository layout
 
 ```
-apps/        api (Maven) and web (bun workspace)
+apps/        api (Maven), web and the MCP server (bun workspaces)
+packages/    shared TS packages (scheduler-core: the schedule generator)
 infra/       Caddy reverse proxy config for production
 docs/        cross-app docs (EDITORIAL_UI_SYSTEM.md: the shared UI design system)
 .github/     CI (ci.yml) and deploys (deploy.yml); spa-apps.json holds the web app's build settings

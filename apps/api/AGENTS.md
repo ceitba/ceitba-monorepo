@@ -44,6 +44,11 @@ Read `docs/AUTH-AND-ROLES.md` and `docs/AUTH-SETUP.md` before touching `config/S
 server-side Google OAuth code exchange. Every route is authenticated + allowlisted unless `SecurityConfig` says
 otherwise: a new public, STAFF, MODERATOR or SYNC route needs an explicit matcher there.
 
+User API keys (`ceitba_`, `X-Api-Key`) carry scopes `read`/`report`/`write`/`staff`/`keys` (V62, `ApiKeyScope`,
+enforced in `ApiKeyFilter`); see `docs/AUTH-SETUP.md` § Scopes. Service code that grants the caller staff or moderator
+powers asks `service/auth/StaffPowers`, never the `ceitba_staff`/moderator repositories directly: it withholds them
+from a key without `staff`.
+
 ## Database
 
 Hibernate runs in `validate` mode; Flyway (`src/main/resources/db/migration/`) is the only schema tool. Two

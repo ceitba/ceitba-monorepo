@@ -30,6 +30,7 @@ const CorrelativasPage = lazy(() => import('./pages/apuntes/CorrelativasPage'))
 // Sections that used to be separate SPAs, each in its own chunk.
 // Administración (staff only): its own chunk, with the queue and its areas.
 const ManagePage = lazy(() => import('./pages/ManagePage'))
+const AiConnectPage = lazy(() => import('./pages/AiConnectPage'))
 const SchedulerApp = lazy(() => import('./scheduler/SchedulerApp'))
 const NewsletterApp = lazy(() => import('./newsletter/NewsletterApp'))
 
@@ -87,6 +88,7 @@ function Layout() {
           <Route path="/manage/*" element={<StaffGuard><Suspense fallback={<PageFallback />}><ManagePage /></Suspense></StaffGuard>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/app/*" element={<OpenInAppPage />} />
+          <Route path="/ia" element={<CapabilityGuard capability="asistentes_ia"><Suspense fallback={<PageFallback />}><AiConnectPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><ApuntesHomePage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/mis-apuntes" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><MyApuntesPage /></Suspense></CapabilityGuard>} />
           <Route path="/apuntes/correlativas" element={<CapabilityGuard capability="apuntes"><Suspense fallback={<PageFallback />}><CorrelativasPage /></Suspense></CapabilityGuard>} />

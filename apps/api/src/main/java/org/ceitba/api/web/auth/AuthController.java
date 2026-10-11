@@ -221,7 +221,7 @@ public class AuthController {
             @RequestBody @Valid CreateApiKeyRequest req,
             @CurrentUser User user) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(apiKeyService.create(user, req.name(), req.ttlDays()));
+            .body(apiKeyService.create(user, req.name(), req.ttlDays(), req.scopes()));
     }
 
     // Lists all non-expired API keys for the authenticated user (keys are redacted).

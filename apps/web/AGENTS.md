@@ -68,9 +68,10 @@ cached in `localStorage` (`prefs.theme`, `prefs.lang`).
 
 ## Section notes
 
-- **scheduler**: generation is the pure `generateSchedules(subjects, options, blockedTimes)` in `services/` (capped
-  at `MAX_GENERATED_SCHEDULES`, run in a Web Worker, `workers/` + `tsconfig.worker.json`): keep it free of fetches,
-  stores and DOM. `utils/ics.ts` builds calendar exports in `America/Argentina/Buenos_Aires`;
+- **scheduler**: generation is the pure `generateSchedules(subjects, options, blockedTimes)` in
+  `packages/scheduler-core`, re-exported by `services/scheduler.ts` and also run by `apps/mcp` (capped at
+  `MAX_GENERATED_SCHEDULES`, run in a Web Worker, `workers/` + `tsconfig.worker.json`): keep it free of fetches,
+  stores and DOM, and change it in the package, never in a copy. `utils/ics.ts` builds calendar exports in `America/Argentina/Buenos_Aires`;
   `api/schedules.ts`/`share.ts` back saved schedules and share sessions, `api/corrections.ts` schedule corrections.
   English has ordinal plural keys (`_ordinal_one`, ...) that Spanish does not need.
 - **newsletter**: API shapes are in `newsletter/types.ts`. The contributor/suggestion flow is a `localStorage` mock

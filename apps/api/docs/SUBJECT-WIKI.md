@@ -119,7 +119,12 @@ endpoint using a dev-login staff session cookie, and prints accepted/rejected pa
 ## Embeddings (semantic search / RAG)
 
 Every `PUBLISHED` page is cut into chunks and embedded into `wiki.kb_page_chunk` (pgvector, V61), so pages can be
-retrieved by meaning (`KbEmbeddingService.search`). There is no HTTP endpoint yet; it is the building block for RAG.
+retrieved by meaning (`KbEmbeddingService.search`), the building block for RAG. Readers reach it through
+`GET /v1/wiki/kb/search?q=&subjectId=&limit=` (`KbSearchService`; `apuntes` capability; `q` up to 500 characters,
+`limit` 1–20, default 8; 120 queries per user per hour, `rate-limit.user-rules.wiki-search`, since each one is an
+embedding call; `501` when no embedding server is configured). It returns
+`{ query, results: [{ pageId, subjectId, slug, title, heading, anchor, content, score }] }`, best first, with
+`score = 1 - cosine distance`. The MCP server's `search_wiki` tool is built on it.
 
 - **Chunks** (`KbChunker`): chunk 0 = title, summary and the text before the first `##`; then one chunk per `##`
   section (its `###` subsections included), split at blank lines above 6000 characters. Every chunk carries a title

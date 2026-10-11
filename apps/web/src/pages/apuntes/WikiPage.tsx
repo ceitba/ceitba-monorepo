@@ -5,6 +5,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { fetchKbPage, fetchSubjectKb, type KbPage, type KbPageSummary } from '../../api/kb'
 import { apuntesErrorCopy } from '../../components/apuntes/errorCopy'
+import { useCapability } from '../../hooks/useCapability'
 import { EmptyState, ErrorState, LoadingRegion, Skeleton, buttonClass } from '../../components/ui'
 import WikiArticle, { PagesPanel } from '../../components/apuntes/wiki/WikiArticle'
 
@@ -13,6 +14,7 @@ import WikiArticle, { PagesPanel } from '../../components/apuntes/wiki/WikiArtic
 export default function WikiPage() {
   const { subjectId = '', slug = '' } = useParams()
   const { t } = useTranslation()
+  const { enabled: aiEnabled } = useCapability('asistentes_ia')
   const location = useLocation()
   const [page, setPage] = useState<KbPage | null>(null)
   const [pages, setPages] = useState<KbPageSummary[]>([])
@@ -97,7 +99,18 @@ export default function WikiPage() {
         <WikiArticle
           key={page.id}
           page={page}
-          aside={<PagesPanel subjectId={page.subjectId} pages={pages} currentSlug={page.slug} />}
+          aside={
+            <>
+              <PagesPanel subjectId={page.subjectId} pages={pages} currentSlug={page.slug} />
+              {aiEnabled && <Link
+                to="/ia"
+                className="block rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-4 hover:border-primary transition-colors duration-150"
+              >
+                <span className="block font-display font-bold text-h5 text-ink-primary dark:text-night-text">{t('wiki.askAi.title')}</span>
+                <span className="block font-body text-body-sm text-ink-secondary dark:text-night-muted mt-1">{t('wiki.askAi.body')}</span>
+              </Link>}
+            </>
+          }
         />
       )}
     </main>

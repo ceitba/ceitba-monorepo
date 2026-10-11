@@ -3,6 +3,22 @@ www.ceitba.org.ar {
 }
 
 ceitba.org.ar {
+    # Hosted MCP server (apps/mcp, ~/CEITBA-MCP) at https://ceitba.org.ar/mcp.
+    # It owns /mcp, /mcp/* (MCP endpoint, OAuth endpoints, Google callback)
+    # and the two path-suffixed discovery documents MCP clients fetch
+    # (RFC 9728 / RFC 8414 put the issuer path after /.well-known/...).
+    # Nothing else at the root is forwarded. No prefix stripping: the app
+    # serves these exact paths. MCP responses can stream (SSE), so flush
+    # immediately.
+    @mcp path /mcp /mcp/* /.well-known/oauth-protected-resource/mcp /.well-known/oauth-authorization-server/mcp /.well-known/openid-configuration/mcp
+    handle @mcp {
+        request_body {
+            max_size 1MB
+        }
+        reverse_proxy ceitba-mcp:8787 {
+            flush_interval -1
+        }
+    }
     handle /api/* {
         reverse_proxy ceitba-api:8080
     }

@@ -35,14 +35,19 @@ public class ApiKey {
     @Column(name = "last_used_at")
     private OffsetDateTime lastUsedAt;
 
+    // Comma-separated scope keys (read,report,write,staff); see ApiKeyScope and V62.
+    @Column(nullable = false, length = 64)
+    private String scopes;
+
     protected ApiKey() {}
 
-    public ApiKey(UUID id, UUID userId, String name, String keyHash, OffsetDateTime expiresAt) {
+    public ApiKey(UUID id, UUID userId, String name, String keyHash, OffsetDateTime expiresAt, String scopes) {
         this.id       = id;
         this.userId   = userId;
         this.name     = name;
         this.keyHash  = keyHash;
         this.expiresAt = expiresAt;
+        this.scopes   = scopes;
     }
 
     public UUID getId()                  { return id; }
@@ -52,6 +57,7 @@ public class ApiKey {
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getExpiresAt() { return expiresAt; }
     public OffsetDateTime getLastUsedAt(){ return lastUsedAt; }
+    public String getScopes()            { return scopes; }
 
     public boolean isExpired() { return OffsetDateTime.now().isAfter(expiresAt); }
 
