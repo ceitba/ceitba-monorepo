@@ -29,7 +29,7 @@ class DigestRendererTest {
         var a = new DigestContent.Article("id\"><script>", "<script>alert(1)</script>", "x & \"y\"",
             null, LocalDate.of(2026, 9, 30), ORG);
         var e = new DigestContent.Event("e1", "<img src=x onerror=alert(1)>", LocalDate.of(2026, 10, 6),
-            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula <101>", ORG);
+            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula <101>", ORG, false);
         var html = render("Hola <i>todos</i>\nsegunda línea", a, e).html();
 
         assertThat(html).doesNotContain("<script>").doesNotContain("<img src=x").doesNotContain("<i>todos");
@@ -60,7 +60,7 @@ class DigestRendererTest {
     void sectionsLinksFooterAndPlainText() {
         var a = new DigestContent.Article("a1", "Título", "Resumen", null, LocalDate.of(2026, 9, 30), null);
         var e = new DigestContent.Event("e1", "Charla", LocalDate.of(2026, 10, 6),
-            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", null);
+            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", null, false);
         var out = render(null, a, e);
         assertThat(out.html()).contains("La semana en ITBA", "Lo que pasó", "Lo que viene",
             "https://ceitba.org.ar/newsletter/articles/a1", "Independiente", "Charla",
@@ -85,6 +85,31 @@ class DigestRendererTest {
         // Only the per-reader parts differ between two readers.
         var other = t.forReader(null, "https://other");
         assertThat(other.html()).doesNotContain("TU CUATRI").contains("https://other");
+    }
+
+    @Test
+    void laterEventsGoUnderNewEventsAndEveryEventLinksToItsPage() {
+        var soon = new DigestContent.Event("e1", "Charla", LocalDate.of(2026, 10, 6),
+            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", null, false);
+        var later = new DigestContent.Event("e 2", "Hackathon", LocalDate.of(2026, 11, 20),
+            LocalTime.of(9, 0), LocalTime.of(18, 0), "SDF", ORG, true);
+        var out = DigestRenderer.template(new DigestRenderer.Input("Asunto", WEEK, null,
+            new DigestContent.Shared(List.of(), List.of(soon, later)), "https://ceitba.org.ar/newsletter"))
+            .forReader(null, UNSUB);
+
+        assertThat(out.html()).contains("https://ceitba.org.ar/newsletter/events/e1", "Ver evento →",
+            "https://ceitba.org.ar/newsletter/events/e%202", "Ver evento e inscribirse →")
+            .doesNotContain(DigestRenderer.NO_EVENTS_NEXT_WEEK);
+        assertThat(out.html().indexOf("Hackathon"))
+            .isGreaterThan(out.html().indexOf(DigestRenderer.NEW_EVENTS))
+            .isGreaterThan(out.html().indexOf("Charla"));
+        assertThat(out.text()).contains("NUEVOS EVENTOS", "https://ceitba.org.ar/newsletter/events/e%202");
+
+        // Only later events: next week is empty, the new ones still show.
+        var onlyLater = DigestRenderer.template(new DigestRenderer.Input("Asunto", WEEK, null,
+            new DigestContent.Shared(List.of(), List.of(later)), "https://ceitba.org.ar/newsletter"))
+            .forReader(null, UNSUB).html();
+        assertThat(onlyLater).contains(DigestRenderer.NO_EVENTS_NEXT_WEEK, DigestRenderer.NEW_EVENTS, "Hackathon");
     }
 
     @Test

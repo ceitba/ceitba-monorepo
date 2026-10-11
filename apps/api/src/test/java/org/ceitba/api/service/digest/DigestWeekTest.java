@@ -23,6 +23,10 @@ class DigestWeekTest {
         assertThat(w.weekEnd()).isEqualTo(LocalDate.of(2026, 10, 4));
         assertThat(w.eventsFrom()).isEqualTo(LocalDate.of(2026, 10, 5));
         assertThat(w.eventsTo()).isEqualTo(LocalDate.of(2026, 10, 11));
+        assertThat(w.announcedFrom()).isEqualTo(java.time.OffsetDateTime.parse("2026-09-28T00:00:00-03:00"));
+        assertThat(w.announcedTo()).isEqualTo(java.time.OffsetDateTime.parse("2026-10-05T00:00:00-03:00"));
+        assertThat(w.isLaterEvent(LocalDate.of(2026, 10, 11))).isFalse();
+        assertThat(w.isLaterEvent(LocalDate.of(2026, 10, 12))).isTrue();
     }
 
     @Test
