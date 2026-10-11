@@ -33,6 +33,10 @@ const _listeners = new Set<(p: UserProfile | null) => void>()
 // lists it again, and all are cleared when the signed-in user changes.
 const _denied = new Set<string>()
 
+// Capabilities switched on for everyone (GET /capabilities), fetched when
+// there's no session so anonymous visitors see those features too.
+let _publicCapabilities: string[] = []
+
 function notify() { _listeners.forEach((fn) => fn(_profile)) }
 
 onCapabilityRequired((capability) => {
@@ -44,7 +48,8 @@ onCapabilityRequired((capability) => {
 })
 
 export function hasCapability(profile: UserProfile | null, key: string): boolean {
-  if (!profile || _denied.has(key)) return false
+  if (!profile) return _publicCapabilities.includes(key)
+  if (_denied.has(key)) return false
   if (profile.role === 'staff') return true
   return profile.capabilities?.includes(key) ?? false
 }
@@ -128,6 +133,7 @@ export async function getSession(opts: { force?: boolean } = {}): Promise<UserPr
       if (_profile?.id !== prevId) _denied.clear()
       // A fresh /me that lists a capability means it was granted (again).
       _profile?.capabilities?.forEach((key) => _denied.delete(key))
+      if (!_profile) _publicCapabilities = await fetchPublicCapabilities()
     } catch {
       _profile = null
     } finally {
@@ -138,6 +144,16 @@ export async function getSession(opts: { force?: boolean } = {}): Promise<UserPr
     return _profile
   })()
   return _hydratePromise
+}
+
+async function fetchPublicCapabilities(): Promise<string[]> {
+  try {
+    const res = await apiRequest('GET', '/capabilities')
+    if (!res.ok) return []
+    return ((await res.json()) as { enabledForAll?: string[] }).enabledForAll ?? []
+  } catch {
+    return []
+  }
 }
 
 export function getCachedSession(): UserProfile | null {
@@ -175,5 +191,6 @@ export async function signOut(): Promise<void> {
   _profile = null
   _hydrated = true
   _denied.clear()
+  _publicCapabilities = await fetchPublicCapabilities()
   notify()
 }
