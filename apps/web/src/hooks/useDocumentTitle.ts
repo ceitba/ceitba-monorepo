@@ -37,3 +37,39 @@ export function useMetaDescription(description: string | null | undefined): void
     }
   }, [description])
 }
+
+// Adds <link rel="canonical"> while the calling component is mounted,
+// restoring the previous href (or removing the tag) on unmount. A null href
+// leaves the page without one, e.g. until the item has loaded.
+export function useCanonical(href: string | null): void {
+  useEffect(() => {
+    if (!href) return
+    let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    const created = !link
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'canonical'
+      document.head.appendChild(link)
+    }
+    const previous = link.href
+    link.href = href
+    return () => {
+      if (created) link.remove()
+      else link.href = previous
+    }
+  }, [href])
+}
+
+// Adds <meta name="robots" content="noindex"> while `active` and mounted. The
+// SPA answers HTTP 200 for any id, so a not-found page would otherwise be
+// indexed as a soft 404.
+export function useNoIndex(active: boolean): void {
+  useEffect(() => {
+    if (!active) return
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex'
+    document.head.appendChild(meta)
+    return () => meta.remove()
+  }, [active])
+}

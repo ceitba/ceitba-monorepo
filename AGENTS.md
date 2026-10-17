@@ -67,7 +67,7 @@ version updates against `dev`.
   `/.well-known/{oauth-protected-resource,oauth-authorization-server,openid-configuration}/mcp` → MCP server,
   `/itbanews*` 301s to `/newsletter`, link-preview crawlers (WhatsApp, Telegram, Slack…) asking for
   `/newsletter/articles/{id}` → the API's Open Graph page (`GET /v1/articles/{id}/preview`),
-  `/sitemap.xml` → the API (`GET /v1/articles/sitemap.xml`: newsletter home + published articles; `robots.txt` is a static file in `apps/web/public`),
+  `/sitemap.xml` → the API (`GET /v1/articles/sitemap.xml`: newsletter home, published articles, the events list + events; `robots.txt` is a static file in `apps/web/public`),
   everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
   (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
 - **Migrations are expand/contract** (zero-downtime deploys): during a deploy the old API jar keeps serving

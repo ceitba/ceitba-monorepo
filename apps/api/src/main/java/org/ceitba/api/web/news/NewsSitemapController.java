@@ -2,8 +2,8 @@ package org.ceitba.api.web.news;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.ceitba.api.service.news.ArticleSitemapService;
-import org.ceitba.api.service.news.ArticleSitemapService.Entry;
+import org.ceitba.api.service.news.NewsSitemapService;
+import org.ceitba.api.service.news.NewsSitemapService.Entry;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,16 +19,16 @@ import java.util.List;
 // SecurityConfig. The literal segment wins over ArticleController's GET /{id}.
 @Tag(name = "Articles")
 @RestController
-public class ArticleSitemapController {
+public class NewsSitemapController {
 
-    private final ArticleSitemapService sitemap;
+    private final NewsSitemapService sitemap;
 
-    public ArticleSitemapController(ArticleSitemapService sitemap) {
+    public NewsSitemapController(NewsSitemapService sitemap) {
         this.sitemap = sitemap;
     }
 
     @GetMapping(value = "/v1/articles/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)
-    @Operation(summary = "sitemap.xml: the newsletter home and every published article")
+    @Operation(summary = "sitemap.xml: the newsletter home, published articles and events")
     public ResponseEntity<String> sitemap() {
         return ResponseEntity.ok()
             .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePublic())

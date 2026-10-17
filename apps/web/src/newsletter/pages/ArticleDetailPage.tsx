@@ -11,7 +11,8 @@ import VoteButtons from '../components/VoteButtons'
 import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate as formatLocalDate } from '../utils/dates'
-import { useDocumentTitle, useMetaDescription } from '@/hooks/useDocumentTitle'
+import { articleDescription } from '../utils/seo'
+import { useCanonical, useDocumentTitle, useMetaDescription, useNoIndex } from '@/hooks/useDocumentTitle'
 import { newsletterPath } from '@/newsletter/paths'
 import type { Article } from '../types'
 
@@ -64,7 +65,9 @@ export default function ArticleDetailPage() {
   // Search engines index the tags set after render. Only once the article has
   // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
   useDocumentTitle(article ? `${article.title} | ITBA News` : null)
-  useMetaDescription(article?.excerpt)
+  useMetaDescription(article ? articleDescription(article) : null)
+  useCanonical(article ? `${window.location.origin}${newsletterPath(`/articles/${article.id}`)}` : null)
+  useNoIndex(status === 'notFound' || status === 'error')
 
   if (status === 'loading') return <LoadingSkeleton />
   if (status === 'notFound' || status === 'error' || !article) {

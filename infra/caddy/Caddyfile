@@ -82,7 +82,7 @@ ceitba.org.ar {
     }
 
     # sitemap.xml for search engines: the SPA can't produce it, so the API
-    # builds it from the published articles (ArticleSitemapController).
+    # builds it from the published articles and events (NewsSitemapController).
     # robots.txt is a static file in the web app.
     handle /sitemap.xml {
         rewrite * /api/v1/articles/sitemap.xml

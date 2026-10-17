@@ -1,6 +1,8 @@
 package org.ceitba.api.web.news;
 
 import org.ceitba.api.domain.news.Article;
+import org.ceitba.api.domain.news.NewsEvent;
+import org.ceitba.api.repository.news.NewsEventRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
 import org.ceitba.api.repository.news.OrganizationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
@@ -20,14 +23,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// /sitemap.xml for Google: Caddy rewrites it to this endpoint.
+// /sitemap.xml for Google: Caddy rewrites it to this endpoint (articles and events).
 @SpringBootTest
 @AutoConfigureMockMvc
-class ArticleSitemapIT {
+class NewsSitemapIT {
 
     @Autowired MockMvc mvc;
     @Autowired ArticleRepository articleRepo;
     @Autowired OrganizationRepository orgRepo;
+    @Autowired NewsEventRepository eventRepo;
 
     @BeforeEach
     void seed() {
@@ -37,6 +41,8 @@ class ArticleSitemapIT {
         pub.setPublishedAt(LocalDate.of(2026, 10, 10));
         pub.setStatus("published");
         articleRepo.save(pub);
+        eventRepo.save(new NewsEvent("sitemap-evt", "Evento", LocalDate.of(2026, 11, 3),
+            LocalTime.of(18, 0), LocalTime.of(20, 0), "Aula 101", "general"));
         for (var status : List.of("draft", "pending_review")) {
             var hidden = new Article("h-" + status, "Hidden", "excerpt", List.of("p"), "tech", List.of("A"));
             hidden.setStatus(status);
@@ -45,7 +51,7 @@ class ArticleSitemapIT {
     }
 
     @Test
-    void listsOnlyPublishedArticlesWithoutASession() throws Exception {
+    void listsPublishedArticlesAndEventsWithoutASession() throws Exception {
         mvc.perform(get("/v1/articles/sitemap.xml"))
             .andExpect(status().isOk())
             // Served by the sitemap handler, not ArticleController's GET /{id}.
@@ -54,6 +60,8 @@ class ArticleSitemapIT {
             .andExpect(content().string(containsString("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">")))
             .andExpect(content().string(containsString("<loc>https://ceitba.org.ar/newsletter</loc>")))
             .andExpect(content().string(containsString("<loc>https://ceitba.org.ar/newsletter/articles/a1</loc><lastmod>")))
+            .andExpect(content().string(containsString("<loc>https://ceitba.org.ar/newsletter/events</loc>")))
+            .andExpect(content().string(containsString("<loc>https://ceitba.org.ar/newsletter/events/sitemap-evt</loc>")))
             .andExpect(content().string(not(containsString("h-draft"))))
             .andExpect(content().string(not(containsString("h-pending_review"))));
     }
