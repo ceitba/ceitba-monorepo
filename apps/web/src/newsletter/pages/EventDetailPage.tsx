@@ -55,7 +55,9 @@ export default function EventDetailPage() {
   useDocumentTitle(event && status === 'success' ? `${event.title} | ITBA News` : null)
   useMetaDescription(event && status === 'success' ? eventDescription(event.description) : null)
   useCanonical(event && status === 'success' ? `${window.location.origin}${eventPath(event.id)}` : null)
-  useNoIndex(status === 'notFound' || status === 'error')
+  // Only a real 404: a transient API error while Googlebot renders must not
+  // deindex an existing page.
+  useNoIndex(status === 'notFound')
 
   if (status === 'loading') {
     return (

@@ -67,7 +67,9 @@ export default function ArticleDetailPage() {
   useDocumentTitle(article ? `${article.title} | ITBA News` : null)
   useMetaDescription(article ? articleDescription(article) : null)
   useCanonical(article ? `${window.location.origin}${newsletterPath(`/articles/${article.id}`)}` : null)
-  useNoIndex(status === 'notFound' || status === 'error')
+  // Only a real 404: a transient API error while Googlebot renders must not
+  // deindex an existing page.
+  useNoIndex(status === 'notFound')
 
   if (status === 'loading') return <LoadingSkeleton />
   if (status === 'notFound' || status === 'error' || !article) {
