@@ -11,6 +11,7 @@ import VoteButtons from '../components/VoteButtons'
 import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate as formatLocalDate } from '../utils/dates'
+import { useDocumentTitle, useMetaDescription } from '@/hooks/useDocumentTitle'
 import { newsletterPath } from '@/newsletter/paths'
 import type { Article } from '../types'
 
@@ -59,6 +60,11 @@ export default function ArticleDetailPage() {
 
     return () => { cancelled = true }
   }, [id, reloadKey])
+
+  // Search engines index the tags set after render. Only once the article has
+  // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
+  useDocumentTitle(article ? `${article.title} | ITBA News` : null)
+  useMetaDescription(article?.excerpt)
 
   if (status === 'loading') return <LoadingSkeleton />
   if (status === 'notFound' || status === 'error' || !article) {
