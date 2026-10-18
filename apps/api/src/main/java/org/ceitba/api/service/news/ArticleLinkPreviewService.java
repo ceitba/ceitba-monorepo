@@ -50,7 +50,8 @@ public class ArticleLinkPreviewService {
             a.getPublishedAt());
     }
 
-    // The excerpt, else the first paragraph without its markdown.
+    // The excerpt, else the first paragraph without its markdown. Keep in sync
+    // with articleDescription in apps/web/src/newsletter/utils/seo.ts.
     private static String description(Article a) {
         String text = a.getExcerpt();
         if (text == null || text.isBlank()) {

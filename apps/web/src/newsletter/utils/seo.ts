@@ -1,4 +1,4 @@
-import { markdownToPlainText } from './articleBody'
+import { bodyToMarkdown, markdownToPlainText } from './articleBody'
 import type { Article } from '../types'
 
 const MAX_DESCRIPTION = 200
@@ -15,11 +15,9 @@ export function truncateDescription(text: string | null | undefined, max = MAX_D
 export function articleDescription(article: Pick<Article, 'excerpt' | 'body'>): string {
   if (article.excerpt?.trim()) return truncateDescription(article.excerpt)
   // The editor saves one Markdown document as a single element, so split on blank lines too.
-  for (const element of article.body ?? []) {
-    for (const paragraph of element.split(/\n\s*\n/)) {
-      const plain = markdownToPlainText(paragraph)
-      if (plain) return truncateDescription(plain)
-    }
+  for (const paragraph of bodyToMarkdown(article.body).split(/\n\s*\n/)) {
+    const plain = markdownToPlainText(paragraph)
+    if (plain) return truncateDescription(plain)
   }
   return ''
 }

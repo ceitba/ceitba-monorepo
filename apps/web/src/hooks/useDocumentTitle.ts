@@ -1,5 +1,11 @@
 import { useEffect } from 'react'
 
+// Titles set by the mounted components, innermost last, and the title from
+// before the first one. Unmount cleanups run parent-first, so restoring a
+// per-hook "previous" would leave the section's title behind after leaving it.
+const titleStack: { title: string }[] = []
+let baseTitle = ''
+
 // Sets the tab title while the calling component is mounted (index.html's
 // "CEITBA" otherwise). Used by the sections to keep their own titles. A null
 // title leaves the title alone, for pages that only know theirs after loading:
@@ -9,15 +15,24 @@ import { useEffect } from 'react'
 export function useDocumentTitle(title: string | null): void {
   useEffect(() => {
     if (title === null) return
-    const previous = document.title
+    const entry = { title }
+    if (titleStack.length === 0) baseTitle = document.title
+    titleStack.push(entry)
     document.title = title
-    return () => { document.title = previous }
+    return () => {
+      const wasTop = titleStack[titleStack.length - 1] === entry
+      titleStack.splice(titleStack.indexOf(entry), 1)
+      // Only touch the title if this one was still showing.
+      if (wasTop || document.title === title) {
+        document.title = titleStack.length ? titleStack[titleStack.length - 1].title : baseTitle
+      }
+    }
   }, [title])
 }
 
 // Sets <meta name="description"> while the calling component is mounted,
-// restoring the previous content on unmount. A null/blank value leaves the
-// existing description (index.html's site-wide one) alone.
+// restoring the previous content on unmount unless something else changed it
+// since. A null/blank value leaves the existing description (index.html's site-wide one) alone.
 export function useMetaDescription(description: string | null | undefined): void {
   useEffect(() => {
     const text = description?.trim()
@@ -33,7 +48,7 @@ export function useMetaDescription(description: string | null | undefined): void
     meta.content = text
     return () => {
       if (created) meta.remove()
-      else meta.content = previous
+      else if (meta.content === text) meta.content = previous
     }
   }, [description])
 }
@@ -51,11 +66,14 @@ export function useCanonical(href: string | null): void {
       link.rel = 'canonical'
       document.head.appendChild(link)
     }
-    const previous = link.href
-    link.href = href
+    const previous = link.getAttribute('href')
+    link.setAttribute('href', href)
     return () => {
       if (created) link.remove()
-      else link.href = previous
+      else if (link.getAttribute('href') === href) {
+        if (previous === null) link.removeAttribute('href')
+        else link.setAttribute('href', previous)
+      }
     }
   }, [href])
 }

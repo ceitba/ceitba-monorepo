@@ -47,3 +47,8 @@ export function orgAreaPath(slug: string, page: '' | 'stats' | 'members' | 'foll
 export function eventPath(id: string): string {
   return newsletterPath(`/events/${encodeURIComponent(id)}`)
 }
+
+// Public page of an article; also its canonical URL and the sitemap's.
+export function articlePath(id: string): string {
+  return newsletterPath(`/articles/${encodeURIComponent(id)}`)
+}

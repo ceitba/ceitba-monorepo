@@ -13,7 +13,7 @@ import { trackEvent } from '../store/analyticsStore'
 import { formatDate as formatLocalDate } from '../utils/dates'
 import { articleDescription } from '../utils/seo'
 import { useCanonical, useDocumentTitle, useMetaDescription, useNoIndex } from '@/hooks/useDocumentTitle'
-import { newsletterPath } from '@/newsletter/paths'
+import { articlePath, newsletterPath } from '@/newsletter/paths'
 import type { Article } from '../types'
 
 const GEO_BG: Record<string, string> = {
@@ -66,7 +66,7 @@ export default function ArticleDetailPage() {
   // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
   useDocumentTitle(article ? `${article.title} | ITBA News` : null)
   useMetaDescription(article ? articleDescription(article) : null)
-  useCanonical(article ? `${window.location.origin}${newsletterPath(`/articles/${article.id}`)}` : null)
+  useCanonical(article ? `${window.location.origin}${articlePath(article.id)}` : null)
   // Only a real 404: a transient API error while Googlebot renders must not
   // deindex an existing page.
   useNoIndex(status === 'notFound')
