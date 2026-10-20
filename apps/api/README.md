@@ -12,7 +12,7 @@ The repo was migrated from NestJS + Prisma in 2026; the migration plan and per-P
 git clone https://github.com/CEITBA/CEITBA-API.git
 cd CEITBA-API
 cp .env.example .env             # edit values, especially AUTH_JWT_SECRET, AUTH_SYNC_API_KEY, MINIO_ROOT_*, STORAGE_*
-docker compose up -d             # postgres + minio (+ one-shot minio-init) + ceitba-api
+docker compose up -d             # postgres + minio (+ one-shot minio-init) + ceitba-api-blue on :8080 (docker-compose.override.yml)
 curl http://localhost:8080/api/actuator/health
 ```
 
@@ -124,15 +124,14 @@ docker compose down -v && docker compose up -d postgres
 
 ## Deployment (VPS)
 
-Pushes to `main` that pass CI deploy via `.github/workflows/main.yml`: it
-copies `docker-compose.yml` to `~/CEITBA-API/` and
-`infra/caddy/{docker-compose.yml,Caddyfile}` to `~/infra/` (never
-`.env`), checks that `~/CEITBA-API/.env` satisfies the compose file, restarts
-Caddy if its Caddyfile changed, then pulls and restarts the API stack. Caddy
-serves `https://ceitba.org.ar`, proxies `/api/*` to the API and
-`/ceitba-media/*` to MinIO over the `ceitba-proxy` network. The API (8080),
-Postgres (5432) and the MinIO console (9001) are published on `127.0.0.1`
-only.
+Pushes to `main` that pass CI deploy via `.github/workflows/deploy.yml` (`api-deploy`): it
+copies `docker-compose.yml` and `infra/scripts/deploy-api.sh` to `~/CEITBA-API/` and
+`infra/caddy/{docker-compose.yml,Caddyfile}` to `~/infra/` (never `.env`), checks that
+`~/CEITBA-API/.env` satisfies the compose file, reloads Caddy (no restart), then runs
+`deploy-api.sh`: a blue/green switch with no downtime (the new color must be healthy before the old
+one stops; [`docs/DEPLOY.md`](docs/DEPLOY.md)). Caddy serves `https://ceitba.org.ar`, proxies `/api/*`
+to the healthy API color and `/ceitba-media/*` to MinIO over the `ceitba-proxy` network. Postgres
+(5432) and the MinIO console (9001) are published on `127.0.0.1` only; the API has no host port.
 
 ### VPS migration for MinIO (one time)
 

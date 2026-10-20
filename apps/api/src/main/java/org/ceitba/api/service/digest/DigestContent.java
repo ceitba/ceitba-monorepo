@@ -15,8 +15,9 @@ public final class DigestContent {
     public record Article(String id, String title, String excerpt, String coverImage,
                           LocalDate publishedAt, Org organization) {}
 
+    // signup: people can sign up (RSVP or an external form).
     public record Event(String id, String title, LocalDate eventDate, LocalTime startTime,
-                        LocalTime endTime, String location, Org organization) {}
+                        LocalTime endTime, String location, Org organization, boolean signup) {}
 
     // Every candidate of the week, before staff exclusions.
     public record Candidates(DigestWeek week, List<Article> articles, List<Event> events) {}

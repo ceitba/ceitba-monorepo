@@ -84,11 +84,26 @@ server:
   servlet:
     context-path: /api
 
+# Before the graceful shutdown, keep serving this long while
+# /actuator/health/readiness already answers 503, so Caddy moves traffic to
+# the other blue/green color first (config/ShutdownDrain, docs/DEPLOY.md).
+# docker-compose.yml sets 5s.
+shutdown:
+  drain: ${SHUTDOWN_DRAIN:PT0S}
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      # /actuator/health/liveness and /readiness. Caddy routes on readiness
+      # (docs/DEPLOY.md): it turns 503 once shutdown starts, and unlike the
+      # aggregate it doesn't include db or diskSpace, whose failure would take
+      # every color out of rotation at once.
+      probes:
+        enabled: true
   health:
     # Boot's mail health check would open an SMTP connection (and log in) on
     # every /actuator/health hit; a Gmail hiccup must not mark the API down.

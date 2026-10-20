@@ -18,18 +18,22 @@ public class EventReminderJob {
     private static final Logger log = LoggerFactory.getLogger(EventReminderJob.class);
 
     private final EventReminderService reminders;
+    private final JobLock jobLock;
 
-    public EventReminderJob(EventReminderService reminders) {
+    public EventReminderJob(EventReminderService reminders, JobLock jobLock) {
         this.reminders = reminders;
+        this.jobLock = jobLock;
     }
 
     @Scheduled(cron = "0 0 18-23 * * *", zone = "America/Argentina/Buenos_Aires")
     public void run() {
-        try {
-            int sent = reminders.sendDueReminders();
-            if (sent > 0) log.info("Event reminders sent for {} event(s)", sent);
-        } catch (RuntimeException e) {
-            log.warn("Event reminders failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.EVENT_REMINDERS, () -> {
+            try {
+                int sent = reminders.sendDueReminders();
+                if (sent > 0) log.info("Event reminders sent for {} event(s)", sent);
+            } catch (RuntimeException e) {
+                log.warn("Event reminders failed: {}", e.getMessage());
+            }
+        });
     }
 }

@@ -19,24 +19,28 @@ public class KbRelationJob {
 
     private final KbRelationService relations;
     private final KbRunRetentionService retention;
+    private final JobLock jobLock;
 
-    public KbRelationJob(KbRelationService relations, KbRunRetentionService retention) {
+    public KbRelationJob(KbRelationService relations, KbRunRetentionService retention, JobLock jobLock) {
         this.relations = relations;
         this.retention = retention;
+        this.jobLock = jobLock;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     @Scheduled(cron = "0 30 4 * * *")
     public void run() {
-        try {
-            log.info("KB subject relations refreshed: {} prerequisite pairs", relations.refresh());
-        } catch (RuntimeException e) {
-            log.warn("KB subject relation refresh failed: {}", e.getMessage());
-        }
-        try {
-            retention.purgeExpired();
-        } catch (RuntimeException e) {
-            log.warn("KB run retention failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.KB_RELATIONS, () -> {
+            try {
+                log.info("KB subject relations refreshed: {} prerequisite pairs", relations.refresh());
+            } catch (RuntimeException e) {
+                log.warn("KB subject relation refresh failed: {}", e.getMessage());
+            }
+            try {
+                retention.purgeExpired();
+            } catch (RuntimeException e) {
+                log.warn("KB run retention failed: {}", e.getMessage());
+            }
+        });
     }
 }

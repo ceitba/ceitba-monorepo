@@ -2,7 +2,8 @@
 
 Every Monday CEITBA emails its followers one digest of the whole newsletter:
 everything published last week (every organization, plus independent
-articles) and every event of the coming week. That content is the same for
+articles), every event of the coming week and the later events announced
+last week. That content is the same for
 every recipient; below it each reader gets a short personal block,
 "Tu cuatrimestre" (their subjects, wiki links and schedule corrections to
 confirm). Staff review, edit and send it from the ItbaNews admin area.
@@ -46,7 +47,12 @@ week's Monday, unique). Status: `draft` → `sending` → `sent`, or `draft` /
   `[week_start, week_start + 6]`, from every organization and org-less
   (independent) ones.
 - Events with `event_date` in `[week_start + 7, week_start + 13]` (the week
-  after the covered one), with or without an organization.
+  after the covered one), with or without an organization, under "Lo que
+  viene".
+- Events created during the covered week (`created_at` in `[week_start
+  00:00, week_start + 7 00:00)` ART) that happen after that, whatever their
+  date, under "Nuevos eventos", so organizations get sign-ups ahead of time.
+  Every event links to its page (`/events/{id}`).
 - Minus whatever staff excluded. Sending an issue with nothing left is
   refused with `409 DIGEST_EMPTY`.
 
@@ -378,7 +384,7 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 
 ## Retention
 
-A nightly job (03:40 ART, `MailRetentionJob`, off with `DIGEST_JOBS_ENABLED=
+A nightly job (03:40 ART, `MailRetentionJob`, one process at a time via `JobLock` (`DEPLOY.md`), off with `DIGEST_JOBS_ENABLED=
 false`) keeps the bookkeeping bounded:
 
 - `mail_tracking_event` rows older than `MAIL_RETENTION_TRACKING` (180 days)
@@ -508,8 +514,8 @@ There are no google-api-client libraries: plain `RestClient`.
    redirect URI stays as is.
 5. **Secrets on the VPS `.env`**: `MAIL_TOKEN_ENCRYPTION_KEY=$(openssl rand
    -base64 32)`, `GOOGLE_MAIL_REDIRECT_URI`, `MAIL_ENABLED=true`
-   (`MAIL_TRANSPORT` defaults to `gmail-api`); `docker compose up -d
-   ceitba-api`.
+   (`MAIL_TRANSPORT` defaults to `gmail-api`); then redeploy
+   (`cd ~/CEITBA-API && bash deploy-api.sh`, `DEPLOY.md`).
 6. **Who clicks "Conectar".** A STAFF member who can sign in as
    `ceitba@itba.edu.ar` (they will pick that Google account on the consent
    screen; any other account is refused with `wrong_account`). Then use

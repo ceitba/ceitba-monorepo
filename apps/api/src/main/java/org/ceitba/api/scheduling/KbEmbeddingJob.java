@@ -18,17 +18,21 @@ public class KbEmbeddingJob {
     private static final Logger log = LoggerFactory.getLogger(KbEmbeddingJob.class);
 
     private final KbEmbeddingService embeddings;
+    private final JobLock jobLock;
 
-    public KbEmbeddingJob(KbEmbeddingService embeddings) {
+    public KbEmbeddingJob(KbEmbeddingService embeddings, JobLock jobLock) {
         this.embeddings = embeddings;
+        this.jobLock = jobLock;
     }
 
     @Scheduled(fixedDelayString = "${kb.embeddings.interval:PT5M}", initialDelayString = "PT1M")
     public void run() {
-        try {
-            embeddings.embedPending();
-        } catch (RuntimeException e) {
-            log.warn("KB embedding sweep failed: {}", e.getMessage());
-        }
+        jobLock.runExclusively(JobLock.Job.KB_EMBEDDINGS, () -> {
+            try {
+                embeddings.embedPending();
+            } catch (RuntimeException e) {
+                log.warn("KB embedding sweep failed: {}", e.getMessage());
+            }
+        });
     }
 }

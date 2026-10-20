@@ -83,7 +83,8 @@ describe("OAuthStore.sweep", () => {
     s.sweep(t0);
     expect(s.getClient("idle")).toBeUndefined();
     expect(s.getClient("unused")).toBeDefined(); // still within its day
-    s.sweep(t0 + day + 1);
+    // saveClient stamps its own now(), which can be a few ms after t0.
+    s.sweep(t0 + day + 1_000);
     expect(s.getClient("unused")).toBeUndefined();
     expect(s.getClient("signed-in")).toBeDefined(); // its grant expired, but it was used recently
     s.close();

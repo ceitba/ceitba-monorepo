@@ -247,7 +247,7 @@ Apple / Google reviewers get an email + password login instead of Google Sign-In
 
    `$2a$`, `$2b$` and `$2y$` hashes are all accepted. The hash is exactly 60 characters. **zsh pitfall:** because the command prints no final newline, zsh shows a highlighted `%` right after the hash; it is not part of the hash, do not copy it.
 
-2. Set on the server's `.env`, then `docker compose up -d ceitba-api`:
+2. Set on the server's `.env`, then redeploy (`cd ~/CEITBA-API && bash deploy-api.sh`, see `DEPLOY.md`):
 
    ```bash
    REVIEW_LOGIN_EMAIL=appreview@example.com

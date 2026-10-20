@@ -17,21 +17,25 @@ public class DataSyncJob {
     private static final Logger log = LoggerFactory.getLogger(DataSyncJob.class);
 
     private final DataSyncService dataSyncService;
+    private final JobLock jobLock;
 
-    public DataSyncJob(DataSyncService dataSyncService) {
+    public DataSyncJob(DataSyncService dataSyncService, JobLock jobLock) {
         this.dataSyncService = dataSyncService;
+        this.jobLock = jobLock;
     }
 
     @Scheduled(cron = "0 0 0,12 * * *")
     public void run() {
-        try {
-            var result = dataSyncService.syncAll(null);
-            log.info("Scheduled sync done: subjects={}/{}/{} plans={}/{}/{} commissions={}/{}/{}",
-                result.subjects().getCreated(), result.subjects().getUpdated(), result.subjects().getErrors(),
-                result.subjectPlans().getCreated(), result.subjectPlans().getUpdated(), result.subjectPlans().getErrors(),
-                result.commissions().getCreated(), result.commissions().getUpdated(), result.commissions().getErrors());
-        } catch (Exception e) {
-            log.error("Scheduled sync failed", e);
-        }
+        jobLock.runExclusively(JobLock.Job.DATA_SYNC, () -> {
+            try {
+                var result = dataSyncService.syncAll(null);
+                log.info("Scheduled sync done: subjects={}/{}/{} plans={}/{}/{} commissions={}/{}/{}",
+                    result.subjects().getCreated(), result.subjects().getUpdated(), result.subjects().getErrors(),
+                    result.subjectPlans().getCreated(), result.subjectPlans().getUpdated(), result.subjectPlans().getErrors(),
+                    result.commissions().getCreated(), result.commissions().getUpdated(), result.commissions().getErrors());
+            } catch (Exception e) {
+                log.error("Scheduled sync failed", e);
+            }
+        });
     }
 }

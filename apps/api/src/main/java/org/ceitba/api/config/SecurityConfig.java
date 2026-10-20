@@ -163,7 +163,7 @@ public class SecurityConfig {
                 reg
                 .requestMatchers(HttpMethod.GET,
                     "/", "/health",
-                    "/actuator/health", "/actuator/info",
+                    "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness", "/actuator/info",
                     "/docs", "/docs/**", "/docs.json", "/docs.json/**", "/v3/api-docs/**", "/swagger-ui/**",
                     "/v1/careers/**",
                     "/v1/subjects/**",
@@ -187,7 +187,9 @@ public class SecurityConfig {
                     // Public read of share-session by token; writes are JWT-gated.
                     "/v1/share/sessions/*",
                     // Mobile app release control (min version / maintenance).
-                    "/v1/app/config"
+                    "/v1/app/config",
+                    // Capabilities enabled for everyone (anonymous home page).
+                    "/v1/capabilities"
                 ).permitAll()
                 // POST /v1/classrooms/conflicts is a read-style query (no writes); public.
                 .requestMatchers(HttpMethod.POST, "/v1/classrooms/conflicts").permitAll()

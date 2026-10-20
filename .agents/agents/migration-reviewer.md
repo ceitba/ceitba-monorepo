@@ -21,10 +21,13 @@ Check:
    or backfill, a table rewrite or long lock on a large table, a destructive `DROP` without a data plan, a missing
    index for a new foreign key or query path, and non-idempotent data fixes that would break on re-run in another
    environment.
-5. Schemas: tables live in the right schema (`public` vs `wiki`) and are schema-qualified for `wiki`.
-6. Entity agreement: every changed entity in `domain/` matches the DDL (names, types, nullability, lengths),
+5. Expand/contract (`apps/api/docs/DEPLOY.md`): the previous release keeps serving against the new schema during
+   a deploy. Flag as `blocker` a `DROP`/`RENAME` of a table or column, `NOT NULL` on an existing column or a type
+   change that code on `origin/main` still uses; it must wait for a release where nothing deployed reads it.
+6. Schemas: tables live in the right schema (`public` vs `wiki`) and are schema-qualified for `wiki`.
+7. Entity agreement: every changed entity in `domain/` matches the DDL (names, types, nullability, lengths),
    `text[]` maps to `String[]`, composite keys use `@IdClass`; nothing sets `hibernate.jdbc.time_zone`.
-7. Tests: an IT exercises the new columns or tables.
+8. Tests: an IT exercises the new columns or tables.
 
 Report, most severe first, one line per finding: `[blocker|major|minor] path:line: check N: what is wrong → fix`.
 End with `Verdict: pass` or `Verdict: changes requested`. Report only concrete problems in the diff.

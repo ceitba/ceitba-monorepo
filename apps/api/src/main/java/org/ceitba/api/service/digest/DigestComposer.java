@@ -3,6 +3,7 @@ package org.ceitba.api.service.digest;
 import org.ceitba.api.config.DigestProperties;
 import org.ceitba.api.domain.User;
 import org.ceitba.api.domain.digest.DigestIssue;
+import org.ceitba.api.domain.news.NewsEvent;
 import org.ceitba.api.domain.news.Organization;
 import org.ceitba.api.repository.UserRepository;
 import org.ceitba.api.repository.news.ArticleRepository;
@@ -91,9 +92,11 @@ public class DigestComposer {
             .map(x -> new DigestContent.Article(x.getId(), x.getTitle(), x.getExcerpt(), x.getCoverImage(),
                 x.getPublishedAt(), org(x.getOrganization())))
             .toList();
-        var e = events.findBetween(week.eventsFrom(), week.eventsTo()).stream()
+        var e = events.findDigestCandidates(week.eventsFrom(), week.eventsTo(),
+                week.announcedFrom(), week.announcedTo()).stream()
             .map(x -> new DigestContent.Event(x.getId(), x.getTitle(), x.getEventDate(), x.getStartTime(),
-                x.getEndTime(), x.getLocation(), org(x.getOrganization())))
+                x.getEndTime(), x.getLocation(), org(x.getOrganization()),
+                !NewsEvent.SIGNUP_NONE.equals(x.getSignupMode())))
             .toList();
         return new DigestContent.Candidates(week, a, e);
     }

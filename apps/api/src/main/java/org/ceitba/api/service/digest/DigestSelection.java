@@ -4,8 +4,9 @@ import java.util.Collection;
 import java.util.Set;
 
 // The issue's content is the same for every recipient (docs/WEEKLY-DIGEST.md):
-// every published article of the covered week and every event of the next
-// week, from all organizations and org-less ones, minus staff exclusions.
+// every published article of the covered week, every event of the next week
+// and the later ones announced in the covered week, from all organizations
+// and org-less ones, minus staff exclusions.
 public final class DigestSelection {
 
     private DigestSelection() {}

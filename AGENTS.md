@@ -63,11 +63,18 @@ version updates against `dev`.
 - **Auth**: the web app authenticates against the API with an **HttpOnly session cookie** (the API-issued JWT);
   JS never reads or writes tokens and every fetch uses `credentials: 'include'`. Details in `apps/web/AGENTS.md`;
   the mobile app uses the token endpoints in `apps/api/docs/AUTH-SETUP.md`.
-- **Hosting**: Caddy serves `/api/*` → API, `/ceitba-media/*` → MinIO, `/mcp`, `/mcp/*` and
+- **Hosting**: Caddy serves `/api/*` → the healthy API color (blue/green, `apps/api/docs/DEPLOY.md`), `/ceitba-media/*` → MinIO, `/mcp`, `/mcp/*` and
   `/.well-known/{oauth-protected-resource,oauth-authorization-server,openid-configuration}/mcp` → MCP server,
-  `/itbanews*` 301s to `/newsletter`,
+  `/itbanews*` 301s to `/newsletter`, link-preview crawlers (WhatsApp, Telegram, Slack…) asking for
+  `/newsletter/articles/{id}` → the API's Open Graph page (`GET /v1/articles/{id}/preview`),
   everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
   (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
+- **Migrations are expand/contract** (zero-downtime deploys): during a deploy the old API jar keeps serving
+  against the schema the new one just migrated. Additive changes (new tables, nullable or defaulted columns,
+  indexes) ship with the code that uses them; `DROP`, `RENAME`, `NOT NULL` on existing columns and type changes
+  ship one release later, once no deployed code uses the old shape. Details in `apps/api/docs/DEPLOY.md`.
+- **Scheduled jobs run in one process at a time**: wrap every new `@Scheduled` method in
+  `JobLock.runExclusively` with a new, never-reused id (`apps/api/docs/DEPLOY.md` "Scheduled jobs").
 - **Secrets** never enter the repo: `.env`/`.env.local` stay local, `.env.example` gets placeholders only.
   `.gitleaks.toml` is the scanner config; rotate a leaked secret rather than allowlisting it.
 

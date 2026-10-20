@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { getCachedSession, getSession, hasCapability, subscribe } from '../store/authStore'
 
 // Whether the signed-in user has a feature capability (from GET /auth/me;
-// STAFF has all of them). False while logged out, and false once the API
-// answered 403 CAPABILITY_REQUIRED for it. `loading` is true until the first
-// /me resolves, so callers can avoid flashing gated UI.
+// STAFF has all of them). Logged out, true only for capabilities enabled for
+// everyone; false once the API answered 403 CAPABILITY_REQUIRED for it.
+// `loading` is true until the first /me resolves, so callers can avoid
+// flashing gated UI.
 export function useCapability(key: string): { enabled: boolean; loading: boolean } {
   const [enabled, setEnabled] = useState(() => hasCapability(getCachedSession(), key))
   const [loading, setLoading] = useState(() => getCachedSession() == null)

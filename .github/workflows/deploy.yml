@@ -224,8 +224,9 @@ jobs:
       # Sync the compose files and the Caddyfile on every deploy so the VPS
       # never drifts from the repo. Only these explicit files are copied:
       # never .env (secrets live only on the VPS).
-      #   ~/infra/docker-compose.yml, ~/infra/Caddyfile (bind-mounted read-only
-      #   at /etc/caddy/Caddyfile in ceitba-caddy), ~/CEITBA-API/docker-compose.yml.
+      #   ~/infra/docker-compose.yml, ~/infra/Caddyfile (~/infra is bind-mounted
+      #   read-only at /etc/caddy in ceitba-caddy), ~/CEITBA-API/docker-compose.yml
+      #   and ~/CEITBA-API/deploy-api.sh (blue/green, apps/api/docs/DEPLOY.md).
       - name: Copy infra config to VPS
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
@@ -236,13 +237,13 @@ jobs:
           target: "~/infra/"
           strip_components: 2
 
-      - name: Copy API compose to VPS
+      - name: Copy API compose and deploy script to VPS
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "apps/api/docker-compose.yml"
+          source: "apps/api/docker-compose.yml,infra/scripts/deploy-api.sh"
           target: "~/CEITBA-API/"
           strip_components: 2
 
@@ -265,22 +266,24 @@ jobs:
             # Bring up infra (Caddy) first — creates the ceitba-proxy network
             cd ~/infra
             docker compose up -d
-            # The Caddyfile is a single-file bind mount. scp replaces the file
-            # (new inode), which the running container does not see, so a
-            # `caddy reload` would reload the old config. When it changed,
-            # validate the new file in a throwaway container, then restart
-            # Caddy (a second or two of downtime) to re-bind the mount.
-            if ! docker exec ceitba-caddy cat /etc/caddy/Caddyfile | cmp -s - Caddyfile; then
-              docker compose run --rm --no-deps -T caddy \
-                caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-              docker compose restart caddy
-            fi
+            # ~/infra is mounted as a directory, so Caddy sees the new
+            # Caddyfile. `caddy reload` swaps the config without dropping
+            # connections; an invalid file is refused (the job fails) and the
+            # running config stays. It is a no-op when nothing changed. Retried
+            # because a just-recreated Caddy may not listen on its admin port yet.
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              docker exec ceitba-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile && break
+              [ "$i" = 10 ] && exit 1
+              sleep 2
+            done
 
-            # Deploy API — joins ceitba-proxy so Caddy can reach it. minio-init
-            # (re)creates the bucket and service user before the API starts.
+            # Deploy the API without downtime: start the idle color (blue or
+            # green), wait until it is healthy, then stop the other one. It
+            # also brings up postgres, MinIO (+ minio-init) and the embeddings
+            # service, as `docker compose up -d` did. Fails, leaving the old
+            # color serving, if the new one never gets healthy.
             cd ~/CEITBA-API
-            docker compose pull ceitba-api
-            docker compose up -d
+            bash deploy-api.sh
             docker image prune -f
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

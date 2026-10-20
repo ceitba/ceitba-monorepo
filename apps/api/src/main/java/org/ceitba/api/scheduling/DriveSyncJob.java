@@ -7,12 +7,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 // Periodic Drive sync (docs/DRIVE-SYNC.md). Off unless drive-sync.enabled.
 // Fixed delay (DRIVE_SYNC_INTERVAL, ISO-8601) between the end of one run and
-// the start of the next; each run stops at DRIVE_SYNC_RUN_BUDGET. The guard
-// keeps a run from overlapping another (e.g. a manual invocation).
+// the start of the next; each run stops at DRIVE_SYNC_RUN_BUDGET. JobLock keeps
+// a run from overlapping another one, in this process or another.
 @Component
 @ConditionalOnProperty(name = "drive-sync.enabled", havingValue = "true")
 public class DriveSyncJob {
@@ -20,24 +18,21 @@ public class DriveSyncJob {
     private static final Logger log = LoggerFactory.getLogger(DriveSyncJob.class);
 
     private final DriveSyncService driveSync;
-    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final JobLock jobLock;
 
-    public DriveSyncJob(DriveSyncService driveSync) {
+    public DriveSyncJob(DriveSyncService driveSync, JobLock jobLock) {
         this.driveSync = driveSync;
+        this.jobLock = jobLock;
     }
 
     @Scheduled(initialDelayString = "PT1M", fixedDelayString = "${drive-sync.interval:PT30M}")
     public void run() {
-        if (!running.compareAndSet(false, true)) {
-            log.info("Drive sync still running; skipping this tick");
-            return;
-        }
-        try {
-            driveSync.runAll();
-        } catch (Exception e) {
-            log.error("Scheduled Drive sync failed", e);
-        } finally {
-            running.set(false);
-        }
+        jobLock.runExclusively(JobLock.Job.DRIVE_SYNC, () -> {
+            try {
+                driveSync.runAll();
+            } catch (Exception e) {
+                log.error("Scheduled Drive sync failed", e);
+            }
+        });
     }
 }

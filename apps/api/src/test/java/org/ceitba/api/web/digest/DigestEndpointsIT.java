@@ -231,6 +231,34 @@ class DigestEndpointsIT {
     }
 
     @Test
+    void eventsAnnouncedInTheWeekJoinTheIssueWhateverTheirDate() throws Exception {
+        var ceitba = orgs.findById("ceitba").orElseThrow();
+        // Created during 28/9..4/10 (ART), dated after the next week: in.
+        announcedEvent("e-announced", ceitba, LocalDate.of(2026, 11, 20), "2026-09-28T00:00:00-03:00");
+        // Created the following Monday at 00:00 ART: next issue's.
+        announcedEvent("e-next-issue", ceitba, LocalDate.of(2026, 11, 21), "2026-10-05T00:00:00-03:00");
+        // Announced in the week but already over by the send: out.
+        announcedEvent("e-over", ceitba, LocalDate.of(2026, 10, 2), "2026-09-30T12:00:00-03:00");
+
+        String id = create();
+        mvc.perform(get("/v1/digests/" + id).with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.events.length()").value(3))
+            .andExpect(jsonPath("$.events[0].id").value("e-ceitba"))
+            .andExpect(jsonPath("$.events[1].id").value("e-general"))
+            .andExpect(jsonPath("$.events[2].id").value("e-announced"));
+        mvc.perform(get("/v1/digests/" + id + "/preview").with(staff()))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("Nuevos eventos")))
+            .andExpect(content().string(containsString("/newsletter/events/e-announced")));
+    }
+
+    void announcedEvent(String id, Organization org, LocalDate date, String createdAt) {
+        event(id, org, date);
+        jdbc.update("UPDATE public.news_events SET created_at = ?::timestamptz WHERE id = ?", createdAt, id);
+    }
+
+    @Test
     void sendingAnEmptyIssueIsRefused() throws Exception {
         String id = create();
         mvc.perform(patch("/v1/digests/" + id).with(staff()).contentType(MediaType.APPLICATION_JSON).content("""

@@ -1,3 +1,193 @@
+# The API, shared by its two colors below (blue/green, docs/DEPLOY.md).
+x-api: &api
+  image: ghcr.io/ceitba/ceitba-api:latest
+  build:
+    context: .
+    dockerfile: infrastructure/docker/Dockerfile
+  # Graceful shutdown (server.shutdown=graceful): a deploy lets the digest
+  # email in flight finish; Docker's default 10s would SIGKILL it first.
+  stop_grace_period: 90s
+  # No container_name and no published port: two colors run side by side
+  # during a deploy, and Caddy reaches them by service name over the
+  # ceitba-proxy network. Local dev publishes 127.0.0.1:8080 for blue in
+  # docker-compose.override.yml (never copied to the VPS).
+  environment:
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+    # On stop, refuse traffic on /actuator/health/readiness and keep serving
+    # this long before the graceful shutdown: more than Caddy's
+    # health_interval + health_timeout (2s + 2s), so traffic has moved to the
+    # other color first (config/ShutdownDrain).
+    SHUTDOWN_DRAIN: ${SHUTDOWN_DRAIN:-PT5S}
+    DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ceitba_db}
+    POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceitba_password}
+    ITBA_API_BASE_URL: ${ITBA_API_BASE_URL:-}
+    ITBA_API_TOKEN: ${ITBA_API_TOKEN:-}
+    ITBA_API_TIMEOUT: ${ITBA_API_TIMEOUT:-30000}
+    ITBA_API_USE_FAKE: ${ITBA_API_USE_FAKE:-false}
+    ITBA_API_FAKE_FROM_DB: ${ITBA_API_FAKE_FROM_DB:-false}
+    AUTH_ALLOWED_DOMAINS: ${AUTH_ALLOWED_DOMAINS:-itba.edu.ar}
+    AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:-}
+    AUTH_SYNC_API_KEY: ${AUTH_SYNC_API_KEY:-}
+    AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env (openssl rand -base64 32)}
+    AUTH_JWT_TTL_DAYS: ${AUTH_JWT_TTL_DAYS:-7}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-ceitba_session}
+    AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}
+    AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+    AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-Lax}
+    AUTH_COOKIE_PATH: ${AUTH_COOKIE_PATH:-/}
+    CONTENT_HMAC_SECRET: ${CONTENT_HMAC_SECRET:-}
+    AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-https://ceitba.org.ar/api}
+    AUTH_JWT_ENFORCE_ISS_AUD: ${AUTH_JWT_ENFORCE_ISS_AUD:-true}
+    AUTH_MOBILE_ACCESS_TTL: ${AUTH_MOBILE_ACCESS_TTL:-15m}
+    AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-60d}
+    AUTH_REFRESH_REUSE_GRACE: ${AUTH_REFRESH_REUSE_GRACE:-60s}
+    AUTH_GOOGLE_MOBILE_AUDIENCES: ${AUTH_GOOGLE_MOBILE_AUDIENCES:-}
+    # Store review account; both empty = review login disabled (404).
+    REVIEW_LOGIN_EMAIL: ${REVIEW_LOGIN_EMAIL:-}
+    REVIEW_LOGIN_PASSWORD_HASH: ${REVIEW_LOGIN_PASSWORD_HASH:-}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+    FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    SYNC_ENABLED: ${SYNC_ENABLED:-true}
+    MOBILE_MIN_VERSION: ${MOBILE_MIN_VERSION:-0.0.0}
+    MOBILE_LATEST_VERSION: ${MOBILE_LATEST_VERSION:-0.0.0}
+    MOBILE_MAINTENANCE: ${MOBILE_MAINTENANCE:-false}
+    FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+    FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH:-}
+    RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+    RATE_LIMIT_TRUST_FORWARDED_FOR: ${RATE_LIMIT_TRUST_FORWARDED_FOR:-true}
+    RATE_LIMIT_AUTH_CAPACITY: ${RATE_LIMIT_AUTH_CAPACITY:-20}
+    RATE_LIMIT_AUTH_PERIOD: ${RATE_LIMIT_AUTH_PERIOD:-1m}
+    RATE_LIMIT_MOBILE_LOGIN_CAPACITY: ${RATE_LIMIT_MOBILE_LOGIN_CAPACITY:-120}
+    RATE_LIMIT_MOBILE_LOGIN_PERIOD: ${RATE_LIMIT_MOBILE_LOGIN_PERIOD:-1m}
+    RATE_LIMIT_REFRESH_CAPACITY: ${RATE_LIMIT_REFRESH_CAPACITY:-120}
+    RATE_LIMIT_REFRESH_PERIOD: ${RATE_LIMIT_REFRESH_PERIOD:-1m}
+    RATE_LIMIT_REVIEW_LOGIN_CAPACITY: ${RATE_LIMIT_REVIEW_LOGIN_CAPACITY:-10}
+    RATE_LIMIT_REVIEW_LOGIN_PERIOD: ${RATE_LIMIT_REVIEW_LOGIN_PERIOD:-1m}
+    RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:-30}
+    RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD:-1h}
+    RATE_LIMIT_PROPOSALS_CAPACITY: ${RATE_LIMIT_PROPOSALS_CAPACITY:-10}
+    RATE_LIMIT_PROPOSALS_PERIOD: ${RATE_LIMIT_PROPOSALS_PERIOD:-1h}
+    RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY: ${RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY:-30}
+    RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD: ${RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD:-10m}
+    # Object storage: MinIO above, reached through Caddy (docs/OBJECT-STORAGE.md).
+    # R2_* are fallbacks from before the move to MinIO.
+    STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-${R2_ENDPOINT:-}}
+    STORAGE_REGION: ${STORAGE_REGION:-${R2_REGION:-us-east-1}}
+    STORAGE_BUCKET: ${STORAGE_BUCKET:-${R2_BUCKET:-ceitba-media}}
+    STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-${R2_ACCESS_KEY_ID:-}}
+    STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${R2_SECRET_ACCESS_KEY:-}}
+    STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${R2_PUBLIC_URL:-}}
+    STORAGE_PRESIGN_TTL: ${STORAGE_PRESIGN_TTL:-${R2_PRESIGN_TTL:-10m}}
+    # The API's own reads/writes (Drive sync) go straight to MinIO, not
+    # through Caddy's upload-sized body limit.
+    STORAGE_INTERNAL_ENDPOINT: ${STORAGE_INTERNAL_ENDPOINT:-http://minio:9000}
+    # Drive sync / Apuntes (docs/DRIVE-SYNC.md). No key = feature off (503).
+    DRIVE_SYNC_ENABLED: ${DRIVE_SYNC_ENABLED:-false}
+    DRIVE_SYNC_INTERVAL: ${DRIVE_SYNC_INTERVAL:-PT30M}
+    DRIVE_SYNC_RUN_BUDGET: ${DRIVE_SYNC_RUN_BUDGET:-PT10M}
+    DRIVE_SYNC_SERVICE_ACCOUNT_JSON: ${DRIVE_SYNC_SERVICE_ACCOUNT_JSON:-}
+    DRIVE_SYNC_MAX_FILE_BYTES: ${DRIVE_SYNC_MAX_FILE_BYTES:-52428800}
+    DRIVE_SYNC_SOURCE_BUDGET: ${DRIVE_SYNC_SOURCE_BUDGET:-PT3M}
+    DRIVE_SYNC_REFERENCE_ABOVE_BYTES: ${DRIVE_SYNC_REFERENCE_ABOVE_BYTES:-20971520}
+    DRIVE_SYNC_MAX_ITEMS_PER_SOURCE: ${DRIVE_SYNC_MAX_ITEMS_PER_SOURCE:-20000}
+    DRIVE_SYNC_MAX_DEPTH: ${DRIVE_SYNC_MAX_DEPTH:-30}
+    DRIVE_SYNC_COMMUNITY_ENABLED: ${DRIVE_SYNC_COMMUNITY_ENABLED:-true}
+    DRIVE_SYNC_COMMUNITY_ONLY_CODES: ${DRIVE_SYNC_COMMUNITY_ONLY_CODES:-}
+    # Subject wikis: pages whose newest source is older than this are "stale".
+    KB_STALE_YEARS: ${KB_STALE_YEARS:-3}
+    # Subject wiki pipeline (docs/SUBJECT-WIKI-PIPELINE.md, SUBJECT-WIKI-ADMIN.md).
+    # No KB_LLM_API_KEY = dry runs only (503 KB_LLM_UNCONFIGURED); the weekly
+    # run stays off until KB_PIPELINE_ENABLED=true (or the runtime settings).
+    KB_LLM_API_KEY: ${KB_LLM_API_KEY:-}
+    KB_LLM_BASE_URL: ${KB_LLM_BASE_URL:-https://inference.do-ai.run}
+    KB_LLM_USE_FAKE: ${KB_LLM_USE_FAKE:-false}
+    KB_EXECUTION_MODE: ${KB_EXECUTION_MODE:-auto}
+    KB_SYNC_CONCURRENCY: ${KB_SYNC_CONCURRENCY:-16}
+    KB_LLM_REQUEST_TIMEOUT: ${KB_LLM_REQUEST_TIMEOUT:-PT5M}
+    # Wiki page embeddings (docs/SUBJECT-WIKI.md "Embeddings"): the self-hosted
+    # ceitba-embeddings service below. The fake falls back to the LLM one here (an
+    # empty env var would not fall through Spring's default).
+    KB_EMBEDDINGS_ENABLED: ${KB_EMBEDDINGS_ENABLED:-true}
+    KB_EMBEDDING_BASE_URL: ${KB_EMBEDDING_BASE_URL:-http://ceitba-embeddings:8080/v1}
+    KB_EMBEDDING_API_KEY: ${KB_EMBEDDING_API_KEY:-}
+    KB_EMBEDDING_MODEL: ${KB_EMBEDDING_MODEL:-embeddinggemma-2}
+    KB_EMBEDDING_USE_FAKE: ${KB_EMBEDDING_USE_FAKE:-${KB_LLM_USE_FAKE:-false}}
+    KB_EMBEDDING_INTERVAL: ${KB_EMBEDDING_INTERVAL:-PT5M}
+    # Optional override of the key that encrypts custom LLM endpoint tokens (default: derived from AUTH_JWT_SECRET).
+    KB_SECRETS_KEY: ${KB_SECRETS_KEY:-}
+    DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+    KB_PIPELINE_ENABLED: ${KB_PIPELINE_ENABLED:-false}
+    KB_PIPELINE_CRON: ${KB_PIPELINE_CRON:-0 0 3 * * SUN}
+    KB_POLL_INTERVAL: ${KB_POLL_INTERVAL:-PT10M}
+    KB_BATCH_POLL_INTERVAL: ${KB_BATCH_POLL_INTERVAL:-PT1M}
+    KB_MODEL_DIGEST: ${KB_MODEL_DIGEST:-glm-5.3-flash}
+    KB_MODEL_PLAN: ${KB_MODEL_PLAN:-glm-5.3}
+    KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
+    KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
+    KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
+    KB_RUN_TOKEN_BUDGET_MAX: ${KB_RUN_TOKEN_BUDGET_MAX:-50000000}
+    KB_RUN_MAX_REQUESTS_PER_STAGE: ${KB_RUN_MAX_REQUESTS_PER_STAGE:-5000}
+    KB_BATCH_MAX_REQUESTS: ${KB_BATCH_MAX_REQUESTS:-5000}
+    # Email + weekly digest (docs/WEEKLY-DIGEST.md). MAIL_ENABLED=false = sending refused.
+    MAIL_ENABLED: ${MAIL_ENABLED:-false}
+    MAIL_LOG_SENDS: ${MAIL_LOG_SENDS:-false}
+    MAIL_TRANSPORT: ${MAIL_TRANSPORT:-gmail-api}
+    # "Conectar cuenta de envío" (Gmail OAuth): without the key the connect
+    # endpoint answers 501; the redirect URI must be registered on the Google client.
+    MAIL_TOKEN_ENCRYPTION_KEY: ${MAIL_TOKEN_ENCRYPTION_KEY:-}
+    GOOGLE_MAIL_REDIRECT_URI: ${GOOGLE_MAIL_REDIRECT_URI:-http://localhost:8080/api/v1/mail/accounts/oauth/callback}
+    MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+    MAIL_PORT: ${MAIL_PORT:-587}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_FROM: ${MAIL_FROM:-CEITBA <ceitba@itba.edu.ar>}
+    DIGEST_PUBLIC_BASE_URL: ${DIGEST_PUBLIC_BASE_URL:-https://ceitba.org.ar/newsletter}
+    DIGEST_API_BASE_URL: ${DIGEST_API_BASE_URL:-https://ceitba.org.ar/api}
+    DIGEST_ALLOWED_DOMAINS: ${DIGEST_ALLOWED_DOMAINS:-itba.edu.ar}
+    # Sending quota (all emails); DIGEST_DAILY_LIMIT is the older name.
+    MAIL_DAILY_LIMIT: ${MAIL_DAILY_LIMIT:-${DIGEST_DAILY_LIMIT:-1500}}
+    MAIL_BACKOFF_INITIAL: ${MAIL_BACKOFF_INITIAL:-PT5M}
+    MAIL_BACKOFF_MAX: ${MAIL_BACKOFF_MAX:-PT1H}
+    MAIL_QUOTA_PAUSE: ${MAIL_QUOTA_PAUSE:-PT24H}
+    DIGEST_TRACKING_ENABLED: ${DIGEST_TRACKING_ENABLED:-true}
+    MAIL_RETENTION_SEND_LOG: ${MAIL_RETENTION_SEND_LOG:-P30D}
+    MAIL_RETENTION_TRACKING: ${MAIL_RETENTION_TRACKING:-P180D}
+    DIGEST_SEND_INTERVAL: ${DIGEST_SEND_INTERVAL:-PT1S}
+    DIGEST_TICK_INTERVAL: ${DIGEST_TICK_INTERVAL:-PT5M}
+    DIGEST_JOBS_ENABLED: ${DIGEST_JOBS_ENABLED:-true}
+    RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:-60}
+    RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:-1m}
+    # Heap = 75% of the container limit (~1.5 GB of 2G; the JVM default of
+    # 25% gave ~256 MB). A real OOM exits so restart: unless-stopped brings
+    # the API back instead of leaving it half-broken.
+    JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+  networks:
+    - ceitba-network
+    - ceitba-proxy
+  depends_on:
+    postgres:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+  restart: unless-stopped
+  deploy:
+    resources:
+      limits:
+        memory: 2G
+      reservations:
+        memory: 1G
+  # infra/scripts/deploy-api.sh waits for "healthy" before switching colors:
+  # a short interval keeps that wait close to the real boot time.
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health || exit 1"]
+    interval: 5s
+    timeout: 5s
+    retries: 3
+    start_period: 180s
+
 services:
   postgres:
     # pgvector for the wiki embeddings (V61). Debian-based: the move from
@@ -194,188 +384,16 @@ services:
       retries: 3
       start_period: 30s
 
-  ceitba-api:
-    image: ghcr.io/ceitba/ceitba-api:latest
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile
-    container_name: ceitba-api
-    # Graceful shutdown (server.shutdown=graceful): a deploy lets the digest
-    # email in flight finish; Docker's default 10s would SIGKILL it first.
-    stop_grace_period: 90s
-    # Loopback only: Caddy reaches the API over the ceitba-proxy network. A
-    # public port would let clients skip Caddy and forge X-Forwarded-For.
-    ports:
-      - "127.0.0.1:8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ceitba_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceitba_password}
-      ITBA_API_BASE_URL: ${ITBA_API_BASE_URL:-}
-      ITBA_API_TOKEN: ${ITBA_API_TOKEN:-}
-      ITBA_API_TIMEOUT: ${ITBA_API_TIMEOUT:-30000}
-      ITBA_API_USE_FAKE: ${ITBA_API_USE_FAKE:-false}
-      ITBA_API_FAKE_FROM_DB: ${ITBA_API_FAKE_FROM_DB:-false}
-      AUTH_ALLOWED_DOMAINS: ${AUTH_ALLOWED_DOMAINS:-itba.edu.ar}
-      AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:-}
-      AUTH_SYNC_API_KEY: ${AUTH_SYNC_API_KEY:-}
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env (openssl rand -base64 32)}
-      AUTH_JWT_TTL_DAYS: ${AUTH_JWT_TTL_DAYS:-7}
-      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-ceitba_session}
-      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}
-      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
-      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-Lax}
-      AUTH_COOKIE_PATH: ${AUTH_COOKIE_PATH:-/}
-      CONTENT_HMAC_SECRET: ${CONTENT_HMAC_SECRET:-}
-      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-https://ceitba.org.ar/api}
-      AUTH_JWT_ENFORCE_ISS_AUD: ${AUTH_JWT_ENFORCE_ISS_AUD:-true}
-      AUTH_MOBILE_ACCESS_TTL: ${AUTH_MOBILE_ACCESS_TTL:-15m}
-      AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-60d}
-      AUTH_REFRESH_REUSE_GRACE: ${AUTH_REFRESH_REUSE_GRACE:-60s}
-      AUTH_GOOGLE_MOBILE_AUDIENCES: ${AUTH_GOOGLE_MOBILE_AUDIENCES:-}
-      # Store review account; both empty = review login disabled (404).
-      REVIEW_LOGIN_EMAIL: ${REVIEW_LOGIN_EMAIL:-}
-      REVIEW_LOGIN_PASSWORD_HASH: ${REVIEW_LOGIN_PASSWORD_HASH:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      SYNC_ENABLED: ${SYNC_ENABLED:-true}
-      MOBILE_MIN_VERSION: ${MOBILE_MIN_VERSION:-0.0.0}
-      MOBILE_LATEST_VERSION: ${MOBILE_LATEST_VERSION:-0.0.0}
-      MOBILE_MAINTENANCE: ${MOBILE_MAINTENANCE:-false}
-      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
-      FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH:-}
-      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
-      RATE_LIMIT_TRUST_FORWARDED_FOR: ${RATE_LIMIT_TRUST_FORWARDED_FOR:-true}
-      RATE_LIMIT_AUTH_CAPACITY: ${RATE_LIMIT_AUTH_CAPACITY:-20}
-      RATE_LIMIT_AUTH_PERIOD: ${RATE_LIMIT_AUTH_PERIOD:-1m}
-      RATE_LIMIT_MOBILE_LOGIN_CAPACITY: ${RATE_LIMIT_MOBILE_LOGIN_CAPACITY:-120}
-      RATE_LIMIT_MOBILE_LOGIN_PERIOD: ${RATE_LIMIT_MOBILE_LOGIN_PERIOD:-1m}
-      RATE_LIMIT_REFRESH_CAPACITY: ${RATE_LIMIT_REFRESH_CAPACITY:-120}
-      RATE_LIMIT_REFRESH_PERIOD: ${RATE_LIMIT_REFRESH_PERIOD:-1m}
-      RATE_LIMIT_REVIEW_LOGIN_CAPACITY: ${RATE_LIMIT_REVIEW_LOGIN_CAPACITY:-10}
-      RATE_LIMIT_REVIEW_LOGIN_PERIOD: ${RATE_LIMIT_REVIEW_LOGIN_PERIOD:-1m}
-      RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY:-30}
-      RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD: ${RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD:-1h}
-      RATE_LIMIT_PROPOSALS_CAPACITY: ${RATE_LIMIT_PROPOSALS_CAPACITY:-10}
-      RATE_LIMIT_PROPOSALS_PERIOD: ${RATE_LIMIT_PROPOSALS_PERIOD:-1h}
-      RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY: ${RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY:-30}
-      RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD: ${RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD:-10m}
-      # Object storage: MinIO above, reached through Caddy (docs/OBJECT-STORAGE.md).
-      # R2_* are fallbacks from before the move to MinIO.
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-${R2_ENDPOINT:-}}
-      STORAGE_REGION: ${STORAGE_REGION:-${R2_REGION:-us-east-1}}
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-${R2_BUCKET:-ceitba-media}}
-      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-${R2_ACCESS_KEY_ID:-}}
-      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${R2_SECRET_ACCESS_KEY:-}}
-      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${R2_PUBLIC_URL:-}}
-      STORAGE_PRESIGN_TTL: ${STORAGE_PRESIGN_TTL:-${R2_PRESIGN_TTL:-10m}}
-      # The API's own reads/writes (Drive sync) go straight to MinIO, not
-      # through Caddy's upload-sized body limit.
-      STORAGE_INTERNAL_ENDPOINT: ${STORAGE_INTERNAL_ENDPOINT:-http://minio:9000}
-      # Drive sync / Apuntes (docs/DRIVE-SYNC.md). No key = feature off (503).
-      DRIVE_SYNC_ENABLED: ${DRIVE_SYNC_ENABLED:-false}
-      DRIVE_SYNC_INTERVAL: ${DRIVE_SYNC_INTERVAL:-PT30M}
-      DRIVE_SYNC_RUN_BUDGET: ${DRIVE_SYNC_RUN_BUDGET:-PT10M}
-      DRIVE_SYNC_SERVICE_ACCOUNT_JSON: ${DRIVE_SYNC_SERVICE_ACCOUNT_JSON:-}
-      DRIVE_SYNC_MAX_FILE_BYTES: ${DRIVE_SYNC_MAX_FILE_BYTES:-52428800}
-      DRIVE_SYNC_SOURCE_BUDGET: ${DRIVE_SYNC_SOURCE_BUDGET:-PT3M}
-      DRIVE_SYNC_REFERENCE_ABOVE_BYTES: ${DRIVE_SYNC_REFERENCE_ABOVE_BYTES:-20971520}
-      DRIVE_SYNC_MAX_ITEMS_PER_SOURCE: ${DRIVE_SYNC_MAX_ITEMS_PER_SOURCE:-20000}
-      DRIVE_SYNC_MAX_DEPTH: ${DRIVE_SYNC_MAX_DEPTH:-30}
-      DRIVE_SYNC_COMMUNITY_ENABLED: ${DRIVE_SYNC_COMMUNITY_ENABLED:-true}
-      DRIVE_SYNC_COMMUNITY_ONLY_CODES: ${DRIVE_SYNC_COMMUNITY_ONLY_CODES:-}
-      # Subject wikis: pages whose newest source is older than this are "stale".
-      KB_STALE_YEARS: ${KB_STALE_YEARS:-3}
-      # Subject wiki pipeline (docs/SUBJECT-WIKI-PIPELINE.md, SUBJECT-WIKI-ADMIN.md).
-      # No KB_LLM_API_KEY = dry runs only (503 KB_LLM_UNCONFIGURED); the weekly
-      # run stays off until KB_PIPELINE_ENABLED=true (or the runtime settings).
-      KB_LLM_API_KEY: ${KB_LLM_API_KEY:-}
-      KB_LLM_BASE_URL: ${KB_LLM_BASE_URL:-https://inference.do-ai.run}
-      KB_LLM_USE_FAKE: ${KB_LLM_USE_FAKE:-false}
-      KB_EXECUTION_MODE: ${KB_EXECUTION_MODE:-auto}
-      KB_SYNC_CONCURRENCY: ${KB_SYNC_CONCURRENCY:-16}
-      KB_LLM_REQUEST_TIMEOUT: ${KB_LLM_REQUEST_TIMEOUT:-PT5M}
-      # Wiki page embeddings (docs/SUBJECT-WIKI.md "Embeddings"): the self-hosted
-      # ceitba-embeddings service below. The fake falls back to the LLM one here (an
-      # empty env var would not fall through Spring's default).
-      KB_EMBEDDINGS_ENABLED: ${KB_EMBEDDINGS_ENABLED:-true}
-      KB_EMBEDDING_BASE_URL: ${KB_EMBEDDING_BASE_URL:-http://ceitba-embeddings:8080/v1}
-      KB_EMBEDDING_API_KEY: ${KB_EMBEDDING_API_KEY:-}
-      KB_EMBEDDING_MODEL: ${KB_EMBEDDING_MODEL:-embeddinggemma-2}
-      KB_EMBEDDING_USE_FAKE: ${KB_EMBEDDING_USE_FAKE:-${KB_LLM_USE_FAKE:-false}}
-      KB_EMBEDDING_INTERVAL: ${KB_EMBEDDING_INTERVAL:-PT5M}
-      # Optional override of the key that encrypts custom LLM endpoint tokens (default: derived from AUTH_JWT_SECRET).
-      KB_SECRETS_KEY: ${KB_SECRETS_KEY:-}
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
-      KB_PIPELINE_ENABLED: ${KB_PIPELINE_ENABLED:-false}
-      KB_PIPELINE_CRON: ${KB_PIPELINE_CRON:-0 0 3 * * SUN}
-      KB_POLL_INTERVAL: ${KB_POLL_INTERVAL:-PT10M}
-      KB_BATCH_POLL_INTERVAL: ${KB_BATCH_POLL_INTERVAL:-PT1M}
-      KB_MODEL_DIGEST: ${KB_MODEL_DIGEST:-glm-5.3-flash}
-      KB_MODEL_PLAN: ${KB_MODEL_PLAN:-glm-5.3}
-      KB_MODEL_WRITE: ${KB_MODEL_WRITE:-glm-5.3}
-      KB_MODEL_RETRY: ${KB_MODEL_RETRY:-}
-      KB_RUN_TOKEN_BUDGET: ${KB_RUN_TOKEN_BUDGET:-3000000}
-      KB_RUN_TOKEN_BUDGET_MAX: ${KB_RUN_TOKEN_BUDGET_MAX:-50000000}
-      KB_RUN_MAX_REQUESTS_PER_STAGE: ${KB_RUN_MAX_REQUESTS_PER_STAGE:-5000}
-      KB_BATCH_MAX_REQUESTS: ${KB_BATCH_MAX_REQUESTS:-5000}
-      # Email + weekly digest (docs/WEEKLY-DIGEST.md). MAIL_ENABLED=false = sending refused.
-      MAIL_ENABLED: ${MAIL_ENABLED:-false}
-      MAIL_LOG_SENDS: ${MAIL_LOG_SENDS:-false}
-      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-gmail-api}
-      # "Conectar cuenta de envío" (Gmail OAuth): without the key the connect
-      # endpoint answers 501; the redirect URI must be registered on the Google client.
-      MAIL_TOKEN_ENCRYPTION_KEY: ${MAIL_TOKEN_ENCRYPTION_KEY:-}
-      GOOGLE_MAIL_REDIRECT_URI: ${GOOGLE_MAIL_REDIRECT_URI:-http://localhost:8080/api/v1/mail/accounts/oauth/callback}
-      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM: ${MAIL_FROM:-CEITBA <ceitba@itba.edu.ar>}
-      DIGEST_PUBLIC_BASE_URL: ${DIGEST_PUBLIC_BASE_URL:-https://ceitba.org.ar/newsletter}
-      DIGEST_API_BASE_URL: ${DIGEST_API_BASE_URL:-https://ceitba.org.ar/api}
-      DIGEST_ALLOWED_DOMAINS: ${DIGEST_ALLOWED_DOMAINS:-itba.edu.ar}
-      # Sending quota (all emails); DIGEST_DAILY_LIMIT is the older name.
-      MAIL_DAILY_LIMIT: ${MAIL_DAILY_LIMIT:-${DIGEST_DAILY_LIMIT:-1500}}
-      MAIL_BACKOFF_INITIAL: ${MAIL_BACKOFF_INITIAL:-PT5M}
-      MAIL_BACKOFF_MAX: ${MAIL_BACKOFF_MAX:-PT1H}
-      MAIL_QUOTA_PAUSE: ${MAIL_QUOTA_PAUSE:-PT24H}
-      DIGEST_TRACKING_ENABLED: ${DIGEST_TRACKING_ENABLED:-true}
-      MAIL_RETENTION_SEND_LOG: ${MAIL_RETENTION_SEND_LOG:-P30D}
-      MAIL_RETENTION_TRACKING: ${MAIL_RETENTION_TRACKING:-P180D}
-      DIGEST_SEND_INTERVAL: ${DIGEST_SEND_INTERVAL:-PT1S}
-      DIGEST_TICK_INTERVAL: ${DIGEST_TICK_INTERVAL:-PT5M}
-      DIGEST_JOBS_ENABLED: ${DIGEST_JOBS_ENABLED:-true}
-      RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:-60}
-      RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:-1m}
-      # Heap = 75% of the container limit (~1.5 GB of 2G; the JVM default of
-      # 25% gave ~256 MB). A real OOM exits so restart: unless-stopped brings
-      # the API back instead of leaving it half-broken.
-      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
-    networks:
-      - ceitba-network
-      - ceitba-proxy
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+  # Blue/green: a deploy (infra/scripts/deploy-api.sh) starts the idle color,
+  # waits until it is healthy, then stops the other one. Caddy health-checks
+  # both and only sends traffic to a healthy one, so the API never goes down
+  # while Spring boots and Flyway migrates. While both run, every @Scheduled
+  # job takes a Postgres advisory lock (JobLock) so it runs once.
+  ceitba-api-blue:
+    <<: *api
+
+  ceitba-api-green:
+    <<: *api
 
 volumes:
   postgres_data:
