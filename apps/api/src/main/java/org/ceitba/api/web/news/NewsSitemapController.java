@@ -27,7 +27,7 @@ public class NewsSitemapController {
         this.sitemap = sitemap;
     }
 
-    @GetMapping(value = "/v1/articles/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)
+    @GetMapping("/v1/articles/sitemap.xml")
     @Operation(summary = "sitemap.xml: the newsletter home, published articles and events")
     public ResponseEntity<String> sitemap() {
         return ResponseEntity.ok()

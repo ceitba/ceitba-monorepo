@@ -7,7 +7,6 @@ import org.ceitba.api.repository.news.ArticleRepository.SitemapRow;
 import org.ceitba.api.repository.news.NewsEventRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -46,6 +45,9 @@ public class NewsSitemapService {
         this.articles = articles;
         this.events = events;
         this.clock = clock;
+        // The host comes from DIGEST_PUBLIC_BASE_URL and must match the site origin:
+        // robots.txt hardcodes https://ceitba.org.ar/sitemap.xml and the SPA's
+        // canonicals use window.location.origin.
         this.newsletterUrl = digest.publicBaseUrl();
     }
 
@@ -75,8 +77,19 @@ public class NewsSitemapService {
         return List.copyOf(entries);
     }
 
+    // JS encodeURIComponent, which the SPA's canonical uses: everything but
+    // A-Z a-z 0-9 - _ . ! ~ * ' ( ) is UTF-8 percent-encoded (UriUtils would
+    // leave pchars like + : @ & = alone).
     private static String segment(String id) {
-        return UriUtils.encodePathSegment(id, StandardCharsets.UTF_8);
+        var sb = new StringBuilder();
+        for (byte b : id.getBytes(StandardCharsets.UTF_8)) {
+            char c = (char) (b & 0xFF);
+            boolean plain = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                || "-_.!~*'()".indexOf(c) >= 0;
+            if (plain) sb.append(c);
+            else sb.append('%').append(String.format("%02X", b & 0xFF));
+        }
+        return sb.toString();
     }
 
     private static LocalDate lastModified(SitemapRow a) {

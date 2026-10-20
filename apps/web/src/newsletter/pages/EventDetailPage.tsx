@@ -53,7 +53,7 @@ export default function EventDetailPage() {
   // Search engines index the tags set after render; only once the event has
   // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
   useDocumentTitle(event && status === 'success' ? `${event.title} | ITBA News` : null)
-  useMetaDescription(event && status === 'success' ? eventDescription(event.description) : null)
+  useMetaDescription(event && status === 'success' ? eventDescription(event, i18n.language) : null)
   useCanonical(event && status === 'success' ? `${window.location.origin}${eventPath(event.id)}` : null)
   // Only a real 404: a transient API error while Googlebot renders must not
   // deindex an existing page.

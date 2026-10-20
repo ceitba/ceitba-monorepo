@@ -7,4 +7,7 @@ Disallow: /auth/
 Disallow: /newsletter/unsubscribe
 Disallow: /newsletter/correction
 Disallow: /dev-login
+Disallow: /apuntes/mis-apuntes
+Disallow: /app/
+Disallow: /newsletter/contribute
 Sitemap: https://ceitba.org.ar/sitemap.xml

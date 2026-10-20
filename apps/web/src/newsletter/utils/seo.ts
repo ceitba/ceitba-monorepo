@@ -1,5 +1,6 @@
 import { bodyToMarkdown, markdownToPlainText } from './articleBody'
-import type { Article } from '../types'
+import { formatDate } from './dates'
+import type { Article, NewsEvent } from '../types'
 
 const MAX_DESCRIPTION = 200
 
@@ -22,7 +23,13 @@ export function articleDescription(article: Pick<Article, 'excerpt' | 'body'>): 
   return ''
 }
 
-// <meta name="description"> of an event: its description as plain text.
-export function eventDescription(description: string | null | undefined): string {
-  return truncateDescription(markdownToPlainText(description))
+// <meta name="description"> of an event: its description as plain text, else
+// "title · date · location" so events without one don't all share the site's.
+export function eventDescription(
+  event: Pick<NewsEvent, 'title' | 'description' | 'eventDate' | 'location'>,
+  lang: string | null | undefined,
+): string {
+  const text = truncateDescription(markdownToPlainText(event.description))
+  if (text) return text
+  return [event.title, formatDate(event.eventDate, lang), event.location?.trim()].filter(Boolean).join(' · ')
 }

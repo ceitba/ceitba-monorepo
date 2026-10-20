@@ -1,10 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
-// Titles set by the mounted components, innermost last, and the title from
-// before the first one. Unmount cleanups run parent-first, so restoring a
-// per-hook "previous" would leave the section's title behind after leaving it.
-const titleStack: { title: string }[] = []
+// One entry per mounted hook instance, in the order they first got a title
+// (so a detail page, which only knows its title after loading, sits above the
+// section that mounted it), and the title from before the first one. Entries
+// are updated in place when their title changes, never re-pushed, so an outer
+// title changing while an inner one is mounted can't jump above it. Unmount
+// cleanups run parent-first, so restoring a per-hook "previous" would leave the
+// section's title behind after leaving it.
+type TitleEntry = { title: string | null }
+const titleStack: TitleEntry[] = []
 let baseTitle = ''
+
+// document.title = the innermost active (non-null) entry, else the original.
+function applyTitle(): void {
+  for (let i = titleStack.length - 1; i >= 0; i--) {
+    const title = titleStack[i].title
+    if (title !== null) {
+      document.title = title
+      return
+    }
+  }
+  document.title = baseTitle
+}
 
 // Sets the tab title while the calling component is mounted (index.html's
 // "CEITBA" otherwise). Used by the sections to keep their own titles. A null
@@ -13,21 +30,22 @@ let baseTitle = ''
 // mount would be overwritten by the section's; one that sets it after its data
 // arrives (a later render) always wins.
 export function useDocumentTitle(title: string | null): void {
+  const entry = useRef<TitleEntry>({ title: null }).current
+  // Leaving: drop the entry (also between StrictMode's simulated unmount and
+  // remount; the effect below then registers it again).
+  useEffect(() => () => {
+    const i = titleStack.indexOf(entry)
+    if (i >= 0) titleStack.splice(i, 1)
+    applyTitle()
+  }, [entry])
   useEffect(() => {
-    if (title === null) return
-    const entry = { title }
-    if (titleStack.length === 0) baseTitle = document.title
-    titleStack.push(entry)
-    document.title = title
-    return () => {
-      const wasTop = titleStack[titleStack.length - 1] === entry
-      titleStack.splice(titleStack.indexOf(entry), 1)
-      // Only touch the title if this one was still showing.
-      if (wasTop || document.title === title) {
-        document.title = titleStack.length ? titleStack[titleStack.length - 1].title : baseTitle
-      }
+    entry.title = title
+    if (title !== null && !titleStack.includes(entry)) {
+      if (titleStack.length === 0) baseTitle = document.title
+      titleStack.push(entry)
     }
-  }, [title])
+    applyTitle()
+  }, [entry, title])
 }
 
 // Sets <meta name="description"> while the calling component is mounted,
