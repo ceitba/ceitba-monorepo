@@ -11,6 +11,8 @@ import { cancelRsvp, fetchEventById, fetchMyRsvps, rsvpEvent } from '../api/even
 import { fetchOrganizationBySlug } from '../api/organizations'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate, todayISO } from '../utils/dates'
+import { eventDescription } from '../utils/seo'
+import { useCanonical, useDocumentTitle, useMetaDescription, useNoIndex } from '@/hooks/useDocumentTitle'
 import { eventPath, newsletterPath } from '@/newsletter/paths'
 import type { NewsEvent, Organization } from '../types'
 
@@ -47,6 +49,15 @@ export default function EventDetailPage() {
       })
     return () => { cancelled = true }
   }, [id, reloadKey])
+
+  // Search engines index the tags set after render; only once the event has
+  // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
+  useDocumentTitle(event && status === 'success' ? `${event.title} | ITBA News` : null)
+  useMetaDescription(event && status === 'success' ? eventDescription(event, i18n.language) : null)
+  useCanonical(event && status === 'success' ? `${window.location.origin}${eventPath(event.id)}` : null)
+  // Only a real 404: a transient API error while Googlebot renders must not
+  // deindex an existing page.
+  useNoIndex(status === 'notFound')
 
   if (status === 'loading') {
     return (

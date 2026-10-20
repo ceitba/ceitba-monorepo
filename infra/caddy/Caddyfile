@@ -81,6 +81,16 @@ ceitba.org.ar {
         }
     }
 
+    # sitemap.xml for search engines: the SPA can't produce it, so the API
+    # builds it from the published articles and events (NewsSitemapController).
+    # robots.txt is a static file in the web app.
+    handle /sitemap.xml {
+        rewrite * /api/v1/articles/sitemap.xml
+        reverse_proxy {
+            import api_upstreams
+        }
+    }
+
     # The newsletter's canonical path is /newsletter (served by the web app
     # below, like /scheduler). /itbanews is kept as a permanent redirect for
     # old links.

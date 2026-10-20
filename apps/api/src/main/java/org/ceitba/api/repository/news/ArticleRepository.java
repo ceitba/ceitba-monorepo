@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -73,4 +74,16 @@ public interface ArticleRepository extends JpaRepository<Article, String> {
         ORDER BY a.publishedAt DESC, a.createdAt DESC, a.id ASC
         """)
     List<Article> findPublishedBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    // What /sitemap.xml needs of a published article, without its body.
+    record SitemapRow(String id, OffsetDateTime updatedAt, LocalDate publishedAt) {}
+
+    // The anonymous list's set, i.e. findFiltered(null, null, "published", null).
+    @Query("""
+        SELECT new org.ceitba.api.repository.news.ArticleRepository$SitemapRow(a.id, a.updatedAt, a.publishedAt)
+        FROM Article a
+        WHERE a.status = 'published'
+        ORDER BY a.createdAt DESC, a.id DESC
+        """)
+    List<SitemapRow> findPublishedForSitemap(Pageable pageable);
 }
