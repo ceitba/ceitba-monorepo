@@ -47,7 +47,13 @@ included) updates the mapped doc in the same PR, or the PR states "No spec impac
 
 ## CI
 
-`.github/workflows/ci.yml` runs on PRs and `dev` pushes; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
+`main` merges go through GitHub's **merge queue** (ruleset "PRs & conventional commits"): "Merge when ready" queues an
+approved PR, the queue runs `ci.yml` on the PR merged with the latest `main` (the API tests run there when the API
+changed) and merges it with a merge commit only if the single required check, `ci-ok`, passes. `ci-ok` passes when
+every `ci.yml` job passed or was skipped, so path-filtered jobs never block by not reporting; a new `ci.yml` job
+must be added to its `needs`.
+
+`.github/workflows/ci.yml` runs on PRs, the merge queue and `dev` pushes; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
 to run only what a change touches (`packages/**`, the root `package.json`/`bun.lock` and `.github/spa-apps.json`
 count for web and MCP). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
 `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
