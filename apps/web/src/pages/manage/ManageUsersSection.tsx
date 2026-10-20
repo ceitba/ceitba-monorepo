@@ -259,7 +259,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           {t('manage.users.addingBanner', { org: addingTo.name })}
         </Alert>
       )}
-      {addingTo && <PendingOrgInvites org={addingTo} tick={invitesTick} />}
+      {addingTo && <PendingOrgInvites key={addingTo.slug} org={addingTo} tick={invitesTick} />}
 
       <ToggleGroup<Scope>
         joined
@@ -446,8 +446,9 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
                             </Button>
                           }
                         />
-                      ) : addingTo && EMAIL.test(q) ? (
-                        // Nobody signed in with that email yet: invite it.
+                      ) : addingTo && scope === 'all' && !orgSlug && EMAIL.test(q) ? (
+                        // Nobody signed in with that email yet: invite it. Only
+                        // unfiltered: a filter may just be hiding an existing user.
                         <EmptyState
                           compact
                           title={t('manage.users.invites.notFound', { email: q })}

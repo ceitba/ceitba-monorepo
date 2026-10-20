@@ -9,7 +9,10 @@ import {
   type OrgInvite,
 } from '../../api/admin'
 import { ApiError } from '../../api/client'
-import { Alert, Badge, Button, CloseIcon, Field, IconButton, Modal, selectClass, textareaClass, toast } from '../../components/ui'
+import {
+  Alert, Badge, Button, CloseIcon, ConfirmDialog, ErrorState, Field, IconButton, LoadingRegion, Modal, Skeleton,
+  selectClass, textareaClass, toast,
+} from '../../components/ui'
 import { adminErrorMessage } from './adminErrors'
 
 // What POST .../members/invites takes at once (OrganizationMembershipService).
@@ -21,36 +24,62 @@ function parseEmails(raw: string): string[] {
 }
 
 // The org's pending invites (people who haven't signed in yet), each
-// revocable. Renders nothing while there are none. `tick` refetches.
+// revocable. Renders nothing once loaded with none. `tick` refetches. Key it
+// by org slug so switching orgs never shows (or revokes) the previous one's.
 export function PendingOrgInvites({ org, tick }: { org: OrganizationSummary; tick: number }) {
   const { t } = useTranslation()
-  const [invites, setInvites] = useState<OrgInvite[]>([])
-  const [revoking, setRevoking] = useState<string | null>(null)
+  const [invites, setInvites] = useState<OrgInvite[] | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [retry, setRetry] = useState(0)
+  const [revoking, setRevoking] = useState<OrgInvite | null>(null)
+  const [revokeBusy, setRevokeBusy] = useState(false)
+  const [revokeError, setRevokeError] = useState('')
 
   useEffect(() => {
     let active = true
     fetchOrgInvites(org.slug)
-      .then((list) => { if (active) setInvites(list) })
-      .catch((e) => { if (active) toast.error(adminErrorMessage(e, t)) })
+      .then((list) => { if (active) { setInvites(list); setLoadError('') } })
+      .catch((e) => { if (active) setLoadError(adminErrorMessage(e, t)) })
     return () => { active = false }
-  }, [org.slug, tick, t])
+  }, [org.slug, tick, retry, t])
 
-  async function revoke(email: string) {
-    setRevoking(email)
+  async function revoke(invite: OrgInvite) {
+    setRevokeBusy(true)
+    setRevokeError('')
     try {
-      await revokeOrgInvite(org.slug, email)
-      setInvites((list) => list.filter((i) => i.email !== email))
-      toast.success(t('manage.users.invites.revoked', { email, org: org.name }))
-    } catch (e) {
-      toast.error(adminErrorMessage(e, t))
-    } finally {
+      await revokeOrgInvite(org.slug, invite.email)
+      setInvites((list) => list && list.filter((i) => i.email !== invite.email))
       setRevoking(null)
+      toast.success(t('manage.users.invites.revoked', { email: invite.email, org: org.name }))
+    } catch (e) {
+      setRevokeError(adminErrorMessage(e, t))
+    } finally {
+      setRevokeBusy(false)
     }
   }
 
+  if (loadError) {
+    return (
+      <ErrorState
+        compact
+        title={t('manage.users.invites.loadFailed', { org: org.name })}
+        message={loadError}
+        onRetry={() => { setLoadError(''); setRetry((n) => n + 1) }}
+      />
+    )
+  }
+  if (!invites) {
+    return (
+      <LoadingRegion className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 flex flex-col gap-2">
+        <Skeleton className="h-3 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
+      </LoadingRegion>
+    )
+  }
   if (invites.length === 0) return null
 
   return (
+    <>
     <section
       aria-labelledby="org-pending-invites"
       className="rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface px-4 py-3"
@@ -70,8 +99,7 @@ export function PendingOrgInvites({ org, tick }: { org: OrganizationSummary; tic
             </Badge>
             <IconButton
               size="sm"
-              disabled={revoking === i.email}
-              onClick={() => revoke(i.email)}
+              onClick={() => { setRevokeError(''); setRevoking(i) }}
               aria-label={t('manage.users.invites.revokeAria', { email: i.email, org: org.name })}
               className="hover:!text-red-600 dark:hover:!text-red-400"
             >
@@ -81,6 +109,18 @@ export function PendingOrgInvites({ org, tick }: { org: OrganizationSummary; tic
         ))}
       </ul>
     </section>
+    {revoking && (
+      <ConfirmDialog
+        title={t('manage.users.invites.revokeTitle')}
+        body={t('manage.users.invites.revokeBody', { email: revoking.email, org: org.name })}
+        confirmLabel={t('manage.users.invites.revokeConfirm')}
+        busy={revokeBusy}
+        error={revokeError}
+        onConfirm={() => revoke(revoking)}
+        onCancel={() => setRevoking(null)}
+      />
+    )}
+    </>
   )
 }
 
@@ -107,13 +147,20 @@ export function InviteToOrgModal({ org, initial, onClose, onDone }: {
     setError('')
     try {
       const res = await inviteToOrganization(org.slug, emails, role)
-      toast.success(t('manage.users.invites.done', { added: res.added.length, pending: res.pending.length }))
+      // The API skips people who already belong to the org: nothing to report but that.
+      toast.success(res.added.length + res.pending.length === 0
+        ? t('manage.users.invites.alreadyMembers')
+        : t('manage.users.invites.done', { added: res.added.length, pending: res.pending.length }))
       onDone()
     } catch (err) {
-      // 400 names the offending email; don't show the raw server text.
-      setError(err instanceof ApiError && err.status === 400
-        ? t('manage.users.invites.invalidEmails')
-        : adminErrorMessage(err, t))
+      // A 400 names the offending email ("... 'x@gmail.com': is not allowed to
+      // sign in"): show that when the server sent one.
+      if (err instanceof ApiError && err.status === 400) {
+        console.error(err)
+        setError(err.message && !err.message.startsWith('Request failed') ? err.message : t('manage.users.invites.invalidEmails'))
+      } else {
+        setError(adminErrorMessage(err, t))
+      }
     } finally {
       setBusy(false)
     }

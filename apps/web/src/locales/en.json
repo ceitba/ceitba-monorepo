@@ -190,7 +190,12 @@
         "revoked": "Cancelled the invite of {{email}} to {{org}}.",
         "notFound": "{{email}} hasn't signed in yet",
         "notFoundHint": "Invite them and they'll join {{org}} the first time they sign in.",
-        "inviteOne": "Invite {{email}}"
+        "inviteOne": "Invite {{email}}",
+        "alreadyMembers": "They were already members of the organization.",
+        "loadFailed": "Couldn't load the pending invites to {{org}}",
+        "revokeTitle": "Cancel the invite?",
+        "revokeBody": "{{email}} won't join {{org}} when they sign in. You can invite them again.",
+        "revokeConfirm": "Yes, cancel invite"
       }
     },
     "organizations": {

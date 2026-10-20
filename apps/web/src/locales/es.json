@@ -190,7 +190,12 @@
         "revoked": "Cancelaste la invitación de {{email}} a {{org}}.",
         "notFound": "{{email}} todavía no entró al sitio",
         "notFoundHint": "Invitalo y se suma a {{org}} la primera vez que inicie sesión.",
-        "inviteOne": "Invitar a {{email}}"
+        "inviteOne": "Invitar a {{email}}",
+        "alreadyMembers": "Ya eran miembros de la organización.",
+        "loadFailed": "No pudimos cargar las invitaciones pendientes de {{org}}",
+        "revokeTitle": "¿Cancelar la invitación?",
+        "revokeBody": "{{email}} ya no se sumará a {{org}} cuando inicie sesión. Podés volver a invitarlo.",
+        "revokeConfirm": "Sí, cancelar invitación"
       }
     },
     "organizations": {
