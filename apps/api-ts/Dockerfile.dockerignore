@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/data
+.git
+infra
+docs
+apps/api/target
+apps/api/src/test
+apps/api-ts/test
+apps/api-ts/contract
+apps/api-ts/drizzle-introspect
+**/*.test.ts

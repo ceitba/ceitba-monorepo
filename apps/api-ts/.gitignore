@@ -1,0 +1,6 @@
+# drizzle-kit pull output (split into src/db/schema by scripts/split-schema.ts)
+drizzle-introspect/
+# contract harness scratch: request hits, server logs, recorded corpus
+contract/.hits/
+contract/.logs/
+contract/.corpus/
