@@ -1,0 +1,823 @@
+{
+  "contentHmac" : [ [ "proposal-attachment-keys", "m", "ef2e26f1991bbadcd932f9efa0a84637d06fe65636efe8c05ad51f739455699f", "bece79aa1bc4aaa9df975a036e6a05dc4365ab21a156647f2bdcba08b384d4b7" ], [ "proposal-attachment-keys", "1.2.3.4|UA", "bd542617931badafa9e9fff22553e30cf867a0fec788220e7492f8c47f3bcfb7", "910c129f5a0cfe81f266fe81eebbb115df68bdf1443203301d433f387d1b12cb" ], [ "proposal-attachment-keys", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "d81c49ae41faeaae4bed63d6886a1088978ed7cb7d474845704ea8f0cc555562", "bbf6d7832215969acab45a06df788f11f493ad2cb9ab1d6295b3fbea3023ea9c" ], [ "proposal-attachment-keys", "", "1da15074676a68a7c81e640f7107c36e0a59de7d8725a77bdcf60e12eb1e2f90", "30ad3cfb3fa5f13a5e4d9ac017dcaf4436cfa08a106907b27543a9e4db23da05" ], [ "proposal-attachment-keys", "lone\uD800surrogate", "144c9c31f202ba47e20889f9cf4c46d2934c9c771130f2edfff05801145646dc", "672275a39804ff82975b9f5b5c2bcf45dd9529493edf9225f086e3149f355f6f" ], [ "firestore-comment-ids", "m", "bf93505c4501bf6b646b505f3f89a88087fb7e5d7dab1b01088e1433e9c67aeb", "6c0035b7d58ff770e731052f9209a5a8ebf3232cc2a3ed822b8d5f777f93d42d" ], [ "firestore-comment-ids", "1.2.3.4|UA", "cd073a55270a3da93fcb60208efd89a07068bf01f606c22fb04ee52f36efdd50", "e718f7224969deb942786c3cd41895b280ca848c921375e486330d94e96d7273" ], [ "firestore-comment-ids", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "c449724921e9e6fde81b30b649cd94511c93f3189dcf2a92593c5aba63358de4", "39d07afefd25acf14b9ea9d6bb6bbcd3f2ef0b1cca4f77a0f045d4928211f9ae" ], [ "firestore-comment-ids", "", "5dcaa12a827cf5c056df2ffcfb948017448e040e8482f9ac9aa026ddc17057af", "c53c2cae7cb7fa5ec1576cf5a1f66eb20f89409da618198e7ca1ee474cc0ca3e" ], [ "firestore-comment-ids", "lone\uD800surrogate", "dbc4b65f12fffcfc3f6da611023e5bc9fc6dca7be08eaee452fc7cd89121f9d5", "205d3dcbfe9a524c9b689c16ad7c88ee03f47b7cddea6a5c07336613c2b384c8" ], [ "vote-fingerprints", "m", "e913e352e819f10e5a3f25d906ae6cce400b6f290535a52ba8542b9ea0fcedd8", "36f182f844b23c91bae3dd022a1b0517dd7d3c0fe4b34d846129eb24dd81a5c8" ], [ "vote-fingerprints", "1.2.3.4|UA", "086764d9a4924a93dabc540a5f849cf0b58fdee94f23f7527142d07516789c57", "3240316d71a759e19dbbc5a508853c229479f4c34763a2d2e75039051c691ac5" ], [ "vote-fingerprints", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "73e67ccfa81d7b22a9ee5538b691eb1940f8f00938a7eb7e8b26995b98dfc8e2", "990cbba172cc6a05e31c2a0eae416bbb6a99479f92a20cd7ad46cff76045b660" ], [ "vote-fingerprints", "", "c9f1ff1d0a6fc4f160f5825d9d97411985f278829cb50ba001185ee2f0cf344b", "f8218f38a85bb0b4ede1bb0c517b2953a4747a3924494cda4d9174c59b496f6b" ], [ "vote-fingerprints", "lone\uD800surrogate", "7310df6018c7d073d7ec45d205f4e3765ffd22c491c11da34077b38d91a8fdbf", "4e6f99d2185f98f1d06ac238c33e813fa051f9accd5da863f8a7e632ca50cfbe" ], [ "analytics-ip-hashes", "m", "8e428e69d494ba713614fa6815e668e5a7be972844309bf88a4fa627277cb5f9", "73156fdf6f09c86602506f2cd1c3eed040ce05f85fb144b55d26fa6c09cb1a5c" ], [ "analytics-ip-hashes", "1.2.3.4|UA", "58286fb2ed05ddf07af11548f46dbb89b58a3c2541ec92768647823fd0617536", "dbf094e6e4ce4098f1194e80585589f489d498c112ab7d3b44eb42ae17b821f6" ], [ "analytics-ip-hashes", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "46e7ae87b25c5ca5c25dbce7dc31b42dae862aea946f856cfd22fc65a9582fdb", "7f6dd5c064c187c5a5d60ba536f3f6248ac533ca9d3016fd3610b3fc167f2e4c" ], [ "analytics-ip-hashes", "", "d8d21e5ecbfa96668071f3be6e7430976aee73e025e91a3946ed5aa2ce873a75", "202881897dfe6b140935ba1b654674c6ea1f01c4c85de62f8914b0ac26caa07a" ], [ "analytics-ip-hashes", "lone\uD800surrogate", "a475c1ab4373e8a67e4f87b4f7ac7139d6bf561b7895be320727e9a4edb52733", "c545c48de926fb469424c0069813758796734af06beb4ccdc74d3a99442330bb" ], [ "digest-unsubscribe", "m", "4991a80c8af242c1a8dc15b1b2d2c6ccb5165bac20c49a550690db3473b135f9", "d6264543c146e13078f43812efc79c2e61934c10389f71a80adfcc58efcd9716" ], [ "digest-unsubscribe", "1.2.3.4|UA", "07aed148c77e2576810c568442fe20b17a60bf9d529cd01edf9a27bddd48ff05", "cb92d46fa713a9fc703e2d5f6636eb643df25c750f6bbbaf03d84cc6ccfd070f" ], [ "digest-unsubscribe", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "a4a3edffea694b6808524d054388865d4a1e48970ddc81950bed6bda5b97b92c", "99e43c62fb638237e525a5449c5484b36b479b9664b89f9780d6a1626366b6a2" ], [ "digest-unsubscribe", "", "6899a3d21be8fe97019f6426bfdaca7b38a78307936dddcbbbaa0330927fd30e", "e3267b64ab0bc6efb00343fea83621604253efa603826b9b7def5e01403e1a2d" ], [ "digest-unsubscribe", "lone\uD800surrogate", "f8968452083c6b208331eb49f459e10377502def817175e1b68370413a78d101", "fc1184e7cb537081dae55e51465be92ad4c594e0387d232167449d82e6b4e2b5" ], [ "digest-correction-vote", "m", "4cf135a1f880929df80ee5a465d072f10d46aa00e47a564f82463495cec5317f", "1d3a404f3f02050012791fa1ce430bb457399666bad6a46770972add94a00c54" ], [ "digest-correction-vote", "1.2.3.4|UA", "88025e123f52357e94a755e22d74c13bcb90ed353bcda5983313c4d3951ef7f3", "c37486782b8961b048ceb9398e134af32deedf91e1781c07758e2c5e001f67c7" ], [ "digest-correction-vote", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "1d5f62725bc23e498c0b8a3d7cab5cf6febc59e8629943ce210deedbb7e38ccf", "a75d7360538b8abdc07b4a0570c3f6ae95d92eca84911c2b38e64bb9ec92df3f" ], [ "digest-correction-vote", "", "7038178b7129928f9512c8e156e6e07657585892846b65f391748ed236e79dcb", "b4b887b6f9f8cab3d96ba3c0ec874d8cceaeac310b0f47e437202c4bea7efc24" ], [ "digest-correction-vote", "lone\uD800surrogate", "4465cd7b7b0c19de37e11cc7dc6e9bac5465a4b1dd7a0d93ace00e5f43b6f3f3", "47fd2b2c5b051d0ca06c8c3ee602b797c7428f2b5a87ca4ded880157da25a972" ], [ "mail-tracking-ip", "m", "f787e0667d9160e60dfd6698dea7fc93cecc39cd5c485c210c789fc118744d47", "359255a0cc47de6997b7ca89f228eb3eda0604bf08690ccdcceb7dd6bae24bf5" ], [ "mail-tracking-ip", "1.2.3.4|UA", "eca028fdf60a696e08cafb9364f23b2adde88d84d180ab1f40a40d521a928f39", "1337455b229a2ce43f62807b43a02fd6eb89d26c8166d5e12d2bd1694b42f531" ], [ "mail-tracking-ip", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "33f6ccf534e3958f83cf23d3fcb1fab11a0427f66a7df178a9e8b052bfd14dd2", "0ee9b1be1a69e08730cd1392de9fb5a5b78b6ff83d94f09174a85106cf7d4f1f" ], [ "mail-tracking-ip", "", "6c481184bde0e864c7e6fe5c0fa219822cdc5fba01fd65727a806b50b2da0785", "45c372daa6295a4b6cf2afb55174a3c9166d08f06db0a41ff029e71df1a3773b" ], [ "mail-tracking-ip", "lone\uD800surrogate", "8b3b7636bd7a95cb4940e5b8ddf8c5b7f598620292a6a386f45c9819c9279f64", "7cb86615afa7a65b159691bd7bd5c4657c21cc9055d1615afc7adaafba8e1336" ], [ "org-mail-unsubscribe", "m", "86204516c7831a42de44510b77b0b656bbb84d906816fcfc44cc39a37a1d52f4", "94e93d8a73a6156b7f499c88c857dfa04550cba1199004d1e82874389c39a0bb" ], [ "org-mail-unsubscribe", "1.2.3.4|UA", "10b7ad4705349f83d69fdb31092ef6307752f14fa01b846aea689ddd26a7fa5d", "20eef66fc863032c9855edac367f9ecc04bacd5e7867ff32fef25abd9328307b" ], [ "org-mail-unsubscribe", "\u00F1and\u00FA \u20AC \uD83D\uDE00", "c0b5f182b93f8a782e0ce4639b0570e9621eaa495c5de73d5cd10632191fe21f", "2aa8f45848e9d520585a2b0de530985cf17ecea1806aab30f50d58641c154511" ], [ "org-mail-unsubscribe", "", "0178ad7dfdd763179705b09acc7e565c15f174481aa4a1d6e8ca93379c347608", "93f5a0c0650cdd5f4101fdb03c12000952f6f492e4a0b501227a6fdbcefc763d" ], [ "org-mail-unsubscribe", "lone\uD800surrogate", "b689cba56281c49bcca78796ff5297c924b68dd930c306cf62f16654a72ce451", "5cf6a4ca778d74d3d28e0ea31df4e78979161f98e1277d94ccfbd7d0be01b4f2" ] ],
+  "unsubscribe" : {
+    "userId" : "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b",
+    "token" : "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4",
+    "verify" : [ [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4", "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4=", "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b" ], [ "0F8E2A4C-1B3D-4E5F-8A7B-9C0D1E2F3A4B.B5RMDA_V_UP2HFTL-QK-GTY-NAJFRLAQOWUTO5HCVG4", null ], [ "0F8E2A4C-1B3D-4E5F-8A7B-9C0D1E2F3A4B.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4", null ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4==", null ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG5", "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b" ], [ "f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4", null ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa/v/UP2hftL+qK+GTy+NAJfRLAQowUTo5HCVG4", null ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4A", null ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.", null ], [ ".B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4", null ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.B5rMDa_v_UP2hftL-qK-GTy-NAJfRLAQowUTo5HCVG4 ", null ] ]
+  },
+  "vote" : {
+    "userId" : "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b",
+    "correctionId" : "9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9",
+    "token" : "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY",
+    "verify" : [ [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY", "Valid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY=", "Valid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.01792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY", "Valid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.+1792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY", "Invalid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY==", "Invalid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1792422000.", "Invalid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1792422000.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY.", "Invalid" ], [ "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9.1234567890123.XS1adERTtZ0tczIijEzzTTdBlK0_SJcutL6mEmY_NQY", "Invalid" ], [ "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "Invalid" ] ]
+  },
+  "digestRender" : [ {
+    "name" : "escapesUserContent",
+    "input" : {
+      "subject" : "Asunto",
+      "weekStart" : "2026-09-28",
+      "intro" : "Hola <i>todos</i>\nsegunda l\u00EDnea",
+      "articles" : [ {
+        "id" : "id\"><script>",
+        "title" : "<script>alert(1)</script>",
+        "excerpt" : "x & \"y\"",
+        "coverImage" : null,
+        "publishedAt" : "2026-09-30",
+        "organization" : {
+          "slug" : "ceitba",
+          "name" : "CEITBA <b>&</b>"
+        }
+      } ],
+      "events" : [ {
+        "id" : "e1",
+        "title" : "<img src=x onerror=alert(1)>",
+        "eventDate" : "2026-10-06",
+        "startTime" : "18:00",
+        "endTime" : "20:00",
+        "location" : "Aula <101>",
+        "organization" : {
+          "slug" : "ceitba",
+          "name" : "CEITBA <b>&</b>"
+        },
+        "signup" : false
+      } ],
+      "publicBaseUrl" : "https://ceitba.org.ar/newsletter",
+      "personal" : null,
+      "unsubscribeUrl" : "https://ceitba.org.ar/newsletter/unsubscribe?token=abc"
+    },
+    "html" : "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light\"><title>Asunto</title><style>@media only screen and (max-width:620px){.container{width:100% !important}.px{padding-left:20px !important;padding-right:20px !important}.h1{font-size:30px !important;line-height:36px !important}}</style></head><body style=\"margin:0;padding:0;background:#FAFAF8;\"><div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">&lt;script&gt;alert(1)&lt;/script&gt;</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#FAFAF8;\"><tr><td align=\"center\" style=\"padding:24px 12px;\"><table role=\"presentation\" class=\"container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:4px;\"><tr><td class=\"px\" style=\"background:#1A3C6E;padding:32px 40px 28px 40px;border-radius:4px 4px 0 0;border-bottom:4px solid #F5A623;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#F5A623;\">ITBA News \u00B7 CEITBA</div><h1 class=\"h1\" style=\"margin:10px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:38px;line-height:44px;font-weight:700;color:#FFFFFF;\">La semana en ITBA</h1><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:13px;color:#C9D6EA;\">28 de septiembre al 4 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:28px 40px 4px 40px;\"><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:17px;line-height:28px;color:#1C1C1E;border-left:3px solid #F5A623;background:#FEF8EC;padding:14px 18px;\">Hola &lt;i&gt;todos&lt;/i&gt;<br>segunda l\u00EDnea</div></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que pas\u00F3</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Art\u00EDculos publicados del 28 de septiembre al 4 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:16px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;\">CEITBA &lt;b&gt;&amp;&lt;/b&gt; \u00B7 30 sept</div><h2 style=\"margin:6px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:22px;line-height:29px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/articles/id%22%3E%3Cscript%3E\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">&lt;script&gt;alert(1)&lt;/script&gt;</a></h2><p style=\"margin:0 0 6px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:16px;line-height:25px;color:#6B7280;\">x &amp; &quot;y&quot;</p><a href=\"https://ceitba.org.ar/newsletter/articles/id%22%3E%3Cscript%3E\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Leer m\u00E1s \u2192</a></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que viene</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Eventos del 5 al 11 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">mar</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">6</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">oct</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e1\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">&lt;img src=x onerror=alert(1)&gt;</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\">18:00 a 20:00 hs \u00B7 Aula &lt;101&gt;</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;\">CEITBA &lt;b&gt;&amp;&lt;/b&gt;</div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e1\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:4px 40px 8px 40px;\"><a href=\"https://ceitba.org.ar/newsletter/events\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver todos los eventos \u2192</a></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\"><div style=\"border-top:1px solid #E5E7EB;padding-top:20px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:13px;line-height:21px;color:#6B7280;\"><p style=\"margin:0 0 10px 0;\">Recib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News. Medimos aperturas y clics para mejorar el resumen.</p><p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"color:#1A3C6E;text-decoration:underline;\" href=\"https://ceitba.org.ar/newsletter/unsubscribe?token=abc\">Dejar de recibir este resumen</a></p><p style=\"margin:0;\">CEITBA \u00B7 Centro de Estudiantes del ITBA</p></div></td></tr></table></td></tr></table></body></html>",
+    "text" : "LA SEMANA EN ITBA\n28 de septiembre al 4 de octubre\n\nHola <i>todos</i>\nsegunda l\u00EDnea\n\nLO QUE PAS\u00D3\n-----------\n\n* <script>alert(1)</script>\n  CEITBA <b>&</b> \u00B7 30 sept\n  x & \"y\"\n  https://ceitba.org.ar/newsletter/articles/id%22%3E%3Cscript%3E\n\nLO QUE VIENE\n------------\n\n* <img src=x onerror=alert(1)>\n  Martes 6 de octubre \u00B7 18:00 a 20:00 hs \u00B7 Aula <101>\n  CEITBA <b>&</b>\n  https://ceitba.org.ar/newsletter/events/e1\n\nTodos los eventos: https://ceitba.org.ar/newsletter/events\n\n--\nRecib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News.\nMedimos aperturas y clics para mejorar el resumen.\nDejar de recibir este resumen: https://ceitba.org.ar/newsletter/unsubscribe?token=abc\n"
+  }, {
+    "name" : "empty",
+    "input" : {
+      "subject" : "Asunto",
+      "weekStart" : "2026-09-28",
+      "intro" : null,
+      "articles" : [ ],
+      "events" : [ ],
+      "publicBaseUrl" : "https://ceitba.org.ar/newsletter",
+      "personal" : null,
+      "unsubscribeUrl" : "https://ceitba.org.ar/newsletter/unsubscribe?token=abc"
+    },
+    "html" : "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light\"><title>Asunto</title><style>@media only screen and (max-width:620px){.container{width:100% !important}.px{padding-left:20px !important;padding-right:20px !important}.h1{font-size:30px !important;line-height:36px !important}}</style></head><body style=\"margin:0;padding:0;background:#FAFAF8;\"><div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">Lo que pas\u00F3 y lo que viene en ITBA</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#FAFAF8;\"><tr><td align=\"center\" style=\"padding:24px 12px;\"><table role=\"presentation\" class=\"container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:4px;\"><tr><td class=\"px\" style=\"background:#1A3C6E;padding:32px 40px 28px 40px;border-radius:4px 4px 0 0;border-bottom:4px solid #F5A623;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#F5A623;\">ITBA News \u00B7 CEITBA</div><h1 class=\"h1\" style=\"margin:10px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:38px;line-height:44px;font-weight:700;color:#FFFFFF;\">La semana en ITBA</h1><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:13px;color:#C9D6EA;\">28 de septiembre al 4 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que pas\u00F3</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Art\u00EDculos publicados del 28 de septiembre al 4 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#6B7280;\">Esta semana no hubo art\u00EDculos nuevos.</td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que viene</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Eventos del 5 al 11 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#6B7280;\">No hay eventos anunciados para la semana que viene.</td></tr><tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\"><div style=\"border-top:1px solid #E5E7EB;padding-top:20px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:13px;line-height:21px;color:#6B7280;\"><p style=\"margin:0 0 10px 0;\">Recib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News. Medimos aperturas y clics para mejorar el resumen.</p><p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"color:#1A3C6E;text-decoration:underline;\" href=\"https://ceitba.org.ar/newsletter/unsubscribe?token=abc\">Dejar de recibir este resumen</a></p><p style=\"margin:0;\">CEITBA \u00B7 Centro de Estudiantes del ITBA</p></div></td></tr></table></td></tr></table></body></html>",
+    "text" : "LA SEMANA EN ITBA\n28 de septiembre al 4 de octubre\n\nLO QUE PAS\u00D3\n-----------\nEsta semana no hubo art\u00EDculos nuevos.\n\nLO QUE VIENE\n------------\nNo hay eventos anunciados para la semana que viene.\n\n--\nRecib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News.\nMedimos aperturas y clics para mejorar el resumen.\nDejar de recibir este resumen: https://ceitba.org.ar/newsletter/unsubscribe?token=abc\n"
+  }, {
+    "name" : "laterEvents",
+    "input" : {
+      "subject" : "Asunto",
+      "weekStart" : "2026-09-28",
+      "intro" : null,
+      "articles" : [ ],
+      "events" : [ {
+        "id" : "e1",
+        "title" : "Charla",
+        "eventDate" : "2026-10-06",
+        "startTime" : "18:00",
+        "endTime" : "20:00",
+        "location" : "Aula 101",
+        "organization" : null,
+        "signup" : false
+      }, {
+        "id" : "e 2",
+        "title" : "Hackathon",
+        "eventDate" : "2026-11-20",
+        "startTime" : "09:00",
+        "endTime" : "18:00",
+        "location" : "SDF",
+        "organization" : {
+          "slug" : "ceitba",
+          "name" : "CEITBA <b>&</b>"
+        },
+        "signup" : true
+      } ],
+      "publicBaseUrl" : "https://ceitba.org.ar/newsletter",
+      "personal" : {
+        "html" : "<tr><td>TU CUATRI</td></tr>",
+        "text" : "  TU CUATRI\n\n"
+      },
+      "unsubscribeUrl" : "https://ceitba.org.ar/newsletter/unsubscribe?token=abc"
+    },
+    "html" : "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light\"><title>Asunto</title><style>@media only screen and (max-width:620px){.container{width:100% !important}.px{padding-left:20px !important;padding-right:20px !important}.h1{font-size:30px !important;line-height:36px !important}}</style></head><body style=\"margin:0;padding:0;background:#FAFAF8;\"><div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">Lo que viene: Charla</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#FAFAF8;\"><tr><td align=\"center\" style=\"padding:24px 12px;\"><table role=\"presentation\" class=\"container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:4px;\"><tr><td class=\"px\" style=\"background:#1A3C6E;padding:32px 40px 28px 40px;border-radius:4px 4px 0 0;border-bottom:4px solid #F5A623;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#F5A623;\">ITBA News \u00B7 CEITBA</div><h1 class=\"h1\" style=\"margin:10px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:38px;line-height:44px;font-weight:700;color:#FFFFFF;\">La semana en ITBA</h1><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:13px;color:#C9D6EA;\">28 de septiembre al 4 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que pas\u00F3</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Art\u00EDculos publicados del 28 de septiembre al 4 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#6B7280;\">Esta semana no hubo art\u00EDculos nuevos.</td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que viene</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Eventos del 5 al 11 de octubre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">mar</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">6</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">oct</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e1\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Charla</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\">18:00 a 20:00 hs \u00B7 Aula 101</div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e1\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Nuevos eventos</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Anunciados esta semana: anotate con tiempo</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">vie</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">20</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">nov</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e%202\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Hackathon</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\">09:00 a 18:00 hs \u00B7 SDF</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;\">CEITBA &lt;b&gt;&amp;&lt;/b&gt;</div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e%202\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento e inscribirse \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:4px 40px 8px 40px;\"><a href=\"https://ceitba.org.ar/newsletter/events\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver todos los eventos \u2192</a></td></tr><tr><td>TU CUATRI</td></tr><tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\"><div style=\"border-top:1px solid #E5E7EB;padding-top:20px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:13px;line-height:21px;color:#6B7280;\"><p style=\"margin:0 0 10px 0;\">Recib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News. Medimos aperturas y clics para mejorar el resumen.</p><p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"color:#1A3C6E;text-decoration:underline;\" href=\"https://ceitba.org.ar/newsletter/unsubscribe?token=abc\">Dejar de recibir este resumen</a></p><p style=\"margin:0;\">CEITBA \u00B7 Centro de Estudiantes del ITBA</p></div></td></tr></table></td></tr></table></body></html>",
+    "text" : "LA SEMANA EN ITBA\n28 de septiembre al 4 de octubre\n\nLO QUE PAS\u00D3\n-----------\nEsta semana no hubo art\u00EDculos nuevos.\n\nLO QUE VIENE\n------------\n\n* Charla\n  Martes 6 de octubre \u00B7 18:00 a 20:00 hs \u00B7 Aula 101\n  https://ceitba.org.ar/newsletter/events/e1\n\nNUEVOS EVENTOS\nAnunciados esta semana: anotate con tiempo\n\n* Hackathon\n  Viernes 20 de noviembre \u00B7 09:00 a 18:00 hs \u00B7 SDF\n  CEITBA <b>&</b>\n  https://ceitba.org.ar/newsletter/events/e%202\n\nTodos los eventos: https://ceitba.org.ar/newsletter/events\n\nTU CUATRI\n\n--\nRecib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News.\nMedimos aperturas y clics para mejorar el resumen.\nDejar de recibir este resumen: https://ceitba.org.ar/newsletter/unsubscribe?token=abc\n"
+  }, {
+    "name" : "heavy",
+    "input" : {
+      "subject" : "R\u00E9sum\u00E9 \u201Cquoted\u201D 'x' & <y> \uD83D\uDE00",
+      "weekStart" : "2026-12-28",
+      "intro" : "  \r\nL\u00EDnea uno\r\nl\u00EDnea\rdos\u2028tres\t\u2192 fin \u00A0\n",
+      "articles" : [ {
+        "id" : "a \u00F1~!*'()\uD83D\uDE00+",
+        "title" : "  T\u00EDtulo\twith\n\nbreaks \u00A0 and \u2192  ",
+        "excerpt" : "\u00A0",
+        "coverImage" : "  HTTPS://cdn.example/x.jpg\t",
+        "publishedAt" : null,
+        "organization" : null
+      }, {
+        "id" : "a2",
+        "title" : "Second",
+        "excerpt" : "  ",
+        "coverImage" : "https://x",
+        "publishedAt" : "2026-12-31",
+        "organization" : {
+          "slug" : "o",
+          "name" : "Org \u00DF stra\u00DFe"
+        }
+      }, {
+        "id" : "a3",
+        "title" : "Third",
+        "excerpt" : "Exc\u001Fept\u001C",
+        "coverImage" : "https://cdn.example/a b.jpg",
+        "publishedAt" : "2027-01-01",
+        "organization" : null
+      } ],
+      "events" : [ {
+        "id" : "e/1?x=y#z",
+        "title" : "Ev uno",
+        "eventDate" : "2027-01-04",
+        "startTime" : "09:30",
+        "endTime" : "09:30",
+        "location" : "  ",
+        "organization" : null,
+        "signup" : false
+      }, {
+        "id" : "e2",
+        "title" : "Ev dos",
+        "eventDate" : "2027-01-10",
+        "startTime" : "23:59:59",
+        "endTime" : "01:00",
+        "location" : " Aula\n7 ",
+        "organization" : null,
+        "signup" : true
+      }, {
+        "id" : "e3",
+        "title" : "Ev tres",
+        "eventDate" : "2027-01-07",
+        "startTime" : null,
+        "endTime" : "10:00",
+        "location" : null,
+        "organization" : {
+          "slug" : "ceitba",
+          "name" : "CEITBA <b>&</b>"
+        },
+        "signup" : false
+      }, {
+        "id" : "e4",
+        "title" : "Ev cuatro",
+        "eventDate" : "2027-03-01",
+        "startTime" : "08:05:30.500",
+        "endTime" : null,
+        "location" : "\u00A0",
+        "organization" : {
+          "slug" : "ceitba",
+          "name" : "CEITBA <b>&</b>"
+        },
+        "signup" : true
+      } ],
+      "publicBaseUrl" : "https://ceitba.org.ar/newsletter",
+      "personal" : {
+        "html" : null,
+        "text" : " \u2003personal text\u00A0 "
+      },
+      "unsubscribeUrl" : "https://x/u?t=a&b=\"c\""
+    },
+    "html" : "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light\"><title>R\u00E9sum\u00E9 \u201Cquoted\u201D &#39;x&#39; &amp; &lt;y&gt; \uD83D\uDE00</title><style>@media only screen and (max-width:620px){.container{width:100% !important}.px{padding-left:20px !important;padding-right:20px !important}.h1{font-size:30px !important;line-height:36px !important}}</style></head><body style=\"margin:0;padding:0;background:#FAFAF8;\"><div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">T\u00EDtulo with breaks \u00A0 and \u2192</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#FAFAF8;\"><tr><td align=\"center\" style=\"padding:24px 12px;\"><table role=\"presentation\" class=\"container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:4px;\"><tr><td class=\"px\" style=\"background:#1A3C6E;padding:32px 40px 28px 40px;border-radius:4px 4px 0 0;border-bottom:4px solid #F5A623;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#F5A623;\">ITBA News \u00B7 CEITBA</div><h1 class=\"h1\" style=\"margin:10px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:38px;line-height:44px;font-weight:700;color:#FFFFFF;\">La semana en ITBA</h1><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:13px;color:#C9D6EA;\">28 de diciembre al 3 de enero</div></td></tr><tr><td class=\"px\" style=\"padding:28px 40px 4px 40px;\"><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:17px;line-height:28px;color:#1C1C1E;border-left:3px solid #F5A623;background:#FEF8EC;padding:14px 18px;\">L\u00EDnea uno<br>l\u00EDnea<br>dos\u2028tres\t\u2192 fin \u00A0</div></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que pas\u00F3</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Art\u00EDculos publicados del 28 de diciembre al 3 de enero</div></td></tr><tr><td class=\"px\" style=\"padding:16px 40px 8px 40px;\"><a href=\"https://ceitba.org.ar/newsletter/articles/a%20%C3%B1%7E%21*%27%28%29%F0%9F%98%80%2B\" style=\"text-decoration:none;\"><img src=\"HTTPS://cdn.example/x.jpg\" width=\"520\" alt=\"\" style=\"display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:3px;margin-bottom:12px;\"></a><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;\">Independiente</div><h2 style=\"margin:6px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:22px;line-height:29px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/articles/a%20%C3%B1%7E%21*%27%28%29%F0%9F%98%80%2B\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">  T\u00EDtulo\twith\n\nbreaks \u00A0 and \u2192  </a></h2><p style=\"margin:0 0 6px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:16px;line-height:25px;color:#6B7280;\">\u00A0</p><a href=\"https://ceitba.org.ar/newsletter/articles/a%20%C3%B1%7E%21*%27%28%29%F0%9F%98%80%2B\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Leer m\u00E1s \u2192</a></td></tr><tr><td class=\"px\" style=\"padding:16px 40px 8px 40px;\"><a href=\"https://ceitba.org.ar/newsletter/articles/a2\" style=\"text-decoration:none;\"><img src=\"https://x\" width=\"520\" alt=\"\" style=\"display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:3px;margin-bottom:12px;\"></a><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;\">Org \u00DF stra\u00DFe \u00B7 31 dic</div><h2 style=\"margin:6px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:22px;line-height:29px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/articles/a2\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Second</a></h2><a href=\"https://ceitba.org.ar/newsletter/articles/a2\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Leer m\u00E1s \u2192</a></td></tr><tr><td class=\"px\" style=\"padding:16px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;\">Independiente \u00B7 1 ene</div><h2 style=\"margin:6px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:22px;line-height:29px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/articles/a3\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Third</a></h2><p style=\"margin:0 0 6px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:16px;line-height:25px;color:#6B7280;\">Exc\u001Fept\u001C</p><a href=\"https://ceitba.org.ar/newsletter/articles/a3\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Leer m\u00E1s \u2192</a></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que viene</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Eventos del 4 al 10 de enero</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">lun</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">4</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">ene</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e%2F1%3Fx%3Dy%23z\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Ev uno</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\">09:30 hs</div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e%2F1%3Fx%3Dy%23z\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">dom</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">10</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">ene</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e2\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Ev dos</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\">23:59 hs \u00B7  Aula\n7 </div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e2\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento e inscribirse \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">jue</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">7</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">ene</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e3\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Ev tres</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\"></div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;\">CEITBA &lt;b&gt;&amp;&lt;/b&gt;</div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e3\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Nuevos eventos</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Anunciados esta semana: anotate con tiempo</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"64\" valign=\"top\" style=\"width:64px;\"><div style=\"background:#EEF3FA;border-radius:3px;text-align:center;padding:8px 0;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1A3C6E;\">lun</div><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:24px;line-height:28px;font-weight:700;color:#1A3C6E;\">1</div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;text-transform:uppercase;color:#1A3C6E;\">mar</div></div></td><td valign=\"top\" style=\"padding-left:16px;\"><div style=\"font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:18px;line-height:24px;font-weight:700;\"><a href=\"https://ceitba.org.ar/newsletter/events/e4\" target=\"_blank\" style=\"color:#1C1C1E;text-decoration:none;\">Ev cuatro</a></div><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;line-height:20px;color:#6B7280;padding-top:4px;\">08:05 hs \u00B7 \u00A0</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;\">CEITBA &lt;b&gt;&amp;&lt;/b&gt;</div><div style=\"padding-top:6px;\"><a href=\"https://ceitba.org.ar/newsletter/events/e4\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver evento e inscribirse \u2192</a></div></td></tr></table></td></tr><tr><td class=\"px\" style=\"padding:4px 40px 8px 40px;\"><a href=\"https://ceitba.org.ar/newsletter/events\" target=\"_blank\" style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;font-weight:600;color:#1A3C6E;text-decoration:none;\">Ver todos los eventos \u2192</a></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\"><div style=\"border-top:1px solid #E5E7EB;padding-top:20px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:13px;line-height:21px;color:#6B7280;\"><p style=\"margin:0 0 10px 0;\">Recib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News. Medimos aperturas y clics para mejorar el resumen.</p><p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"color:#1A3C6E;text-decoration:underline;\" href=\"https://x/u?t=a&amp;b=&quot;c&quot;\">Dejar de recibir este resumen</a></p><p style=\"margin:0;\">CEITBA \u00B7 Centro de Estudiantes del ITBA</p></div></td></tr></table></td></tr></table></body></html>",
+    "text" : "LA SEMANA EN ITBA\n28 de diciembre al 3 de enero\n\nL\u00EDnea uno\r\nl\u00EDnea\rdos\u2028tres\t\u2192 fin \u00A0\n\nLO QUE PAS\u00D3\n-----------\n\n* T\u00EDtulo with breaks \u00A0 and \u2192\n  Independiente\n  \u00A0\n  https://ceitba.org.ar/newsletter/articles/a%20%C3%B1%7E%21*%27%28%29%F0%9F%98%80%2B\n\n* Second\n  Org \u00DF stra\u00DFe \u00B7 31 dic\n  https://ceitba.org.ar/newsletter/articles/a2\n\n* Third\n  Independiente \u00B7 1 ene\n  Exc\u001Fept\n  https://ceitba.org.ar/newsletter/articles/a3\n\nLO QUE VIENE\n------------\n\n* Ev uno\n  Lunes 4 de enero \u00B7 09:30 hs\n  https://ceitba.org.ar/newsletter/events/e%2F1%3Fx%3Dy%23z\n\n* Ev dos\n  Domingo 10 de enero \u00B7 23:59 hs \u00B7 Aula 7\n  https://ceitba.org.ar/newsletter/events/e2\n\n* Ev tres\n  Jueves 7 de enero \u00B7 \n  CEITBA <b>&</b>\n  https://ceitba.org.ar/newsletter/events/e3\n\nNUEVOS EVENTOS\nAnunciados esta semana: anotate con tiempo\n\n* Ev cuatro\n  Lunes 1 de marzo \u00B7 08:05 hs \u00B7 \u00A0\n  CEITBA <b>&</b>\n  https://ceitba.org.ar/newsletter/events/e4\n\nTodos los eventos: https://ceitba.org.ar/newsletter/events\n\npersonal text\u00A0\n\n--\nRecib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News.\nMedimos aperturas y clics para mejorar el resumen.\nDejar de recibir este resumen: https://x/u?t=a&b=\"c\"\n"
+  }, {
+    "name" : "monthSpan",
+    "input" : {
+      "subject" : "S",
+      "weekStart" : "2026-08-31",
+      "intro" : "   ",
+      "articles" : [ ],
+      "events" : [ ],
+      "publicBaseUrl" : "https://ceitba.org.ar/newsletter",
+      "personal" : {
+        "html" : "<tr/>",
+        "text" : null
+      },
+      "unsubscribeUrl" : "u"
+    },
+    "html" : "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light\"><title>S</title><style>@media only screen and (max-width:620px){.container{width:100% !important}.px{padding-left:20px !important;padding-right:20px !important}.h1{font-size:30px !important;line-height:36px !important}}</style></head><body style=\"margin:0;padding:0;background:#FAFAF8;\"><div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">Lo que pas\u00F3 y lo que viene en ITBA</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#FAFAF8;\"><tr><td align=\"center\" style=\"padding:24px 12px;\"><table role=\"presentation\" class=\"container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:4px;\"><tr><td class=\"px\" style=\"background:#1A3C6E;padding:32px 40px 28px 40px;border-radius:4px 4px 0 0;border-bottom:4px solid #F5A623;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#F5A623;\">ITBA News \u00B7 CEITBA</div><h1 class=\"h1\" style=\"margin:10px 0 6px 0;font-family:Fraunces, 'Playfair Display', Georgia, 'Times New Roman', serif;font-size:38px;line-height:44px;font-weight:700;color:#FFFFFF;\">La semana en ITBA</h1><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:13px;color:#C9D6EA;\">31 de agosto al 6 de septiembre</div></td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que pas\u00F3</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Art\u00EDculos publicados del 31 de agosto al 6 de septiembre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#6B7280;\">Esta semana no hubo art\u00EDculos nuevos.</td></tr><tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Lo que viene</div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;color:#6B7280;padding-top:2px;border-bottom:1px solid #E5E7EB;padding-bottom:10px;\">Eventos del 7 al 13 de septiembre</div></td></tr><tr><td class=\"px\" style=\"padding:12px 40px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#6B7280;\">No hay eventos anunciados para la semana que viene.</td></tr><tr/><tr><td class=\"px\" style=\"padding:32px 40px 32px 40px;\"><div style=\"border-top:1px solid #E5E7EB;padding-top:20px;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:13px;line-height:21px;color:#6B7280;\"><p style=\"margin:0 0 10px 0;\">Recib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News. Medimos aperturas y clics para mejorar el resumen.</p><p style=\"margin:0 0 10px 0;\"><a target=\"_blank\" style=\"color:#1A3C6E;text-decoration:underline;\" href=\"u\">Dejar de recibir este resumen</a></p><p style=\"margin:0;\">CEITBA \u00B7 Centro de Estudiantes del ITBA</p></div></td></tr></table></td></tr></table></body></html>",
+    "text" : "LA SEMANA EN ITBA\n31 de agosto al 6 de septiembre\n\nLO QUE PAS\u00D3\n-----------\nEsta semana no hubo art\u00EDculos nuevos.\n\nLO QUE VIENE\n------------\nNo hay eventos anunciados para la semana que viene.\n\n--\nRecib\u00EDs este resumen semanal porque segu\u00EDs a CEITBA en ITBA News.\nMedimos aperturas y clics para mejorar el resumen.\nDejar de recibir este resumen: u\n"
+  } ],
+  "personalRender" : [ {
+    "name" : "needsSchedule",
+    "input" : {
+      "digest" : {
+        "state" : "NEEDS_SCHEDULE",
+        "subjects" : [ ],
+        "wiki" : [ ],
+        "corrections" : [ ]
+      },
+      "schedulerUrl" : "https://ceitba.org.ar/app/horario?x=1&y=\"2\""
+    },
+    "html" : "<tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Tu cuatrimestre</div><div style=\"border-bottom:1px solid #E5E7EB;padding-bottom:10px;\"></div></td></tr><tr><td class=\"px\" style=\"padding:8px 40px;\"><p style=\"margin:0 0 10px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#1C1C1E;\">Guard\u00E1 tu horario de este cuatrimestre como principal y ac\u00E1 vas a ver tus materias, sus wikis y los horarios por confirmar.</p><a href=\"https://ceitba.org.ar/app/horario?x=1&amp;y=&quot;2&quot;\" target=\"_blank\" style=\"display:inline-block;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;background:#1A3C6E;border:1px solid #1A3C6E;border-radius:3px;padding:8px 16px;text-decoration:none;\">Arm\u00E1 tu horario en la app</a></td></tr>",
+    "text" : "TU CUATRIMESTRE\n---------------\nGuard\u00E1 tu horario de este cuatrimestre como principal y ac\u00E1 vas a ver tus materias, sus wikis y los horarios por confirmar.\nArm\u00E1 tu horario en la app: https://ceitba.org.ar/app/horario?x=1&y=\"2\"\n"
+  }, {
+    "name" : "current",
+    "input" : {
+      "digest" : {
+        "state" : "CURRENT",
+        "subjects" : [ {
+          "code" : "93.41",
+          "name" : "F\u00EDsica I",
+          "commissionName" : "A"
+        }, {
+          "code" : "93.58",
+          "name" : "Matem\u00E1tica",
+          "commissionName" : null
+        } ],
+        "wiki" : [ {
+          "subjectCode" : "93.41",
+          "subjectName" : "F\u00EDsica I",
+          "url" : "https://ceitba.org.ar/apuntes/93.41?vista=wiki",
+          "updatedThisWeek" : true
+        }, {
+          "subjectCode" : "93.58",
+          "subjectName" : "Mate <b>",
+          "url" : "https://x/?a=1&b=2",
+          "updatedThisWeek" : false
+        } ],
+        "corrections" : [ {
+          "correctionId" : "9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9",
+          "subjectName" : " F\u00EDsica\tI ",
+          "commissionName" : "A\n1",
+          "proposed" : [ {
+            "day" : "TUESDAY",
+            "from" : "09:00",
+            "to" : "12:00"
+          }, {
+            "day" : "WEDNESDAY",
+            "from" : "08:00",
+            "to" : "10:00"
+          }, {
+            "day" : "FUNDAY",
+            "from" : "1",
+            "to" : "2"
+          } ],
+          "sga" : [ ]
+        }, {
+          "correctionId" : "9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9",
+          "subjectName" : "X",
+          "commissionName" : null,
+          "proposed" : [ ],
+          "sga" : [ {
+            "day" : "SUNDAY",
+            "from" : "08:00",
+            "to" : "11:00"
+          } ]
+        } ]
+      },
+      "schedulerUrl" : "https://ceitba.org.ar/app/horario?x=1&y=\"2\""
+    },
+    "html" : "<tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Tu cuatrimestre</div><div style=\"border-bottom:1px solid #E5E7EB;padding-bottom:10px;\"></div></td></tr><tr><td class=\"px\" style=\"padding:8px 40px;\"><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#1C1C1E;\"><div style=\"padding:3px 0;\">F\u00EDsica I <span style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;color:#6B7280;\">\u00B7 com. A</span></div><div style=\"padding:3px 0;\">Matem\u00E1tica</div></div></td></tr><tr><td class=\"px\" style=\"padding:8px 40px;\"><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#6B7280;padding:4px 0 2px 0;\">Wikis de tus materias</div><div style=\"padding:3px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;\"><a href=\"https://ceitba.org.ar/apuntes/93.41?vista=wiki\" target=\"_blank\" style=\"color:#1A3C6E;font-weight:600;text-decoration:none;\">F\u00EDsica I \u2192</a> <span style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1C1C1E;background:#F5A623;border-radius:2px;padding:1px 6px;\">actualizado esta semana</span></div><div style=\"padding:3px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;\"><a href=\"https://x/?a=1&amp;b=2\" target=\"_blank\" style=\"color:#1A3C6E;font-weight:600;text-decoration:none;\">Mate &lt;b&gt; \u2192</a></div></td></tr><tr><td class=\"px\" style=\"padding:8px 40px;\"><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#6B7280;padding:4px 0 2px 0;\">Horarios por confirmar</div><div style=\"background:#EEF3FA;border-radius:3px;padding:14px 16px;margin:8px 0;\"><p style=\"margin:0 0 10px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#1C1C1E;\">Alguien report\u00F3 que F\u00EDsica I (com. A 1) se dicta martes 09:00 a 12:00, mi\u00E9rcoles 08:00 a 10:00 y FUNDAY 1 a 2 en vez de lo que figura en el SGA (sin horarios). \u00BFEs as\u00ED?</p><div style=\"padding-top:4px;\"><a href=\"https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&amp;vote=confirm\" target=\"_blank\" style=\"display:inline-block;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;background:#1A3C6E;border:1px solid #1A3C6E;border-radius:3px;padding:8px 16px;text-decoration:none;\">S\u00ED, es as\u00ED</a><span style=\"display:inline-block;width:8px;\"></span><a href=\"https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&amp;vote=reject\" target=\"_blank\" style=\"display:inline-block;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;background:#FFFFFF;border:1px solid #1A3C6E;border-radius:3px;padding:8px 16px;text-decoration:none;\">No</a></div></div><div style=\"background:#EEF3FA;border-radius:3px;padding:14px 16px;margin:8px 0;\"><p style=\"margin:0 0 10px 0;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#1C1C1E;\">Alguien report\u00F3 que X (com. ) se dicta  en vez de domingo 08:00 a 11:00. \u00BFEs as\u00ED?</p><div style=\"padding-top:4px;\"><a href=\"https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&amp;vote=confirm\" target=\"_blank\" style=\"display:inline-block;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;background:#1A3C6E;border:1px solid #1A3C6E;border-radius:3px;padding:8px 16px;text-decoration:none;\">S\u00ED, es as\u00ED</a><span style=\"display:inline-block;width:8px;\"></span><a href=\"https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&amp;vote=reject\" target=\"_blank\" style=\"display:inline-block;font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#1A3C6E;background:#FFFFFF;border:1px solid #1A3C6E;border-radius:3px;padding:8px 16px;text-decoration:none;\">No</a></div></div><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:13px;line-height:20px;color:#6B7280;padding-top:4px;\">Tu respuesta es an\u00F3nima. Con 3 confirmaciones el horario corregido se usa en el combinador.</div></td></tr>",
+    "text" : "TU CUATRIMESTRE\n---------------\n* F\u00EDsica I \u00B7 com. A\n* Matem\u00E1tica\n\nWikis de tus materias\n* F\u00EDsica I (actualizado esta semana): https://ceitba.org.ar/apuntes/93.41?vista=wiki\n* Mate <b>: https://x/?a=1&b=2\n\nHorarios por confirmar\n* Alguien report\u00F3 que F\u00EDsica I (com. A 1) se dicta martes 09:00 a 12:00, mi\u00E9rcoles 08:00 a 10:00 y FUNDAY 1 a 2 en vez de lo que figura en el SGA (sin horarios). \u00BFEs as\u00ED?\n  S\u00ED, es as\u00ED: https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&vote=confirm\n  No: https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&vote=reject\n* Alguien report\u00F3 que X (com. ) se dicta  en vez de domingo 08:00 a 11:00. \u00BFEs as\u00ED?\n  S\u00ED, es as\u00ED: https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&vote=confirm\n  No: https://n/correction?token=9a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9&vote=reject\nTu respuesta es an\u00F3nima. Con 3 confirmaciones el horario corregido se usa en el combinador.\n"
+  }, {
+    "name" : "emptyCurrent",
+    "input" : {
+      "digest" : {
+        "state" : "CURRENT",
+        "subjects" : [ ],
+        "wiki" : [ ],
+        "corrections" : [ ]
+      },
+      "schedulerUrl" : "https://ceitba.org.ar/app/horario?x=1&y=\"2\""
+    },
+    "html" : "<tr><td class=\"px\" style=\"padding:32px 40px 8px 40px;\"><div style=\"font-family:'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#1A3C6E;\">Tu cuatrimestre</div><div style=\"border-bottom:1px solid #E5E7EB;padding-bottom:10px;\"></div></td></tr><tr><td class=\"px\" style=\"padding:8px 40px;\"><div style=\"font-family:'Source Sans 3', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:15px;line-height:24px;color:#1C1C1E;\"></div></td></tr>",
+    "text" : "TU CUATRIMESTRE\n---------------\n"
+  } ],
+  "mailCipher" : {
+    "key" : "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+    "aad" : "CEITBA@itba.edu.ar",
+    "plaintext" : "1//refresh-token \u00F1 \uD83D\uDE00",
+    "encrypted" : "AaHIrzqDvtgsJt/olqTNapWme+jksv1JwobKo76oBZcGKfmoGxWERCpDfEaD+VSumZY1GTM=",
+    "errors" : [ [ "not base64 !", "x", "Stored token cannot be decrypted (tampered or wrong key)" ], [ "AqHIrzqDvtgsJt/olqTNapWme+jksv1JwobKo76oBZcGKfmoGxWERCpDfEaD+VSumZY1GTM=", "ceitba@itba.edu.ar", "Unsupported token format" ], [ "AaHIrzqDvtgsJt/olqTNapWme+g=", "ceitba@itba.edu.ar", "Unsupported token format" ], [ "AaHIrzqCvtgsJt/olqTNapWme+jksv1JwobKo76oBZcGKfmoGxWERCpDfEaD+VSumZY1GTM=", "ceitba@itba.edu.ar", "Stored token cannot be decrypted (tampered or wrong key)" ], [ "AaHIrzqDvtgsJt/olqTNapWme+jksv1JwobKo76oBZcGKfmoGxWERCpDfEaD+VSumZY1GTM=", "other@itba.edu.ar", "Stored token cannot be decrypted (tampered or wrong key)" ], [ "AaHIrzqDvtgsJt/olqTNapWme+jksv1JwobKo76oBZcGKfmoGxWERCpDfEaD+VSumZY1GTM", "x", "Stored token cannot be decrypted (tampered or wrong key)" ] ]
+  },
+  "oauthState" : {
+    "now" : "2026-10-04T12:00:00Z",
+    "userId" : "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b",
+    "state" : "MGY4ZTJhNGMtMWIzZC00ZTVmLThhN2ItOWMwZDFlMmYzYTRifDE3OTExMTU4MDB8eHRvTWgtdnhyb2Jkcm5yOQ.PmYD6Qp-SsnNxYInH9hrXFvZ8n4EUPUUN3ydZcToi-k",
+    "orgSlug" : "club-\u00F1|x",
+    "orgState" : "MGY4ZTJhNGMtMWIzZC00ZTVmLThhN2ItOWMwZDFlMmYzYTRifDE3OTExMTU4MDB8cEh5TkV3LU9ad3VFWE9XVnxjbHViLcOxfHg.ChFdNqcD38cjEEP5dSBFEmgs5Tl915FuYKA0xgp9IcY"
+  },
+  "linkRewriter" : [ {
+    "name" : "mixed",
+    "html" : "<html><head></head><BODY><a href=\"https://x.org/a?token=s&amp;v=1\">  A\t<b>&lt;b&gt;</b> \u2192 </a><A HREF=\"HTTPS://X.org/B\" class=x>B</A><a\nhref=\" https://x.org/c \">C</a><a href=\"https://u/unsub?t=1\">U</a><a href=\"https://x.org/d$1\">$1 \\ </a><img src=\"https://x.org/a?token=s&amp;v=1\"></body></HTML>",
+    "text" : "See https://x.org/a?token=s&v=1, and (HTTPS://X.org/B). Also https://x.org/e_(1)) and https://u/unsub?t=1!\nhttps://x.org/d$1\u00A0end https://x.org/f\u2028g",
+    "shared" : {
+      "https://x.org/c" : 7
+    },
+    "untrackedPrefix" : "https://u/unsub",
+    "pixel" : "https://p/o.gif",
+    "out" : {
+      "html" : "<html><head></head><BODY><a href=\"https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1000\">  A\t<b>&lt;b&gt;</b> \u2192 </a><A href=\"https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1001\" class=x>B</A><a\nhref=\"https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/7\">C</a><a href=\"https://u/unsub?t=1\">U</a><a href=\"https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1002\">$1 \\ </a><img src=\"https://x.org/a?token=s&amp;v=1\"><img src=\"https://p/o.gif\" width=\"1\" height=\"1\" alt=\"\" style=\"display:block;width:1px;height:1px;border:0;\"></body></HTML>",
+      "text" : "See https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1000, and (https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1001). Also https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1003) and https://u/unsub?t=1!\nhttps://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1004 https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1005",
+      "personalLinks" : [ {
+        "id" : 1000,
+        "url" : "https://x.org/a?token=s&v=1",
+        "urlKey" : "https://x.org/a?v=1",
+        "label" : "A <b>"
+      }, {
+        "id" : 1001,
+        "url" : "HTTPS://X.org/B",
+        "urlKey" : "HTTPS://X.org/B",
+        "label" : "B"
+      }, {
+        "id" : 1002,
+        "url" : "https://x.org/d$1",
+        "urlKey" : "https://x.org/d$1",
+        "label" : "$1 \\"
+      }, {
+        "id" : 1003,
+        "url" : "https://x.org/e_(1)",
+        "urlKey" : "https://x.org/e_(1)",
+        "label" : "https://x.org/e_(1)"
+      }, {
+        "id" : 1004,
+        "url" : "https://x.org/d$1\u00A0end",
+        "urlKey" : "https://x.org/d$1\u00A0end",
+        "label" : "https://x.org/d$1\u00A0end"
+      }, {
+        "id" : 1005,
+        "url" : "https://x.org/f\u2028g",
+        "urlKey" : "https://x.org/f\u2028g",
+        "label" : "https://x.org/f\u2028g"
+      } ]
+    },
+    "collected" : [ {
+      "id" : 1,
+      "url" : "https://x.org/a?token=s&v=1",
+      "urlKey" : "https://x.org/a?v=1",
+      "label" : "A <b>"
+    }, {
+      "id" : 2,
+      "url" : "HTTPS://X.org/B",
+      "urlKey" : "HTTPS://X.org/B",
+      "label" : "B"
+    }, {
+      "id" : 3,
+      "url" : "https://x.org/c",
+      "urlKey" : "https://x.org/c",
+      "label" : "C"
+    }, {
+      "id" : 4,
+      "url" : "https://x.org/d$1",
+      "urlKey" : "https://x.org/d$1",
+      "label" : "$1 \\"
+    }, {
+      "id" : 5,
+      "url" : "https://x.org/e_(1)",
+      "urlKey" : "https://x.org/e_(1)",
+      "label" : "https://x.org/e_(1)"
+    }, {
+      "id" : 6,
+      "url" : "https://x.org/d$1\u00A0end",
+      "urlKey" : "https://x.org/d$1\u00A0end",
+      "label" : "https://x.org/d$1\u00A0end"
+    }, {
+      "id" : 7,
+      "url" : "https://x.org/f\u2028g",
+      "urlKey" : "https://x.org/f\u2028g",
+      "label" : "https://x.org/f\u2028g"
+    } ]
+  }, {
+    "name" : "noBody",
+    "html" : "<p><a href=\"http://y\">y</a></p>",
+    "text" : null,
+    "shared" : { },
+    "untrackedPrefix" : "zzz",
+    "pixel" : "https://p/o.gif",
+    "out" : {
+      "html" : "<p><a href=\"https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1000\">y</a></p><img src=\"https://p/o.gif\" width=\"1\" height=\"1\" alt=\"\" style=\"display:block;width:1px;height:1px;border:0;\">",
+      "text" : null,
+      "personalLinks" : [ {
+        "id" : 1000,
+        "url" : "http://y",
+        "urlKey" : "http://y",
+        "label" : "y"
+      } ]
+    },
+    "collected" : [ {
+      "id" : 1,
+      "url" : "http://y",
+      "urlKey" : "http://y",
+      "label" : "y"
+    } ]
+  }, {
+    "name" : "textOnly",
+    "html" : null,
+    "text" : "x https://\u00F1.org/\u00E1?q=1. y",
+    "shared" : { },
+    "untrackedPrefix" : "zzz",
+    "pixel" : null,
+    "out" : {
+      "html" : null,
+      "text" : "x https://ceitba.org.ar/api/v1/mail/c/AbCdEfGhIjKlMnOpQrStUv/1000. y",
+      "personalLinks" : [ {
+        "id" : 1000,
+        "url" : "https://\u00F1.org/\u00E1?q=1",
+        "urlKey" : "https://\u00F1.org/\u00E1?q=1",
+        "label" : "https://\u00F1.org/\u00E1?q=1"
+      } ]
+    },
+    "collected" : [ {
+      "id" : 1,
+      "url" : "https://\u00F1.org/\u00E1?q=1",
+      "urlKey" : "https://\u00F1.org/\u00E1?q=1",
+      "label" : "https://\u00F1.org/\u00E1?q=1"
+    } ]
+  } ],
+  "smtpReplies" : [ [ "550 5.7.1 message rejected", null ], [ "534 5.7.9 app password", "TRANSPORT" ], [ "554 5.7.0 policy", null ], [ "421-4.7.0 x", "TRANSPORT" ], [ "250 2.0.0 OK", null ], [ "450 4.2.1 mailbox busy", "RECIPIENT" ], [ "x550 5.1.1y", null ], [ "550 5.1.1", "RECIPIENT" ], [ "Rate limit hit", "TRANSPORT" ], [ "TRY AGAIN LATER", "TRANSPORT" ], [ "553 5.1.3 bad", "RECIPIENT" ], [ "452 4.7.0 ", "TRANSPORT" ], [ "", null ], [ "  550-5.4.5 a", "QUOTA" ] ],
+  "gmailClassify" : [ [ 400, "{\"error\":{\"message\":\"Bad address\"}}", null, "RECIPIENT", "Gmail API HTTP 400", null, false ], [ 429, "{\"error\":{\"message\":\"daily\"}}", "5", "QUOTA", "Gmail API HTTP 429", null, false ], [ 403, "{\"error\":{\"errors\":{\"a\":{\"reason\":\"rateLimitExceeded\"}}}}", "0", "TRANSPORT", "Gmail API HTTP 403 rateLimitExceeded (throttled, short backoff)", 1000, false ], [ 429, "", "-3", "TRANSPORT", "Gmail API HTTP 429 (throttled, short backoff)", 1000, false ], [ 429, "", " 12 ", "TRANSPORT", "Gmail API HTTP 429 (throttled, short backoff)", 12000, false ], [ 302, "", null, "TRANSPORT", "Gmail API HTTP 302", null, false ], [ 418, "[1,2]", null, "TRANSIENT", "Gmail API HTTP 418", null, false ], [ 400, "{\"error\":{\"message\":123}}", null, "TRANSIENT", "Gmail API HTTP 400", null, false ], [ 403, "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\",\"message\":\"x\"}}", "abc", "TRANSPORT", "Gmail API HTTP 403 RESOURCE_EXHAUSTED (throttled, short backoff)", 30000, false ], [ 400, "{\"error\":{\"message\":\"Invalid BCC\"}}", null, "RECIPIENT", "Gmail API HTTP 400", null, false ], [ 499, "null", null, "TRANSIENT", "Gmail API HTTP 499", null, false ] ],
+  "orgRender" : [ {
+    "name" : "escapes",
+    "orgName" : "SABF & co",
+    "color" : "violet",
+    "body" : "<script>alert(1)</script>\n\nMir\u00E1 https://sabf.org.ar/inscripcion?a=1&b=2. Y javascript:alert(1)",
+    "unsubscribeUrl" : "https://x/unsubscribe?token=t",
+    "portalUrl" : "https://x/organizations/sabf",
+    "html" : "<!doctype html><html lang=\"es\"><body style=\"margin:0;padding:0;background:#f5f3ef\">\n<div style=\"max-width:600px;margin:0 auto;font-family:Georgia,serif;color:#1c1917\">\n<div style=\"background:#6D28D9;color:#ffffff;padding:20px 24px;font:bold 20px Georgia,serif\">SABF &amp; co</div>\n<div style=\"background:#ffffff;padding:24px;font-size:16px\"><p style=\"margin:0 0 16px;line-height:1.6\">&lt;script&gt;alert(1)&lt;/script&gt;</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">Mir&aacute; <a href=\"https://sabf.org.ar/inscripcion?a=1&amp;b=2\" style=\"color:#1A3C6E\">https://sabf.org.ar/inscripcion?a=1&amp;b=2</a>. Y javascript:alert(1)</p></div>\n<div style=\"padding:16px 24px;font:12px/1.5 Arial,sans-serif;color:#57534e\">\nRecib\u00EDs este correo porque segu\u00EDs a <a href=\"https://x/organizations/sabf\" style=\"color:#57534e\">SABF &amp; co</a> en ITBA News.\n<a href=\"https://x/unsubscribe?token=t\" style=\"color:#57534e\">Dejar de recibir correos de SABF &amp; co</a>.\n</div></div></body></html>\n",
+    "text" : "SABF & co\n\n<script>alert(1)</script>\n\nMir\u00E1 https://sabf.org.ar/inscripcion?a=1&b=2. Y javascript:alert(1)\n\n--\nRecib\u00EDs este correo porque segu\u00EDs a SABF & co en ITBA News. Dejar de recibir sus correos: https://x/unsubscribe?token=t\n"
+  }, {
+    "name" : "quoted",
+    "orgName" : "O",
+    "color" : null,
+    "body" : "Mir\u00E1 \"https://a.org/x\" y <https://b.org>",
+    "unsubscribeUrl" : "u",
+    "portalUrl" : "p",
+    "html" : "<!doctype html><html lang=\"es\"><body style=\"margin:0;padding:0;background:#f5f3ef\">\n<div style=\"max-width:600px;margin:0 auto;font-family:Georgia,serif;color:#1c1917\">\n<div style=\"background:#1A3C6E;color:#ffffff;padding:20px 24px;font:bold 20px Georgia,serif\">O</div>\n<div style=\"background:#ffffff;padding:24px;font-size:16px\"><p style=\"margin:0 0 16px;line-height:1.6\">Mir&aacute; &quot;<a href=\"https://a.org/x\" style=\"color:#1A3C6E\">https://a.org/x</a>&quot; y &lt;<a href=\"https://b.org\" style=\"color:#1A3C6E\">https://b.org</a>&gt;</p></div>\n<div style=\"padding:16px 24px;font:12px/1.5 Arial,sans-serif;color:#57534e\">\nRecib\u00EDs este correo porque segu\u00EDs a <a href=\"p\" style=\"color:#57534e\">O</a> en ITBA News.\n<a href=\"u\" style=\"color:#57534e\">Dejar de recibir correos de O</a>.\n</div></div></body></html>\n",
+    "text" : "O\n\nMir\u00E1 \"https://a.org/x\" y <https://b.org>\n\n--\nRecib\u00EDs este correo porque segu\u00EDs a O en ITBA News. Dejar de recibir sus correos: u\n"
+  }, {
+    "name" : "paragraphs",
+    "orgName" : "Club de Rob\u00F3tica \u00F1 \u2192 \u00A9",
+    "color" : "pink",
+    "body" : "  \r\nuno\r\ndos\r\n\r\ntres\n \t\n\ncuatro\u2028cinco\u0085seis\u000B\u000Bsiete https://x.org/\u00E1?b=(1)) fin https://y.org/z]. ok \uD83D\uDE00https://e.org/\uD83D\uDE00x \n\n",
+    "unsubscribeUrl" : "https://x/u?a=1&b=\"2\"",
+    "portalUrl" : "https://x/o/\u00F1",
+    "html" : "<!doctype html><html lang=\"es\"><body style=\"margin:0;padding:0;background:#f5f3ef\">\n<div style=\"max-width:600px;margin:0 auto;font-family:Georgia,serif;color:#1c1917\">\n<div style=\"background:#1A3C6E;color:#ffffff;padding:20px 24px;font:bold 20px Georgia,serif\">Club de Rob&oacute;tica &ntilde; &rarr; &copy;</div>\n<div style=\"background:#ffffff;padding:24px;font-size:16px\"><p style=\"margin:0 0 16px;line-height:1.6\">uno</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">dos</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">tres</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">cuatro<br>cinco<br>seis</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">siete <a href=\"https://x.org/&aacute;?b=(1\" style=\"color:#1A3C6E\">https://x.org/&aacute;?b=(1</a>)) fin <a href=\"https://y.org/z\" style=\"color:#1A3C6E\">https://y.org/z</a>]. ok \uD83D\uDE00<a href=\"https://e.org/\uD83D\uDE00x\" style=\"color:#1A3C6E\">https://e.org/\uD83D\uDE00x</a></p></div>\n<div style=\"padding:16px 24px;font:12px/1.5 Arial,sans-serif;color:#57534e\">\nRecib\u00EDs este correo porque segu\u00EDs a <a href=\"https://x/o/&ntilde;\" style=\"color:#57534e\">Club de Rob&oacute;tica &ntilde; &rarr; &copy;</a> en ITBA News.\n<a href=\"https://x/u?a=1&amp;b=&quot;2&quot;\" style=\"color:#57534e\">Dejar de recibir correos de Club de Rob&oacute;tica &ntilde; &rarr; &copy;</a>.\n</div></div></body></html>\n",
+    "text" : "Club de Rob\u00F3tica \u00F1 \u2192 \u00A9\n\nuno\r\ndos\r\n\r\ntres\n \t\n\ncuatro\u2028cinco\u0085seis\u000B\u000Bsiete https://x.org/\u00E1?b=(1)) fin https://y.org/z]. ok \uD83D\uDE00https://e.org/\uD83D\uDE00x\n\n--\nRecib\u00EDs este correo porque segu\u00EDs a Club de Rob\u00F3tica \u00F1 \u2192 \u00A9 en ITBA News. Dejar de recibir sus correos: https://x/u?a=1&b=\"2\"\n"
+  }, {
+    "name" : "crlfOnly",
+    "orgName" : "O",
+    "color" : "green",
+    "body" : "a\r\nb\r\n\r\nc\u00A0\u00A0\n\u00A0\nd",
+    "unsubscribeUrl" : "u",
+    "portalUrl" : "p",
+    "html" : "<!doctype html><html lang=\"es\"><body style=\"margin:0;padding:0;background:#f5f3ef\">\n<div style=\"max-width:600px;margin:0 auto;font-family:Georgia,serif;color:#1c1917\">\n<div style=\"background:#047857;color:#ffffff;padding:20px 24px;font:bold 20px Georgia,serif\">O</div>\n<div style=\"background:#ffffff;padding:24px;font-size:16px\"><p style=\"margin:0 0 16px;line-height:1.6\">a</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">b</p>\n<p style=\"margin:0 0 16px;line-height:1.6\">c&nbsp;&nbsp;<br>&nbsp;<br>d</p></div>\n<div style=\"padding:16px 24px;font:12px/1.5 Arial,sans-serif;color:#57534e\">\nRecib\u00EDs este correo porque segu\u00EDs a <a href=\"p\" style=\"color:#57534e\">O</a> en ITBA News.\n<a href=\"u\" style=\"color:#57534e\">Dejar de recibir correos de O</a>.\n</div></div></body></html>\n",
+    "text" : "O\n\na\r\nb\r\n\r\nc\u00A0\u00A0\n\u00A0\nd\n\n--\nRecib\u00EDs este correo porque segu\u00EDs a O en ITBA News. Dejar de recibir sus correos: u\n"
+  }, {
+    "name" : "amber",
+    "orgName" : "\u00DC",
+    "color" : "amber",
+    "body" : "\u2003x\u2003",
+    "unsubscribeUrl" : "u",
+    "portalUrl" : "p",
+    "html" : "<!doctype html><html lang=\"es\"><body style=\"margin:0;padding:0;background:#f5f3ef\">\n<div style=\"max-width:600px;margin:0 auto;font-family:Georgia,serif;color:#1c1917\">\n<div style=\"background:#B87005;color:#ffffff;padding:20px 24px;font:bold 20px Georgia,serif\">&Uuml;</div>\n<div style=\"background:#ffffff;padding:24px;font-size:16px\"><p style=\"margin:0 0 16px;line-height:1.6\">x</p></div>\n<div style=\"padding:16px 24px;font:12px/1.5 Arial,sans-serif;color:#57534e\">\nRecib\u00EDs este correo porque segu\u00EDs a <a href=\"p\" style=\"color:#57534e\">&Uuml;</a> en ITBA News.\n<a href=\"u\" style=\"color:#57534e\">Dejar de recibir correos de &Uuml;</a>.\n</div></div></body></html>\n",
+    "text" : "\u00DC\n\nx\n\n--\nRecib\u00EDs este correo porque segu\u00EDs a \u00DC en ITBA News. Dejar de recibir sus correos: u\n"
+  } ],
+  "listIdPhrase" : [ [ "SABF", "slug", "SABF" ], [ "Club de Rob\u00F3tica", "slug", "=?UTF-8?Q?Club_de_Rob=C3=B3tica?=" ], [ null, "slug", "slug" ], [ "  ", "slug", "slug" ], [ "\u00D1", "slug", "=?UTF-8?Q?=C3=91?=" ], [ "A\u0000BC\tD", "slug", "A B C D" ], [ "Centro de Estudiantes de Ingenier\u00EDa Qu\u00EDmica y Biotecnolog\u00EDa del ITBA \u2014 Rob\u00F3tica \uD83D\uDE00 \u00F1\u00F1\u00F1", "slug", "=?UTF-8?Q?Centro_de_Estudiantes_de_Ingenier=C3=ADa_Qu=C3=ADmica?= =?UTF-8?Q?_y_Biotecnolog=C3=ADa_del_?= =?UTF-8?Q?ITBA_=E2=80=94_Rob=C3=B3tica_=F0=9F=98=80_=C3=B1=C3=B1=C3=B1?=" ], [ "x=y_z?w \u00F1", "slug", "=?UTF-8?Q?x=3Dy=5Fz=3Fw_=C3=B1?=" ], [ "\u00A0\u00F1\u00A0", "slug", "=?UTF-8?Q?=C2=A0=C3=B1=C2=A0?=" ], [ "\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00\uD83D\uDE00", "slug", "=?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?= =?UTF-8?Q?=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80=F0=9F=98=80?=" ], [ "a\u0085b \u00FC", "slug", "=?UTF-8?Q?a=C2=85b_=C3=BC?=" ], [ "\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9\u00E9", "slug", "=?UTF-8?Q?=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9?= =?UTF-8?Q?=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9?= =?UTF-8?Q?=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9?= =?UTF-8?Q?=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9=C3=A9?=" ] ],
+  "docHtml" : [ {
+    "name" : "fixture",
+    "raw" : "<html><head><meta content=\"text/html; charset=UTF-8\" http-equiv=\"content-type\"><style type=\"text/css\">@import url(https://themes.googleusercontent.com/fonts/css?kit=abc);ul.lst-kix_rq1x2-1{list-style-type:none}.lst-kix_rq1x2-0>li:before{content:\"\\0025cf   \"}.lst-kix_rq1x2-1>li:before{content:\"\\0025cb   \"}.lst-kix_rq1x2-2>li:before{content:\"\\0025a0   \"}ul.lst-kix_rq1x2-0{list-style-type:none}ul.lst-kix_rq1x2-2{list-style-type:none}ol.lst-kix_n9-0{list-style-type:none}.lst-kix_n9-0>li{counter-increment:lst-ctn-kix_n9-0}.lst-kix_n9-0>li:before{content:\"\" counter(lst-ctn-kix_n9-0,decimal) \". \"}ol.lst-kix_n9-0.start{counter-reset:lst-ctn-kix_n9-0 0}.lst-kix_n9-1>li:before{content:\"\" counter(lst-ctn-kix_n9-1,lower-latin) \". \"}ol.lst-kix_n9-1{list-style-type:none}.c0{margin-left:36pt;padding-top:0pt;padding-left:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left}.c1{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:\"Arial\";font-style:normal}.c2{color:#000000;font-weight:700;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:\"Arial\";font-style:normal}.c3{font-style:italic}.c4{padding-top:0pt;padding-bottom:0pt;line-height:1.15;text-align:center}.c5{text-decoration:underline}.c6{vertical-align:super}.c7{padding-top:0pt;padding-bottom:0pt;line-height:1.15;margin-left:72pt}.c8{text-decoration:line-through}.c9{background-color:#ffffff;max-width:451.4pt;padding:72pt 72pt 72pt 72pt}.c10{padding:0;margin:0}.c11{color:#1155cc;text-decoration:underline}.title{padding-top:0pt;color:#000000;font-size:26pt}</style></head><body class=\"c9 doc-content\">\n<p class=\"c4\"><span class=\"c2\">Final de Gesti\u00F3n</span></p>\n<p class=\"c4\"><span class=\"c1\">Intro con </span><span class=\"c2\">negrita</span><span class=\"c1\">, </span><span class=\"c3\">cursiva</span><span class=\"c1\">, </span><span class=\"c5\">subrayado</span><span class=\"c1\">, </span><span class=\"c8\">tachado</span><span class=\"c1\"> y x</span><span class=\"c6\">2</span></p>\n<ul class=\"c10 lst-kix_rq1x2-0 start\"><li class=\"c0 li-bullet-0\"><span class=\"c2\">Planeamiento</span></li></ul>\n<ul class=\"c10 lst-kix_rq1x2-1 start\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Estrat\u00E9gico</span></li><li class=\"c0 li-bullet-0\"><span class=\"c1\">T\u00E1ctico</span></li></ul>\n<ul class=\"c10 lst-kix_rq1x2-2 start\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Corto plazo</span></li></ul>\n<ul class=\"c10 lst-kix_rq1x2-1\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Operativo</span></li></ul>\n<ul class=\"c10 lst-kix_rq1x2-0\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Control</span></li></ul>\n<p class=\"c7\"><span class=\"c1\">Cita indentada</span></p>\n<ol class=\"c10 lst-kix_n9-0 start\" start=\"1\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Primero</span></li></ol>\n<ol class=\"c10 lst-kix_n9-1 start\" start=\"1\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">sub a</span></li><li class=\"c0\"><span class=\"c1\">sub b</span></li></ol>\n<ol class=\"c10 lst-kix_n9-0\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Segundo</span></li></ol>\n<p class=\"c4\"><span class=\"c1\">Corte</span></p>\n<ol class=\"c10 lst-kix_n9-0\"><li class=\"c0 li-bullet-0\"><span class=\"c1\">Tercero</span></li></ol>\n<p><a class=\"c11\" href=\"https://www.google.com/url?q=https://itba.edu.ar&amp;sa=D\"><span class=\"c11\">link</span></a></p>\n</body></html>\n",
+    "normalized" : "<html>\n <head>\n  <meta content=\"text/html; charset=UTF-8\" http-equiv=\"content-type\">\n  <style type=\"text/css\">@import url(https://themes.googleusercontent.com/fonts/css?kit=abc);ul.lst-kix_rq1x2-1{list-style-type:none}.lst-kix_rq1x2-0>li:before{content:\"\\0025cf   \"}.lst-kix_rq1x2-1>li:before{content:\"\\0025cb   \"}.lst-kix_rq1x2-2>li:before{content:\"\\0025a0   \"}ul.lst-kix_rq1x2-0{list-style-type:none}ul.lst-kix_rq1x2-2{list-style-type:none}ol.lst-kix_n9-0{list-style-type:none}.lst-kix_n9-0>li{counter-increment:lst-ctn-kix_n9-0}.lst-kix_n9-0>li:before{content:\"\" counter(lst-ctn-kix_n9-0,decimal) \". \"}ol.lst-kix_n9-0.start{counter-reset:lst-ctn-kix_n9-0 0}.lst-kix_n9-1>li:before{content:\"\" counter(lst-ctn-kix_n9-1,lower-latin) \". \"}ol.lst-kix_n9-1{list-style-type:none}.c0{margin-left:36pt;padding-top:0pt;padding-left:0pt;padding-bottom:0pt;line-height:1.15;orphans:2;widows:2;text-align:left}.c1{color:#000000;font-weight:400;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:\"Arial\";font-style:normal}.c2{color:#000000;font-weight:700;text-decoration:none;vertical-align:baseline;font-size:11pt;font-family:\"Arial\";font-style:normal}.c3{font-style:italic}.c4{padding-top:0pt;padding-bottom:0pt;line-height:1.15;text-align:center}.c5{text-decoration:underline}.c6{vertical-align:super}.c7{padding-top:0pt;padding-bottom:0pt;line-height:1.15;margin-left:72pt}.c8{text-decoration:line-through}.c9{background-color:#ffffff;max-width:451.4pt;padding:72pt 72pt 72pt 72pt}.c10{padding:0;margin:0}.c11{color:#1155cc;text-decoration:underline}.title{padding-top:0pt;color:#000000;font-size:26pt}</style>\n </head>\n <body class=\"c9 doc-content\">\n  <p class=\"c4\" data-align=\"center\"><span class=\"c2\"><strong>Final de Gesti\u00F3n</strong></span></p>\n  <p class=\"c4\" data-align=\"center\"><span class=\"c1\">Intro con </span><span class=\"c2\"><strong>negrita</strong></span><span class=\"c1\">, </span><span class=\"c3\"><em>cursiva</em></span><span class=\"c1\">, </span><span class=\"c5\"><u>subrayado</u></span><span class=\"c1\">, </span><span class=\"c8\"><s>tachado</s></span><span class=\"c1\"> y x</span><span class=\"c6\"><sup>2</sup></span></p>\n  <ul class=\"c10 lst-kix_rq1x2-0 start\">\n   <li class=\"c0 li-bullet-0\"><span class=\"c2\"><strong>Planeamiento</strong></span>\n    <ul class=\"c10 lst-kix_rq1x2-1 start\">\n     <li class=\"c0 li-bullet-0\"><span class=\"c1\">Estrat\u00E9gico</span></li>\n     <li class=\"c0 li-bullet-0\"><span class=\"c1\">T\u00E1ctico</span>\n      <ul class=\"c10 lst-kix_rq1x2-2 start\">\n       <li class=\"c0 li-bullet-0\"><span class=\"c1\">Corto plazo</span></li>\n      </ul></li>\n     <li class=\"c0 li-bullet-0\"><span class=\"c1\">Operativo</span></li>\n    </ul></li>\n   <li class=\"c0 li-bullet-0\"><span class=\"c1\">Control</span></li>\n  </ul>   \n  <blockquote>\n   <p class=\"c7\"><span class=\"c1\">Cita indentada</span></p>\n  </blockquote>\n  <ol class=\"c10 lst-kix_n9-0 start\" start=\"1\" type=\"1\">\n   <li class=\"c0 li-bullet-0\"><span class=\"c1\">Primero</span>\n    <ol class=\"c10 lst-kix_n9-1 start\" start=\"1\" type=\"a\">\n     <li class=\"c0 li-bullet-0\"><span class=\"c1\">sub a</span></li>\n     <li class=\"c0\"><span class=\"c1\">sub b</span></li>\n    </ol></li>\n   <li class=\"c0 li-bullet-0\"><span class=\"c1\">Segundo</span></li>\n  </ol> \n  <p class=\"c4\" data-align=\"center\"><span class=\"c1\">Corte</span></p>\n  <ol class=\"c10 lst-kix_n9-0\" type=\"1\" start=\"3\">\n   <li class=\"c0 li-bullet-0\"><span class=\"c1\">Tercero</span></li>\n  </ol>\n  <p><a class=\"c11\" href=\"https://www.google.com/url?q=https://itba.edu.ar&amp;sa=D\"><span class=\"c11\">link</span></a></p>\n </body>\n</html>",
+    "html" : "<p data-align=\"center\"><span><strong>Final de Gesti\u00F3n</strong></span></p>\n<p data-align=\"center\"><span>Intro con </span><span><strong>negrita</strong></span><span>, </span><span><em>cursiva</em></span><span>, </span><span><u>subrayado</u></span><span>, </span><span><s>tachado</s></span><span> y x</span><span><sup>2</sup></span></p>\n<ul>\n <li><span><strong>Planeamiento</strong></span>\n  <ul>\n   <li><span>Estrat\u00E9gico</span></li>\n   <li><span>T\u00E1ctico</span>\n    <ul>\n     <li><span>Corto plazo</span></li>\n    </ul></li>\n   <li><span>Operativo</span></li>\n  </ul></li>\n <li><span>Control</span></li>\n</ul>\n<blockquote>\n <p><span>Cita indentada</span></p>\n</blockquote>\n<ol start=\"1\" type=\"1\">\n <li><span>Primero</span>\n  <ol start=\"1\" type=\"a\">\n   <li><span>sub a</span></li>\n   <li><span>sub b</span></li>\n  </ol></li>\n <li><span>Segundo</span></li>\n</ol>\n<p data-align=\"center\"><span>Corte</span></p>\n<ol type=\"1\" start=\"3\">\n <li><span>Tercero</span></li>\n</ol>\n<p><a href=\"https://itba.edu.ar\" rel=\"nofollow noopener noreferrer\" target=\"_blank\"><span>link</span></a></p>",
+    "text" : "Final de Gesti\u00F3n Intro con negrita, cursiva, subrayado, tachado y x2 Planeamiento Estrat\u00E9gico T\u00E1ctico Corto plazo Operativo Control Cita indentada Primero sub a sub b Segundo Corte Tercero link",
+    "used" : [ ],
+    "rawHtml" : "<p><span>Final de Gesti\u00F3n</span></p>\n<p><span>Intro con </span><span>negrita</span><span>, </span><span>cursiva</span><span>, </span><span>subrayado</span><span>, </span><span>tachado</span><span> y x</span><span>2</span></p>\n<ul>\n <li><span>Planeamiento</span></li>\n</ul>\n<ul>\n <li><span>Estrat\u00E9gico</span></li>\n <li><span>T\u00E1ctico</span></li>\n</ul>\n<ul>\n <li><span>Corto plazo</span></li>\n</ul>\n<ul>\n <li><span>Operativo</span></li>\n</ul>\n<ul>\n <li><span>Control</span></li>\n</ul>\n<p><span>Cita indentada</span></p>\n<ol start=\"1\">\n <li><span>Primero</span></li>\n</ol>\n<ol start=\"1\">\n <li><span>sub a</span></li>\n <li><span>sub b</span></li>\n</ol>\n<ol>\n <li><span>Segundo</span></li>\n</ol>\n<p><span>Corte</span></p>\n<ol>\n <li><span>Tercero</span></li>\n</ol>\n<p><a href=\"https://itba.edu.ar\" rel=\"nofollow noopener noreferrer\" target=\"_blank\"><span>link</span></a></p>",
+    "rawText" : "Final de Gesti\u00F3n Intro con negrita, cursiva, subrayado, tachado y x2 Planeamiento Estrat\u00E9gico T\u00E1ctico Corto plazo Operativo Control Cita indentada Primero sub a sub b Segundo Corte Tercero link"
+  }, {
+    "name" : "inline",
+    "raw" : "<html><head><style>.lst-kix_3hg-0>li:before{content:\"\\0025cf   \"}.lst-kix_3hg-1>li:before{content:\"\\0025cb   \"}</style></head><body><ul class=\"lst-kix_3hg-0 start\"><li style=\"margin-left:36pt\"><span>Sistemas</span></li></ul><ul class=\"lst-kix_3hg-1 start\"><li><span>La </span><span style=\"color:#000000;font-weight:700;text-decoration:underline;vertical-align:baseline;font-style:normal\">Ley 19550 </span></li></ul><p style=\"margin-left:36pt;text-align:right\"><span style=\"font-style:italic\">nota</span></p></body></html>",
+    "normalized" : "<html>\n <head>\n  <style>.lst-kix_3hg-0>li:before{content:\"\\0025cf   \"}.lst-kix_3hg-1>li:before{content:\"\\0025cb   \"}</style>\n </head>\n <body>\n  <ul class=\"lst-kix_3hg-0 start\">\n   <li style=\"margin-left:36pt\"><span>Sistemas</span>\n    <ul class=\"lst-kix_3hg-1 start\">\n     <li><span>La </span><span style=\"color:#000000;font-weight:700;text-decoration:underline;vertical-align:baseline;font-style:normal\"><strong><u>Ley 19550 </u></strong></span></li>\n    </ul></li>\n  </ul>\n  <blockquote>\n   <p style=\"margin-left:36pt;text-align:right\" data-align=\"right\"><span style=\"font-style:italic\"><em>nota</em></span></p>\n  </blockquote>\n </body>\n</html>",
+    "html" : "<ul>\n <li><span>Sistemas</span>\n  <ul>\n   <li><span>La </span><span><strong><u>Ley 19550 </u></strong></span></li>\n  </ul></li>\n</ul>\n<blockquote>\n <p data-align=\"right\"><span><em>nota</em></span></p>\n</blockquote>",
+    "text" : "Sistemas La Ley 19550 nota",
+    "used" : [ ],
+    "rawHtml" : "<ul>\n <li><span>Sistemas</span></li>\n</ul>\n<ul>\n <li><span>La </span><span>Ley 19550 </span></li>\n</ul>\n<p><span>nota</span></p>",
+    "rawText" : "Sistemas La Ley 19550 nota"
+  }, {
+    "name" : "sanitizerTest1",
+    "raw" : "<html><head><style>.c1{color:red}</style><script>alert(1)</script></head>\n<body class=\"doc\"><p class=\"c1\" style=\"color:red\">Hola <b>mundo</b></p>\n<img src=\"images/image1.png\" style=\"width:10px\" onerror=\"alert(1)\">\n<img src=\"images/missing.png\">\n<img src=\"https://evil.example/track.gif\">\n<img src=\"data:image/png;base64,AAAA\">\n<iframe src=\"https://evil.example\"></iframe>\n</body></html>",
+    "normalized" : "<html>\n <head>\n  <style>.c1{color:red}</style>\n  <script>alert(1)</script>\n </head>\n <body class=\"doc\">\n  <p class=\"c1\" style=\"color:red\">Hola <b>mundo</b></p>\n  <img src=\"images/image1.png\" style=\"width:10px\" onerror=\"alert(1)\"> <img src=\"images/missing.png\"> <img src=\"https://evil.example/track.gif\"> <img src=\"data:image/png;base64,AAAA\"> <iframe src=\"https://evil.example\"></iframe>\n </body>\n</html>",
+    "html" : "<p>Hola <b>mundo</b></p>\n<img src=\"/assets/image1.png\">    ",
+    "text" : "Hola mundo",
+    "used" : [ "image1.png" ],
+    "rawHtml" : "<p>Hola <b>mundo</b></p>\n<img src=\"/assets/image1.png\">    ",
+    "rawText" : "Hola mundo"
+  }, {
+    "name" : "links",
+    "raw" : "<a href=\"https://www.google.com/url?q=https://itba.edu.ar/x%3Fa%3D1&sa=D\">ITBA</a><a href=\"javascript:alert(1)\">bad</a><a href=\"/rel\">rel</a><a href=\"mailto:a@b.c\">m</a><a href=\"HTTPS://X.ORG/\">u</a><a href=\"https://google.com/url?sa=x&q=%ZZ\">z</a>",
+    "normalized" : "<html>\n <head></head>\n <body>\n  <a href=\"https://www.google.com/url?q=https://itba.edu.ar/x%3Fa%3D1&amp;sa=D\">ITBA</a><a href=\"javascript:alert(1)\">bad</a><a href=\"/rel\">rel</a><a href=\"mailto:a@b.c\">m</a><a href=\"HTTPS://X.ORG/\">u</a><a href=\"https://google.com/url?sa=x&amp;q=%ZZ\">z</a>\n </body>\n</html>",
+    "html" : "<a href=\"https://itba.edu.ar/x?a=1\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">ITBA</a><a rel=\"nofollow noopener noreferrer\" target=\"_blank\">bad</a><a rel=\"nofollow noopener noreferrer\" target=\"_blank\">rel</a><a href=\"mailto:a@b.c\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">m</a><a href=\"https://X.ORG/\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">u</a><a href=\"https://google.com/url?sa=x&amp;q=%ZZ\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">z</a>",
+    "text" : "ITBAbadrelmuz",
+    "used" : [ ],
+    "rawHtml" : "<a href=\"https://itba.edu.ar/x?a=1\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">ITBA</a><a rel=\"nofollow noopener noreferrer\" target=\"_blank\">bad</a><a rel=\"nofollow noopener noreferrer\" target=\"_blank\">rel</a><a href=\"mailto:a@b.c\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">m</a><a href=\"https://X.ORG/\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">u</a><a href=\"https://google.com/url?sa=x&amp;q=%ZZ\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">z</a>",
+    "rawText" : "ITBAbadrelmuz"
+  }, {
+    "name" : "misc",
+    "raw" : "<table><tr><td style=\"text-align:center;font-weight:bold\">x &amp; y &lt; z &quot;q&quot; ' \u00A0 \u00E9</td><th>h</th></tr></table><h2 style=\"font-weight:700\">T</h2><ol class=\"lst-kix_a-0\"><li>1</li></ol><p>x</p><ol class=\"lst-kix_a-0\"><li>2</li></ol><blockquote>q</blockquote><p style=\"margin-left:40pt\">ind</p><div style=\"text-align:right\">d</div><s>s</s><sup>2</sup><pre>a  b</pre><code>c</code><dl><dt>t</dt><dd>d</dd></dl><span style=\"vertical-align:sub\">i</span>",
+    "normalized" : "<html>\n <head></head>\n <body>\n  <table>\n   <tbody>\n    <tr>\n     <td style=\"text-align:center;font-weight:bold\" data-align=\"center\"><strong>x &amp; y &lt; z \"q\" ' &nbsp; \u00E9</strong></td>\n     <th>h</th>\n    </tr>\n   </tbody>\n  </table>\n  <h2 style=\"font-weight:700\">T</h2>\n  <ol class=\"lst-kix_a-0\">\n   <li>1</li>\n  </ol>\n  <p>x</p>\n  <ol class=\"lst-kix_a-0\" start=\"2\">\n   <li>2</li>\n  </ol>\n  <blockquote>q</blockquote>\n  <blockquote>\n   <p style=\"margin-left:40pt\">ind</p>\n  </blockquote>\n  <div style=\"text-align:right\" data-align=\"right\">d</div>\n  <s>s</s><sup>2</sup>\n  <pre>a  b</pre>\n  <code>c</code>\n  <dl>\n   <dt>t</dt>\n   <dd>d</dd>\n  </dl>\n  <span style=\"vertical-align:sub\"><sub>i</sub></span>\n </body>\n</html>",
+    "html" : "<table>\n <tbody>\n  <tr>\n   <td data-align=\"center\"><strong>x &amp; y &lt; z \"q\" ' &nbsp; \u00E9</strong></td>\n   <th>h</th>\n  </tr>\n </tbody>\n</table>\n<h2>T</h2>\n<ol>\n <li>1</li>\n</ol>\n<p>x</p>\n<ol start=\"2\">\n <li>2</li>\n</ol>\n<blockquote>q</blockquote>\n<blockquote>\n <p>ind</p>\n</blockquote>\n<div data-align=\"right\">d</div>\n<s>s</s><sup>2</sup>\n<pre>a  b</pre>\n<code>c</code>\n<dl>\n <dt>t</dt>\n <dd>d</dd>\n</dl>\n<span><sub>i</sub></span>",
+    "text" : "x & y < z \"q\" ' \u00E9 h T 1 x 2 q ind d s2 a  b c t d i",
+    "used" : [ ],
+    "rawHtml" : "<table>\n <tbody>\n  <tr>\n   <td>x &amp; y &lt; z \"q\" ' &nbsp; \u00E9</td>\n   <th>h</th>\n  </tr>\n </tbody>\n</table>\n<h2>T</h2>\n<ol>\n <li>1</li>\n</ol>\n<p>x</p>\n<ol>\n <li>2</li>\n</ol>\n<blockquote>q</blockquote>\n<p>ind</p>\n<div>d</div>\n<s>s</s><sup>2</sup>\n<pre>a  b</pre>\n<code>c</code>\n<dl>\n <dt>t</dt>\n <dd>d</dd>\n</dl>\n<span>i</span>",
+    "rawText" : "x & y < z \"q\" ' \u00E9 h T 1 x 2 q ind d s2 a  b c t d i"
+  }, {
+    "name" : "attrs",
+    "raw" : "<p><img src=\"images/image1.png\" alt=\"a<b>c&quot;d&amp;e\u00A0f'g\" title=\"t\"><a href=\"https://x.org/?a=1&amp;b=<2>\" title=\"x&lt;y&gt;&quot;\u00A0\">l &amp; <i>i</i>\u00A0&gt;</a></p><table><tr><td colspan=\"2\">c</td></tr></table>",
+    "normalized" : "<html>\n <head></head>\n <body>\n  <p><img src=\"images/image1.png\" alt=\"a&lt;b&gt;c&quot;d&amp;e&nbsp;f'g\" title=\"t\"><a href=\"https://x.org/?a=1&amp;b=&lt;2&gt;\" title=\"x&lt;y&gt;&quot;&nbsp;\">l &amp; <i>i</i>&nbsp;&gt;</a></p>\n  <table>\n   <tbody>\n    <tr>\n     <td colspan=\"2\">c</td>\n    </tr>\n   </tbody>\n  </table>\n </body>\n</html>",
+    "html" : "<p><img src=\"/assets/image1.png\" alt=\"a&lt;b&gt;c&quot;d&amp;e&nbsp;f'g\" title=\"t\"><a href=\"https://x.org/?a=1&amp;b=&lt;2&gt;\" title=\"x&lt;y&gt;&quot;&nbsp;\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">l &amp; <i>i</i>&nbsp;&gt;</a></p>\n<table>\n <tbody>\n  <tr>\n   <td colspan=\"2\">c</td>\n  </tr>\n </tbody>\n</table>",
+    "text" : "l & i > c",
+    "used" : [ "image1.png" ],
+    "rawHtml" : "<p><img src=\"/assets/image1.png\" alt=\"a&lt;b&gt;c&quot;d&amp;e&nbsp;f'g\" title=\"t\"><a href=\"https://x.org/?a=1&amp;b=&lt;2&gt;\" title=\"x&lt;y&gt;&quot;&nbsp;\" rel=\"nofollow noopener noreferrer\" target=\"_blank\">l &amp; <i>i</i>&nbsp;&gt;</a></p>\n<table>\n <tbody>\n  <tr>\n   <td colspan=\"2\">c</td>\n  </tr>\n </tbody>\n</table>",
+    "rawText" : "l & i > c"
+  } ],
+  "unwrap" : [ [ "https://www.google.com/url?q=https://a.b/c%3Fd%3D1&sa=D", "https://a.b/c?d=1" ], [ "https://google.com/url?sa=1&q=x+y", "x y" ], [ "https://notgoogle.com/url?q=x", "x" ], [ "https://www.google.com/url?qq=1&q=", "" ], [ "https://www.google.com/url", "https://www.google.com/url" ], [ "http://x y", "http://x y" ], [ "https://evilgoogle.com/url?q=javascript:alert(1)", "javascript:alert(1)" ], [ "/url?q=x", "/url?q=x" ], [ "https://www.google.com/URL?q=x", "https://www.google.com/URL?q=x" ] ],
+  "cssSelectors" : [ ".c1", ".c2", ".a>li:before", "ol.lst-kix_x-1", "p" ],
+  "uris" : [ [ "https://drive.google.com/drive/folders/abc?x=1#f", "https|drive.google.com|/drive/folders/abc|x=1|f|/drive/folders/abc" ], [ "https://user@drive.google.com:8080/a", "https|drive.google.com|/a|null|null|/a" ], [ "https://drive.google.com.evil.com/x", "https|drive.google.com.evil.com|/x|null|null|/x" ], [ "https://1.2.3.4/x", "https|1.2.3.4|/x|null|null|/x" ], [ "https://1.2.3.4.5/x", "https|null|/x|null|null|/x" ], [ "https://-bad.com/x", "https|null|/x|null|null|/x" ], [ "https://a_b.com/x", "https|null|/x|null|null|/x" ], [ "https://[::1]/x", "https|[::1]|/x|null|null|/x" ], [ "https:///x", "https|null|/x|null|null|/x" ], [ "https://x/%zz", "ERR" ], [ "https://x/\u00E1", "https|x|/\u00E1|null|null|/\u00E1" ], [ "https://x/a b", "ERR" ], [ "https://x/\u00A0", "ERR" ], [ "https://x/?q=<", "ERR" ], [ "https://x/#f#g", "ERR" ], [ "drive.google.com/open?id=abc", "null|null|drive.google.com/open|id=abc|null|drive.google.com/open" ], [ "mailto:a@b", "mailto|null|null|null|null|null" ], [ "https://ex.com:/x", "https|ex.com|/x|null|null|/x" ], [ "https://9x.com/a", "https|9x.com|/a|null|null|/a" ], [ "https://x.9com/a", "https|null|/a|null|null|/a" ], [ "https://x.com./a", "https|x.com.|/a|null|null|/a" ], [ "https://x..com/a", "https|null|/a|null|null|/a" ], [ "HTTPS://Drive.Google.Com/x", "HTTPS|Drive.Google.Com|/x|null|null|/x" ] ],
+  "academicYears" : [ [ "Resumen 2020 2021", 2021 ], [ "1c 21", 2021 ], [ "1C-21 y 2c'22", 2022 ], [ "cuatrimestre-23", 2023 ], [ "2020filas", null ], [ "2020 Filas", null ], [ "\u00D1and\u00FA 2019", 2019 ], [ "TP\u00A02021", 2021 ], [ "a\u00F1o 2026", 2026 ], [ "2027", null ], [ "\uFF11\uFF12\uFF13", null ], [ "cuatri 1 '24", 2024 ], [ "F\u00EDsica 2 (2/3/21)", null ], [ "fis II", null ], [ "EDA", null ], [ "Metodo", null ], [ "9342", null ], [ "93 42", null ], [ "93_41x", null ], [ "93.4", null ], [ "F\u00EDsica\u00A0I", null ], [ "constructor", null ], [ "__proto__", null ], [ "toString 2", null ] ],
+  "folderUrls" : [ [ "Resumen 2020 2021", null ], [ "1c 21", null ], [ "1C-21 y 2c'22", null ], [ "cuatrimestre-23", "cuatrimestre-23" ], [ "2020filas", null ], [ "2020 Filas", null ], [ "\u00D1and\u00FA 2019", null ], [ "TP\u00A02021", null ], [ "a\u00F1o 2026", null ], [ "2027", null ], [ "\uFF11\uFF12\uFF13", null ], [ "cuatri 1 '24", null ], [ "F\u00EDsica 2 (2/3/21)", null ], [ "fis II", null ], [ "EDA", null ], [ "Metodo", null ], [ "9342", null ], [ "93 42", null ], [ "93_41x", null ], [ "93.4", null ], [ "F\u00EDsica\u00A0I", null ], [ "constructor", "constructor" ], [ "__proto__", null ], [ "toString 2", null ], [ "https://drive.google.com/open?id=1AbCdEfGhIjKlMnOpQrStUvWxYz%5F-123", "1AbCdEfGhIjKlMnOpQrStUvWxYz_-123" ], [ "https://docs.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz_-123", "1AbCdEfGhIjKlMnOpQrStUvWxYz_-123" ], [ "http://drive.google.com:443/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz_-123", "1AbCdEfGhIjKlMnOpQrStUvWxYz_-123" ], [ "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz_-123/x?id=zzz", "1AbCdEfGhIjKlMnOpQrStUvWxYz_-123" ], [ "drive.google.com/drive/folders/ 1AbCdEfGhIjKlMnOpQrStUvWxYz_-123", null ], [ "https://drive.google.com/x?id=1AbCdEfGhIjKlMnOpQrStUvWxYz_-123&id=bad", "1AbCdEfGhIjKlMnOpQrStUvWxYz_-123" ], [ "https://drive.google.com/open?id=%EF%BB%BF1AbCdEfGhIjKlMnOpQrStUvWxYz_-123", null ], [ "https://drive.google.com/open?id=1AbCdEfGhIj%EF%BB%BFKlMnOpQrStUvWxYz_-123", null ] ],
+  "subjectMatches" : [ [ "Resumen 2020 2021", null ], [ "1c 21", null ], [ "1C-21 y 2c'22", null ], [ "cuatrimestre-23", null ], [ "2020filas", null ], [ "2020 Filas", null ], [ "\u00D1and\u00FA 2019", null ], [ "TP\u00A02021", null ], [ "a\u00F1o 2026", null ], [ "2027", null ], [ "\uFF11\uFF12\uFF13", null ], [ "cuatri 1 '24", null ], [ "F\u00EDsica 2 (2/3/21)", "93.42" ], [ "fis II", "93.42" ], [ "EDA", "72.34" ], [ "Metodo", "94.24" ], [ "9342", "93.42" ], [ "93 42", "93.42" ], [ "93_41x", "93.41" ], [ "93.4", null ], [ "F\u00EDsica\u00A0I", "93.41" ], [ "constructor", null ], [ "__proto__", null ], [ "toString 2", null ] ],
+  "communityCodes" : [ [ "12.43-12.44 x", [ "12.43", "12.44" ] ], [ " 11.77/12.44,13.01 y", [ "11.77", "12.44", "13.01" ] ], [ "11.7 - x", [ ] ], [ "11.77", [ "11.77" ] ], [ "11.77 11.78", [ "11.77", "11.78" ] ], [ "\u00A011.77", [ ] ], [ "00.01 - 11.77", [ ] ] ],
+  "media" : {
+    "user" : "11111111-1111-1111-1111-111111111111",
+    "uuid" : "0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b",
+    "tag" : "f0c69539b583641c",
+    "key" : "proposals/0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b-f0c69539b583641c.pdf",
+    "contentType" : "application/pdf",
+    "errors" : [ [ "image/gif", "10", "Validation failed for field 'contentType' with value 'image/gif': unsupported content type. Allowed: application/pdf, image/jpeg, image/png, image/webp" ], [ "Image/PNG; charset=x", "6291456", "Validation failed for field 'sizeBytes' with value '6291456': file too large. Maximum size for image/png is 5 MB" ], [ " APPLICATION/PDF ", "11534336", "Validation failed for field 'sizeBytes' with value '11534336': file too large. Maximum size for application/pdf is 10 MB" ], [ "text/html", "-1", "Validation failed for field 'contentType' with value 'text/html': unsupported content type. Allowed: application/pdf, image/jpeg, image/png, image/webp" ] ]
+  },
+  "socialHandles" : [ [ "linkedin", "  @ jane ", "jane" ], [ "instagram", "  @ jane ", "jane" ], [ "discord", "  @ jane ", "jane" ], [ "linkedin", "https://linkedin.com//in/jane-doe", "ERR Validation failed for field 'linkedin' with value 'https://linkedin.com//in/jane-doe': must be a linkedin.com/in/<handle> URL or a handle" ], [ "instagram", "https://linkedin.com//in/jane-doe", "ERR Validation failed for field 'instagram' with value 'https://linkedin.com//in/jane-doe': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://linkedin.com//in/jane-doe", "ERR Validation failed for field 'discord' with value 'https://linkedin.com//in/jane-doe': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "linkedin.com/IN/jane-doe#x", "jane-doe" ], [ "instagram", "linkedin.com/IN/jane-doe#x", "ERR Validation failed for field 'instagram' with value 'linkedin.com/IN/jane-doe#x': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "linkedin.com/IN/jane-doe#x", "ERR Validation failed for field 'discord' with value 'linkedin.com/IN/jane-doe#x': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://www.linkedin.com/in/jos%C3%A9-p%C3%A9rez?x=1#y", "jos\u00E9-p\u00E9rez" ], [ "instagram", "https://www.linkedin.com/in/jos%C3%A9-p%C3%A9rez?x=1#y", "ERR Validation failed for field 'instagram' with value 'https://www.linkedin.com/in/jos%C3%A9-p%C3%A9rez?x=1#y': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://www.linkedin.com/in/jos%C3%A9-p%C3%A9rez?x=1#y", "ERR Validation failed for field 'discord' with value 'https://www.linkedin.com/in/jos%C3%A9-p%C3%A9rez?x=1#y': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://linkedin.com/in/a%+1b", "ERR Validation failed for field 'linkedin' with value 'https://linkedin.com/in/a%+1b': must be 3-100 letters, digits or hyphens" ], [ "instagram", "https://linkedin.com/in/a%+1b", "ERR Validation failed for field 'instagram' with value 'https://linkedin.com/in/a%+1b': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://linkedin.com/in/a%+1b", "ERR Validation failed for field 'discord' with value 'https://linkedin.com/in/a%+1b': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://linkedin.com/in/%E9-abc", "ERR Validation failed for field 'linkedin' with value 'https://linkedin.com/in/%E9-abc': must be 3-100 letters, digits or hyphens" ], [ "instagram", "https://linkedin.com/in/%E9-abc", "ERR Validation failed for field 'instagram' with value 'https://linkedin.com/in/%E9-abc': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://linkedin.com/in/%E9-abc", "ERR Validation failed for field 'discord' with value 'https://linkedin.com/in/%E9-abc': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "linkedin.com/in/jane\n?x", "ERR Validation failed for field 'linkedin' with value 'linkedin.com/in/jane\n?x': must be 3-100 letters, digits or hyphens" ], [ "instagram", "linkedin.com/in/jane\n?x", "ERR Validation failed for field 'instagram' with value 'linkedin.com/in/jane\n?x': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "linkedin.com/in/jane\n?x", "ERR Validation failed for field 'discord' with value 'linkedin.com/in/jane\n?x': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "linkedin.com/in/\u00F1\u00A0", "ERR Validation failed for field 'linkedin' with value 'linkedin.com/in/\u00F1\u00A0': must be 3-100 letters, digits or hyphens" ], [ "instagram", "linkedin.com/in/\u00F1\u00A0", "ERR Validation failed for field 'instagram' with value 'linkedin.com/in/\u00F1\u00A0': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "linkedin.com/in/\u00F1\u00A0", "ERR Validation failed for field 'discord' with value 'linkedin.com/in/\u00F1\u00A0': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://LinkedIn.com.ar/in/jane", "ERR Validation failed for field 'linkedin' with value 'https://LinkedIn.com.ar/in/jane': must be 3-100 letters, digits or hyphens" ], [ "instagram", "https://LinkedIn.com.ar/in/jane", "ERR Validation failed for field 'instagram' with value 'https://LinkedIn.com.ar/in/jane': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://LinkedIn.com.ar/in/jane", "ERR Validation failed for field 'discord' with value 'https://LinkedIn.com.ar/in/jane': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "instagram.com/jane.doe//", "ERR Validation failed for field 'linkedin' with value 'instagram.com/jane.doe//': must be 3-100 letters, digits or hyphens" ], [ "instagram", "instagram.com/jane.doe//", "jane.doe" ], [ "discord", "instagram.com/jane.doe//", "ERR Validation failed for field 'discord' with value 'instagram.com/jane.doe//': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://m.instagram.com/Jane.Doe", "ERR Validation failed for field 'linkedin' with value 'https://m.instagram.com/Jane.Doe': must be 3-100 letters, digits or hyphens" ], [ "instagram", "https://m.instagram.com/Jane.Doe", "jane.doe" ], [ "discord", "https://m.instagram.com/Jane.Doe", "ERR Validation failed for field 'discord' with value 'https://m.instagram.com/Jane.Doe': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "instagram.com/jane.doe?x\n", "ERR Validation failed for field 'linkedin' with value 'instagram.com/jane.doe?x\n': must be 3-100 letters, digits or hyphens" ], [ "instagram", "instagram.com/jane.doe?x\n", "jane.doe" ], [ "discord", "instagram.com/jane.doe?x\n", "ERR Validation failed for field 'discord' with value 'instagram.com/jane.doe?x\n': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "instagram.com/jane.doe#?", "ERR Validation failed for field 'linkedin' with value 'instagram.com/jane.doe#?': must be 3-100 letters, digits or hyphens" ], [ "instagram", "instagram.com/jane.doe#?", "jane.doe" ], [ "discord", "instagram.com/jane.doe#?", "ERR Validation failed for field 'discord' with value 'instagram.com/jane.doe#?': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "@@jane", "ERR Validation failed for field 'linkedin' with value '@@jane': must be 3-100 letters, digits or hyphens" ], [ "instagram", "@@jane", "ERR Validation failed for field 'instagram' with value '@@jane': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "@@jane", "ERR Validation failed for field 'discord' with value '@@jane': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "J\u00F6hn \u00DCnder#1234", "ERR Validation failed for field 'linkedin' with value 'J\u00F6hn \u00DCnder#1234': must be 3-100 letters, digits or hyphens" ], [ "instagram", "J\u00F6hn \u00DCnder#1234", "ERR Validation failed for field 'instagram' with value 'J\u00F6hn \u00DCnder#1234': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "J\u00F6hn \u00DCnder#1234", "J\u00F6hn \u00DCnder#1234" ], [ "linkedin", "a\u0085b#1234", "ERR Validation failed for field 'linkedin' with value 'a\u0085b#1234': must be 3-100 letters, digits or hyphens" ], [ "instagram", "a\u0085b#1234", "ERR Validation failed for field 'instagram' with value 'a\u0085b#1234': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "a\u0085b#1234", "ERR Validation failed for field 'discord' with value 'a\u0085b#1234': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "\u3000ab#1234", "ERR Validation failed for field 'linkedin' with value '\u3000ab#1234': must be 3-100 letters, digits or hyphens" ], [ "instagram", "\u3000ab#1234", "ERR Validation failed for field 'instagram' with value '\u3000ab#1234': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "\u3000ab#1234", "ERR Validation failed for field 'discord' with value '\u3000ab#1234': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "ab #1234", "ERR Validation failed for field 'linkedin' with value 'ab #1234': must be 3-100 letters, digits or hyphens" ], [ "instagram", "ab #1234", "ERR Validation failed for field 'instagram' with value 'ab #1234': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "ab #1234", "ERR Validation failed for field 'discord' with value 'ab #1234': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "ab#12345", "ERR Validation failed for field 'linkedin' with value 'ab#12345': must be 3-100 letters, digits or hyphens" ], [ "instagram", "ab#12345", "ERR Validation failed for field 'instagram' with value 'ab#12345': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "ab#12345", "ERR Validation failed for field 'discord' with value 'ab#12345': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "\uD83D\uDE00\uD83D\uDE00#1234", "ERR Validation failed for field 'linkedin' with value '\uD83D\uDE00\uD83D\uDE00#1234': must be 3-100 letters, digits or hyphens" ], [ "instagram", "\uD83D\uDE00\uD83D\uDE00#1234", "ERR Validation failed for field 'instagram' with value '\uD83D\uDE00\uD83D\uDE00#1234': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "\uD83D\uDE00\uD83D\uDE00#1234", "\uD83D\uDE00\uD83D\uDE00#1234" ], [ "linkedin", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#1234", "ERR Validation failed for field 'linkedin' with value 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#1234': must be 3-100 letters, digits or hyphens" ], [ "instagram", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#1234", "ERR Validation failed for field 'instagram' with value 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#1234': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#1234", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#1234" ], [ "linkedin", "\u00A0abc", "ERR Validation failed for field 'linkedin' with value '\u00A0abc': must be 3-100 letters, digits or hyphens" ], [ "instagram", "\u00A0abc", "ERR Validation failed for field 'instagram' with value '\u00A0abc': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "\u00A0abc", "ERR Validation failed for field 'discord' with value '\u00A0abc': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "x\u200Dy#0000", "ERR Validation failed for field 'linkedin' with value 'x\u200Dy#0000': must be 3-100 letters, digits or hyphens" ], [ "instagram", "x\u200Dy#0000", "ERR Validation failed for field 'instagram' with value 'x\u200Dy#0000': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "x\u200Dy#0000", "ERR Validation failed for field 'discord' with value 'x\u200Dy#0000': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://linkedin.com/in/%EF%BB%BFjane-doe", "ERR Validation failed for field 'linkedin' with value 'https://linkedin.com/in/%EF%BB%BFjane-doe': must be 3-100 letters, digits or hyphens" ], [ "instagram", "https://linkedin.com/in/%EF%BB%BFjane-doe", "ERR Validation failed for field 'instagram' with value 'https://linkedin.com/in/%EF%BB%BFjane-doe': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://linkedin.com/in/%EF%BB%BFjane-doe", "ERR Validation failed for field 'discord' with value 'https://linkedin.com/in/%EF%BB%BFjane-doe': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ], [ "linkedin", "https://linkedin.com/in/ja%EF%BB%BFne-doe", "ERR Validation failed for field 'linkedin' with value 'https://linkedin.com/in/ja%EF%BB%BFne-doe': must be 3-100 letters, digits or hyphens" ], [ "instagram", "https://linkedin.com/in/ja%EF%BB%BFne-doe", "ERR Validation failed for field 'instagram' with value 'https://linkedin.com/in/ja%EF%BB%BFne-doe': must be 1-30 letters, digits, '.' or '_'" ], [ "discord", "https://linkedin.com/in/ja%EF%BB%BFne-doe", "ERR Validation failed for field 'discord' with value 'https://linkedin.com/in/ja%EF%BB%BFne-doe': must be a Discord username (2-32 of a-z, 0-9, '.', '_')" ] ],
+  "validation" : {
+    "registerDevice" : [ {
+      "input" : {
+        "token" : "",
+        "platform" : ""
+      },
+      "violations" : [ {
+        "path" : "platform",
+        "message" : "must match \"(?i)ios|android\""
+      }, {
+        "path" : "platform",
+        "message" : "must not be blank"
+      }, {
+        "path" : "token",
+        "message" : "must match \"[A-Za-z0-9_:.\\-]+\""
+      }, {
+        "path" : "token",
+        "message" : "must not be blank"
+      } ]
+    }, {
+      "input" : { },
+      "violations" : [ {
+        "path" : "platform",
+        "message" : "must not be blank"
+      }, {
+        "path" : "token",
+        "message" : "must not be blank"
+      } ]
+    }, {
+      "input" : {
+        "token" : "a b",
+        "platform" : "IOS",
+        "appVersion" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "violations" : [ {
+        "path" : "appVersion",
+        "message" : "size must be between 0 and 32"
+      }, {
+        "path" : "token",
+        "message" : "must match \"[A-Za-z0-9_:.\\-]+\""
+      } ]
+    }, {
+      "input" : {
+        "token" : " ",
+        "platform" : "Android"
+      },
+      "violations" : [ {
+        "path" : "token",
+        "message" : "must match \"[A-Za-z0-9_:.\\-]+\""
+      }, {
+        "path" : "token",
+        "message" : "must not be blank"
+      } ]
+    }, {
+      "input" : {
+        "token" : "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+        "platform" : "web"
+      },
+      "violations" : [ {
+        "path" : "platform",
+        "message" : "must match \"(?i)ios|android\""
+      }, {
+        "path" : "token",
+        "message" : "must match \"[A-Za-z0-9_:.\\-]+\""
+      }, {
+        "path" : "token",
+        "message" : "size must be between 0 and 1024"
+      } ]
+    }, {
+      "input" : {
+        "token" : "\u00A0",
+        "platform" : "\u0001"
+      },
+      "violations" : [ {
+        "path" : "platform",
+        "message" : "must match \"(?i)ios|android\""
+      }, {
+        "path" : "platform",
+        "message" : "must not be blank"
+      }, {
+        "path" : "token",
+        "message" : "must match \"[A-Za-z0-9_:.\\-]+\""
+      } ]
+    }, {
+      "input" : {
+        "token" : "a:b.c_d-e",
+        "platform" : "ios\n"
+      },
+      "violations" : [ {
+        "path" : "platform",
+        "message" : "must match \"(?i)ios|android\""
+      } ]
+    } ],
+    "staff" : [ {
+      "dto" : "CreateStaffMemberRequest",
+      "input" : {
+        "year" : 1999,
+        "departmentSlug" : " ",
+        "name" : null,
+        "roleEs" : "\u00A0",
+        "roleEn" : "\t",
+        "photoUrl" : "http://",
+        "linkedinUrl" : " \n "
+      },
+      "violations" : [ {
+        "path" : "departmentSlug",
+        "message" : "must not be blank"
+      }, {
+        "path" : "name",
+        "message" : "must not be blank"
+      }, {
+        "path" : "photoUrl",
+        "message" : "must be an http(s) URL"
+      }, {
+        "path" : "roleEn",
+        "message" : "must not be blank"
+      }, {
+        "path" : "year",
+        "message" : "must be greater than or equal to 2000"
+      } ],
+      "violationsEs" : [ {
+        "path" : "departmentSlug",
+        "message" : "no debe estar vac\u00EDo"
+      }, {
+        "path" : "name",
+        "message" : "no debe estar vac\u00EDo"
+      }, {
+        "path" : "photoUrl",
+        "message" : "must be an http(s) URL"
+      }, {
+        "path" : "roleEn",
+        "message" : "no debe estar vac\u00EDo"
+      }, {
+        "path" : "year",
+        "message" : "debe ser mayor que o igual a 2000"
+      } ]
+    }, {
+      "dto" : "CreateStaffMemberRequest",
+      "input" : {
+        "year" : 2026,
+        "departmentSlug" : "d",
+        "name" : "n",
+        "roleEs" : "r",
+        "roleEn" : "r",
+        "photoUrl" : "https://x y",
+        "linkedinUrl" : "https://\u00A0x"
+      },
+      "violations" : [ {
+        "path" : "photoUrl",
+        "message" : "must be an http(s) URL"
+      } ],
+      "violationsEs" : [ {
+        "path" : "photoUrl",
+        "message" : "must be an http(s) URL"
+      } ]
+    }, {
+      "dto" : "CreateStaffMemberRequest",
+      "input" : {
+        "year" : 2026,
+        "departmentSlug" : "d",
+        "name" : "n",
+        "roleEs" : "r",
+        "roleEn" : "r",
+        "photoUrl" : "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "linkedinUrl" : "HTTPS://x"
+      },
+      "violations" : [ {
+        "path" : "linkedinUrl",
+        "message" : "must be an http(s) URL"
+      }, {
+        "path" : "photoUrl",
+        "message" : "size must be between 0 and 2048"
+      } ],
+      "violationsEs" : [ {
+        "path" : "linkedinUrl",
+        "message" : "must be an http(s) URL"
+      }, {
+        "path" : "photoUrl",
+        "message" : "el tama\u00F1o debe estar entre 0 y 2048"
+      } ]
+    }, {
+      "dto" : "CreateBenefitCardRequest",
+      "input" : {
+        "categorySlug" : "c",
+        "titleEs" : "t",
+        "titleEn" : "t",
+        "email" : "not-an-email",
+        "phone" : "11111111111111111111111111111111111111111111111111111111111111111",
+        "website" : "ftp://x",
+        "locationUrl" : "https://maps"
+      },
+      "violations" : [ {
+        "path" : "email",
+        "message" : "must be a well-formed email address"
+      }, {
+        "path" : "phone",
+        "message" : "size must be between 0 and 64"
+      }, {
+        "path" : "website",
+        "message" : "must be an http(s) URL"
+      } ],
+      "violationsEs" : [ {
+        "path" : "email",
+        "message" : "debe ser una direcci\u00F3n de correo electr\u00F3nico con formato correcto"
+      }, {
+        "path" : "phone",
+        "message" : "el tama\u00F1o debe estar entre 0 y 64"
+      }, {
+        "path" : "website",
+        "message" : "must be an http(s) URL"
+      } ]
+    }, {
+      "dto" : "CreateBenefitCardRequest",
+      "input" : {
+        "categorySlug" : "c",
+        "titleEs" : "t",
+        "titleEn" : "t",
+        "email" : ""
+      },
+      "violations" : [ ],
+      "violationsEs" : [ ]
+    }, {
+      "dto" : "UpdateBenefitRequest",
+      "input" : {
+        "colorVar" : "",
+        "linkUrl" : "javascript:x",
+        "nameEs" : "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+      },
+      "violations" : [ {
+        "path" : "colorVar",
+        "message" : "must not be blank"
+      }, {
+        "path" : "linkUrl",
+        "message" : "must be an http(s) URL"
+      }, {
+        "path" : "nameEs",
+        "message" : "size must be between 0 and 255"
+      } ],
+      "violationsEs" : [ {
+        "path" : "colorVar",
+        "message" : "no debe estar vac\u00EDo"
+      }, {
+        "path" : "linkUrl",
+        "message" : "must be an http(s) URL"
+      }, {
+        "path" : "nameEs",
+        "message" : "el tama\u00F1o debe estar entre 0 y 255"
+      } ]
+    } ],
+    "emails" : [ [ "a@b.c", true ], [ "a@b", true ], [ "a@b.", false ], [ "a.b@c.d", true ], [ ".a@b.c", false ], [ "a..b@c.d", false ], [ "\"a b\"@c.d", true ], [ "a@[1.2.3.4]", true ], [ "a@[IPv6:::1]", true ], [ "\u00F1@\u00F1.com", true ], [ "\uD83D\uDE00@x.com", false ], [ "a@\uD83D\uDE00.com", false ], [ "a@-b.com", false ], [ "a@b-.com", false ], [ "a@b--c.com", true ], [ "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@x.com", false ], [ "a@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.com", false ], [ "a@b@c.d", false ], [ "a@b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.b.c", false ], [ "A@B.COM", true ], [ "a+b@c.d", true ], [ "a@b_c.d", true ], [ "a@.b", false ], [ "a b@c.d", false ], [ "a@b c.d", false ], [ "@b.c", false ], [ "a@", false ], [ "a\\@b@c.d", false ], [ "\"a\\\"b\"@c.d", true ] ],
+    "esBundle" : {
+      "NotBlank" : "no debe estar vac\u00EDo",
+      "NotNull" : "no debe ser nulo",
+      "Size" : "el tama\u00F1o debe estar entre {min} y {max}",
+      "Pattern" : "debe coincidir con \"{regexp}\"",
+      "Email" : "debe ser una direcci\u00F3n de correo electr\u00F3nico con formato correcto",
+      "Min" : "debe ser mayor que o igual a {value}"
+    },
+    "springEsAR" : [ {
+      "path" : "platform",
+      "message" : "debe coincidir con \"(?i)ios|android\""
+    }, {
+      "path" : "token",
+      "message" : "debe coincidir con \"[A-Za-z0-9_:.\\-]+\""
+    }, {
+      "path" : "token",
+      "message" : "no debe estar vac\u00EDo"
+    } ]
+  },
+  "aliases" : {
+    "combos" : [ "AlfaRojo", "AlfaAzul", "AlfaVerde", "AlfaAmarillo", "AlfaNaranja", "AlfaMorado", "AlfaRosa", "AlfaNegro", "AlfaBlanco", "AlfaGris", "AlfaMarr\u00F3n", "AlfaTurquesa", "AlfaVioleta", "AlfaCeleste", "AlfaBeige", "AlfaOcre", "AlfaCoral", "AlfaLavanda", "AlfaLima", "AlfaIndigo", "BetaRojo", "BetaAzul", "BetaVerde", "BetaAmarillo", "BetaNaranja", "BetaMorado", "BetaRosa", "BetaNegro", "BetaBlanco", "BetaGris", "BetaMarr\u00F3n", "BetaTurquesa", "BetaVioleta", "BetaCeleste", "BetaBeige", "BetaOcre", "BetaCoral", "BetaLavanda", "BetaLima", "BetaIndigo", "GammaRojo", "GammaAzul", "GammaVerde", "GammaAmarillo", "GammaNaranja", "GammaMorado", "GammaRosa", "GammaNegro", "GammaBlanco", "GammaGris", "GammaMarr\u00F3n", "GammaTurquesa", "GammaVioleta", "GammaCeleste", "GammaBeige", "GammaOcre", "GammaCoral", "GammaLavanda", "GammaLima", "GammaIndigo", "DeltaRojo", "DeltaAzul", "DeltaVerde", "DeltaAmarillo", "DeltaNaranja", "DeltaMorado", "DeltaRosa", "DeltaNegro", "DeltaBlanco", "DeltaGris", "DeltaMarr\u00F3n", "DeltaTurquesa", "DeltaVioleta", "DeltaCeleste", "DeltaBeige", "DeltaOcre", "DeltaCoral", "DeltaLavanda", "DeltaLima", "DeltaIndigo", "\u00C9psilonRojo", "\u00C9psilonAzul", "\u00C9psilonVerde", "\u00C9psilonAmarillo", "\u00C9psilonNaranja", "\u00C9psilonMorado", "\u00C9psilonRosa", "\u00C9psilonNegro", "\u00C9psilonBlanco", "\u00C9psilonGris", "\u00C9psilonMarr\u00F3n", "\u00C9psilonTurquesa", "\u00C9psilonVioleta", "\u00C9psilonCeleste", "\u00C9psilonBeige", "\u00C9psilonOcre", "\u00C9psilonCoral", "\u00C9psilonLavanda", "\u00C9psilonLima", "\u00C9psilonIndigo", "ZetaRojo", "ZetaAzul", "ZetaVerde", "ZetaAmarillo", "ZetaNaranja", "ZetaMorado", "ZetaRosa", "ZetaNegro", "ZetaBlanco", "ZetaGris", "ZetaMarr\u00F3n", "ZetaTurquesa", "ZetaVioleta", "ZetaCeleste", "ZetaBeige", "ZetaOcre", "ZetaCoral", "ZetaLavanda", "ZetaLima", "ZetaIndigo", "EtaRojo", "EtaAzul", "EtaVerde", "EtaAmarillo", "EtaNaranja", "EtaMorado", "EtaRosa", "EtaNegro", "EtaBlanco", "EtaGris", "EtaMarr\u00F3n", "EtaTurquesa", "EtaVioleta", "EtaCeleste", "EtaBeige", "EtaOcre", "EtaCoral", "EtaLavanda", "EtaLima", "EtaIndigo", "ThetaRojo", "ThetaAzul", "ThetaVerde", "ThetaAmarillo", "ThetaNaranja", "ThetaMorado", "ThetaRosa", "ThetaNegro", "ThetaBlanco", "ThetaGris", "ThetaMarr\u00F3n", "ThetaTurquesa", "ThetaVioleta", "ThetaCeleste", "ThetaBeige", "ThetaOcre", "ThetaCoral", "ThetaLavanda", "ThetaLima", "ThetaIndigo", "IotaRojo", "IotaAzul", "IotaVerde", "IotaAmarillo", "IotaNaranja", "IotaMorado", "IotaRosa", "IotaNegro", "IotaBlanco", "IotaGris", "IotaMarr\u00F3n", "IotaTurquesa", "IotaVioleta", "IotaCeleste", "IotaBeige", "IotaOcre", "IotaCoral", "IotaLavanda", "IotaLima", "IotaIndigo", "KappaRojo", "KappaAzul", "KappaVerde", "KappaAmarillo", "KappaNaranja", "KappaMorado", "KappaRosa", "KappaNegro", "KappaBlanco", "KappaGris", "KappaMarr\u00F3n", "KappaTurquesa", "KappaVioleta", "KappaCeleste", "KappaBeige", "KappaOcre", "KappaCoral", "KappaLavanda", "KappaLima", "KappaIndigo", "LambdaRojo", "LambdaAzul", "LambdaVerde", "LambdaAmarillo", "LambdaNaranja", "LambdaMorado", "LambdaRosa", "LambdaNegro", "LambdaBlanco", "LambdaGris", "LambdaMarr\u00F3n", "LambdaTurquesa", "LambdaVioleta", "LambdaCeleste", "LambdaBeige", "LambdaOcre", "LambdaCoral", "LambdaLavanda", "LambdaLima", "LambdaIndigo", "MuRojo", "MuAzul", "MuVerde", "MuAmarillo", "MuNaranja", "MuMorado", "MuRosa", "MuNegro", "MuBlanco", "MuGris", "MuMarr\u00F3n", "MuTurquesa", "MuVioleta", "MuCeleste", "MuBeige", "MuOcre", "MuCoral", "MuLavanda", "MuLima", "MuIndigo", "NuRojo", "NuAzul", "NuVerde", "NuAmarillo", "NuNaranja", "NuMorado", "NuRosa", "NuNegro", "NuBlanco", "NuGris", "NuMarr\u00F3n", "NuTurquesa", "NuVioleta", "NuCeleste", "NuBeige", "NuOcre", "NuCoral", "NuLavanda", "NuLima", "NuIndigo", "XiRojo", "XiAzul", "XiVerde", "XiAmarillo", "XiNaranja", "XiMorado", "XiRosa", "XiNegro", "XiBlanco", "XiGris", "XiMarr\u00F3n", "XiTurquesa", "XiVioleta", "XiCeleste", "XiBeige", "XiOcre", "XiCoral", "XiLavanda", "XiLima", "XiIndigo", "\u00D3micronRojo", "\u00D3micronAzul", "\u00D3micronVerde", "\u00D3micronAmarillo", "\u00D3micronNaranja", "\u00D3micronMorado", "\u00D3micronRosa", "\u00D3micronNegro", "\u00D3micronBlanco", "\u00D3micronGris", "\u00D3micronMarr\u00F3n", "\u00D3micronTurquesa", "\u00D3micronVioleta", "\u00D3micronCeleste", "\u00D3micronBeige", "\u00D3micronOcre", "\u00D3micronCoral", "\u00D3micronLavanda", "\u00D3micronLima", "\u00D3micronIndigo", "PiRojo", "PiAzul", "PiVerde", "PiAmarillo", "PiNaranja", "PiMorado", "PiRosa", "PiNegro", "PiBlanco", "PiGris", "PiMarr\u00F3n", "PiTurquesa", "PiVioleta", "PiCeleste", "PiBeige", "PiOcre", "PiCoral", "PiLavanda", "PiLima", "PiIndigo", "RhoRojo", "RhoAzul", "RhoVerde", "RhoAmarillo", "RhoNaranja", "RhoMorado", "RhoRosa", "RhoNegro", "RhoBlanco", "RhoGris", "RhoMarr\u00F3n", "RhoTurquesa", "RhoVioleta", "RhoCeleste", "RhoBeige", "RhoOcre", "RhoCoral", "RhoLavanda", "RhoLima", "RhoIndigo", "SigmaRojo", "SigmaAzul", "SigmaVerde", "SigmaAmarillo", "SigmaNaranja", "SigmaMorado", "SigmaRosa", "SigmaNegro", "SigmaBlanco", "SigmaGris", "SigmaMarr\u00F3n", "SigmaTurquesa", "SigmaVioleta", "SigmaCeleste", "SigmaBeige", "SigmaOcre", "SigmaCoral", "SigmaLavanda", "SigmaLima", "SigmaIndigo", "TauRojo", "TauAzul", "TauVerde", "TauAmarillo", "TauNaranja", "TauMorado", "TauRosa", "TauNegro", "TauBlanco", "TauGris", "TauMarr\u00F3n", "TauTurquesa", "TauVioleta", "TauCeleste", "TauBeige", "TauOcre", "TauCoral", "TauLavanda", "TauLima", "TauIndigo", "\u00CDpsilonRojo", "\u00CDpsilonAzul", "\u00CDpsilonVerde", "\u00CDpsilonAmarillo", "\u00CDpsilonNaranja", "\u00CDpsilonMorado", "\u00CDpsilonRosa", "\u00CDpsilonNegro", "\u00CDpsilonBlanco", "\u00CDpsilonGris", "\u00CDpsilonMarr\u00F3n", "\u00CDpsilonTurquesa", "\u00CDpsilonVioleta", "\u00CDpsilonCeleste", "\u00CDpsilonBeige", "\u00CDpsilonOcre", "\u00CDpsilonCoral", "\u00CDpsilonLavanda", "\u00CDpsilonLima", "\u00CDpsilonIndigo", "FiRojo", "FiAzul", "FiVerde", "FiAmarillo", "FiNaranja", "FiMorado", "FiRosa", "FiNegro", "FiBlanco", "FiGris", "FiMarr\u00F3n", "FiTurquesa", "FiVioleta", "FiCeleste", "FiBeige", "FiOcre", "FiCoral", "FiLavanda", "FiLima", "FiIndigo", "JiRojo", "JiAzul", "JiVerde", "JiAmarillo", "JiNaranja", "JiMorado", "JiRosa", "JiNegro", "JiBlanco", "JiGris", "JiMarr\u00F3n", "JiTurquesa", "JiVioleta", "JiCeleste", "JiBeige", "JiOcre", "JiCoral", "JiLavanda", "JiLima", "JiIndigo", "PsiRojo", "PsiAzul", "PsiVerde", "PsiAmarillo", "PsiNaranja", "PsiMorado", "PsiRosa", "PsiNegro", "PsiBlanco", "PsiGris", "PsiMarr\u00F3n", "PsiTurquesa", "PsiVioleta", "PsiCeleste", "PsiBeige", "PsiOcre", "PsiCoral", "PsiLavanda", "PsiLima", "PsiIndigo", "OmegaRojo", "OmegaAzul", "OmegaVerde", "OmegaAmarillo", "OmegaNaranja", "OmegaMorado", "OmegaRosa", "OmegaNegro", "OmegaBlanco", "OmegaGris", "OmegaMarr\u00F3n", "OmegaTurquesa", "OmegaVioleta", "OmegaCeleste", "OmegaBeige", "OmegaOcre", "OmegaCoral", "OmegaLavanda", "OmegaLima", "OmegaIndigo" ],
+    "random42" : [ "BetaAzul", "AlfaRojo", "BetaAzul2", "AlfaRojo2", "AlfaRojo3", "BetaAzul3" ]
+  }
+}
