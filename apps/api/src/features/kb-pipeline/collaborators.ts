@@ -1,10 +1,10 @@
-// Beans of the other kb agents' packages that the pipeline calls (see API.md):
+// Beans of the other kb packages that the pipeline calls (see API.md):
 // KbSettingsService.effective(), KbForecastService.nextRunTotal/subjectEstimates,
-// KbImportService.validate/importSubject and KbModelCatalogService.sync. The
-// owners register them with provideKbCollaborators(deps, {...}) when their routes
-// are built. Without them: settings fall back to settings.ts (same merge), DETECT
-// fails without a forecast, PUBLISH fails the subject without an importer, and the
-// weekly price refresh and probe refresh are skipped.
+// KbImportService.validate/importSubject, KbModelCatalogService.sync and
+// KbEvalService.ensureDefaultSet. kbPipeline's composition root
+// (`kbCollaborators(deps)` in service.ts) wires kb-admin's and kb-reader's on first
+// use, whatever order routes were registered in; provideKbCollaborators(deps, {...})
+// registered before that (a test fake) takes precedence.
 
 import type { Db } from '../../db/client';
 import type { Deps } from '../../deps';

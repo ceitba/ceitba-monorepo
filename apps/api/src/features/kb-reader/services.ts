@@ -61,10 +61,3 @@ export function kbReader(deps: Deps): KbReaderBeans {
   }
   return b;
 }
-
-/** A dynamic import() of a module that does not exist (an optional sibling feature). */
-export function isModuleNotFound(e: unknown): boolean {
-  const code = (e as { code?: string })?.code;
-  const msg = (e as Error)?.message ?? '';
-  return code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND' || /Cannot find module/.test(msg);
-}

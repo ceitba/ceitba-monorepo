@@ -10,6 +10,7 @@
 //
 // Wiring mirrors config/KbPipelineConfig + the Spring beans of service/kb/{pipeline,llm,progress}.
 
+import type { Db } from '../../db/client';
 import type { Deps } from '../../deps';
 import { DoQuotaTracker } from '../kb/logic/external/doQuotaTracker';
 import type { BatchLlmExecutor as BatchExec } from '../kb/logic/llm/batchLlmExecutor';
@@ -22,7 +23,9 @@ import { SyncLlmExecutor } from '../kb/logic/llm/syncLlmExecutor';
 import { ART_ZONE, odtFromMicros, type Now } from '../kb/logic/odt';
 import { KbBatchSubmitter } from '../kb/logic/pipeline/kbBatchSubmitter';
 import { KbPayloads } from '../kb/logic/pipeline/kbPayloads';
-import { collaborators, type KbForecastPort, type KbSettingsPort } from './collaborators';
+import { kbAdmin } from '../kb-admin/service';
+import { kbReader } from '../kb-reader/services';
+import { collaborators, provideKbCollaborators, type KbCollaborators, type KbForecastPort, type KbImportPage, type KbImporterPort, type KbSettingsPort } from './collaborators';
 import { KbCostService, KbQuotaService } from './costs';
 import {
   DbKbBatchJobStore, DbKbLlmEndpointStore, DbKbLlmUsageStore, DbKbModelStore, DbKbRunRequestStore, DbKbRunStore,
@@ -65,6 +68,34 @@ export interface KbPipeline {
 }
 
 const instances = new WeakMap<Deps, KbPipeline>();
+const wired = new WeakSet<Deps>();
+
+/**
+ * The collaborators the pipeline calls (settings, forecast, catalog, evals from kb-admin; the importer from
+ * kb-reader), wired here, on first use, by this composition root: they no longer depend on which feature's routes
+ * were registered first (or at all, e.g. a jobs-only process). Called lazily (never while kbPipeline() is still
+ * building), since kbAdmin() itself uses the pipeline's beans. Anything registered before (a test fake) wins.
+ */
+export function kbCollaborators(deps: Deps): KbCollaborators {
+  if (!wired.has(deps)) {
+    wired.add(deps);
+    const before = collaborators(deps);
+    const admin = kbAdmin(deps); // registers settings, forecast and catalog, and the eval handler
+    const reader = kbReader(deps);
+    provideKbCollaborators(deps, {
+      settings: before.settings ?? admin.settings,
+      forecast: before.forecast ?? admin.forecast,
+      catalog: before.catalog ?? admin.catalog,
+      evals: before.evals ?? admin.evals,
+      // KbImportService's DTOs are nullable-typed (bound JSON); the shapes are the port's.
+      importer: before.importer ?? ({
+        validate: (subjectId: string, pages: KbImportPage[], removing: Set<string>, tx?: Db) => reader.importer.validate(subjectId, pages, removing, tx),
+        importSubject: (subjectId: string, req: { pages: KbImportPage[]; replace: boolean }, tx?: Db) => reader.importer.importSubject(subjectId, req, tx),
+      } as unknown as KbImporterPort),
+    });
+  }
+  return collaborators(deps);
+}
 
 /** OffsetDateTime.now(clock): the business clock at ART. */
 export function nowOf(deps: Deps): Now {
@@ -95,21 +126,17 @@ export function kbPipeline(deps: Deps): KbPipeline {
   const progress = new KbProgressService(db, () => sync.concurrency(), now);
   const payloads = new KbPayloads(models);
   const ownSettings = new DbKbSettings(db, pipelineProperties(config), llmProps);
-  const settings = (): KbSettingsPort => collaborators(deps).settings ?? ownSettings;
-  const forecast = (): KbForecastPort => {
-    const f = collaborators(deps).forecast;
-    if (!f) throw new Error('KbForecastService is not available (kb-admin registers it with provideKbCollaborators)');
-    return f;
-  };
+  const settings = (): KbSettingsPort => kbCollaborators(deps).settings ?? ownSettings;
+  const forecast = (): KbForecastPort => kbCollaborators(deps).forecast!;
   const engine = new KbRunEngine({
     db, storage: deps.storage, log: deps.log.child({ component: 'KbRunEngine' }), now, router, batch, submitter, sync, usage,
     settings, costs, requestStore, background: config.kb.pipeline.background,
   });
   const pipeline = new KbPipelineService({
     db, log: deps.log.child({ component: 'KbPipelineService' }), now, engine, payloads, router, progress, settings, forecast,
-    importer: () => collaborators(deps).importer ?? null,
+    importer: () => kbCollaborators(deps).importer ?? null,
     refreshPrices: () => {
-      const c = collaborators(deps).catalog;
+      const c = kbCollaborators(deps).catalog;
       return c ? c.sync('do-catalog').then(() => undefined) : null;
     },
   });

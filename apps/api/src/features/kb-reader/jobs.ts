@@ -13,21 +13,11 @@
 
 import type { Deps } from '../../deps';
 import { defineJobs } from '../../jobs/scheduler';
-import { isModuleNotFound, kbReader } from './services';
-
-const KB_PIPELINE_SERVICE = '../kb-pipeline/service';
+import { kbPipeline } from '../kb-pipeline/service';
+import { kbReader } from './services';
 
 async function expireRunPayloads(deps: Deps): Promise<void> {
-  type Retention = { expire?: () => Promise<unknown>; purgeExpired?: () => Promise<unknown> };
-  let pipeline: { kbPipeline?: (d: Deps) => { retention?: Retention } };
-  try {
-    pipeline = await import(KB_PIPELINE_SERVICE);
-  } catch (e) {
-    if (isModuleNotFound(e)) return;   // kb-pipeline not ported yet
-    throw e;
-  }
-  const r = pipeline.kbPipeline?.(deps).retention;
-  await (r?.expire ?? r?.purgeExpired)?.call(r);
+  await kbPipeline(deps).retention.purgeExpired();
 }
 
 export default defineJobs((deps) => {

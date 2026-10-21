@@ -28,6 +28,10 @@ export class DuplicateKeyError extends Error {
   }
 }
 
+// The Kb*Store ports below each have a database implementation (kb-pipeline/db/stores.ts) and an in-memory test
+// fake (test/kb/support/inMemoryRepo.ts `InMemoryRepo.as<...>()`, used by the KbBatchSubmitter, KbCustomEndpoint and
+// KbBatchProbeFallback tests), which is why they are interfaces.
+
 /** repository/kb/KbModelRepository. */
 export interface KbModelStore {
   findById(id: string): MaybePromise<KbModel | null>;

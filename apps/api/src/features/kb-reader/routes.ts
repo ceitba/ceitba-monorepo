@@ -8,27 +8,11 @@ import { staffPowers } from '../../http/auth/context';
 import { defineRoutes } from '../../http/router';
 import { param } from '../../http/validation';
 import { CapabilityService } from '../capability/service';
-import type { Db } from '../../db/client';
-import { KbReportRequest, type KbImportPage } from './dto';
-import { isModuleNotFound, kbReader } from './services';
+import { KbReportRequest } from './dto';
+import { kbReader } from './services';
 
-// kb-pipeline's KbImporterPort (src/features/kb-pipeline/API.md); resolved at
-// runtime so this feature does not depend on kb-pipeline being present.
-const KB_PIPELINE_SERVICE = '../kb-pipeline/service';
-
-export default defineRoutes(async (r, deps) => {
+export default defineRoutes((r, deps) => {
   const kb = kbReader(deps);
-  try {
-    const pipeline = (await import(KB_PIPELINE_SERVICE)) as { provideKbCollaborators?: (d: typeof deps, ports: object) => void };
-    pipeline.provideKbCollaborators?.(deps, {
-      importer: {
-        validate: (subjectId: string, pages: KbImportPage[], removing: Set<string>, tx?: Db) => kb.importer.validate(subjectId, pages, removing, tx),
-        importSubject: (subjectId: string, req: { pages: KbImportPage[]; replace: boolean }, tx?: Db) => kb.importer.importSubject(subjectId, req, tx),
-      },
-    });
-  } catch (e) {
-    if (!isModuleNotFound(e)) deps.log.error({ err: e }, 'kb-reader: could not register the importer with kb-pipeline');
-  }
   const capabilities = new CapabilityService(deps);
   const tags = ['Subject wikis'];
   const argOrder = ['user', 'params', 'query', 'body'] as const;

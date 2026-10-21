@@ -20,7 +20,8 @@ const admin = kbAdmin(deps);   // one instance per Deps (WeakMap); constructors 
 
 `kbAdmin(deps)` registers `settings`, `forecast` and `catalog` with `provideKbCollaborators` (kb-pipeline/API.md) and
 `evals` as the engine's `KbRunHandler` for `trigger = 'EVAL'` runs (`kbPipeline(deps).engine.register`) when it is first
-built (routes.ts builds it at boot), so the pipeline never runs on its fallbacks in the app. `jobs.ts` runs
+built. kb-pipeline's composition root (`kbCollaborators(deps)`) builds it on the pipeline's first use, so this holds
+whatever order routes are registered in (or in a process with no routes). `jobs.ts` runs
 `evals.ensureDefaultSet()` at startup (Java: `KbPipelineJob.onStartup`, no JobLock).
 
 All services run in kb-pipeline's `inTx` (via `./tx.ts` `kbTx`), so a call made inside an engine transaction joins it.

@@ -23,7 +23,7 @@ const kb = kbPipeline(deps);          // one instance per Deps (WeakMap); the co
 | `inputs` | `KbInputs` (module) | `current()`, `diffs(paused, current?)`, `toJson`, `hash`, `subjectsWithPages()` |
 | `quotaTracker` | `DoQuotaTracker` | the one fed by the DO clients (`deps.llm.quota`) |
 | `models` | `KbModelRepository` reads | `DbKbModelStore` |
-| `settings()` / `forecast()` | | the registered collaborators (settings falls back to `settings.ts`) |
+| `settings()` / `forecast()` | | the wired collaborators (kb-admin's `KbSettingsService` / `KbForecastService`) |
 
 Types: `KbRunHandler`, `Seq`, `ACTIVE`, `MOVING`, `KbRun`, `KbRunSubject` are exported from `service.ts` too.
 Transactions: `inTx(db, fn)` / `session()` from `db/session.ts` (a drizzle transaction plus a small persistence
@@ -34,7 +34,9 @@ Jobs: `jobs.ts` registers KbPipelineJob (JobLock 10 pollBatches, 11 sweep, 12 ti
 
 ## What the pipeline needs from the other agents
 
-Register once with `provideKbCollaborators(deps, {...})` (any subset):
+`kbCollaborators(deps)` (service.ts, the composition root) wires them from kb-admin (`kbAdmin(deps)`) and kb-reader
+(`kbReader(deps)`) on first use, so they never depend on route registration order. A test can register a fake first
+with `provideKbCollaborators(deps, {...})` (any subset); what is registered first wins:
 
 | key | owner | used for |
 |---|---|---|

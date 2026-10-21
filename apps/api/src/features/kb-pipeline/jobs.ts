@@ -17,11 +17,10 @@
 
 import { defineJobs } from '../../jobs/scheduler';
 import { ART_ZONE } from '../kb/logic/odt';
-import { collaborators } from './collaborators';
 import { jobs as jobRepo } from './db/repo';
 import { inTx } from './db/session';
 import { kbAdmin } from '../kb-admin/service';
-import { kbPipeline, nowOf } from './service';
+import { kbCollaborators, kbPipeline, nowOf } from './service';
 
 export default defineJobs((deps) => {
   const background = deps.config.kb.pipeline.background;
@@ -44,7 +43,7 @@ export default defineJobs((deps) => {
           log.warn(`KB batch poll failed: ${(e as Error).message}`);
         }
         try {
-          await collaborators(deps).catalog?.refreshPendingProbes?.();
+          await kbCollaborators(deps).catalog?.refreshPendingProbes?.();
         } catch (e) {
           log.warn(`KB probe refresh failed: ${(e as Error).message}`);
         }
