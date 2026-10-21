@@ -328,7 +328,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             ['settings.blockedReason3Title', 'settings.blockedReason3Desc'],
           ] as const).map(([titleKey, descKey]) => (
             <div key={titleKey} className="flex items-start gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
@@ -352,7 +352,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="h-8 flex items-center text-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-sm"
+                className="h-8 flex items-center text-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-xs"
               >
                 {t(`days.${day}`)}
               </div>
@@ -374,7 +374,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="relative bg-surface dark:bg-night-bg rounded-sm"
+                className="relative bg-surface dark:bg-night-bg rounded-xs"
                 style={{ height: HOURS * CELL }}
                 onMouseMove={(e) => handleMouseMove(day, e)}
               >
@@ -423,7 +423,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
                       <svg
                         width="14" height="14" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                        className="flex-shrink-0 text-ink-primary/70"
+                        className="shrink-0 text-ink-primary/70"
                         aria-hidden="true"
                       >
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -436,7 +436,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ blocks: selectedBlocks,
                 {selection && selectionRange && selection.day === day && (
                   <div
                     aria-hidden="true"
-                    className={`absolute inset-x-0 z-20 pointer-events-none flex flex-col items-center justify-center text-center rounded-sm ${
+                    className={`absolute inset-x-0 z-20 pointer-events-none flex flex-col items-center justify-center text-center rounded-xs ${
                       selectionOverlaps
                         ? 'bg-red-100/90 border-2 border-dashed border-red-400 text-red-800'
                         : 'bg-primary-100 text-ink-primary'

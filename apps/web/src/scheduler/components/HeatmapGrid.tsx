@@ -105,7 +105,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
         {DAYS.map((day) => (
           <div
             key={day}
-            className="h-8 flex items-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-sm"
+            className="h-8 flex items-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-xs"
           >
             {t(`days.${day}`)}
           </div>
@@ -154,7 +154,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
                     onMouseLeave={() => setHoveredBlockId(null)}
                     onFocus={() => setHoveredBlockId(b.blockId)}
                     onBlur={() => setHoveredBlockId(null)}
-                    className="absolute overflow-hidden border border-white/30 dark:border-black/30 rounded-sm"
+                    className="absolute overflow-hidden border border-white/30 dark:border-black/30 rounded-xs"
                     style={{
                       top,
                       height,
@@ -168,7 +168,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
                   >
                     {/* Always-visible X/Z badge in the top-right corner. */}
                     <span
-                      className="absolute top-0.5 right-0.5 px-1 rounded-sm font-mono text-[10px] leading-tight"
+                      className="absolute top-0.5 right-0.5 px-1 rounded-xs font-mono text-[10px] leading-tight"
                       style={{
                         backgroundColor: opacity > 0.55 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
                         color: opacity > 0.55 ? '#FAFAF8' : '#1A3C6E',
@@ -184,7 +184,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ model }) => {
                     )}
                     {isHovered && (
                       <div
-                        className="absolute left-full ml-2 z-50 min-w-[12rem] max-w-[18rem] p-2 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover pointer-events-none"
+                        className="absolute left-full ml-2 z-50 min-w-48 max-w-[18rem] p-2 bg-white dark:bg-night-surface border border-border dark:border-night-border rounded-card shadow-card-hover pointer-events-none"
                         style={{ top: 0, color: '#1C1C1E' }}
                       >
                         <div className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">

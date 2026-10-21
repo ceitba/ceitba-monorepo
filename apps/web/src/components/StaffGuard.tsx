@@ -19,7 +19,7 @@ export default function StaffGuard({ children }: { children: ReactElement }) {
   if (isStaff) return children
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <EmptyState
         title={<span role="heading" aria-level={1}>{t('staffGuard.title')}</span>}
         body={t('staffGuard.body')}

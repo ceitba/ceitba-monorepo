@@ -277,7 +277,7 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       const batches = r.batches?.filter((b) => b.stage.toUpperCase() === st) ?? []
                       return (
                         <li key={st} className="flex items-center">
-                          <div className={`flex flex-col items-start px-3 py-2 rounded-sm border ${
+                          <div className={`flex flex-col items-start px-3 py-2 rounded-xs border ${
                             state === 'current' ? 'border-accent bg-accent-50 dark:bg-accent-900/30'
                               : state === 'done' ? 'border-border dark:border-night-border' : 'border-dashed border-border dark:border-night-border opacity-60'
                           }`}>

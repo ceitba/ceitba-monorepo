@@ -498,7 +498,7 @@ function CategoriesTab() {
         return (
           <article key={b.slug} className="p-4 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface flex flex-col gap-4">
             <h3 className="flex items-center gap-2 font-display font-bold text-h5 text-ink-primary dark:text-night-text">
-              <span className="w-3 h-3 rounded-full flex-shrink-0 border border-border dark:border-night-border" style={{ backgroundColor: `var(${d.colorVar})` }} aria-hidden="true" />
+              <span className="w-3 h-3 rounded-full shrink-0 border border-border dark:border-night-border" style={{ backgroundColor: `var(${d.colorVar})` }} aria-hidden="true" />
               {benefitCategoryName(b.slug, d, lang, t)}
             </h3>
 

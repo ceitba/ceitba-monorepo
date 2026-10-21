@@ -1,3 +1,6 @@
+@reference "../index.css";
+
+
 /* Newsletter section styles, loaded with its lazy chunk: the article body
    shared by the reader, the editor preview and the editor. Dark mode is
    dark: classes in the components, like the rest of the app. */

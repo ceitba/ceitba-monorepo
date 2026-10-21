@@ -26,7 +26,7 @@ function CapabilityCheck({ capability, children }: { capability: string; childre
   if (enabled) return children
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <EmptyState
         title={
           <span role="heading" aria-level={1}>

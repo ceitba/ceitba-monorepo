@@ -53,7 +53,7 @@ export default function WikiArticle({
       <article className="min-w-0">
         <header className="mb-6">
           {showTitle && (
-            <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text break-words">
+            <h1 className="font-display font-bold text-h3 lg:text-h2 lg:font-extrabold text-ink-primary dark:text-night-text wrap-break-word">
               {page.title}
             </h1>
           )}
@@ -64,7 +64,7 @@ export default function WikiArticle({
             <p className="font-mono text-label text-ink-secondary dark:text-night-muted mt-2">{yearsLabel}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm bg-accent-50 dark:bg-accent-900/30 text-accent-800 dark:text-accent-200 font-body text-body-sm">
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xs bg-accent-50 dark:bg-accent-900/30 text-accent-800 dark:text-accent-200 font-body text-body-sm">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
               </svg>
@@ -86,7 +86,7 @@ export default function WikiArticle({
         </header>
 
         {page.stale && (
-          <p className="mb-6 max-w-[70ch] px-3 py-2 rounded-sm border border-border dark:border-night-border bg-page-bg dark:bg-night-bg font-body text-body-sm text-ink-secondary dark:text-night-muted">
+          <p className="mb-6 max-w-[70ch] px-3 py-2 rounded-xs border border-border dark:border-night-border bg-page-bg dark:bg-night-bg font-body text-body-sm text-ink-secondary dark:text-night-muted">
             {t('wiki.years.stale')}
           </p>
         )}
@@ -163,9 +163,9 @@ function SourcesPanel({ page, order, onHighlight }: {
               onFocus={() => onHighlight(s!.id)}
               onBlur={() => onHighlight(null)}
             >
-              <span className="font-mono text-label text-ink-secondary dark:text-night-muted mt-0.5 flex-shrink-0">[{n}]</span>
+              <span className="font-mono text-label text-ink-secondary dark:text-night-muted mt-0.5 shrink-0">[{n}]</span>
               <div className="min-w-0">
-                <Link to={`/apuntes/archivo/${encodeURIComponent(s!.id)}`} className="inline-flex items-start gap-1.5 font-body text-body-sm text-ink-primary dark:text-night-text hover:text-primary break-words">
+                <Link to={`/apuntes/archivo/${encodeURIComponent(s!.id)}`} className="inline-flex items-start gap-1.5 font-body text-body-sm text-ink-primary dark:text-night-text hover:text-primary wrap-break-word">
                   <KindIcon kind={s!.kind} size={14} className="mt-1" />
                   <span>{s!.name}</span>
                 </Link>

@@ -11,7 +11,7 @@ export default function DigestRates({ openRate, clickRate }: DigestRatesProps) {
   const { t, i18n } = useTranslation()
   if (openRate == null && clickRate == null) return null
   return (
-    <dl className="flex gap-5 sm:gap-6 flex-shrink-0">
+    <dl className="flex gap-5 sm:gap-6 shrink-0">
       {([['opens', openRate], ['clicks', clickRate]] as const).map(([key, value]) => (
         <div key={key} className="flex flex-col">
           <dt className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">{t(`admin.digests.rates.${key}`)}</dt>

@@ -15,7 +15,7 @@ export default function DigestCounts({ counts }: DigestCountsProps) {
     ['pending', c.pending ?? 0, 'text-ink-primary dark:text-night-text'],
   ]
   return (
-    <dl className="flex gap-5 sm:gap-6 flex-shrink-0">
+    <dl className="flex gap-5 sm:gap-6 shrink-0">
       {items.map(([key, value, color]) => (
         <div key={key} className="flex flex-col">
           <dt className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">{t(`admin.digests.counts.${key}`)}</dt>

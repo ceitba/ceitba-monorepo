@@ -43,11 +43,11 @@ export default function WriteForNewsletter() {
   return (
     <>
       {canWrite ? (
-        <Link to={NEW_ARTICLE_PATH} className={buttonClass({ className: 'flex-shrink-0' })}>
+        <Link to={NEW_ARTICLE_PATH} className={buttonClass({ className: 'shrink-0' })}>
           <IconPen /> {t('write.cta')}
         </Link>
       ) : (
-        <Button onClick={() => setOpen(true)} className="flex-shrink-0">
+        <Button onClick={() => setOpen(true)} className="shrink-0">
           <IconPen /> {t('write.cta')}
         </Button>
       )}
@@ -78,7 +78,7 @@ function WriteDialog({ onClose }: WriteDialogProps) {
       }
     >
       <p className="font-body text-body text-ink-secondary leading-relaxed">{t('write.intro')}</p>
-      <p className="font-body text-body-sm text-ink-primary leading-relaxed bg-surface dark:bg-night-bg border border-border dark:border-night-border rounded-sm px-4 py-3">
+      <p className="font-body text-body-sm text-ink-primary leading-relaxed bg-surface dark:bg-night-bg border border-border dark:border-night-border rounded-xs px-4 py-3">
         {t('write.signedOut')}
       </p>
     </Modal>

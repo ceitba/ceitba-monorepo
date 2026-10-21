@@ -4,7 +4,7 @@ import BenefitsSection from './sections/BenefitsSection'
 // preview).
 export default function BenefitsPage() {
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none">
+    <main id="main-content" tabIndex={-1} className="outline-hidden">
       <BenefitsSection />
     </main>
   )

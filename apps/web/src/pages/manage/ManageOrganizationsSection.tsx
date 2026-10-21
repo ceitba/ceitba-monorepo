@@ -199,14 +199,14 @@ function OrgBadge({ org }: { org: Organization }) {
       <img
         src={org.logoUrl}
         alt=""
-        className="w-9 h-9 flex-shrink-0 rounded-sm object-cover border border-border dark:border-night-border bg-white"
+        className="w-9 h-9 shrink-0 rounded-xs object-cover border border-border dark:border-night-border bg-white"
       />
     )
   }
   return (
     <span
       aria-hidden="true"
-      className={`w-9 h-9 flex-shrink-0 rounded-sm flex items-center justify-center font-display font-bold text-white ${colorBg(org.color)}`}
+      className={`w-9 h-9 shrink-0 rounded-xs flex items-center justify-center font-display font-bold text-white ${colorBg(org.color)}`}
     >
       {org.name.trim().charAt(0).toUpperCase()}
     </span>
@@ -400,7 +400,7 @@ function CreateOrganizationModal({
             {t('manage.organizations.fields.slug')}
           </span>
           {editingSlug ? (
-            <div className={`flex items-stretch rounded-sm border bg-white dark:bg-night-surface focus-within:ring-1 ${slugError ? 'border-red-400 dark:border-red-500 focus-within:ring-red-300/40' : 'border-border dark:border-night-border focus-within:border-primary focus-within:ring-primary/30'}`}>
+            <div className={`flex items-stretch rounded-xs border bg-white dark:bg-night-surface focus-within:ring-1 ${slugError ? 'border-red-400 dark:border-red-500 focus-within:ring-red-300/40' : 'border-border dark:border-night-border focus-within:border-primary focus-within:ring-primary/30'}`}>
               <span className="hidden sm:flex items-center pl-3 font-mono text-label text-ink-secondary dark:text-night-muted whitespace-nowrap select-none">
                 {NEWSLETTER_ORG_PREFIX}
               </span>
@@ -425,7 +425,7 @@ function CreateOrganizationModal({
                   setSlugManual(next !== '')
                   setServerErrors((er) => ({ ...er, slug: undefined }))
                 }}
-                className="flex-1 min-w-0 min-h-[44px] px-3 sm:pl-0 py-2 bg-transparent font-mono text-body-sm text-ink-primary dark:text-night-text focus:outline-none"
+                className="flex-1 min-w-0 min-h-[44px] px-3 sm:pl-0 py-2 bg-transparent font-mono text-body-sm text-ink-primary dark:text-night-text focus:outline-hidden"
               />
             </div>
           ) : (
@@ -504,13 +504,13 @@ function CreateOrganizationModal({
                   className="peer sr-only"
                 />
                 <span
-                  className={`flex items-center gap-2 min-h-[44px] pl-2 pr-3 py-1 rounded-sm border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1 ${
+                  className={`flex items-center gap-2 min-h-[44px] pl-2 pr-3 py-1 rounded-xs border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1 ${
                     color === c
                       ? 'border-primary dark:border-primary-300 text-ink-primary dark:text-night-text'
                       : 'border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary'
                   }`}
                 >
-                  <span aria-hidden="true" className={`w-6 h-6 rounded-sm ${COLOR_BG[c]}`} />
+                  <span aria-hidden="true" className={`w-6 h-6 rounded-xs ${COLOR_BG[c]}`} />
                   <span className="font-body text-body-sm">{t(`manage.organizations.colors.${c}`)}</span>
                 </span>
               </label>

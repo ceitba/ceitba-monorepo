@@ -101,7 +101,7 @@ export function PendingOrgInvites({ org, tick }: { org: OrganizationSummary; tic
               size="sm"
               onClick={() => { setRevokeError(''); setRevoking(i) }}
               aria-label={t('manage.users.invites.revokeAria', { email: i.email, org: org.name })}
-              className="hover:!text-red-600 dark:hover:!text-red-400"
+              className="hover:text-red-600! dark:hover:text-red-400!"
             >
               <CloseIcon size={16} />
             </IconButton>

@@ -101,7 +101,7 @@ export default function DigestStatsPanel({ id, refreshKey = 0 }: DigestStatsPane
                     {stats.clicksByLink.map((l) => (
                       <tr key={l.url}>
                         <td className="px-4 sm:px-0 py-2 align-top min-w-0">
-                          <span className="block font-body text-body-sm font-semibold text-ink-primary dark:text-night-text break-words">{l.label}</span>
+                          <span className="block font-body text-body-sm font-semibold text-ink-primary dark:text-night-text wrap-break-word">{l.label}</span>
                           <span className="block font-mono text-label text-ink-secondary dark:text-night-muted break-all">{l.url}</span>
                         </td>
                         <td className="px-3 py-2 align-top text-right font-display font-bold text-ink-primary dark:text-night-text">{l.uniqueClicks}</td>
@@ -133,7 +133,7 @@ interface KpiProps {
 
 function Kpi({ label, value, sub }: KpiProps) {
   return (
-    <div className="flex flex-col bg-page-bg dark:bg-night-raised rounded-sm border border-border dark:border-night-border px-4 py-3">
+    <div className="flex flex-col bg-page-bg dark:bg-night-raised rounded-xs border border-border dark:border-night-border px-4 py-3">
       <dt className="font-mono text-label text-ink-secondary dark:text-night-muted uppercase tracking-widest">{label}</dt>
       <dd className="font-display text-h4 font-bold text-ink-primary dark:text-night-text">{value ?? 0}</dd>
       {sub && <dd className="font-body text-body-sm text-primary dark:text-primary-300 font-semibold">{sub}</dd>}

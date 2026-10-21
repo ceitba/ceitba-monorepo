@@ -68,7 +68,7 @@ export default function Tabs<T extends string>({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(it.id)}
             className={[
-              'relative flex-shrink-0 inline-flex items-center gap-2 min-h-[44px] px-4 font-mono text-label uppercase tracking-widest transition-colors duration-150',
+              'relative shrink-0 inline-flex items-center gap-2 min-h-[44px] px-4 font-mono text-label uppercase tracking-widest transition-colors duration-150',
               selected
                 ? 'text-primary dark:text-primary-300 font-bold'
                 : 'text-ink-secondary dark:text-night-muted hover:text-ink-primary dark:hover:text-night-text',
@@ -76,7 +76,7 @@ export default function Tabs<T extends string>({
           >
             {it.label}
             {it.count != null && (
-              <span className="px-1.5 py-0.5 rounded-sm bg-primary-50 dark:bg-night-raised text-ink-secondary dark:text-night-muted font-mono text-label normal-case tracking-normal">
+              <span className="px-1.5 py-0.5 rounded-xs bg-primary-50 dark:bg-night-raised text-ink-secondary dark:text-night-muted font-mono text-label normal-case tracking-normal">
                 {it.count}
               </span>
             )}

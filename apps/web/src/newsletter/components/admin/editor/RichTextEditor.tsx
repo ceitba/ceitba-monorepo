@@ -255,7 +255,7 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
             onChange={(e) => { setSource(e.target.value); onChangeRef.current(e.target.value) }}
             spellCheck
             aria-label={t('editor.markdownSource')}
-            className="w-full min-h-[28rem] font-mono text-body-sm text-ink-primary dark:text-night-text bg-transparent focus:outline-none resize-y"
+            className="w-full min-h-112 font-mono text-body-sm text-ink-primary dark:text-night-text bg-transparent focus:outline-hidden resize-y"
           />
         </div>
       )}

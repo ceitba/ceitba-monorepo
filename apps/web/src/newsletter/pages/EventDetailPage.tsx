@@ -108,7 +108,7 @@ export default function EventDetailPage() {
       <div className="container-content">
         <Link
           to={newsletterPath('/events')}
-          className="inline-flex items-center min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 mb-6 focus-visible:rounded"
+          className="inline-flex items-center min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 mb-6 focus-visible:rounded-sm"
         >
           {t('events.detail.back')}
         </Link>
@@ -122,7 +122,7 @@ export default function EventDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-10">
           <div className="min-w-0">
             <CategoryBadge category={event.category} />
-            <h1 className="font-display text-h2 lg:text-display font-bold text-ink-primary dark:text-night-text leading-tight mt-2 [overflow-wrap:anywhere]">
+            <h1 className="font-display text-h2 lg:text-display lg:font-extrabold lg:leading-[1.05] font-bold text-ink-primary dark:text-night-text leading-tight mt-2 wrap-anywhere">
               {event.title}
             </h1>
             {event.organization && (
@@ -130,7 +130,7 @@ export default function EventDetailPage() {
                 to={newsletterPath(`/organizations/${encodeURIComponent(event.organization)}`)}
                 className="inline-flex items-center gap-2 min-h-[44px] mt-3 font-mono text-label uppercase tracking-widest text-primary dark:text-primary-300 hover:underline underline-offset-4"
               >
-                {org?.logoUrl && <img src={org.logoUrl} alt="" className="w-6 h-6 rounded-sm object-cover" />}
+                {org?.logoUrl && <img src={org.logoUrl} alt="" className="w-6 h-6 rounded-xs object-cover" />}
                 {org?.name ?? event.organization}
               </Link>
             )}
@@ -146,7 +146,7 @@ export default function EventDetailPage() {
               </div>
               <div>
                 <dt className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('events.detail.where')}</dt>
-                <dd className="font-body text-body text-ink-primary dark:text-night-text mt-1 [overflow-wrap:anywhere]">
+                <dd className="font-body text-body text-ink-primary dark:text-night-text mt-1 wrap-anywhere">
                   {event.location}
                   {event.onlineUrl && (
                     <>
@@ -161,7 +161,7 @@ export default function EventDetailPage() {
             </dl>
 
             {event.description && (
-              <p className="mt-6 font-body text-body-lg text-ink-primary dark:text-night-text leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]">
+              <p className="mt-6 font-body text-body-lg text-ink-primary dark:text-night-text leading-relaxed whitespace-pre-line wrap-anywhere">
                 {event.description}
               </p>
             )}

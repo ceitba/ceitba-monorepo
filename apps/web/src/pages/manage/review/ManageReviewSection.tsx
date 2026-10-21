@@ -412,7 +412,7 @@ export default function ManageReviewSection() {
               >
                 <div className="flex-[1_1_320px] min-w-0 flex flex-col gap-1.5">
                   <Badge tone={KIND_TONE[r.kind]} className="self-start">{r.typeLabel}</Badge>
-                  <p className="font-body font-semibold text-body text-ink-primary dark:text-night-text leading-snug break-words">{r.title}</p>
+                  <p className="font-body font-semibold text-body text-ink-primary dark:text-night-text leading-snug wrap-break-word">{r.title}</p>
                   <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{r.meta}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">

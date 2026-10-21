@@ -171,7 +171,7 @@ const CourseView: React.FC<CourseViewProps> = ({
       {/* Desktop Layout */}
       <div className="hidden md:grid md:grid-cols-2 md:gap-4 mt-4">
         <div>
-          <div className="sticky top-[4.5rem] rounded-card p-4 bg-surface dark:bg-night-surface border border-border dark:border-night-border">
+          <div className="sticky top-18 rounded-card p-4 bg-surface dark:bg-night-surface border border-border dark:border-night-border">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-body font-semibold text-body text-ink-primary dark:text-night-text">
                 {t('courses.selected')}

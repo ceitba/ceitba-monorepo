@@ -29,7 +29,7 @@ export default function Checkbox({ checked, onChange, label, hint, disabled = fa
       />
       <span
         aria-hidden="true"
-        className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-sm border flex-shrink-0 transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${
+        className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-xs border shrink-0 transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${
           checked
             ? 'bg-primary border-primary text-white dark:bg-primary-400 dark:border-primary-400'
             : 'bg-white dark:bg-night-surface border-border dark:border-night-border'

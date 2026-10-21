@@ -74,7 +74,7 @@ export default function ReportDialog<R extends string = string>({
                 value={r}
                 checked={reason === r}
                 onChange={() => setReason(r)}
-                className="h-4 w-4 accent-primary flex-shrink-0"
+                className="h-4 w-4 accent-primary shrink-0"
               />
               <span>{t(`apuntes.report.reasons.${r}`)}</span>
             </label>

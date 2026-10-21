@@ -24,7 +24,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, isSelected, onClick }) 
       }`}
     >
       <span className="flex flex-row gap-2 min-w-0">
-        <span className="font-mono text-label text-ink-secondary dark:text-night-muted flex-shrink-0">
+        <span className="font-mono text-label text-ink-secondary dark:text-night-muted shrink-0">
           ({course.subject_id})
         </span>
         <span className="flex flex-col min-w-0">
@@ -43,7 +43,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, isSelected, onClick }) 
       </span>
 
       {/* State is conveyed by aria-pressed; the verb is for sighted users. */}
-      <span aria-hidden="true" className="flex-shrink-0 ml-2 inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest">
+      <span aria-hidden="true" className="shrink-0 ml-2 inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-widest">
         {isSelected ? (
           <span className="text-primary dark:text-primary-300 inline-flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

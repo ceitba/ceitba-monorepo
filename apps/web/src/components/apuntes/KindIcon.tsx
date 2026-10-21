@@ -26,7 +26,7 @@ export default function KindIcon({ kind, size = 18, className = '' }: { kind: Fi
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
     'aria-hidden': true,
-    className: `flex-shrink-0 ${COLORS[kind] ?? COLORS.OTHER} ${className}`,
+    className: `shrink-0 ${COLORS[kind] ?? COLORS.OTHER} ${className}`,
   }
   switch (kind) {
     case 'FOLDER':

@@ -153,7 +153,7 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
             </div>
           )}
           {shown.fullRebuildUsd != null && (
-            <p className="sm:col-span-2 mt-1 px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg">{t('manage.wikiAi.forecast.fullRebuild', { cost: usd(shown.fullRebuildUsd, 2) })}</p>
+            <p className="sm:col-span-2 mt-1 px-3 py-2 rounded-xs bg-page-bg dark:bg-night-bg">{t('manage.wikiAi.forecast.fullRebuild', { cost: usd(shown.fullRebuildUsd, 2) })}</p>
           )}
           {shown.basis && (
             <p className="sm:col-span-2 font-body text-label text-ink-secondary dark:text-night-muted">{basisText(shown.basis, shown.runsUsed, t)}</p>
@@ -176,12 +176,12 @@ export function CostImpactDialog({ title, body, loadImpact, onConfirm, onCancel 
 function ImpactCard({ label, value, delta }: { label: string; value: number | null | undefined; delta?: number | null }) {
   const { t } = useTranslation()
   return (
-    <div className="rounded-sm border border-border dark:border-night-border p-3">
+    <div className="rounded-xs border border-border dark:border-night-border p-3">
       <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{label}</p>
       {value === undefined ? (
         <Skeleton className="h-7 mt-1" />
       ) : (
-        <p className="font-display font-bold text-h5 sm:text-h4 text-ink-primary dark:text-night-text tabular-nums break-words">
+        <p className="font-display font-bold text-h5 sm:text-h4 text-ink-primary dark:text-night-text tabular-nums wrap-break-word">
           {value == null ? '—' : usd(value, 2)}
           <span className="font-body text-body-sm font-normal text-ink-secondary dark:text-night-muted"> {t('manage.wikiAi.perWeek')}</span>
         </p>

@@ -204,7 +204,7 @@ export default function SharePage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
+      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-hidden">
         <SchedulerBackLink />
         {loading ? (
           <LoadingRegion className="flex flex-col gap-3">

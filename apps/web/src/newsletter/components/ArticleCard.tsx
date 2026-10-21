@@ -21,7 +21,7 @@ interface CoverMediaProps {
 function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
   if (coverImage) {
     return (
-      <div className={['overflow-hidden flex-shrink-0', className].join(' ')}>
+      <div className={['overflow-hidden shrink-0', className].join(' ')}>
         <img
           src={coverImage}
           alt=""
@@ -35,13 +35,13 @@ function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
 
   const bg = GEO_FILLS[colorScheme ?? ''] ?? GEO_FILLS.blue
   return (
-    <div className={['relative overflow-hidden flex-shrink-0', bg, className].join(' ')}>
+    <div className={['relative overflow-hidden shrink-0', bg, className].join(' ')}>
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-[-20%] right-[-10%] w-2/3 h-2/3 rounded-full bg-white/30" />
         <div className="absolute bottom-[-15%] left-[-5%] w-1/2 h-1/2 rotate-45 bg-white/20" />
-        <div className="absolute top-1/3 left-1/4 w-1/3 h-1/3 rounded-sm rotate-12 bg-black/10" />
+        <div className="absolute top-1/3 left-1/4 w-1/3 h-1/3 rounded-xs rotate-12 bg-black/10" />
       </div>
-      <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/25" />
+      <div className="absolute inset-0 bg-linear-to-br from-black/0 to-black/25" />
     </div>
   )
 }

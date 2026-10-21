@@ -112,7 +112,7 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
               value={state.block}
               onChange={(e) => setBlock(e.target.value)}
               aria-label={t('editor.blockType')}
-              className={selectClass({ className: '!w-auto' })}
+              className={selectClass({ className: 'w-auto!' })}
             >
               <option value="p">{t('editor.blocks.p')}</option>
               <option value="h2">{t('editor.blocks.h2')}</option>
@@ -188,7 +188,7 @@ export default function EditorToolbar({ editor, mode, onToggleMode, canUpload, u
             placeholder={urlMode === 'link' ? t('editor.linkPlaceholder') : t('editor.imagePlaceholder')}
             aria-label={urlMode === 'link' ? t('editor.link') : t('editor.imageUrl')}
             aria-invalid={urlError ? true : undefined}
-            className={inputClass({ invalid: !!urlError, className: '!w-auto flex-1 min-w-[12rem]' })}
+            className={inputClass({ invalid: !!urlError, className: 'w-auto! flex-1 min-w-48' })}
           />
           <Button variant="outline" size="sm" onClick={applyUrl}>
             {t('editor.apply')}
@@ -237,7 +237,7 @@ function Btn({ label, shortcut, active, disabled, onClick, children }: BtnProps)
       title={shortcut ? `${label} (${shortcut})` : label}
       className={iconButtonClass({
         size: 'sm',
-        className: active ? '!bg-primary-50 !text-primary dark:!bg-primary-900 dark:!text-primary-200' : '',
+        className: active ? 'bg-primary-50! text-primary! dark:bg-primary-900! dark:text-primary-200!' : '',
       })}
     >
       <span className="w-4 h-4 flex items-center justify-center text-[15px] leading-none">{children}</span>

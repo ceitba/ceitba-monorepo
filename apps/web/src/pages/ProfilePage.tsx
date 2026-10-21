@@ -34,7 +34,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
         <Skeleton className="h-10 w-48 mb-8" />
         <SkeletonForm fields={3} />
       </main>
@@ -67,7 +67,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <header className="mb-8">
         <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">
           {t('profile.title')}

@@ -129,7 +129,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
         type="button"
         onClick={() => corrections.openClassDetail(slot.subject_id, slot.commission)}
         aria-label={t('corrections.viewDetailAria', { subject: slot.subject, commission: slot.label })}
-        className={`${layout} items-stretch rounded-sm hover:ring-2 hover:ring-primary/40`}
+        className={`${layout} items-stretch rounded-xs hover:ring-2 hover:ring-primary/40`}
       >
         {content}
       </button>
@@ -147,7 +147,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
           {dayNames.map((day) => (
             <div
               key={day}
-              className="h-8 flex items-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-sm"
+              className="h-8 flex items-center justify-center font-mono text-label text-ink-secondary dark:text-night-muted bg-surface dark:bg-night-bg rounded-xs"
             >
               {day}
             </div>
@@ -252,7 +252,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({ slots, blockedTimes = [] })
                             style={{ top: `${labelTop - top}px`, height: '48px' }}
                           >
                             {block.label && (
-                              <div className="font-body font-semibold text-ink-primary dark:text-night-text text-center break-words text-[11px] lg:text-xs pt-2">
+                              <div className="font-body font-semibold text-ink-primary dark:text-night-text text-center wrap-break-word text-[11px] lg:text-xs pt-2">
                                 {block.label}
                               </div>
                             )}

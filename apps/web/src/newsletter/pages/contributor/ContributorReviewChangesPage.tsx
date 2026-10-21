@@ -183,14 +183,14 @@ export default function ContributorReviewChangesPage() {
         <button
           type="button"
           onClick={handleAccept}
-          className="min-h-[44px] px-6 bg-emerald-600 text-white font-body font-semibold rounded-sm hover:bg-emerald-700 transition-colors duration-150 focus-visible:rounded"
+          className="min-h-[44px] px-6 bg-emerald-600 text-white font-body font-semibold rounded-xs hover:bg-emerald-700 transition-colors duration-150 focus-visible:rounded-sm"
         >
           Aceptar cambios y publicar
         </button>
         <button
           type="button"
           onClick={handleReject}
-          className="min-h-[44px] px-6 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-secondary font-body font-semibold rounded-sm hover:border-red-300 hover:text-red-600 transition-colors duration-150 focus-visible:rounded"
+          className="min-h-[44px] px-6 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-secondary font-body font-semibold rounded-xs hover:border-red-300 hover:text-red-600 transition-colors duration-150 focus-visible:rounded-sm"
         >
           Rechazar cambios
         </button>
