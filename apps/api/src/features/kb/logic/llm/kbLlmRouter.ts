@@ -9,7 +9,7 @@
 import { FakeLlmBatchClient } from '../external/fakeLlm';
 import type { LlmBatchClient, SyncChatClient } from '../external/llmApi';
 import { jIsBlank, lowerRoot } from '../javaString';
-import type { KbModelStore } from '../ports';
+import type { KbModelReader } from '../ports';
 import { batchByRule, batchProvider, defaultBatchModelId } from './kbChatPayloads';
 import { isCustom } from './kbEndpointRegistry';
 import type { KbLlmProperties } from './kbLlmProperties';
@@ -19,7 +19,7 @@ export class KbLlmRouter {
     private readonly batch: LlmBatchClient,
     private readonly sync: SyncChatClient,
     private readonly props: KbLlmProperties | null,
-    private readonly models: KbModelStore | null,
+    private readonly models: KbModelReader | null,
     private readonly warn: (msg: string) => void = () => {},
   ) {}
 

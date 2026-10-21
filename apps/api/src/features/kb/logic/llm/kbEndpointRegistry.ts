@@ -15,7 +15,7 @@ import { LlmApiError, type SyncChatClient } from '../external/llmApi';
 import { jIsBlank } from '../javaString';
 import type { JsonValue } from '../jsonNode';
 import type { Odt } from '../odt';
-import type { KbLlmEndpointStore, KbModelStore } from '../ports';
+import type { KbLlmEndpointStore, KbModelReader } from '../ports';
 import { Semaphore } from '../semaphore';
 import type { KbLlmEndpoint } from '../types';
 import type { KbSecretCipher } from './kbSecretCipher';
@@ -103,7 +103,7 @@ export class KbEndpointRegistry {
 
   constructor(
     private readonly endpoints: KbLlmEndpointStore,
-    private readonly models: KbModelStore,
+    private readonly models: KbModelReader,
     private readonly cipher: KbSecretCipher,
     private readonly factory: ClientFactory = defaultFactory,
   ) {}

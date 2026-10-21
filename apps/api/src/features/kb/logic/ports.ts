@@ -3,8 +3,9 @@
 // (test/kb/support/inMemoryRepo.ts); the service layer implements them on drizzle.
 // There is no unit of work (JPA dirty checking): the ported code calls save() on
 // every entity it mutates, inside the same `tx`; a store must persist it then.
-// TODO(kb-service): drizzle implementations over src/db/schema/kb.ts, and `Tx` as
-// db.transaction(); map Postgres unique violations (SQLSTATE 23505) to DuplicateKeyError.
+// The drizzle implementations are kb-pipeline/db/stores.ts (KbModelStore: kb-admin/catalog.ts
+// `modelStore`); they join the caller's transaction and map Postgres unique violations
+// (SQLSTATE 23505) to DuplicateKeyError (kb-pipeline/db/session.ts).
 
 import type { JsonValue } from './jsonNode';
 import type { KbBatchJob, KbLlmEndpoint, KbLlmUsage, KbModel, KbRunRequest } from './types';
@@ -28,14 +29,19 @@ export class DuplicateKeyError extends Error {
   }
 }
 
-// The Kb*Store ports below each have a database implementation (kb-pipeline/db/stores.ts) and an in-memory test
-// fake (test/kb/support/inMemoryRepo.ts `InMemoryRepo.as<...>()`, used by the KbBatchSubmitter, KbCustomEndpoint and
-// KbBatchProbeFallback tests), which is why they are interfaces.
+// The Kb*Store ports below each have a database implementation (kb-pipeline/db/stores.ts, kb-admin/catalog.ts)
+// and an in-memory test fake (test/kb/support/inMemoryRepo.ts `InMemoryRepo.as<...>()`, used by the
+// KbBatchSubmitter, KbCustomEndpoint and KbBatchProbeFallback tests; the last one also fakes KbLlmUsageStore),
+// which is why they are interfaces.
 
-/** repository/kb/KbModelRepository. */
-export interface KbModelStore {
+/** repository/kb/KbModelRepository, the reads: all the pipeline needs (it never writes the catalog). */
+export interface KbModelReader {
   findById(id: string): MaybePromise<KbModel | null>;
   findAll(): MaybePromise<KbModel[]>;
+}
+
+/** repository/kb/KbModelRepository: reads + save, for the catalog and endpoint services (kb-admin). */
+export interface KbModelStore extends KbModelReader {
   save(m: KbModel): MaybePromise<KbModel>;
 }
 

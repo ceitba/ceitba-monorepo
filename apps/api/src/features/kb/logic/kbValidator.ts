@@ -5,10 +5,9 @@
 //   - every source is a PUBLISHED Drive file whose effective subject is the
 //     page's subject;
 //   - no 40-word run is copied from a source's extracted text.
-// The database part is the caller's: it passes what it loaded as SourceInfo.
-// TODO(kb-service): KbImportService/KbPipelineService load the Drive files of
-// draft.sources (status, effective subject, extracted text, content fingerprint)
-// and build the SourceInfo map; one `shingles` cache per import.
+// The database part is the caller's: it passes what it loaded as SourceInfo
+// (kb-reader/importService.ts and kb-admin/evals.ts load the Drive files of
+// draft.sources and build the map; one `shingles` cache per import).
 
 import { findCopyIn, shinglesOf, WINDOW, type Shingles } from './kbCopyDetector';
 import type { Draft } from './kbPageParser';

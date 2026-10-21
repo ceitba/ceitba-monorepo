@@ -5,14 +5,14 @@
 
 import type { Dec } from '../decimal';
 import type { Now } from '../odt';
-import type { KbLlmUsageStore, KbModelStore } from '../ports';
+import type { KbLlmUsageStore, KbModelReader } from '../ports';
 import type { KbLlmRouter } from './kbLlmRouter';
 import { cost } from './kbPricing';
 
 export class KbUsageRecorder {
   constructor(
     private readonly usage: KbLlmUsageStore,
-    private readonly models: KbModelStore,
+    private readonly models: KbModelReader,
     private readonly router: KbLlmRouter,
     private readonly now: Now,
   ) {}

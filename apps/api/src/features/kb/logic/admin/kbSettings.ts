@@ -5,10 +5,9 @@
 //
 // Runtime pipeline settings (docs/SUBJECT-WIKI-ADMIN.md §1): env defaults
 // overridden by the single kb_pipeline_settings row.
-// TODO(kb-service): KbSettingsService.effective/get/update/preview/proposed/history/restore
-// (kb_pipeline_settings row + history, users for names), validate() (needs the model catalog
-// and a Spring-compatible CronExpression.isValidExpression), checkModel, response(), impact()
-// (KbForecastService). The pure pieces below are what those call.
+// KbSettingsService itself (effective/get/update/preview/proposed/history/restore,
+// validate, checkModel, response, impact) is kb-admin/settings.ts; the pure pieces below
+// are what it calls.
 
 import { ValidationError } from '../../../../http/errors';
 import { Dec, dec } from '../decimal';
@@ -82,7 +81,7 @@ export interface KbPipelinePropertiesInput {
 
 const blank = (s: string | null | undefined): s is null | undefined => s == null || jIsBlank(s);
 
-/** The record's compact constructor: defaults and clamps. TODO(kb-service): from config.kb.pipeline. */
+/** The record's compact constructor: defaults and clamps (fed from config.kb.pipeline by kb-pipeline/settings.ts). */
 export function kbPipelineProperties(i: KbPipelinePropertiesInput = {}): KbPipelineProperties {
   const modelWrite = blank(i.modelWrite) ? 'glm-5.3' : jTrim(i.modelWrite);
   const runTokenBudgetMax = i.runTokenBudgetMax == null || i.runTokenBudgetMax <= 0 ? DEFAULT_TOKEN_BUDGET_MAX : i.runTokenBudgetMax;

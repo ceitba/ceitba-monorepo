@@ -12,10 +12,9 @@
 // rate-limited (429) or unanswered creation is retried on the poller (1, 5, 15, 60 min).
 // Any other error is a failed probe that leaves batchSupported alone.
 //
-// TODO(kb-service): list (emptyToolCallStats), update/create/apply (price history rows),
-// sync()/applyCatalog/syncIds (DoModelCatalog fetch, KbModelPriceHistory), view() ->
-// KbModelResponse (needs settings.effective()). probe() here returns the stored model;
-// the service maps it with view().
+// The rest of KbModelCatalogService (list, update/create/apply with price history, sync
+// from the DO catalog, the KbModelResponse view) is kb-admin/catalog.ts, which wraps this
+// class. probe() here returns the stored model; catalog.ts maps it with view().
 
 import { ResourceNotFoundError, ValidationError } from '../../../../http/errors';
 import { classify, classifyFailure, unsupportedModel } from '../external/doBatchErrors';

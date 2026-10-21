@@ -3,10 +3,8 @@
 //
 // Staff-managed custom OpenAI-compatible endpoints (own GPU server). The API
 // key is encrypted at rest (KbSecretCipher) and never returned or logged.
-// TODO(kb-service): list/create/update/apply/delete/test/stats (repositories:
-// findAllByOrderByNameAsc, existsByName, countByIdStartingWith, usage.endpointStats,
-// requests.countOfActiveRunsWithModelPrefix; settings.effective() for the in-use check),
-// the KbEndpointDtos.Item view, and @Transactional boundaries.
+// The CRUD/test/stats endpoints, the KbEndpointDtos.Item view and the transaction
+// boundaries are kb-admin/endpoints.ts, which wraps this class.
 
 import { ExternalApiError, ResourceNotFoundError, ValidationError } from '../../../../http/errors';
 import { Dec } from '../decimal';

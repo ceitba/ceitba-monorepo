@@ -1,7 +1,7 @@
 // The pure statics of apps/api/src/main/java/org/ceitba/api/service/kb/admin/KbForecastService.java
 // (basis, blend, weekly, quantiles, usd, stageModel).
-// TODO(kb-service): forecast()/nextRun/snapshot (catalog, dirty subjects, usage history,
-// token ratios), runsPerWeek (needs a Spring-compatible CronExpression over ART), settingsHash.
+// The database part (forecast()/nextRun/snapshot, runsPerWeek over kb-admin/cron.ts,
+// settingsHash) is kb-admin/forecast.ts.
 
 import { Dec } from '../decimal';
 import type { KbEffectiveSettings } from './kbSettings';

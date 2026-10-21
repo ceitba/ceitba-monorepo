@@ -1,5 +1,5 @@
 // KbEvalService.configKey / pageKey (apps/api/src/main/java/org/ceitba/api/service/kb/eval/KbEvalService.java).
-// TODO(kb-service): the rest of KbEvalService (eval runs, storage of pages, results, metrics).
+// The rest of KbEvalService (eval runs, stored pages, results, metrics) is kb-admin/evals.ts.
 
 export function configKey(plan: string, planEffort: string | null, write: string, writeEffort: string | null): string {
   return plan + (planEffort == null ? '' : '@' + planEffort) + '|' + write + (writeEffort == null ? '' : '@' + writeEffort);

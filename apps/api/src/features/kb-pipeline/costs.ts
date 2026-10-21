@@ -13,7 +13,7 @@ import type { DoQuotaTracker } from '../kb/logic/external/doQuotaTracker';
 import { jIsBlank, jSplit, jTrim, lowerRoot } from '../kb/logic/javaString';
 import { ART_ZONE, type Now, type Odt } from '../kb/logic/odt';
 import { completed } from '../kb/logic/pipeline/kbRunOutcome';
-import type { KbModelStore } from '../kb/logic/ports';
+import type { KbModelReader } from '../kb/logic/ports';
 import type { KbModel } from '../kb/logic/types';
 import { javaDouble } from '../../lib/json';
 import { runs, subjects, usage, type UsageRow } from './db/repo';
@@ -58,7 +58,7 @@ const cmpNullsFirst = (a: string | null, b: string | null): number =>
   a == null ? (b == null ? 0 : -1) : b == null ? 1 : a < b ? -1 : a > b ? 1 : 0;
 
 export class KbCostService {
-  constructor(private readonly db: Database, private readonly models: KbModelStore, private readonly now: Now) {}
+  constructor(private readonly db: Database, private readonly models: KbModelReader, private readonly now: Now) {}
 
   private async catalog(): Promise<Map<string, KbModel>> {
     const out = new Map<string, KbModel>();

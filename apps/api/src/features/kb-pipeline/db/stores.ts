@@ -4,7 +4,7 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '../../../db/client';
 import type {
-  KbBatchJobStore, KbLlmEndpointStore, KbLlmUsageStore, KbModelStore, KbRunRequestStore, KbRunStore,
+  KbBatchJobStore, KbLlmEndpointStore, KbLlmUsageStore, KbModelReader, KbRunRequestStore, KbRunStore,
 } from '../../kb/logic/ports';
 import { KbLlmEndpoint, KbModel, type KbBatchJob, type KbLlmUsage, type KbRunRequest } from '../../kb/logic/types';
 import { jobs, requests, runs } from './repo';
@@ -45,7 +45,7 @@ const MODEL_COLUMNS = sql.raw(`id, display_name, provider, batch_supported, batc
   display_name_manual, batch_model_id, remote_model_id`);
 
 /** repository/kb/KbModelRepository (reads; save() is the catalog's, not the pipeline's). */
-export class DbKbModelStore implements KbModelStore {
+export class DbKbModelStore implements KbModelReader {
   constructor(private readonly db: Database) {}
 
   findById(id: string): Promise<KbModel | null> {
@@ -57,11 +57,6 @@ export class DbKbModelStore implements KbModelStore {
 
   findAll(): Promise<KbModel[]> {
     return inTx(this.db, async (s) => (await s.query<Row>(sql`SELECT ${MODEL_COLUMNS} FROM wiki.kb_model`)).map(modelOf));
-  }
-
-  /** The catalog (kb-admin) owns kb_model writes; the pipeline never saves a model. */
-  save(_m: KbModel): Promise<KbModel> {
-    return Promise.reject(new Error('DbKbModelStore.save: kb_model is written by the catalog service'));
   }
 }
 
