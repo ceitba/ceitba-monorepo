@@ -13,10 +13,11 @@ export function refExists(ref) {
   try { git('rev-parse', '--verify', '--quiet', `${ref}^{commit}`); return true; } catch { return false; }
 }
 
-// The ref a branch is compared against: --base <ref>, $CHECK_BASE, origin/dev, dev; null if none exists.
+// The ref a branch is compared against: --base <ref>, $CHECK_BASE, origin/dev, dev, origin/main,
+// main; null if none exists (without a dev branch, main is the base PRs target).
 export function baseRef(argv = process.argv) {
   const i = argv.indexOf('--base');
-  const candidates = [i >= 0 ? argv[i + 1] : null, process.env.CHECK_BASE, 'origin/dev', 'dev'].filter(Boolean);
+  const candidates = [i >= 0 ? argv[i + 1] : null, process.env.CHECK_BASE, 'origin/dev', 'dev', 'origin/main', 'main'].filter(Boolean);
   return candidates.find(refExists) ?? null;
 }
 

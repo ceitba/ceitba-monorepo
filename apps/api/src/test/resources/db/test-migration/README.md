@@ -1,14 +1,15 @@
 # Test-only migration mirrors
 
-Integration tests run Flyway with `target: '4.x'` (see `src/test/resources/application.yml`)
+Integration tests (the contract suite and the in-process tests) migrate with
+`db/migration` + this directory up to `IT_FLYWAY_TARGET` (`apps/api-ts/contract/support/pg.ts`)
 because `V5+` in `db/migration` seed production-only data (superadmin, careers,
 organizations) that breaks count assertions and FK-restricted `deleteAll()` calls.
 
 **Mirror rule:** whenever you add a prod migration `V<N>__*.sql` that changes the
 schema (DDL), add a copy of its DDL-only part here as the next `V4.<n>__*.sql` and
-bump `spring.flyway.target` in `src/test/resources/application.yml` to that version.
-Skip seed/`INSERT` statements. Otherwise Hibernate `ddl-auto=validate` fails at
-startup in every IT that touches the new entity.
+bump `IT_FLYWAY_TARGET` to that version (`scripts/checks/migrations.mjs` enforces both).
+Skip seed/`INSERT` statements. Otherwise every test that touches the new table or
+column fails against the test schema.
 
 Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 

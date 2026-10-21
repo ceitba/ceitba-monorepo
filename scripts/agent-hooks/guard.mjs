@@ -150,7 +150,8 @@ if (isPatch) {
 
 const onBase = (() => {
   const cache = new Map();
-  const ref = ['origin/dev', 'dev'].find((r) => {
+  // Without a dev branch, main holds the merged migrations.
+  const ref = ['origin/dev', 'dev', 'origin/main', 'main'].find((r) => {
     try { execFileSync('git', ['rev-parse', '--verify', '--quiet', r], { cwd: ROOT, stdio: 'ignore' }); return true; } catch { return false; }
   });
   return (rel) => {

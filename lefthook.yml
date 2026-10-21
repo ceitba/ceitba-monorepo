@@ -21,7 +21,7 @@ pre-commit:
       glob:
         - "apps/api/src/main/resources/db/migration/*"
         - "apps/api/src/test/resources/db/test-migration/*"
-        - "apps/api/src/test/resources/application.yml"
+        - "apps/api-ts/contract/support/pg.ts"
       run: node scripts/checks/migrations.mjs
 
     - name: workflows
