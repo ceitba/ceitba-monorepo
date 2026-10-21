@@ -1,0 +1,4 @@
+Texto con pdfkit: canción, acción, pingüino. 
+Segunda oración del párrafo para forzar el 
+ajuste de línea automático en un ancho 
+estrecho.

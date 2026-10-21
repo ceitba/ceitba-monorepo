@@ -69,7 +69,7 @@ export async function buildDeps(config: Config, overrides: DepsOverrides = {}): 
     mailTransport: overrides.mailTransport ?? createMailTransport(config, log.child({ component: 'mail' })),
     push,
     itba: overrides.itba ?? createItbaClient(config, db),
-    drive: overrides.drive ?? createDriveClient(config),
+    drive: overrides.drive ?? createDriveClient(config, log.child({ component: 'drive' })),
     llm: overrides.llm ?? createLlmClients(config),
     google: overrides.google ?? createGoogleClients(config.auth),
     userRateLimiter: overrides.userRateLimiter ?? new UserRateLimiter(config.rateLimit),
@@ -81,8 +81,5 @@ export async function buildDeps(config: Config, overrides: DepsOverrides = {}): 
       if (handle) await handle.close();
     },
   };
-  if (!config.content.driveSync.useFake && config.content.driveSync.serviceAccountJson.trim() !== '') {
-    log.warn('DRIVE_SYNC_SERVICE_ACCOUNT_JSON is set but GoogleDriveClient is not ported yet: Drive sync runs unconfigured');
-  }
   return deps;
 }

@@ -9,6 +9,7 @@ import type { Config } from '../config';
 import { FeatureNotConfiguredError } from '../http/errors';
 import type { Clock } from './clock';
 import type { Micros } from '../lib/time';
+import { javaIsBlank, javaUrlEncode } from '../lib/javaCompat';
 
 export interface PresignedUpload {
   uploadUrl: string;
@@ -56,9 +57,10 @@ export function canonicalHeader(name: string): string {
 function contentDisposition(o: PresignGetOptions): string | undefined {
   if (!o.filename && !o.inline) return undefined;
   const type = o.inline ? 'inline' : 'attachment';
-  if (!o.filename) return type;
-  const ascii = o.filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '');
-  return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(o.filename)}`;
+  // S3ObjectStorage.disposition: RFC 6266/5987 ASCII fallback plus the UTF-8 name, as Java builds them.
+  if (!o.filename || javaIsBlank(o.filename)) return type;
+  const ascii = o.filename.replace(/[^A-Za-z0-9._ -]/g, '_');
+  return `${type}; filename="${ascii}"; filename*=UTF-8''${javaUrlEncode(o.filename).replaceAll('+', '%20')}`;
 }
 
 /** SigV4 presigning against MinIO (path style), server-side calls via internal-endpoint. */

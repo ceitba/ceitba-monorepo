@@ -43,3 +43,5 @@ skipped on `CONTRACT_TARGET=ts` through `supports('METHOD /path')` until that fe
 | `HighlightsIT` exact `startsAt`/`endsAt == now` boundaries | `test/highlight/highlights-clock.test.ts` | Needs a fixed clock; a black-box copy also exists |
 | `DataSyncServiceIT` counters | `test/sync/DataSyncServiceIT.test.ts` | Asserts counters the API never serializes; black-box copy runs via the mock ITBA gateway |
 | `FirestoreImportServiceTest`, `ProposalFirestoreImporterTest`, `DataSyncJob` | `test/sync/*.test.ts` | Unit/component tests |
+| `DriveSyncIT` (all 10, in full) | `test/drive/DriveSyncIT.test.ts` | Mutates the injected FakeDriveClient, inspects InMemoryObjectStorage and calls the sync service directly. Black-box subsets of every test: `contract/tests/drive-sync.contract.test.ts` (demo folders + S3 mock) |
+| `DriveSourceServiceTest` | `test/drive/DriveSourceService.test.ts` | The Java test mocks repositories |

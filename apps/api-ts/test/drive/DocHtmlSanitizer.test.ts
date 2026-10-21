@@ -40,7 +40,7 @@ describe('DocHtmlSanitizerTest', () => {
   });
 });
 
-/** Java pretty-prints in GoogleDocsHtml.normalize (we don't): compare modulo whitespace between tags. */
+/** Also modulo inter-tag whitespace (kept from when the port printed compactly). */
 const compact = (s: string) => s.replace(/>\s+</g, '><').replace(/^\s+|\s+$/g, '').replace(/\n\s*/g, ' ');
 
 describe('interop: DocHtmlSanitizer against jsoup', () => {
@@ -56,8 +56,9 @@ describe('interop: DocHtmlSanitizer against jsoup', () => {
     }
   });
   for (const c of INTEROP.docHtml) {
-    test(`sanitize(raw) ${c.name}: same html modulo inter-tag whitespace, same text`, () => {
+    test(`sanitize(raw) ${c.name}: byte-identical html, same text`, () => {
       const r = sanitizeDocHtml(c.raw, new Map([['images/image1.png', 'image1.png']]), '/assets/');
+      expect(r.html).toBe(c.rawHtml); // byte-identical to jsoup (pretty-print whitespace included)
       expect(compact(r.html)).toBe(compact(c.rawHtml));
       expect(r.text).toBe(c.rawText);
     });
