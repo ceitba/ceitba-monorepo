@@ -7,9 +7,10 @@
 //     exponent a DoubleNode (5.00 -> 5.0), never a BigDecimal.
 
 import { javaDoubleString } from '../../../lib/json';
+import { readJacksonTree } from '../../../lib/jackson';
 import { parsePgTimestamp } from '../../../lib/time';
 import { Dec } from '../../kb/logic/decimal';
-import { JDouble, nodeToString, type JsonValue, type Node } from '../../kb/logic/jsonNode';
+import { nodeToString, type JsonValue, type Node } from '../../kb/logic/jsonNode';
 import { Odt } from '../../kb/logic/odt';
 
 /** A TIMESTAMPTZ text value as Hibernate maps it (UTC). */
@@ -38,19 +39,10 @@ export function pgDec(d: Dec | null): string | null {
   return d == null ? null : d.toPlainString();
 }
 
-/**
- * ObjectMapper.readTree with Spring Boot's defaults (no USE_BIG_DECIMAL_FOR_FLOATS):
- * fractional numbers become DoubleNodes (JDouble), integers stay JS numbers.
- */
-export function readJacksonTree(text: string): JsonValue {
-  return JSON.parse(text, (_k, v, ctx?: { source?: string }) => {
-    if (typeof v === 'number' && ctx?.source !== undefined && /[.eE]/.test(ctx.source)) return new JDouble(v);
-    return v;
-  }) as JsonValue;
-}
+export { readJacksonTree };
 
 export function jsonOf(pg: string | null | undefined): JsonValue | null {
-  return pg == null ? null : readJacksonTree(pg);
+  return pg == null ? null : readJacksonTree<JsonValue>(pg);
 }
 
 /** A tree as jsonb text (Jackson's compact form); a Java null field is SQL NULL. */

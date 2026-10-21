@@ -14,7 +14,7 @@ import {
   UpdatePreferencesRequest, UpdateProfileRequest, type SavedScheduleResponse,
 } from './dto';
 import { AccountDeletionService } from './accountDeletion';
-import { field, JsonSyntaxError, parseJackson, spliceRawJson } from './logic/jacksonTree';
+import { field, JsonSyntaxError, parseJackson, spliceRawJson } from '../../lib/jackson';
 import { DeviceService, MeSocialService, SavedScheduleService, UserProfileService, UserService, type SaveSchedule } from './service';
 
 const PAYLOAD = `__payload_${crypto.randomUUID()}__`;

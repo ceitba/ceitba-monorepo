@@ -6,7 +6,7 @@
 // service compares Jackson-bound trees (jacksonTree.ts); plain JS values are
 // accepted too (an integral number is an Integer, any other a Double).
 
-import { writeJackson, type JNode } from './jacksonTree';
+import { writeJackson, type JNode } from '../../../lib/jackson';
 
 export function toNode(v: unknown): JNode {
   if (v === null || v === undefined) return { t: 'null' };

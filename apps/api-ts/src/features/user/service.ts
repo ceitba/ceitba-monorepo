@@ -13,9 +13,9 @@ import type {
   CreateUserRequest, DeviceResponse, MePreferencesResponse, MeProfileResponse, SavedScheduleResponse, UpdatePreferencesRequest,
   UpdateProfileRequest, UserResponse,
 } from './dto';
-import { writeJackson, type JNode } from './logic/jacksonTree';
+import { writeJackson, type JNode } from '../../lib/jackson';
 import { payloadChangedNodes } from './logic/savedSchedulePayload';
-import { parseJackson } from './logic/jacksonTree';
+import { parseJackson } from '../../lib/jackson';
 import * as social from './logic/socialHandles';
 import * as repo from './repo';
 

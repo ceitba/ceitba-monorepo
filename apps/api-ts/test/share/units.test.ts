@@ -1,7 +1,7 @@
 // Unit tests of the share helpers (no Java unit test exists for share):
 // the Jackson re-rendering of jsonb payloads and resolveDisplayName.
 import { describe, expect, test } from 'bun:test';
-import { jacksonFromJsonbText, jsonWithRaw, RawJsonText } from '../../src/features/share/jsonbJackson';
+import { jacksonFromJsonbText, jsonWithRaw, RawJsonText } from '../../src/lib/jackson';
 import { resolveDisplayName } from '../../src/features/share/service';
 
 describe('jacksonFromJsonbText', () => {

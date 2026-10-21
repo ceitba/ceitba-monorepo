@@ -4,7 +4,7 @@
 import { defineRoutes, noContent } from '../../http/router';
 import { param } from '../../http/validation';
 import { CreateShareSessionRequest, JoinShareSessionRequest } from './dto';
-import { jsonWithRaw } from './jsonbJackson';
+import { jsonWithRaw } from '../../lib/jackson';
 import { ShareSessionService } from './service';
 
 export default defineRoutes((r, deps) => {

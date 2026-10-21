@@ -187,3 +187,21 @@ export function parseIsoInstant(s: string): Micros | null {
 export function instantOfEpochSecond(secs: number): string {
   return formatInstant(secs * 1_000_000);
 }
+
+/**
+ * OffsetDateTime.toString() of a UTC value (what a ValidationException message
+ * shows): unlike Jackson's ISO_OFFSET_DATE_TIME, the seconds are omitted when
+ * they and the fraction are zero, and the fraction is in groups of 3 digits.
+ */
+export function offsetDateTimeToString(us: Micros): string {
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+  const secs = Math.floor(us / 1_000_000);
+  const micros = us - secs * 1_000_000;
+  const d = new Date(secs * 1000);
+  let out = `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  if (d.getUTCSeconds() > 0 || micros > 0) {
+    out += `:${pad(d.getUTCSeconds())}`;
+    if (micros > 0) out += micros % 1000 === 0 ? `.${pad(micros / 1000, 3)}` : `.${pad(micros, 6)}`;
+  }
+  return `${out}Z`;
+}

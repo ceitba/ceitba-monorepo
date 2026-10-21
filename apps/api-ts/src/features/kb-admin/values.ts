@@ -8,6 +8,7 @@
 //     numbers are ints, any number with a fraction or exponent a DoubleNode (JDouble,
 //     so 5.0 prints 5.0), never a BigDecimal.
 
+import { readJacksonTree } from '../../lib/jackson';
 import { parsePgTimestamp } from '../../lib/time';
 import { Dec } from '../kb/logic/decimal';
 import { JDouble, nodeToString, type JsonValue, type Node } from '../kb/logic/jsonNode';
@@ -27,15 +28,9 @@ export const pgTime = (o: Odt | null): string | null => (o == null ? null : o.to
 export const decOf = (pg: string | null | undefined): Dec | null => (pg == null ? null : Dec.parse(pg));
 export const pgDec = (d: Dec | null): string | null => (d == null ? null : d.toPlainString());
 
-/** ObjectMapper.readTree with Spring Boot's defaults. Throws SyntaxError on bad JSON. */
-export function readJacksonTree(text: string): JsonValue {
-  return JSON.parse(text, (_k, v, ctx?: { source?: string }) => {
-    if (typeof v === 'number' && ctx?.source !== undefined && /[.eE]/.test(ctx.source)) return new JDouble(v);
-    return v;
-  }) as JsonValue;
-}
+export { readJacksonTree };
 
-export const jsonOf = (pg: string | null | undefined): JsonValue | null => (pg == null ? null : readJacksonTree(pg));
+export const jsonOf = (pg: string | null | undefined): JsonValue | null => (pg == null ? null : readJacksonTree<JsonValue>(pg));
 
 /** A tree as jsonb text (Jackson's compact form). */
 export const pgJson = (n: Node): string | null => (n === undefined || n === null ? null : nodeToString(n));

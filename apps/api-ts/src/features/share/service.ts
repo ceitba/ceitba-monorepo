@@ -17,7 +17,7 @@ import { ResourceNotFoundError, ValidationError } from '../../http/errors';
 import { base64UrlEncode, JAVA_S, javaIsBlank, javaSplit, javaTrim } from '../../lib/javaCompat';
 import { formatOffsetDateTime, parsePgTimestamp, systemNowMicros, type Micros } from '../../lib/time';
 import type { CreateShareSessionRequest, JoinShareSessionRequest, ParticipantResponse, ShareSessionResponse } from './dto';
-import { jacksonFromJsonbText, RawJsonText } from './jsonbJackson';
+import { jacksonFromJsonbText, RawJsonText } from '../../lib/jackson';
 import * as repo from './repo';
 
 export const MAX_PARTICIPANTS = 50;

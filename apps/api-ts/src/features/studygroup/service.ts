@@ -13,7 +13,7 @@ import type { Deps } from '../../deps';
 import { withTx, type Tx } from '../../db/client';
 import { ResourceNotFoundError, StudyGroupForbiddenError, ValidationError } from '../../http/errors';
 import { javaIsBlank, javaTrim } from '../../lib/javaCompat';
-import { formatOffsetDateTime, parsePgTimestamp, systemNowMicros, type Micros } from '../../lib/time';
+import { formatOffsetDateTime, offsetDateTimeToString, parsePgTimestamp, systemNowMicros, type Micros } from '../../lib/time';
 import { pageResponse, type PageResponse } from '../news/paging';
 import type {
   CreateStudyGroupRequest, StudyGroupLocation, StudyGroupParticipantResponse, StudyGroupResponse, StudyGroupType,
@@ -34,25 +34,6 @@ interface Fresh {
   dueAt?: Micros;
   /** userId -> joinedAt written now (clock zone). */
   joinedAt?: Map<string, Micros>;
-}
-
-const pad = (n: number, w = 2) => String(n).padStart(w, '0');
-
-/**
- * OffsetDateTime.toString() of a UTC value (what ValidationException shows for
- * a UTC-adjusted request dueAt): seconds omitted when zero together with the
- * fraction, fraction in groups of 3 digits.
- */
-export function javaOffsetDateTimeToStringUtc(us: Micros): string {
-  const secs = Math.floor(us / 1_000_000);
-  const micros = us - secs * 1_000_000;
-  const d = new Date(secs * 1000);
-  let out = `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-  if (d.getUTCSeconds() > 0 || micros > 0) {
-    out += `:${pad(d.getUTCSeconds())}`;
-    if (micros > 0) out += micros % 1000 === 0 ? `.${pad(micros / 1000, 3)}` : `.${pad(micros, 6)}`;
-  }
-  return `${out}Z`;
 }
 
 const blankToNull = (s: string | null): string | null => (s === null || javaIsBlank(s) ? null : javaTrim(s));
@@ -298,7 +279,7 @@ function requireCanEdit(g: repo.GroupRow, userId: string, moderator: boolean, ac
 }
 
 function requireFuture(dueAt: Micros, now: Micros): void {
-  if (!(dueAt > now)) throw new ValidationError('dueAt', javaOffsetDateTimeToStringUtc(dueAt), 'must be in the future');
+  if (!(dueAt > now)) throw new ValidationError('dueAt', offsetDateTimeToString(dueAt), 'must be in the future');
 }
 
 /** 0 / null = unlimited (NULL); otherwise at least the owner plus one. */

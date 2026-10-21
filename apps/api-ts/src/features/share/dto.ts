@@ -2,7 +2,7 @@
 
 import type { z } from 'zod';
 import { jv } from '../../http/validation';
-import type { RawJsonText } from './jsonbJackson';
+import type { RawJsonText } from '../../lib/jackson';
 
 /** CreateShareSessionRequest(@NotNull UUID savedScheduleId, @Size(max=120) displayName, @Size(max=120) name). */
 export const CreateShareSessionRequest = jv.object({

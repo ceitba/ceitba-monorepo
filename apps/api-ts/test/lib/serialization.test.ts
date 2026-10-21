@@ -74,3 +74,21 @@ describe('JSON text', () => {
     expect(toJavaJson({ a: 'ñ€' })).toBe('{"a":"ñ€"}');
   });
 });
+
+test('offsetDateTimeToString: OffsetDateTime.toString of a UTC value', async () => {
+  const { offsetDateTimeToString } = await import('../../src/lib/time');
+  const { parseIsoInstant } = await import('../../src/lib/time');
+  expect(offsetDateTimeToString(parseIsoInstant('2026-01-02T03:04:00Z')!)).toBe('2026-01-02T03:04Z');
+  expect(offsetDateTimeToString(parseIsoInstant('2026-01-02T03:04:05Z')!)).toBe('2026-01-02T03:04:05Z');
+  expect(offsetDateTimeToString(parseIsoInstant('2026-01-02T03:04:05.5Z')!)).toBe('2026-01-02T03:04:05.500Z');
+  expect(offsetDateTimeToString(parseIsoInstant('2026-01-02T03:04:00.000123Z')!)).toBe('2026-01-02T03:04:00.000123Z');
+});
+
+test('readJacksonTree keeps 5.0 and 5 apart (DoubleNode vs IntNode)', async () => {
+  const { readJacksonTree, JDouble } = await import('../../src/lib/jackson');
+  const { toJavaJson } = await import('../../src/lib/json');
+  const t = readJacksonTree<Record<string, unknown>>('{"a":5,"b":5.0,"c":1e-7,"d":[1.50]}');
+  expect(t.a).toBe(5);
+  expect(t.b).toBeInstanceOf(JDouble);
+  expect(toJavaJson(t)).toBe('{"a":5,"b":5.0,"c":1.0E-7,"d":[1.5]}');
+});

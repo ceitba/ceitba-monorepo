@@ -4,23 +4,14 @@
 //   Java MissingNode -> undefined, NullNode -> null, ObjectNode -> plain object,
 //   ArrayNode -> array, BigDecimal values -> Dec (serializes as Java does).
 //
-// Known gap: JSON.parse does not keep 25 vs 25.0 (IntNode vs DoubleNode), so an
-// integral double prints as an int here (asText "25", not "25.0").
+// readTree keeps 25 vs 25.0 apart (IntNode vs DoubleNode: JDouble), like Jackson.
 
+import { JDouble, readJacksonTree } from '../../../lib/jackson';
 import { javaDoubleString, toJavaJson } from '../../../lib/json';
 import { Dec } from './decimal';
 import { jTrim } from './javaString';
 
-/**
- * A Java double put in a tree (ObjectNode.put(String, double)): Jackson writes it with
- * Double.toString (0.5, 1.0, 1.0E-4), which a plain JS number cannot carry.
- */
-export class JDouble {
-  constructor(readonly value: number) {}
-  toJSON(): unknown {
-    return JSON.rawJSON(javaDoubleString(this.value));
-  }
-}
+export { JDouble };
 
 export type JsonValue = null | boolean | number | string | Dec | JDouble | JsonValue[] | JsonObject;
 export interface JsonObject {
@@ -215,9 +206,9 @@ export function nodeToString(n: Node): string {
   return toJavaJson(n);
 }
 
-/** ObjectMapper.readTree(String). */
+/** ObjectMapper.readTree(String) (src/lib/jackson.ts). */
 export function readTree(text: string): JsonValue {
-  return JSON.parse(text) as JsonValue;
+  return readJacksonTree<JsonValue>(text);
 }
 
 /** JsonNode.equals: structural equality (numbers by value; Dec by unscaled+scale like BigDecimal.equals). */
