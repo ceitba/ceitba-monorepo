@@ -14,7 +14,7 @@
 import type { Deps } from '../../deps';
 import { withTx, type Tx } from '../../db/client';
 import { InvalidStateError, ResourceNotFoundError } from '../../http/errors';
-import { pushMessage } from '../../infra/push';
+import { pushMessage } from '../push/service';
 import { formatInstant, parsePgTimestamp, systemNowMicros } from '../../lib/time';
 import { fromTimes, sga as sgaOf, toSchedule, withRooms } from '../commission/correctionOverlay';
 import { findForUpdate as findCommissionForUpdate, type Commission } from '../commission/repo';

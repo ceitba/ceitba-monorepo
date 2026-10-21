@@ -3,7 +3,7 @@
 // org slug.
 
 import { javaIsBlank } from '../../lib/javaCompat';
-import { pushMessage } from '../../infra/push';
+import { pushMessage } from '../push/service';
 import type { PushTrigger } from './pushTriggers';
 import type { OrgRow } from './repo';
 

@@ -11,7 +11,7 @@ import { javaTrim } from '../../lib/javaCompat';
 import { formatOffsetDateTime, parsePgTimestamp, systemNowMicros, type Micros } from '../../lib/time';
 import type { BoardMemberView, InviteResult, InviteView, MemberSettings, MemberView } from './dto';
 import { firePushes, type PushTrigger } from './pushTriggers';
-import { pushMessage } from '../../infra/push';
+import { pushMessage } from '../push/service';
 import * as repo from './repo';
 
 export const ADMIN_ROLE = 'admin';

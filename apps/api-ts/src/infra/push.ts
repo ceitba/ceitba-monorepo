@@ -5,24 +5,13 @@
 
 import { readFileSync } from 'node:fs';
 import type { Config } from '../config';
+// The message is the push feature's (service/push/PushMessage); the gateway only carries it.
+import type { PushMessage } from '../features/push/logic/pushMessage';
+
+export type { PushMessage };
 
 export const MAX_TOKENS_PER_CALL = 500;
 export type PushOutcome = 'SENT' | 'UNREGISTERED' | 'INVALID_ARGUMENT' | 'FAILED';
-
-export interface PushMessage {
-  title: string;
-  body: string;
-  /** By convention "type" and "id" (deep link). FCM data values are strings. */
-  data: Record<string, string>;
-}
-
-export function pushMessage(title: string, body: string, data: Record<string, string | null | undefined> = {}): PushMessage {
-  if (!title?.trim()) throw new Error('title is required');
-  if (!body?.trim()) throw new Error('body is required');
-  const d: Record<string, string> = {};
-  for (const [k, v] of Object.entries(data)) if (v != null) d[k] = v;
-  return { title, body, data: d };
-}
 
 /** PushDeliveryException: the multicast call as a whole failed. */
 export class PushDeliveryError extends Error {}
@@ -33,19 +22,41 @@ export interface PushGateway {
   close?(): Promise<void>;
 }
 
-/** FakePushGateway (src/test/java): records sends; outcomes scripted per token. */
+/**
+ * FakePushGateway (src/test/java/.../service/push/FakePushGateway): records every
+ * call, also the ones told to fail, and answers SENT unless a token was given
+ * another outcome.
+ */
 export class FakePushGateway implements PushGateway {
   readonly calls: { tokens: string[]; message: PushMessage }[] = [];
-  outcomes = new Map<string, PushOutcome>();
-  failNext: Error | null = null;
-  async send(tokens: string[], message: PushMessage) {
-    if (this.failNext) {
-      const e = this.failNext;
-      this.failNext = null;
-      throw e;
-    }
+  readonly outcomes = new Map<string, PushOutcome>();
+  private readonly failing = new Set<number>();
+
+  async send(tokens: string[], message: PushMessage): Promise<PushOutcome[]> {
+    const index = this.calls.length;
     this.calls.push({ tokens: [...tokens], message });
+    if (this.failing.has(index)) throw new PushDeliveryError('simulated failure');
     return tokens.map((t) => this.outcomes.get(t) ?? 'SENT');
+  }
+
+  answer(token: string, outcome: PushOutcome): this {
+    this.outcomes.set(token, outcome);
+    return this;
+  }
+
+  failCall(zeroBasedIndex: number): this {
+    this.failing.add(zeroBasedIndex);
+    return this;
+  }
+
+  allTokens(): string[] {
+    return this.calls.flatMap((c) => c.tokens);
+  }
+
+  reset(): void {
+    this.calls.length = 0;
+    this.outcomes.clear();
+    this.failing.clear();
   }
 }
 

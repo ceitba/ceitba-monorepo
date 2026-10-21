@@ -31,7 +31,7 @@ describe('PushBroadcastIT (fake gateway)', () => {
     const r = await t.request('POST', '/v1/staff/push/broadcast', { headers: await auth('boss@itba.edu.ar'), body: BODY });
     expect(r.status).toBe(202);
     await pushIdle();
-    const call = gateway.calls()[0]!;
+    const call = gateway.calls[0]!;
     expect([...call.tokens].sort()).toEqual(['a-1', 'b-1']);
     expect(call.message.title).toBe('CEITBA');
     expect(call.message.body).toBe('Mañana no hay clases');
@@ -45,7 +45,7 @@ describe('PushBroadcastIT (fake gateway)', () => {
     expect((await t.request('POST', '/v1/staff/push/broadcast', { headers: await auth('boss@itba.edu.ar'), body: { title: 't', body: 'b', data: { from: 'x' } } })).status).toBe(400);
     expect((await t.request('POST', '/v1/staff/push/broadcast', { body: BODY })).status).toBe(401);
     await pushIdle();
-    expect(gateway.calls()).toHaveLength(0);
+    expect(gateway.calls).toHaveLength(0);
   });
 
   test('deadTokensArePrunedAfterDelivery', async () => {

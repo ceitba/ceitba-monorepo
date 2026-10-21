@@ -41,7 +41,7 @@ describe('FcmPushNotificationServiceTest', () => {
   test('splitsIntoBatchesOfAtMost500', async () => {
     devices.all = tokens(1201);
     const result = await service.broadcast(MSG);
-    expect(gateway.calls().map((c) => c.tokens.length)).toEqual([500, 500, 201]);
+    expect(gateway.calls.map((c) => c.tokens.length)).toEqual([500, 500, 201]);
     expect(new Set(gateway.allTokens()).size).toBe(1201);
     expect(gateway.allTokens()).toHaveLength(1201);
     expect(result).toEqual({ targeted: 1201, sent: 1201, pruned: 0 });
@@ -83,7 +83,7 @@ describe('FcmPushNotificationServiceTest', () => {
     devices.all = tokens(700);
     gateway.failCall(0).answer('tok-600', 'UNREGISTERED');
     const result = await service.broadcast(MSG);
-    expect(gateway.calls()).toHaveLength(2);
+    expect(gateway.calls).toHaveLength(2);
     expect(result).toEqual({ targeted: 700, sent: 199, pruned: 1 });
     expect(devices.pruned()).toEqual(['tok-600']);
   });
@@ -98,7 +98,7 @@ describe('FcmPushNotificationServiceTest', () => {
     expect(await service.sendToOrgFollowers('nobody', MSG)).toEqual(PUSH_RESULT_NONE);
     expect(await service.sendToUsers([], MSG)).toEqual(PUSH_RESULT_NONE);
     expect(await service.sendToOrgFollowers(' ', MSG)).toEqual(PUSH_RESULT_NONE);
-    expect(gateway.calls()).toHaveLength(0);
+    expect(gateway.calls).toHaveLength(0);
   });
 
   test('noOpServiceNeverTouchesAnything', async () => {

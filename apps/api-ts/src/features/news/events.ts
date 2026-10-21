@@ -4,7 +4,7 @@ import type { Db } from '../../db/client';
 import { withTx } from '../../db/client';
 import type { Deps } from '../../deps';
 import { CodedError, InvalidStateError, ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError } from '../../http/errors';
-import { pushMessage } from '../../infra/push';
+import { pushMessage } from '../push/service';
 import { isBefore, javaIsBlank, javaTrim, plusDays } from '../../lib/javaCompat';
 import { formatOffsetDateTime, formatPgTime, systemNowMicros, toPgTimestamp } from '../../lib/time';
 import type { Attendee, NewsEventResponse } from './dto';
