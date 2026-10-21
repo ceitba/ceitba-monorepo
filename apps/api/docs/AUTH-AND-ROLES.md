@@ -8,7 +8,7 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 
 | You are… | What you send | What you can do |
 |---|---|---|
-| **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`, GET `/v1/capabilities`, GET `/v1/articles/{id}/preview`); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`, and `/v1/auth/review-login` [while enabled](#app-store--play-review-login)) |
+| **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`, GET `/v1/capabilities`, GET `/v1/articles/{id}/preview`, GET `/v1/articles/sitemap.xml` [articles and events]); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`, and `/v1/auth/review-login` [while enabled](#app-store--play-review-login)) |
 | **USER** | `Authorization: Bearer <jwt>` or the web session cookie (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys, `POST /v1/auth/logout-all`, `DELETE /v1/me` (JWT session only, not API keys) |
 | **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER, narrowed by the key's scopes (`read` / `write` / `staff`, see [AUTH-SETUP.md § Scopes](AUTH-SETUP.md#scopes)) |
 | **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (`/v1/staff/proposals/**`, editing/deleting any study group) |

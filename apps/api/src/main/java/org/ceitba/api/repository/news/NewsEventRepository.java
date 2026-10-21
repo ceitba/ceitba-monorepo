@@ -68,4 +68,13 @@ public interface NewsEventRepository extends JpaRepository<NewsEvent, String> {
     @Modifying
     @Query("UPDATE NewsEvent e SET e.reminderSentAt = :now WHERE e.id = :id AND e.reminderSentAt IS NULL")
     int claimReminder(@Param("id") String id, @Param("now") java.time.OffsetDateTime now);
+
+    // Ids of every event the anonymous list shows (no category/org filter,
+    // dates within [from, to]), for /sitemap.xml.
+    @Query("""
+        SELECT e.id FROM NewsEvent e
+        WHERE e.eventDate >= :from AND e.eventDate <= :to
+        ORDER BY e.eventDate ASC, e.startTime ASC, e.id ASC
+        """)
+    List<String> findIdsForSitemap(@Param("from") LocalDate from, @Param("to") LocalDate to, Pageable pageable);
 }
