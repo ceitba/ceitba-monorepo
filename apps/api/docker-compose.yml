@@ -177,7 +177,7 @@ x-api: &api
       condition: service_completed_successfully
   # A crash or an OOM kill exits the process: unless-stopped brings it back.
   restart: unless-stopped
-  # The Bun server idles at ~150 MB RSS (the JVM needed a 2G limit for its
+  # The Bun server idles at ~100 MB (the JVM needed a 2G limit for its
   # heap); 1G leaves room for the Drive sync and wiki pipeline peaks (PDF text
   # extraction, LLM payloads) and keeps both colors within the VPS during a
   # deploy. Docker kills the container above the limit and restarts it. A
