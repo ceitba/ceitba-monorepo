@@ -32,7 +32,7 @@ changes.
 the living-docs check (into `dev` only, skipped for Dependabot; tick "No spec impact" with a reason on the same line
 to opt out) and a gitleaks scan of the PR's commits. Editing the title or body reruns only the title and living-docs
 checks. `ci.yml` still runs lint + build for the web app
-and the API tests when they are touched. Dependabot opens grouped weekly updates against `dev`; security updates go to `main`.
+and the API tests when they are touched. Dependabot opens grouped weekly updates (one group for the whole bun workspace) and security updates against `main`.
 
 ## Coding standards
 

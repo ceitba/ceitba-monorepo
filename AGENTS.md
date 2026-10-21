@@ -58,7 +58,7 @@ to run only what a change touches (`packages/**`, the root `package.json`/`bun.l
 count for web and MCP). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
 `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
 living-docs check against the PR body and a gitleaks scan. Dependabot (`.github/dependabot.yml`) opens weekly
-version updates against `dev`.
+version updates against `main` (there is no `dev` branch on the remote).
 
 ## Cross-app rules
 

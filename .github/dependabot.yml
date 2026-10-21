@@ -1,6 +1,7 @@
-# Dependency updates. Version updates open against dev (the release flow takes
-# them to main); GitHub sends security updates to the default branch (main) and
-# ignores target-branch for them. Minor/patch updates are grouped per ecosystem;
+# Dependency updates. Version updates open against main (the repo has no dev
+# branch on the remote; Dependabot skips a target-branch that does not exist);
+# security updates go to the default branch (main) too. Minor/patch updates are
+# grouped per ecosystem;
 # majors come one PR each. Commit messages are Conventional Commits:
 # "chore(deps): ..." / "chore(deps-dev): ..." (docs/adr/0003).
 # Not covered: the bun version itself (packageManager in package.json, read by
@@ -11,7 +12,7 @@ version: 2
 updates:
   - package-ecosystem: bun
     directory: /
-    target-branch: dev
+    target-branch: main
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 3 }
     open-pull-requests-limit: 10
@@ -19,12 +20,13 @@ updates:
     ignore:
       - dependency-name: xlsx
     groups:
-      web-minor-patch:
+      # One bun.lock for the whole workspace: apps/web, apps/mcp, apps/api and packages/*.
+      bun-workspace-minor-patch:
         update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directory: /
-    target-branch: dev
+    target-branch: main
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 3 }
     commit-message: { prefix: ci }
@@ -34,7 +36,7 @@ updates:
 
   - package-ecosystem: docker-compose
     directories: [/apps/api, /infra/caddy]
-    target-branch: dev
+    target-branch: main
     schedule: { interval: weekly, day: monday }
     commit-message: { prefix: chore, include: scope }
     ignore:
@@ -44,7 +46,7 @@ updates:
 
   - package-ecosystem: npm
     directory: /apps/api/scripts/firestore-export
-    target-branch: dev
+    target-branch: main
     schedule: { interval: monthly }
     commit-message: { prefix: chore, include: scope }
     groups:
