@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Implemented in PR #33 (`feat/api-bun`): phases 0–4 done, the Java app deleted and the Bun app moved to `apps/api` in the same branch (ahead of phase 6 step 5). Phase 5 partly done: the contract suite is green against both the Bun server and the last Java jar (CI job `api-contract-java`), the security review ran and its findings are fixed or documented (`apps/api/contract/COMPATIBILITY.md`). Remaining: the staging shadow run with replayed production reads, the load test of the hot routes, CEITBApp against staging, the real-credential spike checks (`api-bun-spikes.md` "Still to verify"), then phase 6 (cutover, smoke test, a week of watch). |
+| Status | Implemented in PR #33 (`feat/api-bun`): phases 0–4 done, the Java app deleted and the Bun app moved to `apps/api` in the same branch (ahead of phase 6 step 5). Phase 5 partly done: the contract suite passes locally against both the Bun server and the last Java jar (built from b515215; the CI job `api-contract-java` is not yet confirmed green), the security review ran and its findings are fixed or documented (`apps/api/contract/COMPATIBILITY.md`). Remaining: the staging shadow run with replayed production reads, the load test of the hot routes, CEITBApp against staging, the real-credential spike checks (`api-bun-spikes.md` "Still to verify"), then phase 6 (cutover, smoke test, a week of watch). |
 | Owner | Ian Dalton |
 | Strategy | Big-bang: one cutover release |
 | Stack | Bun + Hono + Drizzle + zod; schema stays SQL-first |
@@ -266,7 +266,7 @@ Exit: zero unexplained diffs, the mobile app verified, the security review clean
 ### Phase 6: cutover (≈1–2 days, then a week of watch)
 Steps:
 1. The release contains only the TS service, with no migration.
-2. Merge `feat/api-bun` → `dev` → `main`. The blue/green deploy brings up the TS image as the new color, health
+2. Merge `feat/api-bun` into `main` (merge queue; there is no `dev` branch). The blue/green deploy brings up the TS image as the new color, health
    checks it and switches Caddy.
 3. Smoke test:
    - web login and the main pages;
@@ -334,7 +334,7 @@ Steps:
 | Jobs double-fire or never fire | Duplicate digests/emails, stale data | Same `JobLock` table and ids; two-process test; post-cutover tick check |
 | Google/Firebase libs misbehave on Bun | Push, Firestore import or Drive sync broken | Phase 2 spikes before phase 4 reaches those areas; sidecar fallback |
 | KB pipeline cost regressions | Unexpected LLM spend | Keep budgets and quota tracker semantics; run in fake mode until the parity tests pass |
-| Rewrite branch drifts from `dev` | Painful merge | Freeze; weekly merge of `dev` into `feat/api-bun`; area PRs reviewed as they land |
+| Rewrite branch drifts from `main` | Painful merge | Freeze; weekly merge of `main` into `feat/api-bun`; area PRs reviewed as they land |
 | Size underestimated | Timeline slips | Checkpoints in §10 with an explicit go/no-go |
 
 ## 10. Timeline and checkpoints
