@@ -2,8 +2,9 @@
 
 Plan §5 phase 0 (`docs/plans/api-bun-rewrite.md`). The web app, the MCP server and the mobile app were written
 against the Spring app; this page lists the observable behaviour they rely on, what the Bun API answers, and which
-test holds it. "Contract test" files are in `contract/tests/` and run against both the Bun server and the jar of the
-last Java commit (CI job `api-contract-java`); files under `test/` are in-process tests. A row marked **TS only** is a
+test holds it. "Contract test" files are in `contract/tests/` and run against the Bun server in CI. They were green against the jar of the last
+Java commit (`b515215`) when the API moved to Bun, and still run against it locally with
+`CONTRACT_JAR=<jar> bun contract/run.ts --target java`; files under `test/` are in-process tests. A row marked **TS only** is a
 deliberate change from Java, listed in [Intentional differences](#intentional-differences-from-java) and skipped on
 the Java target.
 

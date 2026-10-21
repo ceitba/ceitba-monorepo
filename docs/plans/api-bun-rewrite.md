@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Implemented in PR #33 (`feat/api-bun`): phases 0–4 done, the Java app deleted and the Bun app moved to `apps/api` in the same branch (ahead of phase 6 step 5). Phase 5 partly done: the contract suite passes locally against both the Bun server and the last Java jar (built from b515215; the CI job `api-contract-java` is not yet confirmed green), the security review ran and its findings are fixed or documented (`apps/api/contract/COMPATIBILITY.md`). Remaining: the staging shadow run with replayed production reads, the load test of the hot routes, CEITBApp against staging, the real-credential spike checks (`api-bun-spikes.md` "Still to verify"), then phase 6 (cutover, smoke test, a week of watch). |
+| Status | Implemented in PR #33 (`feat/api-bun`): phases 0–4 done, the Java app deleted and the Bun app moved to `apps/api` in the same branch (ahead of phase 6 step 5). Phase 5 partly done: the contract suite passed against both the Bun server and the last Java jar (built from b515215), locally and in CI on PR #33; the Java CI job was then removed, since from the cutover on only Bun runs, the security review ran and its findings are fixed or documented (`apps/api/contract/COMPATIBILITY.md`). Remaining: the staging shadow run with replayed production reads, CEITBApp against staging, the real-credential spike checks (`api-bun-spikes.md` "Still to verify"), then phase 6 (cutover, smoke test, a week of watch). |
 | Owner | Ian Dalton |
 | Strategy | Big-bang: one cutover release |
 | Stack | Bun + Hono + Drizzle + zod; schema stays SQL-first |

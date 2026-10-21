@@ -8,8 +8,6 @@ name: CI
 #     Postgres (pgvector) and MinIO through the runner's Docker.
 #   - web (the site, scheduler and newsletter, one app): lint + production
 #     build (its only gate; there is no JS test runner).
-#   - api-contract-java: the same contract suite against the jar of the last
-#     Java commit (the reference implementation), plus the jar-gated tests.
 #   - mcp (apps/mcp + packages/scheduler-core): typecheck + bun test + image build.
 #   - ci-ok: the one required check of the main ruleset (merge queue). It passes
 #     when every job above passed or was skipped, so path-filtered jobs never
@@ -110,57 +108,6 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
 
-  # The contract suite against the reference implementation: the jar of the last
-  # Java commit. A test that the Spring app fails is a test of something the
-  # Bun API changed; the deliberate hardenings skip themselves on java. Also runs
-  # the jar-gated tests: cross-runtime and cross-signing (both runtimes on one
-  # database) and the Flyway parity check (test/db/migrate.test.ts).
-  api-contract-java:
-    needs: changes
-    if: >-
-      needs.changes.outputs.api == 'true'
-      && (github.event_name == 'merge_group' || github.event_name == 'pull_request')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: b515215118d7508fcc538d9bc12486c0254dfaea # origin/main before the Bun cutover
-          path: java-ref
-          persist-credentials: false
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-          cache-dependency-path: java-ref/apps/api/pom.xml
-      - name: Build the reference jar
-        working-directory: java-ref/apps/api
-        run: ./mvnw -B -ntp -q package -DskipTests
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version-file: package.json # packageManager: the bun that writes bun.lock
-      - run: bun install --frozen-lockfile
-      - name: Contract suite against the Java jar (+ cross-runtime, cross-signing)
-        run: |
-          export CONTRACT_JAR="$GITHUB_WORKSPACE/java-ref/apps/api/target/ceitba-api-1.0.0.jar"
-          export CONTRACT_JAVA_HOME="$JAVA_HOME"
-          bun apps/api/contract/run.ts --target java
-      - name: Flyway parity against the jar's own migrations
-        working-directory: apps/api
-        run: |
-          export CONTRACT_JAR="$GITHUB_WORKSPACE/java-ref/apps/api/target/ceitba-api-1.0.0.jar"
-          export CONTRACT_JAVA_HOME="$JAVA_HOME"
-          bun test ./test/db/migrate.test.ts
-      - name: Upload server logs on failure
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: api-contract-java-logs
-          path: apps/api/contract/.logs/
-          include-hidden-files: true
-          if-no-files-found: ignore
-
   spa-build:
     needs: changes
     if: needs.changes.outputs.spas != '[]'
@@ -205,7 +152,7 @@ jobs:
         run: docker build -f apps/mcp/Dockerfile -t ceitba-mcp:ci .
 
   ci-ok:
-    needs: [changes, api-test, api-contract-java, spa-build, mcp-test]
+    needs: [changes, api-test, spa-build, mcp-test]
     if: always()
     runs-on: ubuntu-latest
     steps:
