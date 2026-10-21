@@ -137,12 +137,19 @@ export interface StartOptions {
   /** Extra/overriding env (e.g. review login, AUTH_ALLOWED_EMAILS). Use `null` to unset a default. */
   env?: Record<string, string | null>;
   target?: Target;
+  /**
+   * Run on another server's database instead of a fresh clone (the blue/green
+   * overlap: Java and Bun on one database). Read when the server starts, so it
+   * can name a server started earlier in the same file. The owner drops it.
+   */
+  shareDatabaseWith?: () => Server;
 }
 
 export async function startServer(opts: StartOptions = {}): Promise<Server> {
   const target = opts.target ?? TARGET;
   const server = await pgServerUrl();
-  const dbName = await cloneDatabase(target === 'java' ? 'cj' : 'ct');
+  const shared = opts.shareDatabaseWith?.();
+  const dbName = shared ? shared.dbName : await cloneDatabase(target === 'java' ? 'cj' : 'ct');
   const dbUrl = withDatabase(server, dbName);
   const { jdbc, user, password } = jdbcParts(dbUrl);
   mkdirSync(LOG_DIR, { recursive: true });
@@ -245,7 +252,7 @@ export async function startServer(opts: StartOptions = {}): Promise<Server> {
       await Promise.race([proc.exited, Bun.sleep(10_000)]);
       if (proc.exitCode === null) proc.kill('SIGKILL');
       await db.end({ timeout: 2 }).catch(() => {});
-      await dropDatabase(dbName).catch(() => {});
+      if (!shared) await dropDatabase(dbName).catch(() => {});
       if (process.env.CONTRACT_KEEP_LOGS) console.log(readFileSync(logFile, 'utf8'));
       else rmSync(logFile, { force: true });
     },
