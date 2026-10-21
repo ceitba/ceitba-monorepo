@@ -8,7 +8,7 @@ import { mailBeans } from '../mail/service';
 import { requestParam } from '../mail/requestParam';
 import { orgMailBeans } from './beans';
 import { CONTENT_MAX_BODY_BYTES } from '../../http/body';
-import { mailOAuthNonceCookie } from '../mail/logic/mailOAuthState';
+import { mailOAuthCallbackPath, mailOAuthNonceCookie } from '../mail/logic/mailOAuthState';
 
 // AnnouncementRequest(String subject, String body): no @Valid.
 const AnnouncementRequest = jv.object({ subject: jv.string(), body: jv.string() });
@@ -26,7 +26,7 @@ export default defineRoutes((r, deps) => {
   r.post('/v1/organizations/{slug}/mail/connect', { tags, params: slug, currentUser: true, summary: "Start connecting the org's Gmail account (Google consent URL)" },
     ({ params, user }) => {
       const { authorizationUrl, nonce } = mailBeans(deps).accounts.connectOrg(params.slug!, user!.id);
-      return json({ authorizationUrl }, 200, { 'Set-Cookie': mailOAuthNonceCookie(deps.config.auth, nonce) });
+      return json({ authorizationUrl }, 200, { 'Set-Cookie': mailOAuthNonceCookie(deps.config.auth, nonce, mailOAuthCallbackPath(mailBeans(deps).settings.oauth.redirectUri)) });
     });
   r.delete('/v1/organizations/{slug}/mail', { tags, params: slug, status: 204, summary: "Disconnect the org's Gmail account" },
     async ({ params }) => { await mailBeans(deps).accounts.disconnectOrg(params.slug!); });

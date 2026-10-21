@@ -6,11 +6,17 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { bearer, mintJwt, seedUser, TARGET, useServer } from '../support';
 import { membership, seedOrg } from '../../test/digest/support/seed';
 
-const api = useServer({ env: {
+const REDIRECT_URI = 'https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback';
+const mailEnv = (redirectUri: string) => ({
   MAIL_ENABLED: 'true',
-  GOOGLE_MAIL_REDIRECT_URI: 'https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback',
+  GOOGLE_MAIL_REDIRECT_URI: redirectUri,
   MAIL_TOKEN_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-} });
+});
+const api = useServer({ env: mailEnv(REDIRECT_URI) });
+// A deployment whose Google redirect goes elsewhere (another host and path): the cookie follows it.
+const CUSTOM_REDIRECT_URI = 'https://mail.example.org/ceitba/api/v1/mail/accounts/oauth/callback';
+const custom = useServer({ env: mailEnv(CUSTOM_REDIRECT_URI), shareDatabaseWith: () => api });
+const cookiePath = (uri: string) => new URL(uri).pathname.replaceAll('/', '\\/');
 const MAIL_PAGE = 'https://ceitba.org.ar/newsletter/mine/org/sabf/mail';
 const admin = async () => bearer(await mintJwt({ email: 'carol@itba.edu.ar', name: 'Carol' }));
 
@@ -25,7 +31,7 @@ describe.skipIf(TARGET === 'java')('MailOAuthBrowserBinding (TS hardening)', () 
     const r = await api.post('/v1/organizations/sabf/mail/connect', { as: await admin() });
     expect(r.status).toBe(200);
     const cookie = r.setCookies.find((c) => c.startsWith('ceitba_mail_oauth_nonce='))!;
-    expect(cookie).toMatch(/^ceitba_mail_oauth_nonce=[A-Za-z0-9_-]+; Path=\/api\/v1\/mail\/accounts\/oauth\/callback; Max-Age=600; Expires=[^;]+; (Secure; )?HttpOnly; SameSite=Lax$/);
+    expect(cookie).toMatch(new RegExp(`^ceitba_mail_oauth_nonce=[A-Za-z0-9_-]+; Path=${cookiePath(REDIRECT_URI)}; Max-Age=600; Expires=[^;]+; (Secure; )?HttpOnly; SameSite=Lax$`));
     const nonce = /=([^;]+)/.exec(cookie)![1]!;
     const state = decodeURIComponent(/state=([^&]+)/.exec(r.json.authorizationUrl)![1]!);
     expect(Buffer.from(state.split('.')[0]!, 'base64url').toString('utf8').split('|')[2]).toBe(nonce);
@@ -47,5 +53,16 @@ describe.skipIf(TARGET === 'java')('MailOAuthBrowserBinding (TS hardening)', () 
     expect(own.setCookies.some((c) => c.startsWith('ceitba_mail_oauth_nonce=;') && c.includes('Max-Age=0'))).toBe(true);
     const [{ n }] = await api.db`SELECT count(*)::int AS n FROM public.mail_sender_account` as unknown as [{ n: number }];
     expect(n).toBe(0);
+  });
+
+  test('theNonceCookieIsScopedToTheConfiguredRedirectUrisPath', async () => {
+    const r = await custom.post('/v1/organizations/sabf/mail/connect', { as: await admin() });
+    expect(r.status).toBe(200);
+    const cookie = r.setCookies.find((c) => c.startsWith('ceitba_mail_oauth_nonce='))!;
+    expect(cookie).toMatch(new RegExp(`; Path=${cookiePath(CUSTOM_REDIRECT_URI)};`));
+    const cb = await custom.get('/v1/mail/accounts/oauth/callback', { query: { error: 'access_denied', state: 'x' } });
+    const cleared = cb.setCookies.find((c) => c.startsWith('ceitba_mail_oauth_nonce=;'))!;
+    expect(cleared).toContain(`; Path=${new URL(CUSTOM_REDIRECT_URI).pathname};`);
+    expect(cleared).toContain('Max-Age=0');
   });
 });

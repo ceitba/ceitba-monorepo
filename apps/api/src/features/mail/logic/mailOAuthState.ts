@@ -22,8 +22,23 @@ import { macEquals } from '../../digest/logic/digestUnsubscribeTokens';
 
 export const MAIL_OAUTH_STATE_TTL_MS = 10 * 60_000;
 export const MAIL_OAUTH_NONCE_COOKIE = 'ceitba_mail_oauth_nonce';
-/** The cookie only travels to the callback. */
+/** The callback's path when GOOGLE_MAIL_REDIRECT_URI has none (the route's own path under /api). */
 export const MAIL_OAUTH_CALLBACK_PATH = '/api/v1/mail/accounts/oauth/callback';
+
+/**
+ * The path the nonce cookie is scoped to, so it only travels to the callback: the path of the configured
+ * GOOGLE_MAIL_REDIRECT_URI (where Google sends the browser back), else MAIL_OAUTH_CALLBACK_PATH.
+ */
+export function mailOAuthCallbackPath(redirectUri: string | null | undefined): string {
+  if (redirectUri == null) return MAIL_OAUTH_CALLBACK_PATH;
+  let path: string;
+  try {
+    path = new URL(redirectUri).pathname;
+  } catch {
+    return MAIL_OAUTH_CALLBACK_PATH;
+  }
+  return path === '' || path === '/' ? MAIL_OAUTH_CALLBACK_PATH : path;
+}
 const DOMAIN = 'ceitba-mail-oauth-state:';
 
 /** userId and, for an organization's sender account, its slug (null = the CEITBA account). */
@@ -103,17 +118,17 @@ export function stateNonce(state: string | null | undefined): string | null {
 }
 
 /** Set-Cookie of the browser-binding nonce (like the session cookie: HttpOnly, Secure per config, SameSite=Lax). */
-export function mailOAuthNonceCookie(auth: AuthConfig, nonce: string): string {
+export function mailOAuthNonceCookie(auth: AuthConfig, nonce: string, callbackPath: string): string {
   return formatCookie({
-    name: MAIL_OAUTH_NONCE_COOKIE, value: nonce, httpOnly: true, secure: auth.cookie.secure, path: MAIL_OAUTH_CALLBACK_PATH,
+    name: MAIL_OAUTH_NONCE_COOKIE, value: nonce, httpOnly: true, secure: auth.cookie.secure, path: callbackPath,
     sameSite: 'Lax', maxAgeSeconds: MAIL_OAUTH_STATE_TTL_MS / 1000,
   });
 }
 
 /** Set-Cookie that expires the nonce (the callback consumes it). */
-export function clearMailOAuthNonceCookie(auth: AuthConfig): string {
+export function clearMailOAuthNonceCookie(auth: AuthConfig, callbackPath: string): string {
   return formatCookie({
-    name: MAIL_OAUTH_NONCE_COOKIE, value: '', httpOnly: true, secure: auth.cookie.secure, path: MAIL_OAUTH_CALLBACK_PATH,
+    name: MAIL_OAUTH_NONCE_COOKIE, value: '', httpOnly: true, secure: auth.cookie.secure, path: callbackPath,
     sameSite: 'Lax', maxAgeSeconds: 0,
   });
 }

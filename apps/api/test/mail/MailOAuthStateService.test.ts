@@ -1,7 +1,7 @@
 // Port of apps/api/src/test/java/org/ceitba/api/service/mail/MailOAuthStateServiceTest.java
 // (+ `interop:` verifying a state issued by the Java class).
 import { describe, expect, test } from 'bun:test';
-import { MAIL_OAUTH_STATE_TTL_MS, MailOAuthStateService } from '../../src/features/mail/logic/mailOAuthState';
+import { MAIL_OAUTH_CALLBACK_PATH, MAIL_OAUTH_STATE_TTL_MS, MailOAuthStateService, mailOAuthCallbackPath } from '../../src/features/mail/logic/mailOAuthState';
 import { INTEROP } from '../interop/java-golden';
 import { MutableClock } from './support/MutableClock';
 import { TEST_JWT_SECRET } from '../../contract/support/env';
@@ -47,5 +47,15 @@ describe('interop: MailOAuthStateService against Java', () => {
     expect(states.verifyState(g.orgState)).toEqual({ userId: g.userId, orgSlug: g.orgSlug });
     clock.advance(MAIL_OAUTH_STATE_TTL_MS + 1000);
     expect(states.verifyState(g.state)).toBeNull();
+  });
+});
+
+describe('mailOAuthCallbackPath', () => {
+  test('isTheRedirectUrisPathWithTheRoutesPathAsFallback', () => {
+    expect(mailOAuthCallbackPath('https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback')).toBe('/api/v1/mail/accounts/oauth/callback');
+    expect(mailOAuthCallbackPath('https://x.example/proxied/cb?x=1')).toBe('/proxied/cb');
+    for (const fallback of [null, '', 'not a url', 'https://x.example', 'https://x.example/']) {
+      expect(mailOAuthCallbackPath(fallback)).toBe(MAIL_OAUTH_CALLBACK_PATH);
+    }
   });
 });

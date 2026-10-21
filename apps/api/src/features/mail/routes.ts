@@ -8,7 +8,7 @@ import { param } from '../../http/validation';
 import { digestBeans } from '../digest/beans';
 import type { ClientInfo } from '../digest/tracking';
 import type { AppContext } from '../../http/context';
-import { clearMailOAuthNonceCookie, MAIL_OAUTH_NONCE_COOKIE, mailOAuthNonceCookie } from './logic/mailOAuthState';
+import { clearMailOAuthNonceCookie, MAIL_OAUTH_NONCE_COOKIE, mailOAuthCallbackPath, mailOAuthNonceCookie } from './logic/mailOAuthState';
 import { mailBeans } from './service';
 
 /** 1x1 transparent GIF (42 bytes). */
@@ -21,18 +21,19 @@ function client(c: AppContext): ClientInfo {
 export default defineRoutes((r, deps) => {
   const tags = ['Mail'];
   const accounts = () => mailBeans(deps).accounts;
+  const callbackPath = () => mailOAuthCallbackPath(mailBeans(deps).settings.oauth.redirectUri);
 
   r.get('/v1/mail/accounts', { tags }, () => accounts().list());
   r.post('/v1/mail/accounts/ceitba/connect', { tags, currentUser: true }, ({ user }) => {
     const { authorizationUrl, nonce } = accounts().connect(user!.id);
-    return json({ authorizationUrl }, 200, { 'Set-Cookie': mailOAuthNonceCookie(deps.config.auth, nonce) });
+    return json({ authorizationUrl }, 200, { 'Set-Cookie': mailOAuthNonceCookie(deps.config.auth, nonce, callbackPath()) });
   });
   r.get('/v1/mail/accounts/oauth/callback', {
     tags, query: { code: param.string({ required: false }), state: param.string({ required: false }), error: param.string({ required: false }) },
   }, async ({ c, query }) => {
     const nonce = readCookie(c.req.header('cookie'), MAIL_OAUTH_NONCE_COOKIE);
     const headers = new Headers({ Location: await accounts().handleCallback(query.code, query.state, query.error, nonce), 'Cache-Control': 'no-store' });
-    headers.append('Set-Cookie', clearMailOAuthNonceCookie(deps.config.auth));
+    headers.append('Set-Cookie', clearMailOAuthNonceCookie(deps.config.auth, callbackPath()));
     return new Response(null, { status: 302, headers });
   });
   r.delete('/v1/mail/accounts/{id}', { tags, params: { id: param.long() } }, async ({ params }) => {
