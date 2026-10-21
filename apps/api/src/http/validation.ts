@@ -428,11 +428,24 @@ export function parseJavaUuid(s: string): string | null {
     .join('-').toLowerCase();
 }
 
-function isValidLocalDate(s: string): boolean {
+/** DateTimeFormatter.ISO_LOCAL_DATE (four-digit years, 0000 included, proleptic leap years). */
+export function isValidLocalDate(s: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (!m) return false;
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  return d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
+  const d = new Date(0);
+  d.setUTCFullYear(Number(m[1]), Number(m[2]) - 1, Number(m[3]));   // Date.UTC would read years 0-99 as 19xx
+  return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
+}
+
+/**
+ * DateTimeFormatter.ISO_DATE (@DateTimeFormat(iso = DATE)): an ISO local date with an optional offset
+ * (`Z`, `+03:00`, `-03:00:30`), which is parsed and ignored. Returns the local date, or null when invalid.
+ */
+export function isoDateValue(s: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2})(?:Z|[+-](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(s);
+  if (!m || !isValidLocalDate(m[1]!)) return null;
+  if ((m[3] != null && Number(m[3]) > 59) || (m[4] != null && Number(m[4]) > 59)) return null;
+  return m[1]!;
 }
 
 function fieldPath(path: readonly PropertyKey[]): string {

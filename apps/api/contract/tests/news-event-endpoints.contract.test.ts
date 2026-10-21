@@ -73,6 +73,19 @@ describe('NewsEventEndpointsIT', () => {
       + '@org.springframework.format.annotation.DateTimeFormat java.time.LocalDate] for value [yesterday]');
   });
 
+  test('dateFiltersParseLikeIsoDate', async () => {
+    // @DateTimeFormat(iso = DATE): ISO_DATE accepts (and ignores) an offset and the proleptic year 0000.
+    for (const ok of ['2026-07-01Z', '2026-07-01%2B03:00', '0000-02-29', '2024-02-29', '%20']) {
+      expect((await api.get(`/v1/news/events?from=${ok}`)).status).toBe(200);
+    }
+    expect(ids(await api.get('/v1/news/events?from=2026-07-01Z'))).toEqual(['e2']);
+    for (const bad of ['2026-02-30', '%202026-07-01', '2026-07-01%20', '%2B2026-07-01', '2026-7-01', '2026-07-01%2B03:60']) {
+      const r = await api.get(`/v1/news/events?from=${bad}`);
+      expect(r.status).toBe(400);
+      expect(r.json.message).toEndWith(`java.time.LocalDate] for value [${decodeURIComponent(bad)}]`);
+    }
+  });
+
   test('getByIdReturnsCorrectShape', async () => {
     const r = await api.get('/v1/news/events/e1');
     expect(r.status).toBe(200);

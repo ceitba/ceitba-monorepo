@@ -6,7 +6,7 @@ import type { Deps } from '../../deps';
 import { currentUser, principal } from '../../http/auth/context';
 import { ArgumentTypeMismatchError, ResourceNotFoundError } from '../../http/errors';
 import { defineRoutes, noContent, json } from '../../http/router';
-import { param, type ParamSpec } from '../../http/validation';
+import { isoDateValue, param, type ParamSpec } from '../../http/validation';
 import { ContentHmac } from '../crypto/logic/contentHmac';
 import { MediaUploadService } from '../media/logic/mediaUploadService';
 import { OrgAccess } from './access';
@@ -32,12 +32,9 @@ function isoDateParam(): ParamSpec<string | null> {
     javaType: 'java.time.LocalDate',
     parse(raw, name) {
       if (raw === undefined || raw.trim() === '') return null;
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-      const ok = m !== null && (() => {
-        const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-        return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
-      })();
-      if (ok) return raw;
+      const date = isoDateValue(raw);
+      // Year 0000 is 1 BC to Postgres (and to the JDBC driver Java bound it with).
+      if (date != null) return date.startsWith('0000-') ? `0001-${date.slice(5)} BC` : date;
       throw new ArgumentTypeMismatchError(name, raw, 'java.time.LocalDate',
         'Failed to convert from type [java.lang.String] to type [@org.springframework.web.bind.annotation.RequestParam '
         + `@org.springframework.format.annotation.DateTimeFormat java.time.LocalDate] for value [${raw}]`);
