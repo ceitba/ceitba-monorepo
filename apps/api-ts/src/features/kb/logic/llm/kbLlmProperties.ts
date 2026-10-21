@@ -1,5 +1,5 @@
 // Port of apps/api/src/main/java/org/ceitba/api/config/KbLlmProperties.java (the record's
-// normalization). TODO(kb-service): build it from config.kb.llm (src/config/sections/kb.ts).
+// normalization), built from config.kb.llm by llmProperties() in src/features/kb-pipeline/settings.ts.
 
 import { jIsBlank, jTrim, lowerRoot } from '../javaString';
 

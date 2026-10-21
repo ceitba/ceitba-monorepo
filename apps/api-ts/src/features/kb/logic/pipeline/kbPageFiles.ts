@@ -4,8 +4,7 @@
 // current page rebuilt from the database, and an LLM draft normalized so
 // the system owns subject/type/sources/generator/generated_at.
 // YAML is read with Bun.YAML (YAML 1.2; Java: SnakeYAML 1.1), see kbPageParser.ts.
-// TODO(kb-service): of(KbPage) = file(title, subjectId, type.wire, summary, aliases, sources,
-// generator, generatedAt's local date, markdown) once the KbPage row type exists.
+// of(KbPage) is pageFile() in src/features/kb-pipeline/pipeline.ts.
 
 import { toJavaJson } from '../../../../lib/json';
 import { jIsBlank, jStrip, jTrim, javaValueOf } from '../javaString';

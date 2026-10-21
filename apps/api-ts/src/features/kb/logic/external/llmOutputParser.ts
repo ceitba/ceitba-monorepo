@@ -11,7 +11,7 @@
 //
 // Difference: Jackson's readTree ignores trailing garbage after the first JSON
 // value of a line; JSON.parse rejects the line (it is skipped).
-// TODO(kb-service): the streaming parse(Path, sink) variant reads a downloaded file line by line.
+// Deviation: there is no streaming parse(Path, sink); downloaded files are parsed in memory.
 
 import { jIsBlank, jSplit, jStrip, S } from '../javaString';
 import {

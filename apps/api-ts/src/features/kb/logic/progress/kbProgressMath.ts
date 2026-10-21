@@ -4,8 +4,8 @@
 // Pure progress computation (tested on fixtures): request rows (no payloads),
 // batch jobs and run state in, KbProgressResponse out.
 // `percent` is a Java double: serialize it with lib/json javaDouble at the HTTP boundary.
-// TODO(kb-service): KbProgressService loads Run/Row/Job from kb_run, kb_run_request (no params)
-// and kb_batch_job and maps OffsetDateTime columns to Odt.
+// KbProgressService (src/features/kb-pipeline/progress.ts) loads Run/Row/Job from kb_run,
+// kb_run_request (no params) and kb_batch_job.
 
 import { asText, elements, isTextual, path, type JsonValue, type Node } from '../jsonNode';
 import { ART_ZONE, formatHHmm, Odt } from '../odt';

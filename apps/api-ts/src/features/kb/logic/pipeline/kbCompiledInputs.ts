@@ -1,6 +1,6 @@
 // KbPipelineService.compiledInputs (apps/api/src/main/java/org/ceitba/api/service/kb/pipeline/
 // KbPipelineService.java), the pure step of PUBLISH.
-// TODO(kb-service): the rest of KbPipelineService (stages, publishing) is service-layer work.
+// The rest of KbPipelineService is src/features/kb-pipeline/pipeline.ts.
 
 import { asText, elements, path, type JsonValue, type Node } from '../jsonNode';
 

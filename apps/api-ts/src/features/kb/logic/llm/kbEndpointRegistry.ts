@@ -7,7 +7,7 @@
 // KB_SYNC_CONCURRENCY, which only bounds DigitalOcean), an in-memory in-flight
 // counter and a short log of failed calls (for /stats).
 // The API key is decrypted only here, to build the client; it is never logged.
-// TODO(kb-service): one instance per process, with drizzle-backed stores.
+// One instance per process: kbPipeline(deps).endpoints (src/features/kb-pipeline/service.ts).
 
 import { createHash } from 'node:crypto';
 import { DoChatClient } from '../external/doChatClient';

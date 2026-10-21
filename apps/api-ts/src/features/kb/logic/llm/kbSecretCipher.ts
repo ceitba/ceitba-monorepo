@@ -9,7 +9,7 @@
 // old values readable. Rotating the key source makes old values unreadable
 // (KeyUnreadableError): the owner must re-enter them. Never logs plaintext.
 // Byte-compatible with the Java implementation in both directions.
-// TODO(kb-service): one instance from config.kb.secretsKey and config.auth's JWT secret.
+// Built from config.kb.secretsKey and config.auth.jwt.secret (src/features/kb-pipeline/service.ts).
 
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto';
 import { jIsBlank, jSplit, jTrim } from '../javaString';

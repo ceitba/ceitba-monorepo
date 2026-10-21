@@ -63,3 +63,30 @@ cutover.
 - `.hits` is wiped on every run, so coverage is unreliable while several runs overlap. Use per-run dirs and merge
   them.
 - Contract cleanup can deadlock with the server's after-commit background work (TRUNCATE vs push delivery): clean-up should wait for the server to be idle (seen once in correction-schedule).
+
+### From kb-reader
+- **`src/deps.ts`:** `llm: overrides.llm ?? { ...createLlmClients(config), embeddings: createEmbeddingClient(config) }`
+  (import from `./external/llm/embedding`; not inside `llm.ts`, which would create an import cycle). Then drop the
+  `embeddingClientOf` bridge.
+- **`validation.ts` `param.int`/`long`:** an empty value (`?limit=`) must give null, as in Spring. Today Java
+  answers 200 and TS answers 400.
+- **Startup hook:** a hook that runs before readiness, replacing the readiness hold in `kb-reader/jobs.ts`. It
+  mirrors Java's ApplicationReadyEvent: the relation refresh runs before traffic.
+- **kb-admin and kb-reader:** StaffKbController should use `kbReader(deps).importer`/`.moderation` and the
+  `KbImportRequest` schema, so the 4 SubjectWikiIT contract tests run on ts.
+- **Drive and kb-reader:** `drive/kbHooks.ts` should call `kbReader(deps).moderation.hidePagesCiting`/`forgetFiles`
+  instead of duplicating the SQL.
+- **Rows to add to IN-PROCESS.md:**
+  - KbEmbeddingIT (3 tests) → `test/kb-reader/embedding.test.ts`;
+  - SubjectWikiIT staff side → `test/kb-reader/subject-wiki.test.ts`.
+
+### From kb-pipeline
+- **`main.ts` shutdown:** `await kbPipeline(deps).engine.stop()` before `deps.close()`.
+- **Atomic PUBLISH:** the kb-reader importer registration (`kb-reader/routes.ts`) drops the `tx` that kb-pipeline
+  passes to `validate(..., tx)` and `importSubject(..., tx)`. Forward it, so PUBLISH is one transaction as in
+  Java.
+- **Rows to add to IN-PROCESS.md:**
+  - BatchPipelineIT / SyncPipelineIT / KbPipelineAcceptanceIT → `test/kb-pipeline/{Batch,Sync}PipelineIT.test.ts`;
+  - KbKickIT → `test/kb-pipeline/KbKickIT.test.ts`.
+- **`bun run test`** (`bun test test/`) also picks up `contract/tests` through the filter. Check whether that is
+  intended; outside `contract/run.ts` those files fail.

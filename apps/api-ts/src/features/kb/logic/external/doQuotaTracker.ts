@@ -11,7 +11,7 @@
 // Rejected creation attempts count against batch-creations-per-hour, so once
 // the quota is 0 nothing calls POST /v1/batches (not even the probe) until DO's
 // reset time, or an hour after the observation when DO gives none.
-// TODO(kb-service): one instance per process (a singleton), observe() fed by the DO HTTP clients.
+// One instance per process (createLlmClients in src/external/llm.ts), fed by the DO HTTP clients.
 
 import { jTrim } from '../javaString';
 import { Odt, type Now } from '../odt';

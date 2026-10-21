@@ -3,9 +3,7 @@
 // DigitalOcean serverless inference, batch API (https://inference.do-ai.run).
 // Responses are read defensively (field names vary between providers/versions:
 // id|batch_id, file_id|id, upload_url|url).
-// TODO(kb-service): the HTTP client itself (createFile/upload/createBatch/get/results/download/
-// cancel/findByRequestId/probeQuota over fetch, Bearer key, 60 s timeout, x-ratelimit headers to
-// DoQuotaTracker.observe, errors as LlmApiError(status, "<METHOD> <path> -> <status>: <body cut at 500>")).
+// The HTTP client itself is src/external/llm/doBatchClient.ts.
 
 import { equalsIgnoreCase, jIsBlank } from '../javaString';
 import { asBoolean, asText, elements, has, hasNonNull, isArray, isBoolean, isObject, isTextual, nodeToString, path, type JsonValue, type Node } from '../jsonNode';

@@ -2,7 +2,8 @@
 //
 // BATCH mode: one DO batch per call of submit(); polled by the run engine.
 // Java streams the JSONL through a temp file; here it is built in memory.
-// TODO(kb-service): collectToFiles (download to temp files + streaming parse) for big outputs.
+// Deviation: collect() keeps the output/error files in memory (Java's collectToFiles streams
+// them through temp files); the engine parses them per file (src/features/kb-pipeline/engine.ts).
 
 import { DoBatchSlotError, LlmApiError, type BatchInfo, type LlmBatchClient } from '../external/llmApi';
 import type { DoQuotaTracker } from '../external/doQuotaTracker';
