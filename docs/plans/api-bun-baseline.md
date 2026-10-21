@@ -93,13 +93,20 @@ Idle CPU is noise-level on both. The scheduled jobs tick on both (digest tick, e
 
 Measured on 2026-10-21 on the same machine, for phase 5 of `api-bun-rewrite.md`: "Load test the 10 hottest
 routes; p95 must not regress against Java." Java is the last Java commit, `b515215` (`origin/main`). Bun is
-`feat/api-bun` at `5424e22`. The script is `scripts/bench/load.ts`; it has the seed, the routes, the runner and the
+`feat/api-bun` at `5424e22`: the image was built at 07:22, before any later commit on the branch. Later commits
+before this doc changed 7 files under the measured features, `news/routes.ts` among them; none touch the plan
+subjects path. The script is `scripts/bench/load.ts`; it has the seed, the routes, the runner and the
 comparison.
 
 **Verdict: not met yet.** The p95 regresses on 1 of the 12 routes:
 - `GET /v1/plans/{planId}/subjects`: +49%, 81 → 121 ms. The cause is known and cheap to fix (below).
 - The other 11 routes have a lower p95 on Bun, by 15% to 98%.
 - Bun has a higher p50 on 9 routes and a lower req/s on 8.
+
+Both containers ran under a 2-CPU quota (`--cpus 2`). Most of Bun's p95 wins come from Java's 60 to 90 ms tail
+floor, and that floor is CPU-quota throttling (Findings). Production sets a memory limit (`API_MEMORY_LIMIT`,
+default 1 GiB) but no CPU limit, so in production Java's floor may disappear and those wins may shrink. The
+regression does not depend on the quota.
 
 ### Setup
 
@@ -165,8 +172,9 @@ most: the home page, the newsletter, the scheduler, the session, Apuntes and the
 - **The one regression is an N+1.**
   - `PlanService.toResponses` (`apps/api/src/features/plan/service.ts`) awaits `repo.findSubject` once per row,
     one after another. For a 64-subject plan that is 65 round trips per request.
-  - Java has the same N+1, but serves it from 200 Tomcat threads on 2 cores. Bun's single JS thread waits on each
-    round trip, so it peaks at about 380 req/s and queues the rest.
+  - The cap comes from the pool. Each request holds one of the 20 connections inside `withTx` for the 65
+    sequential round trips. Throughput is about 20 / (65 × RTT): with a round trip of about 0.8 ms that is about
+    385 req/s, which matches the 378 measured. Java has the same N+1 but finishes each round trip faster.
   - The fix: load the subjects in one query. `planRepo.findSubjectsByIds` already exists and the commission
     service uses it. Rerun `load.ts run --routes plan-subjects` after the fix to close the phase 5 item.
 - **Bun's p50 is higher, its tail much shorter.**
@@ -175,15 +183,17 @@ most: the home page, the newsletter, the scheduler, the session, Apuntes and the
   - But Java's p95 sits on a 60 to 90 ms floor even for `/auth/me`. That floor is CFS quota throttling. In a 20 s
     `/auth/me` run, the container's `cpu.stat` recorded `nr_throttled` going up by 201, about once per 100 ms
     period, with 89 s of throttled thread time. The JVM runs 64 threads (Tomcat, GC, JIT) against a 2-CPU quota.
-  - The tail depends on the quota. With more CPUs, or a lower `--cpus` on Bun, the picture changes, so rerun on
-    the VPS's real limits before cutover.
+  - The tail depends on the quota. Production sets no CPU limit, so rerun on the VPS's real limits before
+    cutover.
 - **Java's wiki search is slow, and Bun's is not.**
   - Both run the same SQL with server-side prepared statements.
-  - Under Java, PostgreSQL switches to a generic plan after five executions. That plan cannot use the HNSW index:
-    it does a nested loop over every chunk and a top-N sort, 368 ms per query instead of 9.6 ms with a custom
-    plan (`EXPLAIN ANALYZE` with `plan_cache_mode` forced each way).
-  - Bun stays on the index-scan plan under load. Why the two drivers end up with different plans was not
-    investigated.
+  - The generic plan of that query cannot use the HNSW index: it does a nested loop over every chunk and a top-N
+    sort, 368 ms per query instead of 9.6 ms with a custom plan (`EXPLAIN ANALYZE` with `plan_cache_mode`
+    forced each way).
+  - The most likely cause is that PostgreSQL switched Java's sessions to that generic plan after five
+    executions: Java's latency under load matches it, and Postgres was saturated during that route. This was
+    not observed directly in Java's sessions.
+  - Bun stayed fast under load. Why the two drivers end up with different plans was not investigated.
   - If Bun ever gets the generic plan (a driver change, or different statistics), search falls back to the Java
     numbers. Set `plan_cache_mode = force_custom_plan` in the search transaction to make it robust.
 - **`classrooms/availability` is the slowest route on both.** It loads every active slot (8,000 in this seed) and
