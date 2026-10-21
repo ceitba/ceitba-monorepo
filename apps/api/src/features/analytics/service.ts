@@ -1,10 +1,10 @@
 // service/news/AnalyticsService (ingest + staff summary), used by web/analytics/AnalyticsController.
 
-import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
 import { withTx } from '../../db/client';
 import { msToMicros, systemNowMicros, toPgTimestamp } from '../../lib/time';
 import { ANALYTICS_IP_HASHES, ContentHmac } from '../crypto/logic/contentHmac';
+import * as repo from './repo';
 
 export interface EventPayload {
   type: string; sessionId: string; timestamp: number | null; articleId: string | null; eventId: string | null; category: string | null; path: string | null;
@@ -18,8 +18,6 @@ export interface Summary {
   dailyViews: { date: string; views: number }[];
   voteBreakdown: { articleId: string; title: string; up: number; down: number }[];
 }
-
-type Row = Record<string, unknown>;
 
 export class AnalyticsService {
   private hmac: ContentHmac | null = null;
@@ -37,8 +35,9 @@ export class AnalyticsService {
       for (const e of events) {
         // Instant.ofEpochMilli(timestamp), else OffsetDateTime.now().
         const ts = toPgTimestamp(e.timestamp !== null ? msToMicros(e.timestamp) : systemNowMicros());
-        await tx.execute(sql`INSERT INTO public.analytics_events (type, session_id, ts, article_id, event_id, category, path, ip_hash)
-          VALUES (${e.type}, ${e.sessionId}, ${ts}, ${e.articleId}, ${e.eventId}, ${e.category}, ${e.path}, ${ipHash})`);
+        await repo.insertEvent(tx, {
+          type: e.type, sessionId: e.sessionId, ts, articleId: e.articleId, eventId: e.eventId, category: e.category, path: e.path, ipHash,
+        });
       }
     });
   }
@@ -47,31 +46,21 @@ export class AnalyticsService {
   summary(days: number): Promise<Summary> {
     const since = toPgTimestamp(systemNowMicros() - days * 86_400_000_000);
     return withTx(this.deps.db, async (tx) => {
-      const q = async (s: ReturnType<typeof sql>) => (await tx.execute(s)) as unknown as Row[];
-      const [views] = await q(sql`SELECT COUNT(*) AS n FROM public.analytics_events WHERE type = 'article_view' AND ts >= ${since}::timestamptz`);
-      const [visitors] = await q(sql`SELECT COUNT(DISTINCT session_id) AS n FROM public.analytics_events WHERE ts >= ${since}::timestamptz`);
-      const top = await q(sql`
-        SELECT ae.article_id, a.title, COUNT(*) AS views FROM public.analytics_events ae JOIN public.articles a ON a.id = ae.article_id
-        WHERE ae.type = 'article_view' AND ae.ts >= ${since}::timestamptz AND ae.article_id IS NOT NULL
-        GROUP BY ae.article_id, a.title ORDER BY views DESC LIMIT 10`);
-      const cats = await q(sql`
-        SELECT ae.category, COUNT(*) AS views FROM public.analytics_events ae
-        WHERE ae.type = 'category_filter' AND ae.ts >= ${since}::timestamptz AND ae.category IS NOT NULL
-        GROUP BY ae.category ORDER BY views DESC`);
-      const daily = await q(sql`
-        SELECT date_trunc('day', ts)::date::text AS day, COUNT(*) AS views FROM public.analytics_events
-        WHERE type = 'article_view' AND ts >= ${since}::timestamptz GROUP BY 1 ORDER BY 1`);
+      const totalArticleViews = await repo.countArticleViewsSince(tx, since);
+      const uniqueVisitors = await repo.countVisitorsSince(tx, since);
+      const topArticles = await repo.topArticlesSince(tx, since);
+      const categoryViews = await repo.categoryViewsSince(tx, since);
+      const dailyViews = await repo.dailyViewsSince(tx, since);
       // voteRepo.findAll() + articleRepo.findById per row (title falls back to the id).
-      const votes = await q(sql`SELECT v.article_id, v.up_count, v.down_count, a.title FROM public.article_votes v
-        LEFT JOIN public.articles a ON a.id = v.article_id`);
+      const votes = await repo.allVotes(tx);
       return {
-        totalArticleViews: Number(views!.n),
-        uniqueVisitors: Number(visitors!.n),
-        topArticles: top.map((r) => ({ articleId: r.article_id as string, title: r.title as string, views: Number(r.views) })),
-        categoryViews: cats.map((r) => ({ category: r.category as string, views: Number(r.views) })),
-        dailyViews: daily.map((r) => ({ date: r.day as string, views: Number(r.views) })),
+        totalArticleViews,
+        uniqueVisitors,
+        topArticles,
+        categoryViews,
+        dailyViews,
         voteBreakdown: votes
-          .map((v) => ({ articleId: v.article_id as string, title: (v.title as string | null) ?? (v.article_id as string), up: Number(v.up_count), down: Number(v.down_count) }))
+          .map((v) => ({ articleId: v.articleId, title: v.title ?? v.articleId, up: v.up, down: v.down }))
           .filter((s) => s.up + s.down > 0),
       };
     }, { readOnly: true });

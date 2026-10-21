@@ -114,6 +114,19 @@ describe('OrganizationEndpointsIT', () => {
     expect((await api.get('/v1/organizations/media')).json.followerCount).toBe(0);
   });
 
+  // The list counts each org's followers (one grouped query, not one per org).
+  test('listCarriesEachOrgsFollowerCount', async () => {
+    const alice = await seedUser(api.db, 'alice@itba.edu.ar', { name: 'Alice' });
+    const bob = await seedUser(api.db, 'bob@itba.edu.ar', { name: 'Bob' });
+    await seedFollow(api.db, alice, 'it');
+    await seedFollow(api.db, bob, 'it');
+    await seedFollow(api.db, bob, 'media');
+    const r = await api.get('/v1/organizations');
+    const counts = Object.fromEntries((r.json.data as { slug: string; followerCount: number }[]).map((o) => [o.slug, o.followerCount]));
+    expect(counts).toEqual({ it: 2, media: 1 });
+    expect(r.json.data.every((o: { board: unknown }) => o.board === null)).toBe(true);
+  });
+
   test('regularUserCannotPatch', async () => {
     expect((await api.patch('/v1/organizations/it', { as: await user(), body: '{"description":"x"}' })).status).toBe(403);
   });

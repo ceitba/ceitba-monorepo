@@ -4,10 +4,8 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { eq } from 'drizzle-orm';
 import type { Deps } from '../../deps';
 import { withTx, type Tx } from '../../db/client';
-import { ceitbaStaff } from '../../db/schema/identity';
 import type { IdTokenClaims } from '../../external/google';
 import { admits, isReviewEmail, sessionAdmits } from '../../http/auth/allowlist';
 import { normalizeScopes, parseScopes, scopeFromKey, scopeKeys, serializeScopes, sha256Hex } from '../../http/auth/apikeys';
@@ -22,7 +20,7 @@ import {
   ReviewLoginDisabledError, ValidationError,
 } from '../../http/errors';
 import { effectiveCapabilities } from '../../shared/capabilities';
-import { formatInstant, formatOffsetDateTime, parsePgTimestamp, systemNowMicros, toPgTimestamp, type Micros } from '../../lib/time';
+import { formatInstant, formatOffsetDateTime, parsePgTimestamp, systemNowMicros, type Micros } from '../../lib/time';
 import type { ApiKeyCreatedResponse, ApiKeyResponse, TokenResponse, UserMeResponse } from './dto';
 import * as refreshRepo from './repo';
 
@@ -313,13 +311,7 @@ export class AuthService {
     const user = await findOrCreateUser(this.deps.db, this.deps.log, now, normalized,
       name == null || name.trim() === '' ? normalized : name.trim(), null, null);
     if (asStaff && !(await isActiveStaff(this.deps.db, user.id, now))) {
-      await withTx(this.deps.db, async (tx) => {
-        await tx.delete(ceitbaStaff).where(eq(ceitbaStaff.userId, user.id));
-        await tx.insert(ceitbaStaff).values({
-          userId: user.id, branch: 'IT', role: 'MEMBER',
-          start: toPgTimestamp(now - 60_000_000), end: '9999-12-31T23:59:59Z',
-        });
-      });
+      await withTx(this.deps.db, (tx) => refreshRepo.replaceWithOpenEndedStaffRow(tx, user.id, now - 60_000_000));
     }
     this.deps.log.info(`Dev login as ${normalized} (staff=${asStaff})`);
     return this.issueWebToken(user);

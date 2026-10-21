@@ -10,19 +10,18 @@ import { param, type ParamSpec } from '../../http/validation';
 import { ContentHmac } from '../crypto/logic/contentHmac';
 import { MediaUploadService } from '../media/logic/mediaUploadService';
 import { OrgAccess } from './access';
-import { ArticleService, articleResponse, fromRow, requireAuthorStatus } from './articles';
+import { ArticleService, requireAuthorStatus } from './articles';
 import {
   ArticleInput, ArticlePatchInput, InviteRequest, NewsEventInput, NewsEventPatchInput, OrganizationPatchRequest, OrganizationRequest,
   SettingsRequest, SignUploadRequest, UpdateMemberRequest, VoteRequest,
 } from './dto';
 import { EventRsvpService, NewsEventService, SIGNUP_NONE } from './events';
 import { OrganizationMembershipService } from './memberships';
-import { FollowService, OrgAnalyticsService, OrganizationService, organizationResponse } from './organizations';
+import { FollowService, OrgAnalyticsService, OrganizationService } from './organizations';
 import { newsPaging } from './paging';
 import { ArticleLinkPreviewService, NOT_FOUND_HTML, previewHtml } from './preview';
 import { NewsSitemapService, dbSitemapSource, sitemapXml } from './sitemap';
 import { VoteService } from './votes';
-import * as repo from './repo';
 
 const ALL_STATUSES = 'all';
 
@@ -54,7 +53,7 @@ export function newsServices(deps: Deps) {
     articles,
     events: new NewsEventService(deps, memberships),
     rsvps: new EventRsvpService(deps),
-    organizations: new OrganizationService(deps),
+    organizations: new OrganizationService(deps, memberships),
     follows: new FollowService(deps),
     orgAnalytics: new OrgAnalyticsService(deps),
     votes: new VoteService(deps),
@@ -102,7 +101,7 @@ export default defineRoutes((r, deps) => {
   r.get('/v1/articles/{id}', { tags: articleTags, params: { id: param.string() } }, async ({ c, params }) => {
     const p = principal(c);
     const includesDrafts = access.isStaff(p) || (await access.canReadArticleDraft(params.id!, p));
-    return articleResponse(fromRow(await s.articles.findById(params.id!, includesDrafts)));
+    return s.articles.getById(params.id!, includesDrafts);
   });
 
   r.post('/v1/articles', { tags: articleTags, body: ArticleInput, currentUser: true, status: 201 }, async ({ c, body: req }) => {
@@ -234,17 +233,8 @@ export default defineRoutes((r, deps) => {
 
   // ---------------------------------------------------------------- organizations
   const orgTags = ['Organizations'];
-  const toResponse = async (o: repo.OrgRow) => organizationResponse(o, await s.follows.countFollowers(o.slug));
-  r.get('/v1/organizations', { tags: orgTags }, async () => {
-    const orgs = await s.organizations.findAll();
-    const data = [];
-    for (const o of orgs) data.push(await toResponse(o));
-    return { data };
-  });
-  r.get('/v1/organizations/{slug}', { tags: orgTags, params: { slug: param.string() } }, async ({ params }) => {
-    const o = await s.organizations.findBySlug(params.slug!);
-    return organizationResponse(o, await s.follows.countFollowers(o.slug), await s.memberships.board(o.slug));
-  });
+  r.get('/v1/organizations', { tags: orgTags }, async () => ({ data: await s.organizations.list() }));
+  r.get('/v1/organizations/{slug}', { tags: orgTags, params: { slug: param.string() } }, ({ params }) => s.organizations.get(params.slug!));
   r.post('/v1/organizations', { tags: orgTags, body: OrganizationRequest }, async ({ body: req }) => {
     const created = await s.organizations.create(req.slug!, {
       name: req.name, fullName: req.fullName, description: req.description, category: req.category, color: req.color,
@@ -253,16 +243,16 @@ export default defineRoutes((r, deps) => {
       instagram: req.instagram, linkedinUrl: req.linkedinUrl, websiteUrl: req.websiteUrl, contactEmail: req.contactEmail,
       recruitingOpen: req.recruitingOpen, recruitingUrl: req.recruitingUrl, recruitingText: req.recruitingText,
     });
-    return json(await toResponse(created), 201);
+    return json(created, 201);
   });
   r.patch('/v1/organizations/{slug}', { tags: orgTags, params: { slug: param.string() }, body: OrganizationPatchRequest }, async ({ params, body: req }) =>
-    toResponse(await s.organizations.update(params.slug!, {
+    s.organizations.update(params.slug!, {
       name: req.name, fullName: req.fullName, description: req.description, category: req.category, color: req.color,
       logoUrl: req.logoUrl, backgroundUrl: req.backgroundUrl,
     }, {
       instagram: req.instagram, linkedinUrl: req.linkedinUrl, websiteUrl: req.websiteUrl, contactEmail: req.contactEmail,
       recruitingOpen: req.recruitingOpen, recruitingUrl: req.recruitingUrl, recruitingText: req.recruitingText,
-    })));
+    }));
   r.delete('/v1/organizations/{slug}', { tags: orgTags, params: { slug: param.string() } }, async ({ params }) => {
     await s.organizations.delete(params.slug!);
     return noContent();
@@ -275,7 +265,7 @@ export default defineRoutes((r, deps) => {
     tags: orgTags, params: { slug: param.string() }, currentUser: true, body: SignUploadRequest,
   }, async ({ c, params, body: req }) => {
     const user = await currentUser(c);
-    await s.organizations.findBySlug(params.slug!);
+    await s.organizations.requireExists(params.slug!);
     return mediaUploads().signOrgImage(params.slug!, user.id, { filename: req.filename!, contentType: req.contentType!, sizeBytes: req.sizeBytes! });
   });
   r.get('/v1/organizations/{slug}/analytics', {

@@ -7,10 +7,9 @@
 import type { AppContext } from '../../http/context';
 import { staffPowers } from '../../http/auth/context';
 import type { UserRow } from '../../http/auth/repo';
-import { CapabilityRequiredError } from '../../http/errors';
 import { found, defineRoutes } from '../../http/router';
 import { param } from '../../http/validation';
-import { effectiveCapabilities } from '../../shared/capabilities';
+import { CapabilityService } from '../capability/service';
 import type { Deps } from '../../deps';
 import { RegisterSourceRequest, ReportFileRequest, StaffCommentRequest, UpdateFileRequest, UpdateSourceRequest } from './dto';
 import { driveServices } from './services';
@@ -22,10 +21,9 @@ const BUFFER_KNOWN_LENGTH_UP_TO = 16 * 1024 * 1024;
 const tags = ['Apuntes (Drive sync)'];
 const staffTags = ['Apuntes (Drive sync) - staff'];
 
-/** CapabilityService.require(user, APUNTES) */
-async function requireApuntes(deps: Deps, user: UserRow): Promise<void> {
-  const caps = await effectiveCapabilities(deps.db, user, deps.clock.now());
-  if (!caps.includes(APUNTES)) throw new CapabilityRequiredError(APUNTES);
+/** CapabilityService.require(user, APUNTES): 403 CAPABILITY_REQUIRED (read in its own read-only transaction). */
+function requireApuntes(deps: Deps, user: UserRow): Promise<void> {
+  return new CapabilityService(deps).require(user, APUNTES);
 }
 
 /** UriUtils.encode(s, UTF_8): everything but RFC 3986 unreserved characters is %-encoded. */

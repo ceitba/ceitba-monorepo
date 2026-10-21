@@ -1,8 +1,8 @@
-// RefreshTokenRepository (V17 refresh_tokens).
+// RefreshTokenRepository (V17 refresh_tokens), plus the dev-login staff grant.
 
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
-import { refreshTokens } from '../../db/schema/identity';
+import { ceitbaStaff, refreshTokens } from '../../db/schema/identity';
 import { toPgTimestamp, type Micros } from '../../lib/time';
 
 export type RefreshTokenRow = typeof refreshTokens.$inferSelect;
@@ -55,4 +55,12 @@ export async function setRotation(db: Db, id: string, fields: { revokedAt?: Micr
     ...(fields.revokedAt !== undefined ? { revokedAt: toPgTimestamp(fields.revokedAt) } : {}),
     replacedBy: fields.replacedBy,
   }).where(eq(refreshTokens.id, id));
+}
+
+/** Dev login as staff: replace the user's ceitba_staff rows with one open-ended IT MEMBER row starting at `start`. */
+export async function replaceWithOpenEndedStaffRow(db: Db, userId: string, start: Micros): Promise<void> {
+  await db.delete(ceitbaStaff).where(eq(ceitbaStaff.userId, userId));
+  await db.insert(ceitbaStaff).values({
+    userId, branch: 'IT', role: 'MEMBER', start: toPgTimestamp(start), end: '9999-12-31T23:59:59Z',
+  });
 }

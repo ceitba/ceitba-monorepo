@@ -17,7 +17,7 @@ import {
 import type { Logger } from '../../infra/logger';
 import { javaEqualsIgnoreCase, javaIsBlank, javaStrip, javaTrim } from '../../lib/javaCompat';
 import { formatOffsetDateTime, parsePgTimestamp, type Micros } from '../../lib/time';
-import type { Db } from '../../db/client';
+import { withTx, type Db } from '../../db/client';
 import { ambientDb } from './ambient';
 import { GoogleMailOAuthClient, SCOPE_SEND, type IdClaims } from './googleMailOAuth';
 import { GmailApiEmailSender, type MailSenderAccounts } from './logic/gmailApiEmailSender';
@@ -338,7 +338,7 @@ export class MailRetentionService {
   async cleanup(): Promise<void> {
     const now = this.deps.clock.now();
     const trackingCutoff = now - this.settings.retention.trackingEventsMs * 1000;
-    const [e, l, s, o] = await this.deps.db.transaction(async (tx) => [
+    const [e, l, s, o] = await withTx(this.deps.db, async (tx) => [
       await repo.deleteTrackingEventsOlderThan(tx, trackingCutoff),
       await repo.deleteDeliveryLinksSentBefore(tx, trackingCutoff),
       await repo.deleteSendLogOlderThan(tx, now - this.settings.retention.sendLogMs * 1000),

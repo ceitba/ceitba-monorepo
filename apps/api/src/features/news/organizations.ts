@@ -9,7 +9,7 @@ import { javaIsBlank, javaTrim, plusDays } from '../../lib/javaCompat';
 import { parsePgTimestamp, toPgTimestamp, zoneOffsetMinutes } from '../../lib/time';
 import { instagram } from '../user/logic/socialHandles';
 import type { BoardMemberView, FollowerResponse, OrganizationResponse } from './dto';
-import { dbTime } from './memberships';
+import { dbTime, type OrganizationMembershipService } from './memberships';
 import * as repo from './repo';
 
 /** OrganizationService.ProfileFields: null leaves a field unchanged, blank clears it. */
@@ -59,10 +59,28 @@ export function organizationResponse(o: repo.OrgRow, followerCount: number, boar
 }
 
 export class OrganizationService {
-  constructor(private readonly deps: Deps) {}
+  constructor(private readonly deps: Deps, private readonly memberships: OrganizationMembershipService) {}
 
-  findAll(tx?: Db): Promise<repo.OrgRow[]> {
-    return withTx(tx ?? this.deps.db, (t) => repo.findAllOrgs(t), { readOnly: true });
+  /** GET /v1/organizations: every organization with its follower count (one count query, not one per org). */
+  list(): Promise<OrganizationResponse[]> {
+    return withTx(this.deps.db, async (tx) => {
+      const orgs = await repo.findAllOrgs(tx);
+      const counts = await repo.countFollowersByOrg(tx);
+      return orgs.map((o) => organizationResponse(o, counts.get(o.slug) ?? 0));
+    }, { readOnly: true });
+  }
+
+  /** GET /v1/organizations/{slug}: with its follower count and public board. */
+  get(slug: string): Promise<OrganizationResponse> {
+    return withTx(this.deps.db, async (tx) => {
+      const o = await this.findBySlug(slug, tx);
+      return organizationResponse(o, await repo.countFollowers(tx, o.slug), await this.memberships.board(o.slug, tx));
+    }, { readOnly: true });
+  }
+
+  /** 404 unless the organization exists. */
+  async requireExists(slug: string): Promise<void> {
+    await this.findBySlug(slug);
   }
 
   async findBySlug(slug: string, tx?: Db): Promise<repo.OrgRow> {
@@ -72,7 +90,7 @@ export class OrganizationService {
   }
 
   /** create: applyProfile runs before (in the controller), so a bad instagram is 400 first. */
-  async create(slug: string, f: OrgFields, profile: ProfileFields): Promise<repo.OrgRow> {
+  async create(slug: string, f: OrgFields, profile: ProfileFields): Promise<OrganizationResponse> {
     const row: repo.OrgRow = {
       slug, name: f.name!, fullName: f.fullName!, description: f.description, category: f.category, color: f.color,
       logoUrl: f.logoUrl, backgroundUrl: f.backgroundUrl, instagram: null, linkedinUrl: null, websiteUrl: null, contactEmail: null,
@@ -82,11 +100,12 @@ export class OrganizationService {
     // A concurrent insert (not caught in Java) surfaces as 409 DataIntegrityViolation.
     return withTx(this.deps.db, async (tx) => {
       if (await repo.orgExists(tx, slug)) throw new ResourceAlreadyExistsError('Organization', slug);
-      return repo.insertOrg(tx, row);
+      const created = await repo.insertOrg(tx, row);
+      return organizationResponse(created, await repo.countFollowers(tx, created.slug));
     });
   }
 
-  update(slug: string, f: OrgFields, profile: ProfileFields | null): Promise<repo.OrgRow> {
+  update(slug: string, f: OrgFields, profile: ProfileFields | null): Promise<OrganizationResponse> {
     return withTx(this.deps.db, async (tx) => {
       const o = await this.findBySlug(slug, tx);
       const set: Partial<repo.OrgRow> = {};
@@ -105,7 +124,7 @@ export class OrganizationService {
       const dirty: Partial<repo.OrgRow> = {};
       for (const k of Object.keys(set) as (keyof repo.OrgRow)[]) if (set[k] !== o[k]) (dirty as Record<string, unknown>)[k] = set[k];
       await repo.updateOrg(tx, slug, dirty);
-      return next;
+      return organizationResponse(next, await repo.countFollowers(tx, next.slug));
     });
   }
 

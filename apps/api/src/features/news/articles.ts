@@ -102,6 +102,11 @@ export class ArticleService {
     }, { readOnly: true });
   }
 
+  /** GET /v1/articles/{id}: findById as the response. */
+  getById(id: string, includesDrafts: boolean): Promise<ArticleResponse> {
+    return withTx(this.deps.db, async (tx) => articleResponse(fromRow(await this.findById(id, includesDrafts, tx))), { readOnly: true });
+  }
+
   /** findById(id, includesDrafts). */
   async findById(id: string, includesDrafts: boolean, tx?: Db): Promise<repo.ArticleRow> {
     const a = await repo.findArticle(tx ?? this.deps.db, id);

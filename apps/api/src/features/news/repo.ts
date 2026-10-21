@@ -166,6 +166,12 @@ export async function countFollowers(db: Db, org: string): Promise<number> {
   return n(r?.c);
 }
 
+/** Follower count per organization slug (orgs without followers are absent). */
+export async function countFollowersByOrg(db: Db): Promise<Map<string, number>> {
+  const rows = await db.select({ slug: userFollows.orgSlug, c: count() }).from(userFollows).groupBy(userFollows.orgSlug);
+  return new Map(rows.map((r) => [r.slug, n(r.c)]));
+}
+
 export function followersOf(db: Db, org: string): Promise<FollowRow[]> {
   return db.select().from(userFollows).where(eq(userFollows.orgSlug, org)).orderBy(desc(userFollows.createdAt));
 }
