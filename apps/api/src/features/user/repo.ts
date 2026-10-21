@@ -3,7 +3,7 @@
 // /v1/users controllers (the news feature owns those tables' other endpoints),
 // and AccountDeletionRepository (bulk, cross-schema DELETE /v1/me statements).
 
-import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import { careers, plan } from '../../db/schema/academic';
 import { ceitbaStaff, user, userDevices } from '../../db/schema/identity';
@@ -82,6 +82,14 @@ export async function isActiveStaffAt(db: Db, userId: string, nowPg: string): Pr
   return Number(r?.n ?? 0) > 0;
 }
 
+/** Which of `userIds` hold an active staff row at `nowPg` (isActiveStaffAt for many users, one query). */
+export async function activeStaffAmong(db: Db, userIds: string[], nowPg: string): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
+  const rows = await db.selectDistinct({ id: ceitbaStaff.userId }).from(ceitbaStaff)
+    .where(and(inArray(ceitbaStaff.userId, userIds), sql`${ceitbaStaff.start} <= ${nowPg}`, sql`${ceitbaStaff.end} >= ${nowPg}`));
+  return new Set(rows.map((r) => r.id));
+}
+
 /** CeitbaStaffRepository.findAllActiveForUpdate: active rows locked FOR UPDATE, in user order. */
 export async function lockActiveStaffIds(db: Db, nowPg: string): Promise<string[]> {
   const rows = await db.select({ id: ceitbaStaff.userId }).from(ceitbaStaff)
@@ -94,6 +102,12 @@ export async function lockActiveStaffIds(db: Db, nowPg: string): Promise<string[
 /** UserOrganizationRepository.findByUserId (no ORDER BY). */
 export function membershipsOf(db: Db, userId: string) {
   return db.select().from(userOrganizations).where(eq(userOrganizations.userId, userId));
+}
+
+/** membershipsOf for many users in one query (no ORDER BY, like membershipsOf). */
+export function membershipsOfUsers(db: Db, userIds: string[]) {
+  if (userIds.length === 0) return Promise.resolve([]);
+  return db.select().from(userOrganizations).where(inArray(userOrganizations.userId, userIds));
 }
 
 export async function findMembership(db: Db, userId: string, slug: string) {

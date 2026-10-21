@@ -86,8 +86,16 @@ export class UserService {
         q: normalizedQ, organization: org, staffOnly, nowPg: nowPg(), asc: sort.toLowerCase() === 'oldest',
         offset: pageIdx * size, limit: size,
       });
-      const data: UserResponse[] = [];
-      for (const u of rows) data.push(await this.toResponse(tx, u));
+      // Memberships and staff rows of the whole page in two queries (not two per user).
+      const ids = rows.map((u) => u.id);
+      const memberships = new Map<string, { slug: string; role: string }[]>();
+      for (const m of await repo.membershipsOfUsers(tx, ids)) {
+        let list = memberships.get(m.userId);
+        if (!list) memberships.set(m.userId, (list = []));
+        list.push({ slug: m.orgSlug, role: m.role });
+      }
+      const staff = await repo.activeStaffAmong(tx, ids, nowPg());
+      const data = rows.map((u) => userResponse(u, memberships.get(u.id) ?? [], staff.has(u.id)));
       return { data, meta: { total, page: pageIdx + 1, limit: size } };
     }, { readOnly: true });
   }
@@ -102,12 +110,15 @@ export class UserService {
 
   private async toResponse(db: Db, u: repo.UserRow): Promise<UserResponse> {
     const memberships = (await repo.membershipsOf(db, u.id)).map((m) => ({ slug: m.orgSlug, role: m.role }));
-    const isStaff = await repo.isActiveStaffAt(db, u.id, nowPg());
-    return {
-      id: u.id, email: u.email, name: u.name, plan: u.plan, avatarUrl: u.avatarUrl, isStaff, organizations: memberships,
-      file_number: u.fileNumber, career_id: u.careerId,
-    };
+    return userResponse(u, memberships, await repo.isActiveStaffAt(db, u.id, nowPg()));
   }
+}
+
+function userResponse(u: repo.UserRow, organizations: { slug: string; role: string }[], isStaff: boolean): UserResponse {
+  return {
+    id: u.id, email: u.email, name: u.name, plan: u.plan, avatarUrl: u.avatarUrl, isStaff, organizations,
+    file_number: u.fileNumber, career_id: u.careerId,
+  };
 }
 
 // ------------------------------------------------------------ UserProfileService (/v1/me/{profile,preferences})
