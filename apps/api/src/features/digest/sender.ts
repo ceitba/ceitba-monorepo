@@ -56,7 +56,7 @@ export class DigestSender {
     this.running = true;
     try {
       await this.reclaimStale();
-      const ids = await repo.findSendingIds(this.deps.db);
+      const ids = await withTx(this.deps.db, (tx) => repo.findSendingIds(tx), { readOnly: true });
       if (ids.length === 0) return;
       if (await this.senderUnavailable()) return;
       const readyAt = await this.sender.readyAt();
@@ -87,15 +87,20 @@ export class DigestSender {
 
   /** Rows left `sending` by a crash: outcome unknown -> failed, not resent. */
   async reclaimStale(): Promise<void> {
-    const n = await repo.failStale(this.deps.db, this.deps.clock.now() - CLAIM_TIMEOUT_MS * 1000, UNKNOWN_OUTCOME);
+    const n = await withTx(this.deps.db, (tx) => repo.failStale(tx, this.deps.clock.now() - CLAIM_TIMEOUT_MS * 1000, UNKNOWN_OUTCOME));
     if (n > 0) this.log.warn(`Digest: ${n} deliveries were interrupted mid-send; marked failed, not resent`);
   }
 
   async process(issueId: string): Promise<Outcome> {
-    const row = await repo.findIssue(this.deps.db, issueId);
-    if (row == null || row.status !== 'sending') return 'CANCELLED';
-    const issue = issueOf(row);
-    const template = this.composer.template(issue, await this.composer.content(this.deps.db, issue));
+    const loaded = await withTx(this.deps.db, async (tx) => {
+      const row = await repo.findIssue(tx, issueId);
+      if (row == null || row.status !== 'sending') return null;
+      const issue = issueOf(row);
+      return { issue, content: await this.composer.content(tx, issue) };
+    }, { readOnly: true });
+    if (loaded == null) return 'CANCELLED';
+    const { issue } = loaded;
+    const template = this.composer.template(issue, loaded.content);
     const shared = this.tracking.enabled()
       ? await withTx(this.deps.db, (tx) => this.tracking.issueLinks(tx, issueId, template))
       : new Map<string, number>();
@@ -123,7 +128,7 @@ export class DigestSender {
   }
 
   private async markSentIfDone(issue: ComposerIssue): Promise<void> {
-    if ((await repo.markIssueSentIfDone(this.deps.db, issue.id, this.deps.clock.now())) > 0) {
+    if ((await withTx(this.deps.db, (tx) => repo.markIssueSentIfDone(tx, issue.id, this.deps.clock.now()))) > 0) {
       this.log.info(`Digest ${issue.week.weekStart}: all deliveries processed, issue sent`);
     }
   }

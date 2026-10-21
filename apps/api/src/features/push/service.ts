@@ -14,7 +14,7 @@
 // request; `pushIdle()` lets tests wait for the background work (AsyncWork).
 
 import type { Deps } from '../../deps';
-import type { Db } from '../../db/client';
+import { withTx, type Db } from '../../db/client';
 import { MAX_TOKENS_PER_CALL, PushDeliveryError, type PushGateway, type PushOutcome } from '../../infra/push';
 import type { Logger } from '../../infra/logger';
 import { systemNowMicros, toPgTimestamp } from '../../lib/time';
@@ -41,10 +41,10 @@ export interface PushDevices {
 
 export function dbPushDevices(db: Db): PushDevices {
   return {
-    findTokensByUserIds: (ids) => repo.findTokensByUserIds(db, ids),
-    findTokensOfOrgFollowers: (slug) => repo.findTokensOfOrgFollowers(db, slug),
-    findAllTokens: () => repo.findAllTokens(db),
-    deleteByTokens: (tokens) => repo.deleteByTokens(db, tokens),
+    findTokensByUserIds: (ids) => withTx(db, (tx) => repo.findTokensByUserIds(tx, ids), { readOnly: true }),
+    findTokensOfOrgFollowers: (slug) => withTx(db, (tx) => repo.findTokensOfOrgFollowers(tx, slug), { readOnly: true }),
+    findAllTokens: () => withTx(db, (tx) => repo.findAllTokens(tx), { readOnly: true }),
+    deleteByTokens: (tokens) => withTx(db, (tx) => repo.deleteByTokens(tx, tokens)),
   };
 }
 
@@ -190,10 +190,10 @@ export function firePush(deps: Pick<Deps, 'push' | 'db' | 'log'>, trigger: PushT
     try {
       const data = trigger.message.data;
       const org = trigger.kind === 'PushToOrgFollowers' ? trigger.orgSlug : (data.org ?? null);
-      await repo.insertPushLog(deps.db, {
+      await withTx(deps.db, (tx) => repo.insertPushLog(tx, {
         orgSlug: org, kind: data[TYPE] ?? null, refId: data[ID] ?? null,
         targeted: result.targeted, sent: result.sent, createdAt: toPgTimestamp(systemNowMicros()),
-      });
+      }));
     } catch (e) {
       log.warn(`Push log write failed: ${(e as Error).message}`);
     }

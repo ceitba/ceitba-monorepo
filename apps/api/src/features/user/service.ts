@@ -404,7 +404,7 @@ export class MeSocialService {
     } catch (e) {
       // Already following (race): idempotent, the stored row.
       if (isUniqueViolation(e)) {
-        const f = (await repo.followsOf(this.deps.db, userId)).find((x) => x.orgSlug === slug);
+        const f = (await withTx(this.deps.db, (tx) => repo.followsOf(tx, userId), { readOnly: true })).find((x) => x.orgSlug === slug);
         if (f) return { orgSlug: f.orgSlug, createdAt: fromDb(f.createdAt) };
       }
       throw e;

@@ -242,12 +242,12 @@ export class EventRsvpService {
   }
 
   isGoing(eventId: string, userId: string): Promise<boolean> {
-    return repo.rsvpExists(this.deps.db, eventId, userId);
+    return withTx(this.deps.db, (tx) => repo.rsvpExists(tx, eventId, userId), { readOnly: true });
   }
 
   /** eventIdsOf (GET /v1/me/rsvps). */
   eventIdsOf(userId: string): Promise<string[]> {
-    return repo.rsvpEventIdsOf(this.deps.db, userId);
+    return withTx(this.deps.db, (tx) => repo.rsvpEventIdsOf(tx, userId), { readOnly: true });
   }
 
   attendees(eventId: string): Promise<Attendee[]> {

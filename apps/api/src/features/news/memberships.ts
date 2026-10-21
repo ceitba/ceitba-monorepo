@@ -46,26 +46,27 @@ export class OrganizationMembershipService {
 
   /** listForUser */
   listForUser(userId: string, tx?: Db) {
-    return repo.membershipsOfUser(this.db(tx), userId);
+    return withTx(this.db(tx), (t) => repo.membershipsOfUser(t, userId), { readOnly: true });
   }
 
   async userBelongsTo(userId: string | null, org: string | null, tx?: Db): Promise<boolean> {
     if (userId === null || org === null) return false;
-    return repo.membershipExists(this.db(tx), userId, org);
+    return withTx(this.db(tx), (t) => repo.membershipExists(t, userId, org), { readOnly: true });
   }
 
   async userIsAdminOf(userId: string | null, org: string | null, tx?: Db): Promise<boolean> {
     if (userId === null || org === null) return false;
-    return repo.membershipExists(this.db(tx), userId, org, ADMIN_ROLE);
+    return withTx(this.db(tx), (t) => repo.membershipExists(t, userId, org, ADMIN_ROLE), { readOnly: true });
   }
 
   async userSeesAttendeesOf(userId: string | null, org: string | null, tx?: Db): Promise<boolean> {
     if (userId === null || org === null) return false;
-    const db = this.db(tx);
-    const m = await repo.findMembership(db, userId, org);
-    if (!m) return false;
-    if (m.role === ADMIN_ROLE) return true;
-    return (await repo.findOrg(db, org))?.attendeesVisibleToMembers ?? false;
+    return withTx(this.db(tx), async (db) => {
+      const m = await repo.findMembership(db, userId, org);
+      if (!m) return false;
+      if (m.role === ADMIN_ROLE) return true;
+      return (await repo.findOrg(db, org))?.attendeesVisibleToMembers ?? false;
+    }, { readOnly: true });
   }
 
   private async requireOrg(db: Db, org: string) {

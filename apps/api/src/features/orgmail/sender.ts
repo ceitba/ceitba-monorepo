@@ -38,9 +38,9 @@ export class OrgAnnouncementSender {
     if (this.running) return;
     this.running = true;
     try {
-      const stale = await repo.failStale(this.deps.db, this.deps.clock.now() - CLAIM_TIMEOUT_MS * 1000, UNKNOWN_OUTCOME);
+      const stale = await withTx(this.deps.db, (tx) => repo.failStale(tx, this.deps.clock.now() - CLAIM_TIMEOUT_MS * 1000, UNKNOWN_OUTCOME));
       if (stale > 0) this.log.warn(`Org mail: ${stale} deliveries were interrupted mid-send; marked failed`);
-      for (const id of await repo.findSendingIds(this.deps.db)) {
+      for (const id of await withTx(this.deps.db, (tx) => repo.findSendingIds(tx), { readOnly: true })) {
         if (this.stopping) break;
         await this.process(id);
       }
@@ -52,9 +52,12 @@ export class OrgAnnouncementSender {
   }
 
   async process(id: number): Promise<void> {
-    const a = await repo.findById(this.deps.db, id);
-    if (a == null || a.status !== 'sending') return;
-    const org = await repo.findOrg(this.deps.db, a.orgSlug);
+    const loaded = await withTx(this.deps.db, async (tx) => {
+      const a = await repo.findById(tx, id);
+      return a == null || a.status !== 'sending' ? null : { a, org: await repo.findOrg(tx, a.orgSlug) };
+    }, { readOnly: true });
+    if (loaded == null) return;
+    const { a, org } = loaded;
     const sender = await this.service.senderOf(a);
     if (org == null || sender == null) return;
     if (!sender.enabled()) return;
@@ -67,7 +70,7 @@ export class OrgAnnouncementSender {
     while (!this.stopping) {
       const d = await withTx(this.deps.db, (tx) => this.claimNext(tx, id));
       if (d == null) {
-        if ((await repo.markSentIfDone(this.deps.db, id, this.deps.clock.now())) > 0) {
+        if ((await withTx(this.deps.db, (tx) => repo.markSentIfDone(tx, id, this.deps.clock.now()))) > 0) {
           this.log.info(`Org mail ${id} of ${a.orgSlug}: all deliveries processed`);
         }
         return;

@@ -40,25 +40,25 @@ export class DrizzleMailLedger implements MailLedger {
   constructor(private readonly deps: Pick<Deps, 'db'>) {}
 
   usedSince(account: string, since: Micros): Promise<number> {
-    return repo.sumCountedSince(this.deps.db, account, since);
+    return withTx(this.deps.db, (tx) => repo.sumCountedSince(tx, account, since), { readOnly: true });
   }
 
   usageSince(account: string, since: Micros): Promise<MailUsage[]> {
-    return repo.findCountedSince(this.deps.db, account, since);
+    return withTx(this.deps.db, (tx) => repo.findCountedSince(tx, account, since), { readOnly: true });
   }
 
   /** Its own committed transaction (REQUIRES_NEW): an email that left stays counted. */
   async record(account: string, kind: string, recipients: number, outcome: MailOutcome, error: string | null, at: Micros): Promise<void> {
     const e = error == null || error.length <= MAX_ERROR_LENGTH ? error : error.slice(0, MAX_ERROR_LENGTH);
-    await repo.insertSendLog(this.deps.db, account, kind, recipients, mailOutcomeDb(outcome), e, at);
+    await withTx(this.deps.db, (tx) => repo.insertSendLog(tx, account, kind, recipients, mailOutcomeDb(outcome), e, at));
   }
 
   async state(account: string): Promise<MailAccountState | null> {
-    return repo.findAccountState(this.deps.db, account);
+    return withTx(this.deps.db, (tx) => repo.findAccountState(tx, account), { readOnly: true });
   }
 
   async saveState(account: string, state: MailAccountState, now: Micros): Promise<void> {
-    await repo.saveAccountState(this.deps.db, account, state, now);
+    await withTx(this.deps.db, (tx) => repo.saveAccountState(tx, account, state, now));
   }
 }
 
@@ -158,7 +158,8 @@ export class MailSenderAccountService implements MailSenderAccounts {
     const verified = this.states.verifyBound(state, cookieNonce);
     if (verified == null) return this.redirect(ERR_INVALID_STATE);
     if (verified.orgSlug != null) return this.handleOrgCallback(verified, code, error);
-    if (!(await repo.isActiveStaffAt(this.deps.db, verified.userId, this.deps.clock.now()))) return this.redirect(ERR_NOT_STAFF);
+    const staff = await withTx(this.deps.db, (tx) => repo.isActiveStaffAt(tx, verified.userId, this.deps.clock.now()), { readOnly: true });
+    if (!staff) return this.redirect(ERR_NOT_STAFF);
     if (error != null) return this.redirect(error === 'access_denied' ? ERR_ACCESS_DENIED : ERR_EXCHANGE_FAILED);
     if (code == null || javaIsBlank(code)) return this.redirect(ERR_EXCHANGE_FAILED);
     try {
@@ -180,7 +181,7 @@ export class MailSenderAccountService implements MailSenderAccounts {
 
   private async handleOrgCallback(state: MailOAuthState, code: string | null, error: string | null): Promise<string> {
     const slug = state.orgSlug!;
-    if (!(await repo.isOrgAdmin(this.deps.db, state.userId, slug))) return this.redirectOrg(slug, ERR_NOT_ORG_ADMIN);
+    if (!(await withTx(this.deps.db, (tx) => repo.isOrgAdmin(tx, state.userId, slug), { readOnly: true }))) return this.redirectOrg(slug, ERR_NOT_ORG_ADMIN);
     if (error != null) return this.redirectOrg(slug, error === 'access_denied' ? ERR_ACCESS_DENIED : ERR_EXCHANGE_FAILED);
     if (code == null || javaIsBlank(code)) return this.redirectOrg(slug, ERR_EXCHANGE_FAILED);
     try {
@@ -190,7 +191,7 @@ export class MailSenderAccountService implements MailSenderAccounts {
         return this.redirectOrg(slug, ERR_WRONG_DOMAIN);
       }
       const address = javaTrim(claims.email).toLowerCase();
-      const existing = await repo.findAccountByEmailIgnoreCase(this.deps.db, address);
+      const existing = await withTx(this.deps.db, (tx) => repo.findAccountByEmailIgnoreCase(tx, address), { readOnly: true });
       if (existing != null && !(existing.ownerType === OWNER_ORGANIZATION && slug === existing.ownerRef)) {
         return this.redirectOrg(slug, ERR_ACCOUNT_IN_USE);
       }
@@ -208,14 +209,16 @@ export class MailSenderAccountService implements MailSenderAccounts {
   private async store(senderEmail: string, refreshToken: string, scopes: string, by: string): Promise<void> {
     const now = this.deps.clock.now();
     const enc = this.cipher().encrypt(refreshToken, senderEmail);
-    const row = await repo.findAccountByOwner(this.deps.db, OWNER_CEITBA, null);
-    if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
-      // The replaced address's token is revoked at Google too, like a disconnect.
-      if (row != null) await this.delete(row.id);
-      await repo.insertAccount(this.deps.db, senderEmail, OWNER_CEITBA, null, enc, scopes, by, now);
-    } else {
-      await repo.reconnectAccount(this.deps.db, row, enc, scopes, by, now);
-    }
+    await withTx(this.deps.db, async (tx) => {
+      const row = await repo.findAccountByOwner(tx, OWNER_CEITBA, null);
+      if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
+        // The replaced address's token is revoked at Google too, like a disconnect.
+        if (row != null) await this.delete(row.id, tx);
+        await repo.insertAccount(tx, senderEmail, OWNER_CEITBA, null, enc, scopes, by, now);
+      } else {
+        await repo.reconnectAccount(tx, row, enc, scopes, by, now);
+      }
+    });
     // A broken-sender backoff must not outlive the reconnection.
     await this.ledger.saveState(senderEmail, CLEAR, this.deps.clock.now());
   }
@@ -224,46 +227,52 @@ export class MailSenderAccountService implements MailSenderAccounts {
   private async storeOrg(slug: string, senderEmail: string, refreshToken: string, scopes: string, by: string): Promise<void> {
     const now = this.deps.clock.now();
     const enc = this.cipher().encrypt(refreshToken, senderEmail);
-    const row = await repo.findAccountByOwner(this.deps.db, OWNER_ORGANIZATION, slug);
-    if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
-      if (row != null) await this.delete(row.id);
-      await repo.insertAccount(this.deps.db, senderEmail, OWNER_ORGANIZATION, slug, enc, scopes, by, now);
-    } else {
-      await repo.reconnectAccount(this.deps.db, row, enc, scopes, by, now);
-    }
+    await withTx(this.deps.db, async (tx) => {
+      const row = await repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug);
+      if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
+        if (row != null) await this.delete(row.id, tx);
+        await repo.insertAccount(tx, senderEmail, OWNER_ORGANIZATION, slug, enc, scopes, by, now);
+      } else {
+        await repo.reconnectAccount(tx, row, enc, scopes, by, now);
+      }
+    });
     await this.ledger.saveState(senderEmail, CLEAR, this.deps.clock.now());
   }
 
   async orgAccount(slug: string): Promise<AccountView | null> {
-    const a = await repo.findAccountByOwner(ambientDb(this.deps.db), OWNER_ORGANIZATION, slug);
+    const a = await withTx(ambientDb(this.deps.db), (tx) => repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug), { readOnly: true });
     return a == null ? null : accountView(a);
   }
 
   /** Revokes and deletes the org's account; no-op without one. `db`: the caller's transaction to join. */
   async disconnectOrg(slug: string, db: Db = this.deps.db): Promise<void> {
-    const a = await repo.findAccountByOwner(db, OWNER_ORGANIZATION, slug);
-    if (a != null) await this.delete(a.id, db);
+    await withTx(db, async (tx) => {
+      const a = await repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug);
+      if (a != null) await this.delete(a.id, tx);
+    });
   }
 
   async list(): Promise<AccountView[]> {
-    return (await repo.findAllAccounts(this.deps.db)).map(accountView);
+    return (await withTx(this.deps.db, (tx) => repo.findAllAccounts(tx), { readOnly: true })).map(accountView);
   }
 
   /** Revokes the token at Google (best effort), then deletes the row. `db`: the caller's transaction to join. */
   async delete(id: number, db: Db = this.deps.db): Promise<void> {
-    const row = await repo.findAccountById(db, id);
-    if (row == null) throw new ResourceNotFoundError('MailSenderAccount', String(id));
-    try {
-      await this.google.revoke(this.cipher().decrypt(row.refreshTokenEnc, row.email));
-    } catch (e) {
-      this.log.warn(`Mail: could not revoke the token of ${row.email} at Google (deleting anyway): ${(e as Error)?.constructor?.name ?? 'Error'}`);
-    }
-    await repo.deleteAccount(db, row.id);
+    await withTx(db, async (tx) => {
+      const row = await repo.findAccountById(tx, id);
+      if (row == null) throw new ResourceNotFoundError('MailSenderAccount', String(id));
+      try {
+        await this.google.revoke(this.cipher().decrypt(row.refreshTokenEnc, row.email));
+      } catch (e) {
+        this.log.warn(`Mail: could not revoke the token of ${row.email} at Google (deleting anyway): ${(e as Error)?.constructor?.name ?? 'Error'}`);
+      }
+      await repo.deleteAccount(tx, row.id);
+    });
   }
 
   /** connected | broken | missing, for the configured sender (CEITBA account). */
   async senderStatus(): Promise<string> {
-    const a = await repo.findAccountByEmailIgnoreCase(ambientDb(this.deps.db), this.settings.email.account);
+    const a = await withTx(ambientDb(this.deps.db), (tx) => repo.findAccountByEmailIgnoreCase(tx, this.settings.email.account), { readOnly: true });
     if (a == null) return STATUS_MISSING;
     return a.status === STATUS_CONNECTED ? STATUS_CONNECTED : a.status === STATUS_BROKEN ? STATUS_BROKEN : STATUS_MISSING;
   }
@@ -275,14 +284,14 @@ export class MailSenderAccountService implements MailSenderAccounts {
    */
   async credentialsFor(senderEmail: string): Promise<MailCredentials | null> {
     const db = ambientDb(this.deps.db);
-    const a = await repo.findAccountByEmailIgnoreCase(db, senderEmail);
+    const a = await withTx(db, (tx) => repo.findAccountByEmailIgnoreCase(tx, senderEmail), { readOnly: true });
     if (a == null || a.status !== STATUS_CONNECTED) return null;
     let token: string;
     try {
       token = this.cipher().decrypt(a.refreshTokenEnc, a.email);
     } catch (e) {
       if (!(e instanceof TokenDecryptionError)) throw e;
-      await repo.markAccountBroken(db, a.id, a.refreshTokenEnc, ERR_UNDECRYPTABLE);
+      await withTx(db, (tx) => repo.markAccountBroken(tx, a.id, a.refreshTokenEnc, ERR_UNDECRYPTABLE));
       this.log.warn(`Mail: sender account ${a.email} is broken, reconnect it (${ERR_UNDECRYPTABLE})`);
       return null;
     }
@@ -291,7 +300,7 @@ export class MailSenderAccountService implements MailSenderAccounts {
 
   /** Why `senderEmail` cannot send right now, or null when it is usable. */
   async unavailableReason(senderEmail: string): Promise<string | null> {
-    const a = await repo.findAccountByEmailIgnoreCase(ambientDb(this.deps.db), senderEmail);
+    const a = await withTx(ambientDb(this.deps.db), (tx) => repo.findAccountByEmailIgnoreCase(tx, senderEmail), { readOnly: true });
     if (a == null) return `no connected Gmail sender account for ${senderEmail}`;
     if (a.status !== STATUS_CONNECTED) {
       return `Gmail sender account ${senderEmail} is broken${a.lastError == null ? '' : ` (${a.lastError})`}: reconnect it`;
@@ -309,12 +318,12 @@ export class MailSenderAccountService implements MailSenderAccounts {
 
   /** Google rejected this token: reconnect needed. No-op if it was replaced meanwhile. */
   async markBroken(c: MailCredentials, error: string): Promise<void> {
-    await repo.markAccountBroken(ambientDb(this.deps.db), c.accountId, c.tokenEnc, truncate500(error));
+    await withTx(ambientDb(this.deps.db), (tx) => repo.markAccountBroken(tx, c.accountId, c.tokenEnc, truncate500(error)));
     this.log.warn(`Mail: sender account ${c.email} is broken, reconnect it (${error})`);
   }
 
   async markUsed(c: MailCredentials): Promise<void> {
-    await repo.markAccountUsed(ambientDb(this.deps.db), c.accountId, this.deps.clock.now());
+    await withTx(ambientDb(this.deps.db), (tx) => repo.markAccountUsed(tx, c.accountId, this.deps.clock.now()));
   }
 
   private cipher(): MailTokenCipher {

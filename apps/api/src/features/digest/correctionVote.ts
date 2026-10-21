@@ -47,8 +47,10 @@ export class DigestCorrectionVoteService {
   /** Not transactional itself: the vote is its own transaction. */
   async vote(token: string | null, vote: string | null): Promise<CorrectionVoteResult> {
     const type = parseVote(vote);
-    const t = await this.holder(this.deps.db, token);
-    const before = await this.load(this.deps.db, t);
+    const { t, before } = await withTx(this.deps.db, async (tx) => {
+      const t = await this.holder(tx, token);
+      return { t, before: await this.load(tx, t) };
+    }, { readOnly: true });
     if (!before.open) throw closed(before.status);
     try {
       await this.corrections.vote(t.correctionId, t.userId, type);
@@ -57,7 +59,7 @@ export class DigestCorrectionVoteService {
       if (e instanceof ResourceNotFoundError) throw notFound();
       throw e;
     }
-    return { correction: await this.load(this.deps.db, t), previousVote: before.myVote };
+    return { correction: await withTx(this.deps.db, (tx) => this.load(tx, t), { readOnly: true }), previousVote: before.myVote };
   }
 
   private async holder(db: Db, token: string | null): Promise<Valid> {

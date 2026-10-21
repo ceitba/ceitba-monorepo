@@ -126,7 +126,7 @@ export class DataSyncService {
       return;
     }
     // Backfill missing subjects so the commissions reference something (each save its own transaction).
-    const existing = new Set((await planRepo.findAllSubjectIds(this.deps.db)).map((s) => s.id));
+    const existing = new Set((await withTx(this.deps.db, (tx) => planRepo.findAllSubjectIds(tx), { readOnly: true })).map((s) => s.id));
     for (const c of commissions) {
       if (existing.has(c.subjectCode)) continue;
       try {

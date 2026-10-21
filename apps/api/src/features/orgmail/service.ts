@@ -181,9 +181,12 @@ export class OrgAnnouncementService {
 
   /** The draft to the admin who asks ("[Prueba]"); synchronous; counts toward the account's quota. */
   async sendTest(org: string, id: number, to: { id: string; email: string }): Promise<void> {
-    const o = await this.requireOrg(this.deps.db, org);
-    const a = await repo.findByIdAndOrg(this.deps.db, id, org);
-    if (a == null) throw notFound(id);
+    const { o, a } = await withTx(this.deps.db, async (tx) => {
+      const o = await this.requireOrg(tx, org);
+      const a = await repo.findByIdAndOrg(tx, id, org);
+      if (a == null) throw notFound(id);
+      return { o, a };
+    }, { readOnly: true });
     const sender = await this.senderFor(o);
     const email = this.email(o, a, to.id, to.email, true);
     try {
@@ -226,7 +229,7 @@ export class OrgAnnouncementService {
 
   /** The sender of an announcement's org: its account now (null while it has none). */
   async senderOf(a: repo.AnnouncementRow): Promise<MailSendService | null> {
-    const o = await repo.findOrg(this.deps.db, a.orgSlug);
+    const o = await withTx(this.deps.db, (tx) => repo.findOrg(tx, a.orgSlug), { readOnly: true });
     if (o == null) return null;
     const account = await this.mail.accounts.orgAccount(o.slug);
     return account == null ? null : this.mail.orgSenders.forAccount(account.email, o.name);

@@ -84,7 +84,7 @@ export class OrganizationService {
   }
 
   async findBySlug(slug: string, tx?: Db): Promise<repo.OrgRow> {
-    const o = await repo.findOrg(tx ?? this.deps.db, slug);
+    const o = await withTx(tx ?? this.deps.db, (t) => repo.findOrg(t, slug), { readOnly: true });
     if (!o) throw new ResourceNotFoundError('Organization', slug);
     return o;
   }
@@ -142,7 +142,7 @@ export class FollowService {
   constructor(private readonly deps: Deps) {}
 
   listForUser(userId: string, tx?: Db): Promise<repo.FollowRow[]> {
-    return repo.followsOfUser(tx ?? this.deps.db, userId);
+    return withTx(tx ?? this.deps.db, (t) => repo.followsOfUser(t, userId), { readOnly: true });
   }
 
   /** Followers (newest first) with user fields; 404 for an unknown org. */
@@ -160,11 +160,11 @@ export class FollowService {
   }
 
   countFollowers(org: string, tx?: Db): Promise<number> {
-    return repo.countFollowers(tx ?? this.deps.db, org);
+    return withTx(tx ?? this.deps.db, (t) => repo.countFollowers(t, org), { readOnly: true });
   }
 
   isFollowing(userId: string, org: string): Promise<boolean> {
-    return repo.followExists(this.deps.db, userId, org);
+    return withTx(this.deps.db, (tx) => repo.followExists(tx, userId, org), { readOnly: true });
   }
 
   /**
@@ -181,21 +181,22 @@ export class FollowService {
       });
     } catch (e) {
       if (!isUniqueViolation(e)) throw e;
-      const row = (await repo.followsOfUser(this.deps.db, userId)).find((f) => f.orgSlug === org);
+      const row = (await withTx(this.deps.db, (tx) => repo.followsOfUser(tx, userId), { readOnly: true })).find((f) => f.orgSlug === org);
       if (!row) throw e;
       return { row, createdNow: false };
     }
   }
 
   async followIfMissing(userId: string, org: string, tx?: Db): Promise<void> {
-    const db = tx ?? this.deps.db;
-    if (!(await repo.orgExists(db, org))) return;
-    if (await repo.followExists(db, userId, org)) return;
-    await repo.insertFollow(db, userId, org, this.deps.clock.now());
+    await withTx(tx ?? this.deps.db, async (t) => {
+      if (!(await repo.orgExists(t, org))) return;
+      if (await repo.followExists(t, userId, org)) return;
+      await repo.insertFollow(t, userId, org, this.deps.clock.now());
+    });
   }
 
   async unfollow(userId: string, org: string): Promise<void> {
-    await repo.deleteFollow(this.deps.db, userId, org);
+    await withTx(this.deps.db, (tx) => repo.deleteFollow(tx, userId, org));
   }
 }
 

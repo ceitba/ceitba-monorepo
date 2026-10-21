@@ -109,7 +109,7 @@ export class ArticleService {
 
   /** findById(id, includesDrafts). */
   async findById(id: string, includesDrafts: boolean, tx?: Db): Promise<repo.ArticleRow> {
-    const a = await repo.findArticle(tx ?? this.deps.db, id);
+    const a = await withTx(tx ?? this.deps.db, (t) => repo.findArticle(t, id), { readOnly: true });
     if (!a || (!includesDrafts && a.status !== 'published')) throw new ResourceNotFoundError('Article', id);
     return a;
   }

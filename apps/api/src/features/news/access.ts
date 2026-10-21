@@ -2,6 +2,7 @@
 // METHOD_RULES of policy.ts and used inline by the news controllers.
 
 import type { Deps } from '../../deps';
+import { withTx } from '../../db/client';
 import { findUserByEmail } from '../../http/auth/repo';
 import { hasRole, type Principal } from '../../http/auth/principal';
 import { stringClaim } from '../../http/auth/jwt';
@@ -22,7 +23,7 @@ export class OrgAccess {
     if (p.kind !== 'jwt') return null;
     const email = stringClaim(p.claims, 'email');
     if (email === null) return null;
-    return (await findUserByEmail(this.deps.db, email))?.id ?? null;
+    return (await withTx(this.deps.db, (tx) => findUserByEmail(tx, email), { readOnly: true }))?.id ?? null;
   }
 
   isStaff(p: Principal): boolean {
@@ -49,8 +50,8 @@ export class OrgAccess {
   async canReadArticleDraft(articleId: string, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    if ((await repo.independentStatusOwnedBy(this.deps.db, articleId, id)) !== null) return true;
-    const a = await repo.findArticle(this.deps.db, articleId);
+    if ((await withTx(this.deps.db, (tx) => repo.independentStatusOwnedBy(tx, articleId, id), { readOnly: true })) !== null) return true;
+    const a = await withTx(this.deps.db, (tx) => repo.findArticle(tx, articleId), { readOnly: true });
     return a !== null && a.organization !== null && this.memberships.userBelongsTo(id, a.organization);
   }
 
@@ -66,28 +67,28 @@ export class OrgAccess {
   async canDeleteArticle(articleId: string, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    const a = await repo.findArticle(this.deps.db, articleId);
+    const a = await withTx(this.deps.db, (tx) => repo.findArticle(tx, articleId), { readOnly: true });
     return a !== null && a.organization !== null && this.memberships.userBelongsTo(id, a.organization);
   }
 
   async canDeleteEvent(eventId: string, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    const e = await repo.findEvent(this.deps.db, eventId);
+    const e = await withTx(this.deps.db, (tx) => repo.findEvent(tx, eventId), { readOnly: true });
     return e !== null && e.organization !== null && this.memberships.userBelongsTo(id, e.organization);
   }
 
   async canSeeAttendees(eventId: string, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    const e = await repo.findEvent(this.deps.db, eventId);
+    const e = await withTx(this.deps.db, (tx) => repo.findEvent(tx, eventId), { readOnly: true });
     return e !== null && e.organization !== null && this.memberships.userSeesAttendeesOf(id, e.organization);
   }
 
   async canWriteForArticle(articleId: string, patchOrg: string | null, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    const a = await repo.findArticle(this.deps.db, articleId);
+    const a = await withTx(this.deps.db, (tx) => repo.findArticle(tx, articleId), { readOnly: true });
     return a !== null && this.canMove(id, a.organization, patchOrg);
   }
 
@@ -98,7 +99,7 @@ export class OrgAccess {
   async canEditOwnIndependentArticle(articleId: string, patchOrg: string | null, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    const status = await repo.independentStatusOwnedBy(this.deps.db, articleId, id);
+    const status = await withTx(this.deps.db, (tx) => repo.independentStatusOwnedBy(tx, articleId, id), { readOnly: true });
     const editable = status !== null && status !== 'published';
     return editable && (this.isIndependent(patchOrg) || this.memberships.userBelongsTo(id, patchOrg));
   }
@@ -110,7 +111,7 @@ export class OrgAccess {
   async canWriteForEvent(eventId: string, patchOrg: string | null, p: Principal): Promise<boolean> {
     const id = await this.currentUserId(p);
     if (id === null) return false;
-    const e = await repo.findEvent(this.deps.db, eventId);
+    const e = await withTx(this.deps.db, (tx) => repo.findEvent(tx, eventId), { readOnly: true });
     return e !== null && this.canMove(id, e.organization, patchOrg);
   }
 
