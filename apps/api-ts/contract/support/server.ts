@@ -1,10 +1,11 @@
-// startServer(): a fresh server process (Java jar or Bun) on a free port,
+// startServer(): a fresh server process (Bun, or a Java jar) on a free port,
 // against a fresh clone of the migrated template database. One per test file
 // (beforeAll), so no in-memory state (rate-limit buckets, caches) leaks.
 //
 //   CONTRACT_TARGET=java|ts   (default ts)
+//   CONTRACT_JAR              the Spring Boot jar for the java target. The Java app was deleted after the
+//                             cutover; build one from the last Java commit to compare or to rehearse a rollback.
 //   CONTRACT_JAVA_HOME        default ~/.local/jdk/jdk-21.0.12.1+1/Contents/Home, else JAVA_HOME
-//   CONTRACT_JAR              default apps/api/target/ceitba-api-1.0.0.jar
 //   CONTRACT_KEEP_LOGS=1      print the server log when a file finishes
 
 import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
@@ -20,7 +21,10 @@ export const TARGET: Target = (process.env.CONTRACT_TARGET as Target) === 'java'
 
 const API_TS_DIR = join(import.meta.dir, '..', '..');
 const REPO_DIR = join(API_TS_DIR, '..', '..');
-const JAR = process.env.CONTRACT_JAR ?? join(REPO_DIR, 'apps', 'api', 'target', 'ceitba-api-1.0.0.jar');
+const JAR = process.env.CONTRACT_JAR ?? '';
+/** True when CONTRACT_JAR names an existing jar: tests that need the Java app (cross-runtime) run only then. */
+export const JAVA_AVAILABLE = JAR !== '' && existsSync(JAR);
+export const JAVA_TARGET_REMOVED = 'The Java app was deleted after the cutover to Bun: the java target needs CONTRACT_JAR=<a jar built from the last Java commit> (git worktree add <dir> <sha>; cd <dir>/apps/api && ./mvnw -B -ntp -q package -DskipTests).';
 const LOG_DIR = runDir(join(API_TS_DIR, 'contract', '.logs'));
 /** CONTRACT_RECORD=1 appends every request to contract/.corpus/corpus.jsonl (replayed by contract/diff.ts). */
 const CORPUS_DIR = join(API_TS_DIR, 'contract', '.corpus');
@@ -168,7 +172,7 @@ export async function startServer(opts: StartOptions = {}): Promise<Server> {
     const out = openSync(logFile, 'w');
     const spawnEnv = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', ...env };
     if (target === 'java') {
-      if (!existsSync(JAR)) throw new Error(`${JAR} is missing: build it with cd apps/api && ./mvnw -B -ntp -q -o package -DskipTests`);
+      if (!JAVA_AVAILABLE) throw new Error(JAR ? `${JAR} is missing. ${JAVA_TARGET_REMOVED}` : JAVA_TARGET_REMOVED);
       // en_US like the eclipse-temurin image (Bean Validation messages without Accept-Language).
       proc = Bun.spawn([javaBin(), '-XX:TieredStopAtLevel=1', '-Xss512k', '-Duser.language=en', '-Duser.country=US', '-jar', JAR], { env: spawnEnv, stdout: out, stderr: out, cwd: REPO_DIR });
     } else {

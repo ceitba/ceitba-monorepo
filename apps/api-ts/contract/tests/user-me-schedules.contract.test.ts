@@ -6,11 +6,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { bearer, mintJwt, seedUser, useServer } from '../support';
+import { JAVA_MIGRATIONS_DIR } from '../../src/config/sections/db';
 
 const api = useServer();
 const ALICE = 'alice@itba.edu.ar';
 const BOB = 'bob@itba.edu.ar';
-const V22 = join(import.meta.dir, '..', '..', '..', 'api', 'src', 'main', 'resources', 'db', 'migration', 'V22__saved_schedules_primary.sql');
+const V22 = join(JAVA_MIGRATIONS_DIR, 'V22__saved_schedules_primary.sql');
 
 const as = async (email: string) => bearer(await mintJwt({ email, name: email }));
 const body = (name: string) => `{"name":"${name}","careerId":"S","plan":"S10-Rev23",

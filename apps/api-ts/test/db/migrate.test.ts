@@ -182,9 +182,10 @@ describe('against Postgres', () => {
 });
 
 // Live: the jar's own Flyway migrates a fresh database, then our runner validates it.
-const JAR = join(import.meta.dir, '..', '..', '..', 'api', 'target', 'ceitba-api-1.0.0.jar');
+// The Java app is deleted: CONTRACT_JAR names a jar built from the last Java commit.
+const JAR = process.env.CONTRACT_JAR ?? '';
 const JAVA = process.env.CONTRACT_JAVA_HOME ?? join(homedir(), '.local/jdk/jdk-21.0.12.1+1/Contents/Home');
-describe.skipIf(!existsSync(JAR) || !existsSync(JAVA))('against a database Java Flyway migrated', () => {
+describe.skipIf(!JAR || !existsSync(JAR) || !existsSync(JAVA))('against a database Java Flyway migrated', () => {
   test('zeroPendingAndZeroChecksumMismatches', async () => {
     const admin = postgres(await pgServerUrl(), { max: 1, onnotice: () => {} });
     const name = `migj_${process.pid}_${Date.now()}`;

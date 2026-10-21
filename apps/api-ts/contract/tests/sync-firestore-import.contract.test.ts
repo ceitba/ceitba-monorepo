@@ -8,7 +8,7 @@ import { nameUuid } from '../../src/features/sync/proposalImporter';
 import { apiKey, bearer, mintJwt, seedCareer, seedPlan, supports, TEST_SYNC_KEY, useServer } from '../support';
 
 const api = useServer();
-const FIXTURE = readFileSync(join(import.meta.dir, '../../../api/src/test/resources/fixtures/firestore-export.json'), 'utf8');
+const FIXTURE = readFileSync(join(import.meta.dir, '../../test/fixtures/firestore-export.json'), 'utf8');
 const hasProposals = await supports('GET /v1/proposals/{id}', 'GET /v1/proposals/{id}/comments', 'PUT /v1/proposals/{id}/vote', 'POST /v1/proposals/{id}/comments');
 const proposal = (doc: string) => nameUuid(`firestore:propuestas:${doc}`);
 let fixture = FIXTURE;

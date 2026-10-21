@@ -10,6 +10,7 @@ import { pushMessage } from '../../src/features/push/service';
 import { withTx } from '../../src/db/client';
 import { firePushes, forResource, pendingPushes, type PushTrigger } from '../../src/features/news/pushTriggers';
 import { testApp, type TestApp } from '../support/app';
+import { JAVA_MIGRATIONS_DIR } from '../../src/config/sections/db';
 
 let t: TestApp;
 const gateway = new FakePushGateway();
@@ -103,7 +104,7 @@ describe('PushTriggerIT', () => {
       VALUES ('old-dated', 't', 'e', 'news', 'published', '2024-01-01T00:00:00Z'),
              ('old-undated', 't', 'e', 'news', 'published', NULL),
              ('old-draft', 't', 'e', 'news', 'draft', '2024-01-01T00:00:00Z')`;
-    const file = join(import.meta.dir, '../../../api/src/main/resources/db/migration/V27__article_push_sent_at.sql');
+    const file = join(JAVA_MIGRATIONS_DIR, 'V27__article_push_sent_at.sql');
     const src = readFileSync(file, 'utf8');
     const start = src.indexOf('UPDATE "public"."articles"');
     expect(start).toBeGreaterThanOrEqual(0);

@@ -5,15 +5,14 @@
 // (shareDatabaseWith), the real overlap condition. Token *signing* parity on
 // separate databases is cross-signing.contract.test.ts; the job locks (no jar
 // needed) are test/jobs/joblock-cross-runtime.test.ts.
-// Needs the Java jar: skipped without it.
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+// Needs a Java jar (CONTRACT_JAR, built from the last Java commit): skipped without it. Green on
+// the jar of the cutover commit.
 import { describe, expect, test } from 'bun:test';
 import bcrypt from 'bcryptjs';
 import { bearer, sessionCookie, useServer } from '../support';
+import { JAVA_AVAILABLE } from '../support/server';
 
-const JAR = process.env.CONTRACT_JAR ?? join(import.meta.dir, '..', '..', '..', 'api', 'target', 'ceitba-api-1.0.0.jar');
-const run = existsSync(JAR) && process.env.CONTRACT_SKIP_CROSS !== '1';
+const run = JAVA_AVAILABLE && process.env.CONTRACT_SKIP_CROSS !== '1';
 const EMAIL = 'appreview@example.com';
 const env = { REVIEW_LOGIN_EMAIL: EMAIL, REVIEW_LOGIN_PASSWORD_HASH: bcrypt.hashSync('pw', 4) };
 const java = run ? useServer({ target: 'java', env }) : null;

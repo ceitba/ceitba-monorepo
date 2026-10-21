@@ -9,14 +9,18 @@
 //   bun contract/parity.ts            # summary + every unmatched test
 //   bun contract/parity.ts --list     # also every match
 //   bun contract/parity.ts --check    # exit 1 when a test is neither matched nor excluded
+//
+// The Java app is gone: its test list is frozen in test/fixtures/java-tests.json
+// (written from apps/api/src/test/java with UPDATE_JAVA_TESTS=1 while it existed).
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = join(import.meta.dir, '..');
 const JAVA_TESTS = join(ROOT, '..', 'api', 'src', 'test', 'java');
 const TS_DIRS = [join(ROOT, 'contract', 'tests'), join(ROOT, 'test')];
 const EXCLUSIONS = join(import.meta.dir, 'parity-exclusions.json');
+const SNAPSHOT = join(ROOT, 'test', 'fixtures', 'java-tests.json');
 const IN_PROCESS = join(import.meta.dir, 'IN-PROCESS.md');
 
 function walk(dir: string, ext: string): string[] {
@@ -60,6 +64,10 @@ function stripComments(src: string): string {
 }
 
 function javaClasses(): Map<string, JavaClass> {
+  if (!existsSync(JAVA_TESTS)) {
+    const frozen = JSON.parse(readFileSync(SNAPSHOT, 'utf8')) as JavaClass[];
+    return new Map(frozen.map((c) => [c.name, c]));
+  }
   const out = new Map<string, JavaClass>();
   for (const file of walk(JAVA_TESTS, '.java')) {
     const src = stripComments(readFileSync(file, 'utf8'));
@@ -67,7 +75,11 @@ function javaClasses(): Map<string, JavaClass> {
     if (!cls) continue;
     const methods: string[] = [];
     for (const m of src.matchAll(/@(?:org\.junit\.jupiter\.api\.)?(?:Test|ParameterizedTest)\b[\s\S]*?\bvoid\s+(\w+)\s*\(/g)) methods.push(m[1]!);
-    out.set(cls[2]!, { name: cls[2]!, file, abstract: /\babstract\s+class\b/.test(cls[0]), parent: cls[3] ?? null, methods });
+    out.set(cls[2]!, { name: cls[2]!, file: relative(JAVA_TESTS, file), abstract: /\babstract\s+class\b/.test(cls[0]), parent: cls[3] ?? null, methods });
+  }
+  if (process.env.UPDATE_JAVA_TESTS) {
+    const sorted = [...out.values()].sort((a, b) => a.file.localeCompare(b.file));
+    writeFileSync(SNAPSHOT, `${JSON.stringify(sorted, null, 1)}\n`);
   }
   return out;
 }

@@ -3,22 +3,22 @@
 // boots its own server(s) on a fresh database clone, so files are independent).
 //
 //   bun contract/run.ts                       # CONTRACT_TARGET (default ts)
-//   bun contract/run.ts --target java         # against the Spring Boot jar (built if missing/stale)
-//   bun contract/run.ts --target both         # java, then ts
+//   CONTRACT_JAR=<jar> bun contract/run.ts --target java   # against a Spring Boot jar built from the last
+//                                                          # Java commit (the Java app is deleted)
+//   CONTRACT_JAR=<jar> bun contract/run.ts --target both   # java, then ts
 //   bun contract/run.ts --workers 4 career    # only files whose name contains "career"
 //
 // Env: CONTRACT_PG_URL (reuse a server), CONTRACT_PARALLEL (default workers),
 // CONTRACT_JAVA_HOME, CONTRACT_JAR.
 
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { availableParallelism, homedir } from 'node:os';
+import { availableParallelism } from 'node:os';
 import { join } from 'node:path';
 import { pgServerUrl, templateDatabase } from './support/pg';
+import { JAVA_AVAILABLE, JAVA_TARGET_REMOVED } from './support/server';
 
 const ROOT = join(import.meta.dir, '..');
-const REPO = join(ROOT, '..', '..');
 const TESTS = join(import.meta.dir, 'tests');
-const JAR = process.env.CONTRACT_JAR ?? join(REPO, 'apps', 'api', 'target', 'ceitba-api-1.0.0.jar');
 
 const args = process.argv.slice(2);
 const opt = (name: string) => {
@@ -32,27 +32,9 @@ const targetArg = opt('--target') ?? process.env.CONTRACT_TARGET ?? 'ts';
 const workers = Number(opt('--workers') ?? process.env.CONTRACT_PARALLEL ?? Math.max(1, Math.min(6, Math.floor(availableParallelism() / 2))));
 const filters = args.filter((a) => !a.startsWith('--'));
 const targets = targetArg === 'both' ? ['java', 'ts'] : [targetArg];
-
-function newestMtime(dir: string): number {
-  let max = 0;
-  for (const f of readdirSync(dir, { recursive: true }) as string[]) {
-    const p = join(dir, f);
-    const s = statSync(p);
-    if (s.isFile() && s.mtimeMs > max) max = s.mtimeMs;
-  }
-  return max;
-}
-
-async function ensureJar() {
-  const src = join(REPO, 'apps', 'api', 'src', 'main');
-  if (existsSync(JAR) && statSync(JAR).mtimeMs >= newestMtime(src)) return;
-  console.log('Building the Java jar (missing or older than apps/api/src/main)...');
-  const javaHome = process.env.CONTRACT_JAVA_HOME ?? join(homedir(), '.local/jdk/jdk-21.0.12.1+1/Contents/Home');
-  const p = Bun.spawn(['./mvnw', '-B', '-ntp', '-q', '-o', 'package', '-DskipTests'], {
-    cwd: join(REPO, 'apps', 'api'), env: { ...process.env, JAVA_HOME: existsSync(javaHome) ? javaHome : process.env.JAVA_HOME ?? '' },
-    stdout: 'inherit', stderr: 'inherit',
-  });
-  if ((await p.exited) !== 0) throw new Error('mvn package failed');
+if (targets.includes('java') && !JAVA_AVAILABLE) {
+  console.error(JAVA_TARGET_REMOVED);
+  process.exit(2);
 }
 
 const files = readdirSync(TESTS).filter((f) => f.endsWith('.contract.test.ts')).filter((f) => !filters.length || filters.some((x) => f.includes(x))).sort();
@@ -81,7 +63,6 @@ for (const d of ['.hits', '.logs']) {
 
 let failed = false;
 for (const target of targets) {
-  if (target === 'java') await ensureJar();
   const logDir = join(import.meta.dir, '.logs', RUN_ID);
   const shards: string[][] = Array.from({ length: Math.min(workers, files.length) }, () => []);
   files.forEach((f, i) => shards[i % shards.length]!.push(join(TESTS, f)));
