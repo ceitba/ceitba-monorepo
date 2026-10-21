@@ -104,9 +104,13 @@ comparison.
 - Bun has a higher p50 on 9 routes and a lower req/s on 8.
 
 Both containers ran under a 2-CPU quota (`--cpus 2`). Most of Bun's p95 wins come from Java's 60 to 90 ms tail
-floor, and that floor is CPU-quota throttling (Findings). Production sets a memory limit (`API_MEMORY_LIMIT`,
-default 1 GiB) but no CPU limit, so in production Java's floor may disappear and those wins may shrink. The
-regression does not depend on the quota.
+floor, which is CPU-quota throttling (Findings).
+
+The production VPS has **2 vCPUs and 4 GB of RAM** in total, so this quota is not artificial: it is the whole
+machine. Production sets no per-container CPU limit, but the API shares those 2 vCPUs with Postgres, MinIO,
+Caddy and the `ceitba-embeddings` service (llama.cpp, 2 threads). Under load the JVM's threads contend for the
+same 2 CPUs the test gave them, and also with everything else. These results are therefore representative of
+production, or optimistic for Java. The regression does not depend on the quota.
 
 ### Setup
 
@@ -183,8 +187,8 @@ most: the home page, the newsletter, the scheduler, the session, Apuntes and the
   - But Java's p95 sits on a 60 to 90 ms floor even for `/auth/me`. That floor is CFS quota throttling. In a 20 s
     `/auth/me` run, the container's `cpu.stat` recorded `nr_throttled` going up by 201, about once per 100 ms
     period, with 89 s of throttled thread time. The JVM runs 64 threads (Tomcat, GC, JIT) against a 2-CPU quota.
-  - The tail depends on the quota. Production sets no CPU limit, so rerun on the VPS's real limits before
-    cutover.
+  - The tail depends on the quota. The VPS has 2 vCPUs in total, shared with Postgres, MinIO, Caddy and the
+    embeddings service, so production has at most what the test gave Java (see above).
 - **Java's wiki search is slow, and Bun's is not.**
   - Both run the same SQL with server-side prepared statements.
   - The generic plan of that query cannot use the HNSW index: it does a nested loop over every chunk and a top-N
@@ -226,3 +230,17 @@ Sampled with `docker stats` about once per second for each whole run.
   the wiki vectors are random.
 - **Single runtime process.** Bun runs one process, as in the image. Java's req/s advantage on cheap routes comes
   from using both CPUs.
+
+### Memory budget on the VPS (4 GB total)
+
+| | Java | Bun |
+|---|---|---|
+| Container limit per color | 2 GiB (heap up to 75%) | 1 GiB |
+| Idle, one color | 735 MiB | 80–120 MiB |
+| Peak under load | 1,839–1,981 MiB, within 70 MiB of the limit | 290–321 MiB |
+| Blue/green overlap, two colors idle | ~1.5 GiB | ~0.25 GiB |
+
+The other services on the same 4 GB are Postgres, MinIO, Caddy, the MCP server, and `ceitba-embeddings` (1 GiB
+limit, about 200 MB resident). With Java, two colors under load could reach about 4 GiB of limits on their own.
+With Bun, the API stops being the biggest memory consumer on the machine.
+

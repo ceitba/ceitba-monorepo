@@ -45,8 +45,10 @@ name, e.g. `docker compose logs -f ceitba-api-blue`, `docker compose exec ceitba
 API is reachable only through Caddy (`curl https://ceitba.org.ar/api/actuator/health`, or from a container on
 `ceitba-proxy`, `http://ceitba-caddy:8081/api/...`); there is no `127.0.0.1:8080` on the VPS any more.
 
-Memory: each color has `limits: 1G` (`API_MEMORY_LIMIT`, 256M reserved); the Bun server idles at ~100 MB. During
-a deploy both colors run for ~10–20s.
+Memory: each color has `limits: 1G` (`API_MEMORY_LIMIT`, 256M reserved); the Bun server idles at ~100 MB and
+peaked at ~320 MB in the load test (`docs/plans/api-bun-baseline.md`). During a deploy both colors run for
+~10–20s. The VPS has 2 vCPUs and 4 GB of RAM for everything (Postgres, MinIO, Caddy, MCP, `ceitba-embeddings`
+with a 1G limit, and the API), so keep the sum of the limits in mind before raising one.
 
 ### Local development
 
@@ -178,6 +180,10 @@ including the last Java one:
    ```
 3. `cd ~/CEITBA-API && bash deploy-api.sh`. The usual blue/green deploy brings the pinned image up next to the
    current one and switches when it is healthy.
+
+Memory on a Java rollback: a JVM color idles at ~735 MB and grows toward its 1.5 GB heap cap under load. During
+the rollback deploy both colors run for a few seconds, so the 4 GB VPS is tight while a Java color is under
+load. Roll back at a quiet time.
 
 This is safe against the Java image because sessions, JWTs and refresh tokens are compatible in both directions
 and the cutover release ships no migration (the Java app's Flyway validates the same history). After a release
