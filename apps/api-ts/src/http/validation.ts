@@ -358,9 +358,19 @@ export const jv = {
     });
   },
 
-  /** A nested record / the request body itself. Unknown properties are ignored. */
-  object<Shape extends Record<string, z.ZodType>>(shape: Shape, o?: CommonOpts) {
+  /**
+   * A nested record / the request body itself. Unknown properties are ignored.
+   * `json`: @JsonProperty / @JsonAlias renames, component -> JSON name(s) (the first is the
+   * property, the rest aliases). The component's own name is then an unknown property, and
+   * violations are named by the component (`fileNumber: must be greater than 0`), like Java.
+   */
+  object<Shape extends Record<string, z.ZodType>>(shape: Shape, o?: CommonOpts & { json?: { [K in keyof Shape]?: string | string[] } }) {
     const inner = z.object(shape);
+    const names: Record<string, string[]> = {};
+    for (const k of Object.keys(shape)) {
+      const j = o?.json?.[k];
+      names[k] = j === undefined ? [k] : Array.isArray(j) ? j : [j];
+    }
     return z.any().transform((v: unknown, ctx): z.output<typeof inner> | null => {
       if (v === undefined || v === null) {
         nullCheck(ctx, null, o);
@@ -368,7 +378,12 @@ export const jv = {
       }
       if (typeof v !== 'object' || Array.isArray(v)) return bindFail(ctx, 'object');
       const full: Record<string, unknown> = {};
-      for (const k of Object.keys(shape)) full[k] = (v as Record<string, unknown>)[k];
+      // Jackson reads properties in document order: of several names (property + aliases), the last one present wins.
+      const keys = Object.keys(v as Record<string, unknown>);
+      for (const k of Object.keys(shape)) {
+        const present = keys.filter((x) => names[k]!.includes(x));
+        full[k] = present.length ? (v as Record<string, unknown>)[present[present.length - 1]!] : undefined;
+      }
       const r = inner.safeParse(full);
       if (!r.success) {
         for (const iss of r.error.issues) ctx.addIssue(iss as never);
@@ -379,8 +394,8 @@ export const jv = {
     });
   },
 
-  /** Map<String, V>. */
-  map<S extends z.ZodType>(value: S, o?: CommonOpts) {
+  /** Map<String, V>; `size` = @Size on the map (its entry count). */
+  map<S extends z.ZodType>(value: S, o?: CommonOpts & { size?: SizeOpts }) {
     return z.any().transform((v: unknown, ctx): Record<string, z.output<S>> | null => {
       if (v === undefined || v === null) {
         nullCheck(ctx, null, o);
@@ -393,6 +408,8 @@ export const jv = {
         if (r.success) out[k] = r.data as z.output<S>;
         else for (const iss of r.error.issues) ctx.addIssue({ ...(iss as object), path: [k, ...iss.path] } as never);
       }
+      checkSize(ctx, Object.keys(out).length, o?.size);
+      runCustom(ctx, out, o);
       return out;
     });
   },
@@ -475,6 +492,8 @@ export type ParamSpec<T> = {
   parse(raw: string | undefined, name: string): T;
 };
 
+const PRIMITIVES = new Set(['int', 'long', 'boolean', 'double']);
+
 function conv<T>(javaType: string, required: boolean, fn: (s: string) => T | { error: string }, def?: T): ParamSpec<T | null> {
   return {
     javaType,
@@ -484,6 +503,9 @@ function conv<T>(javaType: string, required: boolean, fn: (s: string) => T | { e
         if (required) throw new MissingParameterError(name, javaType.replace(/^java\.lang\./, '').replace(/^java\.util\./, ''));
         return null;
       }
+      // Spring's converters turn "" into null for object types (Integer, UUID, enums, dates; not
+      // String), so an optional `?limit=` is absent. A primitive still fails to convert "".
+      if (raw === '' && !required && javaType !== 'java.lang.String' && !PRIMITIVES.has(javaType)) return null;
       const r = fn(raw);
       if (r && typeof r === 'object' && 'error' in (r as object)) {
         throw new ArgumentTypeMismatchError(name, raw, javaType, (r as { error: string }).error);

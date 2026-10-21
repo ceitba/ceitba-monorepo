@@ -114,11 +114,6 @@ export interface BenefitCardResponse {
 export const PushBroadcastRequest = jv.object({
   title: jv.string({ notBlank: true, size: { max: 200 } }),
   body: jv.string({ notBlank: true, size: { max: 1000 } }),
-  data: jv.map(jv.string()).superRefine((m, ctx) => {
-    // @Size on a Map: the entry count, Hibernate's localized Size message.
-    if (m != null && Object.keys(m).length > 10) {
-      ctx.addIssue({ code: 'custom', message: 'Size', params: { bean: { key: 'Size', args: { min: 0, max: 10 } } } });
-    }
-  }),
+  data: jv.map(jv.string(), { size: { max: 10 } }),
 });
 export type PushBroadcastRequest = NonNullable<z.output<typeof PushBroadcastRequest>>;

@@ -7,40 +7,22 @@
 import { z } from 'zod';
 import { jv } from '../../http/validation';
 
-/**
- * @JsonProperty renames: the JSON key binds the Java component, whose name is
- * what Bean Validation reports ("fileNumber: must be greater than 0"); the
- * Java name itself is not a JSON property (ignored, like any unknown key).
- */
-function jsonNames<S extends z.ZodType>(renames: Record<string, string>, schema: S) {
-  const javaNames = new Set(Object.values(renames));
-  return z.any().transform((v: unknown) => {
-    if (v === null || typeof v !== 'object' || Array.isArray(v)) return v;
-    const out: Record<string, unknown> = {};
-    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
-      if (javaNames.has(k)) continue;
-      out[renames[k] ?? k] = x;
-    }
-    return out;
-  }).pipe(schema);
-}
-
 export { RegisterDeviceRequest } from './logic/registerDeviceRequest';
 
 /** CreateUserRequest(@NotBlank @Email email, name, @JsonProperty("file_number") @Positive fileNumber, @JsonProperty("career_id") careerId, plan). */
-export const CreateUserRequest = jsonNames({ file_number: 'fileNumber', career_id: 'careerId' }, jv.object({
+export const CreateUserRequest = jv.object({
   email: jv.string({ notBlank: true, email: true }),
   name: jv.string(),
   fileNumber: jv.int({ positive: true }),
   careerId: jv.string(),
   plan: jv.string(),
-}));
+}, { json: { fileNumber: 'file_number', careerId: 'career_id' } });
 export type CreateUserRequest = NonNullable<z.output<typeof CreateUserRequest>>;
 
 /** UpdateFileNumberRequest(@JsonProperty("file_number") @Positive @Max(999_999) Integer fileNumber). */
-export const UpdateFileNumberRequest = jsonNames({ file_number: 'fileNumber' }, jv.object({
+export const UpdateFileNumberRequest = jv.object({
   fileNumber: jv.int({ positive: true, max: 999_999 }),
-}));
+}, { json: { fileNumber: 'file_number' } });
 export type UpdateFileNumberRequest = NonNullable<z.output<typeof UpdateFileNumberRequest>>;
 
 /** UpdatePreferencesRequest(@Pattern("light|dark|", message) theme, @Size(max = 5, message) language). */
