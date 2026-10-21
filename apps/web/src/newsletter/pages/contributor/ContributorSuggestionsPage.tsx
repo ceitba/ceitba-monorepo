@@ -46,16 +46,16 @@ export default function ContributorSuggestionsPage() {
             Artículos y eventos que propusiste al equipo editorial.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             to={newsletterPath('/contribute/suggest/article')}
-            className="inline-flex items-center gap-2 min-h-[40px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded"
+            className="inline-flex items-center gap-2 min-h-[40px] px-4 bg-primary text-surface font-body text-body-sm font-semibold rounded-xs hover:bg-primary-600 transition-colors duration-150 focus-visible:rounded-sm"
           >
             <PlusIcon /> Artículo
           </Link>
           <Link
             to={newsletterPath('/contribute/suggest/event')}
-            className="inline-flex items-center gap-2 min-h-[40px] px-4 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded"
+            className="inline-flex items-center gap-2 min-h-[40px] px-4 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-primary font-body text-body-sm font-semibold rounded-xs hover:border-primary hover:text-primary transition-colors duration-150 focus-visible:rounded-sm"
           >
             <PlusIcon /> Evento
           </Link>
@@ -91,7 +91,7 @@ function SuggestionRow({ item }: SuggestionRowProps) {
           <span className="font-mono text-label uppercase tracking-widest text-ink-secondary">
             {isArticle ? 'Artículo' : 'Evento'}
           </span>
-          <span className={['font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-sm', s.cls].join(' ')}>
+          <span className={['font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-xs', s.cls].join(' ')}>
             {s.label}
           </span>
         </div>
@@ -108,11 +108,11 @@ function SuggestionRow({ item }: SuggestionRowProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         {item.status === 'changes_requested' && (
           <Link
             to={newsletterPath(`/contribute/review/${item.resourceType}/${item.id}`)}
-            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm font-semibold text-white bg-accent hover:bg-accent-600 rounded-sm transition-colors duration-150 focus-visible:rounded"
+            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm font-semibold text-white bg-accent hover:bg-accent-600 rounded-xs transition-colors duration-150 focus-visible:rounded-sm"
           >
             Revisar cambios
           </Link>
@@ -120,7 +120,7 @@ function SuggestionRow({ item }: SuggestionRowProps) {
         {(item.status === 'pending_review' || item.status === 'rejected') && (
           <Link
             to={newsletterPath(`/contribute/suggest/${isArticle ? 'article' : 'event'}/${item.id}/edit`)}
-            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 dark:hover:bg-primary-800 rounded-sm transition-colors duration-150 focus-visible:rounded"
+            className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm text-primary hover:bg-primary-50 dark:hover:bg-primary-800 rounded-xs transition-colors duration-150 focus-visible:rounded-sm"
           >
             {item.status === 'rejected' ? 'Re-enviar' : 'Editar'}
           </Link>
@@ -144,13 +144,13 @@ function EmptyState() {
       <div className="flex gap-3 mt-1">
         <Link
           to={newsletterPath('/contribute/suggest/article')}
-          className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150"
+          className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-primary text-surface font-body text-body-sm font-semibold rounded-xs hover:bg-primary-600 transition-colors duration-150"
         >
           <PlusIcon /> Sugerir artículo
         </Link>
         <Link
           to={newsletterPath('/contribute/suggest/event')}
-          className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-primary font-body text-body-sm font-semibold rounded-sm hover:border-primary hover:text-primary transition-colors duration-150"
+          className="inline-flex items-center gap-2 min-h-[44px] px-5 bg-white dark:bg-night-surface border border-border dark:border-night-border text-ink-primary font-body text-body-sm font-semibold rounded-xs hover:border-primary hover:text-primary transition-colors duration-150"
         >
           <PlusIcon /> Sugerir evento
         </Link>

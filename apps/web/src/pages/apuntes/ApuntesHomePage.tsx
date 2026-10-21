@@ -92,14 +92,14 @@ export default function ApuntesHomePage() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none">
+    <main id="main-content" tabIndex={-1} className="outline-hidden">
       <section className="bg-white dark:bg-night-raised border-b border-border dark:border-night-border">
         <div className="container-content py-section-mobile lg:py-14 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
           <div className="max-w-2xl">
             <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('apuntes.home.eyebrow')}
             </span>
-            <h1 className="font-display font-bold text-h2 lg:text-h1 text-ink-primary dark:text-night-text mt-1">
+            <h1 className="font-display font-bold text-h2 lg:text-h1 lg:font-extrabold text-ink-primary dark:text-night-text mt-1">
               {t('apuntes.home.title')}
             </h1>
             <p className="font-body text-body-lg text-ink-secondary dark:text-night-muted mt-3">
@@ -133,7 +133,7 @@ export default function ApuntesHomePage() {
                     <span className="flex items-center gap-2 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                       {p.subjectId}
                       {p.hasWiki && (
-                        <span className="px-1.5 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 normal-case tracking-normal">
+                        <span className="px-1.5 rounded-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 normal-case tracking-normal">
                           {t('apuntes.pins.wiki')}
                         </span>
                       )}
@@ -275,7 +275,7 @@ function SubjectCard({ subject: s, lang }: { subject: ApunteSubject; lang: strin
             {semesterLabel(s, t) && ` · ${semesterLabel(s, t)}`}
           </span>
           {hasWiki && (
-            <span className="px-1.5 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 normal-case tracking-normal">
+            <span className="px-1.5 rounded-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 normal-case tracking-normal">
               {t('apuntes.pins.wiki')}
             </span>
           )}

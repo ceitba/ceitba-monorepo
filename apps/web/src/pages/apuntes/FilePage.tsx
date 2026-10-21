@@ -68,7 +68,7 @@ export default function FilePage() {
 
   if (notFound) {
     return (
-      <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
         <EmptyState
           title={t('apuntes.file.notFoundTitle')}
           body={t('apuntes.file.notFoundBody')}
@@ -88,7 +88,7 @@ export default function FilePage() {
     : ''
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <nav aria-label={t('apuntes.breadcrumbAria')} className="mb-4 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted flex flex-wrap items-center gap-x-2">
         <Link to="/apuntes" className="hover:text-primary">{t('apuntes.title')}</Link>
         {file?.subjectId && (
@@ -109,7 +109,7 @@ export default function FilePage() {
         <LoadingRegion className="flex flex-col gap-4">
           <Skeleton className="h-10 w-2/3" />
           <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-[60vh] !rounded-card" />
+          <Skeleton className="h-[60vh] rounded-card!" />
         </LoadingRegion>
       )}
 
@@ -123,7 +123,7 @@ export default function FilePage() {
                 <YearBadge year={file.academicYear} source={file.academicYearSource} className="normal-case tracking-normal" />
                 {file.path && <span className="normal-case tracking-normal truncate">· {file.path}</span>}
               </div>
-              <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text mt-2 break-words">
+              <h1 className="font-display font-bold text-h3 lg:text-h2 lg:font-extrabold text-ink-primary dark:text-night-text mt-2 wrap-break-word">
                 {file.name}
               </h1>
               <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted mt-2">
@@ -132,7 +132,7 @@ export default function FilePage() {
                   : <>{t('apuntes.file.by', { author })}{meta && ` · ${meta}`}</>}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 flex-shrink-0">
+            <div className="flex flex-wrap gap-2 shrink-0">
               {file.hasPdf && !file.exportBlocked && (
                 <a href={fileDownloadUrl(file.id, 'pdf', 'attachment')} className={buttonClass({ variant: 'outline' })}>
                   {t('apuntes.file.downloadPdf')}

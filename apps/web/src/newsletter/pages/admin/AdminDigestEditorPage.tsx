@@ -363,7 +363,7 @@ export default function AdminDigestEditorPage() {
             {t(`admin.digests.editor.readOnly.${digest.status}`, { defaultValue: t('admin.digests.editor.readOnly.cancelled') })}
           </p>
           <DigestCounts counts={digest.counts} />
-          <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
+          <div className="flex flex-col sm:flex-row gap-2 sm:shrink-0">
             {sending ? (
               <Button variant="dangerGhost" onClick={() => openDialog('cancel')} disabled={actionsLocked}>
                 {t('admin.digests.editor.stopSending')}
@@ -603,13 +603,13 @@ function Checklist({ title, empty, items, disabled, onToggle }: ChecklistProps) 
                   checked={!item.excluded}
                   disabled={disabled}
                   onChange={() => onToggle(item.id)}
-                  className="mt-0.5 w-5 h-5 flex-shrink-0 accent-primary"
+                  className="mt-0.5 w-5 h-5 shrink-0 accent-primary"
                 />
                 <span className="flex flex-col min-w-0">
                   <span className={`font-body text-body-sm font-semibold ${item.excluded ? 'line-through text-ink-secondary dark:text-night-muted' : 'text-ink-primary dark:text-night-text'}`}>
                     {item.title}
                   </span>
-                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted break-words">
+                  <span className="font-mono text-label text-ink-secondary dark:text-night-muted wrap-break-word">
                     {[item.org, item.meta].filter(Boolean).join(' · ')}
                   </span>
                 </span>

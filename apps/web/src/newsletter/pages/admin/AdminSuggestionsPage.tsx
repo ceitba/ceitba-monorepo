@@ -72,7 +72,7 @@ export default function AdminSuggestionsPage() {
               {label}
               {count > 0 && (
                 <span className={[
-                  'ml-2 font-mono text-label px-1.5 py-0.5 rounded-sm',
+                  'ml-2 font-mono text-label px-1.5 py-0.5 rounded-xs',
                   tab === key ? 'bg-primary-100 text-primary' : 'bg-surface text-ink-secondary',
                 ].join(' ')}>
                   {count}
@@ -145,14 +145,14 @@ function SuggestionRow({ item }: SuggestionRowProps) {
         <p className="font-mono text-label text-ink-secondary">{item.suggestedBy?.email}</p>
       </td>
       <td className="px-4 py-3">
-        <span className={['font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-sm', s.cls].join(' ')}>
+        <span className={['font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-xs', s.cls].join(' ')}>
           {s.label}
         </span>
       </td>
       <td className="px-4 py-3 text-right">
         <Link
           to={reviewPath}
-          className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm font-semibold text-primary hover:bg-primary-50 rounded-sm transition-colors duration-150 focus-visible:rounded"
+          className="min-h-[36px] px-3 inline-flex items-center font-body text-body-sm font-semibold text-primary hover:bg-primary-50 rounded-xs transition-colors duration-150 focus-visible:rounded-sm"
         >
           {item.status === 'pending_review' ? 'Revisar' : 'Ver'}
         </Link>

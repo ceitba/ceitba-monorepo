@@ -205,18 +205,18 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                 type="button"
                 onClick={() => toggleFolder(item.id)}
                 aria-label={t(isCollapsed ? 'apuntes.tree.expand' : 'apuntes.tree.collapse', { name: item.name })}
-                className="w-11 h-11 -mx-3 -mb-3 mt-[-0.625rem] flex items-center justify-center rounded-sm text-ink-secondary dark:text-night-muted hover:text-primary flex-shrink-0"
+                className="w-11 h-11 -mx-3 -mb-3 -mt-2.5 flex items-center justify-center rounded-xs text-ink-secondary dark:text-night-muted hover:text-primary shrink-0"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" className={`transition-transform duration-150 ${isCollapsed ? '' : 'rotate-90'}`}>
                   <polyline points="9 6 15 12 9 18" />
                 </svg>
               </button>
             ) : (
-              <span className="w-5 flex-shrink-0" aria-hidden="true" />
+              <span className="w-5 shrink-0" aria-hidden="true" />
             )}
             <KindIcon kind={item.kind} className="mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="font-body text-body-sm text-ink-primary dark:text-night-text break-words">
+              <p className="font-body text-body-sm text-ink-primary dark:text-night-text wrap-break-word">
                 {canPreview ? (
                   <Link to={`/apuntes/archivo/${encodeURIComponent(item.id)}`} className="hover:text-primary hover:underline">
                     {item.name}
@@ -255,12 +255,12 @@ export default function SourceTreeView({ sourceId, onSourceLoaded }: Props) {
                   type="button"
                   disabled={busy}
                   onClick={() => update(item, { subjectId: item.suggestedSubjectId! })}
-                  className="self-start inline-flex items-center gap-1 min-h-[44px] sm:min-h-[32px] px-2 py-0.5 rounded-sm border border-dashed border-accent-400 bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-200 font-body text-body-sm hover:border-solid disabled:opacity-50"
+                  className="self-start inline-flex items-center gap-1 min-h-[44px] sm:min-h-[32px] px-2 py-0.5 rounded-xs border border-dashed border-accent-400 bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-200 font-body text-body-sm hover:border-solid disabled:opacity-50"
                 >
                   <span aria-hidden="true">＋</span>
                   {t('apuntes.tree.useSuggestionNamed', { name: item.suggestedSubjectName ?? item.suggestedSubjectId })}
                   {item.suggestedInMyPlan && (
-                    <span className="ml-1 px-1.5 rounded-sm bg-white/70 dark:bg-night-bg/60 font-mono text-[0.65rem] uppercase tracking-widest">
+                    <span className="ml-1 px-1.5 rounded-xs bg-white/70 dark:bg-night-bg/60 font-mono text-[0.65rem] uppercase tracking-widest">
                       {t('apuntes.tree.inMyPlan')}
                     </span>
                   )}
@@ -377,7 +377,7 @@ function YearSelect({ item, disabled, onChange }: {
           aria-label={t('apuntes.year.forItem', { name: item.name })}
           aria-describedby={explicit == null ? tipId : undefined}
           className={selectClass({
-            className: `!w-auto font-body normal-case tracking-normal ${explicit == null ? '!text-ink-secondary dark:!text-night-muted italic' : ''}`,
+            className: `w-auto! font-body normal-case tracking-normal ${explicit == null ? 'text-ink-secondary! dark:text-night-muted! italic' : ''}`,
           })}
         >
           <option value="">{autoLabel}</option>

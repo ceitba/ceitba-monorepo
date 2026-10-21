@@ -27,7 +27,7 @@ export default function Badge({ tone = 'neutral', children, title, className = '
   return (
     <span
       title={title}
-      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-sm font-mono text-label uppercase tracking-widest ${tone ? TONES[tone] : ''} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-xs font-mono text-label uppercase tracking-widest ${tone ? TONES[tone] : ''} ${className}`}
     >
       {children}
     </span>

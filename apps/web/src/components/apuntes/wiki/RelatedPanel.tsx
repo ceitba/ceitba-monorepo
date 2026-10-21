@@ -27,7 +27,7 @@ export default function RelatedPanel({ related }: { related: KbRelated[] }) {
               {r.subjectName}
               {!r.hasWiki && <span className="ml-1 text-ink-secondary dark:text-night-muted">· {t('wiki.noWikiYet')}</span>}
             </Link>
-            <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-sm font-mono text-[0.65rem] uppercase tracking-widest ${REASON_STYLES[r.reason] ?? REASON_STYLES.LINKED}`}>
+            <span className={`shrink-0 px-1.5 py-0.5 rounded-xs font-mono text-[0.65rem] uppercase tracking-widest ${REASON_STYLES[r.reason] ?? REASON_STYLES.LINKED}`}>
               {t(`wiki.reasons.${r.reason}`, { defaultValue: r.reason })}
             </span>
           </li>

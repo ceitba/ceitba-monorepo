@@ -172,7 +172,7 @@ function TestOutcome({ r, onClose }: { r: EndpointTestResult; onClose: () => voi
       <p className="font-semibold">
         {r.ok ? t('manage.wikiAi.endpoints.testOk', { ms: Math.round(r.latencyMs ?? 0) }) : t('manage.wikiAi.endpoints.testFail')}
       </p>
-      {r.error && <p className="font-mono text-label break-words">{r.error}</p>}
+      {r.error && <p className="font-mono text-label wrap-break-word">{r.error}</p>}
       {r.ok && (r.models.length > 0 ? (
         <>
           <p>{t('manage.wikiAi.endpoints.testModels', { count: r.models.length })}</p>

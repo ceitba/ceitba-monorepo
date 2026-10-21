@@ -58,7 +58,7 @@ export default function OpenInAppPage() {
   if (platform === 'desktop') return <Navigate to={webPath} replace />
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <div className="max-w-md mx-auto text-center">
         <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">
           {t('openInApp.title')}

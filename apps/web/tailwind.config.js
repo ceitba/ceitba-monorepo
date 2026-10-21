@@ -5,10 +5,6 @@ export default {
     './index.html',
     './src/**/*.{js,jsx,ts,tsx}',
   ],
-  // Scheduler subject colors are built from an index at runtime.
-  safelist: [
-    { pattern: /bg-subject_color_\d/, variants: ['hover', 'focus'] },
-  ],
   theme: {
     extend: {
       colors: {

@@ -136,7 +136,7 @@ function BenefitCardView({
     <article
       className="flex flex-col rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
       {imageUrl && (
-        <div className="w-full aspect-[16/9] bg-page-bg dark:bg-night-bg overflow-hidden">
+        <div className="w-full aspect-video bg-page-bg dark:bg-night-bg overflow-hidden">
           <img
             src={imageUrl}
             alt={title}
@@ -176,7 +176,7 @@ function BenefitCardView({
           <ul className="flex flex-col gap-1.5">
             {bullets.map((b) => (
               <li key={b} className="flex items-start gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-300 dark:bg-primary-300 flex-shrink-0" aria-hidden="true" />
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-300 dark:bg-primary-300 shrink-0" aria-hidden="true" />
                 {b}
               </li>
             ))}

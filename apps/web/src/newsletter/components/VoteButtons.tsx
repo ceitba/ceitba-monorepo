@@ -64,7 +64,7 @@ function VoteButton({ type, active, onVote, label, disabled }: VoteButtonProps) 
       aria-label={label}
       aria-pressed={active}
       className={[
-        'w-11 h-11 flex items-center justify-center rounded-sm border transition-colors duration-150 disabled:opacity-60',
+        'w-11 h-11 flex items-center justify-center rounded-xs border transition-colors duration-150 disabled:opacity-60',
         active
           ? isUp
             ? 'bg-primary text-white border-primary'

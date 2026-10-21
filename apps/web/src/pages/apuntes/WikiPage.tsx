@@ -58,7 +58,7 @@ export default function WikiPage() {
   if (slug === 'index') return <Navigate to={`/apuntes/${encodeURIComponent(subjectId)}`} replace />
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <nav aria-label={t('apuntes.breadcrumbAria')} className="mb-4 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted flex flex-wrap items-center gap-x-2">
         <Link to="/apuntes" className="hover:text-primary">{t('apuntes.title')}</Link>
         <span aria-hidden="true">/</span>
@@ -74,7 +74,7 @@ export default function WikiPage() {
           <Skeleton className="h-10 w-2/3" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
-          <Skeleton className="h-[40vh] !rounded-card" />
+          <Skeleton className="h-[40vh] rounded-card!" />
         </LoadingRegion>
       )}
 

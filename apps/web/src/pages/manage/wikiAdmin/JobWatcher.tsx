@@ -72,7 +72,7 @@ export default function JobWatcher({ onOpen }: { onOpen: () => void }) {
         <div
           key={toast.key}
           role={toast.tone === 'error' ? 'alert' : 'status'}
-          className={`flex items-start gap-2 pl-4 pr-1 py-1 rounded-sm border border-border border-l-4 dark:border-night-border bg-white dark:bg-night-surface shadow-card animate-fade-in ${BORDER[toast.tone]}`}
+          className={`flex items-start gap-2 pl-4 pr-1 py-1 rounded-xs border border-border border-l-4 dark:border-night-border bg-white dark:bg-night-surface shadow-card animate-fade-in ${BORDER[toast.tone]}`}
         >
           <div className="flex-1 min-w-0 py-2.5">
             <p className="font-body text-body-sm text-ink-primary dark:text-night-text">{toast.text}</p>

@@ -74,7 +74,7 @@ export default function HomePage() {
             </Alert>
           )}
           <div className="mb-10">
-            <h1 className="font-display text-h2 sm:text-h1 lg:text-display font-bold text-ink-primary dark:text-night-text [overflow-wrap:anywhere] hyphens-auto leading-tight mb-3">
+            <h1 className="font-display text-h2 sm:text-h1 lg:text-display sm:font-extrabold sm:leading-[1.1] lg:leading-[1.05] font-bold text-ink-primary dark:text-night-text wrap-anywhere hyphens-auto leading-tight mb-3">
               {t('home.title')}
             </h1>
             <p className="font-body text-body-lg text-ink-secondary dark:text-night-muted max-w-xl">
@@ -109,7 +109,7 @@ export default function HomePage() {
                 </p>
                 <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('home.exchange.description')}</p>
               </div>
-              <svg className="ml-auto w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <svg className="ml-auto w-5 h-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>

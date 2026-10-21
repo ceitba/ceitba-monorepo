@@ -139,7 +139,7 @@ export default function EventsPage() {
               </div>
 
               {/* Sidebar */}
-              <aside className="lg:w-80 xl:w-96 flex-shrink-0" aria-label={t('events.upcoming')}>
+              <aside className="lg:w-80 xl:w-96 shrink-0" aria-label={t('events.upcoming')}>
                 <div className="bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border shadow-card">
                   <div className="px-5 py-4 border-b border-border dark:border-night-border">
                     <h2 className="font-display text-h5 font-bold text-ink-primary">
@@ -221,9 +221,9 @@ function LoadingState() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {[1,2,3].map((i) => (
           <div key={i} className="rounded-card border border-border dark:border-night-border p-5 flex flex-col gap-3">
-            <div className="skeleton h-14 w-14 rounded-sm" />
-            <div className="skeleton h-5 w-3/4 rounded-sm" />
-            <div className="skeleton h-4 w-1/2 rounded-sm" />
+            <div className="skeleton h-14 w-14 rounded-xs" />
+            <div className="skeleton h-5 w-3/4 rounded-xs" />
+            <div className="skeleton h-4 w-1/2 rounded-xs" />
           </div>
         ))}
       </div>

@@ -21,12 +21,12 @@ export default function ZoomControls({
   className?: string
 }) {
   const { t } = useTranslation()
-  const text = buttonClass({ variant: 'ghost', size: 'sm', className: '!px-2' })
+  const text = buttonClass({ variant: 'ghost', size: 'sm', className: 'px-2!' })
   return (
     <div
       role="group"
       aria-label={t('wiki.graphUi.zoomAria')}
-      className={`flex flex-wrap items-center gap-1 p-1 rounded-sm border border-border dark:border-night-border bg-white/95 dark:bg-night-surface/95 ${className}`}
+      className={`flex flex-wrap items-center gap-1 p-1 rounded-xs border border-border dark:border-night-border bg-white/95 dark:bg-night-surface/95 ${className}`}
     >
       <IconButton size="sm" onClick={onZoomOut} aria-label={t('wiki.graphUi.zoomOut')}><MinusIcon /></IconButton>
       {between}

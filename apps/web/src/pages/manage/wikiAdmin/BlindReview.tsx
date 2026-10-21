@@ -126,7 +126,7 @@ export default function BlindReview({ evalId, onDone, onLeaderboard }: { evalId:
                     role="radio"
                     aria-checked={winner === w}
                     onClick={() => setWinner(w)}
-                    className={`min-w-[5rem] min-h-[44px] px-4 rounded-sm border font-mono text-label uppercase tracking-widest transition-colors duration-150 ${winner === w ? 'bg-primary text-white border-primary' : 'border-border dark:border-night-border text-ink-primary dark:text-night-text hover:border-primary'}`}
+                    className={`min-w-20 min-h-[44px] px-4 rounded-xs border font-mono text-label uppercase tracking-widest transition-colors duration-150 ${winner === w ? 'bg-primary text-white border-primary' : 'border-border dark:border-night-border text-ink-primary dark:text-night-text hover:border-primary'}`}
                   >
                     {w === 'tie' ? t('manage.wikiAi.review.tie') : w}
                   </button>

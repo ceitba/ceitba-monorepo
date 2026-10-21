@@ -11,7 +11,7 @@ export default function CommunityBadge({ year, className = '' }: {
   return (
     <span
       title={t('apuntes.community.hint')}
-      className={`inline-flex items-center whitespace-nowrap px-1.5 rounded-sm border border-border dark:border-night-border bg-page-bg dark:bg-night-bg font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted ${className}`}
+      className={`inline-flex items-center whitespace-nowrap px-1.5 rounded-xs border border-border dark:border-night-border bg-page-bg dark:bg-night-bg font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted ${className}`}
     >
       {communityLabel(year, t)}
     </span>

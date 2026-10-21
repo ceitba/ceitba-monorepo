@@ -51,7 +51,7 @@ export default function WikiGraphPage() {
   )
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-12 flex flex-col min-h-[calc(100vh-4rem)]">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-12 flex flex-col min-h-[calc(100vh-4rem)]">
       <nav aria-label={t('apuntes.breadcrumbAria')} className="mb-4 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted flex flex-wrap items-center gap-x-2">
         <Link to="/apuntes" className="hover:text-primary">{t('apuntes.title')}</Link>
         <span aria-hidden="true">/</span>
@@ -77,7 +77,7 @@ export default function WikiGraphPage() {
       )}
       {!graph && !error && (
         <LoadingRegion className="flex-1 flex flex-col">
-          <Skeleton className="flex-1 min-h-[60vh] !rounded-card" />
+          <Skeleton className="flex-1 min-h-[60vh] rounded-card!" />
         </LoadingRegion>
       )}
       {graph && graph.nodes.length === 0 && <EmptyState title={t('wiki.emptyTitle')} body={t('wiki.emptyBody')} />}

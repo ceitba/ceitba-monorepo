@@ -191,9 +191,9 @@ export default function ComparisonPage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
+      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-hidden">
         <header className="mb-6 flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[12rem]">
+          <div className="flex-1 min-w-48">
             <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('compare.label')}
             </p>

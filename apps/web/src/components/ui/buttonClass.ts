@@ -7,7 +7,7 @@ export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger' | 'danger
 export type ButtonSize = 'md' | 'sm'
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-sm font-mono text-label uppercase tracking-widest whitespace-nowrap ' +
+  'inline-flex items-center justify-center gap-2 rounded-xs font-mono text-label uppercase tracking-widest whitespace-nowrap ' +
   'transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
 
 // `sm` is for dense admin tables and toolbars: still 44px tall on touch
@@ -47,7 +47,7 @@ export function buttonClass({
 export function iconButtonClass({ size = 'md', className = '' }: { size?: ButtonSize; className?: string } = {}) {
   const box = size === 'md' ? 'w-11 h-11' : 'w-11 h-11 sm:w-9 sm:h-9'
   return [
-    'inline-flex items-center justify-center flex-shrink-0 rounded-sm transition-colors duration-150',
+    'inline-flex items-center justify-center shrink-0 rounded-xs transition-colors duration-150',
     'text-ink-secondary dark:text-night-muted hover:text-ink-primary dark:hover:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised',
     'disabled:opacity-50 disabled:cursor-not-allowed',
     box,

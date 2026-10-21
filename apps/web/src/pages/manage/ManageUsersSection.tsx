@@ -281,13 +281,13 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('manage.users.searchPlaceholder')}
           aria-label={t('manage.users.searchAria')}
-          className={inputClass({ className: 'flex-1 min-w-[200px] !w-auto' })}
+          className={inputClass({ className: 'flex-1 min-w-[200px] w-auto!' })}
         />
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value as SortKey); setPageNum(1) }}
           aria-label={t('manage.users.sortAria')}
-          className={selectClass({ className: '!w-auto' })}
+          className={selectClass({ className: 'w-auto!' })}
         >
           <option value="newest">{t('manage.users.sort.newest')}</option>
           <option value="oldest">{t('manage.users.sort.oldest')}</option>
@@ -296,7 +296,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
           value={orgSlug}
           onChange={(e) => { setOrgSlug(e.target.value); setPageNum(1) }}
           aria-label={t('manage.users.filterOrgAria')}
-          className={selectClass({ className: '!w-auto' })}
+          className={selectClass({ className: 'w-auto!' })}
         >
           <option value="">{t('manage.users.filterAllOrgs')}</option>
           {orgs.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
@@ -397,7 +397,7 @@ export default function ManageUsersSection({ initialAddingTo }: { initialAddingT
                                     disabled={busy}
                                     onClick={() => removeOrg(u, m.slug)}
                                     aria-label={t('manage.users.removeOrgAria', { org, name: userName(u) })}
-                                    className="hover:!text-red-600 dark:hover:!text-red-400"
+                                    className="hover:text-red-600! dark:hover:text-red-400!"
                                   >
                                     <CloseIcon size={16} />
                                   </IconButton>

@@ -45,7 +45,7 @@ export default function CostChart({ rows, order, labelOf }: { rows: CostRow[]; o
       <ul className="flex flex-wrap gap-x-4 gap-y-1 font-body text-body-sm text-ink-secondary dark:text-night-muted" aria-label={t('wiki.legend')}>
         {series.map((s, i) => (
           <li key={s} className="inline-flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: `var(--series-${i + 1})` }} aria-hidden="true" />
+            <span className="w-2.5 h-2.5 rounded-xs" style={{ background: `var(--series-${i + 1})` }} aria-hidden="true" />
             {label(s)}
           </li>
         ))}
@@ -116,7 +116,7 @@ export default function CostChart({ rows, order, labelOf }: { rows: CostRow[]; o
           </svg>
           {hover && (
             <div
-              className="pointer-events-none absolute z-10 px-2 py-1 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card font-body text-body-sm text-ink-primary dark:text-night-text whitespace-nowrap"
+              className="pointer-events-none absolute z-10 px-2 py-1 rounded-xs border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card font-body text-body-sm text-ink-primary dark:text-night-text whitespace-nowrap"
               style={{ left: hover.x, top: hover.y, transform: 'translate(-50%, calc(-100% - 6px))' }}
             >
               <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{hover.week}</span>

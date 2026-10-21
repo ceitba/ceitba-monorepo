@@ -32,7 +32,7 @@ function Title({ to, className, children }: { to?: string; className: string; ch
   if (!to) return <h3 className={className}>{children}</h3>
   return (
     <h3 className={className}>
-      <Link to={to} className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-card focus-visible:after:ring-2 focus-visible:after:ring-primary">
+      <Link to={to} className="after:absolute after:inset-0 focus-visible:outline-hidden focus-visible:after:rounded-card focus-visible:after:ring-2 focus-visible:after:ring-primary">
         {children}
       </Link>
     </h3>
@@ -50,7 +50,7 @@ export default function EventCard({ event, compact = false, to, orgName, going =
     return (
       <article className="group relative flex gap-4 py-4 border-b border-border dark:border-night-border last:border-b-0">
         {/* Date block */}
-        <div className="flex-shrink-0 w-12 flex flex-col items-center justify-start pt-0.5">
+        <div className="shrink-0 w-12 flex flex-col items-center justify-start pt-0.5">
           <span className="font-mono text-label text-ink-secondary uppercase">
             {monthShort}
           </span>
@@ -65,7 +65,7 @@ export default function EventCard({ event, compact = false, to, orgName, going =
             <Title to={to} className="font-display text-body-lg font-bold text-ink-primary leading-snug group-hover:text-primary transition-colors duration-150 flex-1 min-w-0">
               {title}
             </Title>
-            <CategoryBadge category={category} className="flex-shrink-0" />
+            <CategoryBadge category={category} className="shrink-0" />
           </div>
 
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -86,7 +86,7 @@ export default function EventCard({ event, compact = false, to, orgName, going =
     <article className="group relative rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface p-5 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col gap-3">
       <div className="flex items-start gap-3">
         {/* Date stamp */}
-        <div className="flex-shrink-0 w-14 h-14 rounded-sm bg-primary-50 dark:bg-primary-800 flex flex-col items-center justify-center border border-primary-100 dark:border-primary-800">
+        <div className="shrink-0 w-14 h-14 rounded-xs bg-primary-50 dark:bg-primary-800 flex flex-col items-center justify-center border border-primary-100 dark:border-primary-800">
           <span className="font-mono text-label text-primary-500 dark:text-primary-300 uppercase">
             {monthShort}
           </span>

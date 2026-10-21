@@ -370,7 +370,7 @@ export default function SettingsView() {
                 <li key={e.id} className="flex flex-wrap items-center gap-3 py-2 font-body text-body-sm">
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{new Date(e.changedAt).toLocaleString(i18n.language)}</span>
                   <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{e.changedByName ?? '—'}</span>
-                  <span className="flex-1 min-w-0 text-ink-secondary dark:text-night-muted break-words">
+                  <span className="flex-1 min-w-0 text-ink-secondary dark:text-night-muted wrap-break-word">
                     {e.note ? `“${e.note}”` : ''} {e.settings.modelWrite && <span className="font-mono text-label">{t('manage.wikiAi.settings.historyWrite', { model: e.settings.modelWrite })}</span>}
                   </span>
                   <Button variant="outline" size="sm" onClick={() => void restore(e.id)} disabled={restoring !== null} loading={restoring === e.id}>{t('manage.wikiAi.settings.restore')}</Button>
@@ -455,10 +455,10 @@ function Overrides({ overrides, models, onChange }: {
               {rows.map(([id, o]) => (
                 <tr key={id} className="border-t border-border dark:border-night-border">
                   <td className={`${TD} font-mono`}>{id}</td>
-                  <td className={`${TD} min-w-[14rem]`}>
+                  <td className={`${TD} min-w-56`}>
                     <ModelSelect allowDefault label={t('manage.wikiAi.settings.overrideAria', { subject: id, stage: t('manage.wikiAi.stages.PLAN') })} value={o.modelPlan ?? null} models={models} onChange={(v) => update(id, { modelPlan: v })} />
                   </td>
-                  <td className={`${TD} min-w-[14rem]`}>
+                  <td className={`${TD} min-w-56`}>
                     <ModelSelect allowDefault label={t('manage.wikiAi.settings.overrideAria', { subject: id, stage: t('manage.wikiAi.stages.WRITE') })} value={o.modelWrite ?? null} models={models} onChange={(v) => update(id, { modelWrite: v })} />
                   </td>
                   <td className={TD}>

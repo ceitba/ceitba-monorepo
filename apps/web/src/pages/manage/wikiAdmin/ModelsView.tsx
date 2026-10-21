@@ -91,7 +91,7 @@ export default function ModelsView() {
               <tbody>
                 {sortModels(list).map((m) => (
                   <tr key={m.id} className="border-t border-border dark:border-night-border">
-                    <td className={`${TD} min-w-[13rem]`}>
+                    <td className={`${TD} min-w-52`}>
                       <p className="font-semibold text-ink-primary dark:text-night-text">{m.displayName || m.id}</p>
                       <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-all">{m.id} · {parseCustomModel(m.id) ? t('manage.wikiAi.endpoints.providerOwn') : m.provider}</p>
                       {parseCustomModel(m.id) && <p className="font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.endpointName', { name: parseCustomModel(m.id)!.endpoint })}</p>}
@@ -104,7 +104,7 @@ export default function ModelsView() {
                         <PriceInput value={m[f]} label={t('manage.wikiAi.models.priceAria', { model: m.displayName || m.id, field: t(`manage.wikiAi.models.fields.${f}`) })} onCommit={(v) => patch(m, { [f]: v })} />
                       </td>
                     ))}
-                    <td className={`${TD} min-w-[11rem]`}>
+                    <td className={`${TD} min-w-44`}>
                       <BatchCell m={m} estimate={estimateFlag} onToggle={(v) => patch(m, { batchSupported: v })} onDiscount={(d) => patch(m, { batchDiscount: d })} />
                     </td>
                     <td className={TD}>
@@ -112,7 +112,7 @@ export default function ModelsView() {
                         <input type="checkbox" aria-label={t('manage.wikiAi.models.enabledAria', { model: m.displayName || m.id })} checked={m.enabled} onChange={(e) => patch(m, { enabled: e.target.checked })} className="h-4 w-4 accent-primary" />
                       </label>
                     </td>
-                    <td className={`${TD} min-w-[12rem]`}>
+                    <td className={`${TD} min-w-48`}>
                       <ProbeResult m={m} />
                       {m.emptyToolCallRate != null && (
                         <p className={`font-body text-label ${m.emptyToolCallRate > 0.05 ? 'text-amber-700 dark:text-amber-300' : 'text-ink-secondary dark:text-night-muted'}`}>
@@ -174,7 +174,7 @@ function ProbeResult({ m }: { m: KbModel }) {
         {[probeMode(p.mode, t), toolsText(p.toolCalling, t), p.latencyMs != null ? `${Math.round(p.latencyMs)} ms` : null]
           .filter(Boolean).join(' · ')}
       </p>
-      {p.error && <p className="text-red-600 dark:text-red-400 break-words">{p.error}</p>}
+      {p.error && <p className="text-red-600 dark:text-red-400 wrap-break-word">{p.error}</p>}
       {p.at && <p className="font-mono text-label">{new Date(p.at).toLocaleString(i18n.language)}</p>}
     </div>
   )

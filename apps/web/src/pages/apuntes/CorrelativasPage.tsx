@@ -29,14 +29,14 @@ export default function CorrelativasPage() {
   }, [plan, t, tick])
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-12">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-12">
       <nav aria-label={t('apuntes.breadcrumbAria')} className="mb-4 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted flex flex-wrap items-center gap-x-2">
         <Link to="/apuntes" className="hover:text-primary">{t('apuntes.title')}</Link>
         <span aria-hidden="true">/</span>
         <span>{t('apuntes.corr.title')}</span>
       </nav>
       <header className="mb-6">
-        <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text">{t('apuntes.corr.title')}</h1>
+        <h1 className="font-display font-bold text-h3 lg:text-h2 lg:font-extrabold text-ink-primary dark:text-night-text">{t('apuntes.corr.title')}</h1>
         <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-2 max-w-3xl">
           {plan ? t('apuntes.corr.subtitle', { plan }) : t('apuntes.corr.noPlan')}
         </p>
@@ -52,7 +52,7 @@ export default function CorrelativasPage() {
       {error && <ErrorState message={error} onRetry={() => setTick((n) => n + 1)} backTo="/apuntes" backLabel={t('apuntes.backToSearch')} />}
       {plan && !model && !error && (
         <LoadingRegion>
-          <Skeleton className="h-[60vh] !rounded-card" />
+          <Skeleton className="h-[60vh] rounded-card!" />
         </LoadingRegion>
       )}
       {model && model.nodes.size === 0 && <EmptyState title={t('apuntes.corr.emptyTitle')} body={t('apuntes.corr.emptyBody')} />}

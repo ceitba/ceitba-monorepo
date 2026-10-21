@@ -87,7 +87,7 @@ export default function EndpointForm({ endpoint, onSaved, onClose }: {
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4 accent-primary" />
           {t('manage.wikiAi.endpoints.enabledField')}
         </label>
-        <p className="px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.formNote')}</p>
+        <p className="px-3 py-2 rounded-xs bg-page-bg dark:bg-night-bg font-body text-label text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.endpoints.formNote')}</p>
       </form>
     </Modal>
   )

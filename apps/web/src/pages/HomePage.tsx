@@ -8,7 +8,7 @@ import HomeJoinCTA from './sections/HomeJoinCTA'
 // itself (hero + departments); Benefits has its own page in the navbar.
 export default function HomePage() {
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none">
+    <main id="main-content" tabIndex={-1} className="outline-hidden">
       <HeroSection />
       <AppsSection />
       <DepartmentsSection />

@@ -58,7 +58,7 @@ export default function ReviewProgressHeader({ progress, fallback }: {
                 }`}
               >
                 <span className="font-mono">{s.subjectId}</span>
-                {s.subjectName && <span className="max-w-[12rem] truncate">{s.subjectName}</span>}
+                {s.subjectName && <span className="max-w-48 truncate">{s.subjectName}</span>}
                 <span className="tabular-nums">{done}/{s.totalPairs}</span>
               </li>
             )

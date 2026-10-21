@@ -117,7 +117,7 @@ export default function CorrelativasMap({ model }: { model: CorrModel }) {
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t('apuntes.corr.search')}
         aria-label={t('apuntes.corr.search')}
-        className={inputClass({ className: 'sm:!w-72' })}
+        className={inputClass({ className: 'sm:w-72!' })}
       />
       {matches && (
         <span className="font-mono text-label text-ink-secondary dark:text-night-muted" aria-live="polite">
@@ -125,8 +125,8 @@ export default function CorrelativasMap({ model }: { model: CorrModel }) {
         </span>
       )}
       <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted sm:ml-auto" aria-label={t('wiki.legend')}>
-        <li className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm corr-swatch-up" aria-hidden="true" />{t('apuntes.corr.legendUp')}</li>
-        <li className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm corr-swatch-down" aria-hidden="true" />{t('apuntes.corr.legendDown')}</li>
+        <li className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-xs corr-swatch-up" aria-hidden="true" />{t('apuntes.corr.legendUp')}</li>
+        <li className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-xs corr-swatch-down" aria-hidden="true" />{t('apuntes.corr.legendDown')}</li>
       </ul>
       {!phone && (
         <ZoomControls
@@ -247,13 +247,13 @@ function CorrCard({ node: n, hasWiki, state, style, onFocusChange, model, showDe
     >
       <Link
         to={`/apuntes/${encodeURIComponent(n.id)}`}
-        className="flex-1 min-h-0 flex flex-col gap-0.5 pl-3 pr-9 py-2 rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex-1 min-h-0 flex flex-col gap-0.5 pl-3 pr-9 py-2 rounded-card focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
         aria-describedby={n.deps.length ? `corr-deps-${cssId(n.id)}` : undefined}
       >
         <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{n.id}</span>
         <span className="font-body text-body-sm font-semibold leading-snug text-ink-primary dark:text-night-text line-clamp-2">{n.name}</span>
         <span className="mt-auto flex flex-wrap items-center gap-1 font-mono text-[0.65rem] text-ink-secondary dark:text-night-muted">
-          {hasWiki && <span className="px-1 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200">{t('apuntes.pins.wiki')}</span>}
+          {hasWiki && <span className="px-1 rounded-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200">{t('apuntes.pins.wiki')}</span>}
           {n.fileCount > 0 && <span>{t('apuntes.home.fileCount', { count: n.fileCount })}</span>}
           {n.creditsRequired > 0 && <span className="italic">{t('apuntes.corr.credits', { count: n.creditsRequired })}</span>}
         </span>
@@ -293,7 +293,7 @@ function PhoneList({ model, state, pinnedWiki }: {
                   <Link to={`/apuntes/${encodeURIComponent(id)}`} className="block">
                     <span className="font-mono text-label text-ink-secondary dark:text-night-muted mr-2">{id}</span>
                     <span className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text">{n.name}</span>
-                    {hasWiki && <span className="ml-2 px-1 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 font-mono text-[0.65rem]">{t('apuntes.pins.wiki')}</span>}
+                    {hasWiki && <span className="ml-2 px-1 rounded-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 font-mono text-[0.65rem]">{t('apuntes.pins.wiki')}</span>}
                   </Link>
                   <p className="font-body text-[0.75rem] text-ink-secondary dark:text-night-muted mt-0.5">
                     {n.deps.length ? (

@@ -74,7 +74,7 @@ export default function ProgressPanel({ progress, stages, fallback }: {
   return (
     <div className="flex flex-col gap-3">
       {progress?.stalled && (
-        <p role="status" className="px-3 py-2 rounded-sm border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 font-body text-body-sm text-amber-800 dark:text-amber-200">
+        <p role="status" className="px-3 py-2 rounded-xs border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 font-body text-body-sm text-amber-800 dark:text-amber-200">
           {t('manage.wikiAi.progress.stalled', { ago: ago(progress.lastActivityAt, now, t) })}
         </p>
       )}
@@ -110,7 +110,7 @@ export default function ProgressPanel({ progress, stages, fallback }: {
           const status = statusOf(st, i)
           const pct = p && p.total ? ((p.done ?? 0) / p.total) * 100 : status === 'done' ? 100 : status === 'running' || status === 'waiting_batch' ? null : 0
           return (
-            <li key={st} className={`flex flex-col gap-1 px-2.5 py-2 rounded-sm border ${STATUS_STYLE[status] ?? STATUS_STYLE.pending}`}>
+            <li key={st} className={`flex flex-col gap-1 px-2.5 py-2 rounded-xs border ${STATUS_STYLE[status] ?? STATUS_STYLE.pending}`}>
               <span className="font-mono text-label uppercase tracking-widest truncate">{t(`manage.wikiAi.progress.stages.${st}`, { defaultValue: t('manage.wikiAi.stages.other') })}</span>
               <span className="font-body text-label text-ink-secondary dark:text-night-muted">
                 {t(`manage.wikiAi.progress.status.${status}`, { defaultValue: t('manage.wikiAi.status.other') })}

@@ -72,7 +72,7 @@ export default function DepartmentsSection() {
                   className="flex flex-col gap-4 p-5 rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface shadow-card hover:shadow-card-hover transition-shadow duration-200"
                 >
                   <div
-                    className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
+                    className="w-12 h-12 rounded-card flex items-center justify-center text-primary-800 shrink-0"
                     style={{ backgroundColor: `var(${dept.colorVar})` }}
                   >
                     {ICONS[dept.slug]}

@@ -39,7 +39,7 @@ export default function PinButton({ subject, size = 'sm', className = '' }: {
       aria-pressed={pinned}
       aria-label={label}
       disabled={pins == null}
-      className={`${dim} flex-shrink-0 inline-flex items-center justify-center rounded-full transition-colors duration-150 disabled:opacity-40 ${
+      className={`${dim} shrink-0 inline-flex items-center justify-center rounded-full transition-colors duration-150 disabled:opacity-40 ${
         pinned
           ? 'text-accent-600 dark:text-accent-300 bg-accent-50 dark:bg-accent-900/30 hover:bg-accent-100 dark:hover:bg-accent-900/50'
           : 'text-ink-secondary dark:text-night-muted hover:text-primary hover:bg-primary-50 dark:hover:bg-primary-900'

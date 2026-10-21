@@ -439,7 +439,7 @@ function FilesView() {
             const pending = f.publication === 'NEEDS_REVIEW' || f.publication === 'HIDDEN_REPORTED'
             return (
               <tr key={f.id} className={TR}>
-                <td className={`${TD} min-w-[14rem]`}>
+                <td className={`${TD} min-w-56`}>
                   <div className="flex items-start gap-2">
                     <KindIcon kind={f.kind} className="mt-0.5" />
                     <div className="min-w-0">
@@ -447,7 +447,7 @@ function FilesView() {
                         href={`${import.meta.env.BASE_URL.replace(/\/+$/, '')}/apuntes/archivo/${encodeURIComponent(f.id)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-semibold text-ink-primary dark:text-night-text hover:text-primary hover:underline break-words"
+                        className="font-semibold text-ink-primary dark:text-night-text hover:text-primary hover:underline wrap-break-word"
                       >
                         {f.name}
                       </a>
@@ -476,7 +476,7 @@ function FilesView() {
                     <p className="mt-1 text-amber-700 dark:text-amber-300 normal-case">{t('manage.drive.files.ownerDiffers')}</p>
                   )}
                 </td>
-                <td className={`${TD} min-w-[12rem]`}>
+                <td className={`${TD} min-w-48`}>
                   {f.reportCount > 0 ? (
                     <>
                       <p className="font-semibold text-ink-primary dark:text-night-text">
@@ -487,7 +487,7 @@ function FilesView() {
                           <li key={i} className="text-ink-secondary dark:text-night-muted">
                             <span className="font-mono text-label uppercase tracking-widest">{t(`apuntes.report.reasons.${r.reason}`)}</span>
                             <span className="font-mono text-label"> · {formatDate(r.createdAt, i18n.language)}</span>
-                            {r.comment && <p className="italic break-words">“{r.comment}”</p>}
+                            {r.comment && <p className="italic wrap-break-word">“{r.comment}”</p>}
                           </li>
                         ))}
                       </ul>
@@ -708,7 +708,7 @@ function UnclaimedView() {
         <tbody>
           {list.map((u, i) => (
             <tr key={`${u.name}-${u.ownerEmail}-${i}`} className={TR}>
-              <td className={`${TD} text-ink-primary dark:text-night-text break-words`}>{u.name}</td>
+              <td className={`${TD} text-ink-primary dark:text-night-text wrap-break-word`}>{u.name}</td>
               <td className={`${TD} font-mono text-label text-ink-secondary dark:text-night-muted break-all`}>{u.ownerEmail ?? '—'}</td>
               <td className={`${TD} whitespace-nowrap text-ink-primary dark:text-night-text`}>{formatDateTime(u.firstSeenAt, i18n.language)}</td>
               <td className={`${TD} whitespace-nowrap text-ink-primary dark:text-night-text`}>{formatDateTime(u.lastSeenAt, i18n.language)}</td>

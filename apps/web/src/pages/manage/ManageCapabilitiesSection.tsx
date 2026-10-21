@@ -401,7 +401,7 @@ function GrantsPanels({ capabilityKey, onCounts }: { capabilityKey: string; onCo
                 <option key={o.slug} value={o.slug}>{o.name}</option>
               ))}
             </select>
-            <Button type="submit" variant="outline" className="flex-shrink-0" loading={addingOrg} disabled={!orgSlug}>
+            <Button type="submit" variant="outline" className="shrink-0" loading={addingOrg} disabled={!orgSlug}>
               {t('manage.capabilities.orgs.add')}
             </Button>
           </form>

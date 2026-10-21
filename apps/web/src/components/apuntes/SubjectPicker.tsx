@@ -154,7 +154,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
           disabled={disabled}
           onClick={openPicker}
           aria-label={label}
-          className="w-full min-h-[44px] px-3 py-1.5 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface text-left font-body text-body-sm flex items-center gap-2 hover:border-primary transition-colors disabled:opacity-50"
+          className="w-full min-h-[44px] px-3 py-1.5 rounded-xs border border-border dark:border-night-border bg-white dark:bg-night-surface text-left font-body text-body-sm flex items-center gap-2 hover:border-primary transition-colors disabled:opacity-50"
         >
           <span className="flex-1 min-w-0 truncate">
             {value ? (
@@ -170,7 +170,7 @@ export default function SubjectPicker({ value, inherited, onChange, disabled, la
               <span className="text-ink-secondary dark:text-night-muted">{t('apuntes.picker.none')}</span>
             )}
           </span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" className="text-ink-secondary dark:text-night-muted flex-shrink-0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" className="text-ink-secondary dark:text-night-muted shrink-0">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>

@@ -263,13 +263,13 @@ export default function OrgProfilePage() {
                     className="peer sr-only"
                   />
                   <span
-                    className={`flex items-center gap-2 min-h-[44px] pl-1.5 pr-3 py-1 rounded-sm border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1 dark:peer-focus-visible:ring-offset-night-bg ${
+                    className={`flex items-center gap-2 min-h-[44px] pl-1.5 pr-3 py-1 rounded-xs border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1 dark:peer-focus-visible:ring-offset-night-bg ${
                       form.color === c
                         ? 'border-primary dark:border-primary-300 text-ink-primary dark:text-night-text'
                         : 'border-border dark:border-night-border text-ink-secondary dark:text-night-muted hover:border-primary'
                     }`}
                   >
-                    <span aria-hidden="true" className={`w-6 h-6 rounded-sm ${COLOR_BG[c]}`} />
+                    <span aria-hidden="true" className={`w-6 h-6 rounded-xs ${COLOR_BG[c]}`} />
                     <span className="font-body text-body-sm">{t(`admin.colors.${c}`)}</span>
                   </span>
                 </label>
@@ -356,8 +356,8 @@ export default function OrgProfilePage() {
             />
             <div className="p-4 flex items-start gap-3">
               {form.logoUrl
-                ? <img src={form.logoUrl} alt="" className="w-12 h-12 rounded-sm object-cover bg-page-bg dark:bg-night-raised" />
-                : <div className="w-12 h-12 rounded-sm bg-page-bg dark:bg-night-raised" aria-hidden="true" />}
+                ? <img src={form.logoUrl} alt="" className="w-12 h-12 rounded-xs object-cover bg-page-bg dark:bg-night-raised" />
+                : <div className="w-12 h-12 rounded-xs bg-page-bg dark:bg-night-raised" aria-hidden="true" />}
               <div className="min-w-0">
                 <p className="font-display text-body font-bold text-ink-primary dark:text-night-text truncate">
                   {form.name || base?.name}

@@ -159,10 +159,10 @@ export default function OrgPortalPage() {
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-[-20%] right-[-10%] w-2/3 h-full rounded-full bg-white/30" />
             <div className="absolute bottom-[-30%] left-[-5%] w-1/2 h-full rotate-12 bg-white/20" />
-            <div className="absolute top-1/4 left-1/3 w-1/4 h-1/4 rounded-sm rotate-45 bg-black/10" />
+            <div className="absolute top-1/4 left-1/3 w-1/4 h-1/4 rounded-xs rotate-45 bg-black/10" />
           </div>
         )}
-        <div className={`absolute inset-0 bg-gradient-to-b ${org.backgroundUrl ? 'from-black/20 to-black/70' : 'from-black/10 to-black/40'}`} />
+        <div className={`absolute inset-0 bg-linear-to-b ${org.backgroundUrl ? 'from-black/20 to-black/70' : 'from-black/10 to-black/40'}`} />
 
         <div className="absolute bottom-0 left-0 right-0 container-content pb-6">
           <p className="font-mono text-label text-white/70 uppercase tracking-widest mb-1">
@@ -170,9 +170,9 @@ export default function OrgPortalPage() {
           </p>
           <div className="flex items-end gap-4">
             {org.logoUrl && (
-              <img src={org.logoUrl} alt="" className="w-14 h-14 sm:w-16 sm:h-16 rounded-sm object-cover bg-white flex-shrink-0 border border-white/40" />
+              <img src={org.logoUrl} alt="" className="w-14 h-14 sm:w-16 sm:h-16 rounded-xs object-cover bg-white shrink-0 border border-white/40" />
             )}
-            <h1 className="font-display text-h2 sm:text-h1 lg:text-display font-bold text-white leading-tight [overflow-wrap:anywhere] hyphens-auto min-w-0">
+            <h1 className="font-display text-h2 sm:text-h1 lg:text-display sm:font-extrabold sm:leading-[1.1] lg:leading-[1.05] font-bold text-white leading-tight wrap-anywhere hyphens-auto min-w-0">
               {org.name}
             </h1>
           </div>
@@ -207,7 +207,7 @@ export default function OrgPortalPage() {
                 />
               )}
             </div>
-            <div className="flex sm:flex-col gap-6 sm:gap-3 flex-shrink-0 sm:text-right">
+            <div className="flex sm:flex-col gap-6 sm:gap-3 shrink-0 sm:text-right">
               <Stat label={t('orgs.followersLabel', { count: followers })} value={followers.toLocaleString(localeFor(i18n.language))} />
             </div>
           </div>
@@ -235,8 +235,8 @@ export default function OrgPortalPage() {
                 {org.board.map((m, i) => (
                   <li key={`${m.name}-${i}`} className="flex items-center gap-3">
                     {m.avatarUrl
-                      ? <img src={m.avatarUrl} alt="" className="w-11 h-11 rounded-full object-cover bg-page-bg dark:bg-night-raised flex-shrink-0" />
-                      : <div className="w-11 h-11 rounded-full bg-page-bg dark:bg-night-raised flex-shrink-0" aria-hidden="true" />}
+                      ? <img src={m.avatarUrl} alt="" className="w-11 h-11 rounded-full object-cover bg-page-bg dark:bg-night-raised shrink-0" />
+                      : <div className="w-11 h-11 rounded-full bg-page-bg dark:bg-night-raised shrink-0" aria-hidden="true" />}
                     <div className="min-w-0">
                       <p className="font-display text-body-sm font-bold text-ink-primary dark:text-night-text truncate">{m.name}</p>
                       {m.title && <p className="font-mono text-label text-ink-secondary dark:text-night-muted truncate">{m.title}</p>}
@@ -357,7 +357,7 @@ function OrgLinks({ org }: { org: Organization }) {
           <a
             href={l.href}
             {...(l.href.startsWith('mailto:') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
-            className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-primary dark:text-primary-300 hover:underline underline-offset-4 [overflow-wrap:anywhere]"
+            className="inline-flex items-center min-h-[44px] font-mono text-label uppercase tracking-widest text-primary dark:text-primary-300 hover:underline underline-offset-4 wrap-anywhere"
           >
             {l.label}
           </a>

@@ -43,7 +43,7 @@ export default function DevLoginPage() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <div className="max-w-md mx-auto flex flex-col gap-5 p-6 rounded-card border-2 border-dashed border-accent-400 bg-white dark:bg-night-surface">
         <div>
           <span className="font-mono text-label uppercase tracking-widest text-accent-600 dark:text-accent-300">{t('devLogin.eyebrow')}</span>

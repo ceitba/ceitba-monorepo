@@ -217,7 +217,7 @@ export default function AdminSuggestionReviewPage() {
             <span className="font-normal text-ink-secondary ml-1">({resource.suggestedBy?.email})</span>
           </p>
         </div>
-        <span className={['font-mono text-label uppercase tracking-widest px-3 py-1 rounded-sm', s.cls].join(' ')}>
+        <span className={['font-mono text-label uppercase tracking-widest px-3 py-1 rounded-xs', s.cls].join(' ')}>
           {s.label}
         </span>
       </div>
@@ -248,7 +248,7 @@ export default function AdminSuggestionReviewPage() {
             type="button"
             onClick={handleApprove}
             disabled={saving}
-            className="min-h-[44px] px-5 bg-emerald-600 text-white font-body font-semibold rounded-sm hover:bg-emerald-700 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded"
+            className="min-h-[44px] px-5 bg-emerald-600 text-white font-body font-semibold rounded-xs hover:bg-emerald-700 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded-sm"
           >
             {saving ? 'Guardando…' : 'Aprobar tal como está'}
           </button>
@@ -257,7 +257,7 @@ export default function AdminSuggestionReviewPage() {
             type="button"
             onClick={handleRequestChanges}
             disabled={saving}
-            className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-sm hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded"
+            className="min-h-[44px] px-5 bg-primary text-surface font-body font-semibold rounded-xs hover:bg-primary-600 transition-colors duration-150 disabled:opacity-60 focus-visible:rounded-sm"
           >
             {saving ? 'Guardando…' : 'Enviar con cambios al alumno'}
           </button>
@@ -268,14 +268,14 @@ export default function AdminSuggestionReviewPage() {
                 type="button"
                 onClick={handleReject}
                 disabled={saving}
-                className="min-h-[44px] px-4 font-body text-body-sm font-semibold text-red-600 hover:bg-red-50 border border-red-300 rounded-sm transition-colors duration-150 disabled:opacity-60"
+                className="min-h-[44px] px-4 font-body text-body-sm font-semibold text-red-600 hover:bg-red-50 border border-red-300 rounded-xs transition-colors duration-150 disabled:opacity-60"
               >
                 Confirmar rechazo
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmReject(false)}
-                className="min-h-[44px] px-3 font-body text-body-sm text-ink-secondary hover:bg-surface rounded-sm transition-colors duration-150"
+                className="min-h-[44px] px-3 font-body text-body-sm text-ink-secondary hover:bg-surface rounded-xs transition-colors duration-150"
               >
                 Cancelar
               </button>
@@ -284,7 +284,7 @@ export default function AdminSuggestionReviewPage() {
             <button
               type="button"
               onClick={() => setConfirmReject(true)}
-              className="min-h-[44px] px-5 bg-white border border-border text-ink-secondary font-body font-semibold rounded-sm hover:border-red-300 hover:text-red-600 transition-colors duration-150 focus-visible:rounded"
+              className="min-h-[44px] px-5 bg-white border border-border text-ink-secondary font-body font-semibold rounded-xs hover:border-red-300 hover:text-red-600 transition-colors duration-150 focus-visible:rounded-sm"
             >
               Rechazar
             </button>
@@ -368,7 +368,7 @@ function ArticleFields({ form, set, setBodyPara, orgs, readOnly }: ArticleFields
             {!readOnly && (form.body ?? []).length > 1 && (
               <button type="button"
                 onClick={() => set('body', form.body!.filter((_, j) => j !== i))}
-                className="mt-1 w-8 h-8 flex items-center justify-center text-ink-secondary hover:text-red-500 hover:bg-red-50 rounded-sm transition-colors duration-150"
+                className="mt-1 w-8 h-8 flex items-center justify-center text-ink-secondary hover:text-red-500 hover:bg-red-50 rounded-xs transition-colors duration-150"
                 aria-label="Eliminar párrafo">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -474,9 +474,9 @@ function Field({ label, children }: FieldProps) {
 
 function inputClass(error: string | null, readOnly = false) {
   return [
-    'w-full min-h-[44px] px-3 py-2 border rounded-sm font-body text-body text-ink-primary',
+    'w-full min-h-[44px] px-3 py-2 border rounded-xs font-body text-body text-ink-primary',
     readOnly ? 'bg-surface text-ink-secondary cursor-default' : 'bg-white',
-    'focus:outline-none focus:ring-1 transition-colors duration-150',
+    'focus:outline-hidden focus:ring-1 transition-colors duration-150',
     error
       ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
       : 'border-border focus:border-primary focus:ring-primary/30',
