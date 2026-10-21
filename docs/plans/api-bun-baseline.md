@@ -88,3 +88,131 @@ These numbers are what the container costs, not what the app needs:
 - Bun's pool opens connections lazily.
 
 Idle CPU is noise-level on both. The scheduled jobs tick on both (digest tick, embeddings sweep, org mail).
+
+## Load test
+
+Measured on 2026-10-21 on the same machine, for phase 5 of `api-bun-rewrite.md`: "Load test the 10 hottest
+routes; p95 must not regress against Java." Java is the last Java commit, `b515215` (`origin/main`). Bun is
+`feat/api-bun` at `5424e22`. The script is `scripts/bench/load.ts`; it has the seed, the routes, the runner and the
+comparison.
+
+**Verdict: not met yet.** The p95 regresses on 1 of the 12 routes:
+- `GET /v1/plans/{planId}/subjects`: +49%, 81 → 121 ms. The cause is known and cheap to fix (below).
+- The other 11 routes have a lower p95 on Bun, by 15% to 98%.
+- Bun has a higher p50 on 9 routes and a lower req/s on 8.
+
+### Setup
+
+- **Containers.** Java runs the jar in `eclipse-temurin:21-jre` with `--memory 2g --cpus 2` and
+  `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError`, as in production, with the default JIT.
+  Bun runs the image from `apps/api/Dockerfile` with `--memory 1g --cpus 2`.
+- **Configuration.** Both use the prod profile and the same env:
+  - fakes on: `ITBA_API_USE_FAKE`, `KB_LLM_USE_FAKE`, `KB_EMBEDDING_USE_FAKE`;
+  - `MAIL_ENABLED=false` and `RATE_LIMIT_ENABLED=false`;
+  - Flyway off, and every writing job off (`SYNC_ENABLED`, `DIGEST_JOBS_ENABLED`, `EVENT_REMINDERS_ENABLED`,
+    `ORG_MAIL_JOBS_ENABLED`, `KB_EMBEDDINGS_ENABLED`, `KB_PIPELINE_BACKGROUND`, `DRIVE_SYNC_ENABLED`), so the data
+    cannot change during a run. Row counts were checked after every run.
+  - Both pools are 20 connections, the shipping default (Hikari, and `DB_POOL_SIZE` in Bun).
+- **Database.** One `pgvector/pgvector:0.8.6-pg16-bookworm` container (`--cpus 4 --memory 2g`).
+  - The schema was migrated once and seeded once with `load.ts seed`. Each run got a fresh
+    `CREATE DATABASE … TEMPLATE` clone, so every run starts from the same data.
+  - The seed holds:
+    - academic data: 72 plans, 1,000 subjects, 2,432 plan-subject rows, 6,000 commissions (two terms) and 12,000
+      weekly slots;
+    - news: 50 organizations, 2,000 articles, 20,000 vote records, 1,000 events and 5,000 RSVPs;
+    - people: 5,000 users, 14,800 follows and 4,000 saved schedules;
+    - wiki: 3,000 published drive files, 2,200 wiki pages, 1,800 links and 8,800 chunks with random 768-d vectors
+      in an HNSW index.
+- **Load generator.** `load.ts run` runs in an `oven/bun` container on the same Docker network (`--cpus 2`), not
+  through Docker Desktop's port forwarder. It never used more than 47% CPU, so it was not the bottleneck.
+  - It runs a closed loop of **32 keep-alive workers per route**, one route at a time.
+  - A preflight checks every route on both servers first: 200, a non-empty body, and identical response sizes on
+    both servers.
+  - Each route gets a warm-up, then 30 s of measurement. Percentiles come from every sample. Zero errors in every
+    run.
+- **Warm-up.** Bun gets 10 s per route. Java gets 30 s per route, after a 30 s round-robin over all routes. Java's
+  JIT needs the longer warm-up, which favours Java.
+- **Runs.** Two passes in opposite order: Java then Bun, then Bun then Java. The table averages the two; the
+  "per pass" column shows the spread.
+- **Session.** Authenticated routes send a `ceitba_session` cookie. It carries an HS256 JWT (`BENCH_JWT_SECRET`, set to the contract `TEST_JWT_SECRET` that both servers had as `AUTH_JWT_SECRET`) minted like
+  `contract/support/identity.ts`, for a seeded user with an `apuntes` grant, so no row is created on the first
+  request.
+
+### Results
+
+Times are in ms, averaged over the two passes.
+
+| Route | p50 Java / Bun | p95 Java / Bun | p99 Java / Bun | req/s Java / Bun | errors J / B | p95 per pass (Java; Bun) | p95 Bun vs Java |
+|---|---|---|---|---|---|---|---|
+| `GET /v1/careers` | 1.1 / 2.9 | 7.1 / 5.3 | 65.3 / 8.6 | 9246 / 10000 | 0 / 0 | 8.5, 5.7; 5.3, 5.2 | -26% |
+| `GET /v1/plans/BP-S-1/subjects` | 11.8 / 79.7 | 81.1 / 121 | 98.0 / 183 | 1246 / 378 | 0 / 0 | 84.7, 77.5; 122, 119 | **+49% (regression)** |
+| `GET /v1/commissions?plan=BP-S-1` | 70.0 / 82.4 | 141 / 119 | 230 / 156 | 515 / 375 | 0 / 0 | 174, 108; 133, 106 | -15% |
+| `GET /v1/articles` (pages 1–5) | 9.4 / 26.7 | 55.6 / 42.6 | 68.8 / 64.0 | 1959 / 1118 | 0 / 0 | 57.3, 53.9; 49.3, 36.0 | -23% |
+| `GET /v1/articles/{id}` (rotated) | 1.5 / 5.0 | 12.1 / 9.5 | 67.2 / 15.4 | 7223 / 5816 | 0 / 0 | 15.0, 9.2; 10.3, 8.7 | -22% |
+| `GET /v1/news/events` | 4.6 / 19.8 | 60.9 / 30.5 | 72.4 / 43.7 | 2881 / 1513 | 0 / 0 | 61.9, 59.9; 33.7, 27.4 | -50% |
+| `GET /v1/organizations` | 33.1 / 14.0 | 80.9 / 23.2 | 101 / 34.3 | 742 / 2090 | 0 / 0 | 83.0, 78.9; 24.5, 21.9 | -71% |
+| `GET /v1/auth/me` (cookie) | 4.0 / 17.6 | 71.4 / 32.4 | 81.8 / 46.5 | 2552 / 1628 | 0 / 0 | 72.1, 70.7; 31.1, 33.6 | -55% |
+| `GET /v1/me/schedules` (5 saved) | 2.7 / 16.3 | 63.7 / 36.3 | 76.7 / 62.2 | 3673 / 1663 | 0 / 0 | 64.6, 62.8; 28.2, 44.4 | -43% |
+| `GET /v1/classrooms/availability?day=MONDAY&at=10:00` | 609 / 228 | 1230 / 284 | 1644 / 375 | 50 / 153 | 0 / 0 | 898, 1562; 294, 273 | -77% |
+| `GET /v1/wiki/subjects/{id}/kb/{slug}` (rotated) | 7.9 / 30.7 | 88.4 / 49.1 | 111 / 68.1 | 1345 / 974 | 0 / 0 | 96.4, 80.4; 42.2, 55.9 | -44% |
+| `GET /v1/wiki/kb/search?q=…` | 1662 / 24.1 | 2706 / 44.1 | 3408 / 64.8 | 18 / 1193 | 0 / 0 | 2503, 2909; 47.2, 41.0 | -98% |
+
+The routes are the task's list, 12 rather than 10. They are the reads `apps/web/src/api` and the mobile app call
+most: the home page, the newsletter, the scheduler, the session, Apuntes and the wiki.
+
+### Findings
+
+- **The one regression is an N+1.**
+  - `PlanService.toResponses` (`apps/api/src/features/plan/service.ts`) awaits `repo.findSubject` once per row,
+    one after another. For a 64-subject plan that is 65 round trips per request.
+  - Java has the same N+1, but serves it from 200 Tomcat threads on 2 cores. Bun's single JS thread waits on each
+    round trip, so it peaks at about 380 req/s and queues the rest.
+  - The fix: load the subjects in one query. `planRepo.findSubjectsByIds` already exists and the commission
+    service uses it. Rerun `load.ts run --routes plan-subjects` after the fix to close the phase 5 item.
+- **Bun's p50 is higher, its tail much shorter.**
+  - Bun is one JS thread: about 107% CPU on average, 136% at peak, of a 2-CPU quota.
+  - Java uses the whole quota (about 186%) and so has a lower median and more req/s on the cheap routes.
+  - But Java's p95 sits on a 60 to 90 ms floor even for `/auth/me`. That floor is CFS quota throttling. In a 20 s
+    `/auth/me` run, the container's `cpu.stat` recorded `nr_throttled` going up by 201, about once per 100 ms
+    period, with 89 s of throttled thread time. The JVM runs 64 threads (Tomcat, GC, JIT) against a 2-CPU quota.
+  - The tail depends on the quota. With more CPUs, or a lower `--cpus` on Bun, the picture changes, so rerun on
+    the VPS's real limits before cutover.
+- **Java's wiki search is slow, and Bun's is not.**
+  - Both run the same SQL with server-side prepared statements.
+  - Under Java, PostgreSQL switches to a generic plan after five executions. That plan cannot use the HNSW index:
+    it does a nested loop over every chunk and a top-N sort, 368 ms per query instead of 9.6 ms with a custom
+    plan (`EXPLAIN ANALYZE` with `plan_cache_mode` forced each way).
+  - Bun stays on the index-scan plan under load. Why the two drivers end up with different plans was not
+    investigated.
+  - If Bun ever gets the generic plan (a driver change, or different statistics), search falls back to the Java
+    numbers. Set `plan_cache_mode = force_custom_plan` in the search transaction to make it robust.
+- **`classrooms/availability` is the slowest route on both.** It loads every active slot (8,000 in this seed) and
+  computes availability in process. Bun is about 2.7 times faster, but at 230 ms p50 it is worth caching per
+  minute.
+
+### Memory
+
+Sampled with `docker stats` about once per second for each whole run.
+
+| | Java (limit 2 GiB) | Bun (limit 1 GiB) |
+|---|---|---|
+| After boot, before load | 644 / 664 MiB | 79 / 81 MiB |
+| Peak under load, pass 1 / pass 2 | **1,839 / 1,981 MiB** | **321 / 290 MiB** |
+| CPU under load, avg / max | 186% / 227% | 107% / 136% |
+| Postgres CPU under load, avg | 127–139% | 143–144% |
+
+- Java grows its heap toward the 75% cap and keeps it. It peaked within 70 MiB of the 2 GiB limit.
+- Bun peaked at 290–321 MiB under the same load, with a quarter of the headroom.
+
+### Caveats
+
+- **Environment.** One laptop (Apple M5, 10 cores) and the Docker Desktop Linux VM. The load generator, Postgres
+  and the server share the VM. Other sessions' idle Postgres containers were running, but no other load. Absolute
+  numbers will differ on the VPS; compare the ratios.
+- **Synthetic load.** It hits one route at a time at a fixed concurrency of 32, not a production traffic mix.
+  There is no TLS and no Caddy in front.
+- **Fakes and data.** External services are faked, and the search query embedding is the fake hash embedder, so
+  search time is all database. The seed is synthetic: real articles, wiki pages and plans differ in size, and
+  the wiki vectors are random.
+- **Single runtime process.** Bun runs one process, as in the image. Java's req/s advantage on cheap routes comes
+  from using both CPUs.
