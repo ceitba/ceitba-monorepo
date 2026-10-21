@@ -31,10 +31,18 @@ export type AccountDeletionStep = (tx: Tx, userId: string, deps: Deps) => Promis
 
 const steps = new Map<AccountDeletionStepName, AccountDeletionStep>();
 
-/** Registers (replaces) the implementation of a step; returns a function that unregisters it. */
+/**
+ * Registers (replaces) the implementation of a step; returns a function that undoes it, restoring
+ * the implementation it replaced (a test stub must not leave the real step unregistered).
+ */
 export function registerAccountDeletionStep(name: AccountDeletionStepName, step: AccountDeletionStep): () => void {
+  const previous = steps.get(name);
   steps.set(name, step);
-  return () => { if (steps.get(name) === step) steps.delete(name); };
+  return () => {
+    if (steps.get(name) !== step) return;
+    if (previous) steps.set(name, previous);
+    else steps.delete(name);
+  };
 }
 
 /** The steps registered so far (the app registers them while collecting the routes). */
