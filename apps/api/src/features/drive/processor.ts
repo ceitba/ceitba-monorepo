@@ -14,7 +14,7 @@ import { ContentPool, ContentWorkError } from './logic/contentPool';
 import { bytesFingerprint, NEUTRAL_PREFIX, pdfTextFingerprint, readUtf8, type ParsedDoc } from './logic/contentWork';
 import { isTextLike } from './logic/driveMedia';
 import { REF } from './logic/driveSyncRules';
-import { cap, type PdfInfo } from './logic/pdfText';
+import { cap, sameExtraction, type PdfInfo } from './logic/pdfText';
 import type { DriveFileKind } from './logic/types';
 import type { DriveSyncProps } from './props';
 import type { Content } from './store';
@@ -24,7 +24,11 @@ export const MAX_HTML_CHARS = 2_000_000;
 export interface ProcessRequest {
   fileId: string; driveId: string; kind: DriveFileKind; name: string; mimeType: string | null; version: number | null;
   knownFingerprint: string | null; size: number | null; reference: boolean;
+  /** The row's current content (fingerprint, stored text, mode), read only when a Slides/Sheets re-export hashes differently. */
+  previous?: () => Promise<PreviousContent | null>;
 }
+
+export interface PreviousContent { fingerprint: string | null; text: string | null; byReference: boolean }
 
 class TooLarge extends Error {
   constructor() {
@@ -175,12 +179,30 @@ export class DriveContentProcessor {
     const info = await this.pdfInfo(file);
     const fp = info == null ? bytesFingerprint(file) : pdfTextFingerprint(info);
     if (await haveCopy(fp)) return existing(r, fp);
+    const kept = info == null ? null : await this.unchangedExtraction(r, cap(info.text));
+    if (kept != null) return existing(r, kept);
     let key: string | null = null;
     if (!r.reference) {
       key = `${blobPrefix(r.driveId, fp)}export.pdf`;
       await this.store(key, 'application/pdf', file, written);
     }
     return content(r.version, fp, { pdfKey: key, text: info == null ? null : cap(info.text) });
+  }
+
+  /**
+   * A Slides/Sheets re-export whose text reads the same as the stored one (sameExtraction) keeps the stored
+   * fingerprint: no new copy, no wiki re-digest. The stored fingerprints of the Java era were computed by pdfbox,
+   * which pdfjs matches byte for byte on only part of the files; without this, every such file re-exported for a
+   * reason other than an edit (rename, reprocess) would count as changed. Same storage mode only (a mode change
+   * needs the other kind of copy). Returns the stored fingerprint without the reference prefix, or null.
+   */
+  private async unchangedExtraction(r: ProcessRequest, text: string | null): Promise<string | null> {
+    if ((r.kind !== 'SLIDES' && r.kind !== 'SHEET') || !r.previous) return null;
+    const prev = await r.previous();
+    if (prev == null || prev.fingerprint == null || prev.byReference !== r.reference) return null;
+    const fp = r.reference ? (prev.fingerprint.startsWith(REF) ? prev.fingerprint.slice(REF.length) : null) : prev.fingerprint;
+    if (fp == null || !fp.startsWith('sha:') || !sameExtraction(prev.text, text)) return null;
+    return fp;
   }
 
   // ---- Drawings -------------------------------------------------------------

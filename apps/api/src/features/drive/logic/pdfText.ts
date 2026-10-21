@@ -67,3 +67,17 @@ export function cap(text: string | null | undefined): string | null {
   if (t.length === 0) return null;
   return t.length <= MAX_TEXT_CHARS ? t : t.slice(0, MAX_TEXT_CHARS);
 }
+
+/**
+ * Whether two PDF text extractions of a Slides/Sheets export read the same, modulo the known differences between
+ * pdfbox (the Java app, which computed the fingerprints stored before the cutover) and pdfjs: whitespace (pdfjs
+ * drops line-end space glyphs, pdfbox inserts spaces on old Type1 files), U+2010-style hyphens vs ASCII '-',
+ * ligatures (NFKC). Both texts are stored-text shaped (cap()); a text at the MAX_TEXT_CHARS cap is truncated, so
+ * equality of the stored prefixes says nothing about the rest: false then. docs/DRIVE-PARITY.md "Mitigation".
+ */
+export function sameExtraction(stored: string | null, fresh: string | null): boolean {
+  if (stored == null || fresh == null) return false;
+  if (stored.length >= MAX_TEXT_CHARS || fresh.length >= MAX_TEXT_CHARS) return false;
+  const norm = (t: string) => t.normalize('NFKC').replace(/[\u00AD\u2010-\u2013]/g, '-').replace(/\s+/g, '');
+  return norm(stored) === norm(fresh);
+}

@@ -18,6 +18,7 @@ import {
 } from './model';
 import type { DriveSyncProps } from './props';
 import type { DriveRecalculator } from './recalculator';
+import type { PreviousContent } from './processor';
 import { inSession, ts, type Session } from './session';
 import { entry, walkDone, type WalkedItem, type WalkResult } from './walker';
 
@@ -283,6 +284,14 @@ export class DriveSyncStore {
         else tasks.push(task);
       }
       return [...tasks, ...failed];
+    }, { readOnly: true });
+  }
+
+  /** The row's current content, for DriveContentProcessor's unchanged-extraction check. */
+  previousContent(fileId: string): Promise<PreviousContent | null> {
+    return inSession(this.db, async (s) => {
+      const f = await s.fileById(fileId);
+      return f ? { fingerprint: f.contentFingerprint, text: f.textContent, byReference: f.byReference } : null;
     }, { readOnly: true });
   }
 

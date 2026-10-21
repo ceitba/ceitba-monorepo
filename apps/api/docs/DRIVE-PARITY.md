@@ -66,11 +66,47 @@ spaces. **Known divergence: macOS Pages/Word exports in Calibri** (`real_quartz1
 garbles the `ti`/`ft` ligatures ("Por%ons", "So1ware") where pdfbox reads them; 92% word match. Font
 options do not fix it.
 
-Impact: uploaded PDFs are md5-keyed, so for them only the search/wiki text differs. Slides/Sheets
-exports get a new fingerprint whenever they are re-exported (a `modifiedTime` change, rename or staff
-reprocess), which costs one LLM re-digest per affected file. Before cutover, run the gate from
-`docs/plans/api-bun-spikes.md` §3 (recompute stored `export.pdf` fingerprints with the port and compare)
-and decide between accepting the rate, mupdf (AGPL) or a pdfbox sidecar.
+#### When a different fingerprint costs something
+
+Uploaded PDFs are md5-keyed: for them only the search/wiki text differs. A Slides/Sheets export (and a Doc too
+large for its HTML export, which falls back to the PDF path) is fingerprinted from its text, and it is re-exported
+only when `needsFetch` (`logic/driveSyncRules.ts`) says so. Google-native files have no md5, so that is:
+
+- the first fetch (no fingerprint yet);
+- Drive's `modifiedTime` differs from `content_modified_at`: an edit, or a metadata change Drive also stamps
+  (a rename, for example);
+- the storage mode flipped (source mode, or the size crossed `DRIVE_SYNC_REFERENCE_ABOVE_BYTES`), or the file
+  left/entered "download blocked";
+- a staff reprocess (`POST /v1/staff/drive/reprocess?kind=SLIDES|SHEET` clears `content_modified_at`).
+
+A new fingerprint then means a new stored copy and, in the wiki pipeline (`KbInputs`), a "changed" input: one LLM
+re-digest of the subject. After a real edit that is warranted (Java re-digested too). The exposure is the other
+cases: a file whose fingerprint was stored by the Java app (pdfbox) and is re-exported without a text change, where
+pdfjs reads it differently.
+
+#### Mitigation (shipped): unchanged extractions keep the stored fingerprint
+
+`DriveContentProcessor.unchangedExtraction`: when a Slides/Sheets re-export's fingerprint matches no stored copy,
+its text is compared with the row's stored `text_content` (the extraction that produced the stored fingerprint)
+by `sameExtraction` (`logic/pdfText.ts`): equal after NFKC, Unicode hyphens folded to `-` and all whitespace
+removed, both texts under the 1,000,000-char cap (a truncated text proves nothing). Equal → the file keeps its
+stored fingerprint and copy (`existing`), so no new blob and no re-digest. Same storage mode only; Docs on the PDF
+path are not covered (rare, and the Doc HTML path is byte-identical). A real text change still gives a new
+fingerprint. Pinned by `test/drive/PdfFingerprintMitigation.test.ts`.
+
+| Corpus (16 fixtures with text or pages) | Fingerprint identical | Kept by the mitigation | Still a new fingerprint |
+|---|---|---|---|
+| All | 8 | 5 (+ the image-only file, identical anyway) | 3 |
+| Chrome/Skia-produced (closest to Google's own exports) | 4 / 5 | 1 / 5 (`chrome_hyphen`) | 0 / 5 |
+
+The three left are producers Google does not use for its exports (CUPS/Quartz, old Ghostscript Type1, macOS
+Pages in Calibri). Worst case for one of those: one extra copy and one re-digest, once, the next time Drive
+reports a change.
+
+**Decision**: keep pdfjs with the mitigation; no mupdf (AGPL) and no pdfbox sidecar. No human decision is pending.
+The pre-cutover gate of `docs/plans/api-bun-spikes.md` §3 (recompute the stored `export.pdf` fingerprints with the
+port and count mismatches, now also counting `sameExtraction`) remains the way to measure production's real rate;
+only if it shows Google exports diverging beyond what `sameExtraction` absorbs does the sidecar question come back.
 
 ## Off the event loop
 

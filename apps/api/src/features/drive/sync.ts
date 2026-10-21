@@ -188,7 +188,8 @@ export class DriveSyncService {
       }
       try {
         const c = await this.processor.process({ fileId: task.fileId, driveId: task.driveId, kind: task.kind, name: task.name,
-          mimeType: task.mimeType, version: task.version, knownFingerprint: task.knownFingerprint, size: task.size, reference: task.reference },
+          mimeType: task.mimeType, version: task.version, knownFingerprint: task.knownFingerprint, size: task.size, reference: task.reference,
+          previous: () => this.store.previousContent(task.fileId) },
         (fp) => this.store.hasCopy(task.fileId, task.driveId, fp));
         if (!(await this.store.storeContent(source.id, task.fileId, task.driveId, c, task.modifiedAt))) {
           if (!(await this.store.isSyncable(source.id))) return 'SKIPPED';
