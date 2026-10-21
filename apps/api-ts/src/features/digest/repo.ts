@@ -500,11 +500,6 @@ export async function findCorrection(db: Db, id: string): Promise<CorrectionRow 
   return r ? correction(r) : null;
 }
 
-export async function findCorrectionCommissionId(db: Db, id: string): Promise<string | null> {
-  const [r] = await rows<{ commission_id: string }>(db, sql`SELECT commission_id FROM public.schedule_correction WHERE id = ${id}`);
-  return r?.commission_id ?? null;
-}
-
 export async function findVotesOf(db: Db, userIds: string[], correctionIds: string[]): Promise<{ userId: string; correctionId: string }[]> {
   if (userIds.length === 0 || correctionIds.length === 0) return [];
   return (await rows<{ user_id: string; correction_id: string }>(db, sql`
@@ -519,32 +514,3 @@ export async function findVoteType(db: Db, correctionId: string, userId: string)
   return r?.type ?? null;
 }
 
-export async function insertVote(db: Db, correctionId: string, userId: string, type: string, now: Micros): Promise<void> {
-  await db.execute(sql`INSERT INTO public.schedule_correction_vote (correction_id, user_id, type, created_at, updated_at)
-                       VALUES (${correctionId}, ${userId}, ${type}, ${ts(now)}, ${ts(now)})`);
-}
-
-export async function updateVote(db: Db, correctionId: string, userId: string, type: string, now: Micros): Promise<void> {
-  await db.execute(sql`UPDATE public.schedule_correction_vote SET type = ${type}, updated_at = ${ts(now)}
-                       WHERE correction_id = ${correctionId} AND user_id = ${userId}`);
-}
-
-export async function countVotes(db: Db, correctionId: string, type: string): Promise<number> {
-  const [r] = await rows<{ n: number }>(db, sql`
-    SELECT COUNT(*)::bigint AS n FROM public.schedule_correction_vote WHERE correction_id = ${correctionId} AND type = ${type}`);
-  return Number(r?.n ?? 0);
-}
-
-export async function updateCorrectionState(db: Db, id: string, s: { status: string; confirmCount: number; rejectCount: number;
-  appliedAt: Micros | null }, now: Micros): Promise<void> {
-  await db.execute(sql`
-    UPDATE public.schedule_correction SET status = ${s.status}, confirm_count = ${s.confirmCount}, reject_count = ${s.rejectCount},
-      applied_at = ${s.appliedAt == null ? null : toPgTimestamp(s.appliedAt)}::timestamptz, updated_at = ${ts(now)}
-    WHERE id = ${id}`);
-}
-
-export async function supersedeOtherApplied(db: Db, commissionId: string, keepId: string, now: Micros): Promise<void> {
-  await db.execute(sql`
-    UPDATE public.schedule_correction SET status = 'SUPERSEDED', updated_at = ${ts(now)}
-    WHERE commission_id = ${commissionId} AND status = 'APPLIED' AND id <> ${keepId}`);
-}
