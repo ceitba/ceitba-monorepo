@@ -15,3 +15,21 @@ regexes = [
   '''ceitba_abc123''',
   '''itbanews_notifications_v1''',
 ]
+
+# The API's test-profile JWT secret: the base64 of "test-jwt-secret-key-32bytes-long!", the value the
+# Spring app's tests used (already under apps/api/src/test/ above). The Bun API's tests keep it because
+# the Java goldens (test/interop/java-golden.json) were produced with it. Defined once in
+# contract/support/env.ts (TEST_JWT_SECRET); older commits of the rewrite (apps/api-ts/) inlined it in tests.
+# Matched by its prefix and only under the API's test/contract-support paths.
+[[allowlists]]
+description = "API test-profile JWT secret (test fixture, never deployed)"
+condition = "AND"
+paths = ['''^apps/api(-ts)?/(test|contract/support)/''']
+regexes = ['''dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch''']
+
+# Frozen outputs of the Java implementation (HMACs, tokens, ciphertexts computed with the test secret
+# above), compared byte for byte to prove the Bun port interoperates with data Java wrote. Regenerating
+# them would defeat their purpose.
+[[allowlists]]
+description = "Java interop goldens (test fixture)"
+paths = ['''^apps/api(-ts)?/test/interop/java-golden\.json$''']

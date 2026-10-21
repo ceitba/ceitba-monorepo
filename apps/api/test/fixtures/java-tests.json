@@ -1,0 +1,2882 @@
+[
+ {
+  "name": "CeitbaApiApplicationTests",
+  "file": "org/ceitba/api/CeitbaApiApplicationTests.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "contextLoadsPlaceholder"
+  ]
+ },
+ {
+  "name": "JwtIssuerAudienceEnforcementTest",
+  "file": "org/ceitba/api/config/JwtIssuerAudienceEnforcementTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "enforcementIsOnWhenUnset",
+   "defaultDecoderRejectsTokensWithoutIssAndAud",
+   "explicitPhaseInStillAcceptsLegacyTokens"
+  ]
+ },
+ {
+  "name": "MobileAppPropertiesTest",
+  "file": "org/ceitba/api/config/MobileAppPropertiesTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "defaultsWhenUnset",
+   "latestDefaultsToMin"
+  ]
+ },
+ {
+  "name": "PushConfigTest",
+  "file": "org/ceitba/api/config/PushConfigTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "notConfiguredWhenBothAreBlank",
+   "readsRawJson",
+   "readsBase64Json",
+   "readsAFileAndJsonWinsOverPath"
+  ]
+ },
+ {
+  "name": "ShutdownDrainTest",
+  "file": "org/ceitba/api/config/ShutdownDrainTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "waitsTheDrainWhenStopping",
+   "stopsBeforeTheGracefulWebServerShutdown"
+  ]
+ },
+ {
+  "name": "StorageEnvFallbackTest",
+  "file": "org/ceitba/api/config/StorageEnvFallbackTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "storageNamesWin",
+   "r2NamesAreFallbacks",
+   "unsetMeansEmpty"
+  ]
+ },
+ {
+  "name": "ListStringMappingOrderIT",
+  "file": "org/ceitba/api/domain/ListStringMappingOrderIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "schemaValidatesRegardlessOfEntityOrder"
+  ]
+ },
+ {
+  "name": "LocalTemporalZoneIT",
+  "file": "org/ceitba/api/domain/LocalTemporalZoneIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "sqlWrittenCommissionTimeAndDatesReadBackAsWallClock",
+   "jpaWrittenCommissionTimeAndDatesAreStoredAsWallClock",
+   "endpointsServeSqlWrittenTimesUnshifted",
+   "newsEventTimeAndDateRoundTripAsWallClock",
+   "timestamptzRoundTripsByInstant",
+   "noConfigReintroducesJdbcTimeZone"
+  ]
+ },
+ {
+  "name": "NewsCategoriesTest",
+  "file": "org/ceitba/api/domain/news/NewsCategoriesTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "patternAndMessageListExactlyTheCanonicalValues",
+   "patternIsCaseSensitive"
+  ]
+ },
+ {
+  "name": "UserEntityTest",
+  "file": "org/ceitba/api/domain/UserEntityTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "updatesOnlyChangedColumns"
+  ]
+ },
+ {
+  "name": "CommissionQueryTest",
+  "file": "org/ceitba/api/external/itba/CommissionQueryTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "defaults_useArgentinaDate_notUtc",
+   "defaults_firstSemester_betweenFebruaryAndJune",
+   "explicitValues_areKept"
+  ]
+ },
+ {
+  "name": "ItbaWireFormatTest",
+  "file": "org/ceitba/api/external/itba/ItbaWireFormatTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "careerPlans_singleSection_singleTerm_singleEntry_singleDependency_allDeserialize",
+   "careerPlans_arrayShapes_alsoDeserialize",
+   "careerPlans_withoutTermBranch_singleEntry",
+   "courseCommissions_singleCommission_singleTimeSlot",
+   "courseCommissions_unknownExtraFieldsIgnored"
+  ]
+ },
+ {
+  "name": "DoBatchClientTest",
+  "file": "org/ceitba/api/external/llm/DoBatchClientTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "batchFileNamesAlwaysEndInJsonl",
+   "completedWithoutResultsYetIsStillFinalizing",
+   "resultsReadDosDownloadShape"
+  ]
+ },
+ {
+  "name": "DoBatchErrorsTest",
+  "file": "org/ceitba/api/external/llm/DoBatchErrorsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "validationFailureIsAnUnsupportedModel",
+   "rateLimitIsRetryableNotFatal",
+   "otherErrors",
+   "doBatchClientReadsErrorMessageAndTheEdgesList"
+  ]
+ },
+ {
+  "name": "DoQuotaTrackerTest",
+  "file": "org/ceitba/api/external/llm/DoQuotaTrackerTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "parsesLimitAndRemainingPairsByHeaderSuffix",
+   "batchCreationIsSkippedWithoutCallingDoWhenNoneIsLeft",
+   "zeroBatchQuotaWaitsForDosResetTimeAndNeverProbesMeanwhile",
+   "dailyTokenQuotaPausesTheSyncPoolInsteadOfFailingRequests"
+  ]
+ },
+ {
+  "name": "NewsCategoryMigrationIT",
+  "file": "org/ceitba/api/NewsCategoryMigrationIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "v29MapsCaseAndAccentVariantsAndLeavesUnknownValues"
+  ]
+ },
+ {
+  "name": "ProdMigrationsIT",
+  "file": "org/ceitba/api/ProdMigrationsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "productionMigrationsApplyCleanly"
+  ]
+ },
+ {
+  "name": "JobLockCoverageTest",
+  "file": "org/ceitba/api/scheduling/JobLockCoverageTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "everyScheduledMethodHasAJobLock",
+   "jobIdsAreUnique"
+  ]
+ },
+ {
+  "name": "JobLockIT",
+  "file": "org/ceitba/api/scheduling/JobLockIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "skipsWhileAnotherSessionHoldsTheLock",
+   "skipsTheSameTickSeenByAnotherProcessAfterItFinished",
+   "releasesTheLockAfterARunEvenWhenTheTaskThrows"
+  ]
+ },
+ {
+  "name": "SchemaValidationIT",
+  "file": "org/ceitba/api/SchemaValidationIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "everyRepositoryReachesAnEmptyTable",
+   "userTableHasUniqueFileNumberAndNoSgaColumn"
+  ]
+ },
+ {
+  "name": "ApiKeyScopeTest",
+  "file": "org/ceitba/api/service/auth/ApiKeyScopeTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "nullMeansFullPowerEmptyMeansReadOnlyAndReadIsImplied",
+   "roundTripsThroughTheColumn",
+   "everyScopeButKeysIsNotFullPower",
+   "unknownScopeIsRejected"
+  ]
+ },
+ {
+  "name": "JwksGoogleIdTokenVerifierTest",
+  "file": "org/ceitba/api/service/auth/JwksGoogleIdTokenVerifierTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "emptyAudiencesDisableMobileLogin",
+   "blankAudienceEntriesAreIgnored",
+   "garbageTokenIsInvalid",
+   "jwksFetchesHaveConnectAndReadTimeouts",
+   "unknownKeyIdsDoNotRefetchTheJwksOnEveryRequest"
+  ]
+ },
+ {
+  "name": "OAuthStateServiceTest",
+  "file": "org/ceitba/api/service/auth/OAuthStateServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "roundTrip_returnsTarget",
+   "statesAreRandom",
+   "rejectsMissingOrWrongNonce",
+   "rejectsExpiredState",
+   "rejectsTamperedPayload",
+   "rejectsStateSignedWithAnotherKey",
+   "rejectsGarbage"
+  ]
+ },
+ {
+  "name": "ReviewLoginServiceTest",
+  "file": "org/ceitba/api/service/auth/ReviewLoginServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "correctCredentialsProvisionTheReviewUser",
+   "unknownEmailStillRunsExactlyOneBcryptCheckOfTheSameCost",
+   "wrongPasswordRunsOneCheckAgainstTheRealHash",
+   "missingOrOverlongInputStillRunsOneCheck",
+   "disabledUnlessBothPropertiesAreSet",
+   "acceptsEveryStandardBcryptVariant",
+   "aMangledHashDisablesReviewLoginInsteadOfFailingStartup",
+   "onlyOneOfEmailAndHashIsMisconfigured",
+   "theMisconfigurationMessageExplainsTheCauseWithoutLeakingTheHash",
+   "productionConstructorUsesTheConfiguredCostForTheDummyHash"
+  ]
+ },
+ {
+  "name": "SessionAllowlistTest",
+  "file": "org/ceitba/api/service/auth/SessionAllowlistTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "admitsTheReviewEmailOnlyWhileReviewLoginIsEnabled"
+  ]
+ },
+ {
+  "name": "UserMeServiceTest",
+  "file": "org/ceitba/api/service/auth/UserMeServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffRoleIsEvaluatedAtTheInjectedClock"
+  ]
+ },
+ {
+  "name": "CapabilityServiceTest",
+  "file": "org/ceitba/api/service/capability/CapabilityServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "effectiveCapabilityRule",
+   "aKeyWithoutStaffScopeKeepsStaffCapabilities",
+   "enabledForAllIgnoresUnknownKeys"
+  ]
+ },
+ {
+  "name": "ClassroomAvailabilityServiceTest",
+  "file": "org/ceitba/api/service/classroom/ClassroomAvailabilityServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "defaultsToTodayAndNowInArt",
+   "freeWindowsBetweenClassesWithTouchingBoundaries",
+   "windowInProgressNeedsMinMinutesLeftAfterAt",
+   "windowsAreClampedToOpeningHours",
+   "shortGapsNeedMinMinutesAndOddTimesRoundOutward",
+   "onlineExternalAndVirtualRowsAreExcluded",
+   "classroomBusyOnlyOnAnotherDayIsFreeAllDay",
+   "anotherDayDefaultsAtToOpeningTime",
+   "sundayWithNoClassesListsEveryRoomFree",
+   "emptyScheduleReturnsNoBuildings",
+   "afterClosingNothingIsListed",
+   "buildingFilterIsCaseInsensitive",
+   "invalidParametersAreRejected"
+  ]
+ },
+ {
+  "name": "CommissionTermsTest",
+  "file": "org/ceitba/api/service/commission/CommissionTermsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "emptyStaysEmpty",
+   "endedTermsAreDroppedWhileTheRunningTermHasCommissions",
+   "nextTermSyncedEarlyReplacesTheRunningTerm",
+   "concurrentOfferingsOfTheSameTermAreBothKept",
+   "lateModuleOfTheRunningTermIsNotMistakenForTheNextTerm",
+   "yearLongCommissionRunningAlongsideTheSecondSemesterIsKept",
+   "yearLongCommissionIsKeptInTheFallbackToo",
+   "crossYearCommissionStaysWhenTheNextTermIsSynced",
+   "decemberTermDoesNotOverlapTheNextMarchTerm",
+   "firstSemesterEndingTheDayBeforeTheSecondStartsIsDropped",
+   "endingOnTheNewestStartIsKept",
+   "windowBoundaryIsInclusive",
+   "endsTodayIsNotEnded",
+   "fallsBackToTheMostRecentTermWhenEverythingEnded",
+   "bySubjectSelectsPerSubjectAndKeepsOrder"
+  ]
+ },
+ {
+  "name": "ContentHmacTest",
+  "file": "org/ceitba/api/service/crypto/ContentHmacTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "neverUsesTheJwtSigningKeyDirectly",
+   "eachLabelHasItsOwnKeyAndResultsAreStable",
+   "dedicatedSecretTakesPrecedenceOverTheJwtSecret",
+   "rejectsShortDedicatedSecretAndMissingSecrets",
+   "signHexIsLowercaseHexOfSignAndClientIpLabelsUseSeparateKeys"
+  ]
+ },
+ {
+  "name": "DigestComposerCapabilityTest",
+  "file": "org/ceitba/api/service/digest/DigestComposerCapabilityTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "nonHoldersAreExcludedAndEnabledForAllIncludesEveryone"
+  ]
+ },
+ {
+  "name": "DigestCorrectionVoteTokensTest",
+  "file": "org/ceitba/api/service/digest/DigestCorrectionVoteTokensTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "roundTripCarriesUserCorrectionAndExpiry",
+   "expiresAfterTheTtl",
+   "rejectsTamperedForeignAndMalformedTokens",
+   "anUnsubscribeTokenIsNotAVoteToken"
+  ]
+ },
+ {
+  "name": "DigestRendererTest",
+  "file": "org/ceitba/api/service/digest/DigestRendererTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "escapesUserContent",
+   "coverImageOnlyWhenAbsoluteHttpUrl",
+   "sectionsLinksFooterAndPlainText",
+   "personalSectionGoesBetweenContentAndFooter",
+   "laterEventsGoUnderNewEventsAndEveryEventLinksToItsPage",
+   "emptySectionsSaySo"
+  ]
+ },
+ {
+  "name": "DigestSelectionTest",
+  "file": "org/ceitba/api/service/digest/DigestSelectionTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "everyOrgAndOrgLessItemIsIncludedByDefault",
+   "staffExclusionsApply",
+   "everythingExcludedIsEmpty"
+  ]
+ },
+ {
+  "name": "DigestSenderTest",
+  "file": "org/ceitba/api/service/digest/DigestSenderTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "sendsEveryPendingThrottledThenMarksIssueSent",
+   "personalSectionIsLoadedForTheClaimedReaderAndSplicedPerReader",
+   "aFailingPersonalSectionStillSendsTheSharedDigest",
+   "quotaStopsTheRunAndItOverflowsIntoTheNextDay",
+   "gmailDailyLimitPausesTheRunForADayWithoutTouchingTheRow",
+   "recipientFailureIsRecordedAndTheRunGoesOn",
+   "anUnusableSenderSkipsTheTickBeforeClaimingAnythingAndResumesWhenFixed",
+   "transportFailureStopsWithoutBlamingTheRow",
+   "temporaryFailureOfOneRecipientNeverStallsTheIssueAndFailsAfterThreeAttempts",
+   "rowsLeftSendingByACrashAreFailedNeverResent",
+   "cancelMidwayStopsBeforeTheNextEmail",
+   "dropsRecipientsThatNoLongerQualify",
+   "everyEmailCarriesItsOwnUnsubscribeHeaders",
+   "trackedEmailsWrapEveryBodyLinkButNotTheUnsubscribeHeader"
+  ]
+ },
+ {
+  "name": "DigestServiceTest",
+  "file": "org/ceitba/api/service/digest/DigestServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "weeklyDraftIsCreatedOnlyOnMondayAfter0005",
+   "weeklyDraftIsIdempotent",
+   "autoSendInThePastIsRejectedOnCreateAndPatch",
+   "patchKeepingTheStoredPastAutoSendAtStillSaves",
+   "disabledMailRefusesSendAndTestAndSkipsAutoSend"
+  ]
+ },
+ {
+  "name": "DigestTrackingServiceTest",
+  "file": "org/ceitba/api/service/digest/DigestTrackingServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "clicksGoOnlyToStoredUrls",
+   "realClickCountsAndImpliesAnOpen",
+   "scannerClickIsRecordedFlaggedAndNotCounted",
+   "openWithinSecondsOfSendingIsFlagged",
+   "unknownTrackingIdsRecordNothing",
+   "flagRules",
+   "refusedRequestsStillAnswerButNeverTouchTheDatabase",
+   "theBodyUnsubscribeLinkIsNeverTracked",
+   "ratesAreRounded"
+  ]
+ },
+ {
+  "name": "DigestUnsubscribeTokensTest",
+  "file": "org/ceitba/api/service/digest/DigestUnsubscribeTokensTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "roundTrip",
+   "rejectsTamperedOrForeignTokens",
+   "rejectsMalformed",
+   "notTheSameKeyAsOtherPurposes"
+  ]
+ },
+ {
+  "name": "DigestWeekTest",
+  "file": "org/ceitba/api/service/digest/DigestWeekTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "rejectsNonMonday",
+   "coveredWeekAndFollowingWeek",
+   "previousWeekFromAnyDay",
+   "spanishSubject"
+  ]
+ },
+ {
+  "name": "CorrectionPromptsTest",
+  "file": "org/ceitba/api/service/digest/personal/CorrectionPromptsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "onlyPendingOnOwnCommissionsNotSuggestedOrVotedByTheReader",
+   "mostConfirmedFirstThenOldestAndCapped"
+  ]
+ },
+ {
+  "name": "DigestTermTest",
+  "file": "org/ceitba/api/service/digest/personal/DigestTermTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "currentTermIsTheRunningOneNotPastOrFarFutureTerms",
+   "aTermStartingWithinTwoWeeksCountsAndBetweenTermsThereIsNone",
+   "scheduleSavedForThisTermIsCurrent",
+   "scheduleSavedForThePreviousTermIsStaleEvenWithTheSameCommissionNames",
+   "yearLongSubjectsDoNotMakeAnOldScheduleCurrent",
+   "unknownSubjectsOrCommissionsAreDroppedAndNothingLeftIsStale",
+   "parsesTheSchedulerPayloadAndSkipsJunk"
+  ]
+ },
+ {
+  "name": "PersonalDigestRendererTest",
+  "file": "org/ceitba/api/service/digest/personal/PersonalDigestRendererTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "currentScheduleShowsSubjectsWikiAndCorrections",
+   "needsScheduleIsJustTheCallToAction",
+   "escapesEverything",
+   "slotListsReadNaturally"
+  ]
+ },
+ {
+  "name": "AcademicYearsTest",
+  "file": "org/ceitba/api/service/drive/AcademicYearsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "fourDigitYearsAsTheirOwnToken",
+   "termMarkersWithTwoDigitYears",
+   "negatives"
+  ]
+ },
+ {
+  "name": "DocHtmlSanitizerTest",
+  "file": "org/ceitba/api/service/drive/DocHtmlSanitizerTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "rewritesKnownImagesAndDropsTheRest",
+   "decodesImageSourcesWrittenUrlEncoded",
+   "unwrapsGoogleRedirectsAndHardensLinks"
+  ]
+ },
+ {
+  "name": "DriveCommunityServiceTest",
+  "file": "org/ceitba/api/service/drive/DriveCommunityServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "folderNamesMapToTheFirstKnownSubjectCode"
+  ]
+ },
+ {
+  "name": "DriveFolderUrlsTest",
+  "file": "org/ceitba/api/service/drive/DriveFolderUrlsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "parsesFolderLinks",
+   "parsesIdQueryParameter",
+   "acceptsBareIds",
+   "rejectsEverythingElse"
+  ]
+ },
+ {
+  "name": "DriveReferenceModeTest",
+  "file": "org/ceitba/api/service/drive/DriveReferenceModeTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "referenceModeAndSizeThresholdDecideStorageAndAModeChangeRefetches"
+  ]
+ },
+ {
+  "name": "DriveSourceServiceTest",
+  "file": "org/ceitba/api/service/drive/DriveSourceServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "aFolderStaffBlockedCannotBeRegisteredAgain"
+  ]
+ },
+ {
+  "name": "DriveWalkerTest",
+  "file": "org/ceitba/api/service/drive/DriveWalkerTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "walkResumesAcrossRunsWithoutLoopsAndOnlyACleanCompleteGenerationRemoves",
+   "shortcutIsFollowedOnlyToItemsTheOwnerOwns"
+  ]
+ },
+ {
+  "name": "GoogleDocsHtmlTest",
+  "file": "org/ceitba/api/service/drive/GoogleDocsHtmlTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "inlineFormattingAndAlignment",
+   "flatListsBecomeNested",
+   "orderedListsKeepTypeAndNumbering",
+   "indentedParagraphsBecomeBlockquotes",
+   "inlineStylesFromCurrentExports",
+   "parsesFlatCss"
+  ]
+ },
+ {
+  "name": "PlanAwareSubjectMatcherTest",
+  "file": "org/ceitba/api/service/drive/PlanAwareSubjectMatcherTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "realNamesWithThePlan",
+   "abbreviationsAndPartials",
+   "withoutThePlanOnlyStrongMatchesCount"
+  ]
+ },
+ {
+  "name": "PublicationRuleTest",
+  "file": "org/ceitba/api/service/drive/PublicationRuleTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "ownFileWithSubjectInApprovedSourceIsPublished",
+   "foldersAreNeverPublished",
+   "privateWithoutSubjectOrWhenHiddenOrSourceDown",
+   "needsReviewWhenOwnedByOthersOrSourcePending",
+   "reportsHidePublishedFilesAtThree",
+   "staffDecisionsStick",
+   "goneFromDriveWins"
+  ]
+ },
+ {
+  "name": "SubjectMatcherTest",
+  "file": "org/ceitba/api/service/drive/SubjectMatcherTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "matchesNamesAccentAndCaseInsensitively",
+   "prefersTheMoreSpecificSubject",
+   "codesWin",
+   "aNameWithoutNumeralMatchesTheFirstOfTheSeries",
+   "contradictingNumeralsRuleASubjectOut",
+   "noMatchBelowThreshold"
+  ]
+ },
+ {
+  "name": "KbBatchProbeClassificationTest",
+  "file": "org/ceitba/api/service/kb/admin/KbBatchProbeClassificationTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "explicitUnsupportedErrorsCount",
+   "otherFailuresDoNotDecideBatchSupport"
+  ]
+ },
+ {
+  "name": "KbBatchProbeFallbackTest",
+  "file": "org/ceitba/api/service/kb/admin/KbBatchProbeFallbackTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "nativeIdRefusedThenPrefixedIdWorksAndIsStored",
+   "nativeIdWorksFirst",
+   "bothFormsUnsupportedTurnBatchOff",
+   "otherErrorsLeaveBatchSupportedAlone",
+   "rateLimitedProbeIsRetriedLaterAndOnlyOneIsPending"
+  ]
+ },
+ {
+  "name": "KbCatalogItemTest",
+  "file": "org/ceitba/api/service/kb/admin/KbCatalogItemTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "perTokenPricesAreConvertedToPerMillion",
+   "valuesAlreadyPerMillionAreKept",
+   "numbersAsStringsAndFilters"
+  ]
+ },
+ {
+  "name": "KbForecastBasisTest",
+  "file": "org/ceitba/api/service/kb/admin/KbForecastBasisTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "basisFollowsTheNumberOfCompletedRuns",
+   "blendWeightsHistoryByRunsOverThree",
+   "weeklyNeverBelowTheBacklog",
+   "cronIsAlwaysSixFields",
+   "quantilesAreP25MedianP75"
+  ]
+ },
+ {
+  "name": "KbProbeSelectionTest",
+  "file": "org/ceitba/api/service/kb/admin/KbProbeSelectionTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "probesAreKeptPerModeWithTheLatestOnTop",
+   "selectableFollowsTheStageMode"
+  ]
+ },
+ {
+  "name": "KbSettingsValidationTest",
+  "file": "org/ceitba/api/service/kb/admin/KbSettingsValidationTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "wrongTypesNameTheField",
+   "defaultsAndReadOnlyFieldsAreNotStored",
+   "runTokenBudgetIsClampedWhenUsed"
+  ]
+ },
+ {
+  "name": "KbEvalMetricsTest",
+  "file": "org/ceitba/api/service/kb/eval/KbEvalMetricsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "groundingFlagsClaimsWhoseAnchorsAreNotInTheSources",
+   "computeCountsValidityCitationsAndEmptyToolCalls",
+   "configKeysCarryEfforts"
+  ]
+ },
+ {
+  "name": "InMemoryRepo",
+  "file": "org/ceitba/api/service/kb/InMemoryRepo.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "KbChunkerTest",
+  "file": "org/ceitba/api/service/kb/KbChunkerTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "chunk0IsTitleSummaryAndIntroThenOneChunkPerSection",
+   "headingsInsideCodeFencesDoNotSplit",
+   "emptySectionsAreSkippedButChunk0AlwaysExists",
+   "longSectionsAreSplitAtParagraphsWithinTheLimit",
+   "aParagraphLongerThanTheLimitIsHardCut",
+   "aHugeTitleOrHeadingStillLeavesRoomForTheText",
+   "anchorsMatchTheOnesWikilinksResolveTo"
+  ]
+ },
+ {
+  "name": "KbCopyDetectorTest",
+  "file": "org/ceitba/api/service/kb/KbCopyDetectorTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "fortyConsecutiveWordsAreACopyThirtyNineAreNot",
+   "formattingDoesNotHideACopy"
+  ]
+ },
+ {
+  "name": "KbEmbeddingServiceTest",
+  "file": "org/ceitba/api/service/kb/KbEmbeddingServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anUnreachableServerStopsTheSweepAfterOneRequest",
+   "aMalformedAnswerForOnePageDoesNotStopTheOthers",
+   "anUnknownModelStopsTheSweepAfterOneRequest",
+   "aWrongVectorLengthStopsTheSweep",
+   "aPageLevelErrorSkipsOnlyThatPage"
+  ]
+ },
+ {
+  "name": "KbLinkerTest",
+  "file": "org/ceitba/api/service/kb/KbLinkerTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "linksTheFirstMentionPerSectionAndSkipsCodeAndHeadings",
+   "doesNotLinkTheCurrentPageAndReportsUnlinkedMentions"
+  ]
+ },
+ {
+  "name": "KbMustCoverTest",
+  "file": "org/ceitba/api/service/kb/KbMustCoverTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "normalizeTrimsCapsAndTurnsInvalidIntoEmpty",
+   "missingFormulaOnlyWhenLatexIsRequiredAndThePageHasNoMath"
+  ]
+ },
+ {
+  "name": "KbPageParserTest",
+  "file": "org/ceitba/api/service/kb/KbPageParserTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "parsesAValidPage",
+   "rejectsBadFrontmatterAndStructure",
+   "everyH2SectionNeedsACitation"
+  ]
+ },
+ {
+  "name": "KbValidatorTest",
+  "file": "org/ceitba/api/service/kb/KbValidatorTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "sourcesMustBePublishedFilesOfTheSubjectAndCitedFilesListed",
+   "copiesFromASourceAreRejected",
+   "goodMathAndProseAreAccepted",
+   "brokenLatexIsRejected",
+   "editorNotesAreRejected",
+   "selfLinksAndSpacedCitationsAreRejected"
+  ]
+ },
+ {
+  "name": "KbWikilinksTest",
+  "file": "org/ceitba/api/service/kb/KbWikilinksTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "classifiesTargets",
+   "anchors"
+  ]
+ },
+ {
+  "name": "KbChatPayloadsTest",
+  "file": "org/ceitba/api/service/kb/llm/KbChatPayloadsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "chatBodyForcesTheToolAndKeepsReasoningEffort",
+   "anthropicBatchLinesDropReasoningEffort",
+   "batchModelIdDefaultsToTheNativeProviderId",
+   "batchLinesCarryTheBatchModelIdAndSyncKeepsTheCatalogId",
+   "parserHandlesToolCallsContentJsonEmptyAndTruncated",
+   "parserReadsAnthropicBatchResults",
+   "parserDropsNulCharactersPostgresCannotStore"
+  ]
+ },
+ {
+  "name": "KbCustomEndpointTest",
+  "file": "org/ceitba/api/service/kb/llm/KbCustomEndpointTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "customModelGoesToItsEndpointWithItsOwnConcurrency",
+   "discoverUpsertsCatalogIdsAndKeepsExistingOnes",
+   "rawIdWithSlashGetsSlashFreeCatalogIdAndRoutesWithRawId",
+   "doKeyIsNeededOnlyWhenSomeStageModelIsNotCustom"
+  ]
+ },
+ {
+  "name": "KbPricingTest",
+  "file": "org/ceitba/api/service/kb/llm/KbPricingTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "syncPaysListPrice",
+   "batchTakesTheDiscountOffEverythingIncludingCachedInput",
+   "cachedInputIsBilledAtCacheReadPrice",
+   "unknownModelCostsNothingAndBatchRule"
+  ]
+ },
+ {
+  "name": "KbSecretCipherTest",
+  "file": "org/ceitba/api/service/kb/llm/KbSecretCipherTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "roundTripsWithTheJwtDerivedKeyAndNeverShowsThePlaintext",
+   "oldTokensSurviveSettingTheEnvKeyAndRotationMakesThemUnreadable"
+  ]
+ },
+ {
+  "name": "SyncLlmExecutorAttemptsTest",
+  "file": "org/ceitba/api/service/kb/llm/SyncLlmExecutorAttemptsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "truncatedAnswerIsRetriedOnceWithDoubleMaxTokensAndEachAttemptTracked",
+   "neverDoublesTwice",
+   "stopAbandonsQueuedRequests"
+  ]
+ },
+ {
+  "name": "SyncLlmExecutorConcurrencyTest",
+  "file": "org/ceitba/api/service/kb/llm/SyncLlmExecutorConcurrencyTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "fansOutUpToTheConfiguredConcurrency"
+  ]
+ },
+ {
+  "name": "NoTx",
+  "file": "org/ceitba/api/service/kb/NoTx.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "KbAdmissionTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbAdmissionTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "admissionIsByMoneyNotTokens",
+   "firstCandidateAloneOverBudgetRunsAloneThenNothingElse",
+   "smallestFirstTiesBrokenByOldestDirty"
+  ]
+ },
+ {
+  "name": "KbBatchSubmitterTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbBatchSubmitterTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "theSameStageQueuedTwiceIsSubmittedOnce",
+   "rateLimitedCreationWaitsWithBackoffAndNeverFails",
+   "aStageOverTheBatchCapIsSplitIntoPartsWithOwnJobsAndRequestIds",
+   "backoffIsOneFiveFifteenThenHourly",
+   "aCreationThatWentThroughIsAdoptedInsteadOfResubmitted",
+   "aRejectedCreationFailsTheJobAndItsRequestsWithDoMessage"
+  ]
+ },
+ {
+  "name": "KbCompiledInputsTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbCompiledInputsTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "failedPagesLeaveTheirInputsDirty"
+  ]
+ },
+ {
+  "name": "KbDigestToleranceTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbDigestToleranceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "reasoningHeadroom",
+   "partialChunkMerge",
+   "missingFilesTolerance"
+  ]
+ },
+ {
+  "name": "KbPlanCheckTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbPlanCheckTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "indexOnlyPlanIsInsufficientOnFirstCompileWithSeveralSources"
+  ]
+ },
+ {
+  "name": "KbPlanSchemaTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbPlanSchemaTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "planOperationsRequireEveryFieldAndDescribeSources",
+   "retriesOnlyWhenTheModelProposedOperationsAndNoneWasKept",
+   "correctionIsAppendedToTheUserMessage"
+  ]
+ },
+ {
+  "name": "KbRunOutcomeTest",
+  "file": "org/ceitba/api/service/kb/pipeline/KbRunOutcomeTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "aggregatesFailures",
+   "partialCountsAsCompleted"
+  ]
+ },
+ {
+  "name": "KbProgressMathTest",
+  "file": "org/ceitba/api/service/kb/progress/KbProgressMathTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "syncDigestWithEtaFromLatencies",
+   "etaFallsBackToCompletionGapsWithoutLatencies",
+   "rateLimitedBatchCreationWaitsWithRetryTime",
+   "partialRunIsFinished",
+   "batchStageUsesDoRequestCounts",
+   "syncWithoutActivityForTenMinutesIsStalled",
+   "succeededRunIsComplete",
+   "cancelledRunHasNothingInFlight",
+   "syncInFlightIsCappedAtConcurrency"
+  ]
+ },
+ {
+  "name": "GmailApiEmailSenderTest",
+  "file": "org/ceitba/api/service/mail/GmailApiEmailSenderTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "rawIsBase64UrlMimeWithHeadersUtf8SubjectAndBothBodies",
+   "onlyTheDailyLimitIsQuotaAndPausesTheAccount",
+   "perSecondThrottlingIsTransportWithAShortBackoffHonouringRetryAfter",
+   "authErrorsAreTransportAndFlagTheConnectionAsBroken",
+   "serverErrorsAreTransportBadRecipientIsRecipientOtherClientErrorsAreTransient"
+  ]
+ },
+ {
+  "name": "InMemoryMailLedger",
+  "file": "org/ceitba/api/service/mail/InMemoryMailLedger.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "MailAccessTokenCacheTest",
+  "file": "org/ceitba/api/service/mail/MailAccessTokenCacheTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "cachesUntilShortlyBeforeExpiryThenRefreshes",
+   "invalidateAndReconnectionForceARefresh"
+  ]
+ },
+ {
+  "name": "MailClientClassTest",
+  "file": "org/ceitba/api/service/mail/MailClientClassTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "classifiesProxiesBrowsersAndScanners"
+  ]
+ },
+ {
+  "name": "MailLinkRewriterTest",
+  "file": "org/ceitba/api/service/mail/MailLinkRewriterTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "everyHttpLinkOfBothPartsIsWrappedAndThePixelAppended",
+   "collectGivesDistinctLinksWithTheirFirstRealLabel",
+   "textUrlsDoNotSwallowTrailingPunctuation",
+   "urlKeyDropsOnlyTheToken",
+   "trackingIdsAreRandomAndOpaque"
+  ]
+ },
+ {
+  "name": "MailOAuthStateServiceTest",
+  "file": "org/ceitba/api/service/mail/MailOAuthStateServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "stateBindsTheStaffUserAndExpires",
+   "forgedTamperedOrForeignStatesAreRejected"
+  ]
+ },
+ {
+  "name": "MailSenderAccountServiceTest",
+  "file": "org/ceitba/api/service/mail/MailSenderAccountServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "onlyTheExactVerifiedSenderAddressIsAccepted",
+   "sendScopeMustHaveBeenGranted",
+   "anUndecryptableTokenMarksTheAccountBrokenAndReportsItUnavailable",
+   "missingOrBrokenAccountsAreUnavailable"
+  ]
+ },
+ {
+  "name": "MailSendServiceTest",
+  "file": "org/ceitba/api/service/mail/MailSendServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "everyAttemptIsLoggedWithAccountKindAndOutcome",
+   "rollingWindowRefusesWhenFullAndSaysWhenCapacityFrees",
+   "overLimitNeedsSeveralOldAttemptsToExpire",
+   "overflowRollsIntoTheNextDay",
+   "gmailDailyLimitErrorPausesTheAccountForADayAndSurvivesARestart",
+   "gmailPauseLengthIsConfigurable",
+   "transportErrorsBackOffExponentiallyAndASuccessClearsIt",
+   "aThrottleWithRetryAfterBacksOffShortlyNotTheExponentialStepNorTheDailyPause",
+   "aDeliveryScopedTemporaryErrorDoesNotPauseTheAccount",
+   "digestAndTestEmailsOutsideTheAllowedDomainsAreRefusedBeforeSending",
+   "estimateFinishFollowsTheRollingWindow",
+   "estimateFinishStartsAfterAPause"
+  ]
+ },
+ {
+  "name": "MailTokenCipherTest",
+  "file": "org/ceitba/api/service/mail/MailTokenCipherTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "roundTripWithFreshIvEachTime",
+   "tamperingWrongKeyAndWrongAccountAreRejected",
+   "keyMustBe32Bytes"
+  ]
+ },
+ {
+  "name": "MutableClock",
+  "file": "org/ceitba/api/service/mail/MutableClock.java",
+  "abstract": false,
+  "parent": "Clock",
+  "methods": []
+ },
+ {
+  "name": "SmtpReplyClassificationTest",
+  "file": "org/ceitba/api/service/mail/SmtpReplyClassificationTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "classifiesTheReplyByItsEnhancedStatusCode",
+   "replyWithoutCodeFallsBackToTheWording",
+   "wrapsByExceptionTypeAndUnknownErrorsAreTheTransports"
+  ]
+ },
+ {
+  "name": "InMemoryObjectStorage",
+  "file": "org/ceitba/api/service/media/InMemoryObjectStorage.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "MediaUploadServiceTest",
+  "file": "org/ceitba/api/service/media/MediaUploadServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffImage_signsServerChosenKey",
+   "staffImage_rejectsPdfAndOversize",
+   "proposalAttachment_limitsPerType",
+   "proposalAttachment_keyIsBoundToItsUploaderWithoutRevealingOrLinkingThem",
+   "proposalAttachment_isRateLimitedPerUser",
+   "publicUrl_isTheBucketUrlOfTheKey",
+   "unconfiguredStorage_answersNotConfigured"
+  ]
+ },
+ {
+  "name": "S3ObjectStorageTest",
+  "file": "org/ceitba/api/service/media/S3ObjectStorageTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "presignPut_signsPathStyleUrlWithTypeAndLength",
+   "publicUrl_joinsBaseWithoutDoubleSlash",
+   "propertiesDefaults"
+  ]
+ },
+ {
+  "name": "NewsSitemapServiceTest",
+  "file": "org/ceitba/api/service/news/NewsSitemapServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "lastmodIsTheBuenosAiresDateOfUpdatedAtElsePublishedAt",
+   "entriesAreMemoisedForTenMinutes"
+  ]
+ },
+ {
+  "name": "OrgAnnouncementListIdTest",
+  "file": "org/ceitba/api/service/orgmail/OrgAnnouncementListIdTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "plainAsciiNameIsKept",
+   "lineBreaksCannotStartAnotherHeader",
+   "nonAsciiNameIsAnEncodedWord",
+   "blankNameFallsBackToTheSlug"
+  ]
+ },
+ {
+  "name": "OrgAnnouncementRendererTest",
+  "file": "org/ceitba/api/service/orgmail/OrgAnnouncementRendererTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "escapesTheBodyAndLinksOnlyHttpUrls",
+   "aQuotedOrBracketedUrlStopsAtItsDelimiter",
+   "blankLinesStartParagraphsAndSingleNewlinesBreakLines"
+  ]
+ },
+ {
+  "name": "ProposalAliasGeneratorTest",
+  "file": "org/ceitba/api/service/proposal/ProposalAliasGeneratorTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "portedWordListGivesGreekLetterTimesColorCombos",
+   "neverReturnsATakenAliasAndFallsBackToSuffixes",
+   "defaultGeneratorCoversEveryCombo"
+  ]
+ },
+ {
+  "name": "ProposalServiceTest",
+  "file": "org/ceitba/api/service/proposal/ProposalServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "voteCastChangeRepeatAndRemoveKeepCountersConsistent",
+   "votingNeedsAnApprovedOpenProposal",
+   "aliasIsStablePerUserAndProposalAndUniqueWithinIt",
+   "authorCommentIsFlaggedAsAuthor",
+   "repliesAreOneLevelDeepOnTheSameProposal",
+   "deletingOwnCommentDecrementsOnceAndOthersGet404",
+   "createIsPendingWithAuthorAliasAndOnlyOwnAttachmentKeys",
+   "creatingAndCommentingAreRateLimitedPerUserAfterValidation",
+   "pendingProposalIsVisibleToAuthorAndModeratorsOnly",
+   "rejectionReasonOnlyForAuthorAndModerators",
+   "approvePublishesEventOnceAndRefusesToReModerate",
+   "lifecycleOnlyOnApprovedAndPublishesOnlyOnChange",
+   "moderatorCommentDeleteDecrementsOnlyOnce",
+   "pagingIsClamped"
+  ]
+ },
+ {
+  "name": "ProposalStatusPushNotifierTest",
+  "file": "org/ceitba/api/service/proposal/ProposalStatusPushNotifierTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "everyStatusAModeratorCanSetHasATitle",
+   "publishesAPushToUsersTriggerForTheAuthor",
+   "noAuthorOrUnknownStatusOrMissingProposalPublishesNothing"
+  ]
+ },
+ {
+  "name": "FakePushGateway",
+  "file": "org/ceitba/api/service/push/FakePushGateway.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "FakePushGatewayConfig",
+  "file": "org/ceitba/api/service/push/FakePushGatewayConfig.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "FcmPushNotificationServiceTest",
+  "file": "org/ceitba/api/service/push/FcmPushNotificationServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "splitsIntoBatchesOfAtMost500",
+   "prunesUnregisteredAndInvalidTokensButKeepsTransientFailures",
+   "aBatchRejectedEntirelyWithInvalidArgumentIsTreatedAsABadMessage",
+   "anInvalidTokenIsPrunedWhenItIsTheOnlyTokenOfTheBatch",
+   "unregisteredIsPrunedEvenWhenItIsTheOnlyToken",
+   "aFailedBatchIsSkippedAndTheRestStillGoOut",
+   "duplicateTokensAreSentOnce",
+   "noRecipientsMeansNoCalls",
+   "noOpServiceNeverTouchesAnything"
+  ]
+ },
+ {
+  "name": "FirebasePushGatewayTest",
+  "file": "org/ceitba/api/service/push/FirebasePushGatewayTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "mapsFcmErrorCodesToOutcomes",
+   "buildsAMulticastMessage",
+   "initializesFromAServiceAccountAndRejectsOversizedBatches",
+   "apnsPayloadIsContentAvailableSoIosCanRefreshTheInboxInTheBackground",
+   "sendsThroughFirebaseMessagingAndMapsPerTokenErrors"
+  ]
+ },
+ {
+  "name": "PushMessageTest",
+  "file": "org/ceitba/api/service/push/PushMessageTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "forResourceCarriesTypeAndId",
+   "titleAndBodyAreRequired",
+   "dataIsCopiedImmutableAndDropsNullValues"
+  ]
+ },
+ {
+  "name": "UserRateLimiterTest",
+  "file": "org/ceitba/api/service/ratelimit/UserRateLimiterTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "exhaustsPerUserAndReportsRetryAfter",
+   "disabledOrUnknownRuleNeverLimits",
+   "userRuleRejectsNonPositiveValues"
+  ]
+ },
+ {
+  "name": "ModeratorServiceTest",
+  "file": "org/ceitba/api/service/staff/ModeratorServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "listActiveLoadsUsersInOneBatchAndKeepsGrantOrder"
+  ]
+ },
+ {
+  "name": "StudyGroupServiceTest",
+  "file": "org/ceitba/api/service/studygroup/StudyGroupServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "createMakesTheCreatorOwnerAndFirstParticipant",
+   "createRejectsUnknownSubject",
+   "createRejectsDueDateNotInTheFuture",
+   "createRejectsCapacityOfOne",
+   "joinAddsTheCallerWithClockTime",
+   "joinFullGroupIsConflict",
+   "joinPastDueGroupIsConflict",
+   "joinUnlimitedGroupNeverChecksCapacity",
+   "joinWhenAlreadyMemberIsNoOp",
+   "joinUnknownGroupIsNotFound",
+   "memberLeaves",
+   "leavingWhenNotAMemberIsNotFound",
+   "ownerLeavingAloneDeletesTheGroup",
+   "ownerLeavingTransfersToEarliestJoiner",
+   "strangerCannotEditOrDelete",
+   "moderatorCanEditAndDelete",
+   "capacityCannotDropBelowMembers",
+   "updateRejectsBlankTitleAndPastDueDate",
+   "contactLinkIsMembersOnly",
+   "participantsExposeNameAndAvatarOnly",
+   "listPageUsesBatchedCountsAndMembership"
+  ]
+ },
+ {
+  "name": "DataSyncServiceIT",
+  "file": "org/ceitba/api/service/sync/DataSyncServiceIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "syncAllCreatesSubjectsPlansAndCommissions",
+   "rerunIsIdempotent_noNewCreates",
+   "detectsSubjectChange_marksUpdated",
+   "backfillsMissingSubjectFromCommission_usesNameWhenAvailable",
+   "backfillsMissingSubject_fallsBackToCodeWhenNameAbsent",
+   "planAddedByStaffIsPickedUpByTheNextSync",
+   "resyncUpdatesExistingCommission",
+   "syncCommissionsBySubjectUpdatesExistingCommission",
+   "resyncStampsTheQueriedTermAndRefreshesNameDatesAndType",
+   "resyncKeepsNameAndTypeWhenUpstreamOmitsThem"
+  ]
+ },
+ {
+  "name": "FirestoreImportResponseTest",
+  "file": "org/ceitba/api/service/sync/FirestoreImportResponseTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "mapsEveryCounterAndIssueAndKeepsTheJsonShape"
+  ]
+ },
+ {
+  "name": "FirestoreImportServiceTest",
+  "file": "org/ceitba/api/service/sync/FirestoreImportServiceTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "createsUserWithUidCareerPlanAndHandles",
+   "deletedAccountIsNotReimported",
+   "careerMatchesByIdToo",
+   "rerunIsIdempotent",
+   "unknownDegreeLeavesCareerAndPlanNull",
+   "planOutsideTheCareerCatalogueDropsTheCareerToo",
+   "appAbbreviatedCareerLabelIsNotGuessed",
+   "existingUserKeepsItsValuesAndOnlyFillsNulls",
+   "moderatorFlagCreatesGrant",
+   "moderatorGrantOnExistingUserCountsAsUpdate",
+   "revokedModeratorIsNotRegranted",
+   "invalidHandleIsDroppedWithWarning",
+   "badDocumentsAreReportedWithoutEmailsAndOthersStillImport",
+   "uidAndEmailOnDifferentUsersIsAnError",
+   "emailAlreadyLinkedToAnotherUidIsAnError",
+   "constraintViolationIsReportedGenerically",
+   "unexpectedExceptionIsReportedByTypeOnly",
+   "dryRunMarksEveryDocumentTransactionRollbackOnly",
+   "nullDocumentsAndMissingCollectionsAreIgnored",
+   "benefitIsMappedToCard",
+   "unknownOrMissingCategoryFallsBackToConvenios",
+   "benefitRerunUpdatesInPlaceWithoutDuplicates",
+   "nonHttpUrlsAndOversizedFieldsAreDropped",
+   "benefitWithoutTitleOrWithAmbiguousTitleIsAnError",
+   "proposalsAreSkippedWhileImporterIsUnavailable",
+   "proposalsGoThroughTheImporterWhenAvailable",
+   "importerWarningsAreReportedUnderTheDocument"
+  ]
+ },
+ {
+  "name": "ProposalFirestoreImporterTest",
+  "file": "org/ceitba/api/service/sync/ProposalFirestoreImporterTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "proposalOfADeletedAccountIsNotRecreated",
+   "topicsMatchIgnoringCaseAccentsAndSpaces",
+   "authorizedMapsToModerationStatus",
+   "statusMapsToLifecycle",
+   "timesAcceptIsoStringsAndRawTimestamps",
+   "onlyCopiedLegacyKeysAreAttachmentKeys",
+   "cutNeverSplitsASurrogatePair",
+   "commentsFlattenToOneLevelWithStableKeys",
+   "newDocumentIsInsertedWithMappedFieldsAndChildRows",
+   "idsAreStableAcrossRuns",
+   "commentIdsCannotBeRecomputedFromTheirInputs",
+   "existingDocumentIsLockedAndReportsWhetherRowsWereAdded",
+   "takenOrOverlongAliasesAreReplaced",
+   "rejectedKeepsItsReasonAndPendingHasNoModerator",
+   "missingAuthorDateAndLongTextAreWarnedNotFatal",
+   "missingTitleIsAnError",
+   "commentsFromUnknownUsersBlankOnesAndLongOnes",
+   "nonMapVotesAreIgnoredWithAWarning",
+   "isAlwaysAvailable"
+  ]
+ },
+ {
+  "name": "SavedSchedulePayloadChangeTest",
+  "file": "org/ceitba/api/service/user/SavedSchedulePayloadChangeTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "sameContentIsNotAChangeEvenWithDifferentKeyOrderOrNumberTypes",
+   "differentContentIsAChange"
+  ]
+ },
+ {
+  "name": "SocialHandlesTest",
+  "file": "org/ceitba/api/service/user/SocialHandlesTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "linkedinNormalizes",
+   "linkedinRejects",
+   "instagramNormalizes",
+   "instagramRejects",
+   "discordNormalizes",
+   "discordRejects"
+  ]
+ },
+ {
+  "name": "AsyncWork",
+  "file": "org/ceitba/api/support/AsyncWork.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "ItDatabaseContextCustomizerFactory",
+  "file": "org/ceitba/api/support/ItDatabaseContextCustomizerFactory.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "ResetSharedContextTestExecutionListener",
+  "file": "org/ceitba/api/support/ResetSharedContextTestExecutionListener.java",
+  "abstract": false,
+  "parent": "AbstractTestExecutionListener",
+  "methods": []
+ },
+ {
+  "name": "SharedPostgres",
+  "file": "org/ceitba/api/support/SharedPostgres.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "SpringContextClassOrderer",
+  "file": "org/ceitba/api/support/SpringContextClassOrderer.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "AnalyticsIT",
+  "file": "org/ceitba/api/web/analytics/AnalyticsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "ingestBatchReturns202",
+   "ingestPersistsEvents",
+   "ingestStoresAKeyedHashOfTheClientIp",
+   "ingestWithInvalidTypeStillReturns202AndSkipsInvalid",
+   "ingestEmptyEventArrayReturns400",
+   "ingestBatchExceeding50EventsIsRejected",
+   "summaryRequiresAuth",
+   "summaryForbiddenForRegularUser",
+   "staffCanAccessSummary",
+   "summaryCountsArticleViews"
+  ]
+ },
+ {
+  "name": "AppConfigIT",
+  "file": "org/ceitba/api/web/app/AppConfigIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "appConfigIsPublicAndPropertiesBacked"
+  ]
+ },
+ {
+  "name": "ApiKeyFilterTest",
+  "file": "org/ceitba/api/web/auth/ApiKeyFilterTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "exactSyncKeyGrantsRoleSync",
+   "wrongOrPartialKeyGrantsNothing",
+   "unsetSyncKeyNeverMatches",
+   "anyKeyMayRevokeItselfButNoOtherKey",
+   "readOnlyKeysOnlyPassSafeMethodsAndReadStyleQueries",
+   "anEncodedSelfRevokePathIsNotExempt"
+  ]
+ },
+ {
+  "name": "ApiKeyScopesIT",
+  "file": "org/ceitba/api/web/auth/ApiKeyScopesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "readOnlyKeyCanReadButNotWrite",
+   "readOnlyKeyMayRunReadStylePostQueries",
+   "writeScopeAllowsWrites",
+   "staffPowersNeedTheStaffScope",
+   "scopedKeysCannotManageKeys",
+   "aStaffMcpKeyCannotManageKeys",
+   "scopedKeysCannotManageKeysThroughAnEncodedPath",
+   "aReportKeyMayOnlyReport",
+   "anEmptyScopeListMeansReadOnly",
+   "aStaffMembersKeyWithoutStaffScopeReportsAPlainUser",
+   "aReadOnlyKeyCanRevokeItself",
+   "keysOfNonAllowlistedOwnersAreRejected",
+   "createWithScopesOverHttp"
+  ]
+ },
+ {
+  "name": "AuthControllerLogoutTest",
+  "file": "org/ceitba/api/web/auth/AuthControllerLogoutTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "logoutExpiresBothDomainScopedAndHostOnlyCookies",
+   "logoutWithoutConfiguredDomainSendsSingleHostOnlyClear"
+  ]
+ },
+ {
+  "name": "AuthIT",
+  "file": "org/ceitba/api/web/auth/AuthIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "publicEndpointsAreReachableWithoutAuth",
+   "protectedEndpointWithoutTokenReturns401",
+   "syncWithoutApiKeyReturns401",
+   "syncWithWrongApiKeyReturns401",
+   "syncWithPrefixOfTheKeyReturns401",
+   "syncKeyOnAUserEndpointIsForbidden",
+   "apiKeyTtlIsCappedAtOneYear",
+   "syncWithCorrectApiKeyIsAllowed",
+   "allowlistAdmitsItbaDomain",
+   "allowlistAdmitsExplicitlyListedExternalEmail",
+   "allowlistRejectsUnknownDomain",
+   "allowlistIsCaseInsensitive"
+  ]
+ },
+ {
+  "name": "AuthMeIT",
+  "file": "org/ceitba/api/web/auth/AuthMeIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "meIncludesAcademicAndSocialProfile",
+   "meModeratorFlagFollowsActiveGrant",
+   "meRequiresAuthentication",
+   "meReturnsUserProfile",
+   "meCreatesUserIfFirstLogin",
+   "meIncludesEmptyOrganizationsByDefault",
+   "meRoleIsUserWithoutActiveCeitbaStaffRow"
+  ]
+ },
+ {
+  "name": "AuthMobileIT",
+  "file": "org/ceitba/api/web/auth/AuthMobileIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "validTokenReturnsTokenPairAndProvisionsUser",
+   "loginLeavesAcademicProfileForTheUserToFill",
+   "iosAudienceIsAlsoAccepted",
+   "unverifiedEmailIsRejected",
+   "emailOutsideAllowlistIsRejected",
+   "explicitlyAllowlistedGmailIsAccepted",
+   "workspaceDomainOutsideAllowlistIsRejected",
+   "wrongAudienceIsRejected",
+   "wrongIssuerIsRejected",
+   "expiredTokenIsRejected",
+   "tamperedTokenIsRejected",
+   "nonceMustMatchWhenProvided",
+   "missingIdTokenIsBadRequest",
+   "repeatedLoginReusesTheSameUserAndStartsNewFamilies",
+   "loginIgnoresAStaleBearerToken"
+  ]
+ },
+ {
+  "name": "AuthOAuthFlowIT",
+  "file": "org/ceitba/api/web/auth/AuthOAuthFlowIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "googleLogin_setsHttpOnlyStateCookie_andSignedState",
+   "fullFlow_withMatchingCookie_logsInAndRedirectsToTarget",
+   "callback_withoutStateCookie_isRejectedBeforeCodeExchange",
+   "callback_withAnotherBrowsersCookie_isRejected",
+   "callback_withLegacyUnsignedState_isRejected",
+   "googleLogin_lookalikeRedirect_fallsBackToFrontend",
+   "callback_whenUserCancelsConsent_redirectsToTargetWithAccessDenied",
+   "callback_withOtherGoogleErrorOrNoCode_redirectsWithAuthFailed",
+   "callback_cancelWithoutValidState_isInvalidState",
+   "logout_isPostOnly"
+  ]
+ },
+ {
+  "name": "CookieOrHeaderBearerTokenResolverTest",
+  "file": "org/ceitba/api/web/auth/CookieOrHeaderBearerTokenResolverTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffMailAccountEndpointsUseTheSessionCookie",
+   "trackingAndOauthCallbackIgnoreTheSessionCookie"
+  ]
+ },
+ {
+  "name": "DevLoginDisabledIT",
+  "file": "org/ceitba/api/web/auth/DevLoginDisabledIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "devLoginDoesNotExistWithoutTheDevProfile",
+   "driveEndpointsAnswer503WhenUnconfigured"
+  ]
+ },
+ {
+  "name": "DevLoginIT",
+  "file": "org/ceitba/api/web/auth/DevLoginIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "signsInWithTheSessionCookieAndOptionallyAsStaff"
+  ]
+ },
+ {
+  "name": "IssuerAudienceValidatorTest",
+  "file": "org/ceitba/api/web/auth/IssuerAudienceValidatorTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "phaseIn_acceptsLegacyTokenWithoutIssOrAud",
+   "phaseIn_acceptsMatchingIssAndAud",
+   "phaseIn_rejectsWrongIssuerWhenPresent",
+   "phaseIn_rejectsWrongAudienceWhenPresent",
+   "enforced_rejectsLegacyTokenWithoutClaims",
+   "enforced_acceptsMatchingClaims"
+  ]
+ },
+ {
+  "name": "RefreshTokenIT",
+  "file": "org/ceitba/api/web/auth/RefreshTokenIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "refreshRotatesTheToken",
+   "reusingARotatedTokenAfterTheGraceWindowRevokesTheWholeFamily",
+   "reusingARotatedTokenWhoseSuccessorWasUsedRevokesTheWholeFamily",
+   "retryWithinGraceWindowAfterALostResponseIssuesANewSuccessor",
+   "theReplacedSuccessorCountsAsReuseOnceTheNewOneWasUsed",
+   "reuseDoesNotTouchOtherFamilies",
+   "userRemovedFromAllowlistLosesTheFamily",
+   "unknownTokenIsRejected",
+   "expiredTokenIsRejected",
+   "refreshIgnoresAnExpiredBearerHeader",
+   "logoutWithRefreshTokenRevokesItsFamily",
+   "logoutWithoutBodyStillWorks",
+   "logoutWithANonJsonBodyStillClearsTheCookie",
+   "logoutAllRevokesEveryFamilyOfTheCaller",
+   "logoutAllRequiresAuthentication",
+   "logoutDuringAnUncommittedRotationAlsoRevokesTheSuccessor",
+   "logoutAllDuringAnUncommittedRotationAlsoRevokesTheSuccessor"
+  ]
+ },
+ {
+  "name": "ReviewLoginDisabledIT",
+  "file": "org/ceitba/api/web/auth/ReviewLoginDisabledIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "disabledEndpointAnswers404"
+  ]
+ },
+ {
+  "name": "ReviewLoginIT",
+  "file": "org/ceitba/api/web/auth/ReviewLoginIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "successReturnsTheMobileTokenShapeAndAPlainUser",
+   "emailMatchIsCaseInsensitiveAndRepeatedLoginsReuseTheUser",
+   "wrongPasswordIsRejected",
+   "anyOtherEmailIsRejectedEvenWithTheRightPassword",
+   "missingOrBlankFieldsAreInvalidCredentials",
+   "allowlistAdmitsTheReviewEmailButNothingElse",
+   "googleLoginWithTheReviewEmailIsStillRejected",
+   "refreshAndLogoutWorkUnchanged",
+   "reviewAccountCannotCreateApiKeys",
+   "staleBearerTokenIsIgnored",
+   "hasItsOwnStrictRateLimitBucket"
+  ]
+ },
+ {
+  "name": "ReviewLoginMisconfiguredIT",
+  "file": "org/ceitba/api/web/auth/ReviewLoginMisconfiguredIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "appStartsHealthyAndReviewLoginIsDisabled"
+  ]
+ },
+ {
+  "name": "SafeRedirectTest",
+  "file": "org/ceitba/api/web/auth/SafeRedirectTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "acceptsAllowedOrigins",
+   "rejectsEverythingElse",
+   "rejectsNull"
+  ]
+ },
+ {
+  "name": "StaffRoleDetectionIT",
+  "file": "org/ceitba/api/web/auth/StaffRoleDetectionIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "freshUserGetsRoleUserOnly",
+   "existingUserWithoutStaffRowGetsRoleUserOnly",
+   "userWithActiveStaffRowGetsRoleStaff",
+   "userWithExpiredStaffRowGetsRoleUserOnly",
+   "userWithFutureStaffRowGetsRoleUserOnly"
+  ]
+ },
+ {
+  "name": "TestGoogleIdTokens",
+  "file": "org/ceitba/api/web/auth/TestGoogleIdTokens.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "PublicCapabilitiesIT",
+  "file": "org/ceitba/api/web/capability/PublicCapabilitiesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "listsOnlyCapabilitiesEnabledForAllWithoutASession"
+  ]
+ },
+ {
+  "name": "CareerEndpointsIT",
+  "file": "org/ceitba/api/web/career/CareerEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "getAllCareersReturnsListWithEmptyPlansArrays",
+   "getCareerByIdReturnsTheOne",
+   "getCareerByUnknownIdReturns404",
+   "getCareersWithPlansReturnsMapKeyedByIdWithPlanIdArrays"
+  ]
+ },
+ {
+  "name": "CareerWritesIT",
+  "file": "org/ceitba/api/web/career/CareerWritesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousCannotCreate",
+   "regularUserCannotCreate",
+   "staffCanCreate_returns201",
+   "duplicateIdReturns409",
+   "missingNameReturns400",
+   "putUpdatesNameOnly",
+   "putUnknownIdReturns404",
+   "deleteReturns204AndRemoves",
+   "deleteUnknownReturns404",
+   "deleteCareerWithPlansReturns409",
+   "regularUserCannotDelete",
+   "staffCanAddPlanToCareer",
+   "addPlanKeepsExplicitName",
+   "addPlanWithIdUsedByAnyCareerReturns409",
+   "addPlanToUnknownCareerReturns404",
+   "addPlanValidatesId",
+   "regularUserCannotAddPlan"
+  ]
+ },
+ {
+  "name": "ClassroomAvailabilityIT",
+  "file": "org/ceitba/api/web/classroom/ClassroomAvailabilityIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousGetsFreeRoomsForNowInArt",
+   "explicitDayBuildingAndTime",
+   "invalidDayReturns400",
+   "nonNumericMinMinutesReturns400"
+  ]
+ },
+ {
+  "name": "ClassroomEndpointsIT",
+  "file": "org/ceitba/api/web/classroom/ClassroomEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "noFiltersGroupsByBuildingAndSkipsOnline",
+   "statusOccupiedGroupsByDayAndBuilding",
+   "byBuildingReturnsClassroomList",
+   "byDayReturnsActiveSchedulesOnly",
+   "invalidDayReturns400",
+   "overlappingConflictDetected",
+   "touchingBoundariesDoNotConflict",
+   "invalidTimeOrderingReturns400"
+  ]
+ },
+ {
+  "name": "CommissionsIT",
+  "file": "org/ceitba/api/web/commission/CommissionsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousListsCurrentCommissionsOfThePlanFromTheDb",
+   "nextTermSyncedEarlyReplacesTheRunningTerm",
+   "unknownPlanReturns404",
+   "missingPlanParamReturns400"
+  ]
+ },
+ {
+  "name": "ScheduleCorrectionIT",
+  "file": "org/ceitba/api/web/correction/ScheduleCorrectionIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "suggestionIsCreatedPendingWithTheSuggestersConfirm",
+   "invalidSlotsAreRejected",
+   "sameAsSgaUnknownAndEndedCommissionsAreRejected",
+   "anonymousCallersCannotSuggestOrVote",
+   "identicalOpenSuggestionIsReturnedInsteadOfDuplicated",
+   "oneDifferentPendingSuggestionPerUserAndCommission",
+   "appliesAtThreeConfirmsWithMoreConfirmsThanRejectsAndUnappliesWhenRejectsCatchUp",
+   "threeConfirmsAreNotEnoughWhenRejectsTie",
+   "secondCorrectionReachingTheThresholdSupersedesTheAppliedOne",
+   "votesOnUnknownOrEndedCorrectionsFail",
+   "staffApplySupersedesAndStaffRejectIsFinal",
+   "staffListHidesOpenCorrectionsOfEndedCommissions",
+   "staffEndpointsRequireStaff",
+   "subjectsOverlayServesTheEffectiveScheduleAndOpenCorrections",
+   "extraCorrectedSlotsHaveEmptyRooms",
+   "commissionsEndpointServesCorrectedTimes",
+   "overlaysFollowTheNewestTermInBothEndpoints",
+   "syncLeavesCorrectionsAloneWhileSgaSlotsAreUnchanged",
+   "syncResolvesCorrectionsSgaNowAgreesWithAndSupersedesTheRest",
+   "applyingPushesOnceToTheSuggesterWithTheContractPayload",
+   "myCorrectionsListAndSeenNotice",
+   "concurrentVotesAreAllCountedAndApplyOnce",
+   "deletingAccountsKeepsCorrectionsAndFixesCounters",
+   "deletingAnAccountReEvaluatesTheCorrectionsItVotedOn"
+  ]
+ },
+ {
+  "name": "ScheduleCorrectionRateLimitIT",
+  "file": "org/ceitba/api/web/correction/ScheduleCorrectionRateLimitIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "suggestionsAreLimitedPerIp",
+   "votesAreLimitedPerIpOnWritesOnly"
+  ]
+ },
+ {
+  "name": "DigestCorrectionVoteIT",
+  "file": "org/ceitba/api/web/digest/DigestCorrectionVoteIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "viewShowsTheCorrectionWithoutWritingOrRevealingTheSuggester",
+   "voteCountsTowardTheRuleAndAReplayDoesNotCountTwice",
+   "expiredInvalidAndBadVoteAreRejected",
+   "aClosedCorrectionCanBeViewedButNotVoted",
+   "aStaleSessionDoesNotGetInTheWay",
+   "previewShowsTheReadersOwnSectionWithAWorkingVoteLink",
+   "theSuggesterIsNotAskedAndAReaderWithoutScheduleGetsTheCallToAction"
+  ]
+ },
+ {
+  "name": "DigestEndpointsIT",
+  "file": "org/ceitba/api/web/digest/DigestEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "issueEndpointsAreStaffOnly",
+   "createValidatesWeekAndUniqueness",
+   "detailListsCandidatesAndPatchAcceptsTheFullBody",
+   "eventsAnnouncedInTheWeekJoinTheIssueWhateverTheirDate",
+   "sendingAnEmptyIssueIsRefused",
+   "testSendHonoursTheDomainGuard",
+   "sendSnapshotsRecipientsThenLocksTheIssue",
+   "cancelWhileSendingDropsWhatIsLeft",
+   "deleteRemovesTheIssueAndItsDeliveriesButNotWhileSending",
+   "withoutTheCapabilityOnlyHoldersGetEstimatedAndSubscribe",
+   "subscriptionAndOneClickUnsubscribe"
+  ]
+ },
+ {
+  "name": "DriveSyncIT",
+  "file": "org/ceitba/api/web/drive/DriveSyncIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "registerSyncSuggestApprovePublishAndRead",
+   "textOriginalsInlineAsPlainTextAndBlockedDownloadsAreMetadataOnly",
+   "reprocessReExportsDocsAndKeepsUnchangedCopies",
+   "academicYears",
+   "planAwareSuggestionsAndMySubjects",
+   "renameMoveEditRemoveAndRevoke",
+   "crossSourceMoveKeepsTheRowWhicheverSourceSyncsFirst",
+   "registrationErrors",
+   "threeReportsHideAFileUntilStaffRestoresIt",
+   "accountDeletionRemovesSourcesCopiesAndReports"
+  ]
+ },
+ {
+  "name": "GlobalExceptionHandlerTest",
+  "file": "org/ceitba/api/web/error/GlobalExceptionHandlerTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "resourceNotFoundMapsTo404",
+   "resourceAlreadyExistsMapsTo409",
+   "featureNotConfiguredMapsTo501",
+   "validationExceptionMapsTo400",
+   "dataIntegrityViolationMapsTo409",
+   "externalApiExceptionMapsTo502",
+   "unhandledExceptionMapsTo500WithGenericMessage",
+   "unreadableBodyMapsTo400WithoutEchoingParserDetails",
+   "studyGroupConflictMapsTo409WithReasonCode",
+   "studyGroupForbiddenMapsTo403",
+   "methodNotSupportedMapsTo405WithAllowHeader",
+   "mediaTypeNotSupportedMapsTo415",
+   "missingRequestHeaderMapsTo400"
+  ]
+ },
+ {
+  "name": "HealthProbesIT",
+  "file": "org/ceitba/api/web/health/HealthProbesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "readinessAndLivenessAreUpAndPublic"
+  ]
+ },
+ {
+  "name": "HealthAndErrorIT",
+  "file": "org/ceitba/api/web/HealthAndErrorIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "rootReturnsApiStatus",
+   "healthReturnsHealthy",
+   "actuatorHealthReturns200",
+   "openApiDocsAreServed",
+   "wrongMethodReturns405",
+   "wrongContentTypeReturns415"
+  ]
+ },
+ {
+  "name": "HighlightsIT",
+  "file": "org/ceitba/api/web/highlight/HighlightsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "publicListShowsOnlyActiveInsideWindowOrderedByPosition",
+   "writesRequireStaff",
+   "staffCrudRoundTrip",
+   "invalidBodiesReturn400",
+   "emptyLinkUrlIsStoredAsNoLink"
+  ]
+ },
+ {
+  "name": "KbDateParamTest",
+  "file": "org/ceitba/api/web/kb/admin/KbDateParamTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "dateOnlyIsTheWholeDayInBuenosAires",
+   "fullOffsetDatetimeIsKept",
+   "blankIsAbsentAndGarbageIsAValidationError"
+  ]
+ },
+ {
+  "name": "KbEmbeddingIT",
+  "file": "org/ceitba/api/web/kb/KbEmbeddingIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "extensionAndIndexExist",
+   "embedsPublishedPagesAndFindsTheMatchingSection",
+   "searchEndpointReturnsPassagesForReadersWithApuntes",
+   "aNewRevisionReplacesThePageChunks",
+   "hiddenPagesAreNeitherEmbeddedNorReturned"
+  ]
+ },
+ {
+  "name": "BatchPipelineIT",
+  "file": "org/ceitba/api/web/kb/pipeline/BatchPipelineIT.java",
+  "abstract": false,
+  "parent": "KbPipelineAcceptanceIT",
+  "methods": [
+   "waitsForBatchesAndResumes",
+   "stageOverTheBatchCapIsSplitIntoSeveralBatches"
+  ]
+ },
+ {
+  "name": "KbAdminEvalIT",
+  "file": "org/ceitba/api/web/kb/pipeline/KbAdminEvalIT.java",
+  "abstract": false,
+  "parent": "KbPipelineAcceptanceIT",
+  "methods": [
+   "settingsAreValidatedVersionedAndRestorable",
+   "costsAcceptDateOnlyAndIsoDatetimeAndRejectGarbage",
+   "modelSyncTakesPricesFromDoCatalogWithoutClobberingProbesOrManualFields",
+   "cancellingAnEvalCascades",
+   "catalogForecastAndStageCost",
+   "evalUsesFrozenInputsNeverPublishesAndFeedsTheLeaderboard"
+  ]
+ },
+ {
+  "name": "KbFakeAnswers",
+  "file": "org/ceitba/api/web/kb/pipeline/KbFakeAnswers.java",
+  "abstract": false,
+  "parent": null,
+  "methods": []
+ },
+ {
+  "name": "KbKickIT",
+  "file": "org/ceitba/api/web/kb/pipeline/KbKickIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "evalAndDryRunAdvanceWithoutAPollerTick"
+  ]
+ },
+ {
+  "name": "KbPipelineAcceptanceIT",
+  "file": "org/ceitba/api/web/kb/pipeline/KbPipelineAcceptanceIT.java",
+  "abstract": true,
+  "parent": null,
+  "methods": [
+   "noChangesMeansZeroRequests",
+   "firstRunPublishesThenOnlyTheChangedFileIsSent",
+   "digestsAreReusedByFingerprint",
+   "rejectedPagesGetOneRetry",
+   "budgetAdmitsTheOversizedSubjectAloneAndDefersTheRest",
+   "removedSoleSourceDeletesThePageWithoutRequests",
+   "costByStageAndUsageRows",
+   "aFailingSubjectDoesNotStopTheOthers",
+   "aSubjectGoesOnWithoutOneUnreadFile"
+  ]
+ },
+ {
+  "name": "SyncPipelineIT",
+  "file": "org/ceitba/api/web/kb/pipeline/SyncPipelineIT.java",
+  "abstract": false,
+  "parent": "KbPipelineAcceptanceIT",
+  "methods": [
+   "jsonObjectFallback",
+   "usageRowsCarryAttemptAndLatency",
+   "runLeaseGuardsDoubleAdvancement",
+   "reasoningEffortIsSent",
+   "requestCapDefersSubjectsThatDoNotFit",
+   "resumeLoopGuardFailsTheRunAfterRepeatedRestarts"
+  ]
+ },
+ {
+  "name": "SubjectWikiIT",
+  "file": "org/ceitba/api/web/kb/SubjectWikiIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "importReadLinkTakedownAndReport",
+   "threeReportsHideAPage",
+   "sectionAnchorsAreValidatedAgainstExistingTargets",
+   "sourceYearsAndStaleness"
+  ]
+ },
+ {
+  "name": "MailAccountsIT",
+  "file": "org/ceitba/api/web/mail/MailAccountsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "endpointsAreStaffOnly",
+   "connectReturnsTheGoogleConsentUrl",
+   "callbackStoresTheEncryptedTokenAndListingHasNoSecrets",
+   "callbackRejectsAnotherAccountABadStateAndAMissingScope",
+   "testSendWithoutAConnectedSenderIs409AndDeleteRevokesAtGoogle"
+  ]
+ },
+ {
+  "name": "MailTrackingIT",
+  "file": "org/ceitba/api/web/mail/MailTrackingIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "pixelAndRedirectArePublicAndNeverFailOnUnknownIds",
+   "retentionDeletesOldTrackingAndSendLogRowsOnly",
+   "sentIssueIsTrackedAndStatsAreAggregate",
+   "quotaIsSharedWithTestSendsWhichGet429WhenItRunsOut",
+   "quotaAndStatsAreStaffOnly"
+  ]
+ },
+ {
+  "name": "MediaEndpointsIT",
+  "file": "org/ceitba/api/web/media/MediaEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "signUpload_asUser_returns403",
+   "proposalAttachment_anonymous_returns401",
+   "proposalAttachment_withoutStorage_returns501",
+   "proposalAttachment_validation_returns400",
+   "signUpload_withoutStorage_returns501",
+   "signUpload_unsupportedType_returns400",
+   "signUpload_tooLarge_returns400"
+  ]
+ },
+ {
+  "name": "MinioPresignedUploadIT",
+  "file": "org/ceitba/api/web/media/MinioPresignedUploadIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffImage_presignedPutThroughProxy_thenAnonymousGet",
+   "proposalAttachment_roundTrip",
+   "uploadsThatDoNotMatchTheSignatureAreRejected",
+   "anonymousCannotListTheBucket",
+   "serviceUserCannotDelete",
+   "proxyRejectsBodiesOverTheLimit",
+   "driveObjects_serverSidePutSignedGetDelete_neverAnonymous"
+  ]
+ },
+ {
+  "name": "StorageConfiguredUploadIT",
+  "file": "org/ceitba/api/web/media/StorageConfiguredUploadIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffImage_isSigned",
+   "proposalAttachment_isSignedThenRateLimitedPerUser",
+   "proposalAcceptsOnlyTheAuthorsSignedKeys"
+  ]
+ },
+ {
+  "name": "ArticleEndpointsIT",
+  "file": "org/ceitba/api/web/news/ArticleEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "publicListShowsOnlyPublished",
+   "paginationIsStrictWhenCreatedAtTies",
+   "listClampsLimit",
+   "staffListCanSeeDrafts",
+   "staffListWithNullStatusDefaultsToPublished",
+   "publicListIgnoresDraftStatusParam",
+   "filterByCategoryReturnsMatchingOnly",
+   "paginationMetaIsCorrect",
+   "getPublishedArticleById",
+   "getDraftReturns404ForAnonymous",
+   "staffCanGetDraftById",
+   "unknownIdReturns404",
+   "anonymousCannotCreate",
+   "apiKeyUserManagesOwnIndependentArticle",
+   "staffSuppliedIdMustBeASlug",
+   "regularUserCannotCreatePublishedIndependentArticle",
+   "regularUserCannotCreateForOrgTheyDontBelongTo",
+   "authorEditsOwnPendingArticleUntilStaffPublishIt",
+   "undoingAPublishCanClearTheDateItFilledIn",
+   "expectedStatusRefusesAPublishFromAStaleReviewRow",
+   "publishingAnUndatedArticleDatesItToday",
+   "creatingAnUndatedPublishedArticleDatesItToday",
+   "authorCanDeleteOwnPendingArticle",
+   "mineListsOwnArticlesOfEveryStatus",
+   "staffCanCreateArticle",
+   "staffCanCreateDraft",
+   "staffCanPatchTitle",
+   "patchWithoutFeaturedKeepsItFeatured",
+   "staffCanPromoteDraftToPublished",
+   "patchUnknownIdReturns404",
+   "staffCanDelete",
+   "deleteUnknownReturns404",
+   "createValidationFailsOnMissingTitle"
+  ]
+ },
+ {
+  "name": "ArticleLinkPreviewIT",
+  "file": "org/ceitba/api/web/news/ArticleLinkPreviewIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "publishedArticleHasOpenGraphTagsWithoutASession",
+   "draftsAndUnknownArticlesAre404"
+  ]
+ },
+ {
+  "name": "EventSignupIT",
+  "file": "org/ceitba/api/web/news/EventSignupIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "createValidatesTheSignupMode",
+   "rsvpRespectsCapacityAndIsIdempotent",
+   "rsvpRefusesPastAndNonRsvpEvents",
+   "attendeesAreForTheOrgsMembers",
+   "adminsCanHideRsvpListsFromPlainMembers",
+   "patchReplacesTheSignupOnlyWhenTheModeIsSent",
+   "dayBeforeReminderIsClaimedOnce",
+   "eventViewsAreRecordedWithTheEventId"
+  ]
+ },
+ {
+  "name": "FollowEndpointsIT",
+  "file": "org/ceitba/api/web/news/FollowEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousCannotListFollows",
+   "firstLoginAutoFollowsCeitba",
+   "followAndListReturnsRow",
+   "unfollowRemovesRow",
+   "followUnknownOrgReturns404",
+   "followIsIdempotent"
+  ]
+ },
+ {
+  "name": "NewsDraftsAndCategoriesIT",
+  "file": "org/ceitba/api/web/news/NewsDraftsAndCategoriesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffStatusAllListsDraftsAndPublished",
+   "staffWithoutStatusStillGetsPublishedOnly",
+   "anonymousStatusAllOrDraftGetsPublishedOnly",
+   "outsiderStatusAllGetsPublishedOnly",
+   "memberListsOwnOrgDrafts",
+   "memberDoesNotSeeOtherOrgDrafts",
+   "memberGetsOwnOrgDraftById",
+   "draftByIdIsHiddenFromEveryoneElse",
+   "createWithNonCanonicalCategoryIs400",
+   "createWithCanonicalCategorySucceeds",
+   "patchWithNonCanonicalCategoryIs400",
+   "categoryFilterIsExact",
+   "organizationUrlsMustBeHttp"
+  ]
+ },
+ {
+  "name": "NewsEventEndpointsIT",
+  "file": "org/ceitba/api/web/news/NewsEventEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "listReturnsAllEvents",
+   "paginationIsStrictWhenDatesTie",
+   "listClampsLimit",
+   "listFiltersByCategory",
+   "listFiltersByDateRange",
+   "getByIdReturnsCorrectShape",
+   "unknownIdReturns404",
+   "anonymousCannotCreate",
+   "regularUserCannotCreate",
+   "staffCanCreateEvent",
+   "staffCanPatchEvent",
+   "staffCanDelete",
+   "createValidationFailsOnMissingTitle"
+  ]
+ },
+ {
+  "name": "NewsSitemapIT",
+  "file": "org/ceitba/api/web/news/NewsSitemapIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "listsPublishedArticlesAndEventsWithoutASession"
+  ]
+ },
+ {
+  "name": "OrgAnalyticsIT",
+  "file": "org/ceitba/api/web/news/OrgAnalyticsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "memberSeesOnlyTheOrgsOwnNumbers",
+   "outsidersAndBadWindowsAreRefused"
+  ]
+ },
+ {
+  "name": "OrganizationEndpointsIT",
+  "file": "org/ceitba/api/web/news/OrganizationEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "listReturnsAllOrgs",
+   "getBySlugReturnsCorrectOrg",
+   "getByUnknownSlugReturns404",
+   "anonymousCannotCreate",
+   "regularUserCannotCreate",
+   "staffCanCreate",
+   "duplicateSlugReturns409",
+   "createRejectsMalformedSlugs",
+   "createAcceptsKebabCaseSlugAtBounds",
+   "staffCanPatch",
+   "patchIgnoresSlugInBody",
+   "staffCanPatchProfileFields",
+   "followerCountIsLive",
+   "regularUserCannotPatch",
+   "patchUnknownSlugReturns404",
+   "staffCanDelete",
+   "deleteUnknownReturns404"
+  ]
+ },
+ {
+  "name": "OrgMembersEndpointsIT",
+  "file": "org/ceitba/api/web/news/OrgMembersEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "adminListsMembersWithEmails",
+   "plainMemberAndOutsiderCannotListMembers",
+   "adminOfAnotherOrgCannotManageThisOne",
+   "inviteAddsExistingUsersAndKeepsUnknownEmailsPending",
+   "inviteRefusesEmailsOutsideTheLoginAllowlist",
+   "memberCannotInvite",
+   "pendingInviteBecomesMembershipOnFirstLogin",
+   "pendingInviteIsClaimedWhenStaffCreatesTheUser",
+   "staffInvitesListsAndRevokesPendingInvites",
+   "adminRevokesPendingInvite",
+   "adminSetsBoardTitleShownOnThePortal",
+   "adminCannotDemoteOrRemoveThemselvesWhenLastAdmin",
+   "transferAdminHandsOverAndStepsDown",
+   "adminRemovesMemberAndMemberCanLeave",
+   "lastOrgAdminCannotDeleteTheirAccount",
+   "memberDeletesOwnOrgsEventAndArticleButNotAnotherOrgs",
+   "orgImageUploadIsForMembersOnly",
+   "memberUpdatesContactAndRecruitingFields"
+  ]
+ },
+ {
+  "name": "PushTriggerIT",
+  "file": "org/ceitba/api/web/news/PushTriggerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "theFcmServiceIsWiredWhenAGatewayExists",
+   "publishingAnArticleTargetsOnlyTheOrgFollowersDevices",
+   "aDraftDoesNotPushUntilItIsPublishedAndEditsDoNotRepush",
+   "republishingAnArticleDoesNotPushAgain",
+   "publishingLogsThePushReachForTheOrg",
+   "v27BackfillMarksPublishedArticlesAsAnnounced",
+   "anArticleWithoutOrganizationDoesNotPush",
+   "creatingANewsEventPushesToFollowers",
+   "aFailedRequestSendsNothing",
+   "triggersArePublishedOnlyAfterCommit",
+   "deadTokensReportedByFcmAreDeleted"
+  ]
+ },
+ {
+  "name": "UserOrganizationEndpointsIT",
+  "file": "org/ceitba/api/web/news/UserOrganizationEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousCannotListMyOrganizations",
+   "memberSeesOwnMemberships",
+   "outsiderSeesEmptyMemberships",
+   "memberCanPatchOwnOrg",
+   "memberCannotPatchAnotherOrg",
+   "memberCanPostArticleForOwnOrg",
+   "memberCannotPostArticleForAnotherOrg",
+   "memberCanPostEventForOwnOrg",
+   "memberCannotPostEventForAnotherOrg",
+   "postingArticleWithExistingIdReturns409AndLeavesItUntouched",
+   "postingEventWithExistingIdReturns409AndLeavesItUntouched",
+   "memberCanPatchOwnOrgArticle",
+   "memberCannotTakeOverAnotherOrgsArticleByPatchingItsOrg",
+   "memberCannotMoveOwnArticleToAnotherOrg",
+   "memberCannotTakeOverAnotherOrgsEventByPatchingItsOrg",
+   "memberCannotMoveOwnEventToAnotherOrg",
+   "memberCanPatchOwnOrgEvent",
+   "staffCanStillMoveAnArticleBetweenOrgs",
+   "plainMemberCannotListFollowers",
+   "orgAdminCanListOwnOrgFollowers",
+   "orgAdminCannotListAnotherOrgsFollowers",
+   "staffCanListAnyOrgsFollowers",
+   "staffCanPromoteMemberToAdmin",
+   "staffCanDemoteAdminToMember",
+   "nonStaffCannotChangeMembershipRole",
+   "changingRoleOfUnknownMembershipReturns404",
+   "invalidRoleReturns400",
+   "addingMembershipWithInvalidRoleReturns400",
+   "promotedAdminCanListFollowersAndDemotedAdminCannot",
+   "staffUserListExposesMembershipRoles"
+  ]
+ },
+ {
+  "name": "VoteIT",
+  "file": "org/ceitba/api/web/news/VoteIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "getCountsReturnsZerosForNewArticle",
+   "getCountsReflectsExistingAggregate",
+   "castUpVoteIncrementsCount",
+   "castingTheSameVoteTwiceIsIdempotent",
+   "changingVoteTypeRetractsOldAndAppliesNew",
+   "invalidVoteTypeReturns400",
+   "voteOnUnknownArticleReturns404",
+   "retractVoteDecrements",
+   "retractWithNoPriorVoteReturns404",
+   "spoofedLeftMostForwardedForDoesNotCreateExtraVotes",
+   "concurrentVotesFromDistinctClientsAreAllCounted",
+   "newVotesAreStoredUnderTheHmacFingerprint",
+   "legacyVoteIsRecognizedAndRekeyedOnRecast",
+   "legacyVoteIsRetractedWhenTheVoterSwitchesType",
+   "legacyVoteCanBeRetracted"
+  ]
+ },
+ {
+  "name": "OrgMailConnectIT",
+  "file": "org/ceitba/api/web/orgmail/OrgMailConnectIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "onlyTheOrgsAdminsConnectAndAnyDomainAccountCanBePicked",
+   "callbackStoresTheOrgsAccountAndRedirectsToItsMailPage",
+   "callbackRefusesOtherDomainsNonAdminsAndAnAccountInUse"
+  ]
+ },
+ {
+  "name": "OrgMailIT",
+  "file": "org/ceitba/api/web/orgmail/OrgMailIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "sendingReachesFollowersWhoDidntOptOutWithinTheAllowedDomains",
+   "pendingDeliveriesWaitForTheOrgsAccountAndResumeFromTheNewOne",
+   "anOrgSendsAtMostTheWeeklyLimitAndOnlyAdminsManageEmails",
+   "oneClickUnsubscribeOptsOutOfThatOrgOnly",
+   "followersSwitchAnOrgsEmailsOnAndOff"
+  ]
+ },
+ {
+  "name": "SubjectPlanEndpointsIT",
+  "file": "org/ceitba/api/web/plan/SubjectPlanEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "noFiltersReturnsAll",
+   "filterByYearReturnsOnlyMatching",
+   "filterByYearAndSemesterReturnsOne",
+   "electiveTypeReturnsYear0Semester0",
+   "filterBySection"
+  ]
+ },
+ {
+  "name": "SubjectPlanWritesIT",
+  "file": "org/ceitba/api/web/plan/SubjectPlanWritesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "getOneReturnsTheRow",
+   "getOneUnknownReturns404",
+   "getPlansForSubjectReturnsAllContainingPlans",
+   "getPlansForUnknownSubjectReturnsEmptyList",
+   "anonymousCannotCreate",
+   "regularUserCannotCreate",
+   "staffCanCreate_returns201",
+   "createWithUnknownPlanReturns404",
+   "createWithUnknownSubjectReturns404",
+   "createDuplicateReturns409",
+   "createWithMissingFieldsReturns400",
+   "putUpdatesOnlyProvidedFields",
+   "putUnknownReturns404",
+   "deleteReturns204",
+   "deleteUnknownReturns404",
+   "regularUserCannotDelete"
+  ]
+ },
+ {
+  "name": "ProposalControllerIT",
+  "file": "org/ceitba/api/web/proposal/ProposalControllerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousIsRejected",
+   "pendingProposalIsVisibleOnlyToAuthorAndModerators",
+   "listIsApprovedOnlyNewestFirstPaginatedAndFilterable",
+   "createValidatesInput",
+   "votesKeepCountersAndMyVote",
+   "commentsArePseudonymousStableAndThreaded",
+   "accountDeletionUndoesVotesAndTombstonesComments"
+  ]
+ },
+ {
+  "name": "ProposalPushIT",
+  "file": "org/ceitba/api/web/proposal/ProposalPushIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "creatingAProposalDoesNotPush",
+   "approvalPushesToTheAuthorsDevicesOnly",
+   "rejectionAndLifecycleChangesPushAndNoOpsDoNot",
+   "aFailedModerationSendsNothing",
+   "aProposalWhoseAuthorDeletedTheirAccountDoesNotPush"
+  ]
+ },
+ {
+  "name": "StaffProposalControllerIT",
+  "file": "org/ceitba/api/web/proposal/StaffProposalControllerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "plainUserGets403Everywhere",
+   "moderatorOutsideTheAllowlistIsRejected",
+   "moderatorIsNotStaffElsewhere",
+   "moderatorWorksTheQueueOldestFirst",
+   "lifecycleAndCommentModeration",
+   "unknownProposalIs404"
+  ]
+ },
+ {
+  "name": "RateLimitFilterTest",
+  "file": "org/ceitba/api/web/ratelimit/RateLimitFilterTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "allowsUpToCapacity_thenReturns429WithRetryAfter",
+   "refillsOverTime",
+   "bucketsArePerIp",
+   "unmatchedAndExcludedPathsAreNotLimited",
+   "disabled_neverLimits",
+   "corsPreflightIsNotCounted",
+   "trustedXff_usesRightMostEntry_soSpoofedLeftEntriesDontHelp",
+   "untrustedXff_isIgnored",
+   "retryAfterRoundsUp",
+   "trustedXff_isIgnoredWhenThePeerIsPublic_soDirectCallersCantSpoofIt",
+   "privatePeerDetection",
+   "ipv6ClientsShareABucketPerSlash64",
+   "ipv6ForwardedClientsShareABucketPerSlash64",
+   "methodScopedRuleLimitsOnlyItsMethods",
+   "clientKeyNormalization"
+  ]
+ },
+ {
+  "name": "RateLimitIT",
+  "file": "org/ceitba/api/web/ratelimit/RateLimitIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "authEndpointsAreLimitedPerIp",
+   "publicNonAuthEndpointsAreNotLimited",
+   "excludedAuthPathIsNotLimited",
+   "voteWritesAreLimitedButCountReadsAreNot"
+  ]
+ },
+ {
+  "name": "BenefitCardControllerIT",
+  "file": "org/ceitba/api/web/staff/BenefitCardControllerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "publicListIsOrdered",
+   "staffCreatesCardWithContactFields",
+   "writesRequireStaff",
+   "updateWithoutContactFieldsKeepsThemAndBlankClears",
+   "invalidRequestsAreRejected",
+   "staffDeletesAndUnknownIs404"
+  ]
+ },
+ {
+  "name": "BenefitControllerIT",
+  "file": "org/ceitba/api/web/staff/BenefitControllerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "publicListIsOrderedAndIncludesNames",
+   "writesRequireStaff",
+   "staffCreatesCategoryWithNames",
+   "createRejectsInvalidSlugs",
+   "createDuplicateOfSeededSlugIs409",
+   "createdCategoryAppearsInPublicList",
+   "updateWithoutNamesKeepsThemAndBlankClears",
+   "staffDeletesAndUnknownIs404"
+  ]
+ },
+ {
+  "name": "PublicUrlFieldsValidationTest",
+  "file": "org/ceitba/api/web/staff/dto/PublicUrlFieldsValidationTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffMemberUrlsRejectNonHttpSchemes",
+   "staffMemberUrlsAcceptHttpBlankAndNull",
+   "benefitCardUrlsRejectNonHttpSchemes",
+   "benefitCardUrlsAcceptHttpBlankAndNull",
+   "benefitLinkUrlRejectsNonHttpSchemes"
+  ]
+ },
+ {
+  "name": "ModeratorIT",
+  "file": "org/ceitba/api/web/staff/ModeratorIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "staffGrantsAndRevokesModerator",
+   "regrantAfterRevokeReactivates",
+   "duplicateGrantIs409AndUnknownUserIs404",
+   "revokeWithoutActiveGrantIs404",
+   "staffImpliesModerator",
+   "userAndModeratorCannotManageGrants"
+  ]
+ },
+ {
+  "name": "PushBroadcastIT",
+  "file": "org/ceitba/api/web/staff/PushBroadcastIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousIsUnauthorized",
+   "regularUserIsForbidden",
+   "staffBroadcastReachesEveryDevice",
+   "invalidBroadcastsAreRejected"
+  ]
+ },
+ {
+  "name": "StaffEndpointsIT",
+  "file": "org/ceitba/api/web/staff/StaffEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousCannotListStaff",
+   "regularUserCannotListStaff",
+   "staffCanListStaff",
+   "staffWithNonAllowlistedEmailIsForbidden",
+   "staffCanAssignAndListsActiveOnly",
+   "assigningSamePersonTwiceReturns409",
+   "assigningUnknownEmailReturns404",
+   "startAfterEndReturns400",
+   "revokeEndDatesActiveMembershipSoListingDropsIt",
+   "reassigningAfterRevokeGrantsStaffAgain",
+   "revokingTheLastActiveStaffMemberReturns409",
+   "revokingAnExpiredMembershipReturns404AndKeepsItsEnd",
+   "revokingANotYetStartedMembershipDeletesIt",
+   "regularUserCannotAssign"
+  ]
+ },
+ {
+  "name": "StudyGroupControllerIT",
+  "file": "org/ceitba/api/web/studygroup/StudyGroupControllerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "createReturnsDetailWithOwnerAsFirstParticipant",
+   "nonMembersSeeNoContactLinkAndNobodySeesEmails",
+   "unknownGroupIsNotFound",
+   "createValidatesInput",
+   "listShowsUpcomingOnlyByDefaultWithFiltersAndPagination",
+   "meListsOwnedAndJoinedGroups",
+   "joinAndLeaveRules",
+   "ownerLeavingTransfersToEarliestJoinerThenDeletesWhenAlone",
+   "onlyOwnerOrModeratorCanEditAndDelete",
+   "capacityCannotDropBelowMemberCount",
+   "requiresASignedInUser",
+   "concurrentJoinsNeverExceedCapacity"
+  ]
+ },
+ {
+  "name": "OrganizedSubjectsIT",
+  "file": "org/ceitba/api/web/subject/OrganizedSubjectsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "getSubjectsByPlanReturnsOrganizedNestedMap",
+   "pastTermCommissionsAreNotListedAlongsideTheCurrentTerm",
+   "keepsConcurrentTermsAndFallsBackToMostRecentEndedTerm",
+   "nextTermSyncedBeforeTheRunningOneEndsReplacesIt",
+   "externalItbaCallRunsOutsideAnyTransaction",
+   "unknownPlanReturns404"
+  ]
+ },
+ {
+  "name": "SubjectEndpointsIT",
+  "file": "org/ceitba/api/web/subject/SubjectEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "getSubjectByIdReturnsTheOne",
+   "getUnknownSubjectReturns404"
+  ]
+ },
+ {
+  "name": "DataSyncControllerIT",
+  "file": "org/ceitba/api/web/sync/DataSyncControllerIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "rejectsAnUnknownPeriod",
+   "rejectsAnOutOfRangeYear"
+  ]
+ },
+ {
+  "name": "FirestoreImportIT",
+  "file": "org/ceitba/api/web/sync/FirestoreImportIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "requiresSyncApiKey",
+   "dryRunReportsWithoutWriting",
+   "importsFixtureAndRerunIsIdempotent",
+   "importKeepsValuesAlreadySetInTheNewSystem",
+   "importsLegacyProposalsIntoTheBoard",
+   "proposalRerunAddsOnlyWhatIsMissingAndKeepsNewActivity",
+   "firebaseUidIsUnique"
+  ]
+ },
+ {
+  "name": "AccountDeletionIT",
+  "file": "org/ceitba/api/web/user/AccountDeletionIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "deleteRequiresAuthentication",
+   "apiKeyCannotDeleteTheAccount",
+   "lastActiveStaffMemberCannotDeleteTheAccount",
+   "staffMemberCanDeleteWhenAnotherStaffMemberRemains",
+   "concurrentDeletionsCannotRemoveTheLastStaffMember",
+   "userWithoutSharedContributionsIsHardDeleted",
+   "deletionExpiresBothDomainScopedAndHostOnlySessionCookies",
+   "userWithSharedContributionsIsAnonymized",
+   "deletionHandsOwnedStudyGroupsToTheEarliestJoiner",
+   "deletionCleansDevicesStudyGroupsAndProposalsTogether",
+   "refreshTokensStopWorkingAfterDeletion",
+   "signingInAgainCreatesAFreshAccount"
+  ]
+ },
+ {
+  "name": "DeviceIT",
+  "file": "org/ceitba/api/web/user/DeviceIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "requiresAuthentication",
+   "registerStoresTheDeviceAndListsIt",
+   "reRegisteringIsAnUpsertThatKeepsCreatedAt",
+   "aTokenRegisteredByAnotherUserMovesToThem",
+   "invalidRequestsAreRejected",
+   "deleteRemovesOnlyTheCallersToken",
+   "registrationsBeyondTheCapDropTheLeastRecentlySeen"
+  ]
+ },
+ {
+  "name": "RegisterDeviceRequestTest",
+  "file": "org/ceitba/api/web/user/dto/RegisterDeviceRequestTest.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "tokenIsCappedAt1024Characters"
+  ]
+ },
+ {
+  "name": "MeProfileIT",
+  "file": "org/ceitba/api/web/user/MeProfileIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "requiresAuthentication",
+   "setsCareerAndMatchingPlan",
+   "rejectsPlanOfAnotherCareer",
+   "rejectsUnknownPlanAndPlanWithoutCareer",
+   "unknownCareerIs404",
+   "planOnlyIsValidatedAgainstCurrentCareer",
+   "careerChangeWithoutPlanClearsPlan",
+   "sameCareerWithoutPlanKeepsPlan",
+   "clearingCareerClearsPlan",
+   "socialHandlesAreNormalizedFromUrlsAndAtHandles",
+   "socialHandlesCanBeCleared",
+   "invalidSocialHandlesAre400",
+   "authMeExposesSocialHandles",
+   "setsFileNumberOnceAndReturnsIt",
+   "secondDifferentFileNumberIs409AndSavesNothing",
+   "fileNumberCannotBeClearedByTheUser",
+   "fileNumberTakenByAnotherUserIs409",
+   "invalidFileNumberIs400",
+   "staffCanStillChangeOrClearTheFileNumber",
+   "concurrentClaimsOfOneNumberByTwoUsersLetExactlyOneWin",
+   "concurrentClaimsOfTwoNumbersByOneUserLetExactlyOneWin",
+   "savingTheEntityDoesNotOverwriteColumnsWrittenConcurrently"
+  ]
+ },
+ {
+  "name": "MeSchedulesIT",
+  "file": "org/ceitba/api/web/user/MeSchedulesIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "crudRoundTripKeepsPayloadOpaque",
+   "rejectsInvalidBodies",
+   "requiresAuthentication",
+   "sixthScheduleIsConflict",
+   "firstScheduleIsPrimaryAndLaterOnesAreNot",
+   "onlyAPayloadChangeMovesPayloadUpdatedAt",
+   "makePrimaryMovesTheFlagAndIsIdempotent",
+   "deletingThePrimaryPromotesNone",
+   "concurrentFirstCreatesAllSucceedWithOnePrimary",
+   "v22BackfillMakesEachUsersLatestScheduleThePrimary",
+   "databaseRejectsTwoPrimariesForOneUser",
+   "otherUsersSchedulesAreNotFound"
+  ]
+ },
+ {
+  "name": "UserEndpointsIT",
+  "file": "org/ceitba/api/web/user/UserEndpointsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "anonymousCreateReturns401",
+   "anonymousListReturns401",
+   "regularUserCreateReturns403",
+   "regularUserListReturns403",
+   "regularUserGetByIdReturns403",
+   "staffCanCreateUserReturns201WithBody",
+   "staffCreateWithUnknownCareerReturns404",
+   "staffCreateDuplicateEmailReturns409",
+   "staffCreateWithBadEmailReturns400",
+   "staffCanListUsers",
+   "listUsersSupportsSearchSortAndPagination",
+   "listUsersFiltersByActiveStaff",
+   "listUsersFiltersByOrganization",
+   "disallowedEmailReturns403EvenWithStaffAuthorities"
+  ]
+ },
+ {
+  "name": "PinnedSubjectsIT",
+  "file": "org/ceitba/api/web/wiki/PinnedSubjectsIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "listCapAndAccess"
+  ]
+ },
+ {
+  "name": "SubjectBookmarkAuthIT",
+  "file": "org/ceitba/api/web/wiki/SubjectBookmarkAuthIT.java",
+  "abstract": false,
+  "parent": null,
+  "methods": [
+   "postCreatesBookmarkAndJitProvisionsUser",
+   "putIsIdempotent",
+   "deleteRemovesBookmarkAndIs204",
+   "deleteWithNoExistingBookmarkIsStill204",
+   "countIsGlobalEvenForAnonymousReader",
+   "disallowedEmailIsRejectedWith403",
+   "explicitlyAllowedExternalEmailIsAccepted",
+   "twoConsecutiveAuthenticatedRequestsReuseSameUserRow"
+  ]
+ }
+]

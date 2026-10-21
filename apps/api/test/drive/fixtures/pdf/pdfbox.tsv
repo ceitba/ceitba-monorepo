@@ -1,0 +1,20 @@
+chrome_columns	OK	1	1358	1357	sha:040fca27d3e98d63ad0bc3b38da3dd57	196ms
+chrome_hyphen	OK	1	337	336	sha:37e50a3feb129a4c4ede7f9b8d39c290	5ms
+chrome_ligatures	OK	1	447	446	sha:0d986f1f9a6abb314d405557a6f6acd0	7ms
+chrome_slides	OK	2	147	146	sha:cb86092ad73fdd9c85264e431d672ef9	8ms
+chrome_table	OK	1	250	249	sha:5a8f555a724416c6a3fdcf5c5335e709	5ms
+corrupt_garbage	NULL(pdfInfo)	-	-	-	-	java.io.IOException: Missing root object specification in trailer.
+corrupt_truncated	NULL(pdfInfo)	-	-	-	-	java.io.IOException: Page tree root must be a dictionary
+pdfbox_encrypted_owner	OK	1	45	44	sha:c424dc61a8235a7554460fabef678556	189ms
+pdfbox_encrypted_user	NULL(pdfInfo)	-	-	-	-	org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException: Cannot decrypt PDF, the password is incorrect
+pdfbox_multipage25	OK	25	37191	37190	sha:b18c1b0ec42f9f2c95a83ed7a0890c51	53ms
+pdfkit_encrypted_owner_aes128	OK	1	140	139	sha:f9e7601fe6364d816be4a9c56a09531d	3ms
+pdfkit_encrypted_user_rc4	NULL(pdfInfo)	-	-	-	-	org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException: Cannot decrypt PDF, the password is incorrect
+pdfkit_plain	OK	1	140	139	sha:f9e7601fe6364d816be4a9c56a09531d	0ms
+pdflib_image_only	OK	2	2	-1	sha:353f187ac914ba32d2f24c4f2c4e4b04	1ms
+pdflib_rotated	OK	3	280	279	sha:6d6d8d1f4acccd6be1a86aecd9a894fb	6ms
+quartz_cupsfilter	OK	1	5022	361	sha:6cc3d3e456876697115ca53096067555	10ms
+real_ghostscript_rose94	OK	13	47289	47288	sha:3ea83f8b09ed0e919723cb7b92ea979c	338ms
+real_quartz13_pages_ack	OK	7	25725	25723	sha:58846cbaf13d352626585629705acbfa	104ms
+real_quartz_rbash	OK	1	1558	1557	sha:e44ad638b1387c88e0c1bf0ecd410eb8	7ms
+real_word_license	OK	5	18532	18528	sha:f32ee3551bad88fbadccb9cfeabe8f01	60ms

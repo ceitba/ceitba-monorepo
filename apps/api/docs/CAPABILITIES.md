@@ -5,13 +5,13 @@ on for a few people in prod before they open to everyone.
 
 ## Registry
 
-Keys live in code, in `service/capability/Capability` (key, label, Spanish
-description). Add an enum constant to gate a new feature; unknown keys found in
+Keys live in code, in `CAPABILITIES` in `src/shared/capabilities.ts` (key, label, Spanish
+description). Add an entry to gate a new feature; unknown keys found in
 the tables are ignored.
 
 | Key | Label | Gates |
 |---|---|---|
-| `apuntes` | Apuntes | `/v1/me/drive/**` (MyDriveController), `/v1/wiki/apuntes/subjects`, `/v1/wiki/subjects/{id}/files`, `/v1/wiki/files/**` (ApuntesController), `/v1/wiki/subjects/{id}/kb/**` and `/v1/wiki/kb/pages/{id}/report` (KbController) |
+| `apuntes` | Apuntes | `/v1/me/drive/**`, `/v1/wiki/apuntes/subjects`, `/v1/wiki/subjects/{id}/files`, `/v1/wiki/files/**` (`src/features/drive/routes.ts`), `/v1/wiki/subjects/{id}/kb/**` and `/v1/wiki/kb/pages/{id}/report` (`src/features/kb-reader/routes.ts`) |
 | `asistentes_ia` | Asistentes de IA | Signing in to the hosted MCP server (`apps/mcp`): checked at the OAuth sign-in and on every MCP request, which drops the sign-in once the capability is gone. The web app shows `/ia` and its links only with it. Enforced by the MCP server from `/auth/me`, not by an API route |
 | `resumen_semanal` | Resumen semanal | Recipients of the weekly digest "La semana en ITBA" (snapshot at send time, per-delivery re-check, draft `recipientEstimate`) and `GET`/`PUT /v1/digests/subscription`. `POST /v1/digests/unsubscribe`, the correction-vote token endpoints and the STAFF digest endpoints are not gated |
 
@@ -21,7 +21,7 @@ Staff endpoints (`/v1/staff/drive/**`, `/v1/staff/kb/**`) and wiki bookmarks/not
 
 A user has a capability when any of these holds:
 
-1. they are active STAFF (`ceitba_staff`, same check as `StaffAwareJwtAuthenticationConverter`), through any
+1. they are active STAFF (`ceitba_staff`, same check as the STAFF role in `src/http/security.ts`), through any
    credential: capabilities turn features on and are not staff powers, so an API key without the `staff` scope keeps
    them (`apps/mcp` checks `asistentes_ia` with such keys on every request);
 2. `capability_settings.enabled_for_all` is true;
@@ -33,9 +33,9 @@ grants of the user's email (otherwise a new account with that email would inheri
 also under concurrent identical requests (`INSERT … ON CONFLICT DO NOTHING`).
 The email allowlist still governs login; granting does not bypass it.
 
-`CapabilityService.require(user, key)` throws `CapabilityRequiredException`
+`CapabilityService.require(user, key)` (`src/features/capability/service.ts`) throws `CapabilityRequiredError`
 → `403 {"error": "CAPABILITY_REQUIRED", "message": ...}`. Anonymous callers
-get 401 from SecurityConfig first. `GET /v1/auth/me` returns
+get 401 from the URL rules (`src/http/auth/policy.ts`) first. `GET /v1/auth/me` returns
 `capabilities: string[]` (the effective set, sorted).
 
 `GET /v1/capabilities` is public and returns `{enabledForAll: string[]}` (sorted, registry keys only), so the web

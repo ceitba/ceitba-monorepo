@@ -1,0 +1,50 @@
+{
+  "name": "@ceitba/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The CEITBA API: Bun + Hono + Drizzle + zod, served at /api",
+  "scripts": {
+    "dev": "bun --watch src/main.ts",
+    "start": "bun src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json",
+    "test": "bun test ./test",
+    "test:contract": "bun contract/run.ts",
+    "contract:coverage": "bun contract/coverage.ts",
+    "contract:diff": "bun contract/diff.ts",
+    "db:migrate": "bun src/db/migrate.ts migrate",
+    "db:validate": "bun src/db/migrate.ts validate",
+    "db:schema": "drizzle-kit pull && bun scripts/split-schema.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1154.0",
+    "@aws-sdk/s3-request-presigner": "3.1154.0",
+    "@hono/zod-openapi": "1.6.3",
+    "bcryptjs": "3.0.3",
+    "croner": "10.0.1",
+    "drizzle-orm": "0.45.4",
+    "firebase-admin": "14.5.0",
+    "googleapis": "186.0.0",
+    "hono": "4.13.13",
+    "jose": "6.2.13",
+    "linkedom": "0.18.13",
+    "lru-cache": "11.5.3",
+    "nodemailer": "10.1.7",
+    "parse5": "8.0.0",
+    "pino": "10.4.0",
+    "postgres": "3.4.9",
+    "sanitize-html": "2.18.1",
+    "unpdf": "1.9.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "12.2.1",
+    "@types/bun": "1.4.2",
+    "@types/nodemailer": "8.0.2",
+    "@types/sanitize-html": "2.16.2",
+    "drizzle-kit": "0.31.11",
+    "testcontainers": "12.2.1",
+    "typescript": "5.9.3"
+  }
+}

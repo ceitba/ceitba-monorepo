@@ -318,9 +318,9 @@ Default expiry is **365 days**. `ttlDays` is optional; omit it to use the defaul
 
 ### Scopes
 
-`scopes` narrows what the key can do (`V62__api_key_scopes.sql`, `service/auth/ApiKeyScope`,
-enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, through
-`service/auth/StaffPowers`). Scopes only take power away; a key never has more than its owner.
+`scopes` narrows what the key can do (`V62__api_key_scopes.sql`, `ApiKeyScope` in `src/http/auth/principal.ts`,
+enforced by `scopeDenial` in `src/http/auth/apikeys.ts` and, for staff powers decided in services, through
+`staffPowers(c)` in `src/http/auth/context.ts`). Scopes only take power away; a key never has more than its owner.
 
 | Scope | Effect |
 |---|---|
@@ -334,7 +334,7 @@ enforced in `web/auth/ApiKeyFilter` and, for staff powers decided in services, t
   existed. Existing keys were migrated to full power. An explicit list is taken literally: `[]` is a read-only key.
 - Unknown scope names → `400 ValidationError`.
 - A request made with a key that is not full power (missing any scope, `keys` included) cannot create keys or revoke other keys (`403
-  INSUFFICIENT_SCOPE`, checked in `ApiKeyService`, so an encoded path such as `api%2Dkeys` can't skip it), so it
+  INSUFFICIENT_SCOPE`, checked in the API-key service in `src/features/auth/service.ts`, so an encoded path such as `api%2Dkeys` can't skip it), so it
   cannot mint a stronger key. **Any key may revoke itself** with `DELETE /v1/auth/api-keys/{its own id}`, even a
   read-only one.
 - `GET /v1/auth/me` with a key reports what the key can do: `role` and `moderator` without the staff powers when it

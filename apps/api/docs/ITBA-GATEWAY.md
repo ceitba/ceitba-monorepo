@@ -1,7 +1,7 @@
 # ITBA gateway: what it can and cannot tell us
 
-All calls go through `external/itba/ItbaApiClient` (real impl
-`RestClientItbaApiClient`, base URL `ITBA_API_BASE_URL`, token
+All calls go through the ITBA client in `src/external/itba.ts` (real impl
+`src/external/itba/restClient.ts`, base URL `ITBA_API_BASE_URL`, token
 `ITBA_API_TOKEN` as the first path segment).
 
 ## Endpoints we know
@@ -44,7 +44,7 @@ ITBA's systems team whether one exists before building on it.
 Consequences:
 
 * The career/plan catalogue (`careers`, `plan`) is **not** synced from the
-  gateway. `DataSyncService` walks the plans we already have and pulls their
+  gateway. The data sync (`src/features/sync/dataSync.ts`) walks the plans we already have and pulls their
   subjects (`/v1/sync/all`, `/v1/sync/subjects` and the scheduled job).
 * Entrance-program plan codes change every year (e.g. `PAI` /
   `PA25 Proceso I` today, `ADM` / `Ingreso` in the old app). Never hardcode
@@ -68,7 +68,7 @@ not store the `(year, period)` it queried with. The `commission` table keeps
 every term ever synced (upsert by ITBA id, never pruned), so a subject can
 have past, running and next-term rows at once. `GET /v1/subjects?plan=` and
 `GET /v1/commissions?plan=` both pick, per subject, the term to show with
-`service/commission/CommissionTerms`:
+`src/features/commission/logic/commissionTerms.ts`:
 
 1. Candidates: the commissions with `course_end >= today` (ART). If none
    (between terms), all of them, so the subject shows its most recent term.

@@ -10,7 +10,7 @@ issues are snapshots (`docs/adr/0002-living-docs-are-the-specs.md`). A merged PR
 
 ## Steps
 
-1. **List the change**: `git diff --name-only origin/dev...HEAD` (plus uncommitted files).
+1. **List the change**: `git diff --name-only origin/main...HEAD` (plus uncommitted files).
 2. **Find the docs**: match each changed path against `docs/agents/spec-map.json`. Also grep `docs/` and
    `apps/*/docs/` for the class, endpoint, env var or table names you touched: docs often cite code
    ("Code: `service/correction/…`").

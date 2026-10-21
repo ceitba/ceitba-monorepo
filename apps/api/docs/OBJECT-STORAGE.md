@@ -2,8 +2,10 @@
 
 The API never receives file bytes. It signs short-lived presigned `PUT` URLs
 (`STORAGE_PRESIGN_TTL`, default 10 min) and the client uploads straight to the
-bucket (`service/media/MediaUploadService`). The API only *signs* (AWS SDK v2
-`S3Presigner`, local computation): it never opens a connection to the store.
+bucket (`src/features/media/logic/mediaUploadService.ts`). For uploads the API only *signs* (`getSignedUrl` from
+`@aws-sdk/s3-request-presigner` in `src/infra/storage.ts`, local computation). Its own reads, writes and deletes
+(Drive sync copies under `drive/`, wiki pipeline payloads under `kb/`) go straight to MinIO at
+`STORAGE_INTERNAL_ENDPOINT` (`http://minio:9000` in compose).
 Any empty `STORAGE_ENDPOINT`/`BUCKET`/`ACCESS_KEY_ID`/`SECRET_ACCESS_KEY`/
 `PUBLIC_URL` disables uploads (the sign endpoints answer `501`).
 
@@ -29,7 +31,7 @@ phone ── GET https://ceitba.org.ar/ceitba-media/<key> (anonymous) ───�
   and do not set `MINIO_DOMAIN` (that turns on virtual-host bucket lookup).
 - `Content-Type` and `Content-Length` are signed too: the client must send
   exactly the `headers` returned by the sign endpoint.
-- `MinioPresignedUploadIT` proves this end to end with the real images, the
+- `test/media/minio-presigned-upload.test.ts` proves this end to end with the real images, the
   compose `minio-init` script and the Caddyfile's `/ceitba-media/*` block
   (upload through a proxy whose Host differs from MinIO's, anonymous
   download, rejection of unsigned/tampered uploads, listing, deletes and
@@ -69,9 +71,10 @@ the API (`ceitba-api-blue`/`-green`) starts:
    `s3:ListBucket`, so it is not used) or write without a signature.
 3. Creates (or updates the secret of) the service user
    `STORAGE_ACCESS_KEY_ID` and attaches policy `ceitba-api`:
-   `s3:PutObject` + `s3:GetObject` on `ceitba-media/*`. No delete, no list,
-   no other bucket, no admin. A leaked API secret can add objects, nothing
-   more.
+   `s3:PutObject` + `s3:GetObject` on `ceitba-media/*`, plus `s3:DeleteObject`
+   under `drive/` and `kb/` only. No list, no other bucket, no admin. A leaked
+   API secret can add objects and delete Drive copies and pipeline payloads,
+   nothing more.
 
 Logs: `docker logs ceitba-minio-init`.
 
@@ -225,7 +228,7 @@ of the signature.)
 | `proposals/legacy/{uuid}.{ext}` | `scripts/firestore-export --copy-attachments` | `proposal_attachment.object_key` (imported proposals) |
 
 `{tag}` binds a proposal attachment key to its uploader without revealing or
-linking them; see the header of `MediaUploadService`.
+linking them; see the header of `src/features/media/logic/mediaUploadService.ts`.
 
 ## Orphaned uploads
 
@@ -246,7 +249,7 @@ To expire orphans with a lifecycle rule alone, uploads would have to land
 under a staging prefix, for example `proposals/pending/`, with a rule such
 as "expire objects under `proposals/pending/` after 1 day". Proposal create
 would then copy each object to its final key. This needs code changes in
-`MediaUploadService` and `ProposalService` and is not implemented yet
+`src/features/media/logic/mediaUploadService.ts` and `src/features/proposal/service.ts` and is not implemented yet
 (follow-up).
 
 Until then, orphans can be listed and removed by hand with the root

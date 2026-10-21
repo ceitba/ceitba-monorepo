@@ -1,0 +1,5 @@
+{
+  "CeitbaApiApplicationTests#contextLoadsPlaceholder": "An empty placeholder method (no assertions). App boot is covered by every contract file (useServer) and test/jobs/lifecycle.test.ts.",
+  "ListStringMappingOrderIT#schemaValidatesRegardlessOfEntityOrder": "Hibernate 6.5 internals (entity processing order leaking a JSON type into ARRAY columns). TS has no ORM type resolution; the equivalent schema check is test/db/migrate.test.ts (productionMigrationsApplyCleanly, everyRepositoryReachesAnEmptyTable: every drizzle table/column exists).",
+  "UserEntityTest#updatesOnlyChangedColumns": "Asserts the @DynamicUpdate annotation on the User entity. The behaviour it guards (a save writes only the changed columns) is tested in test/user/me-profile-dynamic-update.test.ts (MeProfileIT race)."
+}

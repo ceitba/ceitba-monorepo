@@ -17,7 +17,7 @@ and require the STAFF role.
 | `modelRetry` | `KB_MODEL_RETRY` (= write) | |
 | `executionMode` | `auto` | `auto`, `batch` or `sync`; `batch` is rejected for models without batch support |
 | `enabled` | `KB_PIPELINE_ENABLED` | weekly schedule on or off |
-| `cron` | `KB_PIPELINE_CRON` (`0 0 3 * * SUN`) | Spring cron, **6 fields with seconds first**, America/Argentina/Buenos_Aires. A standard 5-field expression is accepted on PUT and stored/returned with `0 ` prepended (`0 3 * * SUN` → `0 0 3 * * SUN`) |
+| `cron` | `KB_PIPELINE_CRON` (`0 0 3 * * SUN`) | Spring-syntax cron (parsed by `src/features/kb-admin/cron.ts`), **6 fields with seconds first**, America/Argentina/Buenos_Aires. A standard 5-field expression is accepted on PUT and stored/returned with `0 ` prepended (`0 3 * * SUN` → `0 0 3 * * SUN`) |
 | `runTokenBudget` | `KB_RUN_TOKEN_BUDGET` | at most `KB_RUN_TOKEN_BUDGET_MAX` (50M): PUT refuses more, a larger stored value is clamped when used |
 | `runCostBudgetUsd` | `KB_RUN_COST_BUDGET_USD` (5.00) | US$ 0.10 to 100 (PUT refuses others): the estimated cost a run may take on. Admission (pipeline doc, "Cost budget and admission") defers subjects whose whole estimated cost (DIGEST of uncached files + PLAN + WRITE + RETRY at effective prices) does not fit, smallest first. `runTokenBudget` stays as a secondary cap. Returned in `values` and `source` like the other fields |
 | `weeklyCostLimitUsd` | null | hard stop: no stage is submitted while the pipeline's recorded cost of the last 7 days plus that stage's estimate exceeds this |
@@ -86,7 +86,7 @@ cacheReadPerM, batchDiscount (0..1), contextWindow, notes, pricesUpdatedAt, last
 Staff can point the pipeline at their own server (llama.cpp `llama-server`, vLLM, ...) from the admin UI, with no
 env change. Models of an endpoint are catalog models with id `custom:<endpointName>:<modelSlug>`, provider `custom`, `batchSupported=false`, price 0 (editable like any price). They work
 in every stage, evals and probes; `auto`/`batch` modes always run them sync. The catalog id is slash-free (the
-`/models/{id}` routes would otherwise need `%2F`, which Tomcat rejects): `modelSlug` is the raw model id with every
+`/models/{id}` routes would otherwise need `%2F`, which the API rejects with 400): `modelSlug` is the raw model id with every
 character outside `[A-Za-z0-9._-]` replaced by `-`, truncated to fit the 128-char id (a short hash suffix tells apart
 two raw ids that slug alike). The raw id the endpoint knows is stored in `kb_model.remote_model_id` (V52), returned
 as `remoteModelId` by the model endpoints and sent in the request body. Runs and evals need `KB_LLM_API_KEY` only
@@ -135,7 +135,15 @@ count of HTTP calls running now.
 
 Limits: the DO key gate (`KB_LLM_API_KEY`) still applies to starting a run or an eval, even if all models are
 custom. Model ids with `/` in catalog URLs (`/models/{id}/probe`) need the SPA to encode them as `%2F`, which the
-servlet container may reject; if so, probe from the endpoint-aware UI path once an alias exists.
+API rejects with 400 (`src/http/app.ts`); probe them from the endpoint-aware UI path once an alias exists.
+
+
+**Trust boundary (known, accepted).** The API calls whatever `base_url` STAFF stores: `test`, `discover`, probes,
+runs and evals make server-side requests to it, including to private addresses (an internal GPU box is the point of
+the feature). There is no SSRF guard (no blocklist of loopback, link-local or metadata addresses), so a STAFF
+account can make the API reach internal services and read their answers through `test`/`discover`. This is a
+STAFF-only capability by design (security review of the Bun port, 2026-10); restrict who is STAFF rather than the
+URL. Revisit if endpoint management is ever opened to non-STAFF roles.
 
 ## 3. Cost analytics
 
