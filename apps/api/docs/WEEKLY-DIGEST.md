@@ -382,7 +382,7 @@ Code: `src/features/digest/tracking.ts`, `src/features/mail/logic/mailLinkRewrit
 | POST | `/v1/digests/correction-vote` | Public; `{token, vote: confirm\|reject}` → `{correction, previousVote}`; errors in the table above |
 | GET | `/v1/mail/accounts` | Connected sender accounts: `[{id, email, ownerType, ownerRef, status, connectedAt, lastError, lastUsedAt}]`; never any token |
 | POST | `/v1/mail/accounts/ceitba/connect` | → `{authorizationUrl}`: send the browser there (Google consent for `ceitba@itba.edu.ar`) |
-| GET | `/v1/mail/accounts/oauth/callback` | Google redirects here (no session needed; authenticated by the signed `state`); 302 to `DIGEST_PUBLIC_BASE_URL/admin/digests?mail=connected` or `?mail=error&reason=<code>` |
+| GET | `/v1/mail/accounts/oauth/callback` | Google redirects here (no session needed; authenticated by the signed `state` plus the `ceitba_mail_oauth_nonce` cookie the connect call set in the same browser: HttpOnly, SameSite=Lax, 10 min, Path = this callback; a state without its cookie is `invalid_state`); 302 to `DIGEST_PUBLIC_BASE_URL/admin/digests?mail=connected` or `?mail=error&reason=<code>` |
 | DELETE | `/v1/mail/accounts/{id}` | Revokes the token at Google (best effort), deletes the row; 204 |
 | GET | `/v1/mail/o/{trackingId}.gif` | Public open pixel; always a 1×1 GIF |
 | GET | `/v1/mail/c/{trackingId}/{linkId}` | Public click redirect; 302 to the stored URL, else to `DIGEST_PUBLIC_BASE_URL` |

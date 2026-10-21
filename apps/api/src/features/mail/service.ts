@@ -127,16 +127,19 @@ export class MailSenderAccountService implements MailSenderAccounts {
   constructor(private readonly deps: Deps, private readonly settings: MailSettings, private readonly google: GoogleMailOAuthClient,
               private readonly states: MailOAuthStateService, private readonly ledger: MailLedger, private readonly log: Logger) {}
 
-  connect(staffUserId: string): string {
+  /** The consent URL, and the nonce the route sets as the browser-binding cookie (MAIL_OAUTH_NONCE_COOKIE). */
+  connect(staffUserId: string): { authorizationUrl: string; nonce: string } {
     this.requireConfigured();
     const sender = this.settings.email.account;
-    return this.google.authorizationUri(this.states.issue(staffUserId), sender, domainOf(sender));
+    const { state, nonce } = this.states.issueBound(staffUserId);
+    return { authorizationUrl: this.google.authorizationUri(state, sender, domainOf(sender)), nonce };
   }
 
   /** An organization's admin picks any account of org-mail.allowed-domain. */
-  connectOrg(orgSlug: string, adminId: string): string {
+  connectOrg(orgSlug: string, adminId: string): { authorizationUrl: string; nonce: string } {
     this.requireConfigured();
-    return this.google.authorizationUri(this.states.issue(adminId, orgSlug), null, this.settings.orgMail.allowedDomain);
+    const { state, nonce } = this.states.issueBound(adminId, orgSlug);
+    return { authorizationUrl: this.google.authorizationUri(state, null, this.settings.orgMail.allowedDomain), nonce };
   }
 
   private requireConfigured(): void {
@@ -147,9 +150,12 @@ export class MailSenderAccountService implements MailSenderAccounts {
     this.cipher(); // fails fast without MAIL_TOKEN_ENCRYPTION_KEY
   }
 
-  /** Always returns where to send the browser; never throws. */
-  async handleCallback(code: string | null, state: string | null, error: string | null): Promise<string> {
-    const verified = this.states.verifyState(state);
+  /**
+   * Always returns where to send the browser; never throws. `cookieNonce`: the browser-binding cookie; a state
+   * opened in another browser than the one that started the connect is invalid_state.
+   */
+  async handleCallback(code: string | null, state: string | null, error: string | null, cookieNonce: string | null): Promise<string> {
+    const verified = this.states.verifyBound(state, cookieNonce);
     if (verified == null) return this.redirect(ERR_INVALID_STATE);
     if (verified.orgSlug != null) return this.handleOrgCallback(verified, code, error);
     if (!(await repo.isActiveStaffAt(this.deps.db, verified.userId, this.deps.clock.now()))) return this.redirect(ERR_NOT_STAFF);

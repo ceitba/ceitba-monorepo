@@ -5,7 +5,7 @@ import { TEST_JWT_SECRET } from '../../../contract/support/env';
 import { ContentHmac } from '../../../src/features/crypto/logic/contentHmac';
 import { DigestCorrectionVoteTokens } from '../../../src/features/digest/logic/digestCorrectionVoteTokens';
 import { DigestUnsubscribeTokens } from '../../../src/features/digest/logic/digestUnsubscribeTokens';
-import { MailOAuthStateService } from '../../../src/features/mail/logic/mailOAuthState';
+import { MAIL_OAUTH_NONCE_COOKIE, MailOAuthStateService, stateNonce } from '../../../src/features/mail/logic/mailOAuthState';
 import { MutableClock, SystemClock, type Clock } from '../../../src/infra/clock';
 import { systemNowMicros } from '../../../src/lib/time';
 
@@ -18,6 +18,12 @@ export const voteTokens = (clock: Clock = new SystemClock(), ttlMs = 14 * 86_400
 export const pastVoteTokens = (daysAgo: number) =>
   voteTokens(new MutableClock(systemNowMicros() - daysAgo * 86_400_000_000));
 export const oauthStates = () => new MailOAuthStateService(TEST_JWT_SECRET, new SystemClock());
+
+/** The browser-binding cookie the connect call would have set for `state` (empty when the state has no nonce). */
+export function mailNonceCookie(state: string | undefined): Record<string, string> {
+  const nonce = stateNonce(state);
+  return nonce == null ? {} : { Cookie: `${MAIL_OAUTH_NONCE_COOKIE}=${nonce}` };
+}
 
 /** OrgMailUnsubscribeTokens.issue */
 export function orgUnsubscribeToken(userId: string, slug: string): string {

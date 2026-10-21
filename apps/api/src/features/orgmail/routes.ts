@@ -2,12 +2,13 @@
 // policy.ts METHOD_RULES; `orgAccess.canManageMembers` is registered by the
 // news feature (src/features/news/access.ts).
 
-import { defineRoutes } from '../../http/router';
+import { defineRoutes, json } from '../../http/router';
 import { jv, param } from '../../http/validation';
 import { mailBeans } from '../mail/service';
 import { requestParam } from '../mail/requestParam';
 import { orgMailBeans } from './beans';
 import { CONTENT_MAX_BODY_BYTES } from '../../http/body';
+import { mailOAuthNonceCookie } from '../mail/logic/mailOAuthState';
 
 // AnnouncementRequest(String subject, String body): no @Valid.
 const AnnouncementRequest = jv.object({ subject: jv.string(), body: jv.string() });
@@ -23,7 +24,10 @@ export default defineRoutes((r, deps) => {
   r.get('/v1/organizations/{slug}/mail', { tags, params: slug, summary: "The org's connected Gmail account, its quota and the weekly cap" },
     ({ params }) => s().status(params.slug!));
   r.post('/v1/organizations/{slug}/mail/connect', { tags, params: slug, currentUser: true, summary: "Start connecting the org's Gmail account (Google consent URL)" },
-    ({ params, user }) => ({ authorizationUrl: mailBeans(deps).accounts.connectOrg(params.slug!, user!.id) }));
+    ({ params, user }) => {
+      const { authorizationUrl, nonce } = mailBeans(deps).accounts.connectOrg(params.slug!, user!.id);
+      return json({ authorizationUrl }, 200, { 'Set-Cookie': mailOAuthNonceCookie(deps.config.auth, nonce) });
+    });
   r.delete('/v1/organizations/{slug}/mail', { tags, params: slug, status: 204, summary: "Disconnect the org's Gmail account" },
     async ({ params }) => { await mailBeans(deps).accounts.disconnectOrg(params.slug!); });
   r.get('/v1/organizations/{slug}/announcements', { tags, params: slug }, ({ params }) => s().list(params.slug!));

@@ -10,7 +10,7 @@
 // MailOAuthStateService and the test JWT secret, like the IT's states.issue.
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { bearer, mintJwt, seedStaff, seedUser, useServer } from '../support';
-import { oauthStates } from '../../test/digest/support/seed';
+import { mailNonceCookie, oauthStates } from '../../test/digest/support/seed';
 
 const api = useServer({ env: {
   MAIL_ENABLED: 'true',
@@ -24,7 +24,8 @@ let staffId: string;
 
 const staff = async () => bearer(await mintJwt({ email: 'alice@itba.edu.ar', name: 'Alice' }));
 const user = async () => bearer(await mintJwt({ email: 'bob@itba.edu.ar', name: 'Bob' }));
-const callback = (query: Record<string, string>) => api.get('/v1/mail/accounts/oauth/callback', { query });
+// The browser that started the connect carries the nonce cookie (mailNonceCookie); the CSRF case is in mail-oauth-binding.
+const callback = (query: Record<string, string>) => api.get('/v1/mail/accounts/oauth/callback', { query, headers: mailNonceCookie(query.state) });
 
 async function seedAccount(status = 'connected', enc = 'x'): Promise<number> {
   const [r] = await api.db`INSERT INTO public.mail_sender_account (email, owner_type, owner_ref, refresh_token_enc, scopes, status, connected_at)

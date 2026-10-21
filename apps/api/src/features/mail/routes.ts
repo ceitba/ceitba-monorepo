@@ -1,12 +1,14 @@
 // web/mail/MailAccountController (STAFF, except the OAuth callback which is
-// authenticated by the signed `state`) and web/mail/MailTrackingController
+// authenticated by the signed `state` plus the browser-binding nonce cookie the connect call sets) and web/mail/MailTrackingController
 // (public open pixel and click redirects; they always answer).
 
-import { defineRoutes, noContent } from '../../http/router';
+import { readCookie } from '../../http/auth/cookies';
+import { defineRoutes, json, noContent } from '../../http/router';
 import { param } from '../../http/validation';
 import { digestBeans } from '../digest/beans';
 import type { ClientInfo } from '../digest/tracking';
 import type { AppContext } from '../../http/context';
+import { clearMailOAuthNonceCookie, MAIL_OAUTH_NONCE_COOKIE, mailOAuthNonceCookie } from './logic/mailOAuthState';
 import { mailBeans } from './service';
 
 /** 1x1 transparent GIF (42 bytes). */
@@ -21,14 +23,18 @@ export default defineRoutes((r, deps) => {
   const accounts = () => mailBeans(deps).accounts;
 
   r.get('/v1/mail/accounts', { tags }, () => accounts().list());
-  r.post('/v1/mail/accounts/ceitba/connect', { tags, currentUser: true },
-    ({ user }) => ({ authorizationUrl: accounts().connect(user!.id) }));
+  r.post('/v1/mail/accounts/ceitba/connect', { tags, currentUser: true }, ({ user }) => {
+    const { authorizationUrl, nonce } = accounts().connect(user!.id);
+    return json({ authorizationUrl }, 200, { 'Set-Cookie': mailOAuthNonceCookie(deps.config.auth, nonce) });
+  });
   r.get('/v1/mail/accounts/oauth/callback', {
     tags, query: { code: param.string({ required: false }), state: param.string({ required: false }), error: param.string({ required: false }) },
-  }, async ({ query }) => new Response(null, {
-    status: 302,
-    headers: { Location: await accounts().handleCallback(query.code, query.state, query.error), 'Cache-Control': 'no-store' },
-  }));
+  }, async ({ c, query }) => {
+    const nonce = readCookie(c.req.header('cookie'), MAIL_OAUTH_NONCE_COOKIE);
+    const headers = new Headers({ Location: await accounts().handleCallback(query.code, query.state, query.error, nonce), 'Cache-Control': 'no-store' });
+    headers.append('Set-Cookie', clearMailOAuthNonceCookie(deps.config.auth));
+    return new Response(null, { status: 302, headers });
+  });
   r.delete('/v1/mail/accounts/{id}', { tags, params: { id: param.long() } }, async ({ params }) => {
     await accounts().delete(params.id!);
     return noContent();

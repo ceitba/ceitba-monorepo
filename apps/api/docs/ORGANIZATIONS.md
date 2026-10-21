@@ -133,7 +133,9 @@ screen on the itba.edu.ar Workspace, `gmail.send` scope, the same `GOOGLE_MAIL_R
 be an `@itba.edu.ar` one (`ORG_MAIL_ALLOWED_DOMAIN`).
 
 **Connecting.** `POST /v1/organizations/{slug}/mail/connect` (the org's own admin) returns Google's consent URL
-with `hd=<allowed domain>` and no login hint; the signed OAuth state carries the slug. The shared callback
+with `hd=<allowed domain>` and no login hint; the signed OAuth state carries the slug, and the response sets the
+`ceitba_mail_oauth_nonce` cookie that binds the state to this browser (a consent URL opened in another browser ends
+in `invalid_state`). The shared callback
 (`/v1/mail/accounts/oauth/callback`) then requires the user to still be an admin of the org and a verified address
 of the allowed domain that no other owner uses, stores the encrypted refresh token (one account per org;
 reconnecting with another address replaces it) and redirects to `/newsletter/mine/org/{slug}/mail` with

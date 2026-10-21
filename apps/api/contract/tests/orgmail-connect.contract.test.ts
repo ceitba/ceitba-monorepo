@@ -8,7 +8,7 @@
 // account_in_use) are in-process: test/orgmail/connect.test.ts.
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { bearer, mintJwt, seedUser, useServer } from '../support';
-import { membership, oauthStates, seedOrg } from '../../test/digest/support/seed';
+import { mailNonceCookie, membership, oauthStates, seedOrg } from '../../test/digest/support/seed';
 
 const api = useServer({ env: {
   MAIL_ENABLED: 'true',
@@ -49,14 +49,15 @@ describe('OrgMailConnectIT', () => {
   });
 
   test('callbackRefusesOtherDomainsNonAdminsAndAnAccountInUse', async () => {
-    const r = await api.get('/v1/mail/accounts/oauth/callback', { query: { code: 'x', state: oauthStates().issue(memberId, 'sabf') } });
+    const callback = (query: Record<string, string>) => api.get('/v1/mail/accounts/oauth/callback', { query, headers: mailNonceCookie(query.state) });
+    const r = await callback({ code: 'x', state: oauthStates().issue(memberId, 'sabf') });
     expect(r.status).toBe(302);
     expect(r.location).toBe(`${MAIL_PAGE}?mail=error&reason=not_org_admin`);
     expect(r.headers.get('cache-control')).toBe('no-store');
     // Not in the IT: the admin declined, or no code came back.
-    expect((await api.get('/v1/mail/accounts/oauth/callback', { query: { error: 'access_denied', state: oauthStates().issue(adminId, 'sabf') } })).location)
+    expect((await callback({ error: 'access_denied', state: oauthStates().issue(adminId, 'sabf') })).location)
       .toBe(`${MAIL_PAGE}?mail=error&reason=access_denied`);
-    expect((await api.get('/v1/mail/accounts/oauth/callback', { query: { state: oauthStates().issue(adminId, 'sabf') } })).location)
+    expect((await callback({ state: oauthStates().issue(adminId, 'sabf') })).location)
       .toBe(`${MAIL_PAGE}?mail=error&reason=exchange_failed`);
     const [{ n }] = await api.db`SELECT count(*)::int AS n FROM public.mail_sender_account WHERE owner_ref = 'sabf'` as unknown as [{ n: number }];
     expect(n).toBe(0);

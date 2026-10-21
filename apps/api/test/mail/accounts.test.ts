@@ -12,7 +12,7 @@ import { ERR_UNDECRYPTABLE, hasSendScope, isSenderAccount, mailBeans, MailSender
 import { mailSettings } from '../../src/features/mail/settings';
 import { digestBeans } from '../../src/features/digest/beans';
 import { testApp, type TestApp } from '../support/app';
-import { membership, oauthStates, seedOrg } from '../digest/support/seed';
+import { mailNonceCookie, membership, oauthStates, seedOrg } from '../digest/support/seed';
 
 const KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 const ENV = { MAIL_ENABLED: 'true', GOOGLE_MAIL_REDIRECT_URI: 'https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback', MAIL_TOKEN_ENCRYPTION_KEY: KEY };
@@ -48,7 +48,7 @@ afterAll(() => t?.close());
 
 let staffId: string;
 const bearer = async (email: string) => ({ Authorization: `Bearer ${await mintJwt({ email, name: email })}` });
-const callback = (q: Record<string, string>) => t.request('GET', `/v1/mail/accounts/oauth/callback?${new URLSearchParams(q)}`);
+const callback = (q: Record<string, string>) => t.request('GET', `/v1/mail/accounts/oauth/callback?${new URLSearchParams(q)}`, { headers: mailNonceCookie(q.state) });
 
 beforeEach(async () => {
   exchanges.clear();
