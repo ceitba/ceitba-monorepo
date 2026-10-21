@@ -27,7 +27,7 @@ export interface ModalProps {
   busy?: boolean
   size?: keyof typeof WIDTHS
   // Element to focus when the dialog opens; defaults to the first focusable.
-  initialFocusRef?: RefObject<HTMLElement>
+  initialFocusRef?: RefObject<HTMLElement | null>
 }
 
 // The site's one modal shell (every dialog, in every section, uses it):
