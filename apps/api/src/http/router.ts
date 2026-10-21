@@ -23,7 +23,8 @@ import { METHOD_RULES, ruleKey, type Method } from './auth/policy';
 import type { UserRow } from './auth/repo';
 import { readBodyText } from './body';
 import type { AppContext } from './context';
-import { AccessDeniedError, MalformedBodyError, UnsupportedMediaTypeError } from './errors';
+import { negotiate } from './accept';
+import { AccessDeniedError, MalformedBodyError, NotAcceptableError, UnsupportedMediaTypeError } from './errors';
 import { resolveRequestLocale } from './locale';
 import { bindBody, validateBody, type ParamSpec } from './validation';
 
@@ -50,6 +51,11 @@ export interface RouteSpec<
    * too (to read it with src/lib/jacksonTree.ts when key order or number types matter).
    */
   rawBody?: boolean;
+  /**
+   * `produces` (a single type/subtype): an Accept that admits no compatible type is a 406 before the arguments
+   * are bound (src/http/accept.ts). Routes without it ignore Accept.
+   */
+  produces?: string;
   /** Body size cap in bytes (default 1 MiB, src/http/body.ts); larger -> 413 PayloadTooLarge. */
   maxBodyBytes?: number;
   /** `@CurrentUser User user`. */
@@ -216,6 +222,13 @@ export function wrapHandler(route: RouteDef, deps: Deps) {
   const rule = METHOD_RULES[ruleKey(route.method, route.path)];
   const order: ArgKind[] = spec.argOrder ?? ['params', 'query', 'body', 'user'];
   return async (c: AppContext): Promise<Response> => {
+    if (spec.produces) {
+      const n = negotiate(c.req.header('accept'), spec.produces);
+      if (!n.ok) {
+        if (n.jsonType) throw new NotAcceptableError(spec.produces, n.jsonType);
+        return new Response(null, { status: 406, headers: { Accept: spec.produces } });
+      }
+    }
     const rawParams = c.req.param() as Record<string, string>;
     const params: Record<string, unknown> = { ...rawParams };
     const query: Record<string, unknown> = {};

@@ -179,7 +179,8 @@ export default defineRoutes((r, deps) => {
 - Spec fields: `params`/`query` (`param.uuid()`, `param.int({ def: 0 })`, `param.string({ required: false })`,
   with the API's conversion-error and "Required request parameter" messages), `body` (+ `bodyOptional` for
   an optional body, `bodyValidation: 'bindOnly'` to bind without validating, `rawBody` for a raw string body),
-  `currentUser: true` (the caller, JIT-provisioned), `argOrder` when the order of argument checks decides which
+  `currentUser: true` (the caller, JIT-provisioned), `produces: 'text/html'` (Spring's `produces`: an Accept
+  without it is a 406 before binding; other routes ignore Accept), `argOrder` when the order of argument checks decides which
   400/403 wins, `status`, `summary`/`tags`/`hidden` (OpenAPI), `maxBodyBytes` (bodies are capped at 1 MiB, 413
   `PayloadTooLarge` beyond; raise it only for bulk routes, `src/http/body.ts`).
 - Return a value (serialized as JSON with `status`), `undefined`/`null` (empty body), or a `Response` from the

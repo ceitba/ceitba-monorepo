@@ -87,8 +87,9 @@ asserts the code over HTTP (the mapping test when none does).
 | 404 | `KB_NO_PAIRS` | <message> | KbPipelineError NO_PAIRS | `kb-admin-evals.contract.test.ts` |
 | 404 | `NotFound` | No static resource <path>. | NoResourceFoundError (no route) | `health-and-error.contract.test.ts` |
 | 404 | `NotFound` | Not found | ReviewLoginDisabledError | `health-and-error.contract.test.ts` |
-| 404 | `ResourceNotFound` | <Resource> with identifier '<id>' not found | ResourceNotFoundError | `career.contract.test.ts` |
+| 404 | `ResourceNotFound` | <Resource> with identifier '<id>' not found | ResourceNotFoundError | `accept-negotiation.contract.test.ts` |
 | 405 | `MethodNotAllowed` | Method '<METHOD>' is not supported. | MethodNotAllowedError (+ Allow) | `health-and-error.contract.test.ts` |
+| 406 | `NotAcceptable` | Acceptable representations: [text/html]. | NotAcceptableError (+ Accept; `produces` routes only) | `accept-negotiation.contract.test.ts` |
 | 409 | `AlreadySuggested` | <message> | ScheduleCorrectionError ALREADY_SUGGESTED | `correction-schedule.contract.test.ts` |
 | 409 | `BOOKMARK_LIMIT` | <message> | BookmarkLimitError | `wiki-bookmarks.contract.test.ts` |
 | 409 | `CommissionEnded` | <message> | ScheduleCorrectionError COMMISSION_ENDED | `correction-schedule.contract.test.ts` |
@@ -191,6 +192,7 @@ Each was a security finding on the port; the tests that pin them skip on the Jav
 | Rate-limit path | matched the raw URI: `/v1/articles/x/v%6Ftes` reached the route but escaped the votes bucket | matches the decoded path | `rate-limit-decoded-path.contract.test.ts` |
 | Request body size | no cap on JSON bodies | 1 MiB per body, 10 MiB on authored content (articles, events, announcements, digests), 64 MiB on bulk imports (SYNC Firestore, STAFF wiki); 413 `PayloadTooLarge` beyond, declared or chunked. Only a declared `Content-Length` over Bun's ceiling (68 MiB, `SERVER_MAX_BODY_BYTES`) gets Bun's own empty 413 | `request-body-size.contract.test.ts` |
 | Allowlist | checked only by the URL rules, so a de-allowlisted STAFF member or org admin kept the role-gated reads under the GET permitAll prefixes until the JWT expired | a JWT or API key that fails the allowlist is anonymous on a public route | `allowlist-public-reads.contract.test.ts` |
+| Content negotiation | the `produces = text/html` previews answered 406 `NotAcceptable` before the handler (kept); on other routes an Accept without JSON reached Boot's `/error` dispatch: 401 for anonymous callers (public reads and health included), a whitelabel 500, or a 406 after a POST had already written | only the two HTML previews negotiate (406 JSON when the Accept admits JSON, else empty, `Accept: text/html`); every other route ignores Accept | `accept-negotiation.contract.test.ts` |
 | Mail OAuth state | HMAC-bound to user and org only: an org admin could send the consent URL to someone else | also bound to the browser by the `ceitba_mail_oauth_nonce` cookie (HttpOnly, `Path` = the path of `GOOGLE_MAIL_REDIRECT_URI`) | `mail-oauth-binding.contract.test.ts` |
 | Foreign errors | (n/a) | only the app's own errors carry their message; any other error is the generic 500 | `test/http/errors.test.ts` |
 | Secrets in logs | (n/a) | the ITBA token is masked in error messages; logged errors lose URL query strings | `test/itba/ItbaTokenRedaction.test.ts` |

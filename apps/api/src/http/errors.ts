@@ -312,6 +312,16 @@ export class UnsupportedMediaTypeError extends CodedError {
   }
 }
 
+/**
+ * HttpMediaTypeNotAcceptableException on a `produces` route -> 406 NotAcceptable + Accept, written as `contentType`
+ * (the JSON type the request's Accept admits: application/json or an application/*+json one).
+ */
+export class NotAcceptableError extends CodedError {
+  constructor(produces: string, contentType = 'application/json') {
+    super(406, 'NotAcceptable', `Acceptable representations: [${produces}].`, { Accept: produces, 'Content-Type': contentType });
+  }
+}
+
 /** MaxUploadSizeExceededException (Spring MVC ErrorResponse) -> 413 PayloadTooLarge. */
 export class PayloadTooLargeError extends CodedError {
   constructor(maxBytes: number) {

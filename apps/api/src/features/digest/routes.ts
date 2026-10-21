@@ -28,7 +28,7 @@ export default defineRoutes((r, deps) => {
   r.get(`/v1/digests${ID}`, { tags, params: id }, ({ params }) => b().service.detail(params.id!));
   r.get(`/v1/digests${ID}/stats`, { tags, params: id }, ({ params }) => b().service.stats(params.id!));
   r.patch(`/v1/digests${ID}`, { tags, params: id, body: PatchRequest, maxBodyBytes: CONTENT_MAX_BODY_BYTES }, ({ params, body }) => b().service.patch(params.id!, body));
-  r.get(`/v1/digests${ID}/preview`, { tags, params: id, query: { mode: param.string({ required: false }) }, currentUser: true },
+  r.get(`/v1/digests${ID}/preview`, { tags, params: id, query: { mode: param.string({ required: false }) }, currentUser: true, produces: 'text/html' },
     async ({ params, user }) => new Response(await b().service.previewHtml(params.id!, user!.id), {
       status: 200, headers: { 'Content-Type': 'text/html;charset=UTF-8' },
     }));

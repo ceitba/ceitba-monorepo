@@ -46,6 +46,7 @@ const cases: [E.ApiError, number, string, string?][] = [
   [new E.NoResourceFoundError('/v1/x/'), 404, 'NotFound', 'No static resource v1/x.'],
   [new E.MethodNotAllowedError('PATCH', ['GET']), 405, 'MethodNotAllowed', "Method 'PATCH' is not supported."],
   [new E.UnsupportedMediaTypeError('text/plain'), 415, 'UnsupportedMediaType'],
+  [new E.NotAcceptableError('text/html'), 406, 'NotAcceptable', 'Acceptable representations: [text/html].'],
   [new E.InternalServerError(), 500, 'InternalServerError', 'An unexpected error occurred'],
   [new DigestException('TOKEN_EXPIRED', 'm'), 410, 'TOKEN_EXPIRED'],
   // Feature exceptions with a reason enum: 409 (SameAsSga 400) and the reason's code.

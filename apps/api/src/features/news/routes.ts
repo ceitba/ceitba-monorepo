@@ -144,7 +144,7 @@ export default defineRoutes((r, deps) => {
   });
 
   r.get('/v1/articles/{id}/preview', {
-    tags: ['Articles'], params: { id: param.string() },
+    tags: ['Articles'], params: { id: param.string() }, produces: 'text/html',
     summary: 'Open Graph HTML for link previews of a published article (404 otherwise)',
   }, async ({ params }) => {
     const headers = { 'Content-Type': 'text/html;charset=UTF-8' };
@@ -159,7 +159,7 @@ export default defineRoutes((r, deps) => {
 
   // NewsSitemapController: Caddy rewrites https://ceitba.org.ar/sitemap.xml here. Public
   // (GET /v1/articles/** is permitted); the literal segment wins over GET /{id}. No
-  // `produces`, so Accept: text/html is not a 406.
+  // `produces` (the Content-Type is preset), so Accept: text/html is not a 406.
   r.get('/v1/articles/sitemap.xml', {
     tags: ['Articles'], summary: 'sitemap.xml: the newsletter home, published articles and events',
   }, async () => new Response(sitemapXml(await s.sitemap.entries()), {

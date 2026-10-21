@@ -48,6 +48,7 @@ export function rows(): Row[] {
     one(new E.MethodNotAllowedError('<METHOD>', ['GET']), 'MethodNotAllowedError (+ Allow)'),
     one(new E.PayloadTooLargeError(0), 'PayloadTooLargeError (body over the route cap; TS only)'),
     one(new E.UnsupportedMediaTypeError('<type>'), 'UnsupportedMediaTypeError (+ Accept)'),
+    one(new E.NotAcceptableError('text/html'), 'NotAcceptableError (+ Accept; `produces` routes only)'),
   ];
   out.push(
     one(new E.InvalidStateError('<message>'), 'InvalidStateError'),
