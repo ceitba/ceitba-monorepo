@@ -5,10 +5,14 @@
 #   1. find the color that is serving (ceitba-api-blue / ceitba-api-green, or
 #      the pre-blue/green ceitba-api container) and pick the other one;
 #   2. pull its image and start it next to the old one;
-#   3. wait until Docker reports it healthy (Spring booted, Flyway done). If it
-#      never does, stop it, leave the old color serving and fail;
+#   3. wait until Docker reports it healthy (the server booted and applied the
+#      pending migrations). If it never does, stop it, leave the old color
+#      serving and fail;
 #   4. give Caddy's health checks time to see it, then stop the old color
 #      (graceful: stop_grace_period lets requests and mail in flight finish).
+#
+# The image is API_IMAGE from .env (default ghcr.io/ceitba/ceitba-api:latest);
+# pinning an older tag there and re-running this script is the rollback.
 #
 # Env: PULL=0 skips the pull (local rehearsal with a locally built image);
 # HEALTH_TIMEOUT (s, default 300); CADDY_SETTLE (s, default 6, more than

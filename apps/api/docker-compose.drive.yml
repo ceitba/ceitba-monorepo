@@ -118,8 +118,8 @@ services:
 
   api:
     build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile
+      context: ../..
+      dockerfile: apps/api-ts/Dockerfile
     ports:
       - "127.0.0.1:8081:8080"
     environment:
@@ -184,14 +184,13 @@ services:
       KB_RUN_TOKEN_BUDGET_MAX: ${KB_RUN_TOKEN_BUDGET_MAX:-50000000}
       KB_RUN_MAX_REQUESTS_PER_STAGE: ${KB_RUN_MAX_REQUESTS_PER_STAGE:-5000}
       KB_BATCH_MAX_REQUESTS: ${KB_BATCH_MAX_REQUESTS:-5000}
-      # Same heap setup as prod (docker-compose.yml): 75% of the 2G limit.
-      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    # Same limits as prod (docker-compose.yml).
     deploy:
       resources:
         limits:
-          memory: 2G
-        reservations:
           memory: 1G
+        reservations:
+          memory: 256M
     depends_on:
       postgres:
         condition: service_healthy
