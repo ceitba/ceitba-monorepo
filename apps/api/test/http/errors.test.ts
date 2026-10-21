@@ -111,3 +111,37 @@ test('a unique violation that escapes (also wrapped, like DuplicateKeyError) is 
     await t.close();
   }
 }, 30_000);
+
+// Only the app's own errors (ApiError) reach the client with their message. An upstream library error that happens
+// to carry a numeric `status` and a string `code` (gaxios from googleapis, ...) is the generic 500, so its text
+// (URLs, upstream bodies) never leaks; an UnexpectedStateError (Java's IllegalStateException /
+// NoSuchElementException, which GlobalExceptionHandler did not map) is the generic 500 too.
+test('non-ApiErrors, even with a status and a code, answer the generic 500 without their message', async () => {
+  const t = await testApp();
+  const dir = mkdtempSync(join(tmpdir(), 'features-'));
+  try {
+    mkdirSync(join(dir, 'boom'));
+    const src = (p: string) => JSON.stringify(join(import.meta.dir, '..', '..', 'src', p));
+    writeFileSync(join(dir, 'boom', 'routes.ts'), `
+      import { defineRoutes } from ${src('http/router')};
+      import { UnexpectedStateError } from ${src('http/errors')};
+      export default defineRoutes((r) => {
+        r.get('/v1/careers', {}, async () => {
+          throw Object.assign(new Error('GET https://upstream/secret-token failed'), { status: 403, code: 'ERR_UPSTREAM' });
+        });
+        r.get('/v1/careers/{id}', {}, async () => {
+          throw new UnexpectedStateError('IllegalStateException', 'Could not allocate a unique share token after retries');
+        });
+      });`);
+    const app = await createApp(t.deps, { featuresDir: dir });
+    for (const path of ['/api/v1/careers', '/api/v1/careers/x']) {
+      const res = await app.request(`http://localhost${path}`); // public GETs
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect([body.error, body.message, body.path]).toEqual(['InternalServerError', 'An unexpected error occurred', path]);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    await t.close();
+  }
+}, 30_000);

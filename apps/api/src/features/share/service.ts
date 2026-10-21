@@ -13,7 +13,7 @@ import { randomBytes } from 'node:crypto';
 import type { Deps } from '../../deps';
 import { withTx, type Tx } from '../../db/client';
 import type { UserRow } from '../../http/auth/repo';
-import { ResourceNotFoundError, ValidationError } from '../../http/errors';
+import { ResourceNotFoundError, UnexpectedStateError, ValidationError } from '../../http/errors';
 import { base64UrlEncode, JAVA_S, javaIsBlank, javaSplit, javaTrim } from '../../lib/javaCompat';
 import { formatOffsetDateTime, parsePgTimestamp, systemNowMicros, type Micros } from '../../lib/time';
 import type { CreateShareSessionRequest, JoinShareSessionRequest, ParticipantResponse, ShareSessionResponse } from './dto';
@@ -141,7 +141,8 @@ export class ShareSessionService {
       const token = base64UrlEncode(new Uint8Array(randomBytes(TOKEN_BYTES)));
       if (!(await repo.tokenExists(tx, token))) return token;
     }
-    throw new Error('Could not allocate a unique share token after retries');
+    // Java: IllegalStateException (96 bits of entropy: only an RNG failure gets here) -> the generic 500.
+    throw new UnexpectedStateError('IllegalStateException', 'Could not allocate a unique share token after retries');
   }
 }
 

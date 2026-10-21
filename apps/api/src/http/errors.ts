@@ -320,6 +320,18 @@ export class PayloadTooLargeError extends CodedError {
   }
 }
 
+/**
+ * A Java unchecked exception that GlobalExceptionHandler had no mapping for, so it answered the generic 500
+ * (`IllegalStateException`, `NoSuchElementException` from `Optional.orElseThrow()`): an "impossible" state. Not an
+ * ApiError on purpose: the app logs it at ERROR and answers InternalServerError, never its message.
+ */
+export class UnexpectedStateError extends Error {
+  constructor(readonly javaException: 'IllegalStateException' | 'NoSuchElementException', message: string) {
+    super(message);
+    this.name = `UnexpectedStateError(${javaException})`;
+  }
+}
+
 /** Anything else -> 500 InternalServerError (logged at ERROR). */
 export class InternalServerError extends CodedError {
   constructor() {

@@ -5,7 +5,7 @@
 import type { Deps } from '../../deps';
 import { isDataIntegrityViolation, isUniqueViolation, withTx, type Db } from '../../db/client';
 import {
-  FileNumberAlreadySetError, FileNumberTakenError, ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError,
+  FileNumberAlreadySetError, FileNumberTakenError, ResourceAlreadyExistsError, ResourceNotFoundError, UnexpectedStateError, ValidationError,
 } from '../../http/errors';
 import { javaIsBlank, javaTrim } from '../../lib/javaCompat';
 import { formatOffsetDateTime, parsePgTimestamp, systemNowMicros, toPgTimestamp } from '../../lib/time';
@@ -241,7 +241,8 @@ export class DeviceService {
       await repo.upsertDevice(tx, { token, userId, platform: platform.toLowerCase(), appVersion: version, nowPg: toPgTimestamp(this.deps.clock.now()) });
       await repo.trimDevices(tx, userId, MAX_DEVICES_PER_USER);
       const d = await repo.findDevice(tx, token);
-      if (!d) throw new Error('NoSuchElementException');
+      // Java: devices.findById(token).orElseThrow() -> NoSuchElementException -> the generic 500.
+      if (!d) throw new UnexpectedStateError('NoSuchElementException', `Device ${token} not found after its upsert`);
       return toDevice(d);
     });
   }

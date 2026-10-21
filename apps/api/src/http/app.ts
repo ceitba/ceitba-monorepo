@@ -11,7 +11,7 @@ import { isDataIntegrityViolation } from '../db/client';
 import { toJavaJson } from '../lib/json';
 import { systemNowMicros } from '../lib/time';
 import type { AppContext, AppEnv, RequestState } from './context';
-import { ApiError, CodedError, DataIntegrityViolationError, ExternalApiError, InternalServerError, MethodNotAllowedError, NoResourceFoundError } from './errors';
+import { ApiError, DataIntegrityViolationError, ExternalApiError, InternalServerError, MethodNotAllowedError, NoResourceFoundError } from './errors';
 import { registerCoreRoutes, setRoutesProvider } from './core-routes';
 import { IpRateLimiter, resolveClientIp } from './ratelimit';
 import { compareSpecificity, RouteRegistrar, springPathRegExp, toHonoPath, wrapHandler, type RouteDef, type RoutesModule } from './router';
@@ -60,19 +60,14 @@ function decodePath(raw: string): string | null {
   }
 }
 
-/** A domain error from outside src/http/errors.ts that still carries an HTTP status and an `error` code. */
-function isCodedLike(err: unknown): err is Error & { status: number; code: string; headers?: () => Record<string, string> } {
-  const e = err as { status?: unknown; code?: unknown } | null;
-  return err instanceof Error && typeof e?.status === 'number' && e.status >= 400 && e.status < 600 && typeof e?.code === 'string';
-}
-
 function errorResponse(deps: Deps, err: unknown, state: RequestState | undefined): Response {
   // ErrorResponse.of: Instant.now() (system time).
   const now = systemNowMicros();
   const path = state?.requestUri ?? '';
   let e: ApiError;
+  // Only the app's own errors (ApiError: CodedError and every feature subclass) carry their message to the client.
+  // Anything else, even an upstream library error with a status and a code (gaxios...), is the generic 500.
   if (err instanceof ApiError) e = err;
-  else if (isCodedLike(err)) e = new CodedError(err.status, err.code, err.message, typeof err.headers === 'function' ? err.headers() : {});
   else if (isDataIntegrityViolation(err)) {
     deps.log.warn(`Data integrity violation at ${path}: ${(err as Error).message}`);
     e = new DataIntegrityViolationError(err);
