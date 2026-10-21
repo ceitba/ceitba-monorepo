@@ -1,6 +1,6 @@
 // web/auth/AuthController + TokenAuthController + DevLoginController.
 
-import { apiKeyCredential, currentUser } from '../../http/auth/context';
+import { apiKeyCredential, currentUser, staffPowers } from '../../http/auth/context';
 import { clearSessionCookies, formatCookie, readCookie, sessionCookie } from '../../http/auth/cookies';
 import { LoginRejectedError, ValidationError } from '../../http/errors';
 import { defineRoutes, emptyStatus, found, json, noContent } from '../../http/router';
@@ -91,7 +91,7 @@ export default defineRoutes((r, deps) => {
   });
 
   r.get('/v1/auth/me', { currentUser: true, tags: ['Auth'] }, async ({ c }) =>
-    svc.describe(await currentUser(c), { apiKey: apiKeyCredential(c) }));
+    svc.describe(await currentUser(c), { apiKey: apiKeyCredential(c) }, staffPowers(c)));
 
   r.post('/v1/auth/api-keys', { body: CreateApiKeyRequest, currentUser: true, status: 201, argOrder: ['body', 'user'], tags: ['Auth'] },
     async ({ c, body }) => json(await svc.createApiKey(await currentUser(c), { apiKey: apiKeyCredential(c) }, body.name!, body.ttlDays, body.scopes), 201));

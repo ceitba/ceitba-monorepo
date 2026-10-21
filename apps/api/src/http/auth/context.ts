@@ -1,6 +1,8 @@
 // What route handlers use to know the caller (the TS side of @CurrentUser,
 // ApiKeyCredential and StaffPowers).
 
+import type { Db } from '../../db/client';
+import type { Deps } from '../../deps';
 import type { AppContext } from '../context';
 import { AccessDeniedError, InvalidTokenError } from '../errors';
 import { findOrCreateUser } from './provisioning';
@@ -68,18 +70,27 @@ export function staffWithheld(c: AppContext): boolean {
  * checked against `deps.clock` (Java's injected Clock); the request's roles use
  * the system time instead (`staffRoles` in src/http/security.ts explains why).
  */
-export function staffPowers(c: AppContext) {
-  const deps = c.get('deps');
-  const withheld = staffWithheld(c);
+export function staffPowers(c: AppContext): StaffPowers {
+  return staffPowersOf(c.get('deps'), staffWithheld(c));
+}
+
+/** StaffPowers outside a request (`withheld`: the credential lacks the `staff` scope). */
+export function staffPowersOf(deps: Deps, withheld: boolean): StaffPowers {
   return {
-    async isStaff(userId: string | null | undefined): Promise<boolean> {
+    async isStaff(userId, db = deps.db) {
       if (!userId || withheld) return false;
-      return isActiveStaff(deps.db, userId, deps.clock.now());
+      return isActiveStaff(db, userId, deps.clock.now());
     },
-    /** Staff are moderators too. */
-    async isModerator(userId: string | null | undefined): Promise<boolean> {
+    async isModerator(userId, db = deps.db) {
       if (!userId || withheld) return false;
-      return (await isActiveModerator(deps.db, userId)) || (await isActiveStaff(deps.db, userId, deps.clock.now()));
+      return (await isActiveModerator(db, userId)) || (await isActiveStaff(db, userId, deps.clock.now()));
     },
   };
+}
+
+/** What staffPowers(c) answers; `db` lets a service read inside its own transaction (default: the pool). */
+export interface StaffPowers {
+  isStaff(userId: string | null | undefined, db?: Db): Promise<boolean>;
+  /** Staff are moderators too. */
+  isModerator(userId: string | null | undefined, db?: Db): Promise<boolean>;
 }

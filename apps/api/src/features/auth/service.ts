@@ -11,9 +11,10 @@ import { admits, isReviewEmail, sessionAdmits } from '../../http/auth/allowlist'
 import { normalizeScopes, parseScopes, scopeFromKey, scopeKeys, serializeScopes, sha256Hex } from '../../http/auth/apikeys';
 import { issueJwt, webTtlMs, type IssuedToken } from '../../http/auth/jwt';
 import { keyIsFullPower, type ApiKeyScope, type ValidatedKey } from '../../http/auth/principal';
+import { staffPowersOf } from '../../http/auth/context';
 import { findOrCreateUser } from '../../http/auth/provisioning';
 import {
-  activeApiKeysOf, deleteApiKey, findUserById, followsOf, insertApiKey, isActiveModerator, isActiveStaff, membershipsOf, type UserRow,
+  activeApiKeysOf, deleteApiKey, findUserById, followsOf, insertApiKey, isActiveStaff, membershipsOf, type UserRow,
 } from '../../http/auth/repo';
 import {
   InsufficientScopeError, InvalidCredentialsError, InvalidTokenError, LoginRejectedError, ReviewAccountRestrictedError,
@@ -27,6 +28,12 @@ import * as refreshRepo from './repo';
 /** The caller's credential as UserMeService / ApiKeyService see it. */
 export interface Caller {
   apiKey: ValidatedKey | null;
+}
+
+/** StaffPowers (src/http/auth/context.ts `staffPowers(c)`): false for a key without the `staff` scope. */
+export interface CallerPowers {
+  isStaff(userId: string, db: Tx): Promise<boolean>;
+  isModerator(userId: string, db: Tx): Promise<boolean>;
 }
 
 const b64url = (b: Buffer | Uint8Array) => Buffer.from(b).toString('base64url');
@@ -58,39 +65,34 @@ export class AuthService {
 
   // ------------------------------------------------------------- UserMeService
 
-  async describe(user: UserRow, caller: Caller): Promise<UserMeResponse> {
-    const { db, clock } = this.deps;
-    const withheld = caller.apiKey !== null && !caller.apiKey.scopes.has('staff');
-    const now = clock.now();
-    const isStaff = !withheld && (await isActiveStaff(db, user.id, now));
-    // isStaff || StaffPowers.isModerator (moderator grant or staff).
-    const moderator = isStaff || (!withheld && (await this.isModerator(user.id, now)));
-    const orgs = (await membershipsOf(db, user.id)).map((m) => ({ slug: m.organization, role: m.role }));
-    const follows = (await followsOf(db, user.id)).map((f) => f.organization);
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: isStaff ? 'staff' : 'user',
-      moderator,
-      avatarUrl: user.avatarUrl,
-      theme: user.theme,
-      language: user.preferredLanguage,
-      careerId: user.careerId,
-      plan: user.plan,
-      fileNumber: user.fileNumber,
-      linkedin: user.linkedin,
-      instagram: user.instagram,
-      discord: user.discord,
-      organizations: orgs,
-      follows,
-      capabilities: await effectiveCapabilities(db, user, now),
-      apiKeyScopes: caller.apiKey ? scopeKeys(caller.apiKey.scopes) : null,
-    };
-  }
-
-  private async isModerator(userId: string, now: Micros): Promise<boolean> {
-    return (await isActiveModerator(this.deps.db, userId)) || (await isActiveStaff(this.deps.db, userId, now));
+  describe(user: UserRow, caller: Caller, powers: CallerPowers): Promise<UserMeResponse> {
+    return withTx(this.deps.db, async (tx) => {
+      const isStaff = await powers.isStaff(user.id, tx);
+      // isStaff || StaffPowers.isModerator (moderator grant or staff).
+      const moderator = isStaff || (await powers.isModerator(user.id, tx));
+      const orgs = (await membershipsOf(tx, user.id)).map((m) => ({ slug: m.organization, role: m.role }));
+      const follows = (await followsOf(tx, user.id)).map((f) => f.organization);
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: isStaff ? 'staff' : 'user',
+        moderator,
+        avatarUrl: user.avatarUrl,
+        theme: user.theme,
+        language: user.preferredLanguage,
+        careerId: user.careerId,
+        plan: user.plan,
+        fileNumber: user.fileNumber,
+        linkedin: user.linkedin,
+        instagram: user.instagram,
+        discord: user.discord,
+        organizations: orgs,
+        follows,
+        capabilities: await effectiveCapabilities(tx, user, this.deps.clock.now()),
+        apiKeyScopes: caller.apiKey ? scopeKeys(caller.apiKey.scopes) : null,
+      };
+    }, { readOnly: true });
   }
 
   // -------------------------------------------------------------- ApiKeyService
@@ -123,7 +125,7 @@ export class AuthService {
   }
 
   async listApiKeys(user: UserRow): Promise<ApiKeyResponse[]> {
-    const rows = await activeApiKeysOf(this.deps.db, user.id, systemNowMicros());
+    const rows = await withTx(this.deps.db, (tx) => activeApiKeysOf(tx, user.id, systemNowMicros()), { readOnly: true });
     return rows.map((k) => ({
       id: k.id,
       name: k.name,
@@ -200,7 +202,7 @@ export class AuthService {
       accessTokenExpiresAt: formatInstant(access.expiresAtMicros),
       refreshToken: refresh.token,
       refreshTokenExpiresAt: formatInstant(refresh.expiresAtMicros),
-      user: await this.describe(user, { apiKey: null }),
+      user: await this.describe(user, { apiKey: null }, staffPowersOf(this.deps, false)),
     };
   }
 
@@ -310,8 +312,10 @@ export class AuthService {
     const now = this.deps.clock.now();
     const user = await findOrCreateUser(this.deps.db, this.deps.log, now, normalized,
       name == null || name.trim() === '' ? normalized : name.trim(), null, null);
-    if (asStaff && !(await isActiveStaff(this.deps.db, user.id, now))) {
-      await withTx(this.deps.db, (tx) => refreshRepo.replaceWithOpenEndedStaffRow(tx, user.id, now - 60_000_000));
+    if (asStaff) {
+      await withTx(this.deps.db, async (tx) => {
+        if (!(await isActiveStaff(tx, user.id, now))) await refreshRepo.replaceWithOpenEndedStaffRow(tx, user.id, now - 60_000_000);
+      });
     }
     this.deps.log.info(`Dev login as ${normalized} (staff=${asStaff})`);
     return this.issueWebToken(user);

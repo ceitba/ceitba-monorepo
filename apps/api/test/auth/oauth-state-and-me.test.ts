@@ -5,6 +5,7 @@ import { CONTRACT_ENV, TEST_JWT_SECRET } from '../../contract/support/env';
 import { seedStaff } from '../../contract/support/identity';
 import { loadConfig } from '../../src/config';
 import { AuthService, OAUTH_STATE_TTL_SECONDS } from '../../src/features/auth/service';
+import { staffPowersOf } from '../../src/http/auth/context';
 import { findUserById } from '../../src/http/auth/repo';
 import { MutableClock } from '../../src/infra/clock';
 import { silentLogger } from '../../src/infra/logger';
@@ -83,8 +84,8 @@ describe('UserMeServiceTest', () => {
     // Active only around the injected "now" (2026-03-01), long over by the system clock.
     await t.sql`UPDATE public.ceitba_staff SET start = '2026-02-01T00:00:00Z', "end" = '2026-03-02T00:00:00Z' WHERE user_id = ${id}`;
     const user = (await findUserById(t.deps.db, id))!;
-    expect((await new AuthService(t.deps).describe(user, { apiKey: null })).role).toBe('staff');
+    expect((await new AuthService(t.deps).describe(user, { apiKey: null }, staffPowersOf(t.deps, false))).role).toBe('staff');
     clock.set('2026-04-01T00:00:00Z');
-    expect((await new AuthService(t.deps).describe(user, { apiKey: null })).role).toBe('user');
+    expect((await new AuthService(t.deps).describe(user, { apiKey: null }, staffPowersOf(t.deps, false))).role).toBe('user');
   });
 });
