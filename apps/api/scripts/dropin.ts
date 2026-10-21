@@ -7,8 +7,9 @@
 //
 // Phases (run in this order; each boots and stops its own servers):
 //   seed      bench/load.ts volume + every other area (identities, staff, keys, tokens, proposals, mail
-//             accounts encrypted with the app's ciphers, digests, KB admin, drive, legacy wiki ...)
-//   enrich    Java on <db> runs the write flows as other users: data the jar itself wrote
+//             accounts encrypted with the app's ciphers, digests, KB admin, drive, legacy wiki ...),
+//             then VACUUM ANALYZE (heap order like an autovacuumed production table)
+//   enrich    Java on <db> runs the write flows as other users: data the jar itself wrote; VACUUM ANALYZE again
 //   get       Java and Bun side by side on <db>: every GET of src/http/openapi.json x 6 identities,
 //             status + headers + body bytes; the database must not change (checksummed before/after)
 //   writes    clones A (Java) and B (Bun) of <db>, the same write flows in the same order on both,
@@ -594,6 +595,16 @@ async function fingerprint(sql: Sql): Promise<Map<string, string>> {
 
 // ------------------------------------------------------------------ phases
 
+/**
+ * VACUUM ANALYZE every table, so the later phases read tables laid out like production's (autovacuumed) rather
+ * than freshly written heaps: a vacuum lets new rows reuse freed slots, which is what exposes a list whose order
+ * only holds by accident (an unordered SELECT reads heap order). A single statement, outside any transaction.
+ */
+async function vacuum(sql: Sql) {
+  await sql.unsafe('VACUUM ANALYZE').simple();
+  console.error('VACUUM ANALYZE done');
+}
+
 async function phaseSeed() {
   const sql = connect(DB, 1);
   try {
@@ -606,6 +617,7 @@ async function phaseSeed() {
       console.error('load.ts seed applied');
     }
     await sql.unsafe(seedSql()).simple();
+    await vacuum(sql);
     const counts = await sql`SELECT schemaname || '.' || relname AS t, n_live_tup::int AS n FROM pg_stat_user_tables ORDER BY 1`;
     const empty = counts.filter((c) => c.n === 0).map((c) => c.t);
     console.log(`seeded: ${counts.length} tables, ${counts.reduce((s, c) => s + c.n, 0)} rows; empty: ${empty.join(', ') || 'none'}`);
@@ -755,6 +767,7 @@ async function phaseEnrich() {
       const bad = results.filter((r) => r.res.status >= 500);
       console.log(`enrich round ${i}: ${results.length} requests, ${bad.length} 5xx`);
     }
+    await vacuum(sql);
   } finally {
     await java.stop();
     await sql.end();
