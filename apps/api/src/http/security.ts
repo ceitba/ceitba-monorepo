@@ -165,15 +165,28 @@ export function resolveBearer(req: Request, method: string, rawPath: string, coo
   return null;
 }
 
+/**
+ * The STAFF/MODERATOR authorities of a user at request authentication (staff are moderators too). Shared by the
+ * JWT converter and the API key filter.
+ *
+ * Clock: request authentication checks staff expiry against the SYSTEM time, while `staffPowers`
+ * (src/http/auth/context.ts) checks it against `deps.clock`. This split is Java's: StaffAwareJwtAuthenticationConverter
+ * and ApiKeyFilter called `isActiveStaff(id, OffsetDateTime.now())`, StaffPowers used the injected `Clock`. Both
+ * agree in production (SystemClock); only a test that moves `deps.clock` sees the difference.
+ */
+async function staffRoles(deps: Deps, userId: string, roles: Set<Role>): Promise<void> {
+  const staff = await isActiveStaff(deps.db, userId, systemNowMicros());
+  if (staff) roles.add('STAFF');
+  if (staff || (await isActiveModerator(deps.db, userId))) roles.add('MODERATOR');
+}
+
 /** StaffAwareJwtAuthenticationConverter: ROLE_USER + STAFF/MODERATOR/ORG_MEMBER from the DB. */
 export async function jwtRoles(deps: Deps, email: string | null): Promise<Set<Role>> {
   const roles = new Set<Role>(['USER']);
   if (email === null) return roles;
   const u = await findUserByEmail(deps.db, email);
   if (!u) return roles;
-  const staff = await isActiveStaff(deps.db, u.id, systemNowMicros());
-  if (staff) roles.add('STAFF');
-  if (staff || (await isActiveModerator(deps.db, u.id))) roles.add('MODERATOR');
+  await staffRoles(deps, u.id, roles);
   if ((await membershipsOf(deps.db, u.id)).length > 0) roles.add('ORG_MEMBER');
   return roles;
 }
@@ -181,10 +194,7 @@ export async function jwtRoles(deps: Deps, email: string | null): Promise<Set<Ro
 /** ApiKeyFilter.authorities: ROLE_USER, STAFF/MODERATOR only with the "staff" scope. */
 async function apiKeyRoles(deps: Deps, k: Parameters<typeof keyHas>[0]): Promise<Set<Role>> {
   const roles = new Set<Role>(['USER']);
-  if (!keyHas(k, 'staff')) return roles;
-  const staff = await isActiveStaff(deps.db, k.user.id, systemNowMicros());
-  if (staff) roles.add('STAFF');
-  if (staff || (await isActiveModerator(deps.db, k.user.id))) roles.add('MODERATOR');
+  if (keyHas(k, 'staff')) await staffRoles(deps, k.user.id, roles);
   return roles;
 }
 

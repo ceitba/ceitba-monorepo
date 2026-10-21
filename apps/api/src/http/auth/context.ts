@@ -64,7 +64,9 @@ export function staffWithheld(c: AppContext): boolean {
 
 /**
  * service/auth/StaffPowers: whether a user holds staff / moderator powers from
- * the database, false for a request whose API key lacks "staff".
+ * the database, false for a request whose API key lacks "staff". Staff expiry is
+ * checked against `deps.clock` (Java's injected Clock); the request's roles use
+ * the system time instead (`staffRoles` in src/http/security.ts explains why).
  */
 export function staffPowers(c: AppContext) {
   const deps = c.get('deps');
