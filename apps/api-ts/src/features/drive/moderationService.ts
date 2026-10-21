@@ -11,7 +11,7 @@ import { DriveJanitor, refOf, releasable } from './blobs';
 import type { Ctx } from './context';
 import type { PageResponse, StaffFileResponse, StaffReportResponse, StaffSourceResponse, UnclaimedShareResponse } from './dto';
 import { fileNotFound, sourceNotFound } from './errors';
-import { forgetFiles, hidePagesCiting } from './kbHooks';
+import { kbTakedown } from './kbHooks';
 import { DRIVE_FILE_KINDS, type DriveFileKind, type DriveStaffDecision } from './logic/types';
 import { isFolderFile, PUBLICATIONS, SOURCE_STATUSES, type DriveFile, type DriveSource } from './model';
 import type { DriveRecalculator } from './recalculator';
@@ -84,7 +84,7 @@ export class DriveModerationService {
       source.reviewComment = blankToNull(comment);
       const all = await filesOfSource(s, sourceId);
       await this.recalculator.recompute(s, source, all);
-      await hidePagesCiting(s, all.map((f) => f.id));
+      await kbTakedown(this.deps).hidePagesCiting(s, all.map((f) => f.id));
       return (await views.staffSources(s, [source]))[0]!;
     });
   }
@@ -124,7 +124,7 @@ export class DriveModerationService {
       }
       const source = await this.source(s, file.sourceId);
       await this.recalculator.recompute(s, source, await filesOfSource(s, source.id));
-      if (decision === 'REMOVE') await hidePagesCiting(s, [fileId]);
+      if (decision === 'REMOVE') await kbTakedown(this.deps).hidePagesCiting(s, [fileId]);
       return (await this.staffFiles(s, [file]))[0]!;
     });
   }
@@ -183,7 +183,7 @@ export class DriveModerationService {
       if (!ids.length) return;
       const rows = await s.queryFiles(sql`f.source_id IN ${uuids(ids)}`);
       const rowIds = rows.map((f) => f.id);
-      await forgetFiles(s, this.janitor, rowIds);
+      await kbTakedown(this.deps).forgetFiles(s, this.janitor, rowIds);
       this.janitor.deleteAfterCommit(s, await releasable(s, rows.map(refOf), rowIds));
     });
   }

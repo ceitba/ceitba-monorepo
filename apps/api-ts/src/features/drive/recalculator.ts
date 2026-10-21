@@ -12,7 +12,7 @@
 import { sql } from 'drizzle-orm';
 import type { Clock } from '../../infra/clock';
 import { ART, zoneOffsetMinutes, type Micros } from '../../lib/time';
-import { hidePagesCiting } from './kbHooks';
+import type { KbTakedown } from './kbHooks';
 import { academicYearFromName } from './logic/academicYears';
 import { decidePublication } from './logic/publicationRule';
 import { SubjectMatcher } from './logic/subjectMatcher';
@@ -91,7 +91,7 @@ export function academicYear(f: DriveFile, by: Map<string, DriveFile>, currentYe
 }
 
 export class DriveRecalculator {
-  constructor(private readonly clock: Clock) {}
+  constructor(private readonly clock: Clock, private readonly kb: KbTakedown) {}
 
   async recompute(s: Session, source: DriveSource, files: DriveFile[], m?: SubjectMatcher): Promise<void> {
     const subjectMatcher = m ?? (await matcher(s, await planSubjectIds(s, source.userId)));
@@ -136,6 +136,6 @@ export class DriveRecalculator {
       f.publication = publication;
       if (wasPublished && (publication !== 'PUBLISHED' || publishedSubject !== effective)) takenDown.push(f.id);
     }
-    if (takenDown.length) await hidePagesCiting(s, takenDown);
+    if (takenDown.length) await this.kb.hidePagesCiting(s, takenDown);
   }
 }

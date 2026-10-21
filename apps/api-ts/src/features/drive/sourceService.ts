@@ -12,7 +12,7 @@ import type { AcceptSuggestionsResponseT, Ctx } from './context';
 import type { DriveInfoResponse, RegisterSourceRequest, SourceResponse, SourceTreeResponse, TreeItemResponse, UpdateFileRequest } from './dto';
 import { ABSENT } from './dto';
 import { DriveError, fileNotFound, sourceNotFound } from './errors';
-import { forgetFiles } from './kbHooks';
+import { kbTakedown } from './kbHooks';
 import { parseDriveFolderUrl } from './logic/driveFolderUrls';
 import { newDriveSource, isRemovedFromDrive, setHiddenByUser, type DriveFile, type DriveSource } from './model';
 import { depth, matcher, planSubjectIds, yearInArt, type DriveRecalculator } from './recalculator';
@@ -159,7 +159,7 @@ export class DriveSourceService {
       const all = await filesOfSource(s, sourceId);
       const refs = all.map(refOf);
       const ids = all.map((f) => f.id);
-      await forgetFiles(s, this.janitor, ids);
+      await kbTakedown(this.deps).forgetFiles(s, this.janitor, ids);
       for (const f of all) s.deleteFile(f);
       this.janitor.deleteAfterCommit(s, await releasable(s, refs, ids));
     });

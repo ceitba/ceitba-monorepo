@@ -5,6 +5,7 @@
 
 import type { Deps } from '../../deps';
 import { DriveJanitor } from './blobs';
+import { kbTakedown } from './kbHooks';
 import { ContentPool } from './logic/contentPool';
 import { DriveModerationService } from './moderationService';
 import { DriveContentProcessor } from './processor';
@@ -45,7 +46,7 @@ export function driveServices(deps: Deps): DriveServices {
   const props = driveProps(deps.config);
   const pool = new ContentPool(workers());
   const janitor = new DriveJanitor(deps.storage, log);
-  const recalculator = new DriveRecalculator(deps.clock);
+  const recalculator = new DriveRecalculator(deps.clock, kbTakedown(deps));
   const store = new DriveSyncStore(deps, props, recalculator, janitor);
   const processor = new DriveContentProcessor(deps.drive, deps.storage, props, pool, log);
   const community = new DriveCommunityService(deps.drive, store, deps.db, props, log);

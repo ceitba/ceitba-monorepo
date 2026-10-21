@@ -9,7 +9,7 @@ import type { Deps } from '../../deps';
 import { firstOwner, ownedBy, type DriveItem } from '../../external/drive';
 import { toPgTimestamp, type Micros } from '../../lib/time';
 import { DriveJanitor, refOf, releasable, type BlobRef } from './blobs';
-import { forgetFiles } from './kbHooks';
+import { kbTakedown } from './kbHooks';
 import { byReference, needsFetch, REF } from './logic/driveSyncRules';
 import type { DriveFileKind } from './logic/types';
 import {
@@ -247,7 +247,7 @@ export class DriveSyncStore {
     if (!hasContent(f) && hasContent(live)) copyContent(live, f);
     const dropped = refOf(live);
     const droppedId = live.id;
-    await forgetFiles(s, this.janitor, [droppedId]);
+    await kbTakedown(this.deps).forgetFiles(s, this.janitor, [droppedId]);
     s.deleteFile(live);
     await s.flush();
     f.sourceId = target;
@@ -374,7 +374,7 @@ export class DriveSyncStore {
       if (!expired.length) return;
       const refs = expired.map(refOf);
       const ids = expired.map((f) => f.id);
-      await forgetFiles(s, this.janitor, ids);
+      await kbTakedown(this.deps).forgetFiles(s, this.janitor, ids);
       for (const f of expired) s.deleteFile(f);
       this.janitor.deleteAfterCommit(s, await releasable(s, refs, ids));
     });
@@ -437,7 +437,7 @@ export class DriveSyncStore {
     const all = await filesOfSource(s, sourceId);
     const refs = all.map(refOf);
     const ids = all.map((f) => f.id);
-    await forgetFiles(s, this.janitor, ids);
+    await kbTakedown(this.deps).forgetFiles(s, this.janitor, ids);
     for (const f of all) s.deleteFile(f);
     const w = await s.walk(sourceId);
     if (w) s.deleteWalk(w);
