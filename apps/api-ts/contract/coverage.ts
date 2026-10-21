@@ -1,7 +1,7 @@
 // Route coverage report: every operation of the Java API (contract/openapi.json,
 // exported from the running jar's /api/docs.json, 295 operations) with
 //   - TS: whether apps/api-ts has a handler for it (the registered routes);
-//   - tested: whether >= 1 contract test request hit it (contract/.hits, written
+//   - tested: whether >= 1 contract test request hit it (contract/.hits/<run id>/, all runs merged; written
 //     by the harness during `bun contract/run.ts`).
 //
 //   bun contract/coverage.ts            # summary + per-area table
@@ -10,7 +10,8 @@
 //   bun contract/coverage.ts --check    # exit 1 if an operation has neither a TS handler nor a test
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
+import { ruleKey } from '../src/http/auth/policy';
 import { springPathRegExp } from '../src/http/router';
 import { tsRoutes } from './support/routes';
 
@@ -23,14 +24,18 @@ for (const [path, methods] of Object.entries(spec.paths)) {
 }
 
 const routes = await tsRoutes();
-const tsKeys = new Set(routes.map((r) => `${r.method} ${r.path.replace(/\{(\w+):[^}]*\}+/g, '{$1}')}`));
+const tsKeys = new Set(routes.map((r) => ruleKey(r.method, r.path)));
 
 const hitsDir = join(import.meta.dir, '.hits');
 const hits: { method: string; path: string; target: string }[] = [];
-if (existsSync(hitsDir)) {
-  for (const f of readdirSync(hitsDir)) {
-    const target = f.split('-')[0]!;
-    for (const line of readFileSync(join(hitsDir, f), 'utf8').split('\n')) {
+// .hits/<run id>/<target>-<file>-<pid>.jsonl: every run's hits, merged.
+const hitFiles = existsSync(hitsDir)
+  ? (readdirSync(hitsDir, { recursive: true }) as string[]).filter((f) => f.endsWith('.jsonl')).map((f) => join(hitsDir, f))
+  : [];
+{
+  for (const file of hitFiles) {
+    const target = basename(file).split('-')[0]!;
+    for (const line of readFileSync(file, 'utf8').split('\n')) {
       if (!line.trim()) continue;
       const h = JSON.parse(line) as { method: string; path: string };
       let decoded = h.path;

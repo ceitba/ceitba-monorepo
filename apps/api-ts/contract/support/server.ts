@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import type { Sql } from 'postgres';
 import { cloneDatabase, connect, dropDatabase, jdbcParts, pgServerUrl, withDatabase } from './pg';
 import { CONTRACT_ENV } from './env';
-import { recordHit } from './hits';
+import { recordHit, runDir } from './hits';
 
 export type Target = 'java' | 'ts';
 export const TARGET: Target = (process.env.CONTRACT_TARGET as Target) === 'java' ? 'java' : 'ts';
@@ -21,7 +21,7 @@ export const TARGET: Target = (process.env.CONTRACT_TARGET as Target) === 'java'
 const API_TS_DIR = join(import.meta.dir, '..', '..');
 const REPO_DIR = join(API_TS_DIR, '..', '..');
 const JAR = process.env.CONTRACT_JAR ?? join(REPO_DIR, 'apps', 'api', 'target', 'ceitba-api-1.0.0.jar');
-const LOG_DIR = join(API_TS_DIR, 'contract', '.logs');
+const LOG_DIR = runDir(join(API_TS_DIR, 'contract', '.logs'));
 /** CONTRACT_RECORD=1 appends every request to contract/.corpus/corpus.jsonl (replayed by contract/diff.ts). */
 const CORPUS_DIR = join(API_TS_DIR, 'contract', '.corpus');
 
@@ -31,11 +31,51 @@ function javaBin(): string {
   return home ? join(home, 'bin', 'java') : 'java';
 }
 
+// A port the OS just handed out and released. Another worker can grab it before
+// the server binds it, so startServer retries the spawn when the bind fails.
 async function freePort(): Promise<number> {
   const s = Bun.serve({ port: 0, fetch: () => new Response() });
   const p = s.port!;
   s.stop(true);
   return p;
+}
+
+const PORT_IN_USE = /address already in use|EADDRINUSE|Port \d+ (?:was|is) already in use|Failed to start bean 'webServerStartStop'/i;
+/** Readiness probe timeout: a hung probe (a JVM under memory pressure) must not block the run. */
+const PROBE_TIMEOUT_MS = 2_000;
+const READY_DEADLINE_MS = 120_000;
+
+/** Waits until no other session of this database runs a statement or holds an open transaction. */
+export async function quiesce(db: Sql, timeoutMs = 5_000): Promise<void> {
+  const until = Date.now() + timeoutMs;
+  for (;;) {
+    const [r] = await db`SELECT count(*)::int AS n FROM pg_stat_activity
+      WHERE datname = current_database() AND pid <> pg_backend_pid() AND backend_type = 'client backend'
+        AND state IN ('active', 'idle in transaction', 'idle in transaction (aborted)')`;
+    if (r!.n === 0 || Date.now() > until) return;
+    await Bun.sleep(20);
+  }
+}
+
+/**
+ * The test's postgres.js client: a cleanup statement (TRUNCATE / DELETE) first
+ * waits for the server to be idle (quiesce). Otherwise it can deadlock with
+ * the server's after-commit background work (a push delivery still writing
+ * push_log while TRUNCATE takes its ACCESS EXCLUSIVE lock).
+ */
+function cleanupAware(db: Sql): Sql {
+  return new Proxy(db, {
+    apply(target, thisArg, args: unknown[]) {
+      const strings = args[0] as TemplateStringsArray | undefined;
+      if (Array.isArray(strings) && 'raw' in strings && /^\s*(TRUNCATE|DELETE)\b/i.test(strings[0] ?? '')) {
+        return (async () => {
+          await quiesce(target);
+          return await (Reflect.apply(target, thisArg, args) as Promise<unknown>);
+        })();
+      }
+      return Reflect.apply(target, thisArg, args);
+    },
+  });
 }
 
 /** How a request authenticates. */
@@ -105,44 +145,53 @@ export async function startServer(opts: StartOptions = {}): Promise<Server> {
   const dbName = await cloneDatabase(target === 'java' ? 'cj' : 'ct');
   const dbUrl = withDatabase(server, dbName);
   const { jdbc, user, password } = jdbcParts(dbUrl);
-  const port = await freePort();
-  const env: Record<string, string> = { ...CONTRACT_ENV, PORT: String(port), DATABASE_URL: jdbc, POSTGRES_USER: user, POSTGRES_PASSWORD: password };
-  for (const [k, v] of Object.entries(opts.env ?? {})) {
-    if (v === null) delete env[k];
-    else env[k] = v;
-  }
   mkdirSync(LOG_DIR, { recursive: true });
   const logFile = join(LOG_DIR, `${target}-${dbName}.log`);
-  const out = openSync(logFile, 'w');
-  const spawnEnv = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', ...env };
   const t0 = performance.now();
-  let proc;
-  if (target === 'java') {
-    if (!existsSync(JAR)) throw new Error(`${JAR} is missing: build it with cd apps/api && ./mvnw -B -ntp -q -o package -DskipTests`);
-    // en_US like the eclipse-temurin image (Bean Validation messages without Accept-Language).
-    proc = Bun.spawn([javaBin(), '-XX:TieredStopAtLevel=1', '-Xss512k', '-Duser.language=en', '-Duser.country=US', '-jar', JAR], { env: spawnEnv, stdout: out, stderr: out, cwd: REPO_DIR });
-  } else {
-    proc = Bun.spawn([process.execPath, 'src/main.ts'], { env: spawnEnv, stdout: out, stderr: out, cwd: API_TS_DIR });
-  }
-  const url = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 120_000;
-  for (;;) {
-    if (proc.exitCode !== null) throw new Error(`${target} server exited (${proc.exitCode}):\n${readFileSync(logFile, 'utf8').slice(-4000)}`);
-    try {
-      const r = await fetch(`${url}/api/actuator/health/readiness`);
-      if (r.status === 200) break;
-    } catch {
-      // not up yet
+  let env!: Record<string, string>;
+  let proc!: ReturnType<typeof Bun.spawn>;
+  let url = '';
+  for (let attempt = 1; ; attempt++) {
+    const port = await freePort();
+    env = { ...CONTRACT_ENV, PORT: String(port), DATABASE_URL: jdbc, POSTGRES_USER: user, POSTGRES_PASSWORD: password };
+    for (const [k, v] of Object.entries(opts.env ?? {})) {
+      if (v === null) delete env[k];
+      else env[k] = v;
     }
-    if (Date.now() > deadline) {
-      proc.kill();
-      throw new Error(`${target} server did not become ready:\n${readFileSync(logFile, 'utf8').slice(-4000)}`);
+    const out = openSync(logFile, 'w');
+    const spawnEnv = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', ...env };
+    if (target === 'java') {
+      if (!existsSync(JAR)) throw new Error(`${JAR} is missing: build it with cd apps/api && ./mvnw -B -ntp -q -o package -DskipTests`);
+      // en_US like the eclipse-temurin image (Bean Validation messages without Accept-Language).
+      proc = Bun.spawn([javaBin(), '-XX:TieredStopAtLevel=1', '-Xss512k', '-Duser.language=en', '-Duser.country=US', '-jar', JAR], { env: spawnEnv, stdout: out, stderr: out, cwd: REPO_DIR });
+    } else {
+      proc = Bun.spawn([process.execPath, 'src/main.ts'], { env: spawnEnv, stdout: out, stderr: out, cwd: API_TS_DIR });
     }
-    await Bun.sleep(target === 'java' ? 150 : 40);
+    url = `http://127.0.0.1:${port}`;
+    const deadline = Date.now() + READY_DEADLINE_MS;
+    let ready = false;
+    for (;;) {
+      if (proc.exitCode !== null) break;
+      try {
+        const r = await fetch(`${url}/api/actuator/health/readiness`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+        if (r.status === 200) { ready = true; break; }
+      } catch {
+        // not up yet, or the probe timed out
+      }
+      if (Date.now() > deadline) {
+        proc.kill('SIGKILL');
+        throw new Error(`${target} server did not become ready in ${READY_DEADLINE_MS / 1000}s:\n${readFileSync(logFile, 'utf8').slice(-4000)}`);
+      }
+      await Bun.sleep(target === 'java' ? 150 : 40);
+    }
+    if (ready) break;
+    const log = readFileSync(logFile, 'utf8');
+    if (attempt < 4 && PORT_IN_USE.test(log)) continue; // another worker took the port first
+    throw new Error(`${target} server exited (${proc.exitCode}):\n${log.slice(-4000)}`);
   }
   const bootMs = Math.round(performance.now() - t0);
   appendFileSync(join(LOG_DIR, `boot-${target}.jsonl`), `${JSON.stringify({ bootMs, at: Date.now() })}\n`);
-  const db = connect(dbUrl);
+  const db = cleanupAware(connect(dbUrl));
 
   const request = async (method: string, path: string, o: RequestOptions = {}): Promise<ApiResponse> => {
     const headers = new Headers(o.headers ?? {});

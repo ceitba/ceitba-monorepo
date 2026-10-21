@@ -67,18 +67,29 @@ const template = await templateDatabase();
 const templateMs = process.env.CONTRACT_TEMPLATE_MS ? `${process.env.CONTRACT_TEMPLATE_MS} ms (built now)` : 'reused';
 console.log(`Postgres ready, template ${template} (${templateMs}) in ${Math.round(performance.now() - t0)} ms; ${files.length} files, ${workers} workers`);
 
+// Each run writes hits and logs into its own directory, so overlapping runs never wipe each other's
+// (coverage.ts merges every run's hits). Directories of runs older than a day are pruned.
+const RUN_ID = `${new Date().toISOString().replace(/[:.]/g, '-')}-${process.pid}`;
+for (const d of ['.hits', '.logs']) {
+  const root = join(import.meta.dir, d);
+  if (!existsSync(root)) continue;
+  for (const f of readdirSync(root)) {
+    const p = join(root, f);
+    if (Date.now() - statSync(p).mtimeMs > 24 * 3600_000) rmSync(p, { recursive: true, force: true });
+  }
+}
+
 let failed = false;
 for (const target of targets) {
   if (target === 'java') await ensureJar();
-  rmSync(join(import.meta.dir, '.hits'), { recursive: true, force: true });
-  rmSync(join(import.meta.dir, '.logs'), { recursive: true, force: true });
+  const logDir = join(import.meta.dir, '.logs', RUN_ID);
   const shards: string[][] = Array.from({ length: Math.min(workers, files.length) }, () => []);
   files.forEach((f, i) => shards[i % shards.length]!.push(join(TESTS, f)));
   const started = performance.now();
   const results = await Promise.all(shards.map(async (shard) => {
     const p = Bun.spawn([process.execPath, 'test', '--timeout', '120000', ...shard], {
       cwd: ROOT,
-      env: { ...process.env, CONTRACT_TARGET: target, CONTRACT_PG_URL: pgUrl, CONTRACT_TEMPLATE_DB: template },
+      env: { ...process.env, CONTRACT_TARGET: target, CONTRACT_PG_URL: pgUrl, CONTRACT_TEMPLATE_DB: template, CONTRACT_RUN_ID: RUN_ID },
       stdout: 'pipe', stderr: 'pipe',
     });
     const [out, err] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
@@ -94,8 +105,8 @@ for (const target of targets) {
       console.log(r.out.split('\n').filter((l) => !l.startsWith('(pass)')).join('\n'));
     }
   }
-  const boots = existsSync(join(import.meta.dir, '.logs', `boot-${target}.jsonl`))
-    ? readFileSync(join(import.meta.dir, '.logs', `boot-${target}.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l).bootMs as number)
+  const boots = existsSync(join(logDir, `boot-${target}.jsonl`))
+    ? readFileSync(join(logDir, `boot-${target}.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l).bootMs as number)
     : [];
   const avg = boots.length ? Math.round(boots.reduce((a, b) => a + b, 0) / boots.length) : 0;
   console.log(`[${target}] ${pass} pass, ${fail} fail, ${skip} skip in ${Math.round(performance.now() - started)} ms`

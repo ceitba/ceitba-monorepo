@@ -14,7 +14,7 @@ nodemailer, googleapis, firebase-admin, linkedom, sanitize-html, unpdf, lru-cach
 
 ```
 bun run build                         # tsc (must pass)
-bun run test                          # bun test test/  (unit + in-process; DB tests need Docker or CONTRACT_PG_URL)
+bun run test                          # bun test ./test  (unit + in-process only; DB tests need Docker or CONTRACT_PG_URL)
 bun run test:contract                 # contract suite against TS (default)
 bun run test:contract:java            # the same suite against the Java jar (built if missing/stale)
 bun contract/run.ts --target both career auth   # both targets, only files matching "career"/"auth"
