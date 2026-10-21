@@ -49,9 +49,8 @@ src/lib/**, src/infra/**, src/external/**, src/jobs/**, src/deps.ts, src/main.ts
 contract/support/**, contract/run.ts, coverage.ts, diff.ts, openapi.json
 ```
 
-Exceptions you may need, by agreement: `src/external/*.ts` and `src/infra/*.ts` say at the top which real
-implementations are **not ported yet** (see "Stubbed integrations" below); the agent of the owning feature ports
-them into that same file.
+Exceptions by agreement: the owning feature ported the real implementations in `src/external/*` and
+`src/infra/*` (see "Real integrations" below).
 
 ## The worked example: `src/features/career`
 
@@ -238,9 +237,15 @@ export default defineJobs((deps) => [{
 
 Schedules: `{ cron, zone? }` (no zone = JVM default zone, `TZ`), `{ fixedDelayMs, initialDelayMs }`,
 `{ fixedRateMs, initialDelayMs }`. The ids are the Java ones; a job Java runs without a lock (OrgMailJob.tick)
-omits `lock`. The scheduler waits for running jobs on shutdown. `ApplicationReadyEvent` work (KbRelationJob
-also runs on startup) goes in `jobs.ts` too: return a job with `{ fixedDelayMs: <period>, initialDelayMs: 0 }`
-or call it from `run` as Java does; report if you need a startup hook.
+omits `lock` (`test/jobs/joblock-coverage.test.ts` checks every job against `JOBS`). The scheduler waits for
+running jobs on shutdown.
+
+Lifecycle work returns `{ jobs, startup, shutdown }` instead of an array (`src/jobs/scheduler.ts`):
+- `startup: [{ name, order, enabled, run }]` = `@EventListener(ApplicationReadyEvent)`: run one after the other
+  by `order` before readiness turns UP; a throw fails the startup, as in Spring.
+- `shutdown: [{ name, phase, order, run }]`: `phase: 'closing'` = `@EventListener(ContextClosedEvent)` (stop
+  flags, before the drain); `'executors'` = the task executor's await-termination (wait for kicked workers,
+  after HTTP and the jobs, before the pool closes).
 
 ## Serialization
 
@@ -263,21 +268,14 @@ through `formatPgTime()` (milliseconds, truncated); key order = record order.
 | `google.oauth/idTokens` | `GoogleOAuthService`, `GoogleIdTokenVerifier` | real; tests `StubGoogleOAuthClient`, `JwksGoogleIdTokenVerifier(auth, localKey)` |
 | `userRateLimiter`, `jobLock`, `accessChecks`, `availability`, `log`, `db`, `sql` | | |
 
-### Stubbed integrations (to port by the owning feature)
+### Real integrations
 
-These real implementations are interfaces + wiring only; each file's header says the same:
-
-- `src/external/itba.ts`: `RestClientItbaApiClient` + `wire/*` (sync/career agent). Until then the real slot
-  throws `ExternalApiError`.
-- `src/external/drive.ts`: `GoogleDriveClient` and `FakeDriveClient`'s demo content (`DRIVE_SYNC_FAKE_DEMO_OWNERS`)
-  (drive agent). `InMemoryDriveClient` only stores what a test adds.
-- `src/external/llm.ts`: `DoBatchClient`, `DoChatClient`, `HttpDoModelCatalog`, `OpenAiEmbeddingClient`,
-  `DoQuotaTracker`, `DoBatchErrors`, `LlmOutputParser` (kb agent). Fakes are ported in full.
-- `src/infra/mail.ts`: `GmailApiEmailSender` + `GoogleMailOAuthClient` + `MailTokenCipher` + `MailAccessTokenCache`,
-  and `MailSendService` (the quota ledger that must wrap every transport) (mail agent). `SmtpEmailSender`
-  classifies failures with `src/features/mail/logic/smtpReplyClassification.ts`.
-- `src/infra/storage.ts` `S3ObjectStorage` is real (presign with `signableHeaders` + `WHEN_REQUIRED`, spike 7);
-  `src/infra/push.ts` `FirebasePushGateway` is real but not exercised against FCM yet.
+Every Java integration is ported: `RestItbaApiClient` + `wire/*` (`src/external/itba*`), `GoogleDriveClient` and
+`FakeDriveClient`'s demo content (`src/external/drive*`), the DigitalOcean/OpenAI clients and fakes
+(`src/external/llm*`), the Gmail API transport and the quota ledger (`src/features/mail`; `src/infra/mail.ts`
+selects the transport and leaves the Gmail slot to the mail feature), `S3ObjectStorage` (presign with
+`signableHeaders` + `WHEN_REQUIRED`, spike 7) and `FirebasePushGateway` (real, not exercised against FCM in
+tests). `SmtpEmailSender` classifies failures with `src/features/mail/logic/smtpReplyClassification.ts`.
 
 ## Contract tests: how to port a Java IT
 

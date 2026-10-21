@@ -21,12 +21,10 @@ with the fakes swapped in, `app.request()`), so it runs against TS only.
 | `DigestEndpointsIT.cancelWhileSendingDropsWhatIsLeft` (the worker part) | `test/digest/sender.test.ts` | Same: the cancel itself is black-box (worker off), "nothing goes out afterwards" needs `runPending()` |
 | Unit tests `DigestSenderTest`, `DigestServiceTest`, `DigestTrackingServiceTest`, `DigestComposerCapabilityTest`, `MailSenderAccountServiceTest` | `test/digest/{sender,service}.test.ts`, `test/mail/accounts.test.ts` | Mockito tests of services: ported against the real repositories on a database clone, with the Java tests' fakes (MutableClock, recording transport, counting sleeper) |
 | `JobLockIT` | `test/jobs/joblock.test.ts` | Calls `JobLock` directly with a second session holding the lock |
+| `JobLockCoverageTest` | `test/jobs/joblock-coverage.test.ts` | Scans the scheduled jobs (TS: every `jobs.ts`, all flags on) instead of `@Scheduled` methods |
 | `ShutdownDrainTest`, `HealthProbesIT` drain part | `test/http/shutdown.test.ts` | Needs to trigger shutdown and probe during the drain |
 | Unit tests (`ApiKeyFilterTest`, `SafeRedirectTest`, `CookieOrHeaderBearerTokenResolverTest`, `IssuerAudienceValidatorTest`, `AuthControllerLogoutTest`, `SessionAllowlistTest`, `RateLimitFilterTest`) | `test/auth/units.test.ts`, `test/http/ratelimit.test.ts` | Unit tests of components, not ITs |
 
-Black-box ports that need an endpoint of a feature not ported yet (`/v1/wiki/bookmarks`, `/v1/sync/all`,
-`/v1/staff`, `/v1/articles`, `/v1/staff/drive/unclaimed`, `/v1/me/drive/info`) are written in full and
-skipped on `CONTRACT_TARGET=ts` through `supports('METHOD /path')` until that feature lands; they run on java.
 | `PushTriggerIT` (all 10) | `test/news/push-trigger.test.ts` | FakePushGateway in place of FCM; awaits the async after-commit delivery (`pendingPushes()`) |
 | `EventSignupIT.dayBeforeReminderIsClaimedOnce` | `test/news/event-reminders.test.ts` | Calls the reminder service directly; the rest of EventSignupIT is black-box |
 | `ProposalPushIT` (all 5) | `test/proposal/ProposalPush.test.ts` | FakePushGateway + awaiting the async after-commit delivery |
@@ -46,3 +44,16 @@ skipped on `CONTRACT_TARGET=ts` through `supports('METHOD /path')` until that fe
 | `DriveSyncIT` (all 10, in full) | `test/drive/DriveSyncIT.test.ts` | Mutates the injected FakeDriveClient, inspects InMemoryObjectStorage and calls the sync service directly. Black-box subsets of every test: `contract/tests/drive-sync.contract.test.ts` (demo folders + S3 mock) |
 | `DriveSourceServiceTest` | `test/drive/DriveSourceService.test.ts` | The Java test mocks repositories |
 | `KbAdminEvalIT.cancellingAnEvalCascades`, `evalUsesFrozenInputsNeverPublishesAndFeedsTheLeaderboard`, the DO-catalog half of `modelSyncTakesPricesFromDoCatalogWithoutClobberingProbesOrManualFields`, and the 9 tests it inherits from `KbPipelineAcceptanceIT` | `test/kb-admin/KbAdminEvalIT.test.ts` | They advance evals with `engine.advanceActive()`, hold the fake batch, read InMemoryObjectStorage and the fake executors' requests, and script FakeDoModelCatalog items. Black-box: `settingsAreValidatedVersionedAndRestorable`, `catalogForecastAndStageCost`, `costsAcceptDateOnly...` (usage rows seeded instead of `run()`) and the catalog-unreachable half of the sync in `contract/tests/kb-admin-{settings,models,costs}.contract.test.ts`; eval endpoints that need no advancing in `kb-admin-evals` |
+| `KbEmbeddingIT` (3) | `test/kb-reader/embedding.test.ts` | Drives the embedding sweep with the fake embedding client; the search side is black-box in `kb-reader-embedding.contract.test.ts` |
+| `SubjectWikiIT` staff side | `test/kb-reader/subject-wiki.test.ts` | Calls the import/moderation services directly; the HTTP side is black-box in `kb-reader-subject-wiki.contract.test.ts` |
+| `BatchPipelineIT`, `SyncPipelineIT` (+ the tests they inherit from `KbPipelineAcceptanceIT`) | `test/kb-pipeline/{Batch,Sync}PipelineIT.test.ts` | Advance runs with the engine, script the fake LLM batch/chat clients and read InMemoryObjectStorage |
+| `KbKickIT` | `test/kb-pipeline/KbKickIT.test.ts` | Awaits the engine's background advances |
+| `LocalTemporalZoneIT` | `test/db/local-temporal-zone.test.ts` | Reads/writes through the repositories (Java: JPA) and checks the session zone (Java: no `hibernate.jdbc.time_zone`) |
+| `SchemaValidationIT`, `ProdMigrationsIT`, `NewsCategoryMigrationIT` | `test/db/migrate.test.ts` | Run the Flyway-compatible runner on fresh databases; "Hibernate validate" becomes "every drizzle table/column exists" |
+| `ShutdownDrainTest` | `test/http/shutdown.test.ts` | Starts `src/main.ts`'s server and shuts it down |
+| `GlobalExceptionHandlerTest` | `test/http/global-exception-handler.test.ts` | A throwaway route throws each exception through the real app |
+| Unit tests `ReviewLoginServiceTest`, `OAuthStateServiceTest`, `UserMeServiceTest`, `JwksGoogleIdTokenVerifierTest`, `ApiKeyScopeTest`, `UserRateLimiterTest`, `PushConfigTest`, `StorageEnvFallbackTest`, `MobileAppPropertiesTest`, `JwtIssuerAudienceEnforcementTest` | `test/auth/*.test.ts`, `test/http/ratelimit.test.ts`, `test/config/properties.test.ts` | Unit tests of services and config |
+
+`bun contract/parity.ts --check` lists every Java test method and fails when one has no TS test of the
+same name in a file that names its Java class (or a row here). The three Java tests that are intentionally
+not ported are in `contract/parity-exclusions.json`, each with its reason.
