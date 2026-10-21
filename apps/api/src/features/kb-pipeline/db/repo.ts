@@ -504,6 +504,22 @@ export const usage = {
   },
 };
 
+// ---- KbEvalRepository / KbEvalSetRepository (what progress reads) -------------------------
+
+export const evals = {
+  /** The eval's set id and its configs (JSON text), or null. */
+  async setAndConfigs(evalId: string): Promise<{ setId: string; configs: string | null } | null> {
+    const [r] = await session().query<Row>(sql`SELECT set_id, configs::text AS configs FROM wiki.kb_eval WHERE id = ${evalId}::uuid`);
+    return r ? { setId: String(r.set_id), configs: str(r.configs) } : null;
+  },
+  /** The set's subject ids and frozen inputs (JSON texts), or null. */
+  async subjectsAndFrozenInputs(setId: string): Promise<{ subjectIds: string | null; frozenInputs: string | null } | null> {
+    const [r] = await session().query<Row>(sql`SELECT subject_ids::text AS subject_ids, frozen_inputs::text AS frozen_inputs
+      FROM wiki.kb_eval_set WHERE id = ${setId}::uuid`);
+    return r ? { subjectIds: str(r.subject_ids), frozenInputs: str(r.frozen_inputs) } : null;
+  },
+};
+
 export const settingsRow = {
   /** The stored settings object (kb_pipeline_settings id 1), {} without a row. */
   async stored(): Promise<Record<string, unknown>> {

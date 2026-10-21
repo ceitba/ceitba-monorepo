@@ -4,19 +4,17 @@
 // query over the request rows (no payloads; completion time from kb_llm_usage for
 // rows recorded before V36), the batch jobs and the run.
 
-import { sql } from 'drizzle-orm';
 import type { Database } from '../../db/client';
 import { ResourceNotFoundError } from '../../http/errors';
 import { asInt, elements, has, isEmpty, path } from '../kb/logic/jsonNode';
 import type { Now } from '../kb/logic/odt';
 import { compute, Job, Row, Run, type KbProgressResponse as ProgressMath } from '../kb/logic/progress/kbProgressMath';
 import type { KbRun } from './db/entities';
-import { jobs, requests, runs, runSubjects } from './db/repo';
-import { inTx, session } from './db/session';
+import { evals, jobs, requests, runs, runSubjects } from './db/repo';
+import { inTx } from './db/session';
 import { jsonOf, odtOf } from './db/values';
 import { progressJson, type KbProgressResponse } from './dto';
 
-type R = Record<string, unknown>;
 const str = (v: unknown): string | null => (v == null ? null : String(v));
 
 export class KbProgressService {
@@ -49,15 +47,14 @@ export class KbProgressService {
       let pubDone = 0;
       let pubFailed = 0;
       if (run.isEval()) {
-        const [e] = await session().query<R>(sql`SELECT set_id, configs::text AS configs FROM wiki.kb_eval WHERE id = ${run.id}::uuid`);
-        const configs = e ? elements(jsonOf(str(e.configs))).length : 0;
+        const e = await evals.setAndConfigs(run.id);
+        const configs = e ? elements(jsonOf(e.configs)).length : 0;
         let subjects = 0;
         if (e) {
-          const [set] = await session().query<R>(sql`SELECT subject_ids::text AS subject_ids, frozen_inputs::text AS frozen_inputs
-            FROM wiki.kb_eval_set WHERE id = ${String(e.set_id)}::uuid`);
-          const frozen = set ? jsonOf(str(set.frozen_inputs)) : null;
+          const set = await evals.subjectsAndFrozenInputs(e.setId);
+          const frozen = set ? jsonOf(set.frozenInputs) : null;
           if (set && frozen != null) {
-            for (const sId of elements(jsonOf(str(set.subject_ids)))) {
+            for (const sId of elements(jsonOf(set.subjectIds))) {
               const key = typeof sId === 'string' ? sId : String(asInt(sId));
               if (!isEmpty(path(frozen, key))) subjects++;
             }
