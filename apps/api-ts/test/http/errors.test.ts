@@ -3,7 +3,14 @@
 // any CodedError (also feature subclasses) into ErrorResponse.
 import { expect, test } from 'bun:test';
 import * as E from '../../src/http/errors';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DigestException } from '../../src/features/digest/logic/digestException';
+import { ScheduleCorrectionError } from '../../src/features/correction/errors';
+import { EventRsvpError } from '../../src/features/news/events';
+import { StudyGroupConflictError } from '../../src/features/studygroup/errors';
+import { createApp } from '../../src/http/app';
 import { testApp } from '../support/app';
 
 const cases: [E.ApiError, number, string, string?][] = [
@@ -41,6 +48,16 @@ const cases: [E.ApiError, number, string, string?][] = [
   [new E.UnsupportedMediaTypeError('text/plain'), 415, 'UnsupportedMediaType'],
   [new E.InternalServerError(), 500, 'InternalServerError', 'An unexpected error occurred'],
   [new DigestException('TOKEN_EXPIRED', 'm'), 410, 'TOKEN_EXPIRED'],
+  // Feature exceptions with a reason enum: 409 (SameAsSga 400) and the reason's code.
+  [new EventRsvpError('NOT_RSVP'), 409, 'EventNotRsvp', 'This event does not take RSVPs'],
+  [new EventRsvpError('ENDED'), 409, 'EventEnded', 'This event already took place'],
+  [new EventRsvpError('FULL'), 409, 'EventFull', 'This event is full'],
+  [new StudyGroupConflictError('FULL', 'm'), 409, 'StudyGroupFull', 'm'],
+  [new StudyGroupConflictError('PAST_DUE', 'm'), 409, 'StudyGroupPastDue'],
+  [new StudyGroupConflictError('CAPACITY_BELOW_MEMBERS', 'm'), 409, 'StudyGroupCapacityBelowMembers'],
+  [new ScheduleCorrectionError('SAME_AS_SGA', 'm'), 400, 'SameAsSga', 'm'],
+  [new ScheduleCorrectionError('COMMISSION_ENDED', 'm'), 409, 'CommissionEnded'],
+  [new ScheduleCorrectionError('ALREADY_SUGGESTED', 'm'), 409, 'AlreadySuggested'],
 ];
 
 test.each(cases.map((c) => [c[2], c[0], c[1], c[2], c[3] ?? ''] as const))('%s', (_n, err, status, code, message) => {
@@ -65,6 +82,32 @@ test('the app maps domain errors to ErrorResponse', async () => {
     expect(r.status).toBe(404);
     expect(r.json.error).toBe('ResourceNotFound');
   } finally {
+    await t.close();
+  }
+}, 30_000);
+
+test('a unique violation that escapes (also wrapped, like DuplicateKeyError) is 409 DataIntegrityViolation', async () => {
+  const t = await testApp();
+  const dir = mkdtempSync(join(tmpdir(), 'features-'));
+  try {
+    mkdirSync(join(dir, 'boom'));
+    const src = (p: string) => JSON.stringify(join(import.meta.dir, '..', '..', 'src', p));
+    writeFileSync(join(dir, 'boom', 'routes.ts'), `
+      import { defineRoutes } from ${src('http/router')};
+      import { DuplicateKeyError } from ${src('features/kb/logic/ports')};
+      export default defineRoutes((r, deps) => {
+        r.get('/v1/careers', {}, async () => {
+          try { await deps.sql\`INSERT INTO public.careers (id, name, updated_at) VALUES ('X', 'a', now()), ('X', 'b', now())\`; }
+          catch (e) { throw new DuplicateKeyError('careers_pkey', e); }
+        });
+      });`);
+    const app = await createApp(t.deps, { featuresDir: dir });
+    const res = await app.request('http://localhost/api/v1/careers'); // public GET
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect([body.error, body.message, body.path]).toEqual(['DataIntegrityViolation', 'Operation violates a database constraint', '/api/v1/careers']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
     await t.close();
   }
 }, 30_000);

@@ -121,7 +121,7 @@ export class Session {
     try {
       await this.tx.execute(sql`INSERT INTO ${sql.raw(mapper.table)} (${names}) VALUES (${values})`);
     } catch (err) {
-      if (isUniqueViolation(err)) throw new DuplicateKeyError(String((err as { constraint_name?: string }).constraint_name ?? sqlState(err)));
+      if (isUniqueViolation(err)) throw new DuplicateKeyError(String((err as { constraint_name?: string }).constraint_name ?? sqlState(err)), err);
       throw err;
     }
     this.tracked.set(this.id(mapper as Mapper<unknown>, mapper.key(e)), {

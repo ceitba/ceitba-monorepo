@@ -21,8 +21,7 @@
 import { createHash } from 'node:crypto';
 import type { Deps } from '../../deps';
 import type { Db } from '../../db/client';
-import { DataIntegrityViolationError, ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError } from '../../http/errors';
-import { DuplicateKeyError } from '../kb/logic/ports';
+import { ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError } from '../../http/errors';
 import { parseJavaUuid } from '../../http/validation';
 import { Dec } from '../kb/logic/decimal';
 import { compute as computeMetrics, PageInput, type Usage } from '../kb/logic/eval/kbEvalMetrics';
@@ -352,14 +351,9 @@ export class KbEvalService implements KbRunHandler {
         throw new KbPipelineError('EVAL_ACTIVE', 'An eval is already running');
       }
       const summary = configs.map((c) => c.key).join(',');
-      let run: KbRun;
-      try {
-        run = await runRepo.save(new KbRun('EVAL', false, PROMPT_VERSION, summary.length > 128 ? summary.substring(0, 125) + '...' : summary,
-          nowOdt(this.deps), {}));
-      } catch (e) {
-        if (e instanceof DuplicateKeyError) throw new DataIntegrityViolationError(e);
-        throw e;
-      }
+      // A concurrent eval loses on the one-active-eval index: DuplicateKeyError -> the app's 409 DataIntegrityViolation.
+      const run: KbRun = await runRepo.save(new KbRun('EVAL', false, PROMPT_VERSION, summary.length > 128 ? summary.substring(0, 125) + '...' : summary,
+        nowOdt(this.deps), {}));
       const arr: JsonValue[] = configs.map((c) => {
         const o: JsonObject = { configKey: c.key, plan: c.plan, write: c.write };
         const e = c.effortNode();

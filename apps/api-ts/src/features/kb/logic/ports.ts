@@ -17,10 +17,13 @@ export type Tx = <T>(fn: () => MaybePromise<T>) => Promise<T>;
 /** A transaction runner that just calls through (tests). */
 export const noTx: Tx = async (fn) => await fn();
 
-/** DataIntegrityViolationException from a unique index. */
+/**
+ * DataIntegrityViolationException from a unique index. `cause` is the Postgres error
+ * (SQLSTATE 23505), so one that escapes is the app's global 409 DataIntegrityViolation.
+ */
 export class DuplicateKeyError extends Error {
-  constructor(constraint: string) {
-    super(constraint);
+  constructor(constraint: string, cause?: unknown) {
+    super(constraint, cause === undefined ? undefined : { cause });
     this.name = 'DataIntegrityViolationException';
   }
 }
