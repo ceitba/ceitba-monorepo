@@ -13,7 +13,7 @@ import { javaIsBlank } from '../../lib/javaCompat';
 import type { ApuntesSubjectResponse, ReportFileRequest, SubjectFilesResponse } from './dto';
 import { fileNotFound, sourceNotFound } from './errors';
 import { inlineType as mediaInlineType, PDF } from './logic/driveMedia';
-import { normalizeSubjectText } from './logic/subjectMatcher';
+import { normalizeSubjectText } from '../../lib/subjectText';
 import { isFolderFile, isCommunity, type DriveFile, type DriveSource } from './model';
 import { imageType } from './processor';
 import type { DriveSyncProps } from './props';

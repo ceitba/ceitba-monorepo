@@ -7,8 +7,9 @@
 // of(KbPage) is pageFile() in src/features/kb-pipeline/pipeline.ts.
 
 import { toJavaJson } from '../../../../lib/json';
-import { jIsBlank, jStrip, jTrim, javaValueOf } from '../javaString';
+import { jIsBlank, jStrip, javaValueOf } from '../javaString';
 import type { KbPageType } from '../types';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 export interface Parts {
   /** null when the file has none or it is not a mapping. */
@@ -82,7 +83,7 @@ export function normalize(draft: string | null, subjectId: string, type: KbPageT
   const aliases: string[] = [];
   const rawAliases = get('aliases');
   if (Array.isArray(rawAliases)) {
-    for (const a of rawAliases) if (a != null && !jIsBlank(javaValueOf(a))) aliases.push(jTrim(javaValueOf(a)));
+    for (const a of rawAliases) if (a != null && !jIsBlank(javaValueOf(a))) aliases.push(javaTrim(javaValueOf(a)));
   }
   return file(title, subjectId, type.toLowerCase(), summary, aliases, citedIds(parts.body), generator, today, parts.body);
 }

@@ -12,7 +12,8 @@
 // link() rewrites a body; unlinked() lists what link() would add (the
 // import/pipeline coverage check: "no unlinked mention of a same-subject page").
 
-import { charToLowerCase, isLetterOrDigitChar, jSplit, jSplit2, jStrip, jTrim } from './javaString';
+import { charToLowerCase, isLetterOrDigitChar, jSplit2, jStrip } from './javaString';
+import { javaTrim, javaSplit } from '../../../lib/javaCompat';
 
 // DOTALL: `.` -> [\s\S].
 const PROTECT = /(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|`[^`]*`|\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\))/g;
@@ -51,7 +52,7 @@ export function unlinked(body: string, currentSlug: string | null, pages: Target
 const compareStrings = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 function run(body: string, currentSlug: string | null, pages: Target[], check: boolean, found: Mention[]): Result {
-  const lines = jSplit(body, '\n', -1);
+  const lines = javaSplit(body, /\n/, -1);
   const sections: number[][] = [];
   let cur: number[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -65,7 +66,7 @@ function run(body: string, currentSlug: string | null, pages: Target[], check: b
   let inFence = false;
   const fenced: boolean[] = new Array(lines.length).fill(false);
   for (let i = 0; i < lines.length; i++) {
-    const t = jTrim(lines[i]!);
+    const t = javaTrim(lines[i]!);
     if (t.startsWith('```') || t.startsWith('~~~')) {
       fenced[i] = true;
       inFence = !inFence;
@@ -84,7 +85,7 @@ function run(body: string, currentSlug: string | null, pages: Target[], check: b
     const linked = new Set<string>();
     for (const i of idxs) {
       for (const m of lines[i]!.matchAll(WIKILINK)) {
-        linked.add(jTrim(jSplit2(jSplit2(m[1]!, '|')[0]!, '#')[0]!));
+        linked.add(javaTrim(jSplit2(jSplit2(m[1]!, '|')[0]!, '#')[0]!));
       }
     }
     for (const t of targets) {

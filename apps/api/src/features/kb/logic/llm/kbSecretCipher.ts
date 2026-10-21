@@ -12,7 +12,8 @@
 // Built from config.kb.secretsKey and config.auth.jwt.secret (src/features/kb-pipeline/service.ts).
 
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto';
-import { jIsBlank, jSplit, jTrim } from '../javaString';
+import { jIsBlank } from '../javaString';
+import { javaTrim, javaSplit } from '../../../../lib/javaCompat';
 
 export class KeyUnreadableError extends Error {
   constructor() {
@@ -34,7 +35,7 @@ function base64Decode(s: string): Buffer | null {
 
 function parseKey(base64Key: string | null): Buffer | null {
   if (base64Key == null || jIsBlank(base64Key)) return null;
-  const raw = base64Decode(jTrim(base64Key));
+  const raw = base64Decode(javaTrim(base64Key));
   return raw != null && raw.length === 32 ? raw : null;
 }
 
@@ -66,7 +67,7 @@ export class KbSecretCipher {
   /** null when nothing is stored; KeyUnreadableError when it cannot be decrypted. */
   decrypt(stored: string | null): string | null {
     if (stored == null || jIsBlank(stored)) return null;
-    const parts = jSplit(stored, /:/, 3);
+    const parts = javaSplit(stored, /:/, 3);
     if (parts.length !== 3 || parts[0] !== 'v1') throw new KeyUnreadableError();
     const key = parts[1] === 'env' ? this.envKey : parts[1] === 'jwt' ? this.jwtKey : null;
     if (key == null) throw new KeyUnreadableError();

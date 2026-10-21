@@ -1,7 +1,8 @@
 // Port of apps/api/src/main/java/org/ceitba/api/config/KbLlmProperties.java (the record's
 // normalization), built from config.kb.llm by llmProperties() in src/features/kb-pipeline/settings.ts.
 
-import { jIsBlank, jTrim, lowerRoot } from '../javaString';
+import { jIsBlank, lowerRoot } from '../javaString';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 export interface KbLlmProperties {
   baseUrl: string;
@@ -22,9 +23,9 @@ export function kbLlmProperties(
   requestTimeoutMs: number | null = null,
 ): KbLlmProperties {
   return {
-    baseUrl: baseUrl == null || jIsBlank(baseUrl) ? 'https://inference.do-ai.run' : jTrim(baseUrl),
+    baseUrl: baseUrl == null || jIsBlank(baseUrl) ? 'https://inference.do-ai.run' : javaTrim(baseUrl),
     apiKey,
-    executionMode: executionMode == null || jIsBlank(executionMode) ? 'auto' : lowerRoot(jTrim(executionMode)),
+    executionMode: executionMode == null || jIsBlank(executionMode) ? 'auto' : lowerRoot(javaTrim(executionMode)),
     syncConcurrency: syncConcurrency == null || syncConcurrency < 1 ? 16 : syncConcurrency,
     useFake,
     requestTimeoutMs: requestTimeoutMs == null || requestTimeoutMs <= 0 ? 5 * 60_000 : requestTimeoutMs,

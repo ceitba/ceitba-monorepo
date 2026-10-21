@@ -7,8 +7,9 @@
 // Numbers keep BigDecimal.valueOf(double) digits (Jackson DoubleNode.decimalValue()).
 
 import { Dec, dec, NumberFormatError } from '../decimal';
-import { equalsIgnoreCase, jTrim, lowerRoot } from '../javaString';
+import { equalsIgnoreCase, lowerRoot } from '../javaString';
 import { asInt, asText, canConvertToInt, decimalValue, elements, has, isArray, isMissing, isNull, isNumber, isTextual, nodeToString, path, type Node } from '../jsonNode';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 const CHAT_TYPES = new Set(['chat', 'reasoning', 'coding']);
 const ONE_CENT = dec('0.01');
@@ -73,7 +74,7 @@ export function perMillion(v: Node, field: string, converted: string[]): Dec | n
   if (v == null || isMissing(v) || isNull(v)) return null;
   let d: Dec;
   try {
-    d = isNumber(v) ? decimalValue(v) : dec(jTrim(asText(v)));
+    d = isNumber(v) ? decimalValue(v) : dec(javaTrim(asText(v)));
   } catch (e) {
     if (e instanceof NumberFormatError) return null;
     throw e;
@@ -94,7 +95,7 @@ export function cut(v: string | null, max: number): string | null {
 export function integer(v: Node): number | null {
   if (v == null || isMissing(v) || isNull(v)) return null;
   if (canConvertToInt(v)) return asInt(v);
-  const t = jTrim(asText(v)).replaceAll(',', '');
+  const t = javaTrim(asText(v)).replaceAll(',', '');
   return /^[+-]?\d+$/.test(t) && Math.abs(Number(t)) <= 2147483647 ? Number(t) : null;
 }
 

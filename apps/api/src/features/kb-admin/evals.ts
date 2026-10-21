@@ -26,7 +26,7 @@ import { parseJavaUuid } from '../../http/validation';
 import { Dec } from '../kb/logic/decimal';
 import { compute as computeMetrics, PageInput, type Usage } from '../kb/logic/eval/kbEvalMetrics';
 import { configKey } from '../kb/logic/eval/kbEvalKeys';
-import { jIsBlank, jTrim, lowerRoot, upperRoot } from '../kb/logic/javaString';
+import { jIsBlank, lowerRoot, upperRoot } from '../kb/logic/javaString';
 import {
   asBoolean, asDouble, asInt, asLong, asText, canConvertToInt, decimalValue, deepCopy, elements, fields, has, hasNonNull,
   isArray, isEmpty, isNull, isObject, isTextual, JDouble, nodeToString, path, size, type JsonObject, type JsonValue, type Node,
@@ -59,6 +59,7 @@ import type { PipelineBeans } from './pipeline';
 import * as repo from './repo';
 import { kbTx } from './tx';
 import { nowOdt } from './values';
+import { javaTrim } from '../../lib/javaCompat';
 
 export const DEFAULT_SET = 'Básico';
 export const DEFAULT_SUBJECTS = ['81.07', '61.81', '93.39'];
@@ -224,12 +225,12 @@ export class KbEvalService implements KbRunHandler {
     if (name == null || jIsBlank(name)) throw new ValidationError('name', name, 'required');
     if (subjectIds == null || subjectIds.length === 0) throw new ValidationError('subjectIds', subjectIds, 'required');
     const id = await this.tx(async (db) => {
-      if ((await er.setByName(db, jTrim(name))) != null) throw new ResourceAlreadyExistsError('KbEvalSet', name);
+      if ((await er.setByName(db, javaTrim(name))) != null) throw new ResourceAlreadyExistsError('KbEvalSet', name);
       for (const s of subjectIds) {
         if (!(await er.subjectExists(db, s))) throw new ValidationError('subjectIds', s, 'unknown subject');
       }
       const setId = crypto.randomUUID();
-      await er.insertSet(db, setId, jTrim(name), [...new Set(subjectIds)], userId, jvmNow());
+      await er.insertSet(db, setId, javaTrim(name), [...new Set(subjectIds)], userId, jvmNow());
       return setId;
     });
     return this.refreeze(id);
@@ -1009,7 +1010,7 @@ export class KbEvalService implements KbRunHandler {
     check.firstCompile(valid.size); // evals rebuild from scratch
     for (const op of elements(proposed)) {
       const kind = lowerRoot(asText(path(op, 'op'), 'create')!);
-      const slug = normalizeIndexSlug(jTrim(asText(path(op, 'slug'), '')!), asText(path(op, 'type'), '')!);
+      const slug = normalizeIndexSlug(javaTrim(asText(path(op, 'slug'), '')!), asText(path(op, 'type'), '')!);
       if (kind === 'delete') {
         check.dropped(DELETE_IGNORED);
         continue;

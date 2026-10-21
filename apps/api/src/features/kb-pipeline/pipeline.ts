@@ -19,7 +19,7 @@ import { ResourceNotFoundError } from '../../http/errors';
 import { SpringCron } from '../kb-admin/cron';
 import { Dec } from '../kb/logic/decimal';
 import type { KbEffectiveSettings } from '../kb/logic/admin/kbSettings';
-import { jIsBlank, jTrim, javaValueOf, lowerRoot, upperRoot } from '../kb/logic/javaString';
+import { jIsBlank, javaValueOf, lowerRoot, upperRoot } from '../kb/logic/javaString';
 import {
   asInt, asLong, asText, decimalValue, deepCopy, elements, fields, has, hasNonNull, isEmpty, isObject, isTextual, path,
   size, type JsonObject, type JsonValue,
@@ -46,6 +46,7 @@ import { odtJson, type KbBaselineResponse, type KbBatchJobResponse, type KbPrevi
 import { ACTIVE, javaSimpleName, type KbRunEngine, type KbRunHandler, type Seq } from './engine';
 import * as inputs from './inputs';
 import type { KbProgressService } from './progress';
+import { javaTrim } from '../../lib/javaCompat';
 
 export const BUDGET_REASON = 'presupuesto de la corrida';
 /** DIGEST reads the raw text of this many files at a time. */
@@ -987,7 +988,7 @@ export class KbPipelineService implements KbRunHandler {
     if (existing.length === 0) check.firstCompile(valid.size);
     for (const op of elements(proposed)) {
       let kind = lowerRoot(asText(path(op, 'op'), '')!);
-      const slug = normalizeIndexSlug(jTrim(asText(path(op, 'slug'), '')!), asText(path(op, 'type'), ''));
+      const slug = normalizeIndexSlug(javaTrim(asText(path(op, 'slug'), '')!), asText(path(op, 'type'), ''));
       if (!SLUG.test(slug) || slug === 'graph') {
         check.dropped(INVALID_SLUG);
         continue;
@@ -1018,7 +1019,7 @@ export class KbPipelineService implements KbRunHandler {
       }
       const title = jIsBlank(asText(path(op, 'title'), '')!)
         ? (current != null ? current.title : slug.replaceAll('-', ' '))
-        : jTrim(asText(path(op, 'title')));
+        : javaTrim(asText(path(op, 'title')));
       const sources: string[] = [];
       for (const sNode of elements(path(op, 'sources'))) if (valid.has(asText(sNode))) sources.push(asText(sNode));
       if (sources.length === 0 && current != null) {

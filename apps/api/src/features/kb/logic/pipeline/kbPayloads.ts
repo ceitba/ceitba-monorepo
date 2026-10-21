@@ -6,12 +6,13 @@
 // and excerpt selection.
 
 import { readFileSync } from 'node:fs';
-import { jIsBlank, jSplit, jStrip, lowerRoot } from '../javaString';
+import { jIsBlank, jStrip, lowerRoot } from '../javaString';
 import { asText, deepCopy, isArray, nodeToString, path, prettyJackson, type JsonObject, type JsonValue, type Node } from '../jsonNode';
 import type { KbModelReader } from '../ports';
-import { normalize } from '../subjectNormalize';
+import { normalizeSubjectText as normalize } from '../../../../lib/subjectText';
 import { MAX_TOKENS_CAP } from '../llm/syncLlmExecutor';
 import type { KbEffectiveSettings } from '../admin/kbSettings';
+import { javaSplit } from '../../../../lib/javaCompat';
 
 export const PROMPT_VERSION = 'v2'; // v2: 8k-token digest chunks, bounded digest schema
 
@@ -256,10 +257,10 @@ export function excerpts(sources: SourceText[], keywords: Iterable<string>): Exc
   const perFile = Math.trunc(EXCERPT_CHARS / sources.length);
   const folded = new Set<string>();
   for (const k of keywords) {
-    for (const w of jSplit(normalize(k), ' ')) if (w.length >= 4) folded.add(w);
+    for (const w of javaSplit(normalize(k), / /)) if (w.length >= 4) folded.add(w);
   }
   for (const s of sources) {
-    const paragraphs = jSplit(s.text, PARAGRAPH_BREAK);
+    const paragraphs = javaSplit(s.text, PARAGRAPH_BREAK);
     const scored: { index: number; score: number; text: string }[] = [];
     for (let i = 0; i < paragraphs.length; i++) {
       const p = jStrip(paragraphs[i]!);

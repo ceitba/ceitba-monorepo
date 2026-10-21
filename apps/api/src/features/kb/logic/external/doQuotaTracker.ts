@@ -13,8 +13,8 @@
 // reset time, or an hour after the observation when DO gives none.
 // One instance per process (createLlmClients in src/external/llm.ts), fed by the DO HTTP clients.
 
-import { jTrim } from '../javaString';
 import { Odt, type Now } from '../odt';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 export const BATCH_CREATIONS_HOUR = 'batch-creations-per-hour';
 export const TOKENS_DAY = 'tokens-per-day';
@@ -157,7 +157,7 @@ function entries(h: HeaderSource): [string, string | null][] {
 
 // Long.parseLong(v.trim()): optional sign, digits, within long range; else null.
 function number(v: string): number | null {
-  const t = jTrim(v);
+  const t = javaTrim(v);
   if (!/^[+-]?\d+$/.test(t)) return null;
   const n = BigInt(t);
   if (n > 9223372036854775807n || n < -9223372036854775808n) return null;

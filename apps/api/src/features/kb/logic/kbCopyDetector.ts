@@ -7,7 +7,8 @@
 // collapsed) so formatting cannot hide a copy. Runs are compared as 64-bit
 // hashes of their word sequence (the same 64-bit values Java computes, as bigint).
 
-import { jHashCode, jSplit, jTrim, lowerRoot } from './javaString';
+import { jHashCode, lowerRoot } from './javaString';
+import { javaTrim, javaSplit } from '../../../lib/javaCompat';
 
 export const WINDOW = 40;
 
@@ -45,8 +46,8 @@ export function shinglesOf(sourceText: string | null): Shingles {
 }
 
 export function words(text: string): string[] {
-  const n = jTrim(lowerRoot(text.normalize('NFC')).replace(/[^\p{L}\p{N}]+/gu, ' '));
-  return n.length === 0 ? [] : jSplit(n, ' ');
+  const n = javaTrim(lowerRoot(text.normalize('NFC')).replace(/[^\p{L}\p{N}]+/gu, ' '));
+  return n.length === 0 ? [] : javaSplit(n, / /);
 }
 
 /** [[target|text]] -> text, [[target]] -> nothing (not prose). */

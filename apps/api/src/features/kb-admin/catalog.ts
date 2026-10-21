@@ -11,7 +11,7 @@ import { Dec } from '../kb/logic/decimal';
 import { KbCatalogItem } from '../kb/logic/admin/kbCatalogItem';
 import { KbModelCatalogService as ProbeLogic, provider } from '../kb/logic/admin/kbModelCatalogService';
 import type { KbEffectiveSettings } from '../kb/logic/admin/kbSettings';
-import { jTrim, lowerRoot } from '../kb/logic/javaString';
+import { lowerRoot } from '../kb/logic/javaString';
 import {
   asBoolean, asInt, asText, decimalValue, has, hasNonNull, isNull, isNumber, JDouble, nodeToString, path, type JsonValue, type Node,
 } from '../kb/logic/jsonNode';
@@ -25,6 +25,7 @@ import { KbModel } from '../kb/logic/types';
 import * as repo from './repo';
 import { kbTx } from './tx';
 import { nowOdt } from './values';
+import { javaTrim } from '../../lib/javaCompat';
 
 const TOOL_CALLING = ['unknown', 'yes', 'no'];
 
@@ -144,7 +145,7 @@ export class KbModelCatalogService {
   }
 
   async create(body: Node): Promise<KbModelResponse> {
-    const id = jTrim(asText(path(body, 'id'), '')!);
+    const id = javaTrim(asText(path(body, 'id'), '')!);
     if (id === '' || id.length > 128) throw new ValidationError('id', id, 'required (max 128 chars)');
     if (!SAFE_ID.test(id)) throw new ValidationError('id', id, 'only letters, digits and . _ : - (it goes in URL paths)');
     if (isCustom(id)) throw new ValidationError('id', id, "custom:* ids are created by discovering an endpoint's models");
@@ -303,7 +304,7 @@ export class KbModelCatalogService {
     if (hasNonNull(b, 'provider')) m.provider = asText(path(b, 'provider'));
     if (hasNonNull(b, 'batchSupported')) m.setBatchSupported(asBoolean(path(b, 'batchSupported')));
     if (has(b, 'batchModelId')) {
-      const v = isNull(path(b, 'batchModelId')) ? null : jTrim(asText(path(b, 'batchModelId')));
+      const v = isNull(path(b, 'batchModelId')) ? null : javaTrim(asText(path(b, 'batchModelId')));
       if (v != null && v.length > 128) throw new ValidationError('batchModelId', v, 'max 128 chars');
       m.setBatchModelId(v); // null/blank = the default (catalog id without its provider prefix)
     }

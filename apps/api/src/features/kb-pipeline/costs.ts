@@ -10,7 +10,7 @@ import { ValidationError } from '../../http/errors';
 import { Dec } from '../kb/logic/decimal';
 import { cost } from '../kb/logic/llm/kbPricing';
 import type { DoQuotaTracker } from '../kb/logic/external/doQuotaTracker';
-import { jIsBlank, jSplit, jTrim, lowerRoot } from '../kb/logic/javaString';
+import { jIsBlank, lowerRoot } from '../kb/logic/javaString';
 import { ART_ZONE, type Now, type Odt } from '../kb/logic/odt';
 import { completed } from '../kb/logic/pipeline/kbRunOutcome';
 import type { KbModelReader } from '../kb/logic/ports';
@@ -19,6 +19,7 @@ import { javaDouble } from '../../lib/json';
 import { runs, subjects, usage, type UsageRow } from './db/repo';
 import { inTx } from './db/session';
 import { odtJson, type KbCostRowResponse, type KbCostSummaryResponse, type KbQuotaCounter, type KbQuotaResponse } from './dto';
+import { javaTrim, javaSplit } from '../../lib/javaCompat';
 
 export const DIMENSIONS = ['week', 'stage', 'model', 'subject'];
 /** Longest range /costs reads at once. */
@@ -32,7 +33,7 @@ export function usd(v: Dec | null): Dec {
 export function list(csv: string | null): string[] {
   const out: string[] = [];
   if (csv == null) return out;
-  for (const s of jSplit(csv, ',')) if (!jIsBlank(s)) out.push(jTrim(s));
+  for (const s of javaSplit(csv, /,/)) if (!jIsBlank(s)) out.push(javaTrim(s));
   return out;
 }
 

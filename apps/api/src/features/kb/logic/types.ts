@@ -2,10 +2,11 @@
 // that the pure kb logic reads. Field names are the Java ones (camelCase); the
 // service layer maps drizzle rows (src/db/schema/kb.ts) to these.
 
-import { equalsIgnoreCase, jIsBlank, jTrim, lowerRoot } from './javaString';
+import { equalsIgnoreCase, jIsBlank, lowerRoot } from './javaString';
 import { Dec, dec } from './decimal';
 import { asBoolean, asInt, asText, at, deepCopy, isObject, path, type JsonValue } from './jsonNode';
 import type { Odt } from './odt';
+import { javaTrim } from '../../../lib/javaCompat';
 
 /** domain/kb/KbPageType. */
 export const KB_PAGE_TYPES = ['INDEX', 'TOPIC', 'CONCEPT'] as const;
@@ -115,7 +116,7 @@ export class KbModel {
   }
 
   setBatchModelId(v: string | null): void {
-    this.batchModelIdValue = v == null || jIsBlank(v) ? null : jTrim(v);
+    this.batchModelIdValue = v == null || jIsBlank(v) ? null : javaTrim(v);
   }
 }
 

@@ -1,9 +1,10 @@
 // Ports of apps/api/src/main/java/org/ceitba/api/external/llm/{FakeLlmRequest, FakeSyncChatClient,
 // FakeLlmBatchClient}.java: in-memory inference (kb.llm.use-fake=true) for tests and offline dev.
 
-import { jIsBlank, jSplit } from '../javaString';
+import { jIsBlank } from '../javaString';
 import { asText, elements, has, hasNonNull, isTextual, nodeToString, path, type JsonObject, type JsonValue, type Node } from '../jsonNode';
 import { BatchInfo, LlmApiError, type BatchResults, type FileUpload, type LlmBatchClient, type SyncChatClient } from './llmApi';
+import { javaSplit } from '../../../../lib/javaCompat';
 
 /**
  * What the fakes hand to a responder: the forced tool, the system prompt and the
@@ -326,7 +327,7 @@ export class FakeLlmBatchClient implements LlmBatchClient {
     const out: JsonValue[] = [];
     const bytes = fileId == null ? undefined : this.files.get(fileId);
     if (bytes === undefined) return out;
-    for (const l of jSplit(decoder.decode(bytes), '\n')) {
+    for (const l of javaSplit(decoder.decode(bytes), /\n/)) {
       if (jIsBlank(l)) continue;
       try {
         out.push(JSON.parse(l) as JsonValue);

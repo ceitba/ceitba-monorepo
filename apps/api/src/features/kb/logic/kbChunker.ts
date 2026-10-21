@@ -10,8 +10,9 @@
 // their text ([[slug|text]] -> text, [[slug]] -> slug); bare citations
 // ([[file:<uuid>]]) are dropped. Headings inside code fences don't split.
 
-import { DOT, S, jSplit, jStrip, jTrim } from './javaString';
+import { DOT, S, jStrip } from './javaString';
 import { headingAnchor, stripCode } from './kbWikilinks';
+import { javaTrim, javaSplit } from '../../../lib/javaCompat';
 
 // ~1.5k tokens of Spanish prose: well inside the embedding model's input
 // window, small enough that one chunk is about one thing.
@@ -46,9 +47,9 @@ export class Chunk {
 }
 
 export function chunk(title: string, summary: string, markdown: string): Chunk[] {
-  const lines = jSplit(markdown, '\n', -1);
+  const lines = javaSplit(markdown, /\n/, -1);
   // Same line structure, code blanked out: headings are looked for here.
-  const plain = jSplit(stripCode(markdown), '\n', -1);
+  const plain = javaSplit(stripCode(markdown), /\n/, -1);
 
   const chunks: Chunk[] = [];
   let heading: string | null = null;
@@ -58,7 +59,7 @@ export function chunk(title: string, summary: string, markdown: string): Chunk[]
     const m = i < plain.length ? H2.exec(plain[i]!) : null;
     if (m) {
       add(chunks, title, summary, heading, anchor, section);
-      heading = jTrim(linkText(m[1]!));
+      heading = javaTrim(linkText(m[1]!));
       // Same anchor as the import validator and wikilinks (citations count by their text there).
       anchor = cut(headingAnchor(m[1]!), MAX_ANCHOR);
       section = '';
@@ -90,7 +91,7 @@ function cut(s: string, max: number): string {
 export function linkText(s: string): string {
   let t = s.replace(LINK_WITH_TEXT, (_m, g1: string) => g1);
   t = t.replace(BARE_CITATION, '');
-  return t.replace(BARE_LINK, (_m, g1: string) => jTrim(g1));
+  return t.replace(BARE_LINK, (_m, g1: string) => javaTrim(g1));
 }
 
 /** Greedy packing of paragraphs into parts of at most max chars. */
@@ -98,7 +99,7 @@ export function split(text: string, max: number): string[] {
   if (text.length <= max) return [text];
   const parts: string[] = [];
   let cur = '';
-  for (let para of jSplit(text, /\n\n/)) {
+  for (let para of javaSplit(text, /\n\n/)) {
     while (para.length > max) {
       if (cur.length > 0) {
         parts.push(cur);

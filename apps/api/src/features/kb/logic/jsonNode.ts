@@ -9,7 +9,8 @@
 import { JDouble, readJacksonTree } from '../../../lib/jackson';
 import { javaDoubleString, toJavaJson } from '../../../lib/json';
 import { Dec } from './decimal';
-import { jTrim } from './javaString';
+import { javaTrim } from '../../../lib/javaCompat';
+
 
 export { JDouble };
 
@@ -119,7 +120,7 @@ export function asLong(n: Node, def = 0): number {
   if (n instanceof Dec) return n.toIntegerTrunc();
   if (typeof n === 'boolean') return n ? 1 : 0;
   if (typeof n === 'string') {
-    const t = jTrim(n);
+    const t = javaTrim(n);
     if (/^[+-]?\d+$/.test(t)) return Number(t);
     const d = Number(t);
     return t !== '' && Number.isFinite(d) ? Math.trunc(d) : def;
@@ -134,7 +135,7 @@ export function asDouble(n: Node, def = 0): number {
   if (n instanceof Dec) return n.toNumber();
   if (typeof n === 'boolean') return n ? 1 : 0;
   if (typeof n === 'string') {
-    const t = jTrim(n);
+    const t = javaTrim(n);
     const d = Number(t);
     return t !== '' && !Number.isNaN(d) ? d : def;
   }
@@ -145,7 +146,7 @@ export function asDouble(n: Node, def = 0): number {
 export function asBoolean(n: Node, def = false): boolean {
   if (typeof n === 'boolean') return n;
   if (typeof n === 'string') {
-    const t = jTrim(n);
+    const t = javaTrim(n);
     if (t === 'true') return true;
     if (t === 'false') return false;
     return def;
@@ -179,7 +180,7 @@ function toInt32(d: number): number {
 
 // NumberInput.parseAsInt(String, int): trimmed, optional sign, digits; else via double.
 function parseAsInt(s: string, def: number): number {
-  const t = jTrim(s);
+  const t = javaTrim(s);
   if (t === '') return def;
   if (/^[+-]?\d+$/.test(t)) {
     const v = Number(t);

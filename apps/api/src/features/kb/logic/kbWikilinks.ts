@@ -9,8 +9,9 @@
 // the same page); the anchor is a folded `##`-`####` heading (anchor()).
 // Links inside fenced code blocks and inline code are ignored.
 
-import { DOT, S, jSplit, jTrim, lowerRoot } from './javaString';
+import { DOT, S, lowerRoot } from './javaString';
 import { parseUuid, type Uuid } from './uuid';
+import { javaTrim, javaSplit } from '../../../lib/javaCompat';
 
 export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // Subject ids are codes like "61.12" (letters allowed after the digits).
@@ -47,10 +48,10 @@ export function parse(body: string, currentSubjectId: string, currentSlug: strin
   const links = new Map<string, PageLink>();
   const citations: Citation[] = [];
   for (const m of text.matchAll(LINK)) {
-    const raw = jTrim(m[1]!);
+    const raw = javaTrim(m[1]!);
     if (raw.length === 0) continue;
     if (raw.startsWith('file:')) {
-      citations.push({ raw, id: parseUuid(jTrim(raw.substring(5))) });
+      citations.push({ raw, id: parseUuid(javaTrim(raw.substring(5))) });
       continue;
     }
     if (!links.has(raw)) links.set(raw, target(raw, currentSubjectId, currentSlug));
@@ -65,14 +66,14 @@ export function target(raw: string, currentSubjectId: string, currentSlug: strin
   if (hash >= 0) {
     anchorText = anchor(raw.substring(hash + 1));
     if (anchorText.length === 0) anchorText = null;
-    tgt = jTrim(raw.substring(0, hash));
+    tgt = javaTrim(raw.substring(0, hash));
   }
   if (tgt.length === 0) {
     return { raw, subjectId: currentSubjectId, slug: currentSlug == null ? 'index' : currentSlug, anchor: anchorText };
   }
   const slash = tgt.indexOf('/');
   if (slash > 0) {
-    return { raw, subjectId: jTrim(tgt.substring(0, slash)), slug: jTrim(tgt.substring(slash + 1)), anchor: anchorText };
+    return { raw, subjectId: javaTrim(tgt.substring(0, slash)), slug: javaTrim(tgt.substring(slash + 1)), anchor: anchorText };
   }
   if (SUBJECT_ID.test(tgt)) return { raw, subjectId: tgt, slug: 'index', anchor: anchorText };
   return { raw, subjectId: currentSubjectId, slug: tgt, anchor: anchorText };
@@ -90,7 +91,7 @@ export function anchor(text: string): string {
 /** Anchors of a body's ## to #### headings (wikilinks in them count by text). */
 export function headingAnchors(body: string): Set<string> {
   const out = new Set<string>();
-  for (const line of jSplit(stripCode(body), '\n', -1)) {
+  for (const line of javaSplit(stripCode(body), /\n/, -1)) {
     const m = HEADING.exec(line);
     if (!m) continue;
     out.add(headingAnchor(m[1]!));

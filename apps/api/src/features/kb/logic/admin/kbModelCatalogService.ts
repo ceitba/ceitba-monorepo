@@ -20,7 +20,7 @@ import { ResourceNotFoundError, ValidationError } from '../../../../http/errors'
 import { classify, classifyFailure, unsupportedModel } from '../external/doBatchErrors';
 import { DoBatchSlotError, LlmApiError } from '../external/llmApi';
 import type { LlmResult } from '../external/llmOutputParser';
-import { jHashCode, jIsBlank, jTrim, upperRoot } from '../javaString';
+import { jHashCode, jIsBlank, upperRoot } from '../javaString';
 import {
   asBoolean,
   asInt,
@@ -50,6 +50,7 @@ import { backoffMinutes } from '../pipeline/kbBatchSubmitter';
 import type { KbPayloads } from '../pipeline/kbPayloads';
 import { KbPipelineError } from '../pipeline/kbPipelineError';
 import type { KbEffectiveSettings } from './kbSettings';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 /**
  * A batch probe error that says the model or provider has no batch support (a 4xx
@@ -132,7 +133,7 @@ export class KbModelCatalogService {
     if (modeOverride == null || jIsBlank(modeOverride)) {
       mode = await this.router.modeFor(id, (await this.settings!.effective()).executionMode);
     } else {
-      mode = upperRoot(jTrim(modeOverride));
+      mode = upperRoot(javaTrim(modeOverride));
       if (mode !== 'BATCH' && mode !== 'SYNC') throw new ValidationError('mode', modeOverride, 'must be batch or sync');
       if (mode === 'BATCH' && batchProvider(id) == null) {
         throw new ValidationError('mode', modeOverride, 'DO batches only take anthropic-*/openai-* models');

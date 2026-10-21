@@ -9,12 +9,13 @@
 import { ExternalApiError, ResourceNotFoundError, ValidationError } from '../../../../http/errors';
 import { Dec } from '../decimal';
 import { LlmApiError } from '../external/llmApi';
-import { jIsBlank, jTrim } from '../javaString';
+import { jIsBlank } from '../javaString';
 import type { Now } from '../odt';
 import type { KbLlmEndpointStore, KbModelStore, Tx } from '../ports';
 import { KbModel, type KbLlmEndpoint } from '../types';
 import { catalogId, type KbEndpointRegistry } from '../llm/kbEndpointRegistry';
 import type { KbSecretCipher } from '../llm/kbSecretCipher';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 /** Endpoint names: lowercase letters, digits and '-' (max 47 chars), whole-string match. */
 export const NAME = /^[a-z0-9][a-z0-9-]{0,46}$/;
@@ -26,7 +27,7 @@ export interface DiscoverResult {
 
 /** http(s) only, with a host; no user info, query or fragment; trailing slashes dropped. */
 export function baseUrl(raw: string | null): string {
-  let s = raw == null ? '' : jTrim(raw);
+  let s = raw == null ? '' : javaTrim(raw);
   let ok: boolean;
   try {
     // java.net.URI is stricter than WHATWG URL about some characters; scheme/host/userinfo/query/fragment match.

@@ -9,6 +9,7 @@
 // The last match wins ("Final 2019 (recuperatorio 2020)" -> 2020).
 
 import { JAVA_S, javaIsBlank } from '../../../lib/javaCompat';
+import { foldAccentsLower } from '../../../lib/subjectText';
 
 const S = JAVA_S;
 const FULL = /(?<![0-9a-z])(20[0-9]{2})(?![0-9a-z])/g;
@@ -20,10 +21,6 @@ const QUANTITIES = new Set([
   'hojas', 'km', 'kg', 'mts', 'metros', 'unidades', 'personas', 'casos', 'items', 'lineas', 'caracteres']);
 const NEXT_WORD = new RegExp(`^${S}+([a-z]+)`);
 
-/** Normalizer NFD + strip \p{M} + toLowerCase(Locale.ROOT). */
-export function foldAccentsLower(name: string): string {
-  return name.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase();
-}
 
 /** AcademicYears.fromName: the year, or null (OptionalInt.empty()). */
 export function academicYearFromName(name: string | null | undefined, currentYear: number): number | null {

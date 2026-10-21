@@ -15,12 +15,13 @@
 //   - an integral float (`title: 1.0`) prints "1" here, "1.0" in Java.
 //   - the "invalid frontmatter YAML: ..." message carries Bun's parser text.
 
-import { isJavaWhitespace, jIsBlank, jSplit, jStrip, jTrim, javaValueOf, upperRoot, DOT, S } from './javaString';
+import { isJavaWhitespace, jIsBlank, jStrip, javaValueOf, upperRoot, DOT, S } from './javaString';
 import { selfLinkErrors, latexErrors, metaSectionErrors } from './kbStyleChecks';
 import { parse as parseLinks, SLUG, stripCode, type Parsed } from './kbWikilinks';
 import { Odt, parseLocalDate } from './odt';
 import { KB_PAGE_TYPES, type KbPageType } from './types';
 import { parseUuid, type Uuid } from './uuid';
+import { javaTrim, javaSplit } from '../../../lib/javaCompat';
 
 export const MAX_CONTENT_CHARS = 400_000;
 
@@ -145,7 +146,7 @@ export function parse(path: string | null, content: string | null, folderSubject
   } else if (typeof rawSubject !== 'string') {
     errors.push('frontmatter: subject must be a quoted string (e.g. subject: "61.12")');
   } else {
-    subject = jTrim(rawSubject);
+    subject = javaTrim(rawSubject);
     if (subject !== folderSubjectId) {
       errors.push(`frontmatter: subject '${subject}' does not match the folder '${folderSubjectId}'`);
     }
@@ -156,7 +157,7 @@ export function parse(path: string | null, content: string | null, folderSubject
   if (rawType == null) {
     errors.push('frontmatter: type is required (index | topic | concept)');
   } else {
-    const t = upperRoot(jTrim(javaValueOf(rawType)));
+    const t = upperRoot(javaTrim(javaValueOf(rawType)));
     if ((KB_PAGE_TYPES as readonly string[]).includes(t)) type = t as KbPageType;
     else errors.push('frontmatter: type must be index, topic or concept');
   }
@@ -171,7 +172,7 @@ export function parse(path: string | null, content: string | null, folderSubject
     if (Array.isArray(rawAliases)) {
       for (const a of rawAliases) {
         if (a == null || jIsBlank(javaValueOf(a))) continue;
-        aliases.push(jTrim(javaValueOf(a)));
+        aliases.push(javaTrim(javaValueOf(a)));
       }
     } else {
       errors.push('frontmatter: aliases must be a list');
@@ -184,7 +185,7 @@ export function parse(path: string | null, content: string | null, folderSubject
     errors.push('frontmatter: sources is required (a list of file ids, may be empty)');
   } else if (Array.isArray(rawSources)) {
     for (const s of rawSources) {
-      const id = parseUuid(jTrim(javaValueOf(s)));
+      const id = parseUuid(javaTrim(javaValueOf(s)));
       if (id == null) errors.push(`frontmatter: source '${javaValueOf(s)}' is not a file id`);
       else sources.add(id);
     }
@@ -199,7 +200,7 @@ export function parse(path: string | null, content: string | null, folderSubject
   } else if (rawDate instanceof Date) {
     generatedAt = Odt.ofEpochMilli(rawDate.getTime());
   } else {
-    const s = jTrim(javaValueOf(rawDate));
+    const s = javaTrim(javaValueOf(rawDate));
     if (s.length === 10) {
       const d = parseLocalDate(s);
       if (d) generatedAt = Odt.ofEpoch(Date.UTC(d.year, d.month - 1, d.day) / 1000, 0, 0);
@@ -307,11 +308,11 @@ export function sectionsWithoutCitation(body: string): string[] {
   const out: string[] = [];
   let heading: string | null = null;
   let cited = false;
-  for (const line of jSplit(stripCode(body), '\n', -1)) {
+  for (const line of javaSplit(stripCode(body), /\n/, -1)) {
     const m = H2.exec(line);
     if (m) {
       if (heading != null && !cited) out.push(heading);
-      heading = jTrim(m[1]!);
+      heading = javaTrim(m[1]!);
       cited = false;
     }
     if (line.includes('[[file:')) cited = true;
@@ -335,7 +336,7 @@ function requiredString(v: unknown, key: string, errors: string[]): string | nul
     errors.push(`frontmatter: ${key} must be text`);
     return null;
   }
-  return jTrim(javaValueOf(v));
+  return javaTrim(javaValueOf(v));
 }
 
 function firstLine(s: string | null): string {

@@ -11,7 +11,7 @@
 
 import { ValidationError } from '../../../../http/errors';
 import { Dec, dec } from '../decimal';
-import { jIsBlank, jSplit, jTrim, lowerRoot } from '../javaString';
+import { jIsBlank, lowerRoot } from '../javaString';
 import {
   asBoolean,
   asLong,
@@ -34,6 +34,7 @@ import {
   type Node,
 } from '../jsonNode';
 import type { KbLlmProperties } from '../llm/kbLlmProperties';
+import { javaTrim, javaSplit } from '../../../../lib/javaCompat';
 
 // ---- KbPipelineProperties ------------------------------------------------------
 
@@ -83,16 +84,16 @@ const blank = (s: string | null | undefined): s is null | undefined => s == null
 
 /** The record's compact constructor: defaults and clamps (fed from config.kb.pipeline by kb-pipeline/settings.ts). */
 export function kbPipelineProperties(i: KbPipelinePropertiesInput = {}): KbPipelineProperties {
-  const modelWrite = blank(i.modelWrite) ? 'glm-5.3' : jTrim(i.modelWrite);
+  const modelWrite = blank(i.modelWrite) ? 'glm-5.3' : javaTrim(i.modelWrite);
   const runTokenBudgetMax = i.runTokenBudgetMax == null || i.runTokenBudgetMax <= 0 ? DEFAULT_TOKEN_BUDGET_MAX : i.runTokenBudgetMax;
   return {
     enabled: i.enabled ?? false,
-    cron: blank(i.cron) ? '0 0 3 * * SUN' : jTrim(i.cron),
+    cron: blank(i.cron) ? '0 0 3 * * SUN' : javaTrim(i.cron),
     pollIntervalMs: i.pollIntervalMs == null || i.pollIntervalMs === 0 ? 10 * 60_000 : i.pollIntervalMs,
-    modelDigest: blank(i.modelDigest) ? 'glm-5.3-flash' : jTrim(i.modelDigest),
-    modelPlan: blank(i.modelPlan) ? 'glm-5.3' : jTrim(i.modelPlan),
+    modelDigest: blank(i.modelDigest) ? 'glm-5.3-flash' : javaTrim(i.modelDigest),
+    modelPlan: blank(i.modelPlan) ? 'glm-5.3' : javaTrim(i.modelPlan),
     modelWrite,
-    modelRetry: blank(i.modelRetry) ? modelWrite : jTrim(i.modelRetry),
+    modelRetry: blank(i.modelRetry) ? modelWrite : javaTrim(i.modelRetry),
     runTokenBudgetMax,
     runTokenBudget: Math.min(runTokenBudgetMax, i.runTokenBudget == null || i.runTokenBudget <= 0 ? 3_000_000 : i.runTokenBudget),
     maxRequestsPerStage: i.maxRequestsPerStage == null || i.maxRequestsPerStage <= 0 ? DEFAULT_MAX_REQUESTS : i.maxRequestsPerStage,
@@ -185,7 +186,7 @@ export const STAGES = ['digest', 'plan', 'write', 'retry'] as const;
  */
 export function cron6(cron: string | null): string | null {
   if (cron == null) return null;
-  const parts = jSplit(jTrim(cron), /[ \t\n\x0B\f\r]+/);
+  const parts = javaSplit(javaTrim(cron), /[ \t\n\x0B\f\r]+/);
   return parts.length === 5 ? '0 ' + parts.join(' ') : parts.join(' ');
 }
 
@@ -227,7 +228,7 @@ function nodeText(v: JsonValue): string {
 
 function text(s: Node, f: string, fallback: string): string {
   const v = path(s, f);
-  return hasNonNull(s, f) && isTextual(v) && !jIsBlank(v) ? jTrim(v) : fallback;
+  return hasNonNull(s, f) && isTextual(v) && !jIsBlank(v) ? javaTrim(v) : fallback;
 }
 
 /** The settings logic that needs only the env defaults (KbSettingsService's merge/applied/values). */

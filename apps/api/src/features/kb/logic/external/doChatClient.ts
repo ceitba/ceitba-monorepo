@@ -8,10 +8,11 @@
 // here: the run engine already resends unanswered requests once.
 // (Java's 20 s connect timeout has no fetch equivalent; the request timeout covers it.)
 
-import { jIsBlank, jTrim } from '../javaString';
+import { jIsBlank } from '../javaString';
 import { asText, elements, hasNonNull, path, type JsonValue } from '../jsonNode';
 import type { DoQuotaTracker } from './doQuotaTracker';
 import { DoQuotaExhaustedError, LlmApiError, type SyncChatClient } from './llmApi';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 export const MAX_ATTEMPTS = 4;
 
@@ -96,7 +97,7 @@ export class DoChatClient implements SyncChatClient {
         }
         const ra = res.headers.get('Retry-After');
         if (ra != null) {
-          const t = jTrim(ra);
+          const t = javaTrim(ra);
           retryAfter = /^[+-]?\d+$/.test(t) ? Number(t) * 1000 : -1;
         }
       } catch (e) {

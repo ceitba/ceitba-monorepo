@@ -1,15 +1,6 @@
 // java.lang.String / Character semantics the kb logic relies on, where the JS
-// built-ins differ. Used by every module under features/kb/logic so the port
+// built-ins differ (trim/split: src/lib/javaCompat.ts javaTrim/javaSplit). Used by every module under features/kb/logic so the port
 // behaves exactly like apps/api (Java 21).
-
-/** String.trim(): strips every char <= U+0020 (JS trim() also strips NBSP, U+FEFF...). */
-export function jTrim(s: string): string {
-  let start = 0;
-  let end = s.length;
-  while (start < end && s.charCodeAt(start) <= 0x20) start++;
-  while (end > start && s.charCodeAt(end - 1) <= 0x20) end--;
-  return start === 0 && end === s.length ? s : s.substring(start, end);
-}
 
 /**
  * Character.isWhitespace(codePoint): Unicode space separators (Zs, Zl, Zp) except the
@@ -48,48 +39,6 @@ export function jStrip(s: string): string {
 /** String.isBlank(). */
 export function jIsBlank(s: string): boolean {
   return jStrip(s).length === 0;
-}
-
-/**
- * String.split(regex, limit). limit 0 (Java's default) drops trailing empty strings;
- * a negative limit keeps them. `re` must have no capture groups (JS splices captures
- * into the result). A zero-width match at index 0 never yields a leading "".
- */
-export function jSplit(s: string, re: RegExp | string, limit = 0): string[] {
-  if (typeof re === 'string') {
-    // single literal char (the only string form used): no regex needed
-    if (limit > 0) throw new Error('jSplit: positive limit needs a RegExp');
-    const parts = s.split(re);
-    return limit === 0 ? dropTrailingEmpty(parts) : parts;
-  }
-  // Pattern.split (JDK 8+), match by match.
-  const flags = re.flags.includes('g') ? re.flags : re.flags + 'g';
-  const g = new RegExp(re.source, flags);
-  const out: string[] = [];
-  let index = 0;
-  let m: RegExpExecArray | null;
-  while ((m = g.exec(s)) !== null) {
-    const start = m.index;
-    const end = start + m[0].length;
-    if (m[0].length === 0) g.lastIndex++;
-    if (limit > 0 && out.length >= limit - 1) break;
-    if (index === 0 && start === 0 && start === end) continue;
-    out.push(s.substring(index, start));
-    index = end;
-  }
-  if (index === 0 && out.length === 0) return [s];
-  out.push(s.substring(index));
-  if (limit !== 0) return out;
-  let n = out.length;
-  while (n > 0 && out[n - 1] === '') n--;
-  return out.slice(0, n);
-}
-
-function dropTrailingEmpty(parts: string[]): string[] {
-  if (parts.length === 1) return parts; // no match: the input itself, even ""
-  let n = parts.length;
-  while (n > 0 && parts[n - 1] === '') n--;
-  return parts.slice(0, n);
 }
 
 /** String.split(regex, 2) for a literal separator: at most two parts. */

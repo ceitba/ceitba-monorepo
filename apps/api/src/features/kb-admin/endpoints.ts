@@ -9,7 +9,7 @@ import type { Db } from '../../db/client';
 import { ExternalApiError, KbEndpointInUseError, ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError } from '../../http/errors';
 import { baseUrl, KbEndpointService as DiscoverLogic, NAME } from '../kb/logic/admin/kbEndpointService';
 import type { KbEffectiveSettings } from '../kb/logic/admin/kbSettings';
-import { jTrim, lowerRoot, equalsIgnoreCase } from '../kb/logic/javaString';
+import { lowerRoot, equalsIgnoreCase } from '../kb/logic/javaString';
 import { asBoolean, asInt, asText, canConvertToInt, elements, hasNonNull, isBoolean, isTextual, nodeToString, path, type Node } from '../kb/logic/jsonNode';
 import type { KbEndpointRegistry } from '../kb/logic/llm/kbEndpointRegistry';
 import { prefixOf } from '../kb/logic/llm/kbEndpointRegistry';
@@ -21,6 +21,7 @@ import { isLlmApiError, modelStore } from './catalog';
 import * as repo from './repo';
 import { kbTx } from './tx';
 import { nowOdt } from './values';
+import { javaTrim } from '../../lib/javaCompat';
 
 interface Settings { effective(): Promise<KbEffectiveSettings> }
 
@@ -42,7 +43,7 @@ export class KbEndpointService {
 
   create(userId: string, body: Node): Promise<Item> {
     return kbTx(this.deps.db, async (tx) => {
-      const name = lowerRoot(jTrim(asText(path(body, 'name'), '')!));
+      const name = lowerRoot(javaTrim(asText(path(body, 'name'), '')!));
       if (!NAME.test(name)) throw new ValidationError('name', name, "required: lowercase letters, digits and '-' (max 47 chars)");
       if ((await repo.endpointByName(tx, name)) != null) throw new ResourceAlreadyExistsError('KbLlmEndpoint', name);
       const e = new KbLlmEndpoint(name, baseUrl(asText(path(body, 'baseUrl'), '')), userId, nowOdt(this.deps));
@@ -55,7 +56,7 @@ export class KbEndpointService {
   update(userId: string, id: string, body: Node): Promise<Item> {
     return kbTx(this.deps.db, async (tx) => {
       const e = await this.get(tx, id);
-      if (hasNonNull(body, 'name') && !equalsIgnoreCase(jTrim(asText(path(body, 'name'))), e.name)) {
+      if (hasNonNull(body, 'name') && !equalsIgnoreCase(javaTrim(asText(path(body, 'name'))), e.name)) {
         throw new ValidationError('name', asText(path(body, 'name')),
           'cannot be renamed (model ids custom:<name>:<slug> depend on it); create a new endpoint');
       }
@@ -85,7 +86,7 @@ export class KbEndpointService {
     // apiKey: absent/null = keep, "" = remove, else replace (encrypted).
     if (hasNonNull(body, 'apiKey')) {
       if (!isTextual(path(body, 'apiKey'))) throw new ValidationError('apiKey', '(hidden)', 'must be a string');
-      const key = jTrim(asText(path(body, 'apiKey')));
+      const key = javaTrim(asText(path(body, 'apiKey')));
       e.apiKeyEncrypted = key === '' ? null : this.cipher.encrypt(key);
     }
   }

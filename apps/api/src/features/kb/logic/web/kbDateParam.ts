@@ -7,8 +7,9 @@
 // 400 ValidationError. Nanosecond precision and the given offset are kept.
 
 import { ValidationError } from '../../../../http/errors';
-import { jIsBlank, jTrim } from '../javaString';
+import { jIsBlank } from '../javaString';
 import { ART_ZONE, atZone, Odt, parseLocalDate } from '../odt';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 export function from(value: string | null): Odt | null {
   return parse('from', value, false);
@@ -20,7 +21,7 @@ export function to(value: string | null): Odt | null {
 
 export function parse(field: string, value: string | null, endOfDay: boolean): Odt | null {
   if (value == null || jIsBlank(value)) return null;
-  const v = jTrim(value);
+  const v = javaTrim(value);
   let out: Odt | null;
   if (v.length === 10) {
     const day = parseLocalDate(v);

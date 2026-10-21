@@ -5,8 +5,9 @@
 // recorded (kb_run.stats.droppedPlanOps / eval results) instead of
 // vanishing; a plan whose operations were all dropped is asked once more.
 
-import { equalsIgnoreCase, jTrim, lowerRoot } from '../javaString';
+import { equalsIgnoreCase, lowerRoot } from '../javaString';
 import { isEmpty, size, type JsonObject, type Node } from '../jsonNode';
+import { javaTrim } from '../../../../lib/javaCompat';
 
 export const NO_SOURCES = 'noSources'; // create/update with an empty `sources`
 export const UNKNOWN_SOURCES = 'unknownSources'; // only ids that are not inputs of the subject
@@ -98,7 +99,7 @@ export class KbPlanCheck {
 
 /** "indice"/"índice" of an index page is the slug "index". */
 export function normalizeIndexSlug(slug: string, type: string | null): string {
-  if (type == null || !equalsIgnoreCase(jTrim(type), 'index')) return slug;
+  if (type == null || !equalsIgnoreCase(javaTrim(type), 'index')) return slug;
   const folded = lowerRoot(slug.normalize('NFD').replace(/\p{M}+/gu, ''));
   return folded === 'indice' ? 'index' : slug;
 }

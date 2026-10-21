@@ -7,11 +7,12 @@
 // one retry. Doubles are JDouble (Jackson writes 0.5 / 0.0), BigDecimals Dec.
 
 import { Dec } from '../decimal';
-import { jSplit, jStrip, lowerRoot, S, upperRoot } from '../javaString';
+import { jStrip, lowerRoot, S, upperRoot } from '../javaString';
 import { JDouble, type JsonObject } from '../jsonNode';
 import { sectionsWithoutCitationCount } from '../kbPageParser';
 import { parse as parseLinks, stripCode } from '../kbWikilinks';
 import { split as splitFile } from '../pipeline/kbPageFiles';
+import { javaSplit } from '../../../../lib/javaCompat';
 
 const H2 = new RegExp(`^##(?!#)${S}+`, 'gm');
 const CITATION = /\[\[file:/g;
@@ -146,7 +147,7 @@ export function grounding(body: string, sourceText: string | null): [number, num
   let unsupported = 0;
   let text = stripCode(body).replace(/\[\[file:[^\]]*\]\]/g, ' ');
   text = text.replace(LINK_WITH_TEXT, (_m, t: string) => t).replace(LINK, ' ');
-  for (const raw of jSplit(text, SENTENCE_SPLIT)) {
+  for (const raw of javaSplit(text, SENTENCE_SPLIT)) {
     const sentence = jStrip(raw).replace(new RegExp(`^(#+|[-*+]|[0-9]+[.)])${S}+`), '');
     if (sentence.length === 0 || sentence.startsWith('|')) continue;
     const anchorsSet = new Set<string>();

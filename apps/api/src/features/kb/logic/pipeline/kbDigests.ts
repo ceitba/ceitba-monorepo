@@ -6,7 +6,7 @@
 
 import { jIsBlank, jStrip } from '../javaString';
 import { asText, deepCopy, elements, hasNonNull, path, type JsonObject, type JsonValue } from '../jsonNode';
-import { normalize } from '../subjectNormalize';
+import { normalizeSubjectText as normalize } from '../../../../lib/subjectText';
 
 /**
  * Like merge, for a file some of whose chunks failed (null entries, by chunk index):

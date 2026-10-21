@@ -2,24 +2,25 @@
 // (String.split/trim/strip, UUID.fromString, BigDecimal, OffsetDateTime, KbCopyDetector hashes).
 import { describe, expect, test } from 'bun:test';
 import { dec, Dec } from '../../../src/features/kb/logic/decimal';
-import { jSplit, jStrip, jTrim } from '../../../src/features/kb/logic/javaString';
+import { jStrip } from '../../../src/features/kb/logic/javaString';
 import { shinglesOf } from '../../../src/features/kb/logic/kbCopyDetector';
 import { Odt } from '../../../src/features/kb/logic/odt';
 import { parseUuid } from '../../../src/features/kb/logic/uuid';
+import { javaTrim, javaSplit } from '../../../src/lib/javaCompat';
 
 describe('Java semantics helpers', () => {
   test('splitDropsTrailingEmptiesUnlessNegativeLimit', () => {
-    expect(jSplit('a,b,,', /,/)).toEqual(['a', 'b']);
-    expect(jSplit('a,b,,', /,/, -1)).toEqual(['a', 'b', '', '']);
-    expect(jSplit('', /,/)).toEqual(['']);
-    expect(jSplit(',', /,/)).toEqual([]);
-    expect(jSplit('a:b:c:d', /:/, 3)).toEqual(['a', 'b', 'c:d']);
-    expect(jSplit('abc', /(?:)/)).toEqual(['a', 'b', 'c']);
+    expect(javaSplit('a,b,,', /,/)).toEqual(['a', 'b']);
+    expect(javaSplit('a,b,,', /,/, -1)).toEqual(['a', 'b', '', '']);
+    expect(javaSplit('', /,/)).toEqual(['']);
+    expect(javaSplit(',', /,/)).toEqual([]);
+    expect(javaSplit('a:b:c:d', /:/, 3)).toEqual(['a', 'b', 'c:d']);
+    expect(javaSplit('abc', /(?:)/)).toEqual(['a', 'b', 'c']);
   });
 
   test('trimAndStrip', () => {
-    expect(jTrim(' x ')).toBe(' x '); // NBSP is > U+0020
-    expect(jTrim('\u0001 x \t')).toBe('x');
+    expect(javaTrim(' x ')).toBe(' x '); // NBSP is > U+0020
+    expect(javaTrim('\u0001 x \t')).toBe('x');
     expect(jStrip(' x ')).toBe('x'); // em space is whitespace
     expect(jStrip(' x')).toBe(' x'); // NBSP is not
   });

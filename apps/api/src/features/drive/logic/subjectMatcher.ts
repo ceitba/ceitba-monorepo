@@ -18,7 +18,7 @@
 //      then more words, then name.
 
 import { javaCompareStrings, javaIsBlank, javaSplit, javaTrim } from '../../../lib/javaCompat';
-import { foldAccentsLower } from './academicYears';
+import { foldAccentsLower } from '../../../lib/subjectText';
 
 export const THRESHOLD = 0.75;
 export const PLAN_THRESHOLD = 0.5;
@@ -182,7 +182,3 @@ export function stem(w: string): string {
   return s;
 }
 
-/** SubjectMatcher.normalize */
-export function normalizeSubjectText(s: string): string {
-  return javaTrim(foldAccentsLower(s).replace(/[^a-z0-9]+/g, ' '));
-}

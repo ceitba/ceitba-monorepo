@@ -5,8 +5,9 @@
 // reason ("latex_format:", "meta_section:", "self_link:"), which is also what
 // the retry prompt and the eval's rejectReasons key on. Code is ignored.
 
-import { DOT, S, jSplit, jStrip, lowerRoot } from './javaString';
+import { DOT, S, jStrip, lowerRoot } from './javaString';
 import { stripCode, type Parsed } from './kbWikilinks';
+import { javaSplit } from '../../../lib/javaCompat';
 
 export const LATEX_FORMAT = 'latex_format';
 export const META_SECTION = 'meta_section';
@@ -137,7 +138,7 @@ const MARKER = /^\W*(?:TODO|FIXME)\b|\[(?:TODO|FIXME)\b|\bTODO:/;
 
 export function metaSectionErrors(body: string): string[] {
   const out: string[] = [];
-  for (const raw of jSplit(stripCode(body), '\n', -1)) {
+  for (const raw of javaSplit(stripCode(body), /\n/, -1)) {
     const line = jStrip(raw);
     if (line.length === 0) continue;
     const h = HEADING.exec(line);

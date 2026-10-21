@@ -13,7 +13,7 @@
 // value of a line; JSON.parse rejects the line (it is skipped).
 // Deviation: there is no streaming parse(Path, sink); downloaded files are parsed in memory.
 
-import { jIsBlank, jSplit, jStrip, S } from '../javaString';
+import { jIsBlank, jStrip, S } from '../javaString';
 import {
   asInt,
   asText,
@@ -32,6 +32,7 @@ import {
   type JsonValue,
   type Node,
 } from '../jsonNode';
+import { javaSplit } from '../../../../lib/javaCompat';
 
 /**
  * ok: there is a usable answer. toolInput: the first tool call's input (JSON) when
@@ -78,7 +79,7 @@ function tryParse(line: string): JsonValue | undefined {
 export function parse(jsonl: Uint8Array | null): Map<string, LlmResult> {
   const out = new Map<string, LlmResult>();
   if (jsonl == null) return out;
-  for (const line of jSplit(decoder.decode(jsonl), '\n')) {
+  for (const line of javaSplit(decoder.decode(jsonl), /\n/)) {
     if (jIsBlank(line)) continue;
     const node = tryParse(line);
     if (node === undefined) continue;
