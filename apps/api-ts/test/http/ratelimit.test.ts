@@ -15,9 +15,11 @@ describe('client ip', () => {
     expect(resolveClientIp('127.0.0.1', '1.1.1.1', false)).toBe('127.0.0.1');
     expect(resolveClientIp('127.0.0.1', ' ', true)).toBe('127.0.0.1');
   });
-  test('IPv6 keyed by /64, IPv4 (and mapped) by address', () => {
+  test('clientKeyNormalization', () => {
     expect(clientKey('2001:db8:1:2:3:4:5:6')).toBe('2001:db8:1:2:0:0:0:0/64');
+    expect(clientKey('[2001:db8:1:2::7]')).toBe('2001:db8:1:2:0:0:0:0/64');
     expect(clientKey('[2001:db8::1]')).toBe('2001:db8:0:0:0:0:0:0/64');
+    expect(clientKey('not:an-ip')).toBe('not:an-ip');
     expect(clientKey('fe80::1%eth0')).toBe('fe80:0:0:0:0:0:0:0/64');
     expect(clientKey('::ffff:1.2.3.4')).toBe('1.2.3.4');
     expect(clientKey('1.2.3.4')).toBe('1.2.3.4');
@@ -48,12 +50,48 @@ describe('buckets', () => {
     now = 60_000;
     expect(l.check('GET', '/v1/auth/google', '1.1.1.1')?.rejected).toBeUndefined();
   });
-  test('UserRateLimiter', async () => {
+  test('UserRateLimiter (proposals rule from the env)', async () => {
     const cfg = (await loadConfig({ AUTH_JWT_SECRET: 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch', RATE_LIMIT_PROPOSALS_CAPACITY: '1' })).rateLimit;
     const l = new UserRateLimiter(cfg, () => 0);
     l.consume('proposals', 'u1');
     expect(() => l.consume('proposals', 'u1')).toThrow(RateLimitExceededError);
     l.consume('proposals', 'u2');
     l.consume('unknown-rule', 'u1');
+  });
+});
+
+// UserRateLimiterTest: per-user buckets, greedy refill, Retry-After, disabled/unknown rules.
+describe('UserRateLimiterTest', () => {
+  const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+  const limiter = async (enabled: boolean, now: () => number) => new UserRateLimiter((await loadConfig({
+    AUTH_JWT_SECRET: SECRET, RATE_LIMIT_ENABLED: String(enabled), RATE_LIMIT_ORG_IMAGES_CAPACITY: '2', RATE_LIMIT_ORG_IMAGES_PERIOD: 'PT1M',
+  })).rateLimit, now);
+
+  test('exhaustsPerUserAndReportsRetryAfter', async () => {
+    let t = 0;
+    const l = await limiter(true, () => t);
+    l.consume('org-images', 'alice');
+    l.consume('org-images', 'alice');
+    let err: unknown;
+    try { l.consume('org-images', 'alice'); } catch (e) { err = e; }
+    expect(err).toBeInstanceOf(RateLimitExceededError);
+    expect((err as RateLimitExceededError).message).toBe('Rate limit exceeded. Retry in 30s.');
+    l.consume('org-images', 'bob'); // buckets are per user
+    t += 30_000; // greedy refill: one token back after period / capacity
+    l.consume('org-images', 'alice');
+  });
+
+  test('disabledOrUnknownRuleNeverLimits', async () => {
+    const off = await limiter(false, () => 0);
+    const on = await limiter(true, () => 0);
+    for (let i = 0; i < 10; i++) {
+      off.consume('org-images', 'alice');
+      on.consume('other', 'alice');
+    }
+  });
+
+  test('userRuleRejectsNonPositiveValues', async () => {
+    await expect(loadConfig({ AUTH_JWT_SECRET: SECRET, RATE_LIMIT_ORG_IMAGES_CAPACITY: '0' })).rejects.toThrow();
+    await expect(loadConfig({ AUTH_JWT_SECRET: SECRET, RATE_LIMIT_ORG_IMAGES_PERIOD: 'PT0S' })).rejects.toThrow();
   });
 });

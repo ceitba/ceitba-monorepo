@@ -6,7 +6,9 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
+import * as schema from '../../src/db/schema';
 import prodHistory from '../fixtures/flyway-history-java-prod.json';
 import itHistory from '../fixtures/flyway-history-java-it.json';
 import { JAVA_MIGRATIONS_DIR, JAVA_TEST_MIGRATIONS_DIR } from '../../src/config/sections/db';
@@ -82,6 +84,90 @@ describe('against Postgres', () => {
     }
   }, 60_000);
 
+  // ProdMigrationsIT: the real production chain (no test mirrors) on an empty database, then
+  // SchemaValidationIT's checks on it: every table and column the TS code maps (the drizzle schema,
+  // what Hibernate's `validate` checks in Java) exists, and the user table's shape.
+  test('productionMigrationsApplyCleanly', async () => {
+    const admin = postgres(await pgServerUrl(), { max: 1, onnotice: () => {} });
+    const name = `migp_${process.pid}_${Date.now()}`;
+    await admin.unsafe(`CREATE DATABASE ${name}`);
+    const sql = postgres(withDatabase(await pgServerUrl(), name), { max: 2, onnotice: () => {} });
+    try {
+      const opts = { locations: [JAVA_MIGRATIONS_DIR], schemas: ['public', 'wiki'], outOfOrder: true };
+      await migrate(sql, opts);
+      expect(await check(sql, opts)).toEqual({ issues: [], pending: [] });
+      expect((await sql`SELECT count(*)::int AS n FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'sga_synced_at'`)[0]!.n).toBe(0);
+      expect(await unmappedColumns(sql)).toEqual([]);
+    } finally {
+      await sql.end();
+      await admin.unsafe(`DROP DATABASE ${name} WITH (FORCE)`);
+      await admin.end();
+    }
+  }, 120_000);
+
+  // NewsCategoryMigrationIT: V29 folds legacy category spellings onto the canonical list.
+  test('v29MapsCaseAndAccentVariantsAndLeavesUnknownValues', async () => {
+    const admin = postgres(await pgServerUrl(), { max: 1, onnotice: () => {} });
+    const name = `mig29_${process.pid}_${Date.now()}`;
+    await admin.unsafe(`CREATE DATABASE ${name}`);
+    const sql = postgres(withDatabase(await pgServerUrl(), name), { max: 2, onnotice: () => {} });
+    const opts = (target: string) => ({ locations: [JAVA_MIGRATIONS_DIR], schemas: ['public', 'wiki'], defaultSchema: 'public', outOfOrder: true, target });
+    try {
+      await migrate(sql, opts('28'));
+      await sql`INSERT INTO public.articles (id, title, excerpt, category) VALUES
+        ('a-acad-upper', 't', 'e', 'ACADÉMICO'), ('a-acad-plain', 't', 'e', 'academico'), ('a-acad-ok', 't', 'e', 'Académico'),
+        ('a-dep', 't', 'e', 'DEPORTES'), ('a-cult-space', 't', 'e', ' cultura '), ('a-org', 't', 'e', 'ORGANIZACIONES'),
+        ('a-tec', 't', 'e', 'TECNOLOGIA'), ('a-tec-acc', 't', 'e', 'tecnología'), ('a-campus', 't', 'e', 'CAMPUS'),
+        ('a-general', 't', 'e', 'general'), ('a-todos', 't', 'e', 'TODOS'), ('a-tech', 't', 'e', 'tech')`;
+      await sql`INSERT INTO public.news_events (id, title, event_date, start_time, end_time, location, category) VALUES
+        ('e-dep', 't', '2026-01-01', '10:00', '11:00', 'L', 'DEPORTES'), ('e-acad', 't', '2026-01-01', '10:00', '11:00', 'L', 'ACADÉMICO'),
+        ('e-x', 't', '2026-01-01', '10:00', '11:00', 'L', 'workshop')`;
+      await sql`INSERT INTO public.analytics_events (type, session_id, category) VALUES ('category_view', 's', 'CULTURA'), ('page_view', 's', NULL)`;
+      await migrate(sql, opts('29'));
+      const categories = async (table: string) => Object.fromEntries((await sql.unsafe(`SELECT id, category FROM public.${table}`)).map((r) => [r.id, r.category]));
+      expect(await categories('articles')).toEqual({
+        'a-acad-upper': 'Académico', 'a-acad-plain': 'Académico', 'a-acad-ok': 'Académico', 'a-dep': 'Deportes', 'a-cult-space': 'Cultura',
+        'a-org': 'Organizaciones', 'a-tec': 'Tecnología', 'a-tec-acc': 'Tecnología', 'a-campus': 'Campus', 'a-general': 'General',
+        'a-todos': 'TODOS', 'a-tech': 'tech',
+      });
+      expect(await categories('news_events')).toEqual({ 'e-dep': 'Deportes', 'e-acad': 'Académico', 'e-x': 'workshop' });
+      expect((await sql`SELECT category FROM public.analytics_events ORDER BY id`).map((r) => r.category)).toEqual(['Cultura', null]);
+    } finally {
+      await sql.end();
+      await admin.unsafe(`DROP DATABASE ${name} WITH (FORCE)`);
+      await admin.end();
+    }
+  }, 120_000);
+
+  test('everyRepositoryReachesAnEmptyTable', async () => {
+    const db = await cloneDatabase('mig');
+    const sql = postgres(withDatabase(await pgServerUrl(), db), { max: 1, onnotice: () => {} });
+    try {
+      expect(await unmappedColumns(sql)).toEqual([]);
+      for (const table of ['careers', 'plan', 'user', 'subject', 'commission', 'plan_subject', 'ceitba_staff']) {
+        expect((await sql.unsafe(`SELECT count(*)::int AS n FROM public."${table}"`))[0]!.n).toBe(0);
+      }
+    } finally {
+      await sql.end();
+      await dropDatabase(db);
+    }
+  }, 60_000);
+
+  test('userTableHasUniqueFileNumberAndNoSgaColumn', async () => {
+    const db = await cloneDatabase('mig');
+    const sql = postgres(withDatabase(await pgServerUrl(), db), { max: 1, onnotice: () => {} });
+    try {
+      expect((await sql`SELECT count(*)::int AS n FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'sga_synced_at'`)[0]!.n).toBe(0);
+      expect(String((await sql`SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'user_file_number_key'`)[0]!.indexdef))
+        .toStartWith('CREATE UNIQUE INDEX');
+    } finally {
+      await sql.end();
+      await dropDatabase(db);
+    }
+  }, 60_000);
+
   test('theContractTemplateHasZeroPendingAndZeroMismatches', async () => {
     const db = await cloneDatabase('mig');
     const sql = postgres(withDatabase(await pgServerUrl(), db), { max: 1, onnotice: () => {} });
@@ -132,3 +218,19 @@ describe.skipIf(!existsSync(JAR) || !existsSync(JAVA))('against a database Java 
     }
   }, 90_000);
 });
+
+/** Every table/column of the drizzle schema that the database lacks (Hibernate's `validate`, in TS). */
+async function unmappedColumns(sql: postgres.Sql): Promise<string[]> {
+  const missing: string[] = [];
+  const tables = Object.values(schema).filter((t) => t instanceof PgTable);
+  if (tables.length < 50) throw new Error(`only ${tables.length} drizzle tables found`);
+  const existing = new Set((await sql`SELECT table_schema || '.' || table_name || '.' || column_name AS c FROM information_schema.columns`).map((r) => r.c as string));
+  for (const t of tables) {
+    const cfg = getTableConfig(t as PgTable);
+    for (const c of cfg.columns) {
+      const key = `${cfg.schema ?? 'public'}.${cfg.name}.${c.name}`;
+      if (!existing.has(key)) missing.push(key);
+    }
+  }
+  return missing;
+}

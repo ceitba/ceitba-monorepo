@@ -106,12 +106,22 @@ export class HttpGoogleOAuthClient implements GoogleOAuthClient {
  * aud ∩ AUTH_GOOGLE_MOBILE_AUDIENCES, exp required (60 s skew), nonce when sent,
  * email and sub required.
  */
+/**
+ * How Google's JWKS is fetched: 5 s timeout (Java: 3 s connect + 5 s read; fetch has one
+ * timeout), keys cached 5 min, and an unknown `kid` refetches at most every 30 s, so tokens
+ * with made-up key ids never trigger a download each.
+ */
+export const GOOGLE_JWKS_OPTIONS = { timeoutDuration: 5000, cooldownDuration: 30_000, cacheMaxAge: 5 * 60_000 } as const;
+
+/** JwksGoogleIdTokenVerifier.googleJwkSource (the URL is a parameter for tests). */
+export function googleJwkSet(url: string = GOOGLE_JWKS): JWTVerifyGetKey {
+  return createRemoteJWKSet(new URL(url), GOOGLE_JWKS_OPTIONS);
+}
+
 export class JwksGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
   private readonly keys: JWTVerifyGetKey | KeyLike | Uint8Array;
   constructor(private readonly auth: AuthConfig, keys?: JWTVerifyGetKey | KeyLike) {
-    this.keys = keys ?? createRemoteJWKSet(new URL(GOOGLE_JWKS), {
-      timeoutDuration: 5000, cooldownDuration: 30_000, cacheMaxAge: 5 * 60_000,
-    });
+    this.keys = keys ?? googleJwkSet();
   }
 
   async verify(idToken: string, expectedNonce: string | null): Promise<IdTokenClaims> {

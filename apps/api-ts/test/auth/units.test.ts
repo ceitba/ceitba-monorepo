@@ -5,12 +5,12 @@ import { describe, expect, test } from 'bun:test';
 import { SignJWT } from 'jose';
 import { loadConfig } from '../../src/config';
 import { admits, sessionAdmits } from '../../src/http/auth/allowlist';
-import { normalizeScopes, parseScopes, scopeDenial, scopeKeys } from '../../src/http/auth/apikeys';
+import { normalizeScopes, parseScopes, scopeDenial, scopeFromKey, scopeKeys, serializeScopes } from '../../src/http/auth/apikeys';
 import { clearSessionCookies } from '../../src/http/auth/cookies';
 import { verifyJwt } from '../../src/http/auth/jwt';
 import { matchUrlRule } from '../../src/http/auth/policy';
-import type { ValidatedKey } from '../../src/http/auth/principal';
-import { isTokenEndpoint, resolveBearer } from '../../src/http/security';
+import { keyIsFullPower, type ValidatedKey } from '../../src/http/auth/principal';
+import { isTokenEndpoint, resolveBearer, syncKeyMatches } from '../../src/http/security';
 import { isSafeRedirect, withError } from '../../src/features/auth/redirects';
 
 const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
@@ -28,7 +28,7 @@ describe('AuthIT allowlist', async () => {
 });
 
 describe('SessionAllowlistTest', () => {
-  test('reviewEmailIsAdmittedOnlyWhileReviewLoginIsEnabled', async () => {
+  test('admitsTheReviewEmailOnlyWhileReviewLoginIsEnabled', async () => {
     const hash = '$2a$04$' + 'a'.repeat(53);
     expect(sessionAdmits((await cfg({ REVIEW_LOGIN_EMAIL: 'r@x.com', REVIEW_LOGIN_PASSWORD_HASH: hash })).auth, 'R@x.com')).toBe(true);
     expect(sessionAdmits((await cfg({ REVIEW_LOGIN_EMAIL: 'r@x.com' })).auth, 'r@x.com')).toBe(false);
@@ -37,6 +37,15 @@ describe('SessionAllowlistTest', () => {
 });
 
 describe('ApiKeyFilterTest', () => {
+  test('exactSyncKeyGrantsRoleSync', () => expect(syncKeyMatches('s3cret', 's3cret')).toBe(true));
+  test('wrongOrPartialKeyGrantsNothing', () => {
+    for (const k of ['s3cre', 's3cret2', 'S3CRET', '']) expect(syncKeyMatches('s3cret', k)).toBe(false);
+  });
+  // AUTH_SYNC_API_KEY defaults to empty: an empty header must not match it.
+  test('unsetSyncKeyNeverMatches', () => {
+    expect(syncKeyMatches('', '')).toBe(false);
+    expect(syncKeyMatches(null, 'anything')).toBe(false);
+  });
   const key = (...scopes: ('read' | 'report' | 'write' | 'staff' | 'keys')[]): ValidatedKey => ({ keyId: crypto.randomUUID(), user: null as never, scopes: normalizeScopes(scopes) });
   test('anyKeyMayRevokeItselfButNoOtherKey', () => {
     const self = key('read');
@@ -63,13 +72,39 @@ describe('ApiKeyFilterTest', () => {
   });
 });
 
+describe('ApiKeyScopeTest', () => {
+  test('nullMeansFullPowerEmptyMeansReadOnlyAndReadIsImplied', () => {
+    expect(scopeKeys(normalizeScopes(null))).toEqual(['read', 'report', 'write', 'staff', 'keys']);
+    expect(scopeKeys(normalizeScopes([]))).toEqual(['read']);
+    expect(scopeKeys(normalizeScopes(['staff']))).toEqual(['read', 'staff']);
+  });
+  test('roundTripsThroughTheColumn', () => {
+    expect(serializeScopes(new Set(['read', 'staff'] as const))).toBe('read,staff');
+    expect(scopeKeys(parseScopes('read,staff'))).toEqual(['read', 'staff']);
+    expect(scopeKeys(parseScopes('read,write,staff'))).toEqual(['read', 'report', 'write', 'staff']);
+    expect(scopeKeys(parseScopes('keys,read,staff,write'))).toEqual(['read', 'report', 'write', 'staff', 'keys']);
+    expect(serializeScopes(normalizeScopes(null))).toBe('read,report,write,staff,keys');
+    expect(scopeKeys(parseScopes('read,report'))).toEqual(['read', 'report']);
+    expect(scopeKeys(parseScopes(' WRITE '))).toEqual(['read', 'report', 'write']);
+  });
+  // apps/mcp gives staff read, report, staff and write: never full power.
+  test('everyScopeButKeysIsNotFullPower', () => {
+    expect(keyIsFullPower({ keyId: 'k', user: null as never, scopes: normalizeScopes(['report', 'staff', 'write']) })).toBe(false);
+    expect(keyIsFullPower({ keyId: 'k', user: null as never, scopes: normalizeScopes(null) })).toBe(true);
+  });
+  test('unknownScopeIsRejected', () => {
+    expect(scopeFromKey('admin')).toBeNull();
+    expect(() => parseScopes('read,admin')).toThrow();
+  });
+});
+
 describe('SafeRedirectTest', () => {
   test.each(['https://ceitba.org.ar', 'https://ceitba.org.ar/', 'https://ceitba.org.ar/manage?tab=1#x', 'https://CEITBA.org.ar/manage',
-    'https://ceitba.org.ar:443/manage', 'http://localhost:3000/callback', 'http://localhost:5175'])('accepts %s', (u) => expect(isSafeRedirect(u)).toBe(true));
+    'https://ceitba.org.ar:443/manage', 'http://localhost:3000/callback', 'http://localhost:5175'])('acceptsAllowedOrigins %s', (u) => expect(isSafeRedirect(u)).toBe(true));
   test.each(['', ' ', 'https://ceitba.org.ar.evil.com', 'https://ceitba.org.ar.evil.com/manage', 'https://ceitba.org.ar@evil.com/',
     'https://user@ceitba.org.ar/', 'https://ceitba.org.ar:8443/', 'http://ceitba.org.ar/', 'http://localhost:30001/',
     'http://localhost:3000.evil.com/', 'https://ceitba.org.ar\\@evil.com', '//ceitba.org.ar/manage', '/manage', 'javascript:alert(1)',
-    'https://evil.com/?https://ceitba.org.ar'])('rejects %p', (u) => expect(isSafeRedirect(u)).toBe(false));
+    'https://evil.com/?https://ceitba.org.ar'])('rejectsEverythingElse %p', (u) => expect(isSafeRedirect(u)).toBe(false));
   test('rejectsNull', () => expect(isSafeRedirect(null)).toBe(false));
   test('withError', () => {
     expect(withError('https://ceitba.org.ar', 'invalid_state')).toBe('https://ceitba.org.ar?error=invalid_state');

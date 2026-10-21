@@ -389,7 +389,7 @@ function plusDays(now: Micros, days: number): Micros {
   return now + days * 86_400_000_000;
 }
 
-function misconfiguration(rl: { email?: string; passwordHash?: string }): string {
+export function misconfiguration(rl: { email?: string; passwordHash?: string }): string {
   if (rl.email === undefined) return 'REVIEW_LOGIN_PASSWORD_HASH is set but REVIEW_LOGIN_EMAIL is empty: set both, or neither.';
   if (rl.passwordHash === undefined) {
     return 'REVIEW_LOGIN_EMAIL is set but REVIEW_LOGIN_PASSWORD_HASH is empty (if it is set in .env, '

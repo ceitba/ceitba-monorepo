@@ -29,3 +29,42 @@ test('readinessGoesDownDuringTheDrainThenTheServerStops', async () => {
     await dropDatabase(db);
   }
 }, 30_000);
+
+// ShutdownDrainTest: the drain is waited before the graceful stop, and the HTTP
+// server is stopped only after it (Java: ShutdownDrain stops in a higher phase than
+// WebServerGracefulShutdownLifecycle).
+async function startWithDrain(drain: string) {
+  const db = await cloneDatabase('sd');
+  const { jdbc, user, password } = jdbcParts(withDatabase(await pgServerUrl(), db));
+  const s = await start({
+    env: { ...CONTRACT_ENV, DATABASE_URL: jdbc, POSTGRES_USER: user, POSTGRES_PASSWORD: password, PORT: '0', SHUTDOWN_DRAIN: drain },
+    overrides: { log: silentLogger },
+    jobs: false,
+  });
+  return { s, drop: () => dropDatabase(db) };
+}
+
+test('waitsTheDrainWhenStopping', async () => {
+  const { s, drop } = await startWithDrain('PT0.2S');
+  try {
+    const t0 = performance.now();
+    await s.shutdown('test');
+    expect(performance.now() - t0).toBeGreaterThanOrEqual(200);
+    expect(s.deps.availability.acceptingTraffic).toBe(false);
+  } finally {
+    await drop();
+  }
+}, 30_000);
+
+test('stopsBeforeTheGracefulWebServerShutdown', async () => {
+  const { s, drop } = await startWithDrain('PT0.3S');
+  try {
+    const stopping = s.shutdown('test');
+    // Still serving during the drain: the web server's graceful stop comes after it.
+    expect((await fetch(`${s.url}/api/v1/careers`)).status).toBe(200);
+    await stopping;
+    await expect(fetch(`${s.url}/api/v1/careers`)).rejects.toThrow();
+  } finally {
+    await drop();
+  }
+}, 30_000);

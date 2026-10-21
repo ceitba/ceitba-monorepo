@@ -188,6 +188,11 @@ async function apiKeyRoles(deps: Deps, k: Parameters<typeof keyHas>[0]): Promise
   return roles;
 }
 
+/** ApiKeyFilter: the static AUTH_SYNC_API_KEY (ROLE_SYNC), exact and constant-time; an unset key never matches. */
+export function syncKeyMatches(configured: string | null | undefined, presented: string): boolean {
+  return configured != null && configured.trim() !== '' && constantTimeEquals(presented, configured);
+}
+
 function constantTimeEquals(a: string, b: string): boolean {
   const x = Buffer.from(a, 'utf8');
   const y = Buffer.from(b, 'utf8');
@@ -228,7 +233,7 @@ export async function authenticateAndAuthorize(deps: Deps, req: Request, state: 
         if (denial) return jsonError(403, INSUFFICIENT_SCOPE, denial, state.requestUri, now);
         state.principal = { kind: 'apiKey', key: validated, roles: await apiKeyRoles(deps, validated) };
       }
-    } else if (deps.config.auth.syncApiKey.trim() !== '' && constantTimeEquals(key, deps.config.auth.syncApiKey)) {
+    } else if (syncKeyMatches(deps.config.auth.syncApiKey, key)) {
       state.principal = { kind: 'sync', roles: new Set<Role>(['SYNC']) };
     }
   }
