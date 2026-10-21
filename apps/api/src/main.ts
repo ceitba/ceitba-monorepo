@@ -12,6 +12,7 @@ import { loadConfig, type Config } from './config';
 import { migrate } from './db/migrate';
 import { dedicatedSessionOptions } from './db/session';
 import { buildDeps, type Deps, type DepsOverrides } from './deps';
+import { BULK_MAX_BODY_BYTES } from './http/body';
 import { createApp, type App } from './http/app';
 import { createLogger } from './infra/logger';
 import { discoverLifecycle, JobScheduler, runShutdownHooks, runStartupHooks, type Discovered } from './jobs/scheduler';
@@ -53,8 +54,8 @@ export async function start(opts: { env?: Record<string, string | undefined>; ov
     // Dual stack, like Tomcat: the image's health check hits localhost (::1 on alpine).
     hostname: '::',
     idleTimeout: 120,
-    // Bodies are read by the route wrapper; Tomcat's default max POST size does not apply to JSON.
-    maxRequestBodySize: 64 * 1024 * 1024,
+    // The hard ceiling; the route wrapper caps each body lower (src/http/body.ts: 1 MiB unless the route says more).
+    maxRequestBodySize: BULK_MAX_BODY_BYTES,
     fetch: (req, srv) => app.fetch(req, srv),
   });
   const lifecycle: Discovered = opts.jobs === false ? { jobs: [], startup: [], shutdown: [] } : await discoverLifecycle(deps);

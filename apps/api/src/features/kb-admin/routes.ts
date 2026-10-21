@@ -16,6 +16,7 @@ import { KbImportRequest } from '../kb-reader/dto';
 import { ap } from './params';
 import { kbAdmin } from './service';
 import { jackson, readJacksonTree } from './values';
+import { BULK_MAX_BODY_BYTES } from '../../http/body';
 
 const STAGES = ['digest', 'plan', 'write', 'retry'];
 const ADMIN = ['Subject wikis - admin'];
@@ -205,7 +206,7 @@ export default defineRoutes((r, deps) => {
   // ---- StaffKbController (web.kb: Spring's own parameter errors; kb-reader's services) ----
 
   const STAFF_KB = ['Subject wikis - staff'];
-  r.post('/v1/staff/kb/subjects/{subjectId}/import', { tags: STAFF_KB, summary: "Import a subject's wiki pages (one transaction; rejected pages keep their last revision)", params: { subjectId: param.string() }, body: KbImportRequest },
+  r.post('/v1/staff/kb/subjects/{subjectId}/import', { tags: STAFF_KB, summary: "Import a subject's wiki pages (one transaction; rejected pages keep their last revision)", params: { subjectId: param.string() }, body: KbImportRequest, maxBodyBytes: BULK_MAX_BODY_BYTES },
     async ({ params, body }) => jackson(await kbReader(deps).importer.importSubject(params.subjectId!, { pages: (body.pages ?? []) as never[], replace: body.replace as boolean })));
   r.post('/v1/staff/kb/pages/{pageId}/hide', { tags: STAFF_KB, summary: 'Hide a page from readers', currentUser: true, params: { pageId: param.uuid() }, argOrder: ['user', 'params'] },
     async ({ user, params }) => jackson(await kbReader(deps).moderation.hide(user!.id, params.pageId!)));

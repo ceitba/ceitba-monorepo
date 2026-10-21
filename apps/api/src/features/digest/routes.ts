@@ -10,6 +10,7 @@ import { requestParam } from '../mail/requestParam';
 import { mailBeans } from '../mail/service';
 import { digestBeans } from './beans';
 import { CorrectionVoteRequest, CreateRequest, PatchRequest, SubscriptionRequest } from './dto';
+import { CONTENT_MAX_BODY_BYTES } from '../../http/body';
 
 // The Java mapping's {id:[0-9a-fA-F]{8}-...{12}} with the {n} quantifiers spelled out: policy.ts ruleKey()
 // cuts a regex at its first '}', so a quantifier would break the METHOD_RULES lookup (reported).
@@ -23,10 +24,10 @@ export default defineRoutes((r, deps) => {
 
   r.get('/v1/digests', { tags }, () => b().service.list());
   r.get('/v1/digests/quota', { tags }, async () => ({ ...(await b().service.quota()), senderStatus: await mailBeans(deps).accounts.senderStatus() }));
-  r.post('/v1/digests', { tags, body: CreateRequest, status: 201 }, ({ body }) => b().service.create(body));
+  r.post('/v1/digests', { tags, body: CreateRequest, maxBodyBytes: CONTENT_MAX_BODY_BYTES, status: 201 }, ({ body }) => b().service.create(body));
   r.get(`/v1/digests${ID}`, { tags, params: id }, ({ params }) => b().service.detail(params.id!));
   r.get(`/v1/digests${ID}/stats`, { tags, params: id }, ({ params }) => b().service.stats(params.id!));
-  r.patch(`/v1/digests${ID}`, { tags, params: id, body: PatchRequest }, ({ params, body }) => b().service.patch(params.id!, body));
+  r.patch(`/v1/digests${ID}`, { tags, params: id, body: PatchRequest, maxBodyBytes: CONTENT_MAX_BODY_BYTES }, ({ params, body }) => b().service.patch(params.id!, body));
   r.get(`/v1/digests${ID}/preview`, { tags, params: id, query: { mode: param.string({ required: false }) }, currentUser: true },
     async ({ params, user }) => new Response(await b().service.previewHtml(params.id!, user!.id), {
       status: 200, headers: { 'Content-Type': 'text/html;charset=UTF-8' },

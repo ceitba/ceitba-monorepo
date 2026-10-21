@@ -22,6 +22,7 @@ import { newsPaging } from './paging';
 import { ArticleLinkPreviewService, NOT_FOUND_HTML, previewHtml } from './preview';
 import { NewsSitemapService, dbSitemapSource, sitemapXml } from './sitemap';
 import { VoteService } from './votes';
+import { CONTENT_MAX_BODY_BYTES } from '../../http/body';
 
 const ALL_STATUSES = 'all';
 
@@ -104,7 +105,7 @@ export default defineRoutes((r, deps) => {
     return s.articles.getById(params.id!, includesDrafts);
   });
 
-  r.post('/v1/articles', { tags: articleTags, body: ArticleInput, currentUser: true, status: 201 }, async ({ c, body: req }) => {
+  r.post('/v1/articles', { tags: articleTags, body: ArticleInput, maxBodyBytes: CONTENT_MAX_BODY_BYTES, currentUser: true, status: 201 }, async ({ c, body: req }) => {
     const user = await currentUser(c);
     const independentAuthor = !access.isStaff(principal(c)) && access.isIndependent(req.organization);
     let status = req.status !== null ? req.status : 'published';
@@ -120,7 +121,7 @@ export default defineRoutes((r, deps) => {
     }, req.organization, user.id);
   });
 
-  r.patch('/v1/articles/{id}', { tags: articleTags, params: { id: param.string() }, body: ArticlePatchInput }, async ({ c, params, body: req }) => {
+  r.patch('/v1/articles/{id}', { tags: articleTags, params: { id: param.string() }, body: ArticlePatchInput, maxBodyBytes: CONTENT_MAX_BODY_BYTES }, async ({ c, params, body: req }) => {
     const p = principal(c);
     const id = params.id!;
     const staff = access.isStaff(p);
@@ -196,7 +197,7 @@ export default defineRoutes((r, deps) => {
 
   r.get('/v1/news/events/{id}', { tags: eventTags, params: { id: param.string() } }, ({ params }) => s.events.get(params.id!));
 
-  r.post('/v1/news/events', { tags: eventTags, body: NewsEventInput, currentUser: true, status: 201 }, async ({ c, body: req }) => {
+  r.post('/v1/news/events', { tags: eventTags, body: NewsEventInput, maxBodyBytes: CONTENT_MAX_BODY_BYTES, currentUser: true, status: 201 }, async ({ c, body: req }) => {
     const user = await currentUser(c);
     return s.events.create({
       id: req.id, title: req.title!, eventDate: req.eventDate!, startTime: req.startTime!, endTime: req.endTime!, location: req.location!,
@@ -206,7 +207,7 @@ export default defineRoutes((r, deps) => {
     });
   });
 
-  r.patch('/v1/news/events/{id}', { tags: eventTags, params: { id: param.string() }, body: NewsEventPatchInput }, ({ params, body: req }) =>
+  r.patch('/v1/news/events/{id}', { tags: eventTags, params: { id: param.string() }, body: NewsEventPatchInput, maxBodyBytes: CONTENT_MAX_BODY_BYTES }, ({ params, body: req }) =>
     s.events.update(params.id!, {
       title: req.title, eventDate: req.eventDate, startTime: req.startTime, endTime: req.endTime, location: req.location,
       category: req.category, description: req.description,

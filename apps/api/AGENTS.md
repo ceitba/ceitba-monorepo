@@ -179,7 +179,8 @@ export default defineRoutes((r, deps) => {
   with the API's conversion-error and "Required request parameter" messages), `body` (+ `bodyOptional` for
   an optional body, `bodyValidation: 'bindOnly'` to bind without validating, `rawBody` for a raw string body),
   `currentUser: true` (the caller, JIT-provisioned), `argOrder` when the order of argument checks decides which
-  400/403 wins, `status`, `summary`/`tags`/`hidden` (OpenAPI).
+  400/403 wins, `status`, `summary`/`tags`/`hidden` (OpenAPI), `maxBodyBytes` (bodies are capped at 1 MiB, 413
+  `PayloadTooLarge` beyond; raise it only for bulk routes, `src/http/body.ts`).
 - Return a value (serialized as JSON with `status`), `undefined`/`null` (empty body), or a `Response` from the
   helpers: `json(body, status, headers)`, `noContent(headers)`, `found(location, headers)`, `emptyStatus(404)`.
 - The caller: `await currentUser(c)` (JIT-provisions the user row), `await optionalUser(c)` (null when

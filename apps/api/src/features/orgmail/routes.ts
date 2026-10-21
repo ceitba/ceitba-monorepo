@@ -7,6 +7,7 @@ import { jv, param } from '../../http/validation';
 import { mailBeans } from '../mail/service';
 import { requestParam } from '../mail/requestParam';
 import { orgMailBeans } from './beans';
+import { CONTENT_MAX_BODY_BYTES } from '../../http/body';
 
 // AnnouncementRequest(String subject, String body): no @Valid.
 const AnnouncementRequest = jv.object({ subject: jv.string(), body: jv.string() });
@@ -26,9 +27,9 @@ export default defineRoutes((r, deps) => {
   r.delete('/v1/organizations/{slug}/mail', { tags, params: slug, status: 204, summary: "Disconnect the org's Gmail account" },
     async ({ params }) => { await mailBeans(deps).accounts.disconnectOrg(params.slug!); });
   r.get('/v1/organizations/{slug}/announcements', { tags, params: slug }, ({ params }) => s().list(params.slug!));
-  r.post('/v1/organizations/{slug}/announcements', { tags, params: slug, currentUser: true, body: AnnouncementRequest, bodyValidation: 'bindOnly', status: 201 },
+  r.post('/v1/organizations/{slug}/announcements', { tags, params: slug, currentUser: true, body: AnnouncementRequest, bodyValidation: 'bindOnly', maxBodyBytes: CONTENT_MAX_BODY_BYTES, status: 201 },
     ({ params, user, body }) => s().create(params.slug!, body.subject, body.body, user!.id));
-  r.patch('/v1/organizations/{slug}/announcements/{id}', { tags, params: slugId, body: AnnouncementRequest, bodyValidation: 'bindOnly' },
+  r.patch('/v1/organizations/{slug}/announcements/{id}', { tags, params: slugId, body: AnnouncementRequest, bodyValidation: 'bindOnly', maxBodyBytes: CONTENT_MAX_BODY_BYTES },
     ({ params, body }) => s().update(params.slug!, params.id!, body.subject, body.body));
   r.delete('/v1/organizations/{slug}/announcements/{id}', { tags, params: slugId, status: 204 },
     async ({ params }) => { await s().delete(params.slug!, params.id!); });

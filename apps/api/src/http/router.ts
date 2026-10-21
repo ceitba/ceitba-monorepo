@@ -21,6 +21,7 @@ import { evaluateRule } from './auth/checks';
 import { optionalUser } from './auth/context';
 import { METHOD_RULES, ruleKey, type Method } from './auth/policy';
 import type { UserRow } from './auth/repo';
+import { readBodyText } from './body';
 import type { AppContext } from './context';
 import { AccessDeniedError, MalformedBodyError, UnsupportedMediaTypeError } from './errors';
 import { resolveRequestLocale } from './locale';
@@ -49,6 +50,8 @@ export interface RouteSpec<
    * too (to read it with src/lib/jacksonTree.ts when key order or number types matter).
    */
   rawBody?: boolean;
+  /** Body size cap in bytes (default 1 MiB, src/http/body.ts); larger -> 413 PayloadTooLarge. */
+  maxBodyBytes?: number;
   /** `@CurrentUser User user`. */
   currentUser?: boolean;
   /** Java argument order when it matters (which 400/403 wins). Default params, query, body, user. */
@@ -184,7 +187,7 @@ function isJsonCompatible(ct: string): boolean {
 }
 
 async function readBody(c: AppContext, spec: RouteSpec): Promise<{ raw: string | null; json: unknown }> {
-  const text = await c.req.raw.text();
+  const text = await readBodyText(c.req.raw, spec.maxBodyBytes);
   if (spec.rawBody) return { raw: text, json: undefined };
   const ct = c.req.header('content-type');
   const empty = text.length === 0;

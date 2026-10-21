@@ -8,6 +8,7 @@ import { javaIsBlank, javaTrim } from '../../lib/javaCompat';
 import { DataSyncService } from './dataSync';
 import { dataSyncResultJson } from './dto';
 import { FirestoreImportService, importResponse, type FirestoreExport } from './firestoreImport';
+import { BULK_MAX_BODY_BYTES } from '../../http/body';
 
 // web/sync/dto/FirestoreExport (bound without @Valid; unknown properties ignored).
 const FirestoreUserDoc = jv.object({
@@ -81,6 +82,6 @@ export default defineRoutes((r, deps) => {
   // One-time migration of the legacy Firestore project; dryRun=true runs every document and rolls it back.
   r.post('/v1/sync/import/firestore', {
     tags, summary: 'Import a legacy Firestore export (Usuarios, Benefits, Propuestas)',
-    body: FirestoreExportBody, bodyValidation: 'bindOnly', query: { dryRun: param.bool({ def: false }) }, argOrder: ['body', 'query'],
+    body: FirestoreExportBody, bodyValidation: 'bindOnly', maxBodyBytes: BULK_MAX_BODY_BYTES, query: { dryRun: param.bool({ def: false }) }, argOrder: ['body', 'query'],
   }, async ({ body, query }) => importResponse(await firestore.importExport(toExport(body), query.dryRun!)));
 });
