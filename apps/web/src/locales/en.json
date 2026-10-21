@@ -171,7 +171,32 @@
       "addOrgTitle": "Add {{name}} to an organization",
       "addOrgField": "Organization",
       "addOrgHint": "They join as a member. You can make them an admin from their row afterwards.",
-      "addOrgConfirm": "Add"
+      "addOrgConfirm": "Add",
+      "invites": {
+        "open": "Invite by email",
+        "title": "Invite to {{org}} by email",
+        "emailsLabel": "Emails",
+        "emailsHint": "One per line or comma-separated. People who already signed in join right away; the rest join when they first sign in.",
+        "roleLabel": "Role",
+        "submit_one": "Invite {{count}}",
+        "submit_other": "Invite {{count}}",
+        "done": "Done: {{added}} added, {{pending}} pending their first sign-in.",
+        "invalidEmails": "One of the emails is invalid or isn't allowed to sign in.",
+        "tooMany": "You can invite up to {{max}} emails at a time.",
+        "pendingTitle_one": "{{count}} pending invite to {{org}}",
+        "pendingTitle_other": "{{count}} pending invites to {{org}}",
+        "pendingHint": "They join the organization the first time they sign in.",
+        "revokeAria": "Cancel the invite of {{email}} to {{org}}",
+        "revoked": "Cancelled the invite of {{email}} to {{org}}.",
+        "notFound": "{{email}} hasn't signed in yet",
+        "notFoundHint": "Invite them and they'll join {{org}} the first time they sign in.",
+        "inviteOne": "Invite {{email}}",
+        "alreadyMembers": "They were already members of the organization.",
+        "loadFailed": "Couldn't load the pending invites to {{org}}",
+        "revokeTitle": "Cancel the invite?",
+        "revokeBody": "{{email}} won't join {{org}} when they sign in. You can invite them again.",
+        "revokeConfirm": "Yes, cancel invite"
+      }
     },
     "organizations": {
       "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",

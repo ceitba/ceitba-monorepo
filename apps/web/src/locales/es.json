@@ -171,7 +171,32 @@
       "addOrgTitle": "Sumar a {{name}} a una organización",
       "addOrgField": "Organización",
       "addOrgHint": "Entra como miembro. Después podés hacerlo admin desde su fila.",
-      "addOrgConfirm": "Sumar"
+      "addOrgConfirm": "Sumar",
+      "invites": {
+        "open": "Invitar por email",
+        "title": "Invitar a {{org}} por email",
+        "emailsLabel": "Emails",
+        "emailsHint": "Uno por línea o separados por comas. Quien ya entró al sitio se suma al instante; el resto, cuando inicie sesión por primera vez.",
+        "roleLabel": "Rol",
+        "submit_one": "Invitar a {{count}}",
+        "submit_other": "Invitar a {{count}}",
+        "done": "Listo: {{added}} sumados, {{pending}} pendientes de su primer inicio de sesión.",
+        "invalidEmails": "Algún email no es válido o no puede entrar al sitio.",
+        "tooMany": "Podés invitar hasta {{max}} emails por vez.",
+        "pendingTitle_one": "{{count}} invitación pendiente a {{org}}",
+        "pendingTitle_other": "{{count}} invitaciones pendientes a {{org}}",
+        "pendingHint": "Se suman a la organización la primera vez que inicien sesión.",
+        "revokeAria": "Cancelar la invitación de {{email}} a {{org}}",
+        "revoked": "Cancelaste la invitación de {{email}} a {{org}}.",
+        "notFound": "{{email}} todavía no entró al sitio",
+        "notFoundHint": "Invitalo y se suma a {{org}} la primera vez que inicie sesión.",
+        "inviteOne": "Invitar a {{email}}",
+        "alreadyMembers": "Ya eran miembros de la organización.",
+        "loadFailed": "No pudimos cargar las invitaciones pendientes de {{org}}",
+        "revokeTitle": "¿Cancelar la invitación?",
+        "revokeBody": "{{email}} ya no se sumará a {{org}} cuando inicie sesión. Podés volver a invitarlo.",
+        "revokeConfirm": "Sí, cancelar invitación"
+      }
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
