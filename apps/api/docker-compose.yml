@@ -7,7 +7,7 @@ x-api: &api
   # repo root, since it needs the workspace's bun.lock.
   build:
     context: ../..
-    dockerfile: apps/api-ts/Dockerfile
+    dockerfile: apps/api/Dockerfile
   # Graceful shutdown (src/main.ts): a deploy lets the digest email in flight
   # finish; Docker's default 10s would SIGKILL it first.
   stop_grace_period: 90s

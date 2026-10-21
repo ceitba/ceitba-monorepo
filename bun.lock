@@ -8,8 +8,8 @@
         "lefthook": "2.1.17",
       },
     },
-    "apps/api-ts": {
-      "name": "@ceitba/api-ts",
+    "apps/api": {
+      "name": "@ceitba/api",
       "version": "0.1.0",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1154.0",
@@ -214,7 +214,7 @@
 
     "@braintree/sanitize-url": ["@braintree/sanitize-url@7.1.2", "", {}, "sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA=="],
 
-    "@ceitba/api-ts": ["@ceitba/api-ts@workspace:apps/api-ts"],
+    "@ceitba/api": ["@ceitba/api@workspace:apps/api"],
 
     "@ceitba/mcp": ["@ceitba/mcp@workspace:apps/mcp"],
 

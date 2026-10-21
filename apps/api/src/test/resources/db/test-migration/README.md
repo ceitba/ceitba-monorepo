@@ -1,7 +1,7 @@
 # Test-only migration mirrors
 
 Integration tests (the contract suite and the in-process tests) migrate with
-`db/migration` + this directory up to `IT_FLYWAY_TARGET` (`apps/api-ts/contract/support/pg.ts`)
+`db/migration` + this directory up to `IT_FLYWAY_TARGET` (`apps/api/contract/support/pg.ts`)
 because `V5+` in `db/migration` seed production-only data (superadmin, careers,
 organizations) that breaks count assertions and FK-restricted `deleteAll()` calls.
 

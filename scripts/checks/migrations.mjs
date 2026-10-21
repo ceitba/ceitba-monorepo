@@ -20,7 +20,7 @@ import { ROOT, baseRef, fileStatuses, report } from './lib.mjs';
 const API = 'apps/api/src';
 const PROD = `${API}/main/resources/db/migration`;
 const MIRROR = `${API}/test/resources/db/test-migration`;
-const TARGET_FILE = 'apps/api-ts/contract/support/pg.ts';
+const TARGET_FILE = 'apps/api/contract/support/pg.ts';
 const NAME = /^V(\d+(?:\.\d+)*)__[a-z0-9_]+\.sql$/;
 const DDL = /^\s*(create|alter|drop|rename|comment\s+on)\b/im;
 
