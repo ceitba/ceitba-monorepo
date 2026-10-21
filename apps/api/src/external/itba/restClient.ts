@@ -12,6 +12,7 @@ import {
   type SubjectType, type TimeSlot, withDefaultsFilled,
 } from '../itba';
 import { readCareerPlans, readCourseCommissions, WireFormatError, type CourseCommission, type Section, type SubjectEntry } from './wire';
+import { redactText, redactUrl, scrubError } from '../../lib/redact';
 
 const DAYS: readonly DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const SUBJECT_TYPES: readonly SubjectType[] = ['ANNUAL', 'SEMESTRAL', 'SAMINARY'];
@@ -141,11 +142,26 @@ export class RestItbaApiClient implements ItbaApiClient {
     return `${base}${path}/${encodeVar(this.opts.token)}?${qs}`;
   }
 
-  /** retrieve().body(T.class): 2xx with a JSON body, else an exception. An empty body is null. */
+  /** The URL as it may appear in an error or a log: the token (a path segment) masked. */
+  private safe(url: string): string {
+    return redactUrl(url, [this.opts.token]);
+  }
+
+  /**
+   * retrieve().body(T.class): 2xx with a JSON body, else an exception. An empty body is null. Errors never carry
+   * the token: the URL in messages is masked and a fetch error (whose `path` is the full URL) is scrubbed.
+   */
   private async get(url: string): Promise<unknown> {
-    const res = await fetch(url, { headers: { Accept: 'application/json, application/*+json' }, signal: AbortSignal.timeout(this.opts.timeoutMs) });
-    const text = await res.text();
-    if (res.status >= 400) throw new Error(`${res.status} ${res.statusText} from GET ${url}`);
+    let res: Response;
+    let text: string;
+    try {
+      res = await fetch(url, { headers: { Accept: 'application/json, application/*+json' }, signal: AbortSignal.timeout(this.opts.timeoutMs) });
+      text = await res.text();
+    } catch (e) {
+      throw new Error(`I/O error on GET request for "${this.safe(url)}": ${redactText((e as Error)?.message ?? String(e), [this.opts.token])}`,
+        { cause: scrubError(e, [this.opts.token]) });
+    }
+    if (res.status >= 400) throw new Error(`${res.status} ${res.statusText} from GET ${this.safe(url)}`);
     if (text.length === 0) return null;
     const type = (res.headers.get('content-type') ?? 'application/octet-stream').toLowerCase();
     if (!/^application\/(?:[^;]*\+)?json\b/.test(type)) throw new Error(`No HttpMessageConverter for content type [${type}]`);
