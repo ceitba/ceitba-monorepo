@@ -80,19 +80,22 @@ export class SubjectPlanService {
     });
   }
 
+  /** The subjects of all rows in one query (Java: subjectRepository.findById per row), in the rows' order. */
   private async toResponses(db: Db, rows: repo.PlanSubject[]): Promise<SubjectPlanResponse[]> {
-    const out: SubjectPlanResponse[] = [];
-    for (const ps of rows) out.push(await this.toResponse(db, ps));
-    return out;
+    const byId = new Map((await repo.findSubjectsByIds(db, [...new Set(rows.map((r) => r.subjectId))])).map((s) => [s.id, s]));
+    return rows.map((ps) => response(ps, byId.get(ps.subjectId)));
   }
 
-  /** Enriched with the subject's name + credits (subjectRepository.findById per row). */
+  /** Enriched with the subject's name + credits. */
   private async toResponse(db: Db, ps: repo.PlanSubject): Promise<SubjectPlanResponse> {
-    const s = await repo.findSubject(db, ps.subjectId);
-    return {
-      subjectId: ps.subjectId, planId: ps.planId, section: ps.section, year: ps.year, semester: ps.semester,
-      dependencies: ps.dependencies, creditsRequired: ps.creditsRequired,
-      subject: s ? { id: s.id, name: s.name, credits: s.credits } : null,
-    };
+    return response(ps, await repo.findSubject(db, ps.subjectId));
   }
+}
+
+function response(ps: repo.PlanSubject, s: repo.SubjectRow | null | undefined): SubjectPlanResponse {
+  return {
+    subjectId: ps.subjectId, planId: ps.planId, section: ps.section, year: ps.year, semester: ps.semester,
+    dependencies: ps.dependencies, creditsRequired: ps.creditsRequired,
+    subject: s ? { id: s.id, name: s.name, credits: s.credits } : null,
+  };
 }
