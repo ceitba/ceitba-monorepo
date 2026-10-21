@@ -43,7 +43,7 @@ jobs:
         with:
           # The merge queue compares against the group's base commit, so it needs history.
           fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           # merge_group has no PR payload: diff the queued commit against its base.

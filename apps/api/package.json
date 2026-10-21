@@ -31,16 +31,16 @@
     "linkedom": "0.18.13",
     "lru-cache": "11.5.3",
     "nodemailer": "10.1.7",
-    "parse5": "8.0.0",
+    "parse5": "8.0.1",
     "pino": "10.4.0",
     "postgres": "3.4.9",
     "sanitize-html": "2.18.1",
     "unpdf": "1.9.1",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "12.2.1",
-    "@types/bun": "1.4.2",
+    "@types/bun": "1.4.3",
     "@types/nodemailer": "8.0.2",
     "@types/sanitize-html": "2.16.2",
     "drizzle-kit": "0.31.11",
