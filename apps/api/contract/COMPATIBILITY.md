@@ -189,7 +189,7 @@ Each was a security finding on the port; the tests that pin them skip on the Jav
 | Change | Java | Bun | Test |
 |---|---|---|---|
 | Rate-limit path | matched the raw URI: `/v1/articles/x/v%6Ftes` reached the route but escaped the votes bucket | matches the decoded path | `rate-limit-decoded-path.contract.test.ts` |
-| Request body size | no cap on JSON bodies | 1 MiB per body, 10 MiB on authored content (articles, events, announcements, digests), 64 MiB on bulk imports (SYNC Firestore, STAFF wiki); 413 `PayloadTooLarge` beyond | `request-body-size.contract.test.ts` |
+| Request body size | no cap on JSON bodies | 1 MiB per body, 10 MiB on authored content (articles, events, announcements, digests), 64 MiB on bulk imports (SYNC Firestore, STAFF wiki); 413 `PayloadTooLarge` beyond, declared or chunked. Only a declared `Content-Length` over Bun's ceiling (68 MiB, `SERVER_MAX_BODY_BYTES`) gets Bun's own empty 413 | `request-body-size.contract.test.ts` |
 | Allowlist | checked only by the URL rules, so a de-allowlisted STAFF member or org admin kept the role-gated reads under the GET permitAll prefixes until the JWT expired | a JWT or API key that fails the allowlist is anonymous on a public route | `allowlist-public-reads.contract.test.ts` |
 | Mail OAuth state | HMAC-bound to user and org only: an org admin could send the consent URL to someone else | also bound to the browser by the `ceitba_mail_oauth_nonce` cookie (HttpOnly, `Path` = the path of `GOOGLE_MAIL_REDIRECT_URI`) | `mail-oauth-binding.contract.test.ts` |
 | Foreign errors | (n/a) | only the app's own errors carry their message; any other error is the generic 500 | `test/http/errors.test.ts` |
