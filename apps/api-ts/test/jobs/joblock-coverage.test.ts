@@ -32,7 +32,7 @@ describe('JobLockCoverageTest', () => {
       expect(scheduled).toEqual(covered);
       for (const j of jobs) {
         if (EXEMPT.has(j.name)) expect(j.lock).toBeUndefined();
-        else expect(j.lock && JOBS[j.lock].method).toBe(j.name);
+        else expect(j.lock ? (JOBS[j.lock].method as string) : null).toBe(j.name);
       }
     } finally {
       await deps.close();
