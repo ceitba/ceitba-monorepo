@@ -68,7 +68,7 @@ export async function buildDeps(config: Config, overrides: DepsOverrides = {}): 
     storage: overrides.storage ?? createObjectStorage(config, clock),
     mailTransport: overrides.mailTransport ?? createMailTransport(config, log.child({ component: 'mail' })),
     push,
-    itba: overrides.itba ?? createItbaClient(config, db),
+    itba: overrides.itba ?? createItbaClient(config, db, clock, log),
     drive: overrides.drive ?? createDriveClient(config, log.child({ component: 'drive' })),
     llm: overrides.llm ?? createLlmClients(config),
     google: overrides.google ?? createGoogleClients(config.auth),

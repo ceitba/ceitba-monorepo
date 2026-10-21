@@ -9,9 +9,8 @@
 import { sql } from 'drizzle-orm';
 import type { Config } from '../config';
 import type { Database } from '../db/client';
-import { SystemClock } from '../infra/clock';
-import { createLogger } from '../infra/logger';
-import { ART } from '../lib/time';
+import type { Clock } from '../infra/clock';
+import type { Logger } from '../infra/logger';
 import { RestItbaApiClient } from './itba/restClient';
 
 export type SubjectType = 'ANNUAL' | 'SEMESTRAL' | 'SAMINARY';
@@ -126,9 +125,10 @@ export class FakeItbaApiClient implements ItbaApiClient {
  * The Java client takes the ART ClockConfig clock, used only to fill a
  * CommissionQuery's defaults (DataSyncService always passes a filled one).
  */
-export function createItbaClient(config: Config, db: Database): ItbaApiClient {
+/** ItbaClientConfig: the fake (ITBA_API_USE_FAKE) or the REST client with the app's Clock bean and logger. */
+export function createItbaClient(config: Config, db: Database, clock: Clock, log: Logger): ItbaApiClient {
   const itba = config.integrations.itba;
   if (itba.useFake) return new FakeItbaApiClient(itba.fakeFromDb ? db : null);
-  return new RestItbaApiClient({ baseUrl: itba.baseUrl, token: itba.token, timeoutMs: itba.timeoutMs }, new SystemClock(ART),
-    createLogger(config).child({ component: 'RestClientItbaApiClient' }));
+  return new RestItbaApiClient({ baseUrl: itba.baseUrl, token: itba.token, timeoutMs: itba.timeoutMs }, clock,
+    log.child({ component: 'RestClientItbaApiClient' }));
 }
