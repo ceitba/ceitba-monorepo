@@ -205,7 +205,7 @@ services:
     # postgres:16-alpine is safe on the existing volume (same PG16 format; the
     # entrypoint re-chowns the data dir) and V60 rebuilds the text indexes for
     # the glibc collation.
-    image: pgvector/pgvector:0.8.6-pg16-bookworm@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+    image: pgvector/pgvector:0.8.7-pg16-bookworm@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
     container_name: ceitba-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ceitba_db}
