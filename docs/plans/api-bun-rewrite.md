@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| Status | Approved direction, not started |
+| Status | Implemented in PR #33 (`feat/api-bun`): phases 0–4 done, the Java app deleted and the Bun app moved to `apps/api` in the same branch (ahead of phase 6 step 5). Phase 5 partly done: the contract suite is green against both the Bun server and the last Java jar (CI job `api-contract-java`), the security review ran and its findings are fixed or documented (`apps/api/contract/COMPATIBILITY.md`). Remaining: the staging shadow run with replayed production reads, the load test of the hot routes, CEITBApp against staging, the real-credential spike checks (`api-bun-spikes.md` "Still to verify"), then phase 6 (cutover, smoke test, a week of watch). |
 | Owner | Ian Dalton |
 | Strategy | Big-bang: one cutover release |
 | Stack | Bun + Hono + Drizzle + zod; schema stays SQL-first |
 | Estimate | 10–13 weeks, one developer with agent help |
-| Next step | ADR + spec issue (`docs/agents/workflow.md`: the change touches auth, spans apps and moves schema ownership) |
+| Next step | Phase 5 shadow run on staging, then the cutover (phase 6) |
 
 ## 1. Goal and non-goals
 

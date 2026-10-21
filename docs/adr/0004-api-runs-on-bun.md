@@ -47,8 +47,9 @@ two-minute test run. We rewrote it in TypeScript on Bun and switched production 
 - Byte compatibility constrains the code: `src/lib/javaCompat.ts`, `docs/SERIALIZATION.md` (Jackson's date and
   number formats) and Java-shaped error messages stay, because clients already parse that output.
 - **Known parity gaps** (`apps/api/docs/DRIVE-PARITY.md`): Google Docs HTML is byte-identical to jsoup's on the
-  corpus, but PDF text from pdfjs matches pdfbox for only part of the files, so Slides/Sheets exports can get a
-  new content fingerprint after the cutover: a one-time re-store and wiki re-digest of those files.
+  corpus, but PDF text from pdfjs matches pdfbox for only part of the files. A Slides/Sheets re-export whose text
+  reads the same modulo whitespace, hyphens and ligatures keeps its stored fingerprint; the rest (producers Google
+  does not use, on the test corpus) get a one-time re-store and wiki re-digest the next time Drive reports a change.
 - **The OpenAPI document is maintained by hand.** `/api/docs.json` serves the last springdoc document of the Spring
   app (`apps/api/src/http/openapi.json`: same paths, operationIds, parameters and component schemas); nothing
   generates it any more, so a route change edits it in the same PR, and a test fails when the registered routes

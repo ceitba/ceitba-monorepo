@@ -5,17 +5,21 @@ Results of the dependency spikes in `docs/plans/api-bun-rewrite.md` §"Phase 2: 
 with the repo's fixtures. The plan's pass conditions name real credentials ("sends an FCM push", "a real Apuntes
 folder", "20 real Apuntes PDFs"). Those runs are still pending; see "Still to verify with real credentials".
 
-The throwaway scripts live outside the repo, in the session scratchpad, which is **not durable**:
-`/private/tmp/claude-502/-Users-selenios-repos-ceitba-ceitba-monorepo--claude-worktrees-modest-raman-8fde2b/712ebe31-1d07-4464-94cf-a1c40f953203/scratchpad/spikes/<area>/`. They are not committed. **Preserve these before the session is cleaned up**, for example by
-moving them into `apps/api-ts` test fixtures:
-- `html/jsoupish.ts` and `html/pipeline.ts`: the ~580-line jsoup port;
-- `html/goldens/`: 1,834 Java outputs;
-- `html/corpus/`;
-- `html/java/…/SpikeMain.java`: the Java oracle;
-- `pdf/pdfText.ts`, `pdf/extract.ts` (`javaStrip`), `pdf/pdfs/` (22 fixtures) and `pdf/java/PdfboxExtract.java`.
+The spike scripts were throwaway and are not in the repo. What the port needed was kept as code or fixtures:
 
-Without them, items 2 and 3 of "Changes to the plan" mean rewriting from this report. The snippets below are
-the parts worth keeping in any case.
+| Spike output | Where it is now |
+|---|---|
+| `html/jsoupish.ts`, `html/pipeline.ts` (the jsoup port) | ported into `apps/api/src/features/drive/logic/jsoup/` |
+| `html/goldens/` (1,834 Java outputs) | `apps/api/test/drive/fixtures/html/goldens/{corpus,gdocs,links}.jsonl` (`test/drive/HtmlGoldens.test.ts`) |
+| `html/corpus/` | `apps/api/test/drive/fixtures/html/corpus/` |
+| `html/java/…/SpikeMain.java` (the Java oracle) | `apps/api/test/drive/fixtures/html/java/SpikeMain.java` |
+| `pdf/pdfText.ts`, `pdf/extract.ts` (`javaStrip`) | `apps/api/src/features/drive/logic/pdfText.ts`, `src/lib/javaCompat.ts` |
+| `pdf/pdfs/` + `pdf/java/PdfboxExtract.java` | `apps/api/test/drive/fixtures/pdf/` (20 PDFs with their pdfbox outputs, `pdfbox.tsv`, `PdfboxExtract.java`; `test/drive/PdfText.test.ts`) |
+
+Not kept: the two large PDF fixtures (`pdfbox_large_images.pdf`, `pdfbox_large_text.pdf`, ~45 MB each, used only for the memory and
+blocking measurements of §3, whose numbers are below), the mupdf comparison scripts, and the scripts of the other
+spikes (firebase-admin, Drive, pgvector, nodemailer, S3, runtime). Their findings are this report and the code they
+led to; rerunning one means rewriting its script from the snippets below.
 
 **Environment**: Bun 1.4.0 (reports itself to libraries as `gl-node/26.3.0`), Node 26.4.0 (used only for
 mocks and the Node comparison), Temurin JDK 21.0.12, Docker 29.2, macOS (arm64). The Java side ran the real

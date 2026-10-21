@@ -1,5 +1,5 @@
 // GoogleDocsHtml.normalize + DocHtmlSanitizer.sanitize on the jsoup port, step
-// by step like the Java (spike 4: .spikes-archive/html/pipeline.ts), including
+// by step like the Java (spike 4, docs/plans/api-bun-spikes.md §4), including
 // the pretty-printed intermediates (normalize's doc.outerHtml() and sanitize's
 // doc.body().html(), both with default OutputSettings) whose whitespace text
 // nodes survive into the stored HTML, so the output (and the Doc content

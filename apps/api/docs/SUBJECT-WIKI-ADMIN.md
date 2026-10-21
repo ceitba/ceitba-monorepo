@@ -137,6 +137,14 @@ Limits: the DO key gate (`KB_LLM_API_KEY`) still applies to starting a run or an
 custom. Model ids with `/` in catalog URLs (`/models/{id}/probe`) need the SPA to encode them as `%2F`, which the
 API rejects with 400 (`src/http/app.ts`); probe them from the endpoint-aware UI path once an alias exists.
 
+
+**Trust boundary (known, accepted).** The API calls whatever `base_url` STAFF stores: `test`, `discover`, probes,
+runs and evals make server-side requests to it, including to private addresses (an internal GPU box is the point of
+the feature). There is no SSRF guard (no blocklist of loopback, link-local or metadata addresses), so a STAFF
+account can make the API reach internal services and read their answers through `test`/`discover`. This is a
+STAFF-only capability by design (security review of the Bun port, 2026-10); restrict who is STAFF rather than the
+URL. Revisit if endpoint management is ever opened to non-STAFF roles.
+
 ## 3. Cost analytics
 
 - Every HTTP call records `model, mode, stage, subjectId, inputTokens, cachedInputTokens, outputTokens, costUsd` in

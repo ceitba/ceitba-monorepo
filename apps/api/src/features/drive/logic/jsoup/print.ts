@@ -1,5 +1,5 @@
 // jsoup 1.21.2's printer and Element.text(), ported from the spike
-// (docs/plans/api-bun-spikes.md §4; .spikes-archive/html/jsoupish.ts): escapeMode
+// (docs/plans/api-bun-spikes.md §4): escapeMode
 // base, UTF-8, html syntax, prettyPrint(false) (`compact`) and the default pretty
 // print (indent 1, max padding 30; `innerPretty`). The tag classes were derived
 // from jsoup's behaviour and pinned by 1,834 Java goldens
