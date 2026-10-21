@@ -7,7 +7,8 @@ feature docs (the living specs of the API) are in `docs/`, and `docs/agents/spec
 which doc covers which path. It was a Spring Boot app until 2026 (`docs/adr/0004-api-runs-on-bun.md`); its
 observable behaviour (routes, status codes, JSON bytes, headers, cookies, JWTs, error bodies, jobs) was kept
 exactly, so web, MCP and mobile clients never changed. Keep it that way: a visible change is a deliberate,
-documented one.
+documented one. `contract/COMPATIBILITY.md` lists what clients depend on (cookies, JWTs, error codes, CORS, rate
+limits, health) with the test that holds each, and the intentional differences from Java.
 
 ## Commands (from `apps/api`)
 
