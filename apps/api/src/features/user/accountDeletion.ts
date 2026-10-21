@@ -6,18 +6,15 @@
 // cannot delete their account (409 LastActiveStaff; the check locks the active
 // staff rows), nor the only admin of an organization (409 LastOrgAdmin).
 //
-// Two steps belong to other features and are plugged in by them:
+// Two steps belong to other features; this service composes them from the owning features' services
+// (accountDeletionSteps), so a deletion never depends on which routes were registered (a jobs-only
+// process, a test without routes):
 //   'scheduleCorrections.withdrawVotesOf'  ScheduleCorrectionService.withdrawVotesOf
-//       (recount + re-evaluate the corrections the user voted on, under the commission lock)
-//   'drive.prepareAccountDeletion'         DriveModerationService.prepareAccountDeletion
+//       (recount + re-evaluate the corrections the user voted on, under the commission lock; the pushes of
+//       corrections that re-apply go out after commit)
+//   'drive.prepareAccountDeletion'         DriveModerationService.prepareAccountDeletionIn
 //       (withdraw the user's reports and recompute, kb.forgetFiles, stored copies deleted after commit)
-// The owning feature registers its implementation from its routes.ts:
-//   registerAccountDeletionStep('drive.prepareAccountDeletion', async (tx, userId, deps) => { ...; return afterCommit; });
 // A step may return a function run after the deletion commits (best effort).
-// While a step is not registered, a deletion that would need it (the user has
-// correction votes / Apuntes data) fails with 500 and logs which step is
-// missing instead of silently skipping it; accounts without such data are
-// deleted normally.
 
 import type { Deps } from '../../deps';
 import { withTx, type Db, type Tx } from '../../db/client';
@@ -25,35 +22,35 @@ import { LastActiveStaffError, LastOrgAdminError } from '../../http/errors';
 import { toPgTimestamp } from '../../lib/time';
 import * as del from './deletionRepo';
 import { lockActiveStaffIds, lockOrgAdmins, isActiveStaffAt } from './repo';
+import { ScheduleCorrectionService } from '../correction/service';
+import { driveServices } from '../drive/services';
+import { firePushes } from '../news/pushTriggers';
 
 export type AccountDeletionStepName = 'scheduleCorrections.withdrawVotesOf' | 'drive.prepareAccountDeletion';
 export type AccountDeletionStep = (tx: Tx, userId: string, deps: Deps) => Promise<void | (() => Promise<void>)>;
 
-const steps = new Map<AccountDeletionStepName, AccountDeletionStep>();
+export type AccountDeletionSteps = Record<AccountDeletionStepName, AccountDeletionStep>;
 
-/**
- * Registers (replaces) the implementation of a step; returns a function that undoes it, restoring
- * the implementation it replaced (a test stub must not leave the real step unregistered).
- */
-export function registerAccountDeletionStep(name: AccountDeletionStepName, step: AccountDeletionStep): () => void {
-  const previous = steps.get(name);
-  steps.set(name, step);
-  return () => {
-    if (steps.get(name) !== step) return;
-    if (previous) steps.set(name, previous);
-    else steps.delete(name);
+/** The steps, from the owning features' services. */
+export function accountDeletionSteps(): AccountDeletionSteps {
+  return {
+    'scheduleCorrections.withdrawVotesOf': async (tx, userId, deps) => {
+      const pushes = await new ScheduleCorrectionService(deps).withdrawVotesOf(tx, userId);
+      return pushes.length ? async () => firePushes(deps, pushes) : undefined;
+    },
+    'drive.prepareAccountDeletion': (tx, userId, deps) => driveServices(deps).moderation.prepareAccountDeletionIn(tx, userId),
   };
-}
-
-/** The steps registered so far (the app registers them while collecting the routes). */
-export function registeredAccountDeletionSteps(): AccountDeletionStepName[] {
-  return [...steps.keys()].sort();
 }
 
 export type DeletionOutcome = 'DELETED' | 'ANONYMIZED';
 
 export class AccountDeletionService {
-  constructor(private readonly deps: Deps) {}
+  private readonly steps: AccountDeletionSteps;
+
+  /** `steps`: replaces some steps (tests). */
+  constructor(private readonly deps: Deps, steps: Partial<AccountDeletionSteps> = {}) {
+    this.steps = { ...accountDeletionSteps(), ...steps };
+  }
 
   /** `db`: the pool (own transaction) or a caller's transaction (joins it, like @Transactional REQUIRED). */
   async deleteAccount(userId: string, db: Db = this.deps.db): Promise<DeletionOutcome> {
@@ -80,9 +77,9 @@ export class AccountDeletionService {
       await del.deleteWikiPersonalData(tx, userId);
       await del.detachNewsletterAuthorship(tx, userId);
       await del.deleteProposalData(tx, userId);
-      await this.step('scheduleCorrections.withdrawVotesOf', tx, userId, () => del.hasScheduleCorrectionVotes(tx, userId), afterCommit);
+      await this.step('scheduleCorrections.withdrawVotesOf', tx, userId, afterCommit);
       await del.detachScheduleCorrections(tx, userId);
-      await this.step('drive.prepareAccountDeletion', tx, userId, () => del.hasDriveData(tx, userId), afterCommit);
+      await this.step('drive.prepareAccountDeletion', tx, userId, afterCommit);
       await del.deleteDriveSources(tx, userId);
       await del.deleteKbReports(tx, userId);
       await del.deleteCapabilityGrants(tx, userId);
@@ -107,16 +104,8 @@ export class AccountDeletionService {
     return outcome;
   }
 
-  private async step(name: AccountDeletionStepName, tx: Tx, userId: string, needed: () => Promise<boolean>, afterCommit: (() => Promise<void>)[]) {
-    const s = steps.get(name);
-    if (s) {
-      const after = await s(tx, userId, this.deps);
-      if (typeof after === 'function') afterCommit.push(after);
-      return;
-    }
-    if (await needed()) {
-      this.deps.log.error(`Account deletion of ${userId} needs the '${name}' step, which no feature registered (registerAccountDeletionStep)`);
-      throw new Error(`Account deletion step '${name}' is not registered`);
-    }
+  private async step(name: AccountDeletionStepName, tx: Tx, userId: string, afterCommit: (() => Promise<void>)[]) {
+    const after = await this.steps[name](tx, userId, this.deps);
+    if (typeof after === 'function') afterCommit.push(after);
   }
 }

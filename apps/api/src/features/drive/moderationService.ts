@@ -5,6 +5,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
+import type { Tx } from '../../db/client';
 import { InvalidStateError, ValidationError } from '../../http/errors';
 import { javaIsBlank } from '../../lib/javaCompat';
 import { DriveJanitor, refOf, releasable } from './blobs';
@@ -15,7 +16,7 @@ import { kbTakedown } from './kbHooks';
 import { DRIVE_FILE_KINDS, type DriveFileKind, type DriveStaffDecision } from './logic/types';
 import { isFolderFile, PUBLICATIONS, SOURCE_STATUSES, type DriveFile, type DriveSource } from './model';
 import type { DriveRecalculator } from './recalculator';
-import { inSession, ts, type Session } from './session';
+import { inSession, Session, ts } from './session';
 import { filesOfSource } from './store';
 import * as views from './views';
 
@@ -176,6 +177,19 @@ export class DriveModerationService {
    * the stored copies of their sources for deletion after commit. Locks the
    * sources first, so a running sync cannot add rows behind it.
    */
+  /**
+   * prepareAccountDeletion inside the account deletion's transaction `tx` (its own Session, flushed here);
+   * returns what runs after the deletion commits (the session's after-commit hooks: stored copies deleted).
+   */
+  async prepareAccountDeletionIn(tx: Tx, userId: string): Promise<() => Promise<void>> {
+    const session = new Session(tx);
+    await this.prepareAccountDeletion(userId, session);
+    await session.flush();
+    return async () => {
+      for (const hook of session.afterCommitHooks) await hook();
+    };
+  }
+
   prepareAccountDeletion(userId: string, session?: Session): Promise<void> {
     return inSession(session ?? this.deps.db, async (s) => {
       await this.withdrawReportsOf(userId, s);

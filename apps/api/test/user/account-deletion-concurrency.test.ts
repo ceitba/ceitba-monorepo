@@ -2,12 +2,12 @@
 // (apps/api/src/test/java/org/ceitba/api/web/user/AccountDeletionIT.java): the last two
 // staff members delete their accounts at the same time. The guard locks the
 // active staff rows, so Bob's call waits for Alice's uncommitted deletion and then
-// sees he is the only one left. Plus the cross-feature step registry.
+// sees he is the only one left. Plus how a cross-feature step runs.
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { seedUser } from '../../contract/support/identity';
 import { LastActiveStaffError } from '../../src/http/errors';
-import { AccountDeletionService, registerAccountDeletionStep } from '../../src/features/user/accountDeletion';
+import { AccountDeletionService } from '../../src/features/user/accountDeletion';
 import { testApp, type TestApp } from '../support/app';
 
 let t: TestApp;
@@ -60,25 +60,17 @@ describe('AccountDeletionIT (concurrency)', () => {
     expect((await t.sql`SELECT 1 FROM public.ceitba_staff WHERE user_id = ${bob}`).length).toBe(1);
   }, 30_000);
 
-  test('aMissingCrossFeatureStepIsSkippedWhenTheUserHasNoSuchData', async () => {
-    await t.sql`DELETE FROM public.ceitba_staff WHERE user_id = ${alice}`;
-    // No correction votes / Apuntes data: deleted although no step is registered.
-    expect(await svc.deleteAccount(alice)).toBe('DELETED');
-  });
-
-  test('aRegisteredStepRunsInTheTransactionAndItsAfterCommitAfterwards', async () => {
+  test('aStepRunsInTheTransactionAndItsAfterCommitAfterwards', async () => {
     await t.sql`DELETE FROM public.ceitba_staff WHERE user_id = ${alice}`;
     const seen: string[] = [];
-    const unregister = registerAccountDeletionStep('drive.prepareAccountDeletion', async (tx, userId) => {
-      const [r] = await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM public."user" WHERE id = ${userId}`);
-      seen.push(`in-tx:${Number(r?.n)}`);
-      return async () => { seen.push(`after:${(await exists(userId)) ? 'present' : 'gone'}`); };
+    const stubbed = new AccountDeletionService(t.deps, {
+      'drive.prepareAccountDeletion': async (tx, userId) => {
+        const [r] = await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM public."user" WHERE id = ${userId}`);
+        seen.push(`in-tx:${Number(r?.n)}`);
+        return async () => { seen.push(`after:${(await exists(userId)) ? 'present' : 'gone'}`); };
+      },
     });
-    try {
-      expect(await svc.deleteAccount(alice)).toBe('DELETED');
-      expect(seen).toEqual(['in-tx:1', 'after:gone']);
-    } finally {
-      unregister();
-    }
+    expect(await stubbed.deleteAccount(alice)).toBe('DELETED');
+    expect(seen).toEqual(['in-tx:1', 'after:gone']);
   });
 });

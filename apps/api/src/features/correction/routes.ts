@@ -3,8 +3,6 @@
 // ones under /v1/staff/** plus hasRole('STAFF') (policy.ts METHOD_RULES).
 
 import { defineRoutes, json, noContent } from '../../http/router';
-import { firePushes } from '../news/pushTriggers';
-import { registerAccountDeletionStep } from '../user/accountDeletion';
 import { param } from '../../http/validation';
 import { bindSlots, CORRECTION_STATUSES, SuggestCorrectionRequest, VoteCorrectionRequest } from './dto';
 import { ScheduleCorrectionService } from './service';
@@ -14,13 +12,6 @@ export default defineRoutes((r, deps) => {
   const tags = ['Schedule corrections'];
   const staffTags = ['Schedule corrections (staff)'];
   const id = { id: param.uuid() };
-
-  // AccountDeletionService calls ScheduleCorrectionService.withdrawVotesOf in its
-  // transaction; pushes of corrections that re-apply go out after it commits.
-  registerAccountDeletionStep('scheduleCorrections.withdrawVotesOf', async (tx, userId, d) => {
-    const pushes = await new ScheduleCorrectionService(d).withdrawVotesOf(tx, userId);
-    return pushes.length ? async () => firePushes(d, pushes) : undefined;
-  });
 
   r.post('/v1/commissions/{commissionId}/schedule-corrections', {
     tags, summary: 'Suggest a corrected schedule for a commission',

@@ -13,8 +13,6 @@ import { CapabilityService } from '../capability/service';
 import type { Deps } from '../../deps';
 import { RegisterSourceRequest, ReportFileRequest, StaffCommentRequest, UpdateFileRequest, UpdateSourceRequest } from './dto';
 import { driveServices } from './services';
-import { Session } from './session';
-import { registerAccountDeletionStep } from '../user/accountDeletion';
 
 const APUNTES = 'apuntes';
 const BUFFER_KNOWN_LENGTH_UP_TO = 16 * 1024 * 1024;
@@ -42,16 +40,6 @@ const staffOf = (c: AppContext) => {
 export default defineRoutes((r, deps) => {
   const svc = () => driveServices(deps);
   const user = (u: UserRow | null) => u!;
-
-  // AccountDeletionService -> DriveModerationService.prepareAccountDeletion, inside the deletion's transaction.
-  registerAccountDeletionStep('drive.prepareAccountDeletion', async (tx, userId, d) => {
-    const session = new Session(tx);
-    await driveServices(d).moderation.prepareAccountDeletion(userId, session);
-    await session.flush();
-    return async () => {
-      for (const hook of session.afterCommitHooks) await hook();
-    };
-  });
 
   // ---- MyDriveController (/v1/me/drive) ------------------------------------------
 

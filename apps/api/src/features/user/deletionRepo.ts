@@ -173,17 +173,6 @@ async function tableExists(db: Db, qualifiedName: string): Promise<boolean> {
 
 // --- What the cross-feature steps need to know (see accountDeletion.ts) ----
 
-export async function hasScheduleCorrectionVotes(db: Db, u: string): Promise<boolean> {
-  const [r] = await db.execute<{ e: boolean }>(sql`SELECT EXISTS (SELECT 1 FROM public.schedule_correction_vote WHERE user_id = ${u}) AS e`);
-  return r?.e === true;
-}
-
-export async function hasDriveData(db: Db, u: string): Promise<boolean> {
-  const [r] = await db.execute<{ e: boolean }>(sql`SELECT EXISTS (SELECT 1 FROM wiki.drive_source WHERE user_id = ${u})
-    OR EXISTS (SELECT 1 FROM wiki.drive_file_report WHERE user_id = ${u}) AS e`);
-  return r?.e === true;
-}
-
 /** The orgs where the user is an admin (OrganizationMembershipService.requireNotLastAdmin). */
 export async function adminOrgsOf(db: Db, u: string): Promise<string[]> {
   const rows = await db.execute<{ org_slug: string }>(sql`SELECT org_slug FROM public.user_organizations WHERE user_id = ${u} AND role = 'admin'`);
