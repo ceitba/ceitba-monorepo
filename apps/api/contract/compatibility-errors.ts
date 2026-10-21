@@ -19,12 +19,12 @@ import { SCHEDULE_CORRECTION_REASONS } from '../src/features/correction/errors';
 export const DOC = join(import.meta.dir, 'COMPATIBILITY.md');
 const TESTS = join(import.meta.dir, 'tests');
 
-interface Row { source: string; status: number; code: string; message: string }
+export interface Row { source: string; status: number; code: string; message: string }
 
 const m = (s: string) => s.replace(/\|/g, '\\|');
 const one = (e: E.ApiError, source: string, message?: string): Row => ({ source, status: e.status, code: e.code, message: message ?? e.message });
 
-function rows(): Row[] {
+export function rows(): Row[] {
   const out: Row[] = [
     one(new E.ResourceNotFoundError('<Resource>', '<id>'), 'ResourceNotFoundError'),
     one(new E.ResourceAlreadyExistsError('<Resource>', '<id>'), 'ResourceAlreadyExistsError'),
@@ -60,6 +60,7 @@ function rows(): Row[] {
     one(new E.KbEndpointInUseError('<message>'), 'KbEndpointInUseError'),
     one(new E.MailSenderNotConnectedError('<message>'), 'MailSenderNotConnectedError / MailSenderNotConnected'),
     one(new E.RateLimitExceededError(7), 'RateLimitExceededError (per-user quotas; + Retry-After)', 'Rate limit exceeded. Retry in <n>s.'),
+    { source: 'per-IP rate limit (security filter; + Retry-After, X-RateLimit-*)', status: 429, code: 'TooManyRequests', message: 'Rate limit exceeded. Retry in <n>s.' },
     one(new E.MailQuotaExhaustedError('<message>', 0), 'MailQuotaExhaustedError (+ resumeAt, Retry-After)'),
     one(new E.FeatureNotConfiguredError('<message>'), 'FeatureNotConfiguredError'),
     one(new E.ExternalApiError('<service>', '<operation>'), 'ExternalApiError'),
@@ -75,9 +76,26 @@ function rows(): Row[] {
   return out.sort((a, b) => a.status - b.status || a.code.localeCompare(b.code) || a.source.localeCompare(b.source));
 }
 
-/** The first contract test file (by name) that names the code in quotes, else the mapping test. */
-function enforcedBy(code: string, files: [string, string][]): string {
-  const hit = files.find(([, text]) => text.includes(`'${code}'`) || text.includes(`"${code}"`) || text.includes(`"error":"${code}"`));
+/** Files that hold TS-only hardenings (skipped on the Java target): never the evidence for a Java-shared row. */
+const TS_ONLY = new Set(['allowlist-public-reads.contract.test.ts', 'mail-oauth-binding.contract.test.ts',
+  'rate-limit-decoded-path.contract.test.ts', 'request-body-size.contract.test.ts']);
+/** Rows whose code other rows share: the test that exercises that very class. */
+const OVERRIDES: Record<string, string> = {
+  'AccessDeniedError (METHOD_RULES denial)': 'career.contract.test.ts',
+  ReviewAccountRestrictedError: 'review-login.contract.test.ts',
+  StudyGroupForbiddenError: 'studygroup-controller.contract.test.ts',
+  ValidationError: 'api-key-scopes.contract.test.ts',
+  'BeanValidationError (@Valid body)': 'validation-locale.contract.test.ts',
+  'PayloadTooLargeError (body over the route cap; TS only)': 'request-body-size.contract.test.ts',
+  'per-IP rate limit (security filter; + Retry-After, X-RateLimit-*)': 'rate-limit.contract.test.ts',
+  'RateLimitExceededError (per-user quotas; + Retry-After)': 'media-endpoints.contract.test.ts',
+};
+
+/** The override, else the first dual-target contract test file (by name) naming the code in quotes, else the mapping test. */
+function enforcedBy(r: Row, files: [string, string][]): string {
+  const o = OVERRIDES[r.source];
+  if (o) return `\`${o}\``;
+  const hit = files.find(([f, text]) => !TS_ONLY.has(f) && (text.includes(`'${r.code}'`) || text.includes(`"${r.code}"`)));
   return hit ? `\`${hit[0]}\`` : '`test/http/errors.test.ts`';
 }
 
@@ -85,7 +103,7 @@ export function errorTable(): string {
   const files = readdirSync(TESTS).filter((f) => f.endsWith('.contract.test.ts')).sort()
     .map((f) => [f, readFileSync(join(TESTS, f), 'utf8')] as [string, string]);
   const lines = ['| Status | `error` | Message | Thrown as | Enforced by |', '|---|---|---|---|---|'];
-  for (const r of rows()) lines.push(`| ${r.status} | \`${r.code}\` | ${m(r.message)} | ${m(r.source)} | ${enforcedBy(r.code, files)} |`);
+  for (const r of rows()) lines.push(`| ${r.status} | \`${r.code}\` | ${m(r.message)} | ${m(r.source)} | ${enforcedBy(r, files)} |`);
   return lines.join('\n');
 }
 

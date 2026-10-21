@@ -69,14 +69,14 @@ asserts the code over HTTP (the mapping test when none does).
 | 400 | `INVALID_WEEK_START` | <message> | DigestException INVALID_WEEK_START | `digest-endpoints.contract.test.ts` |
 | 400 | `InvalidSlug` | <message> | InvalidBenefitSlugError | `staff-benefits.contract.test.ts` |
 | 400 | `SameAsSga` | <message> | ScheduleCorrectionError SAME_AS_SGA | `correction-schedule.contract.test.ts` |
-| 400 | `ValidationError` | <field>: <message>; ... (request locale) | BeanValidationError (@Valid body) | `auth-mobile.contract.test.ts` |
+| 400 | `ValidationError` | <field>: <message>; ... (request locale) | BeanValidationError (@Valid body) | `validation-locale.contract.test.ts` |
 | 400 | `ValidationError` | <message> | ConstraintViolationError | `auth-mobile.contract.test.ts` |
-| 400 | `ValidationError` | Validation failed for field '<field>' with value '<value>': <reason> | ValidationError | `auth-mobile.contract.test.ts` |
+| 400 | `ValidationError` | Validation failed for field '<field>' with value '<value>': <reason> | ValidationError | `api-key-scopes.contract.test.ts` |
 | 401 | `invalid_credentials` | Invalid email or password | InvalidCredentialsError | `review-login.contract.test.ts` |
 | 401 | `invalid_token` | <message> | InvalidTokenError | `auth.contract.test.ts` |
-| 403 | `AccessDenied` | Insufficient permissions | AccessDeniedError (METHOD_RULES denial) | `allowlist-public-reads.contract.test.ts` |
-| 403 | `AccessDenied` | <message> | ReviewAccountRestrictedError | `allowlist-public-reads.contract.test.ts` |
-| 403 | `AccessDenied` | <message> | StudyGroupForbiddenError | `allowlist-public-reads.contract.test.ts` |
+| 403 | `AccessDenied` | Insufficient permissions | AccessDeniedError (METHOD_RULES denial) | `career.contract.test.ts` |
+| 403 | `AccessDenied` | <message> | ReviewAccountRestrictedError | `review-login.contract.test.ts` |
+| 403 | `AccessDenied` | <message> | StudyGroupForbiddenError | `studygroup-controller.contract.test.ts` |
 | 403 | `CAPABILITY_REQUIRED` | This feature requires the '<key>' capability | CapabilityRequiredError | `digest-endpoints.contract.test.ts` |
 | 403 | `DRIVE_FOLDER_NOT_OWNED` | <message> | DriveError FOLDER_NOT_OWNED | `drive-sync.contract.test.ts` |
 | 403 | `INSUFFICIENT_SCOPE` | <message> | InsufficientScopeError (API key scopes) | `api-key-scopes.contract.test.ts` |
@@ -132,7 +132,8 @@ asserts the code over HTTP (the mapping test when none does).
 | 422 | `EMAIL_NOT_ALLOWED` | <message> | DigestException EMAIL_NOT_ALLOWED | `digest-endpoints.contract.test.ts` |
 | 429 | `DRIVE_SYNC_RATE_LIMITED` | <message> | DriveError SYNC_RATE_LIMITED | `drive-sync.contract.test.ts` |
 | 429 | `MAIL_QUOTA_EXHAUSTED` | <message> | MailQuotaExhaustedError (+ resumeAt, Retry-After) | `mail-tracking.contract.test.ts` |
-| 429 | `TooManyRequests` | Rate limit exceeded. Retry in <n>s. | RateLimitExceededError (per-user quotas; + Retry-After) | `correction-rate-limit.contract.test.ts` |
+| 429 | `TooManyRequests` | Rate limit exceeded. Retry in <n>s. | per-IP rate limit (security filter; + Retry-After, X-RateLimit-*) | `rate-limit.contract.test.ts` |
+| 429 | `TooManyRequests` | Rate limit exceeded. Retry in <n>s. | RateLimitExceededError (per-user quotas; + Retry-After) | `media-endpoints.contract.test.ts` |
 | 500 | `InternalServerError` | An unexpected error occurred | anything else (InternalServerError, UnexpectedStateError, foreign errors) | `mail-accounts.contract.test.ts` |
 | 501 | `NotImplemented` | <message> | FeatureNotConfiguredError | `auth-mobile.contract.test.ts` |
 | 502 | `ExternalApiError` | External API error in <service> during <operation> | ExternalApiError | `kb-admin-endpoints.contract.test.ts` |
@@ -166,7 +167,7 @@ truncated. The full rules are in [`docs/SERIALIZATION.md`](../docs/SERIALIZATION
 | Per-IP rules | `rate-limit.rules` (`src/config/sections/rateLimit.ts`: auth 20/min except the excluded auth paths, mobile login 120/min, review login 10/min, refresh 120/min, article/correction votes and RSVPs 60/min, schedule corrections 10/h, digest/org-mail unsubscribe and correction votes 60/min, analytics 120/min); the client is the right-most `X-Forwarded-For` entry when `RATE_LIMIT_TRUST_FORWARDED_FOR`; IPv6 clients share their /64 | `rate-limit.contract.test.ts`, `correction-rate-limit.contract.test.ts` |
 | Headers on a limited route | `X-RateLimit-Limit: <capacity>`, `X-RateLimit-Remaining: <left>` | `rate-limit.contract.test.ts` `authEndpointsAreLimitedPerIp` |
 | 429 | `Retry-After: <s>`, `X-RateLimit-Remaining: 0`, body `{"error":"TooManyRequests","message":"Rate limit exceeded. Retry in <s>s.","path","timestamp"}` | `rate-limit.contract.test.ts`, `correction-rate-limit.contract.test.ts` |
-| Per-user quotas | `rate-limit.user-rules` (proposals, comments, attachments, org images, wiki search): same 429 body + `Retry-After` | `media-endpoints.contract.test.ts` (org images), `test/http/ratelimit.test.ts` |
+| Per-user quotas | `rate-limit.user-rules` (proposals, comments, attachments, org images, wiki search): same 429 body + `Retry-After` | `media-endpoints.contract.test.ts` (proposal attachments), `test/http/ratelimit.test.ts` |
 | Path matched (**TS only**) | the decoded path, like routing (Java: the raw URI) | `rate-limit-decoded-path.contract.test.ts` |
 
 ## Health and readiness
