@@ -1,7 +1,7 @@
 // Ports apps/api/src/test/java/org/ceitba/api/web/HealthAndErrorIT.java and
 // web/health/HealthProbesIT.java.
 import { beforeAll, describe, expect, test } from 'bun:test';
-import { bearer, mintJwt, seedStaff, supports, useServer } from '../support';
+import { bearer, mintJwt, seedStaff, supports, TARGET, useServer } from '../support';
 
 const api = useServer();
 let staff: ReturnType<typeof bearer>;
@@ -42,6 +42,20 @@ describe('HealthAndErrorIT', () => {
     expect(r.json.info.title).toBe('CEITBA API');
     expect(r.json.components.securitySchemes.bearerAuth.scheme).toBe('bearer');
     expect(r.json.components.securitySchemes.apiKey.in).toBe('header');
+    // springdoc's document: component schemas, Java operationIds, typed parameters.
+    expect(Object.keys(r.json.components.schemas).length).toBeGreaterThan(200);
+    expect(r.json.components.schemas.CareerResponse.properties.plans.type).toBe('array');
+    const op = r.json.paths['/v1/careers/{id}'].get;
+    expect(op.operationId).toBe('getCareerById');
+    expect(op.responses['200'].content['*/*'].schema.$ref).toBe('#/components/schemas/CareerResponse');
+    expect(r.json.servers).toEqual([{ url: `${api.url}/api`, description: 'Generated server url' }]);
+  });
+
+  // TS serves its own Swagger UI page (springdoc's loaded the URL through swagger-initializer.js).
+  test.skipIf(TARGET === 'java')('swaggerUiLoadsTheDocument', async () => {
+    const ui = await api.get('/swagger-ui/index.html');
+    expect(ui.status).toBe(200);
+    expect(ui.text).toContain('/api/docs.json');
   });
 
   test.skipIf(!hasArticles)('wrongMethodReturns405', async () => {

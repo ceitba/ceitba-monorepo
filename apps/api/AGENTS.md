@@ -15,7 +15,7 @@ documented one.
 bun run build                         # tsc (must pass)
 bun run test                          # unit + in-process tests (test/); DB tests need Docker or CONTRACT_PG_URL
 bun contract/run.ts [fragment...]     # contract suite against a real server (contract/tests/)
-bun contract/coverage.ts [--list]     # OpenAPI operations: handler? contract test?
+bun contract/coverage.ts [--list|--check]   # OpenAPI operations: handler? contract test?
 bun src/main.ts                       # run the server (env: AUTH_JWT_SECRET, DATABASE_URL, ...; .env is loaded)
 bun src/db/migrate.ts info|validate|migrate   # Flyway-compatible migrations against DATABASE_URL
 docker compose up -d                  # postgres + minio + api; health: /api/actuator/health, Swagger: /api/docs
@@ -341,4 +341,12 @@ describe('CareerWritesIT', () => {
   from Spring ITs).
 - Unit tests: `test/<area>/*.test.ts` against your `logic/` or service functions.
 - `bun contract/coverage.ts --list` shows every OpenAPI operation with its handler and contract hits; a new
-  route must be hit by a contract test.
+  route must be hit by a contract test (`--check` fails otherwise; CI runs it after the contract suite).
+
+## Reference: the OpenAPI document
+
+`/api/docs.json` (Swagger UI at `/api/docs`) serves `src/http/openapi.json` as is, except `servers`: the springdoc
+document of the Spring app with its paths, operationIds, typed parameters and component schemas. It is edited by
+hand: a new, changed or removed route updates its operation (and any `components.schemas` it references) in the
+same PR. `test/http/openapi.test.ts` fails when a registered non-hidden route has no operation, an operation has no
+route, or a `$ref` dangles. The `api-endpoint` skill has the checklist.

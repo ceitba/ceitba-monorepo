@@ -36,7 +36,7 @@ describe.skipIf(TARGET === 'java')('MailOAuthBrowserBinding (TS hardening)', () 
     const state = decodeURIComponent(/state=([^&]+)/.exec(r.json.authorizationUrl)![1]!);
     const nonce = /ceitba_mail_oauth_nonce=([^;]+)/.exec(r.setCookies.join('\n'))![1]!;
     // The victim's browser: no cookie, or another connect's cookie.
-    for (const headers of [{}, { Cookie: 'ceitba_mail_oauth_nonce=someone-elses-nonce' }]) {
+    for (const headers of [{}, { Cookie: 'ceitba_mail_oauth_nonce=someone-elses-nonce' }] as Record<string, string>[]) {
       const cb = await api.get('/v1/mail/accounts/oauth/callback', { query: { error: 'access_denied', state }, headers });
       expect(cb.status).toBe(302);
       expect(cb.location).toBe('https://ceitba.org.ar/newsletter/admin/digests?mail=error&reason=invalid_state');

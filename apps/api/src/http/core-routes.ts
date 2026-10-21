@@ -70,16 +70,11 @@ export function registerCoreRoutes(r: RouteRegistrar, deps: Deps): void {
   });
   r.get('/actuator/info', { hidden: true }, ({ c }) => actuatorJson(c, {}));
 
-  r.get('/docs.json', { hidden: true }, ({ c }) => json(buildOpenApi(c, getRoutes())));
+  r.get('/docs.json', { hidden: true }, ({ c }) => json(buildOpenApi(c)));
   r.get('/docs', { hidden: true }, ({ c }) => found(`${new URL(c.req.url).origin}/api/swagger-ui/index.html`));
   r.get('/swagger-ui/index.html', { hidden: true }, () => new Response(SWAGGER_HTML, { headers: { 'Content-Type': 'text/html' } }));
 }
 
-let routesRef: () => import('./router').RouteDef[] = () => [];
-export function setRoutesProvider(fn: () => import('./router').RouteDef[]) {
-  routesRef = fn;
-}
-const getRoutes = () => routesRef();
 
 const SWAGGER_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>CEITBA API</title>

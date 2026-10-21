@@ -155,7 +155,7 @@ Tasks:
 - Announce a feature freeze on `apps/api`.
   - Bug fixes are still allowed. Each one lands in Java with a contract test, and the same PR or a linked
     issue tracks the TS port.
-- Export `/v3/api-docs` from the running Java app to `contract/openapi.json`.
+- Export `/v3/api-docs` from the running Java app to `contract/openapi.json` (now `src/http/openapi.json`, served as `/api/docs.json`).
   - A script lists every route, and CI fails when a route has no TS handler and no contract test.
 - Write `contract/COMPATIBILITY.md`. It must cover:
   - cookie name and attributes (`AUTH_COOKIE_*`, default `ceitba_session`, `Lax`, `Secure`, path `/`);

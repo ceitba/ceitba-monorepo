@@ -1,13 +1,17 @@
-// Route coverage report: every operation of the Java API (contract/openapi.json,
-// exported from the running jar's /api/docs.json, 295 operations) with
+// Route coverage report: every operation of the API's OpenAPI document (src/http/openapi.json: the Java app's
+// springdoc /api/docs.json, which /api/docs.json still serves; 296 operations) with
 //   - TS: whether apps/api has a handler for it (the registered routes);
-//   - tested: whether >= 1 contract test request hit it (contract/.hits/<run id>/, all runs merged; written
-//     by the harness during `bun contract/run.ts`).
+//   - tested: which targets' contract tests hit it (contract/.hits/<run id>/, all runs merged; written by the
+//     harness during `bun contract/run.ts`).
 //
-//   bun contract/coverage.ts            # summary + per-area table
-//   bun contract/coverage.ts --list     # every operation
-//   bun contract/coverage.ts --json     # machine-readable
-//   bun contract/coverage.ts --check    # exit 1 if an operation has neither a TS handler nor a test
+//   bun contract/coverage.ts                      # summary + per-area table
+//   bun contract/coverage.ts --list               # every operation
+//   bun contract/coverage.ts --json               # machine-readable
+//   bun contract/coverage.ts --check [--target t] # exit 1 if an operation has no TS handler or no hit from a
+//                                                 # contract run against target t (default ts), or a registered
+//                                                 # (non-hidden) route is missing from the document
+//
+// CI runs `--check` right after the TS contract run, on that run's hits.
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -15,7 +19,7 @@ import { ruleKey } from '../src/http/auth/policy';
 import { springPathRegExp } from '../src/http/router';
 import { tsRoutes } from './support/routes';
 
-const spec = JSON.parse(readFileSync(join(import.meta.dir, 'openapi.json'), 'utf8')) as { paths: Record<string, Record<string, { tags?: string[] }>> };
+const spec = JSON.parse(readFileSync(join(import.meta.dir, '..', 'src', 'http', 'openapi.json'), 'utf8')) as { paths: Record<string, Record<string, { tags?: string[] }>> };
 const ops: { method: string; path: string; tag: string; re: RegExp }[] = [];
 for (const [path, methods] of Object.entries(spec.paths)) {
   for (const [m, op] of Object.entries(methods)) {
@@ -80,9 +84,22 @@ if (args.includes('--json')) {
   }
 }
 if (args.includes('--check')) {
-  const missing = rows.filter((r) => !r.ts && r.tested.length === 0);
-  if (missing.length) {
-    console.error(`${missing.length} operations have neither a TS handler nor a contract test`);
+  const ti = args.indexOf('--target');
+  const target = ti >= 0 ? args[ti + 1] ?? 'ts' : 'ts';
+  const problems: string[] = [];
+  for (const r of rows) {
+    if (!r.ts) problems.push(`no TS handler: ${r.op}`);
+    if (!r.tested.includes(target)) problems.push(`no contract hit (target ${target}): ${r.op}`);
+  }
+  const documented = new Set(ops.map((o) => `${o.method} ${o.path}`));
+  for (const r of routes) {
+    const k = ruleKey(r.method, r.path);
+    if (!r.spec.hidden && !documented.has(k)) problems.push(`registered route missing from src/http/openapi.json: ${k}`);
+  }
+  if (problems.length) {
+    for (const p of problems) console.error(p);
+    console.error(`coverage check failed: ${problems.length} problem(s)`);
     process.exit(1);
   }
+  console.log(`coverage check ok: ${rows.length} operations, each with a TS handler and a ${target} contract hit`);
 }

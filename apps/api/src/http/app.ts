@@ -12,7 +12,7 @@ import { toJavaJson } from '../lib/json';
 import { systemNowMicros } from '../lib/time';
 import type { AppContext, AppEnv, RequestState } from './context';
 import { ApiError, CodedError, DataIntegrityViolationError, HTTP_MAPPING, isHttpMapped, ExternalApiError, InternalServerError, MethodNotAllowedError, NoResourceFoundError } from './errors';
-import { registerCoreRoutes, setRoutesProvider } from './core-routes';
+import { registerCoreRoutes } from './core-routes';
 import { IpRateLimiter, resolveClientIp } from './ratelimit';
 import { compareSpecificity, RouteRegistrar, springPathRegExp, toHonoPath, wrapHandler, type RouteDef, type RoutesModule } from './router';
 import { applySecurityHeaders, authenticateAndAuthorize, processCors, withVary } from './security';
@@ -86,7 +86,6 @@ function errorResponse(deps: Deps, err: unknown, state: RequestState | undefined
 
 export async function createApp(deps: Deps, opts: { featuresDir?: string } = {}): Promise<App> {
   const routes = await collectRoutes(deps, opts.featuresDir);
-  setRoutesProvider(() => routes);
   const limiter = new IpRateLimiter(deps.config.rateLimit);
   const hono = new Hono<AppEnv>({ strict: true });
   const compiled = routes.map((r) => ({ route: r, re: springPathRegExp(r.path) }));

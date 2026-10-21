@@ -105,9 +105,10 @@ the Google and token setup is [`docs/AUTH-SETUP.md`](docs/AUTH-SETUP.md).
 | `/api/v1/staff/**` | GET, POST, DELETE | JWT + `ROLE_STAFF` |
 | `/api/v1/sync/**` | POST | `X-API-Key` |
 
-Full list in `/api/docs`. The generated OpenAPI document lists every route with its parameters; it is thinner
-than the Spring one was (fewer response schemas): `contract/openapi.json` is the frozen Spring document, the
-reference the route coverage is checked against.
+Full list in `/api/docs`. `/api/docs.json` serves `src/http/openapi.json`, the springdoc document of the Spring
+app (paths, operationIds, parameters, component schemas), kept in sync by hand: `test/http/openapi.test.ts` fails
+when a route and the document disagree, and `bun contract/coverage.ts --check` checks every operation has a handler
+and a contract test.
 
 ## Database
 

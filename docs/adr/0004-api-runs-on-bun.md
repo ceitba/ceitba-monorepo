@@ -49,9 +49,10 @@ two-minute test run. We rewrote it in TypeScript on Bun and switched production 
 - **Known parity gaps** (`apps/api/docs/DRIVE-PARITY.md`): Google Docs HTML is byte-identical to jsoup's on the
   corpus, but PDF text from pdfjs matches pdfbox for only part of the files, so Slides/Sheets exports can get a
   new content fingerprint after the cutover: a one-time re-store and wiki re-digest of those files.
-- **The OpenAPI document is thinner.** `/api/docs.json` is generated from the registered routes and lists every
-  path, method and parameter, but fewer response schemas than springdoc produced. `contract/openapi.json` keeps
-  the last Spring document as the reference the route coverage is checked against.
+- **The OpenAPI document is maintained by hand.** `/api/docs.json` serves the last springdoc document of the Spring
+  app (`apps/api/src/http/openapi.json`: same paths, operationIds, parameters and component schemas); nothing
+  generates it any more, so a route change edits it in the same PR, and a test fails when the registered routes
+  and the document disagree.
 - The FCM, Gmail API, Drive and ITBA clients were tested against fakes and stubs only; their first real runs
   happen in production.
 
