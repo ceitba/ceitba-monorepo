@@ -3,11 +3,10 @@
 // KbRelationJob (JobLock KB_RELATIONS, id 4): on startup (ApplicationReadyEvent)
 // and nightly at 04:30 in the JVM zone: refresh the related subjects, then expire
 // the pipeline's stored payloads (KbRunRetentionService, kb-pipeline's
-// `retention.purgeExpired()`). Spring publishes ReadinessState.ACCEPTING_TRAFFIC only
-// after the ApplicationReadyEvent listeners return, so the startup run starts when
-// the jobs are discovered (main.ts, right before the scheduler starts) and holds
-// readiness (/actuator/health/readiness 503) until it is done; otherwise a client
-// that waits for readiness (the contract harness) races the refresh's DELETE/INSERT.
+// `retention.purgeExpired()`). The startup run is a startup hook: Spring publishes
+// ReadinessState.ACCEPTING_TRAFFIC only after the ApplicationReadyEvent listeners
+// return, so a client that waits for readiness (the contract harness) never races
+// the refresh's DELETE/INSERT.
 //
 // KbEmbeddingJob (KB_EMBEDDINGS, id 5): a sweep a minute after startup and then
 // every kb.embeddings.interval; off with kb.embeddings.enabled=false (tests).
@@ -17,7 +16,6 @@ import { defineJobs } from '../../jobs/scheduler';
 import { isModuleNotFound, kbReader } from './services';
 
 const KB_PIPELINE_SERVICE = '../kb-pipeline/service';
-const started = new WeakSet<Deps>();
 
 async function expireRunPayloads(deps: Deps): Promise<void> {
   type Retention = { expire?: () => Promise<unknown>; purgeExpired?: () => Promise<unknown> };
@@ -46,18 +44,14 @@ export default defineJobs((deps) => {
       log.warn(`KB run retention failed: ${(e as Error).message}`);
     }
   };
-  if (!started.has(deps)) {
-    // @EventListener(ApplicationReadyEvent.class) run().
-    started.add(deps);
-    const availability = deps.availability;
-    const held = availability.acceptingTraffic;
-    availability.acceptingTraffic = false;
-    void deps.jobLock.runExclusively('KB_RELATIONS', relationRun)
-      .catch((e) => log.warn(`KB subject relation refresh failed: ${(e as Error).message}`))
-      .finally(() => { if (held) availability.acceptingTraffic = true; });
-  }
   const embedLog = deps.log.child({ component: 'KbEmbeddingJob' });
-  return [
+  return {
+    // @EventListener(ApplicationReadyEvent.class) run().
+    startup: [{
+      name: 'KbRelationJob#run', order: 30, enabled: true,
+      run: () => deps.jobLock.runExclusively('KB_RELATIONS', relationRun),
+    }],
+    jobs: [
     {
       name: 'KbRelationJob#run',
       lock: 'KB_RELATIONS',
@@ -78,5 +72,6 @@ export default defineJobs((deps) => {
         }
       },
     },
-  ];
+    ],
+  };
 });

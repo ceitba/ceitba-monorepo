@@ -1,8 +1,11 @@
 // Boot: config -> Flyway-compatible migrate (spring.flyway.enabled) -> db ->
-// HTTP on PORT (context path /api) -> scheduled jobs. SIGTERM/SIGINT:
-// readiness goes OUT_OF_SERVICE, keep serving SHUTDOWN_DRAIN (blue/green,
+// HTTP on PORT (context path /api, readiness 503) -> scheduled jobs -> the
+// startup hooks (ApplicationReadyEvent, in order) -> readiness UP.
+// SIGTERM/SIGINT: readiness goes OUT_OF_SERVICE, the 'closing' hooks
+// (ContextClosedEvent: stop flags), keep serving SHUTDOWN_DRAIN (blue/green,
 // config/ShutdownDrain), then a graceful stop (in-flight requests finish, up
-// to 60 s), then jobs (up to 30 s), then the pool.
+// to 60 s), then jobs (up to 30 s), then the 'executors' hooks (kicked
+// workers finish, up to 60 s), then the pool.
 
 import postgres from 'postgres';
 import { loadConfig, type Config } from './config';
@@ -10,7 +13,7 @@ import { migrate } from './db/migrate';
 import { buildDeps, type Deps, type DepsOverrides } from './deps';
 import { createApp, type App } from './http/app';
 import { createLogger } from './infra/logger';
-import { discoverJobs, JobScheduler } from './jobs/scheduler';
+import { discoverLifecycle, JobScheduler, runShutdownHooks, runStartupHooks, type Discovered } from './jobs/scheduler';
 
 export interface RunningServer {
   url: string;
@@ -42,6 +45,8 @@ export async function start(opts: { env?: Record<string, string | undefined>; ov
   if (config.db.flyway.enabled) await runMigrations(config, log);
   const deps = await buildDeps(config, { ...opts.overrides, log });
   const app = await createApp(deps);
+  // Spring publishes ReadinessState.ACCEPTING_TRAFFIC only after the ApplicationReadyEvent listeners.
+  deps.availability.acceptingTraffic = false;
   const server = Bun.serve({
     port: config.server.port,
     // Dual stack, like Tomcat: the image's health check hits localhost (::1 on alpine).
@@ -51,14 +56,26 @@ export async function start(opts: { env?: Record<string, string | undefined>; ov
     maxRequestBodySize: 64 * 1024 * 1024,
     fetch: (req, srv) => app.fetch(req, srv),
   });
-  const scheduler = new JobScheduler(deps, opts.jobs === false ? [] : await discoverJobs(deps));
+  const lifecycle: Discovered = opts.jobs === false ? { jobs: [], startup: [], shutdown: [] } : await discoverLifecycle(deps);
+  const scheduler = new JobScheduler(deps, lifecycle.jobs);
   scheduler.start();
+  try {
+    await runStartupHooks(deps, lifecycle.startup);
+  } catch (e) {
+    log.error({ err: e }, 'Application run failed');
+    server.stop(true);
+    await scheduler.stop(config.server.jobsShutdownTimeoutMs);
+    await deps.close();
+    throw e;
+  }
+  deps.availability.acceptingTraffic = true;
   log.info(`ceitba-api-ts started on port ${server.port} with context path '/api' (${app.routes.length} routes)`);
 
   let stopping: Promise<void> | null = null;
   const shutdown = (reason = 'shutdown') => {
     stopping ??= (async () => {
       deps.availability.acceptingTraffic = false;
+      await runShutdownHooks(deps, lifecycle.shutdown, 'closing', config.server.shutdownTimeoutMs);
       const drain = config.server.shutdownDrainMs;
       if (drain > 0) {
         log.info(`Shutting down: refusing traffic and draining for ${Math.floor(drain / 1000)}s`);
@@ -68,6 +85,7 @@ export async function start(opts: { env?: Record<string, string | undefined>; ov
       await Promise.race([server.stop(false), Bun.sleep(config.server.shutdownTimeoutMs)]);
       server.stop(true);
       await scheduler.stop(config.server.jobsShutdownTimeoutMs);
+      await runShutdownHooks(deps, lifecycle.shutdown, 'executors', config.server.tasksShutdownTimeoutMs);
       await deps.close();
       log.info('Stopped');
     })();

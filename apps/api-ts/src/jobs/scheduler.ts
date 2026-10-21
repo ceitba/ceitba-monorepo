@@ -11,6 +11,18 @@
 // A job with `lock` runs through JobLock.runExclusively (mandatory for new jobs,
 // with a new id in JOBS). Graceful shutdown stops new runs and waits for running
 // ones (spring.task.scheduling.shutdown.await-termination-period, 30 s).
+//
+// Lifecycle hooks (a jobs.ts may return `{ jobs, startup, shutdown }` instead of
+// an array), run by main.ts in Spring's order:
+//   startup   @EventListener(ApplicationReadyEvent): after the scheduler started,
+//             one after the other by `order`, while readiness still answers 503
+//             (Spring publishes ACCEPTING_TRAFFIC only after these listeners
+//             return). A hook that throws fails the startup, as in Spring.
+//   shutdown  phase 'closing'   = @EventListener(ContextClosedEvent): right after
+//             readiness goes down, before the drain (stop flags);
+//             phase 'executors' = applicationTaskExecutor's await-termination
+//             (spring.task.execution.shutdown, 60 s): after HTTP and the
+//             scheduler stopped, before the pool closes (drain kicked workers).
 
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -34,22 +46,90 @@ export interface JobDefinition {
   run(): Promise<void>;
 }
 
-export type JobsModule = (deps: Deps) => JobDefinition[] | Promise<JobDefinition[]>;
+export interface StartupHook {
+  /** Java `Class#method`, for logs. */
+  name: string;
+  /** Listener order (Java: bean registration order of the @EventListener beans). */
+  order: number;
+  enabled: boolean;
+  run(): Promise<unknown>;
+}
+
+export interface ShutdownHook {
+  name: string;
+  phase: 'closing' | 'executors';
+  order: number;
+  run(): Promise<unknown> | void;
+}
+
+export interface FeatureJobs {
+  jobs?: JobDefinition[];
+  startup?: StartupHook[];
+  shutdown?: ShutdownHook[];
+}
+
+export type JobsModule = (deps: Deps) => JobDefinition[] | FeatureJobs | Promise<JobDefinition[] | FeatureJobs>;
 export const defineJobs = (fn: JobsModule): JobsModule => fn;
 
-const FEATURES_DIR = join(import.meta.dir, '..', 'features');
+export interface Discovered {
+  jobs: JobDefinition[];
+  startup: StartupHook[];
+  shutdown: ShutdownHook[];
+}
 
-export async function discoverJobs(deps: Deps, featuresDir = FEATURES_DIR): Promise<JobDefinition[]> {
-  const out: JobDefinition[] = [];
+/** One jobs.ts module's result as `{ jobs, startup, shutdown }` (an array is jobs only). */
+export async function featureJobs(mod: JobsModule, deps: Deps): Promise<Discovered> {
+  const r = await mod(deps);
+  return Array.isArray(r) ? { jobs: r, startup: [], shutdown: [] } : { jobs: r.jobs ?? [], startup: r.startup ?? [], shutdown: r.shutdown ?? [] };
+}
+
+/** Every feature's jobs and lifecycle hooks (hooks sorted by order). */
+export async function discoverLifecycle(deps: Deps, featuresDir = FEATURES_DIR): Promise<Discovered> {
+  const out: Discovered = { jobs: [], startup: [], shutdown: [] };
   if (!existsSync(featuresDir)) return out;
   for (const area of readdirSync(featuresDir).sort()) {
     const file = join(featuresDir, area, 'jobs.ts');
     if (!existsSync(file)) continue;
     const mod = (await import(file)) as { default?: JobsModule };
     if (typeof mod.default !== 'function') throw new Error(`src/features/${area}/jobs.ts must default-export defineJobs(...)`);
-    out.push(...(await mod.default(deps)));
+    const r = await featureJobs(mod.default, deps);
+    out.jobs.push(...r.jobs);
+    out.startup.push(...r.startup);
+    out.shutdown.push(...r.shutdown);
   }
+  out.startup.sort((a, b) => a.order - b.order);
+  out.shutdown.sort((a, b) => a.order - b.order);
   return out;
+}
+
+/** Runs the enabled startup hooks in order; the first failure propagates. */
+export async function runStartupHooks(deps: Deps, hooks: StartupHook[]): Promise<void> {
+  for (const h of hooks.filter((x) => x.enabled)) {
+    deps.log.debug(`Startup: ${h.name}`);
+    await h.run();
+  }
+}
+
+/** Runs the shutdown hooks of one phase in order (each failure is logged), bounded by timeoutMs. */
+export async function runShutdownHooks(deps: Deps, hooks: ShutdownHook[], phase: ShutdownHook['phase'], timeoutMs: number): Promise<void> {
+  const run = (async () => {
+    for (const h of hooks.filter((x) => x.phase === phase)) {
+      try {
+        await h.run();
+      } catch (e) {
+        deps.log.warn({ err: e }, `Shutdown hook ${h.name} failed`);
+      }
+    }
+  })();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([run, new Promise((r) => { timer = setTimeout(r, timeoutMs); })]);
+  clearTimeout(timer);
+}
+
+const FEATURES_DIR = join(import.meta.dir, '..', 'features');
+
+export async function discoverJobs(deps: Deps, featuresDir = FEATURES_DIR): Promise<JobDefinition[]> {
+  return (await discoverLifecycle(deps, featuresDir)).jobs;
 }
 
 export class JobScheduler {

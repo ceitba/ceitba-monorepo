@@ -8,6 +8,7 @@ import { loadConfig } from '../../src/config';
 import type { Deps } from '../../src/deps';
 import type { ItbaApiClient } from '../../src/external/itba';
 import jobs from '../../src/features/sync/jobs';
+import { featureJobs } from '../../src/jobs/scheduler';
 import { MutableClock } from '../../src/infra/clock';
 import { silentLogger } from '../../src/infra/logger';
 
@@ -22,17 +23,17 @@ const noItba: ItbaApiClient = {
 
 describe('DataSyncJob', () => {
   test('registeredWithItsLockAndCron', async () => {
-    const [job, ...rest] = await jobs(await deps({}, noItba));
+    const [job, ...rest] = (await featureJobs(jobs, await deps({}, noItba))).jobs;
     expect(rest).toEqual([]);
     expect(job!.name).toBe('DataSyncJob#run');
     expect(job!.lock).toBe('DATA_SYNC');
     expect(job!.schedule).toEqual({ cron: '0 0 0,12 * * *' });
     expect(job!.enabled).toBe(false);
-    expect((await jobs(await deps({ SYNC_ENABLED: 'true' }, noItba)))[0]!.enabled).toBe(true);
+    expect((await featureJobs(jobs, await deps({ SYNC_ENABLED: 'true' }, noItba))).jobs[0]!.enabled).toBe(true);
   });
 
   test('aFailingSyncIsLoggedNotThrown', async () => {
-    const [job] = await jobs(await deps({ SYNC_ENABLED: 'true' }, noItba));
+    const [job] = (await featureJobs(jobs, await deps({ SYNC_ENABLED: 'true' }, noItba))).jobs;
     await expect(job!.run()).resolves.toBeUndefined();
   });
 });

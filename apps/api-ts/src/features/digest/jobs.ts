@@ -2,9 +2,10 @@
 //   - Monday 00:05 ART: the draft for the week that just ended (JobLock 6, DIGEST_SCHEDULE)
 //   - every DIGEST_TICK_INTERVAL (initial 1 min): the same draft as a catch-up (nested
 //     DIGEST_SCHEDULE lock), start due auto-sends, kick the worker (JobLock 7, DIGEST_TICK)
-//   - ApplicationReadyEvent: the draft + the worker. There is no startup hook in
-//     src/jobs, so it is a fixed-delay job that only acts on its first run.
-// The worker (DigestSender) runs detached from the tick ("task executor").
+//   - ApplicationReadyEvent: the draft + the worker (startup hook, first listener).
+// The worker (DigestSender) runs detached from the tick ("task executor"). On
+// shutdown its stop flag is set at ContextClosedEvent (always: DigestSender is a
+// bean even with the jobs off) and the kicked runs are awaited with the executor.
 import { defineJobs } from '../../jobs/scheduler';
 import { ART } from '../../lib/time';
 import { mailSettings } from '../mail/settings';
@@ -22,8 +23,8 @@ export default defineJobs((deps) => {
     }
   };
   const createWeeklyDraft = async () => { await deps.jobLock.runExclusively('DIGEST_SCHEDULE', draft); };
-  let started = false;
-  return [
+  return {
+    jobs: [
     {
       name: 'DigestJob#createWeeklyDraft', lock: 'DIGEST_SCHEDULE', enabled,
       schedule: { cron: '0 5 0 * * MON', zone: ART },
@@ -42,15 +43,17 @@ export default defineJobs((deps) => {
         digestBeans(deps).kick();
       },
     },
-    {
-      name: 'DigestJob#onStartup', enabled,
-      schedule: { fixedDelayMs: 24 * 3_600_000, initialDelayMs: 0 },
+    ],
+    startup: [{
+      name: 'DigestJob#onStartup', order: 10, enabled,
       run: async () => {
-        if (started) return;
-        started = true;
         await createWeeklyDraft();
         digestBeans(deps).kick();
       },
-    },
-  ];
+    }],
+    shutdown: [
+      { name: 'DigestSender#onShutdown', phase: 'closing', order: 10, run: () => digestBeans(deps).sender.onShutdown() },
+      { name: 'DigestSender (task executor)', phase: 'executors', order: 10, run: () => digestBeans(deps).idle() },
+    ],
+  };
 });

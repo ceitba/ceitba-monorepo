@@ -7,6 +7,7 @@ import { seedUser } from '../../contract/support/identity';
 import { FakeDriveClient } from '../../src/external/drive';
 import { DriveError } from '../../src/features/drive/errors';
 import jobs from '../../src/features/drive/jobs';
+import { featureJobs } from '../../src/jobs/scheduler';
 import { driveServices } from '../../src/features/drive/services';
 import { CONSENT_VERSION } from '../../src/features/drive/sourceService';
 import { JOBS } from '../../src/jobs/joblock';
@@ -81,7 +82,7 @@ describe('DriveSourceServiceTest', () => {
   });
 
   test('DriveSyncJob: fixed delay, initial PT1M, JobLock DRIVE_SYNC (id 9), off unless DRIVE_SYNC_ENABLED', async () => {
-    const [job] = await jobs(t.deps);
+    const [job] = (await featureJobs(jobs, t.deps)).jobs;
     expect(job!.name).toBe('DriveSyncJob#run');
     expect(job!.lock).toBe('DRIVE_SYNC');
     expect(JOBS.DRIVE_SYNC.id).toBe(9);
