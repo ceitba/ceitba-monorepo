@@ -59,15 +59,33 @@ const VOLATILE = [
   [/"(total|free|used|max)":\d+/g, '"$1":<n>'],
   [/localhost:\d+/g, 'localhost:<port>'],
   [/127\.0\.0\.1:\d+/g, 'localhost:<port>'],
+  // DataSyncResult.duration: elapsed milliseconds.
+  [/"duration":\d+/g, '"duration":<ms>'],
+  // Proposal pseudonyms: ProposalAliasGenerator picks a free one with SecureRandom.
+  [/"(authorAlias|alias)":"[^"]+"/g, '"$1":"<alias>"'],
 ] as const;
 
 const norm = (s: string) => VOLATILE.reduce((acc, [re, rep]) => acc.replace(re, rep as string), s);
 
-/** Objects with keys sorted only where Java's order is not stable (Map.of): HealthController maps. */
+/**
+ * What is compared of a body. Not stable in Java, so canonicalized here:
+ *   - Map.of bodies (HealthController): keys sorted;
+ *   - several Bean Validation violations: Java takes them from a HashSet (docs/SERIALIZATION.md), sorted;
+ *   - /api/docs.json: springdoc's document vs the one the TS app generates (no component schemas, other
+ *     operationIds; nothing consumes it): only the documented operations ("METHOD /path") are compared.
+ */
 function canonicalBody(path: string, text: string): string {
   if (!text) return '';
   let v: unknown;
   try { v = JSON.parse(text); } catch { return norm(text); }
+  if (/^\/api\/docs\.json$/.test(path.split('?')[0]!) && v && typeof v === 'object' && 'paths' in v) {
+    const paths = (v as { paths: Record<string, Record<string, unknown>> }).paths;
+    return JSON.stringify(Object.entries(paths).flatMap(([p, m]) => Object.keys(m).map((k) => `${k.toUpperCase()} ${p}`)).sort());
+  }
+  const e = v as { error?: unknown; message?: unknown };
+  if (e && e.error === 'ValidationError' && typeof e.message === 'string' && e.message.includes('; ')) {
+    e.message = e.message.split('; ').sort().join('; ');
+  }
   const unordered = /^\/api\/?$|^\/api\/health$/.test(path);
   const sortKeys = (x: unknown): unknown => Array.isArray(x) ? x.map(sortKeys)
     : x && typeof x === 'object' ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, sortKeys((x as Record<string, unknown>)[k])])) : x;
