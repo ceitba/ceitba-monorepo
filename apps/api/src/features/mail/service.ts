@@ -209,16 +209,15 @@ export class MailSenderAccountService implements MailSenderAccounts {
   private async store(senderEmail: string, refreshToken: string, scopes: string, by: string): Promise<void> {
     const now = this.deps.clock.now();
     const enc = this.cipher().encrypt(refreshToken, senderEmail);
-    await withTx(this.deps.db, async (tx) => {
-      const row = await repo.findAccountByOwner(tx, OWNER_CEITBA, null);
-      if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
-        // The replaced address's token is revoked at Google too, like a disconnect.
-        if (row != null) await this.delete(row.id, tx);
-        await repo.insertAccount(tx, senderEmail, OWNER_CEITBA, null, enc, scopes, by, now);
-      } else {
-        await repo.reconnectAccount(tx, row, enc, scopes, by, now);
-      }
-    });
+    // Not one transaction (MailSenderAccountService.store): the revoke at Google runs between the statements.
+    const row = await withTx(this.deps.db, (tx) => repo.findAccountByOwner(tx, OWNER_CEITBA, null), { readOnly: true });
+    if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
+      // The replaced address's token is revoked at Google too, like a disconnect.
+      if (row != null) await this.delete(row.id);
+      await withTx(this.deps.db, (tx) => repo.insertAccount(tx, senderEmail, OWNER_CEITBA, null, enc, scopes, by, now));
+    } else {
+      await withTx(this.deps.db, (tx) => repo.reconnectAccount(tx, row, enc, scopes, by, now));
+    }
     // A broken-sender backoff must not outlive the reconnection.
     await this.ledger.saveState(senderEmail, CLEAR, this.deps.clock.now());
   }
@@ -227,15 +226,13 @@ export class MailSenderAccountService implements MailSenderAccounts {
   private async storeOrg(slug: string, senderEmail: string, refreshToken: string, scopes: string, by: string): Promise<void> {
     const now = this.deps.clock.now();
     const enc = this.cipher().encrypt(refreshToken, senderEmail);
-    await withTx(this.deps.db, async (tx) => {
-      const row = await repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug);
-      if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
-        if (row != null) await this.delete(row.id, tx);
-        await repo.insertAccount(tx, senderEmail, OWNER_ORGANIZATION, slug, enc, scopes, by, now);
-      } else {
-        await repo.reconnectAccount(tx, row, enc, scopes, by, now);
-      }
-    });
+    const row = await withTx(this.deps.db, (tx) => repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug), { readOnly: true });
+    if (row == null || !javaEqualsIgnoreCase(row.email, senderEmail)) {
+      if (row != null) await this.delete(row.id);
+      await withTx(this.deps.db, (tx) => repo.insertAccount(tx, senderEmail, OWNER_ORGANIZATION, slug, enc, scopes, by, now));
+    } else {
+      await withTx(this.deps.db, (tx) => repo.reconnectAccount(tx, row, enc, scopes, by, now));
+    }
     await this.ledger.saveState(senderEmail, CLEAR, this.deps.clock.now());
   }
 
@@ -246,10 +243,8 @@ export class MailSenderAccountService implements MailSenderAccounts {
 
   /** Revokes and deletes the org's account; no-op without one. `db`: the caller's transaction to join. */
   async disconnectOrg(slug: string, db: Db = this.deps.db): Promise<void> {
-    await withTx(db, async (tx) => {
-      const a = await repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug);
-      if (a != null) await this.delete(a.id, tx);
-    });
+    const a = await withTx(db, (tx) => repo.findAccountByOwner(tx, OWNER_ORGANIZATION, slug), { readOnly: true });
+    if (a != null) await this.delete(a.id, db);
   }
 
   async list(): Promise<AccountView[]> {
@@ -258,16 +253,14 @@ export class MailSenderAccountService implements MailSenderAccounts {
 
   /** Revokes the token at Google (best effort), then deletes the row. `db`: the caller's transaction to join. */
   async delete(id: number, db: Db = this.deps.db): Promise<void> {
-    await withTx(db, async (tx) => {
-      const row = await repo.findAccountById(tx, id);
-      if (row == null) throw new ResourceNotFoundError('MailSenderAccount', String(id));
-      try {
-        await this.google.revoke(this.cipher().decrypt(row.refreshTokenEnc, row.email));
-      } catch (e) {
-        this.log.warn(`Mail: could not revoke the token of ${row.email} at Google (deleting anyway): ${(e as Error)?.constructor?.name ?? 'Error'}`);
-      }
-      await repo.deleteAccount(tx, row.id);
-    });
+    const row = await withTx(db, (tx) => repo.findAccountById(tx, id), { readOnly: true });
+    if (row == null) throw new ResourceNotFoundError('MailSenderAccount', String(id));
+    try {
+      await this.google.revoke(this.cipher().decrypt(row.refreshTokenEnc, row.email));
+    } catch (e) {
+      this.log.warn(`Mail: could not revoke the token of ${row.email} at Google (deleting anyway): ${(e as Error)?.constructor?.name ?? 'Error'}`);
+    }
+    await withTx(db, (tx) => repo.deleteAccount(tx, row.id));
   }
 
   /** connected | broken | missing, for the configured sender (CEITBA account). */
