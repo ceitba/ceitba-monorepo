@@ -5,7 +5,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
-import { sqlState, withTx, type Db } from '../../db/client';
+import { sqlState, withSavepoint, withTx, type Db } from '../../db/client';
 import type { CommissionProjection, CommissionQuery, SubjectPlanProjection } from '../../external/itba';
 import { withDefaultsFilled } from '../../external/itba';
 import { javaCompareStrings, javaIsBlank } from '../../lib/javaCompat';
@@ -174,7 +174,7 @@ export class DataSyncService {
           await this.upsertSubject(tx, entry, result, writes);
           await this.upsertPlanSubject(tx, entry, result, writes);
           try {
-            await (tx as unknown as { transaction<T>(fn: (sp: Db) => Promise<T>): Promise<T> }).transaction(async (sp) => {
+            await withSavepoint(tx, async (sp) => {
               for (const w of writes) await w(sp);
             });
           } catch (e) {

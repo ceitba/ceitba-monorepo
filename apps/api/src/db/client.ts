@@ -78,6 +78,15 @@ export async function withTx<T>(db: Db, fn: (tx: Tx) => Promise<T>, opts: { read
   return (db as Database).transaction(fn, opts.readOnly ? { accessMode: 'read only' } : undefined);
 }
 
+/**
+ * Runs `fn` in a savepoint of the open transaction `tx` (drizzle's nested transaction):
+ * a throw rolls back only the savepoint's writes and is rethrown, and the outer
+ * transaction stays usable (a caught unique violation does not abort it).
+ */
+export async function withSavepoint<T>(tx: Tx, fn: (sp: Tx) => Promise<T>): Promise<T> {
+  return tx.transaction(fn);
+}
+
 function isTx(db: Db): db is Tx {
   return typeof (db as Tx).rollback === 'function';
 }

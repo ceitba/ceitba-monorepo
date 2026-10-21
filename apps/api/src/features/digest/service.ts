@@ -3,7 +3,7 @@
 // auto-send, and the per-user subscription. Sending itself: sender.ts.
 
 import type { Deps } from '../../deps';
-import { withTx, type Db, type Tx } from '../../db/client';
+import { withSavepoint, withTx, type Db, type Tx } from '../../db/client';
 import { ExternalApiError, ResourceNotFoundError, ValidationError } from '../../http/errors';
 import { EmailSendError } from '../../infra/mail';
 import type { Logger } from '../../infra/logger';
@@ -145,7 +145,7 @@ export class DigestService {
         status: 'draft', autoSendAt: auto, sentAt: null, sentBy: null, createdAt: odtInZone(systemNowMicros(), this.deps.config.server.timeZone),
       };
       try {
-        await tx.transaction(async (sp) => repo.insertIssue(sp, { id: i.id, weekStart, subject: i.subject,
+        await withSavepoint(tx, async (sp) => repo.insertIssue(sp, { id: i.id, weekStart, subject: i.subject,
           autoSendAt: auto == null ? null : odtToPg(auto) }, systemNowMicros()));
       } catch (e) {
         if ((e as { code?: string }).code === '23505') throw exists();
