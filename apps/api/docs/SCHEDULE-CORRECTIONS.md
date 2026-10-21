@@ -2,7 +2,7 @@
 
 Students fix wrong SGA schedules themselves. A logged-in student (email allowlist) suggests the real **day + time** of a commission's weekly slots; other students confirm or reject; once enough confirm, the corrected slots replace the SGA ones wherever the API serves commission times for scheduling. STAFF can override at any time. App parity: [ceitba/CEITBApp#130](https://github.com/ceitba/CEITBApp/issues/130).
 
-Code: `service/correction/ScheduleCorrectionService` (rules), `CorrectionSlots` (validation, normalization, rooms), `web/correction/*` (endpoints), migration `V30__schedule_corrections.sql` (test mirror `V4.22`).
+Code: `src/features/correction/service.ts` (rules), `src/features/correction/logic/slots.ts` (validation, normalization) and `src/features/commission/correctionOverlay.ts` (rooms, the served overlays, the sync hook), `src/features/correction/routes.ts` (endpoints), migration `V30__schedule_corrections.sql` (test mirror `V4.22`).
 
 ## Rules
 
@@ -21,7 +21,7 @@ Code: `service/correction/ScheduleCorrectionService` (rules), `CorrectionSlots` 
 
 ## Concurrency
 
-Every write (suggest, vote, staff review, sync expiry) first takes `SELECT … FOR UPDATE` on the parent `commission` row, then reads the corrections fresh. Counters are recounted from `schedule_correction_vote` on every change, so they are exact under concurrent votes (`ScheduleCorrectionIT.concurrentVotesAreAllCountedAndApplyOnce`).
+Every write (suggest, vote, staff review, sync expiry) first takes `SELECT … FOR UPDATE` on the parent `commission` row, then reads the corrections fresh. Counters are recounted from `schedule_correction_vote` on every change, so they are exact under concurrent votes (`concurrentVotesAreAllCountedAndApplyOnce` in `contract/tests/correction-schedule.contract.test.ts`).
 
 ## Where corrected times are served
 
@@ -31,7 +31,7 @@ Every write (suggest, vote, staff review, sync expiry) first takes `SELECT … F
 | `GET /v1/commissions?plan=` (mobile schedule builder) | `times` are the effective slots. One extra query. |
 | `/v1/classrooms/**` (room occupancy, conflicts) | **SGA** on purpose: corrections don't know rooms, and their position-borrowed rooms are a display aid, not occupancy data. |
 
-## Rate limits (per IP, `rate-limit.rules` in `application.yml`)
+## Rate limits (per IP, `rules` in `src/config/sections/rateLimit.ts`)
 
 - `schedule-corrections`: `POST /v1/commissions/*/schedule-corrections`, 10/hour (`RATE_LIMIT_SCHEDULE_CORRECTIONS_CAPACITY` / `_PERIOD`).
 - `schedule-correction-votes`: `PUT`/`DELETE /v1/schedule-corrections/*/vote`, 60/min (same env vars as the newsletter votes, `RATE_LIMIT_VOTES_*`).

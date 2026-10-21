@@ -8,7 +8,7 @@ the web app. Seed glossary: `/domain-modeling` and `/grill-with-docs` extend it 
 
 **SGA**:
 ITBA's academic system, the upstream source of careers, plans, subjects and commissions. Reached only through
-`ItbaApiClient`; see `apps/api/docs/ITBA-GATEWAY.md`.
+the API's ITBA client (`apps/api/src/external/itba*`); see `apps/api/docs/ITBA-GATEWAY.md`.
 _Avoid_: ITBA API (when you mean the data source)
 
 **Career**:

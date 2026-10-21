@@ -4,7 +4,7 @@ The platform of CEITBA, the student center of ITBA, served at [ceitba.org.ar](ht
 
 | App | Dir | Served at | Stack |
 |---|---|---|---|
-| API | `apps/api` | `/api` | Spring Boot 3, Java 21, Postgres |
+| API | `apps/api` | `/api` | Bun, TypeScript, Hono, Drizzle, Postgres |
 | Web: main site + staff admin, Combinador de Horarios, Newsletter | `apps/web` | `/`, `/scheduler`, `/newsletter` | React 18, Vite, TypeScript |
 | MCP server for AI assistants ([connect guide](apps/mcp/CONECTAR.md)) | `apps/mcp` | `/mcp` | Bun, TypeScript, MCP SDK |
 
@@ -12,12 +12,12 @@ The mobile app lives in its own repo, [ceitba/CEITBApp](https://github.com/ceitb
 
 ## Running locally
 
-You need Docker, a JDK 21 (or just Docker, see `apps/api/scripts/mvn`) and [bun](https://bun.sh).
+You need Docker and [bun](https://bun.sh).
 
 ```sh
 # API + Postgres + MinIO
 cd apps/api && cp .env.example .env   # fill AUTH_JWT_SECRET: openssl rand -base64 32
-docker compose up -d
+docker compose up -d --build
 
 # Web app (from the repo root)
 bun install
@@ -42,7 +42,7 @@ To click through everything without real ITBA data or a Google login:
 ## Repository layout
 
 ```
-apps/        api (Maven), web and the MCP server (bun workspaces)
+apps/        api, web and the MCP server (bun workspaces)
 packages/    shared TS packages (scheduler-core: the schedule generator)
 infra/       Caddy reverse proxy config for production
 docs/        cross-app docs (EDITORIAL_UI_SYSTEM.md: the shared UI design system)

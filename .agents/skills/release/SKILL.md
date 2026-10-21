@@ -17,9 +17,9 @@ Only `main` deploys (`.github/workflows/deploy.yml`): the API first, then each c
    (`git diff --stat origin/main...origin/dev -- apps infra .github`).
 4. Flag deploy risks in the body:
    - new prod migrations (`apps/api/src/main/resources/db/migration`): they run on API start, irreversible;
-   - `SecurityConfig` or auth changes;
+   - access-policy (`apps/api/src/http/auth/policy.ts`) or auth changes;
    - `infra/caddy` changes (Caddy restarts);
-   - new env vars the VPS `.env` needs (grep the diff of `.env.example`, `application*.yml`);
+   - new env vars the VPS `.env` needs (grep the diff of `apps/api/.env.example`, `apps/api/src/config/sections/`);
    - manual steps listed in the merged PRs.
 5. Open it: `gh pr create --base main --head dev --title "chore(release): <YYYY-MM-DD>" --body …` with sections
    **Ships** (PR list grouped by app), **Deploy risks**, **Manual steps** (VPS env, OAuth, directories) and

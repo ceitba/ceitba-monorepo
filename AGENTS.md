@@ -10,7 +10,7 @@ One repo, three apps (the mobile app is a separate repo, `ceitba/CEITBApp`):
 
 | Dir | What | Stack |
 |---|---|---|
-| `apps/api` | Backend for everything below | Spring Boot 3, Java 21, Postgres, Maven (not part of the JS workspace) |
+| `apps/api` | Backend for everything below | Bun + TS, Hono, Drizzle, zod, Postgres 16 + pgvector (`@ceitba/api`; a Spring Boot app until 2026, `docs/adr/0004-api-runs-on-bun.md`) |
 | `apps/web` | The whole frontend, one SPA: main site + `/manage` staff admin + Apuntes at `/`, the "Combinador de Horarios" at `/scheduler`, the student newsletter at `/newsletter` | React 18 + Vite + TS |
 | `apps/mcp` | MCP server for AI assistants: stdio + Streamable HTTP with OAuth, served at `/mcp` (plus `/.well-known/*/mcp`) | Bun + TS, `@modelcontextprotocol/sdk` |
 | `packages/scheduler-core` | Pure schedule generator shared by `apps/web` (scheduler) and `apps/mcp` | TS (source-only package) |
@@ -76,22 +76,22 @@ version updates against `dev`.
   `/sitemap.xml` → the API (`GET /v1/articles/sitemap.xml`: newsletter home, published articles, the events list + events; `robots.txt` is a static file in `apps/web/public`),
   everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
   (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
-- **Migrations are expand/contract** (zero-downtime deploys): during a deploy the old API jar keeps serving
+- **Migrations are expand/contract** (zero-downtime deploys): during a deploy the old API image keeps serving
   against the schema the new one just migrated. Additive changes (new tables, nullable or defaulted columns,
   indexes) ship with the code that uses them; `DROP`, `RENAME`, `NOT NULL` on existing columns and type changes
   ship one release later, once no deployed code uses the old shape. Details in `apps/api/docs/DEPLOY.md`.
-- **Scheduled jobs run in one process at a time**: wrap every new `@Scheduled` method in
-  `JobLock.runExclusively` with a new, never-reused id (`apps/api/docs/DEPLOY.md` "Scheduled jobs").
+- **Scheduled jobs run in one process at a time**: every new job in a feature's `jobs.ts` takes a `JobLock` with a
+  new, never-reused id in `apps/api/src/jobs/joblock.ts` (`apps/api/docs/DEPLOY.md` "Scheduled jobs").
 - **Secrets** never enter the repo: `.env`/`.env.local` stay local, `.env.example` gets placeholders only.
   `.gitleaks.toml` is the scanner config; rotate a leaked secret rather than allowlisting it.
 
 ## Commands
 
 ```
-bun install                                  # web deps + git hooks (repo root)
-bun run dev | build | lint                   # the web app (apps/web), apps/mcp and packages/*
-bun run test                                 # bun test in apps/mcp and packages/scheduler-core
-cd apps/api && ./mvnw -B -ntp verify         # API unit + integration tests (needs Docker)
+bun install                                  # every workspace's deps + git hooks (repo root)
+bun run dev | build | lint                   # the web app (apps/web), apps/api, apps/mcp and packages/*
+bun run test                                 # bun test in apps/api (needs Docker), apps/mcp and packages/scheduler-core
+cd apps/api && bun contract/run.ts           # API contract suite against a real server (needs Docker)
 bun run check                                # repo checks: locales, migrations, workflows, agents, living docs
 bun run agents:sync                          # regenerate per-tool subagent files from .agents/agents/
 ```

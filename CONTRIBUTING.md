@@ -23,7 +23,8 @@
 | pre-push | `bun run check` (locales, migrations, workflows, agents; living docs as a warning) |
 
 CI runs the same scripts, so skipping a hook only moves the failure to the PR. The API tests are not in a hook
-(they need Docker and take minutes): run `./mvnw -B -ntp verify` in `apps/api` before pushing API changes.
+(they need Docker and take a minute): run `bun run test && bun contract/run.ts` in `apps/api` before pushing API
+changes.
 
 ## PR checks
 

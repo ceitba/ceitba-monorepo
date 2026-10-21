@@ -36,7 +36,7 @@ Done when the section loads lazily at `/<section>`, deep links and absolute link
 Caddy (`infra/caddy/Caddyfile`) serves the build from `/var/www/main` with a `try_files {path} /index.html` fallback;
 the build env (`VITE_BASE_PATH`, `VITE_API_URL`, `VITE_GOOGLE_REDIRECT_URI`) is in `.github/spa-apps.json`, from which
 CI and deploy build their matrix. A new redirect origin must be in `SAFE_REDIRECT_ORIGINS`
-(`apps/api/src/main/java/org/ceitba/api/web/auth/AuthController.java`) and, if cross-origin, CORS in `SecurityConfig`:
+(`apps/api/src/features/auth/redirects.ts`) and, if cross-origin, `CORS_ALLOWED_ORIGINS` in `apps/api/src/http/security.ts`:
 route those to the `security-reviewer` subagent. Caddy changes restart Caddy on deploy and must ship in a release
 *after* the build they point at is live: list that ordering in the PR body.
 

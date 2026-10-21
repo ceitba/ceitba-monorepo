@@ -1,6 +1,6 @@
 # Auth & roles
 
-How identity, roles, and access control work in CEITBA-API. Read this before changing any of `config/SecurityConfig.java`, `web/auth/*`, or anything in `service/auth/`.
+How identity, roles, and access control work in CEITBA-API. Read this before changing any of `src/http/security.ts`, `src/http/auth/*` (`policy.ts` above all), or anything in `src/features/auth/`.
 
 ---
 
@@ -17,7 +17,7 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 
 JWTs are issued by this API (HS256, `AUTH_JWT_SECRET`) after a Google sign-in, either the web OAuth flow (JWT in an HttpOnly cookie) or the mobile ID-token exchange (JWT + refresh token in the response body). The one exception is the [store review account](#app-store--play-review-login), which signs in with an email and password. Google tokens are never accepted as bearer tokens. See [AUTH-SETUP.md](AUTH-SETUP.md) to configure login and [§ Sessions and tokens](#sessions-and-tokens) below.
 
-`Anonymous` isn't actually a role; it's the absence of any authentication. The others (`USER`, `MODERATOR`, `STAFF`, `SYNC`) map to Spring Security `ROLE_*` authorities.
+`Anonymous` isn't actually a role; it's the absence of any authentication. The others (`USER`, `MODERATOR`, `STAFF`, `SYNC`) are the `Role` values of `src/http/auth/principal.ts` (written `ROLE_*` below, as in the error messages and history).
 
 ---
 
@@ -25,13 +25,13 @@ JWTs are issued by this API (HS256, `AUTH_JWT_SECRET`) after a Google sign-in, e
 
 ### USER — automatic on first sign-in
 
-Anyone whose JWT or API-key email passes the [allowlist](#how-to-add-a-new-authorized-user-without-making-them-staff) gets `ROLE_USER`. There's **no signup endpoint**: a `User` row is created on the first successful Google sign-in (web callback or mobile exchange, both through `service/auth/GoogleLoginService.java`) or the first time a JWT hits a controller method that asks for `@CurrentUser User user`. That's "JIT provisioning" — see `service/auth/UserProvisioningService.java`. New users auto-follow the `ceitba` organization. Sign-in does **not** fill any academic data: ITBA revoked CEITBA's access to the SGA student lookup in 2026-09, so the SGA prefill (and `POST /v1/me/profile/sync-from-sga`) is gone. Users pick their career and plan during app onboarding and enter their file number (legajo) themselves via `PATCH /v1/me/profile`. The file number can be set only while it is empty and must be unique (409 `FileNumberAlreadySet` / `FileNumberTaken`); after that only STAFF can change or clear it (`PATCH /v1/users/{id}/file-number`).
+Anyone whose JWT or API-key email passes the [allowlist](#how-to-add-a-new-authorized-user-without-making-them-staff) gets `ROLE_USER`. There's **no signup endpoint**: a `User` row is created on the first successful Google sign-in (web callback or mobile exchange, both through the Google login part of `src/features/auth/service.ts`) or the first time a JWT hits a route that asks for the current user (`currentUser: true` / `currentUser(c)`). That's "JIT provisioning" — see `findOrCreateUser` in `src/http/auth/provisioning.ts`. New users auto-follow the `ceitba` organization. Sign-in does **not** fill any academic data: ITBA revoked CEITBA's access to the SGA student lookup in 2026-09, so the SGA prefill (and `POST /v1/me/profile/sync-from-sga`) is gone. Users pick their career and plan during app onboarding and enter their file number (legajo) themselves via `PATCH /v1/me/profile`. The file number can be set only while it is empty and must be unique (409 `FileNumberAlreadySet` / `FileNumberTaken`); after that only STAFF can change or clear it (`PATCH /v1/users/{id}/file-number`).
 
-If you authenticate but never hit a `@CurrentUser` route, no row is created. The role is still granted (`ROLE_USER`), so you can call any USER-level endpoint immediately.
+If you authenticate but never hit a current-user route, no row is created. The role is still granted (`ROLE_USER`), so you can call any USER-level endpoint immediately.
 
 ### STAFF — granted via an active `ceitba_staff` row
 
-Spring Security adds `ROLE_STAFF` if the request's email maps to a `User` row that has a `ceitba_staff` record where `start <= now <= end`. The check happens on every authenticated request inside [`StaffAwareJwtAuthenticationConverter`](../src/main/java/org/ceitba/api/web/auth/StaffAwareJwtAuthenticationConverter.java) — one DB lookup per request, no cache.
+The security chain adds `ROLE_STAFF` if the request's email maps to a `User` row that has a `ceitba_staff` record where `start <= now <= end`. The check happens on every authenticated request inside `jwtRoles` in `src/http/security.ts` — one DB lookup per request, no cache.
 
 A user can only be in **one** branch at a time (`ceitba_staff.user_id` is the primary key). To change someone's branch or role, revoke their current membership and assign a new one.
 
@@ -42,7 +42,7 @@ A user can only be in **one** branch at a time (`ceitba_staff.user_id` is the pr
 - the user is active STAFF (**STAFF implies MODERATOR**; no row needed), or
 - the user has a `ceitba_moderators` row with `revoked_at IS NULL` (V19).
 
-Both checks run in the same places as the STAFF check: `StaffAwareJwtAuthenticationConverter` (JWTs) and `ApiKeyFilter` (user API keys), once per request, no cache. `GET /v1/auth/me` (and the `user` object of the mobile token responses) exposes it as `"moderator": true|false`; `role` stays `"staff"` or `"user"`.
+Both checks run in the same places as the STAFF check: `jwtRoles` (JWTs) and `apiKeyRoles` (user API keys) in `src/http/security.ts`, once per request, no cache. `GET /v1/auth/me` (and the `user` object of the mobile token responses) exposes it as `"moderator": true|false`; `role` stays `"staff"` or `"user"`.
 
 Only STAFF can manage grants (a MODERATOR cannot grant or revoke):
 
@@ -59,7 +59,7 @@ DELETE /api/v1/staff/moderators/{userId}     -> 204
 
 ### Organization roles — `user_organizations.role`
 
-Org membership is not a Spring role: it is a `user_organizations` row whose `role` is `member` or `admin` (the only values the API accepts on write). Members can manage their org's profile, articles and events; only `admin` members (and STAFF) can list the org's followers (`GET /v1/organizations/{slug}/followers`, which exposes names and emails). Only STAFF manages memberships:
+Org membership is not one of the roles above: it is a `user_organizations` row whose `role` is `member` or `admin` (the only values the API accepts on write). Members can manage their org's profile, articles and events; only `admin` members (and STAFF) can list the org's followers (`GET /v1/organizations/{slug}/followers`, which exposes names and emails). Only STAFF manages memberships:
 
 ```http
 POST   /api/v1/users/{userId}/organizations          {"slug": "sabf", "role": "member"}  -> 201
@@ -71,11 +71,11 @@ DELETE /api/v1/users/{userId}/organizations/{slug}                              
 
 ### Independent articles (no organization)
 
-Any `ROLE_USER` may `POST /v1/articles` with no `organization`. For non-staff authors the status may only be `draft` or `pending_review` (missing = `pending_review`; anything else → 400 `ValidationError`), and `featured` is ignored. The author (`createdBy`) can `GET`, `PATCH` and `DELETE` it while it is not `published`; a `PATCH` keeps the same status limit unless it moves the article into an org the author belongs to (then member rules apply). STAFF moderates by publishing it, after which only STAFF can edit or delete it. `GET /v1/articles?mine=true` lists only the caller's own **independent** (org-less) articles, of every status (`status` and `category` filter; `organization` is ignored — org articles are listed with `?organization=<slug>` by the org's members; anonymous → empty page). The author shortcut on `GET /v1/articles/{id}` likewise covers only org-less articles: an org article's drafts are visible to the org's current members (and STAFF), so an author who leaves the org loses access. A non-staff author's `id` on create is ignored (a UUID is generated); STAFF and org members may still pick one, matching `^[a-z0-9][a-z0-9-]{0,99}$` (else 400 `ValidationError`). Author `PATCH`/`DELETE` load the article under a row lock (`ArticleRepository.findByIdForUpdate`, also used by staff writes) and re-check authorship/org-less/unpublished inside that transaction; if a staff publish won the race the author gets 409 `InvalidState` (403 is still returned when the state was already published at authorization time). API-key (`ceitba_`) callers are resolved to their user just like JWT callers. Org-less articles never trigger pushes. Checks live in `web/news/OrgAccess` + `ArticleController`.
+Any `ROLE_USER` may `POST /v1/articles` with no `organization`. For non-staff authors the status may only be `draft` or `pending_review` (missing = `pending_review`; anything else → 400 `ValidationError`), and `featured` is ignored. The author (`createdBy`) can `GET`, `PATCH` and `DELETE` it while it is not `published`; a `PATCH` keeps the same status limit unless it moves the article into an org the author belongs to (then member rules apply). STAFF moderates by publishing it, after which only STAFF can edit or delete it. `GET /v1/articles?mine=true` lists only the caller's own **independent** (org-less) articles, of every status (`status` and `category` filter; `organization` is ignored — org articles are listed with `?organization=<slug>` by the org's members; anonymous → empty page). The author shortcut on `GET /v1/articles/{id}` likewise covers only org-less articles: an org article's drafts are visible to the org's current members (and STAFF), so an author who leaves the org loses access. A non-staff author's `id` on create is ignored (a UUID is generated); STAFF and org members may still pick one, matching `^[a-z0-9][a-z0-9-]{0,99}$` (else 400 `ValidationError`). Author `PATCH`/`DELETE` load the article under a row lock (`findArticle(tx, id, true)` in `src/features/news/repo.ts`, also used by staff writes) and re-check authorship/org-less/unpublished inside that transaction; if a staff publish won the race the author gets 409 `InvalidState` (403 is still returned when the state was already published at authorization time). API-key (`ceitba_`) callers are resolved to their user just like JWT callers. Org-less articles never trigger pushes. Checks live in `src/features/news/access.ts` (`OrgAccess`) + `src/features/news/routes.ts`.
 
 ### SYNC — `X-Api-Key` (static key) only
 
-Cron jobs and ops scripts authenticate with a static header against `AUTH_SYNC_API_KEY`. The [`ApiKeyFilter`](../src/main/java/org/ceitba/api/web/auth/ApiKeyFilter.java) translates a matching key into a `ROLE_SYNC` principal. This skips the JWT path entirely. Bug bias: if `AUTH_SYNC_API_KEY` is empty/unset, every `/sync` request returns 401. Fail-closed by design.
+Cron jobs and ops scripts authenticate with a static header against `AUTH_SYNC_API_KEY`. The API-key step of `authenticateAndAuthorize` in `src/http/security.ts` (`syncKeyMatches`) translates a matching key into a `ROLE_SYNC` principal. This skips the JWT path entirely. Bug bias: if `AUTH_SYNC_API_KEY` is empty/unset, every `/sync` request returns 401. Fail-closed by design.
 
 User API keys (prefixed `ceitba_`) also go through `X-Api-Key` but they are looked up in the `api_keys` table and grant `ROLE_USER` / `ROLE_STAFF` / `ROLE_MODERATOR`, not `ROLE_SYNC`. See [AUTH-SETUP.md § User API keys](AUTH-SETUP.md#6-user-api-keys).
 
@@ -86,7 +86,7 @@ User API keys (prefixed `ceitba_`) also go through `X-Api-Key` but they are look
 The `POST /v1/staff` endpoint requires `ROLE_STAFF` to call. Chicken-and-egg: until someone is staff, nobody can grant staff. Bootstrap manually with SQL.
 
 ```sql
--- 1. The user must already exist. If they've ever hit a @CurrentUser route
+-- 1. The user must already exist. If they've ever hit a current-user route
 -- they'll be there; otherwise insert manually:
 INSERT INTO public."user" (id, email, name, created_at, updated_at)
 VALUES (gen_random_uuid(), 'founder@itba.edu.ar', 'Founder', now(), now())
@@ -178,49 +178,49 @@ The allowlist gates which emails Google identities are admitted at all. Two knob
 
 **Someone with a different domain who shouldn't be auto-admitted**: just don't add them. They get `403 Forbidden` on any protected endpoint.
 
-The admission rule is in [`AuthProperties.admits()`](../src/main/java/org/ceitba/api/config/AuthProperties.java). It's case-insensitive and checks the explicit list before the domain list.
+The admission rule is `admits()` in `src/http/auth/allowlist.ts` (the lists come from `src/config/sections/auth.ts`). It's case-insensitive: an email is admitted if it ends with an allowed `@domain` or equals an allowed email.
 
 ---
 
 ## How to use roles in code
 
-### Path-based (preferred for whole controllers/prefixes)
+### Path-based (preferred for whole prefixes)
 
-In `SecurityConfig.java`'s `authorizeHttpRequests` block:
+Add an entry to `URL_RULES` in `src/http/auth/policy.ts` (first match wins, so put it before the catch-all `/**`):
 
-```java
-.requestMatchers("/v1/staff/**").hasRole("STAFF")
-.requestMatchers("/v1/sync/**").hasRole("SYNC")
-.requestMatchers("/v1/some-admin-thing/**").hasRole("STAFF")
+```ts
+{ patterns: ['/v1/sync/**'], access: { role: 'SYNC' } },
+{ patterns: ['/v1/staff/**'], access: { role: 'STAFF', allowlisted: true } },
+{ patterns: ['/v1/some-admin-thing/**'], access: { role: 'STAFF', allowlisted: true } },
 ```
 
-`hasRole("X")` matches authority `ROLE_X` (Spring Security's prefix convention).
+`allowlisted: true` also requires the caller's email to pass the allowlist (every human route should).
 
-### Per-method (when one controller mixes USER and STAFF endpoints)
+### Per-route (when one feature mixes USER and STAFF endpoints)
 
-`@EnableMethodSecurity` is on; use `@PreAuthorize` on the controller method:
+Add an entry to `METHOD_RULES` in the same file, keyed by the method and the route path exactly as registered. The router evaluates it after the arguments are bound and validated, before the handler (403 `AccessDenied` when it fails):
 
-```java
-@PostMapping("/{id}/approve")
-@PreAuthorize("hasRole('STAFF')")
-public Foo approve(@PathVariable UUID id) { ... }
+```ts
+'POST /v1/foos/{id}/approve': role('STAFF'),
+'PATCH /v1/organizations/{slug}': or(role('STAFF'), check('orgAccess.canEditOrg', 'path.slug')),
 ```
 
-### Inside the controller (when the policy depends on the body)
+A `check(...)` names a feature function, registered by the feature with `deps.accessChecks.register(name, fn)` in its `routes.ts`.
 
-Pull the `@CurrentUser` and check it yourself:
+### Inside the route handler (when the policy depends on the body)
 
-```java
-@PostMapping("/whatever")
-public Foo doIt(@CurrentUser User user, @RequestBody DoItRequest req) {
-    if (!user.getEmail().equals(req.actingFor())) {
-        throw new ValidationException("actingFor", req.actingFor(), "must be your own email");
-    }
-    ...
-}
+Ask for the current user and check it yourself:
+
+```ts
+r.post('/v1/whatever', { body: DoItRequest, currentUser: true }, ({ user, body }) => {
+  if (user!.email !== body.actingFor) {
+    throw new ValidationError('actingFor', body.actingFor, 'must be your own email');
+  }
+  ...
+});
 ```
 
-This is the only path where you should look at the user inside business code. If you're checking "is this user STAFF?" inside a service, prefer to gate the endpoint at `SecurityConfig` level instead.
+This is the only path where you should look at the user inside business code. If you're checking "is this user STAFF?" inside a service, prefer to gate the endpoint in `policy.ts` instead (or ask `staffPowers(c)` from `src/http/auth/context.ts`, which withholds staff powers from API keys without the `staff` scope).
 
 ---
 
@@ -230,61 +230,65 @@ This is the only path where you should look at the user inside business code. If
 HTTP request
    │
    ▼
-ApiKeyFilter (custom, runs before Spring Security)
+security headers, CORS, per-IP rate limits (src/http/security.ts, before any authentication)
+   │
+   ▼
+API-key step (src/http/security.ts + src/http/auth/apikeys.ts)
    if X-Api-Key starts with "ceitba_":
        hash key, look up in api_keys table
        if found and not expired: mark last_used_at
            scopes lack "write" and the method is not safe → 403 INSUFFICIENT_SCOPE (stop)
            scopes include "staff":
-               DB lookup: active CeitbaStaff? → add ROLE_STAFF (+ ROLE_MODERATOR)
+               DB lookup: active ceitba_staff row? → add ROLE_STAFF (+ ROLE_MODERATOR)
                DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
-           set Authentication = ROLE_USER (+ROLE_STAFF/MODERATOR, SCOPE_*) principal = User entity,
-               details = the key (ApiKeyCredential: StaffPowers drops staff powers without "staff",
-               ApiKeyService refuses key creation / revoking other keys unless the key is full power,
-               i.e. holds every scope including "keys")
+           principal = the key with ROLE_USER (+ROLE_STAFF/MODERATOR) and its scopes
+               (apiKeyCredential(c): staffPowers drops staff powers without "staff",
+               the API-key service refuses key creation / revoking other keys unless the
+               key is full power, i.e. holds every scope including "keys")
    else if X-Api-Key matches AUTH_SYNC_API_KEY (static):
-       set Authentication = ROLE_SYNC principal "sync-job"
+       principal = sync (ROLE_SYNC)
    │
    ▼
-OAuth2 Resource Server filter (Spring Security)
+Bearer step (src/http/security.ts + src/http/auth/jwt.ts)
    token = Authorization: Bearer header, else the session cookie
-           (ignored on POST /v1/auth/{google/mobile,refresh,logout,review-login})
-   if token AND no auth set yet:
+           (ignored on POST /v1/auth/{google/mobile,refresh,logout,review-login} and the
+           other token endpoints in isTokenEndpoint)
+   if token (it replaces an API-key principal; a bad token is 401 even on public routes):
        1. Verify HS256 signature against AUTH_JWT_SECRET
-       2. Verify exp / nbf, and iss / aud (phase-in, see below)
-       3. Call StaffAwareJwtAuthenticationConverter:
+       2. Verify exp / nbf, and iss / aud (see below)
+       3. jwtRoles:
           a. Add ROLE_USER baseline
-          b. DB lookup: if active CeitbaStaff for this user's email, add ROLE_STAFF
+          b. DB lookup: if active ceitba_staff row for this user's email, add ROLE_STAFF
           c. add ROLE_MODERATOR if (b) matched or an active ceitba_moderators grant exists
           d. add ROLE_ORG_MEMBER if the user belongs to any organization
-       4. Set Authentication = JwtAuthenticationToken with the authorities
+       4. principal = the JWT with those roles
    │
    ▼
-authorizeHttpRequests() — per-route policy from SecurityConfig
+URL_RULES (src/http/auth/policy.ts) — per-route policy, before routing
    public matchers           -> permitAll
    GET  /v1/auth/google, /v1/auth/callback               -> permitAll (web OAuth flow)
    POST /v1/auth/google/mobile, /refresh, /logout        -> permitAll (token endpoints)
    POST /v1/auth/review-login                            -> permitAll (404 unless configured)
    GET  /v1/app/config                                   -> permitAll
    GET  /v1/capabilities                                 -> permitAll (keys enabled for everyone)
-   /v1/sync/**               -> hasRole("SYNC")
-   /v1/staff/proposals/**    -> hasRole("MODERATOR") AND email in allowlist
-   /v1/staff/**              -> hasRole("STAFF") AND email in allowlist
+   /v1/sync/**               -> role SYNC
+   /v1/staff/proposals/**    -> role MODERATOR AND email in allowlist
+   /v1/staff/**              -> role STAFF AND email in allowlist
                                 (incl. /v1/staff/moderators, /v1/staff/schedule-corrections)
-   anyRequest()              -> authenticated() AND email in allowlist (JWT email, or the
+   /**                       -> authenticated AND email in allowlist (JWT email, or the
                                 API-key owner's email; allowlist + review email while
                                 review login is on)
    │
    ▼
-@PreAuthorize evaluation (if used on the controller method)
+METHOD_RULES evaluation (if the route has one), after the arguments are bound
    │
    ▼
-Controller method invoked
-   if @CurrentUser User user is in the signature:
-      JWT path:     CurrentUserResolver reads email+name from JWT claims
-                    UserProvisioningService.findOrCreate() → row exists / new INSERT
-      API-key path: CurrentUserResolver returns the User already set by ApiKeyFilter
-      Controller receives the managed User entity
+Route handler invoked
+   if the route asks for the current user (currentUser: true / currentUser(c)):
+      JWT path:     reads email+name from the JWT claims,
+                    findOrCreateUser() → row exists / new INSERT
+      API-key path: returns the key's owner, already loaded by the API-key step
+      Handler receives the user row
 ```
 
 For how a user obtains a JWT in the first place, see [AUTH-SETUP.md § Frontend integration](AUTH-SETUP.md#4-frontend-integration) (web) and [§ Mobile app integration](AUTH-SETUP.md#5-mobile-app-integration).
@@ -297,7 +301,7 @@ For how a user obtains a JWT in the first place, see [AUTH-SETUP.md § Frontend 
 |---|---|---|
 | Sign-in | `GET /v1/auth/google` → Google → `GET /v1/auth/callback` | Native Google Sign-In → `POST /v1/auth/google/mobile {idToken, nonce?, deviceName?}` |
 | Google token check | Server-side code exchange with Google's token endpoint | ID token verified against Google's JWKS: `iss` ∈ {`accounts.google.com`, `https://accounts.google.com`}, `aud` ∈ `AUTH_GOOGLE_MOBILE_AUDIENCES`, `exp` (60 s skew), `nonce` if sent |
-| Admission | `GoogleLoginService`: `email_verified`, allowlist, `hd` ∈ allowed domains when present, find-or-create | same service |
+| Admission | Google login (`src/features/auth/service.ts`): `email_verified`, allowlist, `hd` ∈ allowed domains when present, find-or-create | same service |
 | Access token | JWT in HttpOnly cookie, `AUTH_JWT_TTL_DAYS` (7 d) | JWT in body, `AUTH_MOBILE_ACCESS_TTL` (15 min) |
 | Renewal | Sign in again | `POST /v1/auth/refresh {refreshToken}` (rotating, `AUTH_REFRESH_TTL` = 60 d sliding) |
 | Logout | `POST /v1/auth/logout` (clears cookie) | `POST /v1/auth/logout {refreshToken}` revokes that token's family; `POST /v1/auth/logout-all` revokes every family of the caller |
@@ -308,7 +312,7 @@ Token endpoint errors use the standard error body with a machine code in `error`
 
 **JWT claims**: `sub` (user id), `email`, `name`, `iat`, `exp`, `iss` (`AUTH_JWT_ISSUER`, default `https://ceitba.org.ar/api`), `aud` = `ceitba-api`, `jti`. Access tokens are stateless: logout, logout-all and account deletion revoke refresh tokens, but an already-issued access JWT stays valid until `exp`.
 
-**`iss`/`aud` enforcement.** `IssuerAudienceValidator` requires both claims on every JWT (`AUTH_JWT_ENFORCE_ISS_AUD=true`, the default since 2026-10-05). History: JWTs issued before B1 (in production 2026-09-27) carried neither claim and lived up to 7 days (`AUTH_JWT_TTL_DAYS`) in web cookies, so B1 shipped with a phase-in (`false`: each claim checked only when present). The last pre-B1 token expired on 2026-10-04, and the default was flipped after that. Setting `false` brings the phase-in back; it isn't needed anymore, and the flag can be removed in a later cleanup.
+**`iss`/`aud` enforcement.** `verifyJwt` (`src/http/auth/jwt.ts`) requires both claims on every JWT (`AUTH_JWT_ENFORCE_ISS_AUD=true`, the default since 2026-10-05). History: JWTs issued before B1 (in production 2026-09-27) carried neither claim and lived up to 7 days (`AUTH_JWT_TTL_DAYS`) in web cookies, so B1 shipped with a phase-in (`false`: each claim checked only when present). The last pre-B1 token expired on 2026-10-04, and the default was flipped after that. Setting `false` brings the phase-in back; it isn't needed anymore, and the flag can be removed in a later cleanup.
 
 ---
 
@@ -325,7 +329,7 @@ Content-Type: application/json
 { "email": "appreview@example.com", "password": "<password>", "deviceName": "iPhone (optional)" }
 ```
 
-Success is `200` with **exactly the same body as `POST /v1/auth/google/mobile`** (`accessToken`, `accessTokenExpiresAt`, `refreshToken`, `refreshTokenExpiresAt`, `user` = the `GET /v1/auth/me` shape). It goes through the same `TokenSessionService` / refresh-token-family code, so `/v1/auth/refresh`, `/logout`, `/logout-all`, `GET /v1/auth/me` and `DELETE /v1/me` work unchanged. Errors:
+Success is `200` with **exactly the same body as `POST /v1/auth/google/mobile`** (`accessToken`, `accessTokenExpiresAt`, `refreshToken`, `refreshTokenExpiresAt`, `user` = the `GET /v1/auth/me` shape). It goes through the same token-session / refresh-token-family code (`src/features/auth/service.ts`), so `/v1/auth/refresh`, `/logout`, `/logout-all`, `GET /v1/auth/me` and `DELETE /v1/me` work unchanged. Errors:
 
 | Status | `error` | When |
 |---|---|---|
@@ -348,7 +352,7 @@ Generate the hash with `htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'` (no `
 **What the account is.** A normal **USER**, nothing more:
 
 - Only the configured email can use this endpoint; there is no other password account and no signup.
-- The email bypasses `AUTH_ALLOWED_DOMAINS`/`AUTH_ALLOWED_EMAILS` **for this endpoint only**. After sign-in, `SessionAllowlist` (used by the post-auth `AuthorizationManager` in `SecurityConfig` and by the refresh-token allowlist re-check) admits that one email while review login is enabled. Google sign-in with the same address is still rejected unless it is allowlisted normally.
+- The email bypasses `AUTH_ALLOWED_DOMAINS`/`AUTH_ALLOWED_EMAILS` **for this endpoint only**. After sign-in, `sessionAdmits` (`src/http/auth/allowlist.ts`, used by the allowlist gate of the URL rules in `src/http/security.ts` and by the refresh-token allowlist re-check) admits that one email while review login is enabled. Google sign-in with the same address is still rejected unless it is allowlisted normally.
 - The password is only ever stored as a bcrypt hash. Every attempt runs exactly one bcrypt check (against a dummy hash of the same cost when the email does not match), so timing does not reveal the email; the email itself is compared in constant time. Passwords longer than 72 bytes are rejected.
 - It is JIT-provisioned on the first login as `App Review` (the name is reset to that on every login) and goes through normal onboarding: no career, plan or file number until the reviewer picks them.
 - Nothing grants it STAFF or MODERATOR: those come only from `ceitba_staff` / `ceitba_moderators` rows. Never add one for this account.
@@ -356,13 +360,13 @@ Generate the hash with `htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'` (no `
 
 **What the reviewer can do.** Everything any student can: onboarding (career/plan/legajo), schedules, classrooms, benefits, news, study groups, proposals, push-notification registration, logout, and account deletion (`DELETE /v1/me`, which App Store rule 5.1.1(v) requires them to be able to test; the next review login simply provisions a fresh account).
 
-Code: `service/auth/ReviewLoginService`, `service/auth/SessionAllowlist`, `config/ReviewLoginProperties`, `TokenAuthController.reviewLogin`.
+Code: the review-login part of `src/features/auth/service.ts`, `src/http/auth/allowlist.ts`, `reviewLogin` in `src/config/sections/auth.ts`, `POST /v1/auth/review-login` in `src/features/auth/routes.ts`.
 
 ---
 
 ## Account deletion (`DELETE /v1/me`)
 
-Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`service/user/AccountDeletionService`):
+Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`src/features/user/accountDeletion.ts`):
 
 | Data | Policy |
 |---|---|
@@ -384,7 +388,7 @@ Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`ser
 
 The response clears the web session cookie. Signing in again with the same Google account creates a new, unrelated user.
 
-**Known gap: re-provisioning by a still-valid access JWT.** Deletion removes refresh tokens and API keys, but access JWTs are stateless. The cookie cleared is only the one of the browser that made the call; a web session cookie on another browser or device stays valid for up to `AUTH_JWT_TTL_DAYS` (7 d), and a mobile access token for up to `AUTH_MOBILE_ACCESS_TTL` (15 min). The first `@CurrentUser` request carrying such a token JIT-provisions the email again as a new, empty account (never linked to the deleted data). Closing this needs access-token revocation (see [Tech debt](#tech-debt--future-hardening)), e.g. a deletion tombstone per email hash that rejects tokens whose `iat` predates it at provisioning time.
+**Known gap: re-provisioning by a still-valid access JWT.** Deletion removes refresh tokens and API keys, but access JWTs are stateless. The cookie cleared is only the one of the browser that made the call; a web session cookie on another browser or device stays valid for up to `AUTH_JWT_TTL_DAYS` (7 d), and a mobile access token for up to `AUTH_MOBILE_ACCESS_TTL` (15 min). The first current-user request carrying such a token JIT-provisions the email again as a new, empty account (never linked to the deleted data). Closing this needs access-token revocation (see [Tech debt](#tech-debt--future-hardening)), e.g. a deletion tombstone per email hash that rejects tokens whose `iat` predates it at provisioning time.
 
 Guards:
 
@@ -395,54 +399,55 @@ Guards:
 
 ## Tested coverage
 
+Contract tests (`contract/tests/*.contract.test.ts`, black-box over HTTP) and in-process tests (`test/**`); test names are kept from the Java suites they port.
+
 | Concern | Test |
 |---|---|
-| Public endpoint, no token → 200 | `AuthIT.publicEndpointsAreReachableWithoutAuth` |
-| Protected endpoint, no token → 401 | `AuthIT.protectedEndpointWithoutTokenReturns401` |
-| `/sync` no/wrong/correct key → 401/401/200 | `AuthIT.sync*ApiKey*` |
-| Allowlist admits ITBA domain | `AuthIT.allowlistAdmitsItbaDomain` |
-| API-key scopes (read-only, `[]` = read-only, staff incl. `/auth/me` and capabilities, key minting incl. encoded paths, self-revoke, allowlisted owner) | `ApiKeyScopesIT`, `ApiKeyFilterTest`, `CapabilityServiceTest` |
-| Allowlist admits explicit external email | `AuthIT.allowlistAdmitsExplicitlyListedExternalEmail` |
-| Allowlist rejects unknown domain | `AuthIT.allowlistRejectsUnknownDomain` |
-| Allowlist case-insensitive | `AuthIT.allowlistIsCaseInsensitive` |
-| Fresh user gets ROLE_USER only | `StaffRoleDetectionIT.freshUserGetsRoleUserOnly` |
-| User with active CeitbaStaff gets ROLE_STAFF | `StaffRoleDetectionIT.userWithActiveStaffRowGetsRoleStaff` |
-| Expired CeitbaStaff doesn't grant ROLE_STAFF | `StaffRoleDetectionIT.userWithExpiredStaffRowGetsRoleUserOnly` |
-| Future CeitbaStaff doesn't grant ROLE_STAFF | `StaffRoleDetectionIT.userWithFutureStaffRowGetsRoleUserOnly` |
-| Disallowed email rejected at converter | `StaffRoleDetectionIT.disallowedEmailIsRejected` |
-| Anonymous can't list/assign staff | `StaffEndpointsIT.anonymousCannotListStaff` |
-| USER (no STAFF) can't list/assign | `StaffEndpointsIT.regularUserCannot*` |
-| STAFF can list/assign/revoke | `StaffEndpointsIT.staffCan*` |
-| Duplicate staff assignment → 409 | `StaffEndpointsIT.assigningSamePersonTwiceReturns409` |
-| Revoke end-dates active membership | `StaffEndpointsIT.revokeEndDatesActiveMembershipSoListingDropsIt` |
-| `/v1/users/**` requires STAFF | `UserEndpointsIT.regularUser*Returns403` |
-| Anonymous can't create/list users | `UserEndpointsIT.anonymous*Returns401` |
-| STAFF can create/list users | `UserEndpointsIT.staffCan*` |
-| Disallowed email rejected even with claimed STAFF authority | `UserEndpointsIT.disallowedEmailReturns403EvenWithStaffAuthorities` |
-| Mobile ID-token exchange (valid, unverified, not allowlisted, workspace, wrong aud/iss, expired, nonce, idempotent provisioning) | `AuthMobileIT` |
-| Refresh rotation, reuse revokes the family, lost-response grace window, allowlist re-check, logout / logout-all | `RefreshTokenIT` |
-| Account deletion: hard delete vs anonymize, tokens revoked, API keys rejected, last-staff guard | `AccountDeletionIT` |
-| `iss`/`aud` phase-in validation | `IssuerAudienceValidatorTest` |
-| STAFF implies ROLE_MODERATOR | `StaffRoleDetectionIT.userWithActiveStaffRowGetsRoleStaff`, `ModeratorIT.staffImpliesModerator` |
-| MODERATOR grant / revoke / re-grant, audit row kept, 404/409 | `ModeratorIT` |
-| USER and MODERATOR cannot manage moderator grants | `ModeratorIT.userAndModeratorCannotManageGrants` |
-| `moderator` flag on `/v1/auth/me` | `AuthMeIT.meModeratorFlagFollowsActiveGrant`, `ModeratorIT` |
-| Proposal moderation open to MODERATOR, 403 for USER and non-allowlisted, MODERATOR is not STAFF elsewhere | `StaffProposalControllerIT` |
-| Review login: wrong password / other email / blank → 401, success = mobile token shape, USER only (not staff/moderator), allowlist admits only that email, Google login for it still rejected, refresh, no API keys, own rate-limit bucket | `ReviewLoginIT` |
-| Review login disabled → 404 (even with an empty body) | `ReviewLoginDisabledIT` |
-| Schedule corrections: suggest/vote/me need an allowlisted session (401/403), staff endpoints 403 for USER, no response exposes the suggester | `ScheduleCorrectionIT` |
-| Review login always runs one bcrypt check (unknown email, wrong/overlong/missing password) | `ReviewLoginServiceTest` |
-| A mangled review hash (unquoted in `.env`, trailing `%`, truncated) disables review login instead of failing startup | `ReviewLoginServiceTest`, `ReviewLoginMisconfiguredIT` |
-| Review email admitted by the session allowlist only while review login is enabled | `SessionAllowlistTest` |
-
+| Public endpoint, no token → 200 | `auth.contract.test.ts` `publicEndpointsAreReachableWithoutAuth` |
+| Protected endpoint, no token → 401 | `auth.contract.test.ts` `protectedEndpointWithoutTokenReturns401` |
+| `/sync` no/wrong/correct key → 401/401/200 | `auth.contract.test.ts` `sync*ApiKey*`, `test/auth/units.test.ts` (`ApiKeyFilterTest`) |
+| Allowlist admits ITBA domain | `test/auth/units.test.ts` `allowlistAdmitsItbaDomain` |
+| API-key scopes (read-only, `[]` = read-only, staff incl. `/auth/me` and capabilities, key minting incl. encoded paths, self-revoke, allowlisted owner) | `api-key-scopes.contract.test.ts`, `test/auth/units.test.ts` (`ApiKeyFilterTest`), `test/capability/CapabilityService.test.ts` |
+| Allowlist admits explicit external email | `test/auth/units.test.ts` `allowlistAdmitsExplicitlyListedExternalEmail` |
+| Allowlist rejects unknown domain | `test/auth/units.test.ts` `allowlistRejectsUnknownDomain` |
+| Allowlist case-insensitive | `test/auth/units.test.ts` `allowlistIsCaseInsensitive` |
+| Fresh user gets ROLE_USER only | `test/auth/roles.test.ts` `freshUserGetsRoleUserOnly` |
+| User with active ceitba_staff row gets ROLE_STAFF | `test/auth/roles.test.ts` `userWithActiveStaffRowGetsRoleStaff` |
+| Expired ceitba_staff row doesn't grant ROLE_STAFF | `test/auth/roles.test.ts` `userWithExpiredStaffRowGetsRoleUserOnly` |
+| Future ceitba_staff row doesn't grant ROLE_STAFF | `test/auth/roles.test.ts` `userWithFutureStaffRowGetsRoleUserOnly` |
+| Disallowed email rejected | `auth.contract.test.ts` `notAllowlistedEmailIsForbidden` |
+| Anonymous can't list/assign staff | `staff-endpoints.contract.test.ts` `anonymousCannotListStaff` |
+| USER (no STAFF) can't list/assign | `staff-endpoints.contract.test.ts` `regularUserCannot*` |
+| STAFF can list/assign/revoke | `staff-endpoints.contract.test.ts` `staffCan*` |
+| Duplicate staff assignment → 409 | `staff-endpoints.contract.test.ts` `assigningSamePersonTwiceReturns409` |
+| Revoke end-dates active membership | `staff-endpoints.contract.test.ts` `revokeEndDatesActiveMembershipSoListingDropsIt` |
+| `/v1/users/**` requires STAFF | `user-endpoints.contract.test.ts` `regularUser*Returns403` |
+| Anonymous can't create/list users | `user-endpoints.contract.test.ts` `anonymous*Returns401` |
+| STAFF can create/list users | `user-endpoints.contract.test.ts` `staffCan*` |
+| Disallowed email rejected even with claimed STAFF authority | `user-endpoints.contract.test.ts` `disallowedEmailReturns403EvenWithStaffAuthorities` |
+| Mobile ID-token exchange (valid, unverified, not allowlisted, workspace, wrong aud/iss, expired, nonce, idempotent provisioning) | `auth-mobile.contract.test.ts`, `test/auth/mobile-login.test.ts` |
+| Refresh rotation, reuse revokes the family, lost-response grace window, allowlist re-check, logout / logout-all | `refresh-token.contract.test.ts`, `test/auth/refresh-concurrency.test.ts` |
+| Account deletion: hard delete vs anonymize, tokens revoked, API keys rejected, last-staff guard | `user-account-deletion.contract.test.ts`, `test/user/account-deletion-concurrency.test.ts` |
+| `iss`/`aud` phase-in validation | `test/auth/units.test.ts` (`IssuerAudienceValidatorTest`), `jwt-issuer-audience.contract.test.ts` |
+| STAFF implies ROLE_MODERATOR | `test/auth/roles.test.ts` `userWithActiveStaffRowGetsRoleStaff`, `staff-moderators.contract.test.ts` `staffImpliesModerator` |
+| MODERATOR grant / revoke / re-grant, audit row kept, 404/409 | `staff-moderators.contract.test.ts`, `test/staff/moderator-roles.test.ts` |
+| USER and MODERATOR cannot manage moderator grants | `staff-moderators.contract.test.ts` `userAndModeratorCannotManageGrants` |
+| `moderator` flag on `/v1/auth/me` | `auth-me.contract.test.ts` `meModeratorFlagFollowsActiveGrant`, `staff-moderators.contract.test.ts` |
+| Proposal moderation open to MODERATOR, 403 for USER and non-allowlisted, MODERATOR is not STAFF elsewhere | `proposal-staff.contract.test.ts` |
+| Review login: wrong password / other email / blank → 401, success = mobile token shape, USER only (not staff/moderator), allowlist admits only that email, Google login for it still rejected, refresh, no API keys, own rate-limit bucket | `review-login.contract.test.ts`, `test/auth/review-google.test.ts` |
+| Review login disabled → 404 (even with an empty body) | `review-login-disabled.contract.test.ts` |
+| Schedule corrections: suggest/vote/me need an allowlisted session (401/403), staff endpoints 403 for USER, no response exposes the suggester | `correction-schedule.contract.test.ts`, `test/correction/schedule-correction.test.ts` |
+| Review login always runs one bcrypt check (unknown email, wrong/overlong/missing password) | `test/auth/review-login-service.test.ts` |
+| A mangled review hash (unquoted in `.env`, trailing `%`, truncated) disables review login instead of failing startup | `test/auth/review-login-service.test.ts`, `review-login-disabled.contract.test.ts` |
+| Review email admitted by the session allowlist only while review login is enabled | `test/auth/units.test.ts` (`SessionAllowlistTest`) |
 
 ---
 
 ## Tech debt / future hardening
 
-- **Per-branch authorization** (e.g. only IT staff can touch `/v1/sync/**`). The data is there (`ceitba_staff.branch`), the policy isn't. When this matters, model authorities as `ROLE_STAFF_IT` etc. and gate paths accordingly.
+- **Per-branch authorization** (e.g. only IT staff can touch `/v1/sync/**`). The data is there (`ceitba_staff.branch`), the policy isn't. When this matters, add roles such as `STAFF_IT` to `src/http/auth/principal.ts` and gate paths accordingly in `policy.ts`.
 - **Web refresh tokens.** Mobile clients have rotating refresh tokens; the web cookie still requires a re-login every 7 days.
 - **Enforce `iss`/`aud`** — see the dated follow-up in [§ Sessions and tokens](#sessions-and-tokens).
-- **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `StaffAwareJwtAuthenticationConverter` (which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
-- **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). Caffeine with TTL ≤ minimum role-validity window would be enough.
-- **Narrower API-key scopes.** Keys carry `read` / `report` / `write` / `staff` / `keys` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per controller. New code that grants staff powers asks `StaffPowers` instead of the staff/moderator repositories.
+- **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `jwtRoles` (`src/http/security.ts`, which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
+- **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). An in-memory cache (e.g. `lru-cache`) with TTL ≤ minimum role-validity window would be enough.
+- **Narrower API-key scopes.** Keys carry `read` / `report` / `write` / `staff` / `keys` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per feature. New code that grants staff powers asks `staffPowers(c)` (`src/http/auth/context.ts`) instead of the staff/moderator queries.

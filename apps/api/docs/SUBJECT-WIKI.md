@@ -69,7 +69,7 @@ A page is **rejected** (the previous revision stays) when:
 - `self_link`: a wikilink to the page's own slug (`[[slug#heading]]` and `[[#heading]]` are fine);
 - it copies ≥ 40 consecutive words from a source's extracted text (normalized: lowercase, collapsed whitespace).
 
-Code spans and fences are ignored by the three style checks (`KbStyleChecks`). Each error text starts with its reason,
+Code spans and fences are ignored by the three style checks (`src/features/kb/logic/kbStyleChecks.ts`). Each error text starts with its reason,
 which feeds `rejectReasons` and the retry prompt.
 
 Not fatal: wikilinks to pages that don't exist (kept in `kb_link` with `to_page_id = null` and rendered as plain
@@ -119,19 +119,19 @@ endpoint using a dev-login staff session cookie, and prints accepted/rejected pa
 ## Embeddings (semantic search / RAG)
 
 Every `PUBLISHED` page is cut into chunks and embedded into `wiki.kb_page_chunk` (pgvector, V61), so pages can be
-retrieved by meaning (`KbEmbeddingService.search`), the building block for RAG. Readers reach it through
-`GET /v1/wiki/kb/search?q=&subjectId=&limit=` (`KbSearchService`; `apuntes` capability; `q` up to 500 characters,
-`limit` 1–20, default 8; 120 queries per user per hour, `rate-limit.user-rules.wiki-search`, since each one is an
+retrieved by meaning (`KbEmbeddingService.search`, `src/features/kb-reader/embeddingService.ts`), the building block for RAG. Readers reach it through
+`GET /v1/wiki/kb/search?q=&subjectId=&limit=` (`KbSearchService`, `src/features/kb-reader/searchService.ts`; `apuntes` capability; `q` up to 500 characters,
+`limit` 1–20, default 8; 120 queries per user per hour, `RATE_LIMIT_WIKI_SEARCH_CAPACITY`/`_PERIOD`, the `wiki-search` user rule in `src/config/sections/rateLimit.ts`, since each one is an
 embedding call; `501` when no embedding server is configured). It returns
 `{ query, results: [{ pageId, subjectId, slug, title, heading, anchor, content, score }] }`, best first, with
 `score = 1 - cosine distance`. The MCP server's `search_wiki` tool is built on it.
 
-- **Chunks** (`KbChunker`): chunk 0 = title, summary and the text before the first `##`; then one chunk per `##`
+- **Chunks** (`src/features/kb/logic/kbChunker.ts`): chunk 0 = title, summary and the text before the first `##`; then one chunk per `##`
   section (its `###` subsections included), split at blank lines above 6000 characters. Every chunk carries a title
   (the page title, plus its heading), so it is self-describing; title and body go into the model's document prompt
   (`title: {title} | text: {text}` for EmbeddingGemma). Wikilinks are reduced to their text and bare `[[file:…]]`
   citations dropped. Each row keeps the heading and its anchor, so a hit links to `subject/slug#anchor`.
-- **Indexing** (`KbEmbeddingJob`, every `KB_EMBEDDING_INTERVAL`, default 5 min; one process at a time via
+- **Indexing** (`KbEmbeddingJob#run` in `src/features/kb-reader/jobs.ts`, every `KB_EMBEDDING_INTERVAL`, default 5 min; one process at a time via
   `JobLock`, `DEPLOY.md`): a page is pending when it has no chunks for its current `revision` and the configured
   model. Imports and pipeline runs only bump `revision`; the
   next sweep re-embeds the page and replaces its rows in one transaction (the HTTP call runs outside it, and a page
@@ -155,12 +155,12 @@ embedding call; `501` when no embedding server is configured). It returns
   ranked the right image first in 4/4 cases.
 - **Other servers**: any OpenAI-compatible `/v1/embeddings` works (`KB_EMBEDDING_BASE_URL`, `KB_EMBEDDING_API_KEY`,
   and `KB_EMBEDDING_QUERY_TEMPLATE` / `KB_EMBEDDING_DOCUMENT_TEMPLATE` for another model's prompts). Empty base URL
-  (the default outside compose) = nothing is embedded and `search` throws `FeatureNotConfiguredException`.
+  (the default outside compose) = nothing is embedded and `search` throws `FeatureNotConfiguredError` (501).
 - **Changing the model**: rows record their model, so a new `KB_EMBEDDING_MODEL` re-embeds every page on the next
   sweeps (old rows are replaced page by page; until then searches only see pages already re-embedded). The column is
-  `vector(768)`: a model with another length needs a migration (and `KbPageChunk.DIMENSIONS`).
+  `vector(768)`: a model with another length needs a migration (and `DIMENSIONS` in `src/features/kb-reader/embeddingService.ts`).
 - **Database image**: `pgvector/pgvector:0.8.6-pg16-bookworm` (Debian) replaced `postgres:16-alpine` in
-  `docker-compose.yml` and in the tests (`SharedPostgres`). The existing volume works as is (same PG16 format; the
+  `docker-compose.yml` and in the tests (`PG_IMAGE` in `contract/support/pg.ts`). The existing volume works as is (same PG16 format; the
   entrypoint re-chowns the data directory), but musl and glibc sort `en_US.utf8` text differently, so text indexes
   built under alpine are out of order under glibc. V60 rebuilds every index of `public`/`wiki` before V61 installs
   the extension; nothing has to be run by hand.
@@ -189,8 +189,8 @@ embedding call; `501` when no embedding server is configured). It returns
 - Reports: one per user and page, re-reporting replaces it; only `PUBLISHED` pages can be reported (or re-reported by
   an existing reporter). At 3 the page becomes `HIDDEN`. Staff `restore` sets `PUBLISHED` and dismisses the reports.
   `GET /v1/staff/kb/pages` defaults to `status=HIDDEN`.
-- Takedown hook: `DriveRecalculator` calls it for every file leaving `PUBLISHED` (or changing subject); disconnect,
-  account deletion and the 30-day purge call it (via `KbModerationService.forgetFiles`) before deleting rows.
+- Takedown hook: `DriveRecalculator` (`src/features/drive/recalculator.ts`) calls it for every file leaving `PUBLISHED` (or changing subject); disconnect,
+  account deletion and the 30-day purge call it (via `KbModerationService.forgetFiles`, `src/features/kb-reader/moderationService.ts`) before deleting rows.
 - Account deletion removes the user's `kb_page_report` rows (page counters adjusted).
 - `scripts/kb-import.sh <dir> [baseUrl]`: `baseUrl` includes `/api/v1` (default `${BASE:-http://localhost:8081}/api/v1`);
   `KB_STAFF_EMAIL` (default `kb-import@itba.edu.ar`) and `KB_REPLACE` (default `true`) are optional. Exit status is
