@@ -54,6 +54,10 @@ Each invited email is lowercased and must pass the login allowlist (`AUTH_ALLOWE
 
 Account deletion removes the pending invites of the user's email, like capability grants.
 
+Two UIs call these endpoints: the org admin's members page in the newsletter (`/newsletter/mine/org/:slug/members`)
+and, for STAFF, `/manage` → Personas in "Agregar miembros a <org>" mode ("Invitar por email", the org's pending
+invites with revoke, and an "Invitar a <email>" shortcut when a searched email has never signed in).
+
 ### Last admin
 
 Once an org has an admin it keeps one: demoting or removing the last admin, leaving as the last admin, and
