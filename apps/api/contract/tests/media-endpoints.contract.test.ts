@@ -103,7 +103,7 @@ describe('StorageConfiguredUploadIT', () => {
     expect(r.json.publicUrl).toBe(`https://media.test/${r.json.key}`);
     expect(r.json.method).toBe('PUT');
     expect(r.json.headers).toEqual({ 'Content-Length': '1024', 'Content-Type': 'image/png' });
-    expect(r.json.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3,6})?Z$/);
+    expect(r.json.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3,9})?Z$/);
     expect(Object.keys(r.json)).toEqual(['uploadUrl', 'publicUrl', 'key', 'method', 'headers', 'expiresAt']);
     const q = new URL(r.json.uploadUrl).searchParams;
     expect(q.get('X-Amz-Algorithm')).toBe('AWS4-HMAC-SHA256');

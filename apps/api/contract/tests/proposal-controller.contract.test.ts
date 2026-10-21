@@ -50,8 +50,8 @@ async function createApproved(title: string, topic: string): Promise<string> {
 const PROPOSAL_KEYS = ['id', 'title', 'description', 'topic', 'status', 'lifecycle', 'rejectionReason', 'attachments',
   'upCount', 'downCount', 'commentCount', 'myVote', 'isMine', 'authorAlias', 'createdAt', 'moderatedAt'];
 const COMMENT_KEYS = ['id', 'parentId', 'alias', 'isMine', 'isAuthor', 'body', 'deleted', 'createdAt', 'replies'];
-const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/;
-const ART = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?-03:00$/;
+const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
+const ART = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?-03:00$/;
 
 describe('ProposalControllerIT', () => {
   beforeEach(async () => {

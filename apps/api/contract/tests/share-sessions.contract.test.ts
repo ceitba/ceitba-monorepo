@@ -15,8 +15,8 @@ import { bearer, mintJwt, seedUser, useServer, type As } from '../support';
 
 const api = useServer();
 
-const ART_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?-03:00$/;
-const UTC_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/;
+const ART_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?-03:00$/;
+const UTC_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 const TOKEN = /^[A-Za-z0-9_-]{16}$/;
 
 let alice: string;

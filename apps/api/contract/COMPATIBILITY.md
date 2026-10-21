@@ -185,7 +185,7 @@ truncated. The full rules are in [`docs/SERIALIZATION.md`](../docs/SERIALIZATION
 
 ## Intentional differences from Java
 
-Each was a security finding on the port; the tests that pin them skip on the Java target.
+Most were security findings on the port; the tests that pin them skip on the Java target.
 
 | Change | Java | Bun | Test |
 |---|---|---|---|
@@ -196,3 +196,4 @@ Each was a security finding on the port; the tests that pin them skip on the Jav
 | Mail OAuth state | HMAC-bound to user and org only: an org admin could send the consent URL to someone else | also bound to the browser by the `ceitba_mail_oauth_nonce` cookie (HttpOnly, `Path` = the path of `GOOGLE_MAIL_REDIRECT_URI`) | `mail-oauth-binding.contract.test.ts` |
 | Foreign errors | (n/a) | only the app's own errors carry their message; any other error is the generic 500 | `test/http/errors.test.ts` |
 | Secrets in logs | (n/a) | the ITBA token is masked in error messages; logged errors lose URL query strings | `test/itba/ItbaTokenRedaction.test.ts` |
+| Timestamp precision | on Linux (production) the JVM clock has nanosecond resolution, so timestamps computed in memory (`Instant.now()`, `OffsetDateTime.now(clock)`) printed up to 9 fraction digits (`...05.626702593-03:00`); values read back from Postgres had at most 6; on macOS the JVM clock is microsecond, which is why local runs never showed 9 | at most 6 digits everywhere (Postgres precision). Clients already received both 3- and 6-digit forms; JS `Date` and Dart `DateTime.parse` accept any length | contract tests accept 1 to 9 digits on both targets (`health-and-error`, `media-endpoints`, `studygroup-controller`, `share-sessions`, `proposal-controller`, `correction-schedule`) |

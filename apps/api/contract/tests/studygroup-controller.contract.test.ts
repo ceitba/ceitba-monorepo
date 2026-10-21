@@ -290,8 +290,8 @@ describe('StudyGroupControllerIT', () => {
 // adjusted to UTC; rows written in this request keep their in-memory
 // timestamps (-03:00), rows loaded from the DB print UTC.
 describe('StudyGroup JSON shapes', () => {
-  const ART_TS = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?-03:00';
-  const UTC_TS = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z';
+  const ART_TS = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?-03:00';
+  const UTC_TS = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?Z';
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   test('createJoinGetPatchAndListBytes', async () => {

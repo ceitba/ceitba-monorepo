@@ -155,7 +155,7 @@ describe('ScheduleCorrectionIT', () => {
     expect(r.text).toMatch(new RegExp(`^\\{"created":true,"correction":\\{"id":"${j.correction.id}","commissionId":"45112","status":"PENDING","schedule":\\[`
       + '\\{"day":"TUESDAY","classroom":"102T","building":"SDT","time_from":"09:00:00","time_to":"12:00:00"\\},'
       + '\\{"day":"WEDNESDAY","classroom":"201F","building":"SDF","time_from":"08:00:00","time_to":"10:00:00"\\}\\],'
-      + '"confirms":1,"rejects":0,"myVote":"CONFIRM","createdAt":"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3}|\\.\\d{6})?Z"\\}\\}$'));
+      + '"confirms":1,"rejects":0,"myVote":"CONFIRM","createdAt":"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3}|\\.\\d{6}|\\.\\d{9})?Z"\\}\\}$'));
     await assertAnonymous(r.text);
   });
 
@@ -593,7 +593,7 @@ describe('ScheduleCorrection messages and shapes', () => {
 
   test('staffAndMineShapes', async () => {
     const id = await suggestOk(as(SUGGESTER), P1);
-    const TS = '"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3}|\\.\\d{6})?Z"';
+    const TS = '"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3}|\\.\\d{6}|\\.\\d{9})?Z"';
     const sched = '\\[\\{"day":"TUESDAY","classroom":"102T","building":"SDT","time_from":"09:00:00","time_to":"12:00:00"\\},\\{"day":"WEDNESDAY","classroom":"201F","building":"SDF","time_from":"08:00:00","time_to":"10:00:00"\\}\\]';
     const sga = '\\[\\{"day":"MONDAY","classroom":"102T","building":"SDT","time_from":"08:00:00","time_to":"11:00:00"\\},\\{"day":"WEDNESDAY","classroom":"201F","building":"SDF","time_from":"08:00:00","time_to":"10:00:00"\\}\\]';
     const list = await api.get('/v1/staff/schedule-corrections', { as: await staff() });

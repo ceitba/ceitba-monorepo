@@ -110,7 +110,7 @@ describe('Spring MVC and security edges', () => {
     const authed = await api.get('/v1/nope', { as: staff, query: { x: 1 } });
     expect(authed.status).toBe(404);
     expect(authed.json).toMatchObject({ error: 'NotFound', message: 'No static resource v1/nope.', path: '/api/v1/nope' });
-    expect(authed.json.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3}|\.\d{6})?Z$/);
+    expect(authed.json.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3}|\.\d{6}|\.\d{9})?Z$/);
     const trailing = await api.get('/v1/careers/', { as: staff });
     expect(trailing.status).toBe(404);
     expect(trailing.json.message).toBe('No static resource v1/careers.');
