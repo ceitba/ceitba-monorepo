@@ -2,7 +2,6 @@
 // needs the feature configured (else 503 DRIVE_SYNC_UNCONFIGURED); sources and
 // files of other users answer 404.
 
-import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
 import { DriveApiError, isFolder, ownedBy, type DriveItem } from '../../external/drive';
 import type { UserRow } from '../../http/auth/repo';
@@ -19,6 +18,7 @@ import { depth, matcher, planSubjectIds, type DriveRecalculator } from './recalc
 import { yearInZone } from '../../lib/time';
 import { inSession, type Session } from './session';
 import { filesOfSource } from './store';
+import * as repo from './repo';
 import * as views from './views';
 
 export const CONSENT_VERSION = '2026-10';
@@ -49,7 +49,7 @@ export class DriveSourceService {
   }
 
   private async owned(s: Session, user: UserRow, sourceId: string): Promise<DriveSource> {
-    const src = (await s.querySources(sql`s.id = ${sourceId} AND s.user_id = ${user.id}`))[0];
+    const src = await repo.sourceOwnedBy(s, sourceId, user.id);
     if (!src || src.status === 'DISCONNECTED') throw sourceNotFound(sourceId);
     return src;
   }
@@ -62,9 +62,8 @@ export class DriveSourceService {
       if (req.consentVersion !== CONSENT_VERSION) {
         throw new ValidationError('consentVersion', req.consentVersion, `must be the current consent version ${CONSENT_VERSION}`);
       }
-      const existing = (await s.querySources(sql`s.user_id = ${user.id} AND s.root_folder_id = ${folderId} AND s.status <> 'DISCONNECTED'`, sql`LIMIT 1`))[0] ?? null;
-      const [b] = await s.rows(sql`SELECT count(*)::int AS n FROM wiki.drive_source WHERE root_folder_id = ${folderId} AND status = 'BLOCKED'`);
-      if (Number(b!.n) > 0) throw new DriveError('SOURCE_BLOCKED', 'This folder was blocked by staff');
+      const existing = await repo.connectedSourceOfFolder(s, user.id, folderId);
+      if ((await repo.countBlockedSourcesOfFolder(s, folderId)) > 0) throw new DriveError('SOURCE_BLOCKED', 'This folder was blocked by staff');
       if (existing && existing.status !== 'REVOKED') throw new DriveError('SOURCE_EXISTS', 'This folder is already connected');
 
       const folder = await this.fetchFolder(folderId);
@@ -85,8 +84,7 @@ export class DriveSourceService {
         source.status = source.approvedAt != null ? 'ACTIVE' : 'PENDING_REVIEW';
       } else {
         source = newDriveSource(user.id, folderId, folder.name, req.anonymous!, CONSENT_VERSION, now);
-        const [a] = await s.rows(sql`SELECT count(*)::int AS n FROM wiki.drive_source WHERE user_id = ${user.id} AND status = 'ACTIVE'`);
-        if (Number(a!.n) > 0) {
+        if ((await repo.countActiveSourcesOfUser(s, user.id)) > 0) {
           source.status = 'ACTIVE';
           source.approvedAt = now;
         }
@@ -94,7 +92,7 @@ export class DriveSourceService {
         await s.flush(); // saveAndFlush: @CreationTimestamp filled in for the response
         createdNow = true;
       }
-      await s.rows(sql`DELETE FROM wiki.drive_unclaimed_share WHERE drive_id = ${folderId}`);
+      await repo.deleteUnclaimedShare(s, folderId);
       source.lastSyncRequestedAt = now;
       const id = source.id;
       s.afterCommit(() => this.ctx.trigger.request(id));
@@ -117,7 +115,7 @@ export class DriveSourceService {
   list(user: UserRow): Promise<SourceResponse[]> {
     return inSession(this.deps.db, async (s) => {
       this.requireDriveAvailable();
-      return views.sources(s, await s.querySources(sql`s.user_id = ${user.id} AND s.status <> 'DISCONNECTED'`, sql`ORDER BY s.created_at DESC`));
+      return views.sources(s, await repo.connectedSourcesOfUser(s, user.id));
     }, { readOnly: true });
   }
 
@@ -212,8 +210,7 @@ export class DriveSourceService {
         const subjectId = req.subjectId.trim();
         if (subjectId === '') file.subjectId = null;
         else {
-          const [e] = await s.rows(sql`SELECT count(*)::int AS n FROM public.subject WHERE id = ${subjectId}`);
-          if (Number(e!.n) === 0) throw new ValidationError('subjectId', subjectId, 'unknown subject');
+          if (!(await repo.subjectExists(s, subjectId))) throw new ValidationError('subjectId', subjectId, 'unknown subject');
           file.subjectId = subjectId;
         }
       }

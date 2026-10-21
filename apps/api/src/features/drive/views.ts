@@ -3,13 +3,13 @@
 // Timestamps print like Jackson prints an OffsetDateTime Hibernate loaded
 // (UTC, `Z`); callers pass the JVM zone for values computed in memory.
 
-import { sql } from 'drizzle-orm';
 import { formatOffsetDateTime, type Micros } from '../../lib/time';
 import type {
   AuthorResponse, FileSummaryResponse, SourceResponse, StaffSourceResponse, TreeItemResponse,
 } from './dto';
 import { driveUrl, PDF, servedType } from './logic/driveMedia';
 import { hasContent, isCommunity, isFolderFile, type DriveFile, type DriveSource } from './model';
+import * as repo from './repo';
 import type { Session } from './session';
 
 export const odt = (us: Micros | null, zone = 'UTC'): string | null => (us == null ? null : formatOffsetDateTime(us, zone));
@@ -41,7 +41,7 @@ export async function usersById(s: Session, ids: (string | null)[]): Promise<Map
   const wanted = [...new Set(ids.filter((x): x is string => x != null))];
   const out = new Map<string, UserInfo>();
   if (!wanted.length) return out;
-  for (const r of await s.rows(sql`SELECT id, email, name, plan FROM public."user" WHERE id IN (${sql.join(wanted.map((w) => sql`${w}::uuid`), sql`, `)})`)) {
+  for (const r of await repo.usersByIds(s, wanted)) {
     out.set(r.id as string, { id: r.id as string, email: r.email as string, name: (r.name as string) ?? null, plan: (r.plan as string) ?? null });
   }
   return out;
@@ -51,7 +51,7 @@ export async function subjectNames(s: Session, ids: (string | null)[]): Promise<
   const wanted = [...new Set(ids.filter((x): x is string => x != null))];
   const out = new Map<string, string>();
   if (!wanted.length) return out;
-  for (const r of await s.rows(sql`SELECT id, name FROM public.subject WHERE id IN (${sql.join(wanted.map((w) => sql`${w}`), sql`, `)})`)) {
+  for (const r of await repo.subjectsByIds(s, wanted)) {
     out.set(r.id as string, r.name as string);
   }
   return out;
@@ -62,11 +62,7 @@ interface Counts { files: number; published: number; needsReview: number }
 async function counts(s: Session, sourceIds: string[]): Promise<Map<string, Counts>> {
   const out = new Map<string, Counts>();
   if (!sourceIds.length) return out;
-  for (const r of await s.rows(sql`SELECT source_id,
-        sum(CASE WHEN kind <> 'FOLDER' AND removed_at IS NULL THEN 1 ELSE 0 END)::int8 AS files,
-        sum(CASE WHEN publication = 'PUBLISHED' THEN 1 ELSE 0 END)::int8 AS published,
-        sum(CASE WHEN publication = 'NEEDS_REVIEW' THEN 1 ELSE 0 END)::int8 AS review
-      FROM wiki.drive_file WHERE source_id IN (${sql.join(sourceIds.map((i) => sql`${i}::uuid`), sql`, `)}) GROUP BY source_id`)) {
+  for (const r of await repo.fileCountsBySource(s, sourceIds)) {
     out.set(r.source_id as string, { files: Number(r.files ?? 0), published: Number(r.published ?? 0), needsReview: Number(r.review ?? 0) });
   }
   return out;
@@ -164,7 +160,7 @@ export async function foldersBySource(s: Session, sourceIds: string[]): Promise<
   const out = new Map<string, Map<string, DriveFile>>();
   const ids = [...new Set(sourceIds)];
   if (!ids.length) return out;
-  for (const f of await s.queryFiles(sql`f.kind = 'FOLDER' AND f.source_id IN (${sql.join(ids.map((i) => sql`${i}::uuid`), sql`, `)})`)) {
+  for (const f of await repo.foldersOfSources(s, ids)) {
     if (!out.has(f.sourceId)) out.set(f.sourceId, new Map());
     out.get(f.sourceId)!.set(f.driveId, f);
   }

@@ -4,7 +4,6 @@
 // stored copies are 5-minute signed URLs; files kept by reference stream from
 // Drive through the bot (capped at DRIVE_SYNC_MAX_FILE_BYTES).
 
-import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
 import { DriveApiError } from '../../external/drive';
 import type { UserRow } from '../../http/auth/repo';
@@ -20,6 +19,7 @@ import type { DriveSyncProps } from './props';
 import type { DriveRecalculator } from './recalculator';
 import { inSession, ts, type Session } from './session';
 import { filesOfSource } from './store';
+import * as repo from './repo';
 import * as views from './views';
 
 export const DOWNLOAD_TTL_MS = 5 * 60_000;
@@ -42,18 +42,14 @@ export class DriveReaderService {
   private async withWiki(s: Session, items: ApuntesSubjectResponse[]): Promise<ApuntesSubjectResponse[]> {
     if (!items.length) return items;
     const ids = items.map((i) => i.subjectId);
-    const rows = await s.rows(sql`SELECT DISTINCT subject_id FROM wiki.kb_page WHERE subject_id IN (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})
-      AND status IN ('PUBLISHED')`);
-    const withWiki = new Set(rows.map((r) => r.subject_id as string));
+    const withWiki = await repo.subjectsWithPublishedWiki(s, ids);
     return items.map((i) => ({ ...i, hasWiki: withWiki.has(i.subjectId) }));
   }
 
   private async publishedSubjectsIn(s: Session, ids: string[]): Promise<Map<string, { n: number; last: string | null }>> {
     const out = new Map<string, { n: number; last: string | null }>();
     if (!ids.length) return out;
-    for (const r of await s.rows(sql`SELECT effective_subject_id AS id, count(*)::int8 AS n, max(coalesce(drive_modified_at, published_at)) AS last
-        FROM wiki.drive_file WHERE publication = 'PUBLISHED' AND effective_subject_id IN (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})
-        GROUP BY effective_subject_id`)) {
+    for (const r of await repo.publishedStatsOfSubjects(s, ids)) {
       out.set(r.id as string, { n: Number(r.n), last: views.odt(ts(r.last)) });
     }
     return out;
@@ -70,16 +66,14 @@ export class DriveReaderService {
   private async listSubjects(s: Session, q: string | null, limit: number): Promise<ApuntesSubjectResponse[]> {
     const n = Math.max(1, Math.min(limit, MAX_LIMIT));
     if (q == null || javaIsBlank(q)) {
-      const rows = await s.rows(sql`SELECT effective_subject_id AS id, count(*)::int8 AS n, max(coalesce(drive_modified_at, published_at)) AS last
-          FROM wiki.drive_file WHERE publication = 'PUBLISHED' AND effective_subject_id IS NOT NULL
-          GROUP BY effective_subject_id ORDER BY max(coalesce(drive_modified_at, published_at)) DESC NULLS LAST LIMIT ${n}`);
+      const rows = await repo.recentlyUpdatedSubjects(s, n);
       const names = await views.subjectNames(s, rows.map((r) => r.id as string));
       return rows.map((r) => ({ subjectId: r.id as string, subjectName: names.get(r.id as string) ?? null, fileCount: Number(r.n),
         lastUpdatedAt: views.odt(ts(r.last)), year: null, semester: null, section: null, hasWiki: false }));
     }
     const needle = normalizeSubjectText(q);
     const lowerQ = q.trim().toLowerCase();
-    const matching = (await s.rows(sql`SELECT id, name FROM public.subject`))
+    const matching = (await repo.allSubjects(s))
       .map((r) => ({ id: r.id as string, name: r.name as string }))
       .filter((x) => x.id.toLowerCase().includes(lowerQ) || normalizeSubjectText(x.name).includes(needle));
     if (!matching.length) return [];
@@ -95,7 +89,7 @@ export class DriveReaderService {
 
   private async listMySubjects(s: Session, user: UserRow): Promise<ApuntesSubjectResponse[]> {
     if (user.plan == null || javaIsBlank(user.plan)) return [];
-    const rows: PlanEntry[] = (await s.rows(sql`SELECT subject_id, year, semester, section FROM public.plan_subject WHERE plan_id = ${user.plan}`))
+    const rows: PlanEntry[] = (await repo.planEntries(s, user.plan))
       .map((r) => ({ subjectId: r.subject_id as string, year: Number(r.year), semester: Number(r.semester), section: (r.section as string) ?? null }));
     if (!rows.length) return [];
     const names = await views.subjectNames(s, rows.map((r) => r.subjectId));
@@ -122,12 +116,12 @@ export class DriveReaderService {
 
   subjectFiles(subjectId: string): Promise<SubjectFilesResponse> {
     return inSession(this.deps.db, async (s) => {
-      const [subject] = await s.rows(sql`SELECT id, name FROM public.subject WHERE id = ${subjectId}`);
+      const subject = await repo.subjectById(s, subjectId);
       if (!subject) throw new ResourceNotFoundError('Subject', subjectId);
-      const published = await s.queryFiles(sql`f.effective_subject_id = ${subjectId} AND f.publication = 'PUBLISHED'`, sql`ORDER BY f.name ASC`);
+      const published = await repo.publishedFilesOfSubject(s, subjectId);
       const sourceIds = [...new Set(published.map((f) => f.sourceId))];
       const sourceById = new Map<string, DriveSource>();
-      if (sourceIds.length) for (const src of await s.querySources(sql`s.id IN (${sql.join(sourceIds.map((i) => sql`${i}::uuid`), sql`, `)})`)) sourceById.set(src.id, src);
+      if (sourceIds.length) for (const src of await repo.sourcesByIds(s, sourceIds)) sourceById.set(src.id, src);
       const owners = await views.usersById(s, [...sourceById.values()].map((x) => x.userId));
       const folders = await views.foldersBySource(s, sourceIds);
       const bySource = new Map<string, DriveFile[]>();
@@ -154,8 +148,8 @@ export class DriveReaderService {
       const folders = (await views.foldersBySource(s, [v.source.id])).get(v.source.id) ?? new Map();
       const owner = v.source.userId == null ? undefined : (await views.usersById(s, [v.source.userId])).get(v.source.userId);
       const subjectName = v.file.effectiveSubjectId == null ? null : ((await views.subjectNames(s, [v.file.effectiveSubjectId])).get(v.file.effectiveSubjectId) ?? null);
-      const [r] = await s.rows(sql`SELECT count(*)::int AS n FROM wiki.drive_file_report WHERE file_id = ${fileId} AND user_id = ${user.id}`);
-      return views.detail(v.file, views.path(v.file, folders), subjectName, views.author(v.source, owner), Number(r!.n) > 0);
+      const reported = (await repo.countReportsOfFileBy(s, fileId, user.id)) > 0;
+      return views.detail(v.file, views.path(v.file, folders), subjectName, views.author(v.source, owner), reported);
     }, { readOnly: true });
   }
 
@@ -250,11 +244,8 @@ export class DriveReaderService {
       if (f.publication !== 'PUBLISHED' && f.publication !== 'HIDDEN_REPORTED') throw fileNotFound(fileId);
       const now = views.odt(this.deps.clock.now());
       const comment = req.comment == null || javaIsBlank(req.comment) ? null : req.comment.trim();
-      await s.rows(sql`INSERT INTO wiki.drive_file_report (file_id, user_id, reason, comment, created_at)
-        VALUES (${fileId}, ${user.id}, ${req.reason}, ${comment}, ${now}::timestamptz)
-        ON CONFLICT (file_id, user_id) DO UPDATE SET reason = EXCLUDED.reason, comment = EXCLUDED.comment, created_at = EXCLUDED.created_at`);
-      const [c] = await s.rows(sql`SELECT count(*)::int AS n FROM wiki.drive_file_report WHERE file_id = ${fileId}`);
-      f.reportCount = Number(c!.n);
+      await repo.upsertReport(s, fileId, user.id, req.reason, comment, now);
+      f.reportCount = await repo.countReportsOfFile(s, fileId);
       const source = await s.sourceById(f.sourceId);
       if (!source) throw sourceNotFound(f.sourceId);
       await this.recalculator.recompute(s, source, await filesOfSource(s, source.id));
