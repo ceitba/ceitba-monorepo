@@ -73,6 +73,13 @@ While two colors run, every scheduled job (a feature's `jobs.ts`, `src/jobs/sche
 3. runs the task, unlocks and closes the connection. If the process dies, Postgres ends the session and frees the
    lock.
 
+The lock lives as long as that connection's session, so the connection is never recycled by the driver
+(`src/db/session.ts`: `max_lifetime: null`, `idle_timeout: 0`, set explicitly so `PGMAX_LIFETIME`/`PGIDLE_TIMEOUT`
+can't apply; postgres.js otherwise ends a connection after a random 30-60 min, which would free the lock while a long
+job still runs; `JobLockIT.keepsItsLockForTheWholeRun_evenPastPostgresJsConnectionLifetime`). The migration
+connection holding Flyway's advisory lock uses the same options. If the connection drops anyway (network), the
+unlock answers false and the job logs a WARN that its lock was lost during the run.
+
 Skips are logged at INFO; the next tick tries again. 30s is shorter than every job's period (the shortest is 1
 minute).
 

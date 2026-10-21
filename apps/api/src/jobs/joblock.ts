@@ -9,6 +9,7 @@
 
 import postgres from 'postgres';
 import type { Config } from '../config';
+import { dedicatedSessionOptions } from '../db/session';
 import type { Logger } from '../infra/logger';
 
 /** "CEIT" in ASCII. */
@@ -41,16 +42,12 @@ const CLAIM = `
 export class JobLock {
   constructor(private readonly config: Config, private readonly log: Logger) {}
 
+  /**
+   * The lock's own session. postgres.js must never recycle it while the task
+   * runs (that would free the lock mid-run): see dedicatedSessionOptions.
+   */
   private connect() {
-    const c = this.config.db;
-    return postgres(c.url, {
-      max: 1,
-      connect_timeout: 10,
-      idle_timeout: 0,
-      prepare: false,
-      onnotice: () => {},
-      connection: { application_name: 'ceitba-api job lock', TimeZone: this.config.server.timeZone },
-    });
+    return postgres(this.config.db.url, dedicatedSessionOptions(this.config, 'ceitba-api job lock'));
   }
 
   /**
@@ -89,7 +86,11 @@ export class JobLock {
         return true;
       } finally {
         try {
-          await sql.unsafe('SELECT pg_advisory_unlock($1::int, $2::int)', [NAMESPACE, id]);
+          const [unlocked] = await sql.unsafe('SELECT pg_advisory_unlock($1::int, $2::int) AS ok', [NAMESPACE, id]);
+          // false: the session that took the lock ended during the run (a
+          // dropped connection) and this is a new one, so another process
+          // could have run the job concurrently.
+          if (!unlocked?.ok) this.log.warn(`Job ${job}: its lock was lost during the run (the lock session ended)`);
         } catch (e) {
           // Closing the connection below ends the session, which frees it anyway.
           this.log.debug(`Job ${job}: unlock failed, closing the session instead: ${(e as Error).message}`);

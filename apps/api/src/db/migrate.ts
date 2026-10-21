@@ -408,9 +408,10 @@ export async function check(sql: Sql, opts: MigrateOptions): Promise<{ issues: V
 
 if (import.meta.main) {
   const { loadConfig } = await import('../config');
+  const { dedicatedSessionOptions } = await import('./session');
   const config = await loadConfig();
   const cmd = process.argv[2] ?? 'migrate';
-  const sql = postgres(config.db.url, { max: 1, onnotice: () => {}, connection: { TimeZone: config.server.timeZone } });
+  const sql = postgres(config.db.url, dedicatedSessionOptions(config, 'ceitba-api migrate', { connect_timeout: 30, prepare: true }));
   const opts: MigrateOptions = {
     locations: config.db.flyway.locations,
     schemas: config.db.flyway.schemas,

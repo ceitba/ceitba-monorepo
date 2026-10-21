@@ -10,6 +10,7 @@
 import postgres from 'postgres';
 import { loadConfig, type Config } from './config';
 import { migrate } from './db/migrate';
+import { dedicatedSessionOptions } from './db/session';
 import { buildDeps, type Deps, type DepsOverrides } from './deps';
 import { createApp, type App } from './http/app';
 import { createLogger } from './infra/logger';
@@ -26,7 +27,7 @@ export interface RunningServer {
 
 export async function runMigrations(config: Config, log = createLogger(config)): Promise<void> {
   const f = config.db.flyway;
-  const sql = postgres(config.db.url, { max: 1, onnotice: () => {}, connection: { TimeZone: config.server.timeZone, application_name: 'ceitba-api migrate' } });
+  const sql = postgres(config.db.url, dedicatedSessionOptions(config, 'ceitba-api migrate', { connect_timeout: 30, prepare: true }));
   try {
     const r = await migrate(sql, {
       locations: f.locations, schemas: f.schemas, defaultSchema: f.defaultSchema, target: f.target,

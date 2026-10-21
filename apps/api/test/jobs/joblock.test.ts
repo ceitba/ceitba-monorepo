@@ -1,6 +1,7 @@
 // Port of apps/api/src/test/java/org/ceitba/api/scheduling/JobLockIT.java.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import postgres from 'postgres';
+import { dedicatedSessionOptions } from '../../src/db/session';
 import { JobLock, JOBS, NAMESPACE } from '../../src/jobs/joblock';
 import { silentLogger } from '../../src/infra/logger';
 import { testApp, type TestApp } from '../support/app';
@@ -64,5 +65,36 @@ describe('JobLockIT', () => {
     const results = await Promise.all([a, b].map((l) => l.runExclusively('DIGEST_TICK', async () => { runs++; await Bun.sleep(200); })));
     expect(results.filter(Boolean)).toHaveLength(1);
     expect(runs).toBe(1);
+  });
+
+  // postgres.js recycles a connection after max_lifetime (default: a random
+  // 30-60 min) or idle_timeout, ending the session and freeing the advisory
+  // lock while the job still runs. The lock session must disable both, and
+  // explicitly: an unset option falls back to PGMAX_LIFETIME/PGIDLE_TIMEOUT.
+  test('keepsItsLockForTheWholeRun_evenPastPostgresJsConnectionLifetime', async () => {
+    const saved = { life: process.env.PGMAX_LIFETIME, idle: process.env.PGIDLE_TIMEOUT };
+    process.env.PGMAX_LIFETIME = '1';
+    process.env.PGIDLE_TIMEOUT = '1';
+    try {
+      const heldDuringRun: number[] = [];
+      expect(await lock.runExclusively('KB_EMBEDDINGS', async () => {
+        heldDuringRun.push(await heldLocks('KB_EMBEDDINGS'));
+        await Bun.sleep(2500);
+        heldDuringRun.push(await heldLocks('KB_EMBEDDINGS'));
+      })).toBe(true);
+      expect(heldDuringRun).toEqual([1, 1]);
+      expect(await heldLocks('KB_EMBEDDINGS')).toBe(0);
+    } finally {
+      for (const [k, v] of [['PGMAX_LIFETIME', saved.life], ['PGIDLE_TIMEOUT', saved.idle]] as const) {
+        if (v === undefined) delete process.env[k]; else process.env[k] = v;
+      }
+    }
+  }, 15_000);
+
+  test('lockSessionOptionsDisableEveryRecycle', () => {
+    const o = dedicatedSessionOptions(t.deps.config, 'x');
+    expect(o.max).toBe(1);
+    expect(o.max_lifetime).toBeNull();
+    expect(o.idle_timeout).toBe(0);
   });
 });
