@@ -2348,6 +2348,7 @@
    "memberCannotInvite",
    "pendingInviteBecomesMembershipOnFirstLogin",
    "pendingInviteIsClaimedWhenStaffCreatesTheUser",
+   "staffInvitesListsAndRevokesPendingInvites",
    "adminRevokesPendingInvite",
    "adminSetsBoardTitleShownOnThePortal",
    "adminCannotDemoteOrRemoveThemselvesWhenLastAdmin",

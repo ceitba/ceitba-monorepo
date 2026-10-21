@@ -30,7 +30,7 @@ changes.
 ## PR checks
 
 `.github/workflows/pr-checks.yml` runs on every PR: the repo checks above, the PR title as a Conventional Commit,
-the living-docs check (still gated on PRs into `dev`, so it does not run on PRs into `main` today; skipped for
+the living-docs check (skipped for
 Dependabot; tick "No spec impact" with a reason on the same line to opt out) and a gitleaks scan of the PR's commits. Editing the title or body reruns only the title and living-docs
 checks. `ci.yml` still runs lint + build for the web app
 and the API tests when they are touched. Dependabot opens grouped weekly updates (one group for the whole bun workspace) and security updates against `main`.

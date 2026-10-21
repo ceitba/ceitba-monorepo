@@ -58,9 +58,8 @@ jobs:
         run: node scripts/checks/commit-msg.mjs --title "$TITLE"
 
   living-docs:
-    # Gated on PRs into dev, which no longer exists: inert on PRs into main (see CONTRIBUTING.md).
     if: >-
-      github.event_name == 'pull_request' && github.base_ref == 'dev'
+      github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'dev')
       && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:

@@ -125,6 +125,20 @@ describe('OrgMembersEndpointsIT', () => {
     expect(await invites()).toBe(0);
   });
 
+  // The /manage "Invitar por email" flow: STAFF who isn't a member of the org (#26).
+  test('staffInvitesListsAndRevokesPendingInvites', async () => {
+    const inv = await api.post('/v1/organizations/sabf/members/invites', { as: boss, body: '{"emails":["dave@itba.edu.ar"],"role":"admin"}' });
+    expect(inv.status).toBe(200);
+    expect(inv.json.pending[0].email).toBe('dave@itba.edu.ar');
+    const list = await api.get('/v1/organizations/sabf/members', { as: boss });
+    expect(list.status).toBe(200);
+    expect(list.json.invites).toHaveLength(1);
+    expect(list.json.invites[0].role).toBe('admin');
+    const del = await api.delete('/v1/organizations/sabf/members/invites', { as: boss, query: { email: 'dave@itba.edu.ar' } });
+    expect(del.status).toBe(204);
+    expect(await invites()).toBe(0);
+  });
+
   test('adminRevokesPendingInvite', async () => {
     expect((await api.post('/v1/organizations/sabf/members/invites', { as: await orgAdmin(), body: '{"emails":["dave@itba.edu.ar"]}' })).status).toBe(200);
     const r = await api.delete('/v1/organizations/sabf/members/invites', { as: await orgAdmin(), query: { email: 'dave@itba.edu.ar' } });
