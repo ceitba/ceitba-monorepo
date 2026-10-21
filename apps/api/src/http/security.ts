@@ -275,7 +275,15 @@ export async function authenticateAndAuthorize(deps: Deps, req: Request, state: 
   const p = state.principal;
   const anonymous = p.kind === 'anonymous';
   const access = rule.access;
-  if (access === 'permitAll') return null;
+  if (access === 'permitAll') {
+    // A JWT or API key whose email left the allowlist carries no identity on a public route either: the route
+    // runs as anonymous, so neither its METHOD rule (STAFF, org admin...) nor a handler's staff/draft/member check
+    // grants it anything. Java only checked the allowlist in the URL rules, so a de-allowlisted staff member or org
+    // admin kept the reads under the GET permitAll prefixes (members, followers, attendees, drafts) until the token
+    // expired. Intentional hardening (contract/COMPATIBILITY.md "Allowlist").
+    if (!anonymous && !allowlisted(deps, p)) state.principal = { kind: 'anonymous' };
+    return null;
+  }
   if (access === 'authenticatedAllowlisted') {
     if (anonymous) return unauthorized();
     return allowlisted(deps, p) ? null : forbidden(p);

@@ -266,7 +266,8 @@ Bearer step (src/http/security.ts + src/http/auth/jwt.ts)
    │
    ▼
 URL_RULES (src/http/auth/policy.ts) — per-route policy, before routing
-   public matchers           -> permitAll
+   public matchers           -> permitAll (a JWT/API key whose email fails the allowlist runs
+                                as anonymous there: no STAFF/org-admin/draft reads; not in Java)
    GET  /v1/auth/google, /v1/auth/callback               -> permitAll (web OAuth flow)
    POST /v1/auth/google/mobile, /refresh, /logout        -> permitAll (token endpoints)
    POST /v1/auth/review-login                            -> permitAll (404 unless configured)
