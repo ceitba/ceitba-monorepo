@@ -8,16 +8,19 @@
 //      with the same roles / checks / operators;
 //   3. every registered TS route without a rule has no @PreAuthorize in Java;
 //   4. URL_RULES is SecurityConfig.authorizeHttpRequests, rule for rule, in order.
-// apps/api is the specification; while it exists in the repo this test reads it.
+// apps/api is the specification. While it exists in the repo this test reads it and
+// checks that test/fixtures/java-security-policy.json is the same snapshot (refresh
+// it with UPDATE_JAVA_POLICY=1); once apps/api is gone the snapshot is the spec.
 
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { METHOD_RULES, ruleKey, URL_RULES, type MethodExpr, type UrlRule } from '../../src/http/auth/policy';
 import { tsRoutes } from '../../contract/support/routes';
 
 const JAVA = join(import.meta.dir, '..', '..', '..', 'api', 'src', 'main', 'java', 'org', 'ceitba', 'api');
 const hasJava = existsSync(JAVA);
+const SNAPSHOT = join(import.meta.dir, '..', 'fixtures', 'java-security-policy.json');
 
 // ------------------------------------------------------------- Java source scanning
 
@@ -271,6 +274,23 @@ function javaUrlRules(): UrlRule[] {
 
 const normUrlRule = (r: UrlRule) => JSON.stringify({ method: r.method ?? null, patterns: r.patterns, access: r.access, enabledWhen: r.enabledWhen ?? null });
 
+// ------------------------------------------------------------- snapshot
+
+interface Snapshot {
+  /** Every Java endpoint "METHOD /path" -> its normalized @PreAuthorize (null: none). */
+  endpoints: Record<string, string | null>;
+  urlRules: string[];
+}
+
+function javaSnapshot(): Snapshot {
+  const endpoints: Record<string, string | null> = {};
+  for (const e of javaEndpoints().sort((x, y) => x.key.localeCompare(y.key))) endpoints[e.key] = e.preAuthorize ? normalizeSpel(e.preAuthorize) : null;
+  return { endpoints, urlRules: javaUrlRules().map(normUrlRule) };
+}
+
+const snapshot: Snapshot = hasJava ? javaSnapshot() : JSON.parse(readFileSync(SNAPSHOT, 'utf8'));
+if (hasJava && process.env.UPDATE_JAVA_POLICY) writeFileSync(SNAPSHOT, `${JSON.stringify(snapshot, null, 2)}\n`);
+
 // ------------------------------------------------------------- tests
 
 describe('policy.ts coverage', () => {
@@ -280,34 +300,34 @@ describe('policy.ts coverage', () => {
     expect(orphans).toEqual([]);
   });
 
-  test.skipIf(!hasJava)('every Java @PreAuthorize endpoint has the same METHOD_RULES rule', () => {
-    const endpoints = javaEndpoints();
-    expect(endpoints.length).toBeGreaterThan(250);
-    const protectedOnes = endpoints.filter((e) => e.preAuthorize);
-    expect(protectedOnes.length).toBeGreaterThan(150);
-    const missing = protectedOnes.filter((e) => !METHOD_RULES[e.key]).map((e) => `${e.key} (${e.where})`);
-    expect(missing).toEqual([]);
-    const different = protectedOnes
-      .filter((e) => METHOD_RULES[e.key] && normalizeSpel(e.preAuthorize!) !== renderRule(METHOD_RULES[e.key]!))
-      .map((e) => `${e.key}: java "${normalizeSpel(e.preAuthorize!)}" vs ts "${renderRule(METHOD_RULES[e.key]!)}"`);
-    expect(different).toEqual([]);
-    const extra = Object.keys(METHOD_RULES).filter((k) => !protectedOnes.some((e) => e.key === k));
-    expect(extra).toEqual([]);
+  test.skipIf(!hasJava)('the Java snapshot is current', () => {
+    expect(existsSync(SNAPSHOT) ? JSON.parse(readFileSync(SNAPSHOT, 'utf8')) : null).toEqual(snapshot);
   });
 
-  test.skipIf(!hasJava)('every registered route maps to a Java endpoint, and routes without a rule have none in Java', async () => {
-    const java = new Map(javaEndpoints().map((e) => [e.key, e]));
+  test('every Java @PreAuthorize endpoint has the same METHOD_RULES rule', () => {
+    const keys = Object.keys(snapshot.endpoints);
+    expect(keys.length).toBeGreaterThan(250);
+    const protectedOnes = keys.filter((k) => snapshot.endpoints[k] !== null);
+    expect(protectedOnes.length).toBeGreaterThan(150);
+    expect(protectedOnes.filter((k) => !METHOD_RULES[k])).toEqual([]);
+    const different = protectedOnes
+      .filter((k) => METHOD_RULES[k] && snapshot.endpoints[k] !== renderRule(METHOD_RULES[k]!))
+      .map((k) => `${k}: java "${snapshot.endpoints[k]}" vs ts "${renderRule(METHOD_RULES[k]!)}"`);
+    expect(different).toEqual([]);
+    expect(Object.keys(METHOD_RULES).filter((k) => !protectedOnes.includes(k))).toEqual([]);
+  });
+
+  test('every registered route maps to a Java endpoint, and routes without a rule have none in Java', async () => {
     const routes = await tsRoutes();
-    const unknown = routes.filter((r) => r.feature !== 'core' && !java.has(ruleKey(r.method, r.path))).map((r) => `${r.feature}: ${ruleKey(r.method, r.path)}`);
+    const unknown = routes.filter((r) => r.feature !== 'core' && !(ruleKey(r.method, r.path) in snapshot.endpoints)).map((r) => `${r.feature}: ${ruleKey(r.method, r.path)}`);
     expect(unknown).toEqual([]);
     const unguarded = routes
-      .filter((r) => !METHOD_RULES[ruleKey(r.method, r.path)] && java.get(ruleKey(r.method, r.path))?.preAuthorize)
+      .filter((r) => !METHOD_RULES[ruleKey(r.method, r.path)] && snapshot.endpoints[ruleKey(r.method, r.path)])
       .map((r) => ruleKey(r.method, r.path));
     expect(unguarded).toEqual([]);
   });
 
-  test.skipIf(!hasJava)('URL_RULES is SecurityConfig.authorizeHttpRequests in the same order', () => {
-    javaEndpoints(); // loads the global constants (DevLoginController.PATH)
-    expect(URL_RULES.map(normUrlRule)).toEqual(javaUrlRules().map(normUrlRule));
+  test('URL_RULES is SecurityConfig.authorizeHttpRequests in the same order', () => {
+    expect(URL_RULES.map(normUrlRule)).toEqual(snapshot.urlRules);
   });
 });
