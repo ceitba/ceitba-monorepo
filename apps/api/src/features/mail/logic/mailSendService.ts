@@ -79,6 +79,8 @@ export interface MailSendOptions {
   quotaPauseMs: number;
   /** The domain guard applied to the digest, test and org kinds. */
   allowedRecipient?: (to: string) => boolean;
+  /** Where the quota pause and the transport backoff are logged (MailSendService's `log.warn`). */
+  log?: { warn(msg: string): void };
 }
 
 const later = (a: Micros | null, b: Micros | null): Micros | null => (a == null ? b : b == null ? a : a > b ? a : b);
@@ -90,6 +92,7 @@ export class MailSendService implements EmailSender {
   private readonly backoffMax: number;
   private readonly quotaPause: number;
   private readonly allowedRecipient: (to: string) => boolean;
+  private readonly log: { warn(msg: string): void };
   private lock: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly transport: EmailSender, private readonly ledger: MailLedger, opts: MailSendOptions,
@@ -100,6 +103,7 @@ export class MailSendService implements EmailSender {
     this.backoffMax = opts.backoffMaxMs * 1000;
     this.quotaPause = opts.quotaPauseMs * 1000;
     this.allowedRecipient = opts.allowedRecipient ?? (() => true);
+    this.log = opts.log ?? { warn: () => {} };
   }
 
   /** False when the transport cannot really send (MAIL_ENABLED=false). */
@@ -239,7 +243,7 @@ export class MailSendService implements EmailSender {
         let until: Micros = now + this.quotaPause;
         if (used >= this.limit) until = later(until, await this.capacityFreesAt(now, used - this.limit + 1))!;
         await this.ledger.saveState(this.account, { pausedUntil: until, pauseReason: PAUSE_QUOTA, consecutiveFailures: state.consecutiveFailures }, now);
-        // TODO(mail-service): log.warn("Mail: {} hit the provider's daily sending limit; paused until {}")
+        this.log.warn(`Mail: ${this.account} hit the provider's daily sending limit; paused until ${formatInstant(until)}`);
         break;
       }
       case 'TRANSIENT':
@@ -258,6 +262,7 @@ export class MailSendService implements EmailSender {
           ? { pausedUntil: state.pausedUntil, pauseReason: PAUSE_QUOTA, consecutiveFailures: failures }
           : { pausedUntil: until, pauseReason: PAUSE_TRANSPORT, consecutiveFailures: failures };
         await this.ledger.saveState(this.account, next, now);
+        this.log.warn(`Mail: transport problem for ${this.account} (failure ${failures} in a row), backing off until ${formatInstant(until)}: ${e.message}`);
         break;
       }
     }

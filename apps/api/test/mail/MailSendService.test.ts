@@ -170,6 +170,21 @@ describe('MailSendServiceTest', () => {
     expect(await s.readyAt()).toBe(T0 + us(30 * HOUR));
   });
 
+  test('theQuotaPauseAndTheTransportBackoffAreLoggedAsJavaDid', async () => {
+    const warnings: string[] = [];
+    const failingWith = (failure: EmailSendError) => {
+      const { ledger, transportOf, opts } = fixture();
+      return new MailSendService(transportOf(async () => { throw failure; }), ledger,
+        opts(1500, { log: { warn: (m) => warnings.push(m) } }), new MutableClock(T0));
+    };
+    await rejects(failingWith(new EmailSendError('QUOTA', '550 5.4.5')).send(mail('a@itba.edu.ar')));
+    await rejects(failingWith(new EmailSendError('TRANSPORT', 'timeout')).send(mail('a@itba.edu.ar')));
+    expect(warnings).toEqual([
+      "Mail: ceitba@itba.edu.ar hit the provider's daily sending limit; paused until 2026-10-06T15:00:00Z",
+      'Mail: transport problem for ceitba@itba.edu.ar (failure 1 in a row), backing off until 2026-10-05T15:05:00Z: timeout',
+    ]);
+  });
+
   test('transportErrorsBackOffExponentiallyAndASuccessClearsIt', async () => {
     const { ledger, clock, sent, ctx, service } = fixture();
     const s = service(1500);

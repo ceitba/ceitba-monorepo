@@ -387,6 +387,7 @@ export class OrgMailSenders {
     const service = new MailSendService(this.transportFor(from), this.beans.ledger, {
       account, limit: this.limitFor(account), backoffInitialMs: s.email.backoffInitialMs, backoffMaxMs: s.email.backoffMaxMs,
       quotaPauseMs: s.email.quotaPauseMs, allowedRecipient: (to) => isAllowedRecipient(s, to),
+      log: this.deps.log.child({ component: 'MailSendService' }),
     }, this.deps.clock);
     this.byAccount.set(account, { from, service });
     return service;
@@ -430,6 +431,7 @@ export function mailBeans(deps: Deps): MailBeans {
   const sender = new MailSendService(transport, ledger, {
     account: email.account, limit: limitFor(settings, email.account), backoffInitialMs: email.backoffInitialMs,
     backoffMaxMs: email.backoffMaxMs, quotaPauseMs: email.quotaPauseMs, allowedRecipient: (to) => isAllowedRecipient(settings, to),
+    log: deps.log.child({ component: 'MailSendService' }),
   }, deps.clock);
   const orgTokens = new MailAccessTokenCache((rt) => google.refresh(rt), deps.clock);
   const beans: MailBeans = {
