@@ -6,7 +6,7 @@
 
 import type { Config } from '../../config';
 import { javaIsBlank, javaTrim } from '../../lib/javaCompat';
-import { addressOf } from './logic/gmailApiEmailSender';
+import { addressOf } from './logic/internetAddress';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;

@@ -49,18 +49,16 @@ const defaultHttp: GmailHttp = async (url, accessToken, body) => {
   return { status: res.status, body: await res.text(), retryAfter: res.headers.get('Retry-After') };
 };
 
-/** "CEITBA <ceitba@itba.edu.ar>" -> the address (InternetAddress.getAddress). */
-export function addressOf(from: string): string {
-  const m = /<([^<>]+)>\s*$/.exec(from);
-  return javaTrim(m ? m[1]! : from);
-}
+import { addressOf } from './internetAddress';
+
+export { addressOf };
 
 export class GmailApiEmailSender implements EmailSender {
   private readonly fromAddress: string;
 
   constructor(private readonly accounts: MailSenderAccounts | null, private readonly tokens: MailAccessTokenCache | null,
               private readonly from: string, private readonly http: GmailHttp = defaultHttp, private readonly sendUrl = SEND_URL) {
-    // TODO(mail-service): InternetAddress(from, strict=true) validation at startup.
+    // MAIL_FROM is validated at startup (createMailTransport, src/infra/mail.ts).
     this.fromAddress = addressOf(from);
   }
 

@@ -12,7 +12,7 @@
 import type { Deps } from '../../deps';
 import { FeatureNotConfiguredError, ResourceNotFoundError } from '../../http/errors';
 import {
-  DisabledEmailSender, LoggingEmailSender, UnavailableEmailSender, type EmailSender,
+  DisabledEmailSender, GmailApiTransportSlot, LoggingEmailSender, UnavailableEmailSender, type EmailSender,
 } from '../../infra/mail';
 import type { Logger } from '../../infra/logger';
 import { javaEqualsIgnoreCase, javaIsBlank, javaStrip, javaTrim } from '../../lib/javaCompat';
@@ -437,13 +437,14 @@ export function mailBeans(deps: Deps): MailBeans {
 
 /**
  * MailConfig.transport. deps.mailTransport is the raw transport selected by
- * src/infra/mail.ts (or a test's fake). The real Gmail API transport lives in
- * this feature: it replaces the infra placeholder (UnavailableEmailSender)
- * when MAIL_ENABLED=true and MAIL_TRANSPORT=gmail-api.
+ * src/infra/mail.ts (or a test's fake). With MAIL_ENABLED=true and
+ * MAIL_TRANSPORT=gmail-api it is the GmailApiTransportSlot this feature fills
+ * with its GmailApiEmailSender (it needs the sender-account service and the
+ * OAuth token cache, which are beans of this feature).
  */
 function ceitbaTransport(deps: Deps, s: MailSettings, accounts: MailSenderAccountService, tokens: MailAccessTokenCache,
                          log: Logger): EmailSender {
-  if (deps.mailTransport instanceof UnavailableEmailSender && s.email.enabled && s.email.transport === TRANSPORT_GMAIL_API) {
+  if (deps.mailTransport instanceof GmailApiTransportSlot) {
     log.info(`Mail: Gmail API (OAuth) enabled, from ${s.email.from}`);
     return new GmailApiEmailSender(accounts, tokens, s.email.from);
   }
