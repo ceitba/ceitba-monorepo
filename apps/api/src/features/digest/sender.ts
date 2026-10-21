@@ -5,7 +5,7 @@
 // class comment and docs/WEEKLY-DIGEST.md "Sending".
 
 import type { Deps } from '../../deps';
-import type { Tx } from '../../db/client';
+import { withTx, type Tx } from '../../db/client';
 import { EmailSendError } from '../../infra/mail';
 import type { Logger } from '../../infra/logger';
 import { withAmbientTx } from '../mail/ambient';
@@ -97,16 +97,16 @@ export class DigestSender {
     const issue = issueOf(row);
     const template = this.composer.template(issue, await this.composer.content(this.deps.db, issue));
     const shared = this.tracking.enabled()
-      ? await this.deps.db.transaction((tx) => this.tracking.issueLinks(tx, issueId, template))
+      ? await withTx(this.deps.db, (tx) => this.tracking.issueLinks(tx, issueId, template))
       : new Map<string, number>();
     for (;;) {
       if (this.stopping) return 'STOPPED';
-      const d = await this.deps.db.transaction((tx) => this.claimNext(tx, issue.id));
+      const d = await withTx(this.deps.db, (tx) => this.claimNext(tx, issue.id));
       if (d == null) {
         await this.markSentIfDone(issue);
         return 'DONE';
       }
-      const step = await this.deps.db.transaction((tx) => withAmbientTx(tx, () => this.sendClaimed(tx, issue, template, d, shared)));
+      const step = await withTx(this.deps.db, (tx) => withAmbientTx(tx, () => this.sendClaimed(tx, issue, template, d, shared)));
       switch (step) {
         case 'CANCELLED':
           this.log.info(`Digest ${issue.week.weekStart}: no longer sending, stopped`);

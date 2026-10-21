@@ -144,3 +144,25 @@ export async function findActiveTimesOrdered(db: Db, today: string): Promise<Com
     ORDER BY ct.building, ct.classroom, ct.day, ct.hour_from`)) as unknown as Row[];
   return rows.map((r) => toTime({ ...r, day: String(r.day), hour_from: String(r.hour_from), hour_to: String(r.hour_to) }));
 }
+
+// ---- schedule corrections read by the overlay (commission/correctionOverlay.ts; raw rows, mapped there)
+
+const inList = (values: readonly string[]) => sql`(${sql.join(values.map((v) => sql`${v}`), sql`, `)})`;
+
+/** schedule_correction rows of these commissions in these statuses (created_at as Postgres text). */
+export async function correctionRowsOf(db: Db, commissionIds: readonly string[], statuses: readonly string[]): Promise<Record<string, unknown>[]> {
+  return (await db.execute(sql`
+    SELECT id, commission_id, proposed_slots, sga_snapshot, status, confirm_count, reject_count, created_at::text AS created_at
+    FROM public.schedule_correction WHERE commission_id IN ${inList(commissionIds)} AND status IN ${inList(statuses)}`)) as unknown as Record<string, unknown>[];
+}
+
+/** The user's votes on these corrections: {correction_id, type}. */
+export async function correctionVotesOf(db: Db, userId: string, correctionIds: readonly string[]): Promise<Record<string, unknown>[]> {
+  return (await db.execute(sql`
+    SELECT correction_id, type FROM public.schedule_correction_vote
+    WHERE user_id = ${userId} AND correction_id IN ${inList(correctionIds)}`)) as unknown as Record<string, unknown>[];
+}
+
+export async function setCorrectionStatus(db: Db, id: string, status: string, updatedAt: string): Promise<void> {
+  await db.execute(sql`UPDATE public.schedule_correction SET status = ${status}, updated_at = ${updatedAt} WHERE id = ${id}`);
+}

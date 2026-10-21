@@ -5,7 +5,7 @@
 // through its org's own account (OrgMailSenders).
 
 import type { Deps } from '../../deps';
-import type { Tx } from '../../db/client';
+import { withTx, type Tx } from '../../db/client';
 import { EmailSendError } from '../../infra/mail';
 import type { Logger } from '../../infra/logger';
 import { withAmbientTx } from '../mail/ambient';
@@ -65,14 +65,14 @@ export class OrgAnnouncementSender {
     }
     if ((await sender.readyAt()) != null) return;
     while (!this.stopping) {
-      const d = await this.deps.db.transaction((tx) => this.claimNext(tx, id));
+      const d = await withTx(this.deps.db, (tx) => this.claimNext(tx, id));
       if (d == null) {
         if ((await repo.markSentIfDone(this.deps.db, id, this.deps.clock.now())) > 0) {
           this.log.info(`Org mail ${id} of ${a.orgSlug}: all deliveries processed`);
         }
         return;
       }
-      const step = await this.deps.db.transaction((tx) => withAmbientTx(tx, () => this.sendClaimed(tx, org, a, sender, d)));
+      const step = await withTx(this.deps.db, (tx) => withAmbientTx(tx, () => this.sendClaimed(tx, org, a, sender, d)));
       if (step === 'STOP') return;
       if (step !== 'SKIPPED') await this.sleeper(this.settings.digest.sendIntervalMs);
     }

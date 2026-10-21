@@ -2,7 +2,7 @@
 // digest (docs/WEEKLY-DIGEST.md, "Open and click tracking").
 
 import type { Deps } from '../../deps';
-import type { Db } from '../../db/client';
+import { withTx, type Db } from '../../db/client';
 import type { OutgoingEmail } from '../../infra/mail';
 import { javaDouble } from '../../lib/json';
 import { ART, formatOffsetDateTime, type Micros } from '../../lib/time';
@@ -124,7 +124,7 @@ export class DigestTrackingService {
 
   async open(trackingId: string, client: ClientInfo): Promise<void> {
     if (!isWellFormedTrackingId(trackingId) || !this.admit(trackingId, client)) return;
-    await this.deps.db.transaction(async (tx) => {
+    await withTx(this.deps.db, async (tx) => {
       const d = await repo.findDeliveryByTrackingId(tx, trackingId);
       if (d == null) return;
       const now = this.deps.clock.now();
@@ -142,7 +142,7 @@ export class DigestTrackingService {
     const id = parseLinkId(linkId);
     if (id == null) return fallback;
     if (!this.admit(trackingId, client)) return fallback;
-    return this.deps.db.transaction(async (tx) => {
+    return withTx(this.deps.db, async (tx) => {
       const d = await repo.findDeliveryByTrackingId(tx, trackingId);
       if (d == null) return fallback;
       const url = id < PERSONAL_BASE ? await repo.findIssueLinkUrl(tx, d.issueId, id) : await repo.findDeliveryLinkUrl(tx, trackingId, id);

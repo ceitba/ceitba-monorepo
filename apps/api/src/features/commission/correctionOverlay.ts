@@ -5,11 +5,11 @@
 // schedule-correction feature (web/correction) owns the rest of that service
 // and may move these into its own module.
 
-import { sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import type { DayOfWeek } from '../../external/itba';
 import { compareUuid, DAY_NAMES, javaCompareStrings } from '../../lib/javaCompat';
 import { formatInstant, parsePgTimestamp, systemNowMicros, toPgTimestamp } from '../../lib/time';
+import * as repo from './repo';
 import type { Commission, CommissionTime } from './repo';
 
 /** domain/correction/CorrectionSlot: {"day":"TUESDAY","from":"08:00","to":"11:00"}. */
@@ -105,7 +105,6 @@ interface CorrectionRow {
   createdAt: string | null;
 }
 
-type Row = Record<string, unknown>;
 
 /** Hibernate's JSON mapping of List<CorrectionSlot>: anything but an array (or null) fails to read. */
 function slotList(v: unknown): CorrectionSlot[] {
@@ -113,12 +112,9 @@ function slotList(v: unknown): CorrectionSlot[] {
   if (!Array.isArray(v)) throw new Error('Could not deserialize string to java type: java.util.List<CorrectionSlot>');
   return v as CorrectionSlot[];
 }
-const list = (values: string[]) => sql`(${sql.join(values.map((v) => sql`${v}`), sql`, `)})`;
 
 async function findByCommissionIdInAndStatusIn(db: Db, ids: string[], statuses: string[]): Promise<CorrectionRow[]> {
-  const rows = (await db.execute(sql`
-    SELECT id, commission_id, proposed_slots, sga_snapshot, status, confirm_count, reject_count, created_at::text AS created_at
-    FROM public.schedule_correction WHERE commission_id IN ${list(ids)} AND status IN ${list(statuses)}`)) as unknown as Row[];
+  const rows = await repo.correctionRowsOf(db, ids, statuses);
   return rows.map((r) => ({
     id: r.id as string,
     commissionId: r.commission_id as string,
@@ -154,10 +150,7 @@ export async function organizedCommissions(db: Db, commissions: readonly Commiss
   const open = await findByCommissionIdInAndStatusIn(db, ids, ['PENDING', 'APPLIED']);
   const myVotes = new Map<string, string>();
   if (viewerId !== null && open.length > 0) {
-    const rows = (await db.execute(sql`
-      SELECT correction_id, type FROM public.schedule_correction_vote
-      WHERE user_id = ${viewerId} AND correction_id IN ${list(open.map((c) => c.id))}`)) as unknown as Row[];
-    for (const r of rows) myVotes.set(r.correction_id as string, r.type as string);
+    for (const r of await repo.correctionVotesOf(db, viewerId, open.map((c) => c.id))) myVotes.set(r.correction_id as string, r.type as string);
   }
   const byCommission = new Map<string, CorrectionRow[]>();
   for (const c of open) {
@@ -222,7 +215,6 @@ export async function onSgaSlotsChanged(db: Db, commissionId: string, newSga: re
     if (sameSet(c.sgaSnapshot, newSga)) continue;
     const next = sameSet(c.proposedSlots, newSga) ? 'RESOLVED' : 'SUPERSEDED';
     log?.info({ correction: c.id, commissionId, from: c.status, to: next }, 'Schedule correction ended (SGA slots changed)');
-    await db.execute(sql`UPDATE public.schedule_correction SET status = ${next}, updated_at = ${toPgTimestamp(systemNowMicros())}
-                         WHERE id = ${c.id}`);
+    await repo.setCorrectionStatus(db, c.id, next, toPgTimestamp(systemNowMicros()));
   }
 }
