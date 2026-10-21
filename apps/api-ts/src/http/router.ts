@@ -43,7 +43,11 @@ export interface RouteSpec<
   bodyValidation?: 'valid' | 'bindOnly';
   /** `@RequestBody(required = false)`: an absent body is null. */
   bodyOptional?: boolean;
-  /** Raw body (`@RequestBody String`): no Content-Type check, no JSON parsing. */
+  /**
+   * Raw body (`@RequestBody String`): no Content-Type check, no JSON parsing. With `body` set
+   * this is not needed: the handler gets the raw text of a validated JSON body in `rawBody`
+   * too (to read it with src/lib/jacksonTree.ts when key order or number types matter).
+   */
   rawBody?: boolean;
   /** `@CurrentUser User user`. */
   currentUser?: boolean;
@@ -67,7 +71,7 @@ export interface HandlerArgs<P, Q, B> {
   query: ParamValues<Q>;
   /** The bound body (never null unless `bodyOptional`). */
   body: B extends z.ZodType ? NonNullable<z.output<B>> : undefined;
-  /** Raw body text when `rawBody`. */
+  /** The raw body text whenever the body was read (`rawBody`, or `body` after the JSON checks and validation). */
   rawBody: string | null;
   /** @CurrentUser (null for anonymous callers of public routes). */
   user: UserRow | null;

@@ -34,8 +34,8 @@ describe('jv.object json names', () => {
   });
 
   test('aliasesAreAcceptedAndTheLastNameWins', () => {
-    expect(validateBody(S, { timeFrom: '10:00' }).timeFrom).toBe('10:00');
-    expect(validateBody(S, { time_from: '09:00', timeFrom: '10:00' }).timeFrom).toBe('10:00');
+    expect(validateBody(S, { timeFrom: '10:00' })!.timeFrom).toBe('10:00');
+    expect(validateBody(S, { time_from: '09:00', timeFrom: '10:00' })!.timeFrom).toBe('10:00');
   });
 
   test('violationsAreNamedByTheComponent', () => {

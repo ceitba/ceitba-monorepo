@@ -5,11 +5,9 @@
 // through METHOD_RULES; DELETE /v1/me requires a JWT session (API keys 403).
 
 import { clearSessionCookies } from '../../http/auth/cookies';
-import type { AppContext } from '../../http/context';
-import { MalformedBodyError, UnsupportedMediaTypeError } from '../../http/errors';
-import { resolveRequestLocale } from '../../http/locale';
+import { MalformedBodyError } from '../../http/errors';
 import { JSON_TYPE, defineRoutes, noContent } from '../../http/router';
-import { param, validateBody } from '../../http/validation';
+import { param } from '../../http/validation';
 import { toJavaJson } from '../../lib/json';
 import {
   AddMembershipRequest, CreateUserRequest, RegisterDeviceRequest, SaveScheduleRequest, UpdateFileNumberRequest, UpdateMembershipRequest,
@@ -29,44 +27,20 @@ function scheduleJson(s: SavedScheduleResponse): string {
 }
 const scheduleResponse = (s: SavedScheduleResponse, status = 200) => new Response(scheduleJson(s), { status, headers: { 'Content-Type': JSON_TYPE } });
 
-function isJsonCompatible(ct: string): boolean {
-  const t = ct.split(';')[0]!.trim().toLowerCase();
-  return t === 'application/json' || /^application\/[^/]+\+json$/.test(t) || t === '*/*' || t === 'application/*';
-}
-
-/** MediaType.toString() + charset=UTF-8 (the router's 415 message). */
-function normalizeMediaType(ct: string): string {
-  const [type, ...params] = ct.split(';').map((s) => s.trim()).filter(Boolean);
-  const ps = params.map((p) => p.replace(/\s*=\s*/, '='));
-  if (!ps.some((p) => p.toLowerCase().startsWith('charset='))) ps.push('charset=UTF-8');
-  return [type!.toLowerCase(), ...ps].join(';');
-}
-
 /**
- * `@Valid @RequestBody SaveScheduleRequest` read from the raw text, so the
- * opaque payload keeps Jackson's key order and number types (a JS object
- * would move integer-like keys first and print 1.0 as 1). Same 415/400 rules
- * as the router's body binding.
+ * The validated `@Valid @RequestBody SaveScheduleRequest` plus its opaque payload
+ * read from the raw text, so it keeps Jackson's key order and number types (a JS
+ * object would move integer-like keys first and print 1.0 as 1).
  */
-function readSaveSchedule(c: AppContext, raw: string, defaultLocale: Parameters<typeof resolveRequestLocale>[1]): SaveSchedule {
-  const ct = c.req.header('content-type');
-  if (!ct) {
-    if (raw.length === 0) throw new MalformedBodyError();
-    throw new UnsupportedMediaTypeError('application/octet-stream');
-  }
-  if (!isJsonCompatible(ct)) throw new UnsupportedMediaTypeError(normalizeMediaType(ct));
-  if (raw.length === 0) throw new MalformedBodyError();
-  let parsed: unknown;
+function saveSchedule(body: { name: string | null; careerId: string | null; plan: string | null }, raw: string | null): SaveSchedule {
   let tree;
   try {
-    parsed = JSON.parse(raw);
-    tree = parseJackson(raw);
+    tree = parseJackson(raw ?? '');
   } catch (e) {
-    if (e instanceof SyntaxError || e instanceof JsonSyntaxError) throw new MalformedBodyError();
+    if (e instanceof JsonSyntaxError) throw new MalformedBodyError();
     throw e;
   }
-  const body = validateBody(SaveScheduleRequest, parsed, resolveRequestLocale(c.req.header('accept-language'), defaultLocale));
-  return { name: body!.name!, careerId: body!.careerId, plan: body!.plan, payload: field(tree, "payload")! };
+  return { name: body.name!, careerId: body.careerId, plan: body.plan, payload: field(tree, 'payload')! };
 }
 
 export default defineRoutes((r, deps) => {
@@ -76,7 +50,6 @@ export default defineRoutes((r, deps) => {
   const schedules = new SavedScheduleService(deps);
   const me = new MeSocialService(deps);
   const deletion = new AccountDeletionService(deps);
-  const locale = deps.config.server.defaultLocale;
   const meTags = ['Me'];
 
   // ---- MeAccountController
@@ -136,13 +109,13 @@ export default defineRoutes((r, deps) => {
   r.get('/v1/me/schedules/{id}', { tags: meTags, currentUser: true, params: { id: param.uuid() }, argOrder: ['user', 'params'], summary: 'Get one saved schedule by id' },
     async ({ user, params }) => scheduleResponse(await schedules.get(user!.id, params.id!)));
   r.post('/v1/me/schedules', {
-    tags: meTags, currentUser: true, rawBody: true, argOrder: ['user', 'body'],
+    tags: meTags, currentUser: true, body: SaveScheduleRequest, argOrder: ['user', 'body'],
     summary: "Save a new schedule (the user's first one becomes primary). 409 if the per-user limit is reached.",
-  }, async ({ c, user, rawBody }) => scheduleResponse(await schedules.create(user!.id, readSaveSchedule(c, rawBody ?? '', locale)), 201));
+  }, async ({ user, body, rawBody }) => scheduleResponse(await schedules.create(user!.id, saveSchedule(body, rawBody)), 201));
   r.put('/v1/me/schedules/{id}', {
-    tags: meTags, currentUser: true, params: { id: param.uuid() }, rawBody: true, argOrder: ['user', 'params', 'body'],
+    tags: meTags, currentUser: true, params: { id: param.uuid() }, body: SaveScheduleRequest, argOrder: ['user', 'params', 'body'],
     summary: 'Replace name/payload of an existing saved schedule (isPrimary is unchanged)',
-  }, async ({ c, user, params, rawBody }) => scheduleResponse(await schedules.update(user!.id, params.id!, readSaveSchedule(c, rawBody ?? '', locale))));
+  }, async ({ user, params, body, rawBody }) => scheduleResponse(await schedules.update(user!.id, params.id!, saveSchedule(body, rawBody))));
   r.put('/v1/me/schedules/{id}/primary', {
     tags: meTags, currentUser: true, params: { id: param.uuid() }, argOrder: ['user', 'params'],
     summary: "Make this the user's primary schedule (clears the previous primary). Idempotent.",
