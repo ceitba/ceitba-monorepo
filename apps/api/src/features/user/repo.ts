@@ -143,7 +143,7 @@ export async function orgExists(db: Db, slug: string): Promise<boolean> {
 
 /** UserFollowRepository.findByUserId (no ORDER BY). */
 export function followsOf(db: Db, userId: string) {
-  return db.select().from(userFollows).where(eq(userFollows.userId, userId));
+  return db.select().from(userFollows).where(eq(userFollows.userId, userId)).orderBy(sql`ctid`); // findByUserId: heap order, as Java
 }
 
 export async function followExists(db: Db, userId: string, slug: string): Promise<boolean> {

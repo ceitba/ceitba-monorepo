@@ -46,9 +46,12 @@ export async function membershipsOf(db: Db, userId: string) {
     .from(userOrganizations).where(eq(userOrganizations.userId, userId));
 }
 
-/** UserFollowRepository.findByUserId (no ORDER BY). */
+/** UserFollowRepository.findByUserId. */
+// Java's JPA query had no ORDER BY: Postgres returned the rows of this user's index range in heap order (ctid).
+// An explicit ctid order keeps that order even when the planner picks an index-only scan on the primary key,
+// which would sort by org_slug instead (found by scripts/dropin.ts on a vacuumed table).
 export async function followsOf(db: Db, userId: string) {
-  return db.select({ organization: userFollows.orgSlug }).from(userFollows).where(eq(userFollows.userId, userId));
+  return db.select({ organization: userFollows.orgSlug }).from(userFollows).where(eq(userFollows.userId, userId)).orderBy(sql`ctid`);
 }
 
 /** FollowService.followIfMissing. */

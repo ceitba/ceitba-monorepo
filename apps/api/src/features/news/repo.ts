@@ -177,7 +177,7 @@ export function followersOf(db: Db, org: string): Promise<FollowRow[]> {
 }
 
 export function followsOfUser(db: Db, userId: string): Promise<FollowRow[]> {
-  return db.select().from(userFollows).where(eq(userFollows.userId, userId));
+  return db.select().from(userFollows).where(eq(userFollows.userId, userId)).orderBy(sql`ctid`); // findByUserId: heap order, as Java
 }
 
 export async function followExists(db: Db, userId: string, org: string): Promise<boolean> {

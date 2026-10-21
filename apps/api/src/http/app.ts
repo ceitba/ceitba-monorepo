@@ -171,7 +171,7 @@ export async function createApp(deps: Deps, opts: { featuresDir?: string } = {})
 
   return {
     routes,
-    fetch: (req, server) => handle(req, server?.requestIP(req)?.address ?? '127.0.0.1'),
+    fetch: (req, server) => handle(req, servletRemoteAddr(server?.requestIP(req)?.address ?? '127.0.0.1')),
     request: (pathOrReq, init, remoteAddr = '127.0.0.1') => {
       const req = typeof pathOrReq === 'string'
         ? new Request(new URL(pathOrReq, 'http://localhost'), init)
@@ -179,4 +179,14 @@ export async function createApp(deps: Deps, opts: { featuresDir?: string } = {})
       return handle(req, remoteAddr);
     },
   };
+}
+
+/**
+ * The peer address as Tomcat's getRemoteAddr() gave it. Bun listens on `::`, so an IPv4 client arrives as
+ * `::ffff:a.b.c.d`; Java saw `a.b.c.d`. Vote fingerprints and analytics IP hashes are HMACs of this string, so the
+ * IPv4-mapped form would count the same client again after the cutover (found by scripts/dropin.ts).
+ */
+export function servletRemoteAddr(address: string): string {
+  const m = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  return m ? m[1]! : address;
 }

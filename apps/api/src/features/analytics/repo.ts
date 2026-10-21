@@ -53,6 +53,6 @@ export async function dailyViewsSince(db: Db, since: string): Promise<{ date: st
 /** voteRepo.findAll() with each article's title (null when the article is gone). */
 export async function allVotes(db: Db): Promise<{ articleId: string; title: string | null; up: number; down: number }[]> {
   return (await rows(db, sql`SELECT v.article_id, v.up_count, v.down_count, a.title FROM public.article_votes v
-    LEFT JOIN public.articles a ON a.id = v.article_id`))
+    LEFT JOIN public.articles a ON a.id = v.article_id ORDER BY v.ctid`)) // findAll(): a seq scan, so heap order
     .map((r) => ({ articleId: r.article_id as string, title: r.title as string | null, up: Number(r.up_count), down: Number(r.down_count) }));
 }
