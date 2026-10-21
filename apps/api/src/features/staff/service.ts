@@ -6,7 +6,7 @@ import {
   InvalidBenefitSlugError, LastActiveStaffError, ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError,
 } from '../../http/errors';
 import { javaIsBlank, javaTrim } from '../../lib/javaCompat';
-import { ART, formatOffsetDateTime, parsePgTimestamp, systemNowMicros, toPgTimestamp, type Micros } from '../../lib/time';
+import { ART, formatOffsetDateTime, parsePgTimestamp, systemNowMicros, toPgTimestamp, yearInZone, type Micros } from '../../lib/time';
 import type {
   AssignStaffRequest, BenefitCardResponse, BenefitResponse, CreateBenefitCardRequest, CreateStaffMemberRequest, ModeratorResponse,
   StaffDepartmentResponse, StaffMemberResponse, StaffResponse, UpdateBenefitCardRequest, UpdateBenefitRequest,
@@ -155,8 +155,10 @@ export class StaffRosterService {
     });
   }
 
-  listYears(): Promise<number[]> {
-    return withTx(this.deps.db, (tx) => repo.distinctYearsDesc(tx), { readOnly: true });
+  /** The years with members, newest first; none yet: the current year (Year.now(): system clock, JVM zone) so the SPA has a tab. */
+  async listYears(): Promise<number[]> {
+    const years = await withTx(this.deps.db, (tx) => repo.distinctYearsDesc(tx), { readOnly: true });
+    return years.length === 0 ? [yearInZone(systemNowMicros(), this.deps.config.server.timeZone)] : years;
   }
 
   listMembers(year: number): Promise<StaffMemberResponse[]> {

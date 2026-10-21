@@ -11,7 +11,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Clock } from '../../infra/clock';
-import { ART, zoneOffsetMinutes, type Micros } from '../../lib/time';
+import { yearInZone } from '../../lib/time';
 import type { KbTakedown } from './kbHooks';
 import { academicYearFromName } from './logic/academicYears';
 import { decidePublication } from './logic/publicationRule';
@@ -19,11 +19,6 @@ import { SubjectMatcher } from './logic/subjectMatcher';
 import { isApproved, isLive, isRemovedFromDrive, setAcademicYear, type DriveFile, type DriveSource } from './model';
 import type { Session } from './session';
 
-/** The year of an instant in Buenos Aires (atZoneSameInstant(ClockConfig.ZONE).getYear()). */
-export function yearInArt(us: Micros): number {
-  const local = us + zoneOffsetMinutes(ART, us) * 60_000_000;
-  return new Date(Math.floor(local / 1000)).getUTCFullYear();
-}
 
 /** Subject ids of the user's plan in plan order (year, semester, id); [] without a plan. */
 export async function planSubjectIds(s: Session, userId: string | null): Promise<string[]> {
@@ -87,7 +82,7 @@ export function academicYear(f: DriveFile, by: Map<string, DriveFile>, currentYe
   let first = f.driveCreatedAt;
   const modified = f.driveModifiedAt;
   if (first == null || (modified != null && modified < first)) first = modified;
-  setAcademicYear(f, first == null ? null : yearInArt(first), 'DRIVE');
+  setAcademicYear(f, first == null ? null : yearInZone(first), 'DRIVE');
 }
 
 export class DriveRecalculator {
@@ -96,7 +91,7 @@ export class DriveRecalculator {
   async recompute(s: Session, source: DriveSource, files: DriveFile[], m?: SubjectMatcher): Promise<void> {
     const subjectMatcher = m ?? (await matcher(s, await planSubjectIds(s, source.userId)));
     const now = this.clock.now();
-    const currentYear = yearInArt(now);
+    const currentYear = yearInZone(now);
     const byDriveId = new Map<string, DriveFile>();
     for (const f of files) byDriveId.set(f.driveId, f);
     // Top-down (stable sort), so each item sees its folders' suggestions.

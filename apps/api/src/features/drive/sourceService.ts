@@ -15,7 +15,8 @@ import { DriveError, fileNotFound, sourceNotFound } from './errors';
 import { kbTakedown } from './kbHooks';
 import { parseDriveFolderUrl } from './logic/driveFolderUrls';
 import { newDriveSource, isRemovedFromDrive, setHiddenByUser, type DriveFile, type DriveSource } from './model';
-import { depth, matcher, planSubjectIds, yearInArt, type DriveRecalculator } from './recalculator';
+import { depth, matcher, planSubjectIds, type DriveRecalculator } from './recalculator';
+import { yearInZone } from '../../lib/time';
 import { inSession, type Session } from './session';
 import { filesOfSource } from './store';
 import * as views from './views';
@@ -221,7 +222,7 @@ export class DriveSourceService {
       if (node !== ABSENT && node !== undefined) {
         if (node !== null && !canConvertToInt(node)) throw new ValidationError('academicYear', jsonNodeString(node), 'must be a year or null');
         const year = node === null ? null : Math.trunc(node as number);
-        const current = yearInArt(this.deps.clock.now());
+        const current = yearInZone(this.deps.clock.now());
         if (year != null && (year < 1990 || year > current)) throw new ValidationError('academicYear', year, `must be between 1990 and ${current}`);
         file.academicYearUser = year;
       }

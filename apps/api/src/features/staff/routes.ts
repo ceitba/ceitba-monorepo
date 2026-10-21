@@ -4,7 +4,6 @@
 
 import { defineRoutes } from '../../http/router';
 import { param } from '../../http/validation';
-import { systemNowMicros } from '../../lib/time';
 import { PushBroadcastService } from '../push/broadcast';
 import {
   AssignStaffRequest, CreateBenefitCardRequest, CreateStaffMemberRequest, GrantModeratorRequest, PushBroadcastRequest,
@@ -52,11 +51,7 @@ export default defineRoutes((r, deps) => {
   r.get('/v1/staff-departments', { tags: rosterTags }, () => roster.listDepartments());
   r.put('/v1/staff-departments/{slug}', { tags: rosterTags, params: { slug: param.string() }, body: UpdateStaffDepartmentRequest },
     ({ params, body }) => roster.updateDepartment(params.slug!, body));
-  r.get('/v1/staff-members/years', { tags: rosterTags }, async () => {
-    const years = await roster.listYears();
-    // No members yet: the current year (Year.now(), JVM zone) so the SPA has a tab.
-    return years.length === 0 ? [Number(new Intl.DateTimeFormat('en-US', { timeZone: deps.config.server.timeZone, year: 'numeric' }).format(new Date(systemNowMicros() / 1000)))] : years;
-  });
+  r.get('/v1/staff-members/years', { tags: rosterTags }, () => roster.listYears());
   r.get('/v1/staff-members', { tags: rosterTags, query: { year: param.int({ primitive: true }) } }, ({ query }) => roster.listMembers(query.year!));
   r.post('/v1/staff-members', { tags: rosterTags, body: CreateStaffMemberRequest, status: 201 }, ({ body }) => roster.createMember(body));
   r.put('/v1/staff-members/{id}', { tags: rosterTags, params: { id: param.uuid() }, body: UpdateStaffMemberRequest },

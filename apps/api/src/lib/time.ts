@@ -59,6 +59,12 @@ export function formatInstant(us: Micros): string {
   return `${yearStr(f.y)}-${pad(f.mo)}-${pad(f.d)}T${pad(f.h)}:${pad(f.mi)}:${pad(f.s)}${fractionGrouped(micros)}Z`;
 }
 
+/** The year of an instant in `zone` (atZone(zone).getYear(); Year.now() with the JVM zone). */
+export function yearInZone(us: Micros, zone: string = ART): number {
+  const local = us + zoneOffsetMinutes(zone, us) * 60_000_000;
+  return new Date(Math.floor(local / 1000)).getUTCFullYear();
+}
+
 const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
 
 /** Offset of `zone` at the instant, in minutes east of UTC. */
