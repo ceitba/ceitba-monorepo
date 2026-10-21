@@ -37,6 +37,11 @@ export function registerAccountDeletionStep(name: AccountDeletionStepName, step:
   return () => { if (steps.get(name) === step) steps.delete(name); };
 }
 
+/** The steps registered so far (the app registers them while collecting the routes). */
+export function registeredAccountDeletionSteps(): AccountDeletionStepName[] {
+  return [...steps.keys()].sort();
+}
+
 export type DeletionOutcome = 'DELETED' | 'ANONYMIZED';
 
 export class AccountDeletionService {
