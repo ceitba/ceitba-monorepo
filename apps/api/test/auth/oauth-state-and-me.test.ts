@@ -1,7 +1,7 @@
 // Ports of OAuthStateServiceTest (the signed, nonce-bound OAuth `state`) and
 // UserMeServiceTest (the staff role is evaluated at the injected clock).
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { CONTRACT_ENV } from '../../contract/support/env';
+import { CONTRACT_ENV, TEST_JWT_SECRET } from '../../contract/support/env';
 import { seedStaff } from '../../contract/support/identity';
 import { loadConfig } from '../../src/config';
 import { AuthService, OAUTH_STATE_TTL_SECONDS } from '../../src/features/auth/service';
@@ -10,7 +10,7 @@ import { MutableClock } from '../../src/infra/clock';
 import { silentLogger } from '../../src/infra/logger';
 import { testApp, type TestApp } from '../support/app';
 
-const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const SECRET = TEST_JWT_SECRET;
 const T0 = '2026-05-01T12:00:00Z';
 
 async function service(secret: string, now: string | number) {

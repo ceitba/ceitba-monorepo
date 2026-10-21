@@ -12,8 +12,9 @@ import { matchUrlRule } from '../../src/http/auth/policy';
 import { keyIsFullPower, type ValidatedKey } from '../../src/http/auth/principal';
 import { isTokenEndpoint, resolveBearer, syncKeyMatches } from '../../src/http/security';
 import { isSafeRedirect, withError } from '../../src/features/auth/redirects';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const SECRET = TEST_JWT_SECRET;
 const cfg = (env: Record<string, string> = {}) => loadConfig({ AUTH_JWT_SECRET: SECRET, AUTH_ALLOWED_DOMAINS: 'itba.edu.ar', AUTH_ALLOWED_EMAILS: 'external@gmail.com', ...env });
 
 describe('AuthIT allowlist', async () => {

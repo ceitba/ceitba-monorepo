@@ -8,8 +8,9 @@ import { join } from 'node:path';
 import { loadConfig } from '../../src/config';
 import { mobileAppConfig } from '../../src/features/app/routes';
 import { readServiceAccount } from '../../src/infra/push';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const base = { AUTH_JWT_SECRET: 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch' };
+const base = { AUTH_JWT_SECRET: TEST_JWT_SECRET };
 const push = (json: string, path: string) => ({ serviceAccountJson: json, serviceAccountPath: path });
 
 describe('PushConfigTest', () => {

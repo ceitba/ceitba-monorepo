@@ -14,6 +14,7 @@ import itHistory from '../fixtures/flyway-history-java-it.json';
 import { MIGRATIONS_DIR, TEST_MIGRATIONS_DIR } from '../../src/config/sections/db';
 import { check, compareVersions, flywayChecksum, flywayLockNumber, javaStringHashCode, migrate, readHistory, resolveMigrations, validate, type AppliedMigration } from '../../src/db/migrate';
 import { cloneDatabase, dropDatabase, pgServerUrl, withDatabase } from '../../contract/support/pg';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
 const asApplied = (rows: typeof prodHistory): AppliedMigration[] => rows.map((r) => ({ ...r, installedBy: 'postgres', executionTime: 1, success: true }));
 
@@ -194,7 +195,7 @@ describe.skipIf(!JAR || !existsSync(JAR) || !existsSync(JAVA))('against a databa
     const port = 19000 + Math.floor(Math.random() * 900);
     const proc = Bun.spawn([join(JAVA, 'bin', 'java'), '-XX:TieredStopAtLevel=1', '-jar', JAR], {
       env: {
-        PATH: process.env.PATH ?? '', SPRING_PROFILES_ACTIVE: 'contract', PORT: String(port), AUTH_JWT_SECRET: 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch',
+        PATH: process.env.PATH ?? '', SPRING_PROFILES_ACTIVE: 'contract', PORT: String(port), AUTH_JWT_SECRET: TEST_JWT_SECRET,
         DATABASE_URL: `jdbc:postgresql://${url.hostname}:${url.port}${url.pathname}`, POSTGRES_USER: decodeURIComponent(url.username), POSTGRES_PASSWORD: decodeURIComponent(url.password),
         ITBA_API_USE_FAKE: 'true',
       },

@@ -2,8 +2,9 @@
 import { describe, expect, test } from 'bun:test';
 import { loadConfig } from '../../src/config';
 import { parseDuration, parseList } from '../../src/config/env';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const base = { AUTH_JWT_SECRET: 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch' };
+const base = { AUTH_JWT_SECRET: TEST_JWT_SECRET };
 
 describe('durations (Spring DurationStyle)', () => {
   test.each([

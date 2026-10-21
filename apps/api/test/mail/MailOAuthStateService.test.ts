@@ -4,8 +4,9 @@ import { describe, expect, test } from 'bun:test';
 import { MAIL_OAUTH_STATE_TTL_MS, MailOAuthStateService } from '../../src/features/mail/logic/mailOAuthState';
 import { INTEROP } from '../interop/java-golden';
 import { MutableClock } from './support/MutableClock';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const SECRET = TEST_JWT_SECRET;
 
 describe('MailOAuthStateServiceTest', () => {
   test('stateBindsTheStaffUserAndExpires', () => {

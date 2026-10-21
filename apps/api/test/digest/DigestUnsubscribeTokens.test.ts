@@ -3,8 +3,9 @@ import { describe, expect, test } from 'bun:test';
 import { ContentHmac, DIGEST_UNSUBSCRIBE, VOTE_FINGERPRINTS } from '../../src/features/crypto/logic/contentHmac';
 import { DigestUnsubscribeTokens } from '../../src/features/digest/logic/digestUnsubscribeTokens';
 import { INTEROP } from '../interop/java-golden';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const SECRET = TEST_JWT_SECRET;
 const tokens = new DigestUnsubscribeTokens(ContentHmac.fromJwtSecret(SECRET));
 const uuid = () => crypto.randomUUID();
 

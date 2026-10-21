@@ -8,6 +8,7 @@ import { UnconfiguredObjectStorage, type ObjectStorage, type PresignedUpload } f
 import { ContentHmac } from '../../src/features/crypto/logic/contentHmac';
 import { MB, MediaUploadService, PROPOSAL_ATTACHMENT_RATE_RULE } from '../../src/features/media/logic/mediaUploadService';
 import { INTEROP } from '../interop/java-golden';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
 const ALICE = '11111111-1111-1111-1111-111111111111';
 const BOB = '22222222-2222-2222-2222-222222222222';
@@ -39,7 +40,7 @@ function setup(attachmentCapacity: number) {
     if (n >= attachmentCapacity) throw new RateLimitExceededError(3600);
     used.set(userId, n + 1);
   };
-  const svc = new MediaUploadService(storage, consume, ContentHmac.fromJwtSecret('dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch'));
+  const svc = new MediaUploadService(storage, consume, ContentHmac.fromJwtSecret(TEST_JWT_SECRET));
   return { storage, svc };
 }
 

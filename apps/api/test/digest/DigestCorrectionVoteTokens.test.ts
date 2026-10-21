@@ -5,8 +5,9 @@ import { ContentHmac, DIGEST_CORRECTION_VOTE, DIGEST_UNSUBSCRIBE } from '../../s
 import { DigestCorrectionVoteTokens } from '../../src/features/digest/logic/digestCorrectionVoteTokens';
 import { DigestUnsubscribeTokens } from '../../src/features/digest/logic/digestUnsubscribeTokens';
 import { INTEROP } from '../interop/java-golden';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const SECRET = TEST_JWT_SECRET;
 const NOW = Date.parse('2026-10-05T15:00:00Z') * 1000;
 const DAYS_14 = 14 * 86_400_000;
 const hmac = ContentHmac.fromJwtSecret(SECRET);

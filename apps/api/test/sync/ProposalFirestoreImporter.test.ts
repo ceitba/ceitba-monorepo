@@ -6,10 +6,11 @@ import {
   cut, FirestoreImportError, flattenComments, LEGACY_ATTACHMENT_KEY, lifecycle, moderation, nameUuid, proposalId, ProposalFirestoreImporter,
   time, topic, type ImportUsers, type ProposalImportRows,
 } from '../../src/features/sync/proposalImporter';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
 const NOW = Date.parse('2026-01-01T00:00:00Z') * 1000;
 const CREATED = Date.parse('2024-05-01T12:00:00Z') * 1000;
-const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const SECRET = TEST_JWT_SECRET;
 const LEGACY_KEY = 'proposals/legacy/0f8e2a4c-1b3d-4e5f-8a7b-9c0d1e2f3a4b.png';
 const us = (iso: string) => Date.parse(iso) * 1000;
 

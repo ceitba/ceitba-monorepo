@@ -7,8 +7,9 @@ import {
   VOTE_FINGERPRINTS,
 } from '../../src/features/crypto/logic/contentHmac';
 import { INTEROP } from '../interop/java-golden';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
-const JWT_SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+const JWT_SECRET = TEST_JWT_SECRET;
 const DEDICATED = 'a-dedicated-content-secret-of-32+-bytes';
 
 // new ContentHmac(auth(jwtSecret), dedicated)

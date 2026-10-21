@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { loadConfig } from '../../src/config';
 import { clientKey, IpRateLimiter, isPrivatePeer, resolveClientIp, retryAfterSeconds, TokenBucket, UserRateLimiter } from '../../src/http/ratelimit';
 import { RateLimitExceededError } from '../../src/http/errors';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
 describe('client ip', () => {
   test('private peers', () => {
@@ -37,7 +38,7 @@ describe('buckets', () => {
     expect(b.tryConsume(30_000).consumed).toBe(true);
   });
   test('first matching rule, excludes, methods', async () => {
-    const cfg = (await loadConfig({ AUTH_JWT_SECRET: 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch', RATE_LIMIT_AUTH_CAPACITY: '1' })).rateLimit;
+    const cfg = (await loadConfig({ AUTH_JWT_SECRET: TEST_JWT_SECRET, RATE_LIMIT_AUTH_CAPACITY: '1' })).rateLimit;
     let now = 0;
     const l = new IpRateLimiter(cfg, () => now);
     expect(l.check('GET', '/v1/auth/google', '1.1.1.1')?.rule.name).toBe('auth');
@@ -51,7 +52,7 @@ describe('buckets', () => {
     expect(l.check('GET', '/v1/auth/google', '1.1.1.1')?.rejected).toBeUndefined();
   });
   test('UserRateLimiter (proposals rule from the env)', async () => {
-    const cfg = (await loadConfig({ AUTH_JWT_SECRET: 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch', RATE_LIMIT_PROPOSALS_CAPACITY: '1' })).rateLimit;
+    const cfg = (await loadConfig({ AUTH_JWT_SECRET: TEST_JWT_SECRET, RATE_LIMIT_PROPOSALS_CAPACITY: '1' })).rateLimit;
     const l = new UserRateLimiter(cfg, () => 0);
     l.consume('proposals', 'u1');
     expect(() => l.consume('proposals', 'u1')).toThrow(RateLimitExceededError);
@@ -62,7 +63,7 @@ describe('buckets', () => {
 
 // UserRateLimiterTest: per-user buckets, greedy refill, Retry-After, disabled/unknown rules.
 describe('UserRateLimiterTest', () => {
-  const SECRET = 'dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch';
+  const SECRET = TEST_JWT_SECRET;
   const limiter = async (enabled: boolean, now: () => number) => new UserRateLimiter((await loadConfig({
     AUTH_JWT_SECRET: SECRET, RATE_LIMIT_ENABLED: String(enabled), RATE_LIMIT_ORG_IMAGES_CAPACITY: '2', RATE_LIMIT_ORG_IMAGES_PERIOD: 'PT1M',
   })).rateLimit, now);

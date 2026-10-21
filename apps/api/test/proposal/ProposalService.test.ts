@@ -17,6 +17,7 @@ import { UserRateLimiter } from '../../src/http/ratelimit';
 import { MutableClock } from '../../src/infra/clock';
 import type { ObjectStorage, PresignedUpload } from '../../src/infra/storage';
 import { testApp, type TestApp } from '../support/app';
+import { TEST_JWT_SECRET } from '../../contract/support/env';
 
 const AUTHOR = 'a0000000-0000-4000-8000-000000000001';
 const ALICE = 'a0000000-0000-4000-8000-000000000002';
@@ -34,7 +35,7 @@ class StubStorage implements ObjectStorage {
   async delete() {}
   async presignGet() { return ''; }
 }
-const media = new MediaUploadService(new StubStorage(), () => {}, ContentHmac.fromJwtSecret('dGVzdC1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzLWxvbmch'));
+const media = new MediaUploadService(new StubStorage(), () => {}, ContentHmac.fromJwtSecret(TEST_JWT_SECRET));
 
 let t: TestApp;
 let service: ProposalService;
