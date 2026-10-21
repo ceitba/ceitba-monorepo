@@ -4,7 +4,8 @@
 # majors come one PR each. Commit messages are Conventional Commits:
 # "chore(deps): ..." / "chore(deps-dev): ..." (docs/adr/0003).
 # Not covered: the bun version itself (packageManager in package.json, read by
-# CI) and the SheetJS tarball in apps/web (not on the npm registry).
+# CI, and the oven/bun base image of apps/api/Dockerfile, which must match it:
+# bump both together) and the SheetJS tarball in apps/web (not on the npm registry).
 version: 2
 
 updates:
@@ -21,30 +22,6 @@ updates:
       web-minor-patch:
         update-types: [minor, patch]
 
-  - package-ecosystem: maven
-    directory: /apps/api
-    target-branch: dev
-    schedule: { interval: weekly, day: monday }
-    cooldown: { default-days: 3 }
-    open-pull-requests-limit: 10
-    commit-message: { prefix: chore, include: scope }
-    groups:
-      # Versions are coupled (pom.xml: google-http-client and google-auth-library
-      # must match what firebase-admin brings): always bump them together.
-      google-firebase:
-        patterns:
-          - com.google.firebase:*
-          - com.google.http-client:*
-          - com.google.auth:*
-          - com.google.apis:*
-      api-minor-patch:
-        update-types: [minor, patch]
-        exclude-patterns:
-          - com.google.firebase:*
-          - com.google.http-client:*
-          - com.google.auth:*
-          - com.google.apis:*
-
   - package-ecosystem: github-actions
     directory: /
     target-branch: dev
@@ -54,16 +31,6 @@ updates:
     groups:
       actions:
         update-types: [minor, patch]
-
-  - package-ecosystem: docker
-    directory: /apps/api/infrastructure/docker
-    target-branch: dev
-    schedule: { interval: weekly, day: monday }
-    commit-message: { prefix: chore, include: scope }
-    ignore:
-      # Stay on the Java 21 LTS line; a JDK major is a deliberate upgrade.
-      - dependency-name: eclipse-temurin
-        update-types: [version-update:semver-major]
 
   - package-ecosystem: docker-compose
     directories: [/apps/api, /infra/caddy]
