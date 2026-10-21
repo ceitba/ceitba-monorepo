@@ -48,9 +48,10 @@ with the fakes swapped in, `app.request()`), so it runs against TS only.
 | `SubjectWikiIT` staff side | `test/kb-reader/subject-wiki.test.ts` | Calls the import/moderation services directly; the HTTP side is black-box in `kb-reader-subject-wiki.contract.test.ts` |
 | `BatchPipelineIT`, `SyncPipelineIT` (+ the tests they inherit from `KbPipelineAcceptanceIT`) | `test/kb-pipeline/{Batch,Sync}PipelineIT.test.ts` | Advance runs with the engine, script the fake LLM batch/chat clients and read InMemoryObjectStorage |
 | `KbKickIT` | `test/kb-pipeline/KbKickIT.test.ts` | Awaits the engine's background advances |
-| `LocalTemporalZoneIT` | `test/db/local-temporal-zone.test.ts` | Reads/writes through the repositories (Java: JPA) and checks the session zone (Java: no `hibernate.jdbc.time_zone`) |
+| `LocalTemporalZoneIT` | `test/db/local-temporal-zone.test.ts` | Reads/writes through the repositories (Java: JPA) and checks the session zone (Java: no `hibernate.jdbc.time_zone`). `endpointsServeSqlWrittenTimesUnshifted` is also black-box: `local-temporal-zone.contract.test.ts` |
 | `SchemaValidationIT`, `ProdMigrationsIT`, `NewsCategoryMigrationIT` | `test/db/migrate.test.ts` | Run the Flyway-compatible runner on fresh databases; "Hibernate validate" becomes "every drizzle table/column exists" |
 | `ShutdownDrainTest` | `test/http/shutdown.test.ts` | Starts `src/main.ts`'s server and shuts it down |
+| `RateLimitFilterTest` | `test/http/ratelimit-filter.test.ts` | The limiter with the test's own rule and a manual clock; the 429 shape through the app |
 | `GlobalExceptionHandlerTest` | `test/http/global-exception-handler.test.ts` | A throwaway route throws each exception through the real app |
 | Unit tests `ReviewLoginServiceTest`, `OAuthStateServiceTest`, `UserMeServiceTest`, `JwksGoogleIdTokenVerifierTest`, `ApiKeyScopeTest`, `UserRateLimiterTest`, `PushConfigTest`, `StorageEnvFallbackTest`, `MobileAppPropertiesTest`, `JwtIssuerAudienceEnforcementTest` | `test/auth/*.test.ts`, `test/http/ratelimit.test.ts`, `test/config/properties.test.ts` | Unit tests of services and config |
 

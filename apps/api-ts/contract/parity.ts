@@ -31,14 +31,42 @@ function walk(dir: string, ext: string): string[] {
 
 interface JavaClass { name: string; file: string; abstract: boolean; parent: string | null; methods: string[] }
 
+/** Removes comments, leaving string and char literals alone ("/v1/auth/**" is not a comment). */
+function stripComments(src: string): string {
+  let out = '';
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i]!;
+    if (ch === '"' || ch === "'") {
+      if (src.startsWith('"""', i)) {
+        const end = src.indexOf('"""', i + 3);
+        out += src.slice(i, end + 3);
+        i = end + 2;
+        continue;
+      }
+      let j = i + 1;
+      while (j < src.length && src[j] !== ch && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
+      out += src.slice(i, j + 1);
+      i = j;
+    } else if (src.startsWith('//', i)) {
+      const end = src.indexOf('\n', i);
+      i = (end < 0 ? src.length : end) - 1;
+    } else if (src.startsWith('/*', i)) {
+      const end = src.indexOf('*/', i + 2);
+      i = (end < 0 ? src.length : end + 2) - 1;
+      out += ' ';
+    } else out += ch;
+  }
+  return out;
+}
+
 function javaClasses(): Map<string, JavaClass> {
   const out = new Map<string, JavaClass>();
   for (const file of walk(JAVA_TESTS, '.java')) {
-    const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const src = stripComments(readFileSync(file, 'utf8'));
     const cls = /^(?:public\s+|final\s+|abstract\s+)*(abstract\s+)?(?:public\s+|final\s+)*class\s+(\w+)(?:<[^>]*>)?(?:\s+extends\s+(\w+))?/m.exec(src);
     if (!cls) continue;
     const methods: string[] = [];
-    for (const m of src.matchAll(/@(?:Test|ParameterizedTest)\b[\s\S]*?\bvoid\s+(\w+)\s*\(/g)) methods.push(m[1]!);
+    for (const m of src.matchAll(/@(?:org\.junit\.jupiter\.api\.)?(?:Test|ParameterizedTest)\b[\s\S]*?\bvoid\s+(\w+)\s*\(/g)) methods.push(m[1]!);
     out.set(cls[2]!, { name: cls[2]!, file, abstract: /\babstract\s+class\b/.test(cls[0]), parent: cls[3] ?? null, methods });
   }
   return out;
@@ -141,7 +169,9 @@ const args = process.argv.slice(2);
 const count = (s: Status) => rows.filter((r) => r.status === s).length;
 const unusedExclusions = Object.keys(exclusions).filter((k) => !rows.some((r) => r.key === k || (k.endsWith('#*') && r.cls === k.slice(0, -2))));
 
-console.log(`Java tests: ${rows.length} (${[...classes.values()].filter((c) => !c.abstract && c.methods.length + (c.parent ? 1 : 0) > 0).length} classes; ${rows.filter((r) => r.inheritedFrom).length} inherited)`);
+const own = [...classes.values()].reduce((n, c) => n + c.methods.length, 0);
+console.log(`Java tests: ${rows.length} runnable (${own} @Test/@ParameterizedTest methods in ${new Set(rows.map((r) => r.cls)).size} classes; `
+  + `${rows.filter((r) => r.inheritedFrom).length} of the runnable ones inherited from an abstract base)`);
 console.log(`  matched (class + name):  ${count('matched')}`);
 console.log(`  matched (unique name):   ${count('matched-by-name')}`);
 console.log(`  intentionally not ported: ${count('excluded')}`);
