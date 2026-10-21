@@ -332,6 +332,19 @@ export class UnexpectedStateError extends Error {
   }
 }
 
+/**
+ * For an app error that must extend another hierarchy (MailSenderNotConnected is an EmailSendError for the send
+ * worker AND a 409 for a direct send): the app maps an error carrying this brand like a CodedError. Only the app's
+ * own classes set it, so an upstream library error with a `status` and a `code` never has its message echoed.
+ */
+export const HTTP_MAPPING: unique symbol = Symbol('ceitba.httpMapping');
+export interface HttpMapped extends Error {
+  readonly [HTTP_MAPPING]: { status: number; code: string };
+}
+export function isHttpMapped(err: unknown): err is HttpMapped {
+  return err instanceof Error && HTTP_MAPPING in err;
+}
+
 /** Anything else -> 500 InternalServerError (logged at ERROR). */
 export class InternalServerError extends CodedError {
   constructor() {

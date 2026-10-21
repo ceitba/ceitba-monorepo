@@ -11,7 +11,7 @@ import { isDataIntegrityViolation } from '../db/client';
 import { toJavaJson } from '../lib/json';
 import { systemNowMicros } from '../lib/time';
 import type { AppContext, AppEnv, RequestState } from './context';
-import { ApiError, DataIntegrityViolationError, ExternalApiError, InternalServerError, MethodNotAllowedError, NoResourceFoundError } from './errors';
+import { ApiError, CodedError, DataIntegrityViolationError, HTTP_MAPPING, isHttpMapped, ExternalApiError, InternalServerError, MethodNotAllowedError, NoResourceFoundError } from './errors';
 import { registerCoreRoutes, setRoutesProvider } from './core-routes';
 import { IpRateLimiter, resolveClientIp } from './ratelimit';
 import { compareSpecificity, RouteRegistrar, springPathRegExp, toHonoPath, wrapHandler, type RouteDef, type RoutesModule } from './router';
@@ -65,9 +65,11 @@ function errorResponse(deps: Deps, err: unknown, state: RequestState | undefined
   const now = systemNowMicros();
   const path = state?.requestUri ?? '';
   let e: ApiError;
-  // Only the app's own errors (ApiError: CodedError and every feature subclass) carry their message to the client.
-  // Anything else, even an upstream library error with a status and a code (gaxios...), is the generic 500.
+  // Only the app's own errors (ApiError: CodedError and every feature subclass; HttpMapped for the one that extends
+  // another hierarchy) carry their message to the client. Anything else, even an upstream library error with a
+  // status and a code (gaxios...), is the generic 500.
   if (err instanceof ApiError) e = err;
+  else if (isHttpMapped(err)) e = new CodedError(err[HTTP_MAPPING].status, err[HTTP_MAPPING].code, err.message);
   else if (isDataIntegrityViolation(err)) {
     deps.log.warn(`Data integrity violation at ${path}: ${(err as Error).message}`);
     e = new DataIntegrityViolationError(err);

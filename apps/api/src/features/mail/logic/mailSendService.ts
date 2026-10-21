@@ -19,7 +19,7 @@
 
 import type { Clock } from '../../../infra/clock';
 import { EmailSendError, type EmailSender, type OutgoingEmail } from '../../../infra/mail';
-import { MailQuotaExhaustedError } from '../../../http/errors';
+import { HTTP_MAPPING, MailQuotaExhaustedError, type HttpMapped } from '../../../http/errors';
 import { javaIsBlank } from '../../../lib/javaCompat';
 import { formatInstant, type Micros } from '../../../lib/time';
 import { CLEAR, isClear, type MailAccountState, type MailLedger } from './mailLedger';
@@ -49,12 +49,13 @@ export class MailQuotaExhausted extends MailQuotaExhaustedError {
 /**
  * MailSenderNotConnectedException: an EmailSendException(TRANSPORT) for the
  * worker AND a 409 MAIL_SENDER_NOT_CONNECTED for a direct send.
- * src/http/app.ts maps it through its status/code below (isCodedLike).
+ * src/http/app.ts maps it through its HTTP_MAPPING brand.
  */
-export class MailSenderNotConnected extends EmailSendError {
+export class MailSenderNotConnected extends EmailSendError implements HttpMapped {
   static readonly CODE = 'MAIL_SENDER_NOT_CONNECTED';
   readonly status = 409;
   readonly code = MailSenderNotConnected.CODE;
+  readonly [HTTP_MAPPING] = { status: 409, code: MailSenderNotConnected.CODE };
   constructor(message: string) {
     super('TRANSPORT', message);
   }
