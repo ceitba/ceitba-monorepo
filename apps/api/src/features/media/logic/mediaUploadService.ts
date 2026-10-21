@@ -9,9 +9,8 @@
 // PROPOSAL_ATTACHMENT_KEYS key: it binds the key to its uploader without
 // revealing or linking them (every key has a fresh uuid).
 //
-// TODO(media-service): `consume` is UserRateLimiter.consume (rules
-// "proposal-attachments" / "org-images", RateLimitExceededError when spent);
-// wire the foundation's limiter once it exists.
+// `consume` is deps.userRateLimiter.consume (rules "proposal-attachments" /
+// "org-images", RateLimitExceededError when spent; media/service.ts).
 
 import { ValidationError } from '../../../http/errors';
 import type { ObjectStorage } from '../../../infra/storage';

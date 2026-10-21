@@ -6,8 +6,8 @@
 // generation always terminates. Words: ../resources/alias-words.json (a
 // byte-identical copy of apps/api/src/main/resources/proposals/alias-words.json).
 //
-// TODO(proposal-service): ProposalAliasService.aliasFor (find or create the
-// alias under the proposal row lock) is repository code.
+// ProposalAliasService.aliasFor (find or create the alias under the proposal
+// row lock) is ProposalService.aliasFor (proposal/service.ts).
 
 import { randomInt } from 'node:crypto';
 import { javaTrim } from '../../../lib/javaCompat';

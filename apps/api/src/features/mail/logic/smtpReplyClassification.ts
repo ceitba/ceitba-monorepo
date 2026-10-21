@@ -66,9 +66,9 @@ export function classifySmtpFailure(e: SmtpFailure): EmailSendError {
 }
 
 /**
- * TODO(mail-service): map a nodemailer error onto SmtpFailure (EAUTH -> auth,
- * EENVELOPE/EMESSAGE -> parse, `rejected`/`rejectedErrors` -> invalidRecipients,
- * `response` + `message` -> messages) inside the SMTP transport.
+ * A nodemailer error as an SmtpFailure (EAUTH -> auth, EENVELOPE/EMESSAGE -> parse,
+ * `rejected` -> invalidRecipients, `message` + `response` -> messages); used by the
+ * SMTP transport (src/infra/mail.ts).
  */
 export function smtpFailureOfNodemailer(err: unknown): SmtpFailure {
   const e = (err ?? {}) as { code?: string; message?: string; response?: string; rejected?: unknown[] };

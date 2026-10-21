@@ -1,9 +1,8 @@
 // The pure static rules of apps/api/src/main/java/org/ceitba/api/service/drive/DriveSyncStore.java
 // (byReference, needsFetch, REF and the Candidate row shape).
 //
-// TODO(drive-service): DriveSyncStore itself (fetch candidates, content
-// reuse, moves between sources, blob release) is repository code; port it
-// with the drive service and keep using these.
+// DriveSyncStore itself (fetch candidates, content reuse, moves between
+// sources, blob release) is drive/store.ts, which uses these.
 
 import type { Micros } from '../../../lib/time';
 import type { DriveFileKind, DriveStorageMode } from './types';

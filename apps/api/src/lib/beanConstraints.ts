@@ -8,7 +8,8 @@
 // like Bean Validation. Messages are Hibernate's defaults for the request
 // locale: Spring interpolates them with the Accept-Language locale
 // (LocaleContextMessageInterpolator), so `es` gives the Spanish bundle.
-// TODO(http): thread the request locale into validateBody; English for now.
+// The caller passes the locale (request bodies go through src/http/validation.ts, which
+// renders messages in the request locale itself, src/http/locale.ts).
 
 import { domainToASCII } from 'node:url';
 import { javaTrim } from './javaCompat';

@@ -7,9 +7,8 @@
 // leading code, unknown codes and, when DRIVE_SYNC_COMMUNITY_ONLY_CODES is
 // set (dev), codes not in it.
 //
-// TODO(drive-service): expandAll()/expand() (list each ACTIVE COMMUNITY_ROOT's
-// children with the Drive client, then DriveSyncStore.applyCommunityFolders;
-// a failed listing never disconnects anything, a rate limit is rethrown).
+// expandAll()/expand() (list each ACTIVE COMMUNITY_ROOT's children with the
+// Drive client, then DriveSyncStore.applyCommunityFolders) are in drive/sync.ts.
 
 import { JAVA_S } from '../../../lib/javaCompat';
 
