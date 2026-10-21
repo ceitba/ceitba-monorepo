@@ -11,13 +11,12 @@
 //   bun contract/parity.ts --check    # exit 1 when a test is neither matched nor excluded
 //
 // The Java app is gone: its test list is frozen in test/fixtures/java-tests.json
-// (written from apps/api/src/test/java with UPDATE_JAVA_TESTS=1 while it existed).
+// (written from apps/api/src/test/java while it existed, last at commit b515215).
 
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = join(import.meta.dir, '..');
-const JAVA_TESTS = join(ROOT, '..', 'api', 'src', 'test', 'java');
 const TS_DIRS = [join(ROOT, 'contract', 'tests'), join(ROOT, 'test')];
 const EXCLUSIONS = join(import.meta.dir, 'parity-exclusions.json');
 const SNAPSHOT = join(ROOT, 'test', 'fixtures', 'java-tests.json');
@@ -35,53 +34,10 @@ function walk(dir: string, ext: string): string[] {
 
 interface JavaClass { name: string; file: string; abstract: boolean; parent: string | null; methods: string[] }
 
-/** Removes comments, leaving string and char literals alone ("/v1/auth/**" is not a comment). */
-function stripComments(src: string): string {
-  let out = '';
-  for (let i = 0; i < src.length; i++) {
-    const ch = src[i]!;
-    if (ch === '"' || ch === "'") {
-      if (src.startsWith('"""', i)) {
-        const end = src.indexOf('"""', i + 3);
-        out += src.slice(i, end + 3);
-        i = end + 2;
-        continue;
-      }
-      let j = i + 1;
-      while (j < src.length && src[j] !== ch && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
-      out += src.slice(i, j + 1);
-      i = j;
-    } else if (src.startsWith('//', i)) {
-      const end = src.indexOf('\n', i);
-      i = (end < 0 ? src.length : end) - 1;
-    } else if (src.startsWith('/*', i)) {
-      const end = src.indexOf('*/', i + 2);
-      i = (end < 0 ? src.length : end + 2) - 1;
-      out += ' ';
-    } else out += ch;
-  }
-  return out;
-}
-
+/** The frozen Java test classes. */
 function javaClasses(): Map<string, JavaClass> {
-  if (!existsSync(JAVA_TESTS)) {
-    const frozen = JSON.parse(readFileSync(SNAPSHOT, 'utf8')) as JavaClass[];
-    return new Map(frozen.map((c) => [c.name, c]));
-  }
-  const out = new Map<string, JavaClass>();
-  for (const file of walk(JAVA_TESTS, '.java')) {
-    const src = stripComments(readFileSync(file, 'utf8'));
-    const cls = /^(?:public\s+|final\s+|abstract\s+)*(abstract\s+)?(?:public\s+|final\s+)*class\s+(\w+)(?:<[^>]*>)?(?:\s+extends\s+(\w+))?/m.exec(src);
-    if (!cls) continue;
-    const methods: string[] = [];
-    for (const m of src.matchAll(/@(?:org\.junit\.jupiter\.api\.)?(?:Test|ParameterizedTest)\b[\s\S]*?\bvoid\s+(\w+)\s*\(/g)) methods.push(m[1]!);
-    out.set(cls[2]!, { name: cls[2]!, file: relative(JAVA_TESTS, file), abstract: /\babstract\s+class\b/.test(cls[0]), parent: cls[3] ?? null, methods });
-  }
-  if (process.env.UPDATE_JAVA_TESTS) {
-    const sorted = [...out.values()].sort((a, b) => a.file.localeCompare(b.file));
-    writeFileSync(SNAPSHOT, `${JSON.stringify(sorted, null, 1)}\n`);
-  }
-  return out;
+  const frozen = JSON.parse(readFileSync(SNAPSHOT, 'utf8')) as JavaClass[];
+  return new Map(frozen.map((c) => [c.name, c]));
 }
 
 /** Runnable tests: concrete classes with their own and inherited methods. */
