@@ -70,6 +70,7 @@ export class ArticleLinkPreviewService {
   }
 }
 
+/** The excerpt, else the first paragraph without its markdown. Keep in sync with articleDescription in apps/web/src/newsletter/utils/seo.ts. */
 function description(a: repo.ArticleRow): string {
   let text = a.excerpt;
   if (text == null || javaIsBlank(text)) text = firstParagraph(a.body as (string | null)[] | null);

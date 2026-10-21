@@ -20,6 +20,7 @@ import { OrganizationMembershipService } from './memberships';
 import { FollowService, OrgAnalyticsService, OrganizationService, organizationResponse } from './organizations';
 import { newsPaging } from './paging';
 import { ArticleLinkPreviewService, NOT_FOUND_HTML, previewHtml } from './preview';
+import { NewsSitemapService, dbSitemapSource, sitemapXml } from './sitemap';
 import { VoteService } from './votes';
 import * as repo from './repo';
 
@@ -58,6 +59,7 @@ export function newsServices(deps: Deps) {
     orgAnalytics: new OrgAnalyticsService(deps),
     votes: new VoteService(deps),
     previews: new ArticleLinkPreviewService(deps, articles),
+    sitemap: new NewsSitemapService(dbSitemapSource(deps), deps.clock, deps.config.content.digest.publicBaseUrl),
     orgAccess: new OrgAccess(deps, memberships),
   };
 }
@@ -157,6 +159,16 @@ export default defineRoutes((r, deps) => {
       throw e;
     }
   });
+
+  // NewsSitemapController: Caddy rewrites https://ceitba.org.ar/sitemap.xml here. Public
+  // (GET /v1/articles/** is permitted); the literal segment wins over GET /{id}. No
+  // `produces`, so Accept: text/html is not a 406.
+  r.get('/v1/articles/sitemap.xml', {
+    tags: ['Articles'], summary: 'sitemap.xml: the newsletter home, published articles and events',
+  }, async () => new Response(sitemapXml(await s.sitemap.entries()), {
+    status: 200,
+    headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'max-age=3600, public' },
+  }));
 
   // ---------------------------------------------------------------- votes
   const voteTags = ['vote-controller'];

@@ -438,3 +438,23 @@ export async function mailTotalsSince(db: Db, org: string, since: string): Promi
 }
 
 export { analyticsEvents };
+
+// ---------------------------------------------------------------- sitemap
+
+/** ArticleRepository.SitemapRow: what /sitemap.xml needs of a published article, without its body. */
+export interface SitemapRow { id: string; updatedAt: string | null; publishedAt: string | null }
+
+/** ArticleRepository.findPublishedForSitemap: the anonymous list's set (status published). */
+export function findPublishedForSitemap(db: Db, limit: number): Promise<SitemapRow[]> {
+  return db.select({ id: articles.id, updatedAt: articles.updatedAt, publishedAt: articles.publishedAt })
+    .from(articles).where(eq(articles.status, 'published'))
+    .orderBy(desc(articles.createdAt), desc(articles.id)).limit(limit);
+}
+
+/** NewsEventRepository.findIdsForSitemap: every event the anonymous list shows within [from, to]. */
+export async function findEventIdsForSitemap(db: Db, from: string, to: string, limit: number): Promise<string[]> {
+  const rows = await db.select({ id: newsEvents.id }).from(newsEvents)
+    .where(and(sql`${newsEvents.eventDate} >= ${from}`, sql`${newsEvents.eventDate} <= ${to}`))
+    .orderBy(asc(newsEvents.eventDate), asc(newsEvents.startTime), asc(newsEvents.id)).limit(limit);
+  return rows.map((r) => r.id);
+}

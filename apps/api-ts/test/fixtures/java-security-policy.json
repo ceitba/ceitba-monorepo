@@ -47,6 +47,7 @@
     "GET /v1/articles/{articleId}/votes": null,
     "GET /v1/articles/{id}": null,
     "GET /v1/articles/{id}/preview": null,
+    "GET /v1/articles/sitemap.xml": null,
     "GET /v1/auth/api-keys": null,
     "GET /v1/auth/callback": null,
     "GET /v1/auth/google": null,
