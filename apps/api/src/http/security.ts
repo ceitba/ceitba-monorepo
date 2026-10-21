@@ -224,8 +224,11 @@ export function allowlisted(deps: Deps, p: Principal): boolean {
 export async function authenticateAndAuthorize(deps: Deps, req: Request, state: RequestState, limiter: IpRateLimiter): Promise<Response | null> {
   // Instant.now()/OffsetDateTime.now() in Java (system time, not the injected Clock).
   const now = systemNowMicros();
-  // RateLimitFilter (after CORS, before authentication).
-  const rl = limiter.check(state.method, state.rawPath, state.clientIp);
+  // RateLimitFilter (after CORS, before authentication). Matched on the DECODED path, the one routing and the URL
+  // rules use: on the raw path (Java's getRequestURI) `/v1/articles/x/v%6Ftes` reached the votes route but escaped
+  // the votes bucket. Intentional hardening vs Java (contract/COMPATIBILITY.md). The API-key scope exemptions and
+  // the token-endpoint check below stay on the raw path: an encoded path only loses an exemption there (fail-closed).
+  const rl = limiter.check(state.method, state.path, state.clientIp);
   if (rl) {
     Object.assign(state.extraHeaders, rl.headers);
     if (rl.rejected) {

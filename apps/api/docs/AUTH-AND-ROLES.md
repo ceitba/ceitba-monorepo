@@ -230,7 +230,8 @@ This is the only path where you should look at the user inside business code. If
 HTTP request
    │
    ▼
-security headers, CORS, per-IP rate limits (src/http/security.ts, before any authentication)
+security headers, CORS, per-IP rate limits (src/http/security.ts, before any authentication; rules match the
+decoded path, like routing: a percent-encoded path cannot escape its bucket)
    │
    ▼
 API-key step (src/http/security.ts + src/http/auth/apikeys.ts)

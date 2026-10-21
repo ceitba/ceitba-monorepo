@@ -136,18 +136,18 @@ export class IpRateLimiter {
     this.buckets = new LRUCache({ max: cfg.maxTrackedClients, ttl: idle, updateAgeOnGet: true });
   }
 
-  private match(method: string, rawPath: string): RateLimitRule | null {
+  private match(method: string, path: string): RateLimitRule | null {
     for (const rule of this.cfg.rules) {
       if (rule.methods.length && !rule.methods.includes(method.toUpperCase())) continue;
-      if (rule.paths.some((p) => matchesPattern(p, rawPath)) && !rule.excludePaths.some((p) => matchesPattern(p, rawPath))) return rule;
+      if (rule.paths.some((p) => matchesPattern(p, path)) && !rule.excludePaths.some((p) => matchesPattern(p, path))) return rule;
     }
     return null;
   }
 
-  /** null when the request is not limited (disabled, no rule, OPTIONS). `rawPath`: raw URI inside /api. */
-  check(method: string, rawPath: string, clientIp: string): RateLimitDecision | null {
+  /** null when the request is not limited (disabled, no rule, OPTIONS). `path`: the decoded path inside /api. */
+  check(method: string, path: string, clientIp: string): RateLimitDecision | null {
     if (!this.cfg.enabled || this.cfg.rules.length === 0 || method.toUpperCase() === 'OPTIONS') return null;
-    const rule = this.match(method, rawPath);
+    const rule = this.match(method, path);
     if (!rule) return null;
     const key = `${rule.name}|${clientKey(clientIp)}`;
     let bucket = this.buckets.get(key);
