@@ -4,10 +4,8 @@
 // id, and re-runs only add missing votes/comments/aliases/attachments.
 
 import { createHash } from 'node:crypto';
-import { sql } from 'drizzle-orm';
-import type { Db } from '../../db/client';
 import { javaTrim, javaUtf8 } from '../../lib/javaCompat';
-import { formatOffsetDateTime, parseIsoInstant, toPgTimestamp, type Micros } from '../../lib/time';
+import { formatOffsetDateTime, parseIsoInstant, type Micros } from '../../lib/time';
 import { FIRESTORE_COMMENT_IDS, type ContentHmac } from '../crypto/logic/contentHmac';
 import type { ProposalAliasGenerator } from '../proposal/logic/proposalAliasGenerator';
 
@@ -49,75 +47,6 @@ export interface ImportUsers {
   /** firebase uid -> user id. */
   findByFirebaseUidIn(uids: string[]): Promise<Map<string, string>>;
   isDeletedFirebaseAccount(uid: string): Promise<boolean>;
-}
-
-const count = (r: unknown) => (r as { count?: number }).count ?? 0;
-
-export function dbImportRows(db: Db): ProposalImportRows {
-  return {
-    async insertProposal(id, authorId, title, description, topic, status, lifecycle, reason, mod, at) {
-      const ts = toPgTimestamp(at);
-      return count(await db.execute(sql`
-        INSERT INTO public.proposal (id, author_id, title, description, topic, status, lifecycle, rejection_reason, moderated_by, created_at, updated_at)
-        VALUES (${id}, ${authorId}, ${title}, ${description}, ${topic}, ${status}, ${lifecycle}, ${reason}, ${mod}, ${ts}, ${ts})
-        ON CONFLICT (id) DO NOTHING`)) === 1;
-    },
-    async proposalExists(id) {
-      const rows = (await db.execute(sql`SELECT EXISTS (SELECT 1 FROM public.proposal WHERE id = ${id}) AS e`)) as unknown as { e: boolean }[];
-      return rows[0]!.e === true;
-    },
-    async lockProposal(id) {
-      await db.execute(sql`SELECT id FROM public.proposal WHERE id = ${id} FOR UPDATE`);
-    },
-    async aliases(proposalId) {
-      const rows = (await db.execute(sql`SELECT user_id, alias FROM public.proposal_alias WHERE proposal_id = ${proposalId}`)) as unknown as { user_id: string; alias: string }[];
-      return new Map(rows.map((r) => [r.user_id, r.alias]));
-    },
-    async insertAlias(proposalId, userId, alias) {
-      return count(await db.execute(sql`INSERT INTO public.proposal_alias (proposal_id, user_id, alias) VALUES (${proposalId}, ${userId}, ${alias}) ON CONFLICT DO NOTHING`)) === 1;
-    },
-    async insertVote(proposalId, userId, value, at) {
-      const ts = toPgTimestamp(at);
-      return count(await db.execute(sql`INSERT INTO public.proposal_vote (proposal_id, user_id, value, created_at, updated_at)
-        VALUES (${proposalId}, ${userId}, ${value}, ${ts}, ${ts}) ON CONFLICT DO NOTHING`)) === 1;
-    },
-    async insertComment(id, proposalId, authorId, parentId, body, at) {
-      return count(await db.execute(sql`INSERT INTO public.proposal_comment (id, proposal_id, author_id, parent_id, body, created_at)
-        VALUES (${id}, ${proposalId}, ${authorId}, ${parentId}, ${body}, ${toPgTimestamp(at)}) ON CONFLICT (id) DO NOTHING`)) === 1;
-    },
-    async insertDeletedComment(id, proposalId, parentId, at) {
-      const ts = toPgTimestamp(at);
-      return count(await db.execute(sql`INSERT INTO public.proposal_comment (id, proposal_id, parent_id, body, created_at, deleted_at)
-        VALUES (${id}, ${proposalId}, ${parentId}, NULL, ${ts}, ${ts}) ON CONFLICT (id) DO NOTHING`)) === 1;
-    },
-    async insertAttachment(proposalId, position, key, type) {
-      return count(await db.execute(sql`INSERT INTO public.proposal_attachment (proposal_id, position, object_key, content_type)
-        VALUES (${proposalId}, ${position}, ${key}, ${type}) ON CONFLICT DO NOTHING`)) === 1;
-    },
-    async recomputeCounters(id) {
-      await db.execute(sql`
-        UPDATE public.proposal p SET
-            up_count      = (SELECT count(*) FROM public.proposal_vote v WHERE v.proposal_id = p.id AND v.value = 'UP'),
-            down_count    = (SELECT count(*) FROM public.proposal_vote v WHERE v.proposal_id = p.id AND v.value = 'DOWN'),
-            comment_count = (SELECT count(*) FROM public.proposal_comment c WHERE c.proposal_id = p.id AND c.deleted_at IS NULL)
-        WHERE p.id = ${id}`);
-    },
-  };
-}
-
-export function dbImportUsers(db: Db): ImportUsers {
-  return {
-    async findByFirebaseUidIn(uids) {
-      if (uids.length === 0) return new Map();
-      const rows = (await db.execute(sql`SELECT id, firebase_uid FROM public."user" WHERE firebase_uid IN (${sql.join(uids.map((u) => sql`${u}`), sql`, `)})`)) as unknown as { id: string; firebase_uid: string }[];
-      return new Map(rows.map((r) => [r.firebase_uid, r.id]));
-    },
-    async isDeletedFirebaseAccount(uid) {
-      const rows = (await db.execute(sql`SELECT EXISTS (SELECT 1 FROM public.deleted_firebase_accounts
-        WHERE firebase_uid_sha256 = encode(sha256(convert_to(${uid}, 'UTF8')), 'hex')) AS e`)) as unknown as { e: boolean }[];
-      return rows[0]!.e === true;
-    },
-  };
 }
 
 // ------------------------------------------------------------------ helpers

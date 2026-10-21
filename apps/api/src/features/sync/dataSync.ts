@@ -3,7 +3,6 @@
 // transaction per plan and per commission (REQUIRES_NEW): a bad row in plan A
 // does not roll back plan B.
 
-import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
 import { sqlState, withSavepoint, withTx, type Db } from '../../db/client';
 import type { CommissionProjection, CommissionQuery, SubjectPlanProjection } from '../../external/itba';
@@ -13,6 +12,7 @@ import { systemNowMicros } from '../../lib/time';
 import { compareSlots, fromTimes, hhmm, onSgaSlotsChanged, sameSet, type CorrectionSlot } from '../commission/correctionOverlay';
 import * as commissionRepo from '../commission/repo';
 import * as planRepo from '../plan/repo';
+import * as syncRepo from './repo';
 
 export class Counters {
   created = 0;
@@ -96,15 +96,15 @@ export class DataSyncService {
   private async syncSubjectsAndPlans(result: DataSyncResult) {
     this.log.info('Syncing subjects + plans');
     // careerRepository.findAll() / planRepository.findByCareer_Id: no ORDER BY.
-    const careers = (await this.deps.db.execute(sql`SELECT id FROM public.careers`)) as unknown as { id: string }[];
-    for (const career of careers) {
-      const plans = (await this.deps.db.execute(sql`SELECT id FROM public.plan WHERE career_id = ${career.id}`)) as unknown as { id: string }[];
-      for (const plan of plans) {
+    const careers = await withTx(this.deps.db, (tx) => syncRepo.careerIds(tx), { readOnly: true });
+    for (const careerId of careers) {
+      const plans = await withTx(this.deps.db, (tx) => syncRepo.planIdsOfCareer(tx, careerId), { readOnly: true });
+      for (const planId of plans) {
         try {
-          const entries = await this.deps.itba.getSubjectsByPlan(plan.id);
-          await this.upsertPlanEntries(plan.id, entries, result);
+          const entries = await this.deps.itba.getSubjectsByPlan(planId);
+          await this.upsertPlanEntries(planId, entries, result);
         } catch (e) {
-          this.log.error({ err: e, plan: plan.id, career: career.id }, 'Failed to sync plan');
+          this.log.error({ err: e, plan: planId, career: careerId }, 'Failed to sync plan');
           result.subjectPlans.errors++;
         }
       }

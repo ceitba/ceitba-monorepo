@@ -5,7 +5,6 @@
 // only NULL columns filled, benefits by Spanish title, proposals through
 // ProposalFirestoreImporter). Reports carry document ids, never emails.
 
-import { sql } from 'drizzle-orm';
 import type { Deps } from '../../deps';
 import { isDataIntegrityViolation, withTx, type Db } from '../../db/client';
 import { ValidationError } from '../../http/errors';
@@ -15,7 +14,9 @@ import { systemNowMicros, toPgTimestamp } from '../../lib/time';
 import { ContentHmac } from '../crypto/logic/contentHmac';
 import { ProposalAliasGenerator } from '../proposal/logic/proposalAliasGenerator';
 import * as socialHandles from '../user/logic/socialHandles';
-import { dbImportRows, dbImportUsers, FirestoreImportError, ProposalFirestoreImporter, type Outcome } from './proposalImporter';
+import { FirestoreImportError, ProposalFirestoreImporter, type Outcome } from './proposalImporter';
+import * as repo from './repo';
+import { dbImportRows, dbImportUsers } from './repo';
 
 export const USUARIOS = 'usuarios';
 export const BENEFITS = 'benefits';
@@ -212,8 +213,8 @@ export class FirestoreImportService {
     if (email === null || email.indexOf('@') < 1 || email.length > MAX_VARCHAR) throw new FirestoreImportError('missing or invalid email');
     email = email.toLowerCase();
 
-    const byUid = await userWhere(tx, sql`firebase_uid = ${uid}`);
-    const byEmail = await userWhere(tx, sql`upper(email) = upper(${email}) ORDER BY created_at ASC`);
+    const byUid = await repo.userByFirebaseUid(tx, uid);
+    const byEmail = await repo.oldestUserByEmailIgnoreCase(tx, email);
     if (byUid && byEmail && byUid.id !== byEmail.id) throw new FirestoreImportError('firebase uid and email belong to different users');
 
     let user: Row;
@@ -248,26 +249,18 @@ export class FirestoreImportService {
 
     const now = toPgTimestamp(systemNowMicros());
     if (created) {
-      await tx.execute(sql`
-        INSERT INTO public."user" (id, email, file_number, career_id, plan, name, created_at, updated_at, preferred_language, google_sub,
-                                   avatar_url, theme, linkedin, instagram, discord, firebase_uid, digest_email_enabled)
-        VALUES (${user.id}, ${user.email}, NULL, ${user.career_id}, ${user.plan}, ${user.name}, ${now}, ${now}, NULL, NULL,
-                NULL, NULL, ${user.linkedin}, ${user.instagram}, ${user.discord}, ${user.firebase_uid}, true)`);
+      await repo.insertImportedUser(tx, user, now);
       await followIfMissing(tx, user.id as string, CEITBA_ORG);
       // Pending org invites of this email, as on a first login.
       await claimInvites(tx, user.id as string, email);
     } else if (changed) {
-      await tx.execute(sql`
-        UPDATE public."user" SET firebase_uid = ${user.firebase_uid}, name = ${user.name}, career_id = ${user.career_id}, plan = ${user.plan},
-          linkedin = ${user.linkedin}, instagram = ${user.instagram}, discord = ${user.discord}, updated_at = ${now}
-        WHERE id = ${user.id}`);
+      await repo.updateImportedUser(tx, user, now);
     }
 
     if (doc.moderator === true) {
-      const grants = (await tx.execute(sql`SELECT revoked_at FROM public.ceitba_moderators WHERE user_id = ${user.id}`)) as unknown as Row[];
+      const grants = await repo.moderatorGrantsOf(tx, user.id as string);
       if (grants.length === 0) {
-        await tx.execute(sql`INSERT INTO public.ceitba_moderators (user_id, granted_by, granted_at, revoked_at, revoked_by)
-          VALUES (${user.id}, NULL, ${toPgTimestamp(this.deps.clock.now())}, NULL, NULL)`);
+        await repo.insertModeratorGrant(tx, user.id as string, toPgTimestamp(this.deps.clock.now()));
         changed = true;
       } else if (grants[0]!.revoked_at !== null) {
         warnings.push('moderator grant was revoked by staff; not re-granted');
@@ -285,8 +278,7 @@ export class FirestoreImportService {
     if (title === null) throw new FirestoreImportError('missing title');
     if (title.length > MAX_VARCHAR) throw new FirestoreImportError('title longer than 255 characters');
 
-    const matches = (await tx.execute(sql`SELECT id, category_slug, title_es, bullets_es, image_url, cta_url, location, location_url, phone, website, email
-      FROM public.benefit_cards WHERE upper(title_es) = upper(${title})`)) as unknown as Row[];
+    const matches = await repo.benefitCardsTitled(tx, title);
     if (matches.length > 1) throw new FirestoreImportError('several benefit cards share this title');
 
     const slug = await this.categorySlug(tx, doc.category, warnings);
@@ -319,24 +311,16 @@ export class FirestoreImportService {
     const now = toPgTimestamp(systemNowMicros());
     const bulletsArr = card.bullets_es as string[];
     if (created) {
-      await tx.execute(sql`
-        INSERT INTO public.benefit_cards (id, category_slug, display_order, title_es, title_en, summary_es, summary_en, image_url, cta_url,
-          cta_label_es, cta_label_en, price, bullets_es, bullets_en, created_at, updated_at, location, location_url, phone, website, email)
-        VALUES (${card.id}, ${card.category_slug}, 0, ${card.title_es}, ${title}, '', '', ${card.image_url}, ${card.cta_url},
-          NULL, NULL, NULL, ${textArray(bulletsArr)}, '{}'::text[], ${now}, ${now}, ${card.location}, ${card.location_url}, ${card.phone}, ${card.website}, ${card.email})`);
+      await repo.insertBenefitCard(tx, card, title, bulletsArr, now);
     } else if (changed) {
-      await tx.execute(sql`
-        UPDATE public.benefit_cards SET category_slug = ${card.category_slug}, title_es = ${card.title_es}, bullets_es = ${textArray(bulletsArr)},
-          image_url = ${card.image_url}, cta_url = ${card.cta_url}, location = ${card.location}, location_url = ${card.location_url},
-          phone = ${card.phone}, website = ${card.website}, email = ${card.email}, updated_at = ${now}
-        WHERE id = ${card.id}`);
+      await repo.updateBenefitCard(tx, card, bulletsArr, now);
     }
     if (created) return 'CREATED';
     return changed ? 'UPDATED' : 'SKIPPED';
   }
 
   private async categorySlug(tx: Db, category: string | null, warnings: string[]): Promise<string> {
-    const exists = async (s: string) => ((await tx.execute(sql`SELECT 1 FROM public.benefits WHERE slug = ${s}`)) as unknown as Row[]).length > 0;
+    const exists = (s: string) => repo.benefitCategoryExists(tx, s);
     let slug = trimToNull(category);
     if (slug !== null) {
       slug = slug.toLowerCase();
@@ -350,7 +334,7 @@ export class FirestoreImportService {
   private async loadCatalogue(tx: Db): Promise<Catalogue> {
     const ids = new Set<string>();
     const byName = new Map<string, string>();
-    for (const c of (await tx.execute(sql`SELECT id, name FROM public.careers`)) as unknown as Row[]) {
+    for (const c of await repo.careerNames(tx)) {
       ids.add(c.id as string);
       if (c.name !== null) {
         const key = javaTrim(c.name as string).toLowerCase();
@@ -358,19 +342,13 @@ export class FirestoreImportService {
       }
     }
     const plans = new Map<string, Set<string>>();
-    for (const p of (await tx.execute(sql`SELECT id, career_id FROM public.plan`)) as unknown as Row[]) {
+    for (const p of await repo.planCareers(tx)) {
       const s = plans.get(p.career_id as string) ?? new Set<string>();
       s.add(p.id as string);
       plans.set(p.career_id as string, s);
     }
     return new Catalogue(ids, byName, plans);
   }
-}
-
-async function userWhere(tx: Db, where: ReturnType<typeof sql>): Promise<Row | null> {
-  const rows = (await tx.execute(sql`SELECT id, email, name, firebase_uid, career_id, plan, linkedin, instagram, discord
-    FROM public."user" WHERE ${where} LIMIT 1`)) as unknown as Row[];
-  return rows[0] ?? null;
 }
 
 function fillHandle(user: Row, field: 'linkedin' | 'instagram' | 'discord', raw: string | null, normalize: (s: string) => string, warnings: string[]): boolean {
@@ -414,11 +392,6 @@ function bounded(raw: string | null, max: number, field: string, warnings: strin
     return null;
   }
   return v;
-}
-
-/** A text[] literal bound as one parameter. */
-function textArray(values: string[]) {
-  return sql`${`{${values.map((v) => `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',')}}`}::text[]`;
 }
 
 /** e.getClass().getSimpleName() for the errors a JS port can raise. */
