@@ -15,7 +15,7 @@ import { withTx } from '../../db/client';
 import { FeatureNotConfiguredError, ValidationError } from '../../http/errors';
 import { javaFloat } from '../../lib/json';
 import { javaIsBlank, javaStrip } from '../../lib/javaCompat';
-import { embeddingClientOf, EmbeddingUnreachableError } from '../../external/llm/embedding';
+import { EmbeddingUnreachableError } from '../../external/llm/embedding';
 import { LlmApiError, type EmbeddingClient } from '../../external/llm';
 import { chunk, type Chunk } from '../kb/logic/kbChunker';
 import { KbEmbeddingProperties } from './embeddingProps';
@@ -112,7 +112,7 @@ export class KbEmbeddingService {
 
   static of(deps: Pick<Deps, 'db' | 'config' | 'llm' | 'log'>): KbEmbeddingService {
     const log = deps.log.child({ component: 'KbEmbeddingService' });
-    return new KbEmbeddingService(embeddingClientOf(deps.config, deps.llm), KbEmbeddingProperties.of(deps.config), dbStoreTx(deps),
+    return new KbEmbeddingService(deps.llm.embeddings, KbEmbeddingProperties.of(deps.config), dbStoreTx(deps),
       { warn: (m) => log.warn(m), info: (m) => log.info(m) });
   }
 

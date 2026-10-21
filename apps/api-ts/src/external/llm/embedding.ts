@@ -14,7 +14,7 @@
 
 import type { Config } from '../../config';
 import {
-  FakeEmbeddingClient, LlmApiError, UnconfiguredEmbeddingClient, type EmbeddingClient, type LlmClients,
+  FakeEmbeddingClient, LlmApiError, UnconfiguredEmbeddingClient, type EmbeddingClient,
 } from '../llm';
 import { javaTrim } from '../../lib/javaCompat';
 
@@ -149,21 +149,4 @@ export function createEmbeddingClient(config: Config): EmbeddingClient {
   if (base === '') return new UnconfiguredEmbeddingClient();
   const timeout = e.requestTimeoutMs > 0 ? e.requestTimeoutMs : 120_000;
   return new OpenAiEmbeddingClient(base, e.apiKey, timeout);
-}
-
-const resolved = new WeakMap<LlmClients, EmbeddingClient>();
-
-/**
- * The embedding client to use for `deps.llm`. Until createLlmClients selects the
- * OpenAI client itself (it still returns Unconfigured for a configured base URL),
- * this upgrades that slot; injected clients (tests) are used as they are.
- */
-export function embeddingClientOf(config: Config, llm: LlmClients): EmbeddingClient {
-  const cached = resolved.get(llm);
-  if (cached) return cached;
-  const client = llm.embeddings instanceof UnconfiguredEmbeddingClient && !config.kb.embeddings.useFake && embeddingBaseUrl(config) !== ''
-    ? createEmbeddingClient(config)
-    : llm.embeddings;
-  resolved.set(llm, client);
-  return client;
 }

@@ -9,6 +9,7 @@ import { createDriveClient, type DriveClient } from './external/drive';
 import { createGoogleClients, type GoogleClients } from './external/google';
 import { createItbaClient, type ItbaApiClient } from './external/itba';
 import { createLlmClients, type LlmClients } from './external/llm';
+import { createEmbeddingClient } from './external/llm/embedding';
 import { AccessChecks } from './http/auth/checks';
 import { UserRateLimiter } from './http/ratelimit';
 import { SystemClock, type Clock } from './infra/clock';
@@ -70,7 +71,8 @@ export async function buildDeps(config: Config, overrides: DepsOverrides = {}): 
     push,
     itba: overrides.itba ?? createItbaClient(config, db, clock, log),
     drive: overrides.drive ?? createDriveClient(config, log.child({ component: 'drive' })),
-    llm: overrides.llm ?? createLlmClients(config),
+    // KbPipelineConfig.embeddingClient (fake / unconfigured / OpenAI-compatible) is selected in llm/embedding.ts.
+    llm: overrides.llm ?? { ...createLlmClients(config), embeddings: createEmbeddingClient(config) },
     google: overrides.google ?? createGoogleClients(config.auth),
     userRateLimiter: overrides.userRateLimiter ?? new UserRateLimiter(config.rateLimit),
     jobLock: overrides.jobLock ?? new JobLock(config, log.child({ component: 'JobLock' })),
