@@ -98,10 +98,14 @@ before this doc changed 7 files under the measured features, `news/routes.ts` am
 subjects path. The script is `scripts/bench/load.ts`; it has the seed, the routes, the runner and the
 comparison.
 
-**Verdict: not met yet.** The p95 regresses on 1 of the 12 routes:
-- `GET /v1/plans/{planId}/subjects`: +49%, 81 → 121 ms. The cause is known and cheap to fix (below).
-- The other 11 routes have a lower p95 on Bun, by 15% to 98%.
-- Bun has a higher p50 on 9 routes and a lower req/s on 8.
+`GET /v1/plans/{planId}/subjects` was re-measured the same day after its N+1 was fixed (`5814256`): Bun from
+`feat/api-bun` at `c25a487`, Java from the same `b515215` jar ("Re-run after the N+1 fix" below).
+
+**Verdict: met.** The p95 does not regress on any of the 12 routes:
+- All 12 routes have a lower p95 on Bun, by 15% to 98%.
+- `GET /v1/plans/{planId}/subjects`, the one regression of the first run (+49%, 81 → 121 ms), is now 76 → 15 ms
+  (-80%) after the N+1 fix.
+- Bun has a higher p50 on 9 routes and a lower req/s on 7.
 
 Both containers ran under a 2-CPU quota (`--cpus 2`). Most of Bun's p95 wins come from Java's 60 to 90 ms tail
 floor, which is CPU-quota throttling (Findings).
@@ -156,7 +160,7 @@ Times are in ms, averaged over the two passes.
 | Route | p50 Java / Bun | p95 Java / Bun | p99 Java / Bun | req/s Java / Bun | errors J / B | p95 per pass (Java; Bun) | p95 Bun vs Java |
 |---|---|---|---|---|---|---|---|
 | `GET /v1/careers` | 1.1 / 2.9 | 7.1 / 5.3 | 65.3 / 8.6 | 9246 / 10000 | 0 / 0 | 8.5, 5.7; 5.3, 5.2 | -26% |
-| `GET /v1/plans/BP-S-1/subjects` | 11.8 / 79.7 | 81.1 / 121 | 98.0 / 183 | 1246 / 378 | 0 / 0 | 84.7, 77.5; 122, 119 | **+49% (regression)** |
+| `GET /v1/plans/BP-S-1/subjects` (re-run) | 9.0 / 10.2 | 75.8 / 15.2 | 86.3 / 19.6 | 1524 / 2985 | 0 / 0 | 76.9, 74.8; 15.2, 15.1 | -80% |
 | `GET /v1/commissions?plan=BP-S-1` | 70.0 / 82.4 | 141 / 119 | 230 / 156 | 515 / 375 | 0 / 0 | 174, 108; 133, 106 | -15% |
 | `GET /v1/articles` (pages 1–5) | 9.4 / 26.7 | 55.6 / 42.6 | 68.8 / 64.0 | 1959 / 1118 | 0 / 0 | 57.3, 53.9; 49.3, 36.0 | -23% |
 | `GET /v1/articles/{id}` (rotated) | 1.5 / 5.0 | 12.1 / 9.5 | 67.2 / 15.4 | 7223 / 5816 | 0 / 0 | 15.0, 9.2; 10.3, 8.7 | -22% |
@@ -169,18 +173,41 @@ Times are in ms, averaged over the two passes.
 | `GET /v1/wiki/kb/search?q=…` | 1662 / 24.1 | 2706 / 44.1 | 3408 / 64.8 | 18 / 1193 | 0 / 0 | 2503, 2909; 47.2, 41.0 | -98% |
 
 The routes are the task's list, 12 rather than 10. They are the reads `apps/web/src/api` and the mobile app call
-most: the home page, the newsletter, the scheduler, the session, Apuntes and the wiki.
+most: the home page, the newsletter, the scheduler, the session, Apuntes and the wiki. The plan-subjects row is
+from the re-run below; before the N+1 fix it was p50 11.8 / 79.7, p95 81.1 / **121**, p99 98.0 / 183 and
+1246 / 378 req/s (p95 +49%).
+
+### Re-run after the N+1 fix
+
+Three routes, with the setup above unchanged: the same `b515215` jar (entry-for-entry identical CRCs to the first
+run's), a Bun image built from `c25a487`, a fresh database migrated and seeded with `load.ts seed`, a template
+clone per run, 32 workers, 30 s, the same warm-ups, two passes in opposite order, zero errors, row counts
+unchanged. One difference favours Java: `--routes careers,plan-subjects,organizations` makes the 30 s prime
+cycle over these three routes only, so each gets more JIT warm-up than in the 12-route run. Careers and
+organizations are there to calibrate against the first run.
+
+| Route | p50 Java / Bun | p95 Java / Bun | p99 Java / Bun | req/s Java / Bun | errors J / B | p95 per pass (Java; Bun) | p95 Bun vs Java |
+|---|---|---|---|---|---|---|---|
+| `GET /v1/careers` | 0.9 / 2.7 | 5.6 / 4.8 | 64.1 / 7.3 | 10875 / 10700 | 0 / 0 | 5.8, 5.4; 4.8, 4.7 | -15% |
+| `GET /v1/plans/BP-S-1/subjects` | 9.0 / 10.2 | 75.8 / 15.2 | 86.3 / 19.6 | 1524 / 2985 | 0 / 0 | 76.9, 74.8; 15.2, 15.1 | -80% |
+| `GET /v1/organizations` | 23.6 / 14.6 | 73.7 / 23.1 | 81.3 / 30.1 | 894 / 2054 | 0 / 0 | 73.6, 73.8; 23.2, 23.0 | -69% |
+
+- Bun's careers and organizations numbers reproduce the first run (p95 4.8 vs 5.3 and 23.1 vs 23.2 ms). Java's
+  are somewhat better (p95 5.6 vs 7.1 and 73.7 vs 80.9 ms), consistent with the longer per-route priming, and the
+  same 60 to 90 ms tail floor is still there.
+- Plan subjects on Bun went from p50 79.7 to 10.2 ms and from 378 to 2985 req/s: one query instead of 65 round
+  trips per request, so it is no longer capped by the pool. It now serves about twice Java's req/s.
 
 ### Findings
 
-- **The one regression is an N+1.**
-  - `PlanService.toResponses` (`apps/api/src/features/plan/service.ts`) awaits `repo.findSubject` once per row,
+- **The one regression was an N+1, fixed in `5814256`.**
+  - `PlanService.toResponses` (`apps/api/src/features/plan/service.ts`) awaited `repo.findSubject` once per row,
     one after another. For a 64-subject plan that is 65 round trips per request.
-  - The cap comes from the pool. Each request holds one of the 20 connections inside `withTx` for the 65
-    sequential round trips. Throughput is about 20 / (65 × RTT): with a round trip of about 0.8 ms that is about
+  - The cap came from the pool. Each request held one of the 20 connections inside `withTx` for the 65
+    sequential round trips. Throughput was about 20 / (65 × RTT): with a round trip of about 0.8 ms that is about
     385 req/s, which matches the 378 measured. Java has the same N+1 but finishes each round trip faster.
-  - The fix: load the subjects in one query. `planRepo.findSubjectsByIds` already exists and the commission
-    service uses it. Rerun `load.ts run --routes plan-subjects` after the fix to close the phase 5 item.
+  - The fix loads the subjects in one query (`planRepo.findSubjectsByIds`, as the commission service does). The
+    re-run above measures it: p95 121 → 15 ms, which closes the phase 5 item.
 - **Bun's p50 is higher, its tail much shorter.**
   - Bun is one JS thread: about 107% CPU on average, 136% at peak, of a 2-CPU quota.
   - Java uses the whole quota (about 186%) and so has a lower median and more req/s on the cheap routes.
