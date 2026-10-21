@@ -123,7 +123,8 @@ export function isUniqueViolation(err: unknown): boolean {
  */
 export async function withIterativeScan<T>(db: Database, fn: (tx: Tx) => Promise<T>, mode: 'strict_order' | 'relaxed_order' = 'strict_order'): Promise<T> {
   return db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT set_config('hnsw.iterative_scan', ${mode}, true)`);
+    // force_custom_plan: a cached generic plan cannot use the HNSW index for a bound query vector.
+    await tx.execute(sql`SELECT set_config('hnsw.iterative_scan', ${mode}, true), set_config('plan_cache_mode', 'force_custom_plan', true)`);
     return fn(tx);
   });
 }

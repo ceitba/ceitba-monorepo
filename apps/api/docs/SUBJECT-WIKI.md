@@ -140,7 +140,8 @@ embedding call; `501` when no embedding server is configured). It returns
   still return its previous chunks (slightly stale rather than missing). A failing page is skipped until the next sweep; an
   endpoint problem (server unreachable, 401/403/404, wrong vector length) ends the sweep at once.
 - **Search**: cosine kNN (`<=>`) over an HNSW index, optionally limited to one subject (pgvector 0.8 iterative scans
-  keep filtered searches from coming back short). Queries use the model's query prompt
+  keep filtered searches from coming back short; the search transaction also sets `plan_cache_mode =
+  force_custom_plan`, since a cached generic plan skips the HNSW index). Queries use the model's query prompt
   (`task: search result | query: {query}`).
 - **Model (self-hosted)**: [EmbeddingGemma 2](https://huggingface.co/google/embeddinggemma-2) (Google, Apache 2.0,
   Oct 2026): 740M parameters (270M text + vision/audio encoders), 100+ languages, 768 dimensions, 8k-token context.

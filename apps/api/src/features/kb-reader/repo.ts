@@ -362,7 +362,12 @@ export async function findNearest(db: Db, query: string, model: string, subjectI
   return [...rows];
 }
 
+/**
+ * Transaction-local settings of a vector search: HNSW iterative scans (filters on top of the ANN order), and
+ * custom plans only. postgres.js prepares the query, and after five runs Postgres may switch to the cached
+ * generic plan, which cannot see the bound query vector and skips the HNSW index (368 ms vs 9.6 ms measured).
+ */
 export async function enableIterativeScan(db: Db): Promise<void> {
-  await db.execute(sql`SELECT set_config('hnsw.iterative_scan', 'strict_order', true)`);
+  await db.execute(sql`SELECT set_config('hnsw.iterative_scan', 'strict_order', true), set_config('plan_cache_mode', 'force_custom_plan', true)`);
 }
 

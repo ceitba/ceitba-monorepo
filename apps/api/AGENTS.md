@@ -160,7 +160,7 @@ async create(req: CreateCareerRequest): Promise<CareerResponse> {
   LocalDate math, so outputs stay byte-identical to what clients already store), `src/lib/javaUri.ts`,
   `src/lib/beanConstraints.ts`, and `src/features/<area>/logic/*`.
 - pgvector queries that need iterative scans: `withIterativeScan(deps.db, (tx) => ...)` (src/db/client.ts;
-  the SET is transaction-local).
+  the SETs are transaction-local; it also forces custom plans, so a cached generic plan never skips the HNSW index).
 - Service constructors must not do I/O (the contract harness and coverage register routes without a DB).
 
 ### routes.ts: the controller
