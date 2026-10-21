@@ -15,7 +15,12 @@ export const BULK_MAX_BODY_BYTES = 64 * 1024 * 1024;
  * over this ceiling itself, before the app, with an empty 413 (contract/COMPATIBILITY.md "Request body size").
  */
 export const SERVER_MAX_BODY_BYTES = BULK_MAX_BODY_BYTES + 4 * 1024 * 1024;
-/** Authored content that may inline images (articles, events, announcements, digests). */
+/**
+ * Authored content (articles, events, announcements, digests): long Markdown in an article's body, the one field
+ * without a length cap. Images never travel inline (the editors upload them and insert the URL); the other
+ * authored routes stay at 1 MiB because their DTOs cap the text far below it (proposals 5000 chars, comments
+ * 1000, study groups 2000, reports 2000).
+ */
 export const CONTENT_MAX_BODY_BYTES = 10 * 1024 * 1024;
 
 export async function readBodyText(req: Request, maxBytes: number = DEFAULT_MAX_BODY_BYTES): Promise<string> {
