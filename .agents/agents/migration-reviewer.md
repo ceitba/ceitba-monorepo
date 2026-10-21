@@ -11,8 +11,8 @@ Scope: the diff you are given, or `git diff origin/main...HEAD -- apps/api` plus
 
 Check:
 
-1. Immutability: no migration that exists on `origin/dev` or `origin/main` is modified, renamed or deleted
-   (`git diff --name-status origin/dev...HEAD -- '*/db/migration/*'` shows only `A`).
+1. Immutability: no migration that exists on `origin/main` is modified, renamed or deleted
+   (`git diff --name-status origin/main...HEAD -- '*/db/migration/*'` shows only `A`).
 2. Versioning: the new `V<N>` is above every existing version and unique; the name is `V<N>__snake_case.sql`.
 3. Mirror: a DDL migration (`CREATE`/`ALTER`/`DROP`/`RENAME`/`COMMENT ON`) has a `V4.<n>` mirror containing the
    same DDL and no seed data, a row in the mirror README table, and `IT_FLYWAY_TARGET` bumped to it in

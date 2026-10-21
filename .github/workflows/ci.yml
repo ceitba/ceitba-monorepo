@@ -1,9 +1,9 @@
 name: CI
 
-# Checks for PRs, the merge queue (merge_group) and pushes to dev. Only the apps
-# a change touches run:
+# Checks for PRs into main and the merge queue (merge_group). Only the apps a
+# change touches run. (The `dev` triggers below are inert: there is no dev branch.)
 #   - api (apps/api, Bun): typecheck, unit + in-process tests, the contract
-#     suite, route coverage and an image build, on PRs (into dev or main) and in the merge queue
+#     suite, route coverage and an image build, on PRs and in the merge queue
 #     (the merged result, before it reaches main). Testcontainers starts
 #     Postgres (pgvector) and MinIO through the runner's Docker.
 #   - web (the site, scheduler and newsletter, one app): lint + production

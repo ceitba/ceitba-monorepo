@@ -32,9 +32,10 @@ included) updates the mapped doc in the same PR, or the PR states "No spec impac
 
 ## Git, commits and PRs
 
-- Branch from `dev` (`feat/…`, `fix/…`, `chore/…`, `docs/…`); PRs target `dev`. Never commit or push to `main`
-  or `dev` directly. Feature PRs merge into `dev` with real merge commits (`--no-ff`); one reviewed `dev → main`
-  PR is merged with a merge commit. Only `main` deploys.
+- Branch from `main` (`feat/…`, `fix/…`, `chore/…`, `docs/…`); PRs target `main`. Never commit or push to `main`
+  directly. A reviewed PR merges through the merge queue with a merge commit (see CI), and every merge into `main`
+  deploys what it changed: before queueing one, run the `release` skill for its deploy risks. There is no `dev`
+  branch on the remote; the `dev` conditions left in hooks and workflows are inert.
 - Commits and PR titles follow Conventional Commits: `type(scope): imperative summary`. Types: `feat`, `fix`,
   `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`, `style`. Scopes are the app or area:
   `api`, `web`, `scheduler`, `newsletter`, `infra`, `ci`, `deps`, `agents`, or a feature area (`wiki`, `digest`,
@@ -53,12 +54,13 @@ changed) and merges it with a merge commit only if the single required check, `c
 every `ci.yml` job passed or was skipped, so path-filtered jobs never block by not reporting; a new `ci.yml` job
 must be added to its `needs`.
 
-`.github/workflows/ci.yml` runs on PRs, the merge queue and `dev` pushes; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
+`.github/workflows/ci.yml` runs on PRs and the merge queue; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
 to run only what a change touches (`packages/**`, the root `package.json`/`bun.lock` and `.github/spa-apps.json`
 count for web and MCP). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
-`# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
-living-docs check against the PR body and a gitleaks scan. Dependabot (`.github/dependabot.yml`) opens weekly
-version updates against `main` (there is no `dev` branch on the remote).
+`# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title and a
+gitleaks scan; its living-docs check against the PR body is still gated on PRs into `dev`, so it does not run on
+PRs into `main` (keep the PR body's living-docs status anyway). Dependabot (`.github/dependabot.yml`) opens weekly
+version updates against `main`.
 
 ## Cross-app rules
 

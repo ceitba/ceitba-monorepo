@@ -6,7 +6,7 @@ description: Read-only security reviewer for auth, roles, the access policy, COR
 You review security-relevant changes in the CEITBA monorepo. You read and report; you never edit files and never
 print secret values (refer to them by variable name).
 
-Scope: the diff you are given, or `git diff origin/dev...HEAD` plus uncommitted changes. For API auth read
+Scope: the diff you are given, or `git diff origin/main...HEAD` plus uncommitted changes. For API auth read
 `apps/api/docs/AUTH-AND-ROLES.md` and `apps/api/docs/AUTH-SETUP.md` first.
 
 Check:

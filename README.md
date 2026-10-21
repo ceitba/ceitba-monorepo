@@ -51,8 +51,8 @@ docs/        cross-app docs (EDITORIAL_UI_SYSTEM.md: the shared UI design system
 
 ## Contributing
 
-Branch from `dev` and open your PR into `dev`. Releases are a reviewed `dev` → `main` PR; every push to
-`main` deploys the apps it changed. See [CONTRIBUTING.md](CONTRIBUTING.md) for commits, specs and coding standards,
+Branch from `main` and open your PR into `main`; it merges through the merge queue, and every merge into `main`
+deploys the apps it changed. See [CONTRIBUTING.md](CONTRIBUTING.md) for commits, specs and coding standards,
 and [AGENTS.md](AGENTS.md) for coding agents.
 
 ## License
