@@ -3,6 +3,7 @@
 import type { Db } from '../../db/client';
 import { isUniqueViolation, withTx } from '../../db/client';
 import type { Deps } from '../../deps';
+import { mailBeans } from '../mail/service';
 import { ResourceAlreadyExistsError, ResourceNotFoundError, ValidationError } from '../../http/errors';
 import { javaIsBlank, javaTrim, plusDays } from '../../lib/javaCompat';
 import { parsePgTimestamp, toPgTimestamp, zoneOffsetMinutes } from '../../lib/time';
@@ -111,9 +112,8 @@ export class OrganizationService {
   delete(slug: string): Promise<void> {
     return withTx(this.deps.db, async (tx) => {
       if (!(await repo.orgExists(tx, slug))) throw new ResourceNotFoundError('Organization', slug);
-      // mail_sender_account.owner_ref has no FK: drop the org's Gmail account.
-      // TODO(mail): MailSenderAccountService.delete also revokes the token at Google (best effort).
-      await repo.deleteOrgMailAccount(tx, slug);
+      // mail_sender_account.owner_ref has no FK: revoke (best effort) and drop the org's Gmail account.
+      await mailBeans(this.deps).accounts.disconnectOrg(slug, tx);
       await repo.deleteOrg(tx, slug);
     });
   }

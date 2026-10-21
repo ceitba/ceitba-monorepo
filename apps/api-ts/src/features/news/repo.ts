@@ -10,7 +10,6 @@ import { user } from '../../db/schema/identity';
 import {
   analyticsEvents, articles, articleVotes, eventRsvps, newsEvents, orgInvites, organizations, userFollows, userOrganizations, voteRecords,
 } from '../../db/schema/news';
-import { mailSenderAccount } from '../../db/schema/mail';
 import { toPgTimestamp, type Micros } from '../../lib/time';
 import { pageOffset, type PageRequest } from './paging';
 
@@ -79,13 +78,6 @@ export async function updateOrg(db: Db, slug: string, changes: Partial<OrgRow>):
 
 export async function deleteOrg(db: Db, slug: string): Promise<void> {
   await db.delete(organizations).where(eq(organizations.slug, slug));
-}
-
-export async function deleteOrgMailAccount(db: Db, slug: string): Promise<number> {
-  const rows = await db.delete(mailSenderAccount)
-    .where(and(eq(mailSenderAccount.ownerType, 'organization'), eq(mailSenderAccount.ownerRef, slug)))
-    .returning({ id: mailSenderAccount.id });
-  return rows.length;
 }
 
 // ------------------------------------------------------------------ memberships

@@ -154,6 +154,17 @@ describe('OrgMailConnectIT (stubbed exchange)', () => {
     expect(s.json.account).toMatchObject({ email: 'sabf@itba.edu.ar', status: 'connected' });
   });
 
+  // OrganizationService.delete -> MailSenderAccountService.disconnectOrg: revoked at Google, then dropped.
+  test('deletingTheOrgRevokesAndDropsItsGmailAccount', async () => {
+    exchanges.set('org-code', orgTokens('sabf@itba.edu.ar'));
+    expect((await callback({ code: 'org-code', state: oauthStates().issue(adminId, 'sabf') })).status).toBe(302);
+    const d = await t.request('DELETE', '/v1/organizations/sabf', { headers: await bearer('alice@itba.edu.ar') });
+    expect(d.status).toBe(204);
+    expect(revoked).toEqual(['1//refresh']);
+    expect(await t.sql`SELECT 1 FROM public.mail_sender_account WHERE owner_ref = 'sabf'`).toHaveLength(0);
+    expect(await t.sql`SELECT 1 FROM public.organizations WHERE slug = 'sabf'`).toHaveLength(0);
+  });
+
   test('callbackRefusesOtherDomainsNonAdminsAndAnAccountInUse', async () => {
     exchanges.set('gmail', orgTokens('sabf@gmail.com'));
     expect((await callback({ code: 'gmail', state: oauthStates().issue(adminId, 'sabf') })).headers.get('Location')).toBe(`${MAIL_PAGE}?mail=error&reason=wrong_domain`);

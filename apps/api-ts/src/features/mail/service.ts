@@ -17,6 +17,7 @@ import {
 import type { Logger } from '../../infra/logger';
 import { javaEqualsIgnoreCase, javaIsBlank, javaStrip, javaTrim } from '../../lib/javaCompat';
 import { formatOffsetDateTime, parsePgTimestamp, type Micros } from '../../lib/time';
+import type { Db } from '../../db/client';
 import { ambientDb } from './ambient';
 import { GoogleMailOAuthClient, SCOPE_SEND, type IdClaims } from './googleMailOAuth';
 import { GmailApiEmailSender, type MailSenderAccounts } from './logic/gmailApiEmailSender';
@@ -232,26 +233,26 @@ export class MailSenderAccountService implements MailSenderAccounts {
     return a == null ? null : accountView(a);
   }
 
-  /** Revokes and deletes the org's account; no-op without one. */
-  async disconnectOrg(slug: string): Promise<void> {
-    const a = await repo.findAccountByOwner(this.deps.db, OWNER_ORGANIZATION, slug);
-    if (a != null) await this.delete(a.id);
+  /** Revokes and deletes the org's account; no-op without one. `db`: the caller's transaction to join. */
+  async disconnectOrg(slug: string, db: Db = this.deps.db): Promise<void> {
+    const a = await repo.findAccountByOwner(db, OWNER_ORGANIZATION, slug);
+    if (a != null) await this.delete(a.id, db);
   }
 
   async list(): Promise<AccountView[]> {
     return (await repo.findAllAccounts(this.deps.db)).map(accountView);
   }
 
-  /** Revokes the token at Google (best effort), then deletes the row. */
-  async delete(id: number): Promise<void> {
-    const row = await repo.findAccountById(this.deps.db, id);
+  /** Revokes the token at Google (best effort), then deletes the row. `db`: the caller's transaction to join. */
+  async delete(id: number, db: Db = this.deps.db): Promise<void> {
+    const row = await repo.findAccountById(db, id);
     if (row == null) throw new ResourceNotFoundError('MailSenderAccount', String(id));
     try {
       await this.google.revoke(this.cipher().decrypt(row.refreshTokenEnc, row.email));
     } catch (e) {
       this.log.warn(`Mail: could not revoke the token of ${row.email} at Google (deleting anyway): ${(e as Error)?.constructor?.name ?? 'Error'}`);
     }
-    await repo.deleteAccount(this.deps.db, row.id);
+    await repo.deleteAccount(db, row.id);
   }
 
   /** connected | broken | missing, for the configured sender (CEITBA account). */
