@@ -2,7 +2,7 @@
 //
 // Storage behind MailSendService: the attempt log (mail_send_log) and the
 // persisted per-account pause (mail_account_state).
-// TODO(mail-service): the Drizzle implementation (JpaMailLedger): record()
+// The database implementation (JpaMailLedger) is DrizzleMailLedger in mail/service.ts: record()
 // commits on its own, whatever the caller's transaction does next.
 
 import type { Micros } from '../../../lib/time';

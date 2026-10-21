@@ -17,6 +17,7 @@ Spring).
 | record / DTO | keys in **component declaration order** | build the object literal in the same order |
 | `null` field | present as `null` (no `NON_NULL` inclusion), except DTOs annotated `@JsonInclude(NON_NULL)` | write `null`; omit only where Java has `@JsonInclude` |
 | `@JsonProperty("file_number")` | the annotated name | use that key |
+| `@JsonProperty("isX")` on a record component | written **after all other components**, not in declaration order (verified with `StudyGroupResponse` on the jar) | put those keys last |
 | `Map.of(...)` (HealthController) | **no stable order** (Java randomizes per JVM) | any order; tests and the diff runner sort these keys |
 | `LinkedHashMap` / `TreeMap` | insertion / sorted order | same |
 | enum | `name()` (upper case) unless the DTO maps it | same string |

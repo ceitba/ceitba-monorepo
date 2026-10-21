@@ -3,15 +3,16 @@
 // FakeItbaApiClient (ITBA_API_FAKE_FROM_DB=true reads unstubbed plans from the
 // local plan_subject table), else the real client.
 //
-// NOT PORTED YET: RestClientItbaApiClient (the HTTP client + wire mapping,
-// external/itba/RestClientItbaApiClient.java and wire/*). The sync/career
-// feature agent ports it into this file as `RestItbaApiClient`; until then the
-// real slot throws ExternalApiError so nothing silently returns empty data.
+// The real client (RestClientItbaApiClient + wire/*) is in ./itba/restClient.ts
+// and ./itba/wire.ts.
 
 import { sql } from 'drizzle-orm';
 import type { Config } from '../config';
 import type { Database } from '../db/client';
-import { ExternalApiError } from '../http/errors';
+import { SystemClock } from '../infra/clock';
+import { createLogger } from '../infra/logger';
+import { ART } from '../lib/time';
+import { RestItbaApiClient } from './itba/restClient';
 
 export type SubjectType = 'ANNUAL' | 'SEMESTRAL' | 'SAMINARY';
 export type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
@@ -121,17 +122,13 @@ export class FakeItbaApiClient implements ItbaApiClient {
   }
 }
 
-/** Placeholder for RestClientItbaApiClient until the sync feature ports it (see header). */
-export class NotPortedItbaApiClient implements ItbaApiClient {
-  private fail(op: string): never {
-    throw new ExternalApiError('ITBA API', op, new Error('RestClientItbaApiClient is not ported yet'));
-  }
-  getSubjectsByPlan(): Promise<SubjectPlanProjection[]> { return this.fail('getSubjectsByPlan'); }
-  getCommissions(): Promise<CommissionProjection[]> { return this.fail('getCommissions'); }
-  getCommissionsBySubject(): Promise<CommissionProjection[]> { return this.fail('getCommissionsBySubject'); }
-}
-
+/**
+ * The Java client takes the ART ClockConfig clock, used only to fill a
+ * CommissionQuery's defaults (DataSyncService always passes a filled one).
+ */
 export function createItbaClient(config: Config, db: Database): ItbaApiClient {
-  if (config.integrations.itba.useFake) return new FakeItbaApiClient(config.integrations.itba.fakeFromDb ? db : null);
-  return new NotPortedItbaApiClient();
+  const itba = config.integrations.itba;
+  if (itba.useFake) return new FakeItbaApiClient(itba.fakeFromDb ? db : null);
+  return new RestItbaApiClient({ baseUrl: itba.baseUrl, token: itba.token, timeoutMs: itba.timeoutMs }, new SystemClock(ART),
+    createLogger(config).child({ component: 'RestClientItbaApiClient' }));
 }

@@ -22,7 +22,7 @@ export type VoteTokenVerified =
 const INVALID: VoteTokenVerified = { type: 'Invalid' };
 
 export class DigestCorrectionVoteTokens {
-  /** ttlMs: DigestPersonalProperties.voteTokenTtl. TODO(digest-service): read it from config. */
+  /** ttlMs: DigestPersonalProperties.voteTokenTtl. Wired from config in digest/beans.ts. */
   constructor(private readonly hmac: ContentHmac, private readonly clock: Clock, private readonly ttlMs: number) {}
 
   issue(userId: string, correctionId: string): string {

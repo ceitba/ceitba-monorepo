@@ -124,8 +124,31 @@ export function javaPattern(regexp: string): RegExp {
   let src = regexp;
   let flags = '';
   if (src.startsWith('(?i)')) { flags = 'i'; src = src.slice(4); }
-  src = src.replace(/(?<!\\)((?:\\\\)*)\\s/g, `$1${JAVA_S}`).replace(/(?<!\\)((?:\\\\)*)\\S/g, `$1${JAVA_NOT_S}`);
-  return new RegExp(`^(?:${src})$`, flags);
+  return new RegExp(`^(?:${translateJavaWhitespace(src)})$`, flags);
+}
+
+// Java's \s/\S are ASCII-only, JS's are Unicode. Outside a character class they become whole classes;
+// inside one (`[^@\s]`) only the members can be spliced in, since JS has no nested classes without the v flag.
+function translateJavaWhitespace(src: string): string {
+  const members = JAVA_S.slice(1, -1);
+  let out = '';
+  let inClass = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]!;
+    if (c === '\\' && i + 1 < src.length) {
+      const n = src[++i]!;
+      if (n === 's') out += inClass ? members : JAVA_S;
+      else if (n === 'S') {
+        if (inClass) throw new Error(`javaPattern: \\S inside a character class is not supported: ${src}`);
+        out += JAVA_NOT_S;
+      } else out += c + n;
+    } else {
+      if (c === '[' && !inClass) inClass = true;
+      else if (c === ']' && inClass && !/\[\^?$/.test(out)) inClass = false;
+      out += c;
+    }
+  }
+  return out;
 }
 
 function toJavaIntegral(v: unknown, ctx: Ctx, bits: 32 | 64): number | null {

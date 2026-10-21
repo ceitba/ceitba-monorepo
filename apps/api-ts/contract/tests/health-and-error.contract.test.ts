@@ -5,7 +5,7 @@ import { bearer, mintJwt, seedStaff, supports, useServer } from '../support';
 
 const api = useServer();
 let staff: ReturnType<typeof bearer>;
-const hasArticles = await supports('PUT /v1/articles');
+const hasArticles = await supports('GET /v1/articles');
 
 beforeAll(async () => {
   await seedStaff(api.db, 'boss@itba.edu.ar');

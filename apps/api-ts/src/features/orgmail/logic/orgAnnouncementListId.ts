@@ -6,8 +6,7 @@
 // dropped and non-ASCII text ("Robótica") goes out as an RFC 2047 encoded word
 // (jakarta.mail MimeUtility.encodeText(s, "UTF-8", "Q"), ported below).
 //
-// TODO(orgmail-service): the rest of OrgAnnouncementService / Sender is
-// repository + delivery code; the header is
+// Used by orgmail/service.ts (OrgAnnouncementService.email); the header is
 //   List-Id: `${listIdPhrase(name, slug)} <${slug}.orgs.ceitba.org.ar>`.
 
 import { javaStrip, javaUtf8 } from '../../../lib/javaCompat';

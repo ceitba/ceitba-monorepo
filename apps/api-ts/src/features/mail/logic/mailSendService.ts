@@ -49,8 +49,7 @@ export class MailQuotaExhausted extends MailQuotaExhaustedError {
 /**
  * MailSenderNotConnectedException: an EmailSendException(TRANSPORT) for the
  * worker AND a 409 MAIL_SENDER_NOT_CONNECTED for a direct send.
- * TODO(mail-service): src/http/app.ts maps only ApiError subclasses; teach the
- * error mapper this class (status/code below) or catch it in the routes.
+ * src/http/app.ts maps it through its status/code below (isCodedLike).
  */
 export class MailSenderNotConnected extends EmailSendError {
   static readonly CODE = 'MAIL_SENDER_NOT_CONNECTED';

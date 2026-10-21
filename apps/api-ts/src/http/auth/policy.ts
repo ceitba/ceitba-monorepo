@@ -290,7 +290,27 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
 
 /** `{id:regex}` -> `{id}` (rule keys never carry the regex). */
 export function ruleKey(method: string, springPath: string): string {
-  return `${method.toUpperCase()} ${springPath.replace(/\{(\w+):[^}]*\}+/g, (_m, n: string) => `{${n}}`)}`;
+  return `${method.toUpperCase()} ${stripPathVariableRegexes(springPath)}`;
+}
+
+// Brace-depth aware: a regex such as `{id:[0-9a-f]{8}-[0-9a-f]{4}}` contains `}` itself, so a
+// `[^}]*` scan would stop early, produce the wrong key and drop the route's @PreAuthorize rule.
+export function stripPathVariableRegexes(springPath: string): string {
+  let out = '';
+  for (let i = 0; i < springPath.length; i++) {
+    const m = springPath[i] === '{' ? /^\{(\w+):/.exec(springPath.slice(i)) : null;
+    if (!m) { out += springPath[i]; continue; }
+    let depth = 0;
+    let j = i;
+    for (; j < springPath.length; j++) {
+      if (springPath[j] === '\\') { j++; continue; }
+      if (springPath[j] === '{') depth++;
+      else if (springPath[j] === '}' && --depth === 0) break;
+    }
+    out += `{${m[1]}}`;
+    i = j;
+  }
+  return out;
 }
 
 // ------------------------------------------------------------- pattern matching

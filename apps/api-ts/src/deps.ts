@@ -84,8 +84,5 @@ export async function buildDeps(config: Config, overrides: DepsOverrides = {}): 
   if (!config.content.driveSync.useFake && config.content.driveSync.serviceAccountJson.trim() !== '') {
     log.warn('DRIVE_SYNC_SERVICE_ACCOUNT_JSON is set but GoogleDriveClient is not ported yet: Drive sync runs unconfigured');
   }
-  if (!config.integrations.itba.useFake) {
-    log.warn('ITBA_API_USE_FAKE=false but RestClientItbaApiClient is not ported yet: ITBA calls answer 502');
-  }
   return deps;
 }

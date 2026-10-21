@@ -5,9 +5,8 @@
 // goes through DigestRenderer.esc. The suggester of a correction is never
 // known here ("Alguien reportó…").
 //
-// TODO(digest-service): TuCuatrimestreSection (loader + vote links
-// `${publicBaseUrl}/correction?token=${URLEncoder(token)}&vote=confirm|reject`)
-// and PersonalDigestLoader are repository code.
+// TuCuatrimestreSection and PersonalDigestLoader (vote links
+// `${publicBaseUrl}/correction?token=${URLEncoder(token)}&vote=confirm|reject`) are in digest/personal.ts.
 
 import { DAY_NAMES, ES_DAYS_FULL } from '../../../../lib/javaCompat';
 import { esc, oneLine, type PersonalSection } from '../digestRenderer';

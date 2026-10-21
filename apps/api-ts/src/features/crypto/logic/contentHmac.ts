@@ -7,7 +7,7 @@
 // the base64-decoded AUTH_JWT_SECRET. See the Java class for what rotating
 // either secret breaks.
 //
-// TODO(crypto-service): build the singleton from config (auth.jwt.secret,
+// The app's singleton is built from config in crypto/service.ts (auth.jwt.secret,
 // content.hmac-secret) once src/config exposes them.
 
 import { createHmac } from 'node:crypto';
