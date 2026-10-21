@@ -156,11 +156,11 @@ Every `main` build is pushed to GHCR as `ghcr.io/ceitba/ceitba-api:main-<short s
 `deploy.yml`, `docker/metadata-action`). Tags are kept until someone deletes them. To go back to an earlier image,
 including the last Java one:
 
-1. Find the tag. The last Java image is the one built by the last `Deploy` run on `main` before the cutover merge:
-   take that run's commit (`gh run list -w Deploy -b main`, or the commit before the cutover merge on `main`) and
-   use its first 7 characters. The package page (github.com/orgs/ceitba/packages/container/package/ceitba-api)
-   lists every tag; `docker run --rm --entrypoint sh ghcr.io/ceitba/ceitba-api:main-<sha> -c 'command -v java'`
-   prints a path for a Java image.
+1. Find the tag. Only pushes that change the API build an image, so not every `main` commit has one: the last
+   Java image is the newest `main-*` tag created before the cutover merge on the package page
+   (github.com/orgs/ceitba/packages/container/package/ceitba-api; when this was written, `main-b515215`).
+   `docker run --rm --entrypoint sh ghcr.io/ceitba/ceitba-api:main-<sha> -c 'command -v java'` prints a path
+   for a Java image.
 2. In `~/CEITBA-API/.env` set `API_IMAGE=ghcr.io/ceitba/ceitba-api:main-<sha>`. For a **Java** image also set
    its JVM values (the compose defaults are sized for Bun):
    ```
