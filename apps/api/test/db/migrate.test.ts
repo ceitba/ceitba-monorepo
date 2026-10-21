@@ -182,6 +182,95 @@ describe('against Postgres', () => {
   }, 60_000);
 });
 
+// Production was not created by Flyway: Prisma built the schema (V1 with `user.career_id` UUID and no FK,
+// plus wiki.subject_bookmarks), the runbook (docs/MIGRATION-RUNBOOK.md, on main) fixed career_id by hand, then
+// Flyway baselined at 1 (`flyway:baseline` and the prod profile's baseline-on-migrate write the same row) and
+// the jar applied V1.1+ on top. Java's rows on such a database are prodHistory with its first two rows
+// (rank 0 schema creation, rank 1 V1) replaced by the BASELINE row: verified against the jar of b515215, both paths.
+const PRISMA_ERA_CAREER_FIX = `
+  UPDATE public."user" SET career_id = NULL
+    WHERE career_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.careers c WHERE c.id::text = career_id::text);
+  ALTER TABLE public."user" ALTER COLUMN career_id TYPE VARCHAR(25) USING career_id::text;
+  ALTER TABLE public."user" ADD CONSTRAINT user_career_id_fkey
+    FOREIGN KEY (career_id) REFERENCES public.careers(id) ON DELETE SET NULL ON UPDATE CASCADE;`;
+
+async function prismaEraDatabase(sql: postgres.Sql): Promise<void> {
+  const v1 = await Bun.file(join(MIGRATIONS_DIR, 'V1__baseline.sql')).text();
+  const fk = `ALTER TABLE "public"."user"
+    ADD CONSTRAINT "user_career_id_fkey"
+    FOREIGN KEY ("career_id") REFERENCES "public"."careers" ("id")
+    ON DELETE SET NULL ON UPDATE CASCADE;`;
+  const prisma = v1.replace(/"career_id"\s+VARCHAR\(25\),\s+-- corrected: was UUID/, '"career_id" UUID,').replace(fk, '');
+  expect(prisma).not.toContain('corrected: was UUID');
+  expect(prisma).not.toContain(fk);
+  await sql.unsafe(prisma).simple();
+  await sql.unsafe(`CREATE TABLE public._prisma_migrations (id VARCHAR(36) PRIMARY KEY, migration_name VARCHAR(255) NOT NULL);
+    CREATE TABLE wiki.subject_bookmarks (subject_id VARCHAR(25) NOT NULL, user_id UUID NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT subject_bookmarks_pkey PRIMARY KEY (subject_id, user_id));
+    INSERT INTO public.careers (id, name, updated_at) VALUES ('X', 'X', now());
+    INSERT INTO public."user" (id, email, career_id, updated_at)
+      VALUES ('11111111-1111-4111-8111-000000000001', 'a@itba.edu.ar', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', now());`).simple();
+  await sql.unsafe(PRISMA_ERA_CAREER_FIX).simple();
+}
+
+describe('a Prisma-era database baselined at 1 (production)', () => {
+  const javaRows = [
+    { installedRank: 1, version: '1', description: '<< Flyway Baseline >>', type: 'BASELINE', script: '<< Flyway Baseline >>', checksum: null },
+    ...prodHistory.filter((r) => r.installedRank >= 2),
+  ];
+  const opts = { locations: [MIGRATIONS_DIR], schemas: ['public', 'wiki'], defaultSchema: 'public', outOfOrder: true, baselineOnMigrate: true, baselineVersion: '1' };
+
+  async function withPrismaEraDatabase(fn: (sql: postgres.Sql) => Promise<void>): Promise<void> {
+    const admin = postgres(await pgServerUrl(), { max: 1, onnotice: () => {} });
+    const name = `migb_${process.pid}_${Date.now()}`;
+    await admin.unsafe(`CREATE DATABASE ${name}`);
+    const sql = postgres(withDatabase(await pgServerUrl(), name), { max: 2, onnotice: () => {} });
+    try {
+      await prismaEraDatabase(sql);
+      await fn(sql);
+    } finally {
+      await sql.end();
+      await admin.unsafe(`DROP DATABASE ${name} WITH (FORCE)`);
+      await admin.end();
+    }
+  }
+
+  test('baselineOnMigrateWritesTheRowsJavaWroteOnProduction', async () => {
+    await withPrismaEraDatabase(async (sql) => {
+      const r = await migrate(sql, opts);
+      expect(r.applied[0]).toBe('V1.1__add_subject_bookmarks.sql');
+      expect(r.applied).not.toContain('V1__baseline.sql');
+      const rows = (await readHistory(sql)).map(({ installedRank, version, description, type, script, checksum }) => ({ installedRank, version, description, type, script, checksum }));
+      expect(rows).toEqual(javaRows);
+      expect((await migrate(sql, opts)).applied).toEqual([]);
+      expect(await check(sql, opts)).toEqual({ issues: [], pending: [] });
+      expect(await unmappedColumns(sql)).toEqual([]);
+      // The Prisma-era user survived with its dangling career cleared, and the FK is there.
+      expect((await sql`SELECT career_id FROM public."user"`)[0]!.career_id).toBeNull();
+    });
+  }, 120_000);
+
+  test('theHistoryJavaWroteValidatesWithZeroIssuesAndZeroPending', async () => {
+    await withPrismaEraDatabase(async (sql) => {
+      // The rows the jar wrote, then the schema it reached (our runner applies the SQL, history replaced).
+      await migrate(sql, opts);
+      await sql`DELETE FROM public.flyway_schema_history`;
+      for (const r of javaRows) {
+        await sql`INSERT INTO public.flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success)
+                  VALUES (${r.installedRank}, ${r.version}, ${r.description}, ${r.type}, ${r.script}, ${r.checksum}, 'postgres', 1, true)`;
+      }
+      expect(await check(sql, opts)).toEqual({ issues: [], pending: [] });
+      expect((await migrate(sql, opts)).applied).toEqual([]);
+    });
+  }, 120_000);
+
+  test('withoutBaselineOnMigrateANonEmptySchemaIsRefused', async () => {
+    await withPrismaEraDatabase(async (sql) => {
+      await expect(migrate(sql, { ...opts, baselineOnMigrate: false })).rejects.toThrow(/non-empty schema/);
+    });
+  }, 120_000);
+});
+
 // Live: the jar's own Flyway migrates a fresh database, then our runner validates it.
 // The Java app is deleted: CONTRACT_JAR names a jar built from the last Java commit.
 const JAR = process.env.CONTRACT_JAR ?? '';
