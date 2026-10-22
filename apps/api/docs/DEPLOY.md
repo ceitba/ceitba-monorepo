@@ -35,7 +35,7 @@ applies pending migrations (`src/db/migrate.ts`, Flyway-compatible).
       (drain 5s, then graceful shutdown: requests in flight and the digest email being sent finish).
 4. `docker image prune -f`.
 
-Pushing to `main` with an API change runs this. To redeploy by hand (e.g. after changing `~/CEITBA-API/.env`), run
+Pushing to `main` with an API change runs this (see "What triggers an API deploy" below). To redeploy by hand (e.g. after changing `~/CEITBA-API/.env`), run
 `cd ~/CEITBA-API && bash deploy-api.sh`: it recreates the idle color with the new env. **Do not** run a bare
 `docker compose up -d` there: it starts both colors (harmless thanks to the locks, but the next deploy then stops
 the newer one) and never waits for health.
@@ -49,6 +49,29 @@ Memory: each color has `limits: 1G` (`API_MEMORY_LIMIT`, 256M reserved); the Bun
 peaked at ~320 MB in the load test (`docs/plans/api-bun-baseline.md`). During a deploy both colors run for
 ~10–20s. The VPS has 2 vCPUs and 4 GB of RAM for everything (Postgres, MinIO, Caddy, MCP, `ceitba-embeddings`
 with a 1G limit, and the API), so keep the sum of the limits in mind before raising one.
+
+### What triggers an API deploy
+
+The `changes` job of `deploy.yml` (and of `ci.yml`, for the API tests) sets `api` when:
+
+- a file under `apps/api/**` or `infra/**` changed (`dorny/paths-filter`, `api_code`); or
+- `node scripts/checks/api-deps-changed.mjs <before> HEAD` prints `true`: the image installs
+  `bun install --frozen-lockfile --production --filter '@ceitba/api'`, so the script walks the production
+  dependency closure of the `apps/api` workspace in `bun.lock` at both revisions (`dependencies`,
+  `optionalDependencies` and non-optional `peerDependencies`, recursively, nested installs first; no
+  `devDependencies`, no `@types/*`) and compares each package's lock entry (version, resolution, dependencies,
+  integrity) and what each dependency resolves to. A re-hoist that keeps every version is no change. Also changed:
+  `apps/api/package.json` besides its `devDependencies` (any edit there matches `apps/api/**` anyway), the root
+  `package.json`'s `packageManager` (the bun that installs), `overrides`, `resolutions`, `patchedDependencies`,
+  `trustedDependencies`, and the lockfile's version and override/catalog/patch sections. A base it cannot read (the
+  first push, an unfetchable SHA) counts as changed;
+- or the run is manual (`workflow_dispatch` deploys everything).
+
+So a Dependabot or web-only bump that rewrites the root `bun.lock` no longer restarts the API. Each restart is a
+blue/green handoff that resumes running wiki pipeline runs (`docs/SUBJECT-WIKI-PIPELINE.md` "Restart-loop guard");
+on 2026-10-21 a burst of dependency merges redeployed it four times in 24 minutes. Against that history the script
+says `false` for #45, #46, #47 and #51–#53 (web-only bumps) and `true` for #41 (the bun workspace group, which bumped
+`zod` and `parse5` in the API). The script's tests are `scripts/checks/api-deps-changed.test.mjs` (`bun run check`, `pr-checks.yml`).
 
 ### Local development
 
