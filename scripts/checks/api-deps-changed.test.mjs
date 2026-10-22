@@ -70,14 +70,14 @@ test('keyChain splits nested installs, scoped names being two segments', () => {
 });
 
 test('the closure follows nested installs first and skips dev deps and optional peers', () => {
-  const facts = [...apiClosure(parseLock(lock())).entries()].filter(([k]) => k.startsWith('dep ')).sort();
+  const facts = [...apiClosure(parseLock(lock())).keys()].filter((k) => k.startsWith('dep ')).sort();
   assert.deepEqual(facts, [
-    ['dep @ceitba/api > hono', 'hono@4.13.13'],
-    ['dep @ceitba/api > linkedom', 'linkedom@0.18.13'],
-    ['dep css-select@5.1.0 > nth-check', 'nth-check@2.1.1'],
-    ['dep htmlparser2@10.0.0 > entities', 'entities@6.0.1'],
-    ['dep linkedom@0.18.13 > css-select', 'css-select@5.1.0'],
-    ['dep linkedom@0.18.13 > htmlparser2', 'htmlparser2@10.0.0'],
+    'dep @ceitba/api > hono = hono@4.13.13',
+    'dep @ceitba/api > linkedom = linkedom@0.18.13',
+    'dep css-select@5.1.0 > nth-check = nth-check@2.1.1',
+    'dep htmlparser2@10.0.0 > entities = entities@6.0.1',
+    'dep linkedom@0.18.13 > css-select = css-select@5.1.0',
+    'dep linkedom@0.18.13 > htmlparser2 = htmlparser2@10.0.0',
   ]);
 });
 
@@ -112,7 +112,8 @@ test('a hoisted package only the web app uses does not touch the API', () => {
 test('a bump of a direct API dependency changes it', () => {
   const r = apiDepsChanged(rev(lock()), rev(lock({ hono: '4.13.14' })));
   assert.equal(r.changed, true);
-  assert.deepEqual(r.reasons, ['changed dep @ceitba/api > hono', 'added package hono@4.13.14', 'removed package hono@4.13.13']);
+  assert.deepEqual(r.reasons, ['added dep @ceitba/api > hono = hono@4.13.14', 'added package hono@4.13.14',
+    'removed dep @ceitba/api > hono = hono@4.13.13', 'removed package hono@4.13.13']);
 });
 
 test('a bump of a transitive or nested API dependency changes it', () => {

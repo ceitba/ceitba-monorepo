@@ -68,7 +68,10 @@ jobs:
           BASE: ${{ github.event.before }}
         run: |
           git fetch --no-tags --depth=1 origin "$BASE" || true
-          echo "changed=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD)" >> "$GITHUB_OUTPUT"
+          # Anything but a clean "false" (the script failing included) builds and ships the API.
+          v=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD) || v=true
+          [ "$v" = false ] || v=true
+          echo "changed=$v" >> "$GITHUB_OUTPUT"
       - id: spas
         env:
           # Manual runs deploy every app.

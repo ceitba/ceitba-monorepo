@@ -87,7 +87,8 @@ function resolve(packages, chain, name) {
 /**
  * The production closure of a workspace, independent of where bun hoists each package: a Map
  * of facts, "package <name@version>" -> its lock entry (resolution, dependencies, integrity) and
- * "dep <from> > <name>" -> the name@version it resolves to (nested installs first). So a
+ * "dep <from> > <name> = <name@version it resolves to>" (nested installs first; two copies of
+ * <from> resolving <name> differently are two facts). So a
  * re-hoist that leaves every package the same version is no change. Skipped: optional peers (a
  * package uses one only when another path installs it, which counts it) and type declarations
  * (@types/*, never loaded at runtime: Bun runs the TypeScript without type-checking). A
@@ -109,10 +110,10 @@ export function apiClosure(lock, workspace = API_WORKSPACE) {
         if (name.startsWith('@types/')) continue;
         const key = resolve(packages, chain, name);
         if (key == null) {
-          if (field !== 'optionalDependencies') out.set(`dep ${from} > ${name}`, `unresolved ${JSON.stringify(meta[field][name])}`);
+          if (field !== 'optionalDependencies') out.set(`dep ${from} > ${name} = unresolved ${JSON.stringify(meta[field][name])}`, '');
           continue;
         }
-        out.set(`dep ${from} > ${name}`, identOf(key));
+        out.set(`dep ${from} > ${name} = ${identOf(key)}`, '');
         if (!seen.has(key)) {
           seen.add(key);
           queue.push(key);

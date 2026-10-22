@@ -436,8 +436,10 @@ dry runs of the earlier Java API died in DIGEST running out of memory when it di
     request; requests already in flight finish and their answers are recorded (paid work is kept). Unanswered
     requests stay SUBMITTED and their sync job open (an `-out-partial-<epoch>.jsonl` audit copy), so the next process
     resumes the same job without spending the resubmission attempt. In the `executors` phase `stop()` waits up to
-    `STOP_WAIT_MS` (45 s) for the advances to release their leases, then releases the ones still held anyway (inside
-    the 90 s `stop_grace_period`): the answers of requests still in flight then are lost and asked again (paid twice).
+    `STOP_WAIT_MS` (45 s) for the advances to release their leases, then releases the ones still held anyway: the
+    answers of requests still in flight then are lost and asked again (paid twice). The engine's hook runs last in
+    the 60 s `executors` phase (after the digest and org mail senders), so normally it fits in the 90 s
+    `stop_grace_period`; if the phase times out first the lease is left behind (next item).
   - **Blue/green order** (`infra/scripts/deploy-api.sh`): the new color starts and resumes runs **while the old color
     still advances them**, so it counts one resume and its kick finds the run leased (it retries after `LEASE_MS`, or
     the sweep/poller kicks it). Then the old color gets SIGTERM, stops and releases the lease, which undoes that resume.

@@ -16,7 +16,9 @@
 //
 // Differences from Java, by design: JSONL payloads and sync outputs are built in
 // memory instead of temp files (the storage port takes bytes); the record lock is
-// a promise mutex; Java's virtual-thread heartbeat is a timer.
+// a promise mutex; Java's virtual-thread heartbeat is a timer. The restart-loop guard counts only
+// startups that find the run still leased, a lease release undoes resumes counted while its holder
+// was alive, and shutdown releases the leases (beginStop/stop), so deploys never fail a run.
 
 import type { Database } from '../../db/client';
 import type { Logger } from '../../infra/logger';
