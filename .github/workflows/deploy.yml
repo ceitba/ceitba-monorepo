@@ -31,7 +31,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.api }}
+      # The API's own code, or what its image installs (a root bun.lock change alone is not enough).
+      api: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.api_code == 'true' || steps.api-deps.outputs.changed == 'true' }}
       mcp: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
@@ -41,11 +42,10 @@ jobs:
         if: github.event_name == 'push'
         with:
           filters: |
-            api:
+            # The API's code; its dependencies (root package.json / bun.lock) are the api-deps step.
+            api_code:
               - 'apps/api/**'
               - 'infra/**'
-              - 'package.json'
-              - 'bun.lock'
             shared: &shared
               - 'packages/**'
               - 'package.json'
@@ -59,6 +59,16 @@ jobs:
               - 'packages/**'
               - 'package.json'
               - 'bun.lock'
+      # A root package.json / bun.lock change redeploys the API only when the production
+      # dependency closure of @ceitba/api changed (scripts/checks/api-deps-changed.mjs,
+      # apps/api/docs/DEPLOY.md). Unknown or unfetchable base (first push): true.
+      - id: api-deps
+        if: github.event_name == 'push'
+        env:
+          BASE: ${{ github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE" || true
+          echo "changed=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD)" >> "$GITHUB_OUTPUT"
       - id: spas
         env:
           # Manual runs deploy every app.

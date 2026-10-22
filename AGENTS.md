@@ -56,7 +56,9 @@ must be added to its `needs`.
 
 `.github/workflows/ci.yml` runs on PRs and the merge queue; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
 to run only what a change touches (`packages/**`, the root `package.json`/`bun.lock` and `.github/spa-apps.json`
-count for web and MCP). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
+count for web and MCP). The API runs on `apps/api/**` or `infra/**`, and on a root `package.json`/`bun.lock` change
+only when `scripts/checks/api-deps-changed.mjs` says the production dependency closure of `@ceitba/api` changed (a
+web-only dependency bump neither tests nor redeploys it; `apps/api/docs/DEPLOY.md`). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
 `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
 living-docs check against the PR body and a gitleaks scan. Dependabot (`.github/dependabot.yml`) opens weekly
 version updates against `main`.
