@@ -18,8 +18,8 @@
     "db:schema": "drizzle-kit pull && bun scripts/split-schema.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.1154.0",
-    "@aws-sdk/s3-request-presigner": "3.1154.0",
+    "@aws-sdk/client-s3": "3.1156.0",
+    "@aws-sdk/s3-request-presigner": "3.1156.0",
     "@hono/zod-openapi": "1.6.3",
     "bcryptjs": "3.0.3",
     "croner": "10.0.1",
@@ -28,9 +28,9 @@
     "googleapis": "186.0.0",
     "hono": "4.13.13",
     "jose": "6.2.13",
-    "linkedom": "0.18.13",
+    "linkedom": "0.18.14",
     "lru-cache": "11.5.3",
-    "nodemailer": "10.1.7",
+    "nodemailer": "10.2.1",
     "parse5": "8.0.1",
     "pino": "10.4.0",
     "postgres": "3.4.9",
@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "12.2.1",
-    "@types/bun": "1.4.3",
+    "@types/bun": "1.4.4",
     "@types/nodemailer": "8.0.2",
     "@types/sanitize-html": "2.16.2",
     "drizzle-kit": "0.31.11",
