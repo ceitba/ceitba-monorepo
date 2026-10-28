@@ -189,6 +189,8 @@ describe('PlanEntriesIT', () => {
       { type: 'subject', name: 'Tópicos', code: '93.99', credits: '4', creditsRequired: '120' },
       { type: 'subject', name: 'Algoritmos', code: '93.12', credits: '6' },
     ] } },
+    // A section without a name: keyed "null", section null.
+    { withoutTerm: { withoutTerm: { type: 'subject', name: 'Sin sección', code: '94.01', credits: '2' } } },
   ] } };
   const sync = apiKey(TEST_SYNC_KEY);
 
@@ -207,7 +209,7 @@ describe('PlanEntriesIT', () => {
     expect(live.status).toBe(200);
     expect(itba.requests).toEqual(['/careerPlans/tok-123?plan=X-26']);
     // Both sections of 72.27 and the electives, in ITBA's order.
-    expect(Object.keys(live.json)).toEqual(['Ciclo Básico', 'Orientación Imagen', 'Orientación Datos', 'Electivas']);
+    expect(Object.keys(live.json)).toEqual(['Ciclo Básico', 'Orientación Imagen', 'Orientación Datos', 'Electivas', 'null']);
 
     expect((await api.post('/v1/sync/subjects', { as: sync })).status).toBe(200);
     itba.reset();
@@ -223,7 +225,7 @@ describe('PlanEntriesIT', () => {
     itba.stubPlanBody('X-26', { careerplan: { section: { name: 'Ciclo Básico', terms: { term: { year: '1', period: '1', entries: { entry: {
       type: 'subject', name: 'Álgebra', code: '93.58', credits: '6' } } } } } } });
     // Between syncs the stored plan is served, whatever the gateway has now.
-    expect(Object.keys((await api.get('/v1/subjects?plan=X-26')).json)).toEqual(['Ciclo Básico', 'Orientación Imagen', 'Orientación Datos', 'Electivas']);
+    expect(Object.keys((await api.get('/v1/subjects?plan=X-26')).json)).toEqual(['Ciclo Básico', 'Orientación Imagen', 'Orientación Datos', 'Electivas', 'null']);
     await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
     const r = await api.get('/v1/subjects?plan=X-26');
     expect(Object.keys(r.json)).toEqual(['Ciclo Básico']);

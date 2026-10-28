@@ -170,6 +170,7 @@ export const planEntry = pgTable("plan_entry", {
 	creditsRequired: integer("credits_required"),
 	subjectName: varchar("subject_name", { length: 255 }),
 	subjectCredits: integer("subject_credits").notNull(),
+	fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: 'string' }).notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.planId],

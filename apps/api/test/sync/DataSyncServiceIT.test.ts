@@ -100,6 +100,17 @@ describe('DataSyncServiceIT', () => {
     expect((await rows()).map((x) => x.subject_id)).toEqual(['93.12']);
   });
 
+  // The plan_subject side rolls back as a whole when the database rejects a row (a subject without a name);
+  // plan_entry is refreshed anyway, so /v1/subjects never goes stale over it.
+  test('aRejectedPlanSubjectRowStillRefreshesThePlanEntries', async () => {
+    fake.stubPlan('S10-Rev23', [sp('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, [], null, 'Algoritmos', 6), sp('93.77', 'S10-Rev23', 'Ciclo Básico', 1, 2, [], null, null, 3)]);
+    const r = await sync.syncSubjectsAndPlansOnly();
+    expect(r.subjectPlans.errors).toBe(1);
+    expect(await count('plan_subject')).toBe(0);
+    expect((await t.sql`SELECT subject_id, subject_name FROM public.plan_entry ORDER BY position`).map((x) => [x.subject_id, x.subject_name]))
+      .toEqual([['93.12', 'Algoritmos'], ['93.77', null]]);
+  });
+
   // A requirement the database rejects (a name over 255 chars) is logged: the subjects sync, the stored groups stay.
   test('aRejectedRequirementNeverFailsThePlanSubjects', async () => {
     fake.stubPlan('S10-Rev23', [], [{ planId: 'S10-Rev23', section: 'Electivas', credits: 27, year: 4, semester: 2 }]);

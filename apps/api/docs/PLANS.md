@@ -19,7 +19,10 @@ a rejected row rolls the whole plan back, other plans are unaffected.
   `semester`, `dependencies`, `credits_required`, `subject_name` and
   `subject_credits` (NULL where ITBA sent none). The same subject may appear in
   several sections (orientations). Replaced with each fetch, so entries ITBA
-  stops sending disappear. `GET /v1/subjects?plan=` reads it.
+  stops sending disappear; `fetched_at` says when. Written in its own
+  transaction before the rest of the plan, so a `subject`/`plan_subject` row
+  the database rejects never keeps it stale. `GET /v1/subjects?plan=` reads
+  it.
 * `subject` + `plan_subject` (`section`, `year`, `semester`, `dependencies`,
   `credits_required`): upserted; rows the gateway stops sending are kept.
   Known limits, which is why `/v1/subjects` no longer reads them:
@@ -35,13 +38,16 @@ a rejected row rolls the whole plan back, other plans are unaffected.
   deleted, the rest upserted. `section` matches `plan_subject.section` of the
   group's subjects.
 
-`plan_entry` and `plan_section_requirement` are each written in a savepoint: a
-row the database rejects is logged and the stored rows stay as they were; it
-never fails the plan's subjects. Both need the plan row (FK, cascades on
+A `plan_entry` or `plan_section_requirement` row the database rejects is logged
+and the stored rows stay as they were; it never fails the plan's subjects. Both
+need the plan row (FK, cascades on
 delete): syncing a plan id that is not registered writes only `subject` and
 `plan_subject`. Neither is counted in the sync result (its JSON is fixed). The
 sync runs at 00:00 and 12:00 (`DataSyncJob`), so a change in ITBA shows up
 within 12 hours, or right away with `POST /v1/sync/plan/{planId}/subjects`.
+A plan whose fetch keeps failing (gateway errors) keeps serving its last
+stored entries; once they are more than 2 days old each read logs `Serving
+plan entries older than 2 days` with the plan and `fetched_at`.
 
 The per-plan sync response is still the subjects array; the requirements are
 read with the endpoint below.

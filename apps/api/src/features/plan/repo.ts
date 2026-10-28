@@ -145,18 +145,22 @@ export interface PlanEntry {
   subjectCredits: number;
 }
 
-/** The plan's entries in the order they were fetched. */
-export async function findPlanEntries(db: Db, planId: string): Promise<PlanEntry[]> {
+/** The plan's entries in the order they were fetched, and when (Postgres text; null when none are stored). */
+export async function findPlanEntries(db: Db, planId: string): Promise<{ entries: PlanEntry[]; fetchedAt: string | null }> {
   const rows = await db.select().from(planEntry).where(eq(planEntry.planId, planId)).orderBy(asc(planEntry.position));
-  return rows.map((r) => ({
-    subjectId: r.subjectId, section: r.section, year: r.year, semester: r.semester, dependencies: r.dependencies,
-    creditsRequired: r.creditsRequired, subjectName: r.subjectName, subjectCredits: r.subjectCredits,
-  }));
+  return {
+    entries: rows.map((r) => ({
+      subjectId: r.subjectId, section: r.section, year: r.year, semester: r.semester, dependencies: r.dependencies,
+      creditsRequired: r.creditsRequired, subjectName: r.subjectName, subjectCredits: r.subjectCredits,
+    })),
+    fetchedAt: rows[0]?.fetchedAt ?? null,
+  };
 }
 
 /** The plan's rows become exactly `entries`, positioned by their index. */
-export async function replacePlanEntries(db: Db, planId: string, entries: PlanEntry[]): Promise<void> {
+export async function replacePlanEntries(db: Db, planId: string, entries: PlanEntry[], now: Micros): Promise<void> {
   await db.delete(planEntry).where(eq(planEntry.planId, planId));
   if (entries.length === 0) return;
-  await db.insert(planEntry).values(entries.map((e, position) => ({ planId, position, ...e })));
+  const fetchedAt = toPgTimestamp(now);
+  await db.insert(planEntry).values(entries.map((e, position) => ({ planId, position, ...e, fetchedAt })));
 }

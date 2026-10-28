@@ -9,5 +9,6 @@ CREATE TABLE public.plan_entry (
     credits_required INTEGER,
     subject_name     VARCHAR(255),
     subject_credits  INTEGER        NOT NULL,
+    fetched_at       TIMESTAMPTZ    NOT NULL,
     CONSTRAINT plan_entry_pkey PRIMARY KEY (plan_id, position)
 );

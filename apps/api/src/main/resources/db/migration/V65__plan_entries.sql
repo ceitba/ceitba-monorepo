@@ -6,7 +6,8 @@
 -- sections (orientations), and year/semester/credits_required/name/credits
 -- are the plan's own values (NULL where ITBA leaves them out). The sync
 -- replaces a plan's rows on every fetch; GET /v1/subjects?plan= reads them
--- instead of calling ITBA (docs/PLANS.md).
+-- instead of calling ITBA (docs/PLANS.md). fetched_at is when the sync
+-- stored them (the same on every row of a plan).
 --
 -- plan_subject (key subject + plan: one section per subject, global subject
 -- name/credits) stays as it is for /v1/plans/*; it is retired in a later
@@ -25,5 +26,6 @@ CREATE TABLE public.plan_entry (
     credits_required INTEGER,
     subject_name     VARCHAR(255),
     subject_credits  INTEGER        NOT NULL,
+    fetched_at       TIMESTAMPTZ    NOT NULL,
     CONSTRAINT plan_entry_pkey PRIMARY KEY (plan_id, position)
 );

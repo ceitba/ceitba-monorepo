@@ -4,10 +4,14 @@
 import type { Deps } from '../../deps';
 import { withTx } from '../../db/client';
 import { ResourceNotFoundError } from '../../http/errors';
+import { parsePgTimestamp, systemNowMicros } from '../../lib/time';
 import { organizedCommissions, type OrganizedCommission } from '../commission/correctionOverlay';
 import { currentTermBySubject, isPastTerm } from '../commission/logic/commissionTerms';
 import * as commissionRepo from '../commission/repo';
 import * as planRepo from '../plan/repo';
+
+/** The sync runs twice a day: entries older than this mean its last four runs failed for the plan. */
+const STALE_AFTER_MICROS = 2 * 24 * 3600 * 1_000_000;
 
 /** OrganizedSubjectsResponse.SubjectDetail. */
 export interface SubjectDetail {
@@ -46,7 +50,11 @@ export class SubjectService {
    */
   async getSubjectsByPlanOrganized(planId: string, viewerId: string | null): Promise<OrganizedSubjects> {
     const stored = await withTx(this.deps.db, (tx) => planRepo.findPlanEntries(tx, planId), { readOnly: true });
-    const subjectPlans = stored.length > 0 ? stored : (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    if (stored.fetchedAt !== null && systemNowMicros() - parsePgTimestamp(stored.fetchedAt) > STALE_AFTER_MICROS) {
+      // Still served (better than nothing while ITBA fails), but its syncs are failing: say so.
+      this.deps.log.warn({ plan: planId, fetchedAt: stored.fetchedAt }, 'Serving plan entries older than 2 days: its sync keeps failing');
+    }
+    const subjectPlans = stored.entries.length > 0 ? stored.entries : (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
     if (subjectPlans.length === 0) throw new ResourceNotFoundError('Plan', planId);
 
     const codes = [...new Set(subjectPlans.map((sp) => sp.subjectId).filter((c): c is string => c != null))];
