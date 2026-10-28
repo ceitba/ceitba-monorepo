@@ -39,6 +39,11 @@ export default function ManageCareersSection() {
     return () => { active = false }
   }, [reloadKey])
 
+  // A failed reload after a save keeps the list on screen: say so instead.
+  useEffect(() => {
+    if (loadFailed && careers !== null) toast.error(t('manage.careers.loadFailed'))
+  }, [loadFailed, careers, t])
+
   function done(message: string) {
     setEditing(null)
     toast.success(message)
@@ -127,6 +132,7 @@ function EditModal({ editing, onClose, onDone }: { editing: Editing; onClose: ()
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [idError, setIdError] = useState('')
   // A plan's name is optional when adding it (it falls back to the id).
   const nameRequired = editing.kind !== 'newPlan'
   const valid = (!creating || id.trim() !== '') && (!nameRequired || name.trim() !== '')
@@ -142,6 +148,7 @@ function EditModal({ editing, onClose, onDone }: { editing: Editing; onClose: ()
     if (!valid) return
     setBusy(true)
     setError('')
+    setIdError('')
     try {
       switch (editing.kind) {
         case 'newCareer':
@@ -165,7 +172,7 @@ function EditModal({ editing, onClose, onDone }: { editing: Editing; onClose: ()
       // 409 on create: the id is taken (plan ids are unique across careers).
       if (creating && err instanceof ApiError && err.status === 409) {
         console.error(err)
-        setError(t(isPlan ? 'manage.careers.planIdTaken' : 'manage.careers.careerIdTaken', { id: id.trim() }))
+        setIdError(t(isPlan ? 'manage.careers.planIdTaken' : 'manage.careers.careerIdTaken', { id: id.trim() }))
       } else {
         setError(adminErrorMessage(err, t))
       }
@@ -193,11 +200,12 @@ function EditModal({ editing, onClose, onDone }: { editing: Editing; onClose: ()
           <Field
             label={t('manage.careers.idField')}
             hint={t(isPlan ? 'manage.careers.planIdHint' : 'manage.careers.careerIdHint')}
+            error={idError || undefined}
             required
           >
             {(p) => (
-              <input {...p} value={id} maxLength={25} onChange={(e) => setId(e.target.value)}
-                placeholder={isPlan ? 'S10-Rev23' : 'S'} className={inputClass({ className: 'font-mono' })} />
+              <input {...p} value={id} maxLength={25} onChange={(e) => { setId(e.target.value); setIdError('') }}
+                placeholder={isPlan ? 'S10-Rev23' : 'S'} className={inputClass({ invalid: !!idError, className: 'font-mono' })} />
             )}
           </Field>
         )}

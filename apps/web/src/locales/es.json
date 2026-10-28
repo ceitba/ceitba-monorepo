@@ -378,7 +378,7 @@
       "planCount_one": "{{count}} plan",
       "planCount_other": "{{count}} planes",
       "renameCareerAria": "Editar la carrera {{name}}",
-      "newPlanAria": "Agregar un plan a {{name}}",
+      "newPlanAria": "Agregar plan a {{name}}",
       "renamePlanAria": "Editar el plan {{id}}",
       "renameCareerTitle": "Editar carrera {{id}}",
       "newPlanTitle": "Nuevo plan de {{name}}",

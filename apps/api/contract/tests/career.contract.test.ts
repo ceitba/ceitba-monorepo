@@ -1,7 +1,7 @@
 // Ports apps/api/src/test/java/org/ceitba/api/web/career/CareerEndpointsIT.java
 // and CareerWritesIT.java. ROLE_STAFF comes from a real ceitba_staff row.
 import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { bearer, mintJwt, seedCareer, seedPlan, seedStaff, useServer, type As } from '../support';
+import { apiKey, bearer, mintJwt, seedApiKey, seedCareer, seedPlan, seedStaff, useServer, type As } from '../support';
 
 const api = useServer();
 let user: As;
@@ -216,6 +216,10 @@ describe('CareerWritesIT', () => {
     await seedPlan(api.db, 'S10-Rev23', 'S', 'Plan 2023');
     expect((await api.put('/v1/careers/S/plans/S10-Rev23', { as: user, body: { name: 'x' } })).status).toBe(403);
     expect((await api.put('/v1/careers/S/plans/S10-Rev23', { body: { name: 'x' } })).status).toBe(401);
+    // A staff member's API key without the staff scope is a plain USER.
+    const staffId = await seedStaff(api.db, 'boss@itba.edu.ar');
+    const key = await seedApiKey(api.db, staffId, ['read', 'write']);
+    expect((await api.put('/v1/careers/S/plans/S10-Rev23', { as: apiKey(key.key), body: { name: 'x' } })).status).toBe(403);
     const [row] = await api.db`SELECT name FROM public.plan WHERE id = 'S10-Rev23'`;
     expect(row!.name).toBe('Plan 2023');
   });
