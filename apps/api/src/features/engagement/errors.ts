@@ -3,6 +3,7 @@
 import { CodedError } from '../../http/errors';
 
 export const ENGAGEMENT_REASONS = {
+  ARTICLE_NOT_PUBLISHED: { code: 'ArticleNotPublished', message: 'This article is not published yet' },
   COMMENTS_DISABLED: { code: 'CommentsDisabled', message: 'Comments are turned off for this article' },
   POLL_CLOSED: { code: 'PollClosed', message: 'This poll is closed' },
   POLL_HAS_VOTES: { code: 'PollHasVotes', message: 'The options of a poll with votes cannot change' },

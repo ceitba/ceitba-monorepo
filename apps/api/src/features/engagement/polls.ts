@@ -6,6 +6,7 @@ import { AccessDeniedError, ResourceNotFoundError, ValidationError } from '../..
 import { javaTrim } from '../../lib/javaCompat';
 import { parsePgTimestamp, systemNowMicros, toPgTimestamp } from '../../lib/time';
 import type { CreatePollRequest, PollResponse, PollVoteRequest, ResultsVisibility, UpdatePollRequest } from './dto';
+import { REACTION_RATE_RULE, requirePublished } from './comments';
 import { EngagementConflictError } from './errors';
 import { dbInstant, type ArticleAccess, type ArticleGate, type Viewer } from './gate';
 import * as repo from './repo';
@@ -71,8 +72,10 @@ export class PollService {
   }
 
   vote(articleId: string, pollId: string, viewer: Viewer, req: PollVoteRequest | null): Promise<PollResponse> {
+    this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
+      requirePublished(access);
       const poll = await this.requirePoll(tx, articleId, pollId, true);
       if (this.isClosed(poll)) throw new EngagementConflictError('POLL_CLOSED');
       if (req === null) {

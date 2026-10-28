@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Badge, Button, ConfirmDialog, ErrorState, SkeletonText, ToggleGroup, textareaClass, toast } from '@/components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, LoadingRegion, SkeletonText, ToggleGroup, textareaClass, toast } from '@/components/ui'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/hooks/useAuth'
 import { startGoogleSignIn } from '@/store/authStore'
@@ -23,6 +23,9 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
   const [reloadKey, setReloadKey] = useState(0)
   const [confirmDelete, setConfirmDelete] = useState<Comment | null>(null)
   const [deleting, setDeleting] = useState(false)
+  // The comment with an action in flight (its controls are disabled), and the ones this reader reported.
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [reported, setReported] = useState<Set<string>>(() => new Set())
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
   const signIn = () => startGoogleSignIn(location.pathname + location.search)
@@ -45,28 +48,32 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
     else toast.error(t('engagement.comments.actionError'))
   }
 
+  async function run(c: Comment, fn: () => Promise<void>) {
+    if (busyId) return
+    setBusyId(c.id)
+    try { await fn() } catch (err) { failed(err) } finally { setBusyId(null) }
+  }
+
   const actions: CommentActions = {
     signedIn: Boolean(profile),
     canModerate: thread?.canModerate ?? false,
     enabled: thread?.enabled ?? false,
+    busyId,
+    reported,
     async reply(parent, body) {
       try { await postComment(articleId, body, parent.id); reload(); return true } catch (err) { failed(err); return false }
     },
-    async like(c) {
-      try {
-        const r = await setCommentLike(articleId, c.id, !c.likedByMe)
-        patch(c.id, (x) => ({ ...x, likes: r.likes, likedByMe: r.likedByMe }))
-      } catch (err) { failed(err) }
-    },
-    async report(c) {
-      try { await reportComment(articleId, c.id, null); toast.success(t('engagement.comments.reported')) } catch (err) { failed(err) }
-    },
-    async pin(c) {
-      try { await pinComment(articleId, c.id, !c.pinned); reload() } catch (err) { failed(err) }
-    },
-    async restore(c) {
-      try { await restoreComment(articleId, c.id); reload() } catch (err) { failed(err) }
-    },
+    like: (c) => run(c, async () => {
+      const r = await setCommentLike(articleId, c.id, !c.likedByMe)
+      patch(c.id, (x) => ({ ...x, likes: r.likes, likedByMe: r.likedByMe }))
+    }),
+    report: (c) => run(c, async () => {
+      await reportComment(articleId, c.id, null)
+      setReported((s) => new Set(s).add(c.id))
+      toast.success(t('engagement.comments.reported'))
+    }),
+    pin: (c) => run(c, async () => { await pinComment(articleId, c.id, !c.pinned); reload() }),
+    restore: (c) => run(c, async () => { await restoreComment(articleId, c.id); reload() }),
     askDelete: (c) => setConfirmDelete(c),
   }
 
@@ -100,7 +107,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
         )}
       </div>
 
-      {status === 'loading' && <SkeletonText lines={4} />}
+      {status === 'loading' && <LoadingRegion><SkeletonText lines={4} /></LoadingRegion>}
       {status === 'error' && <ErrorState title={t('engagement.comments.loadError')} onRetry={reload} />}
       {status === 'ready' && thread && (
         <>
@@ -122,7 +129,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
           )}
 
           {thread.comments.length === 0 ? (
-            thread.enabled && <p className="mt-8 font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('engagement.comments.empty')}</p>
+            thread.enabled && <EmptyState compact title={t('engagement.comments.empty')} />
           ) : (
             <ol className="mt-8 flex flex-col gap-8">
               {thread.comments.map((c) => <CommentItem key={c.id} comment={c} actions={actions} />)}
@@ -150,6 +157,8 @@ interface CommentActions {
   signedIn: boolean
   canModerate: boolean
   enabled: boolean
+  busyId: string | null
+  reported: Set<string>
   reply: (parent: Comment, body: string) => Promise<boolean>
   like: (c: Comment) => void
   report: (c: Comment) => void
@@ -162,7 +171,8 @@ function CommentItem({ comment: c, actions, isReply = false }: { comment: Commen
   const { t, i18n } = useTranslation()
   const [replying, setReplying] = useState(false)
   const when = relativeTime(c.createdAt, i18n.language)
-  const link = 'font-mono text-label text-ink-secondary dark:text-night-muted hover:text-primary dark:hover:text-primary-300 min-h-[32px] transition-colors duration-150'
+  const busy = actions.busyId === c.id
+  const link = 'inline-flex items-center gap-1.5 font-mono text-label text-ink-secondary dark:text-night-muted hover:text-primary dark:hover:text-primary-300 min-h-[44px] sm:min-h-[36px] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:text-ink-secondary dark:disabled:hover:text-night-muted'
 
   return (
     <li className="flex gap-3">
@@ -184,12 +194,13 @@ function CommentItem({ comment: c, actions, isReply = false }: { comment: Commen
               <button
                 type="button"
                 onClick={() => actions.like(c)}
-                disabled={!actions.signedIn || (!actions.enabled && !c.likedByMe)}
+                disabled={busy || !actions.signedIn || (!actions.enabled && !c.likedByMe)}
                 aria-pressed={c.likedByMe}
                 aria-label={t('engagement.comments.likeAria', { count: c.likes })}
-                className={[link, c.likedByMe ? 'text-primary! dark:text-primary-300!' : '', 'disabled:hover:text-ink-secondary disabled:cursor-default'].join(' ')}
+                title={actions.signedIn ? undefined : t('engagement.comments.signInToLike')}
+                className={[link, c.likedByMe ? 'text-primary! dark:text-primary-300!' : ''].join(' ')}
               >
-                ♥ {c.likes}
+                <HeartIcon filled={c.likedByMe} /> {c.likes}
               </button>
               {!isReply && actions.signedIn && actions.enabled && (
                 <button type="button" className={link} onClick={() => setReplying((r) => !r)} aria-expanded={replying}>
@@ -200,17 +211,21 @@ function CommentItem({ comment: c, actions, isReply = false }: { comment: Commen
                 <button type="button" className={link} onClick={() => actions.askDelete(c)}>{t('engagement.comments.delete')}</button>
               )}
               {actions.canModerate && !isReply && (
-                <button type="button" className={link} onClick={() => actions.pin(c)}>
+                <button type="button" className={link} disabled={busy} onClick={() => actions.pin(c)}>
                   {c.pinned ? t('engagement.comments.unpin') : t('engagement.comments.pin')}
                 </button>
               )}
               {actions.canModerate && c.hidden && (
-                <button type="button" className={link} onClick={() => actions.restore(c)}>{t('engagement.comments.restore')}</button>
+                <button type="button" className={link} disabled={busy} onClick={() => actions.restore(c)}>{t('engagement.comments.restore')}</button>
               )}
               {actions.signedIn && !c.mine && !c.hidden && (
-                <button type="button" className={`${link} hover:text-red-600! dark:hover:text-red-400!`} onClick={() => actions.report(c)}>
-                  {t('engagement.comments.report')}
-                </button>
+                actions.reported.has(c.id)
+                  ? <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('engagement.comments.reportedLabel')}</span>
+                  : (
+                    <button type="button" className={`${link} hover:text-red-600! dark:hover:text-red-400!`} disabled={busy} onClick={() => actions.report(c)}>
+                      {t('engagement.comments.report')}
+                    </button>
+                  )
               )}
             </div>
           </>
@@ -254,6 +269,7 @@ function Composer({ placeholder, submitLabel, onSubmit, onCancel, compact = fals
   const { t } = useTranslation()
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const counterId = useId()
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -271,12 +287,13 @@ function Composer({ placeholder, submitLabel, onSubmit, onCancel, compact = fals
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
+        aria-describedby={counterId}
         maxLength={COMMENT_MAX}
         autoFocus={autoFocus}
         className={textareaClass({ className: compact ? 'min-h-[64px]' : '' })}
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-label text-ink-secondary dark:text-night-muted">
+        <span id={counterId} className="font-mono text-label text-ink-secondary dark:text-night-muted">
           {t('engagement.comments.counter', { count: text.length, max: COMMENT_MAX })}
         </span>
         <div className="flex gap-2">
@@ -295,6 +312,14 @@ function Avatar({ name, url, deleted }: { name: string | null; url: string | nul
     <span aria-hidden="true" className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-mono text-[11px] font-semibold bg-primary-50 text-primary-700 dark:bg-night-raised dark:text-night-text">
       {deleted ? '–' : initials || '?'}
     </span>
+  )
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
   )
 }
 

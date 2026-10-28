@@ -25,7 +25,7 @@ export default function CodeBlockView(props: ReactNodeViewProps) {
   return <CodeNodeView {...props} />
 }
 
-function PollNodeView({ node }: ReactNodeViewProps) {
+function PollNodeView({ node, deleteNode }: ReactNodeViewProps) {
   const { t } = useTranslation()
   const articleId = useEditorArticleId()
   const pollId = node.textContent.trim()
@@ -33,9 +33,10 @@ function PollNodeView({ node }: ReactNodeViewProps) {
     <NodeViewWrapper className="code-block-node">
       <div className="code-block-node__bar" contentEditable={false}>
         <span>{t('engagement.editor.pollBlock')}</span>
+        <button type="button" onClick={() => deleteNode()}>{t('engagement.editor.removeBlock')}</button>
       </div>
-      {/* The id stays editable (and in the Markdown) but out of sight. */}
-      <pre className="sr-only" aria-hidden="true"><NodeViewContent<'code'> as="code" /></pre>
+      {/* The poll id: what the Markdown stores. Visible so the caret never edits it unseen. */}
+      <pre className="code-block-node__poll-id" aria-label={t('engagement.editor.pollId')}><NodeViewContent<'code'> as="code" /></pre>
       <div className="code-block-node__preview" contentEditable={false}>
         {articleId && pollId ? <PollBlock articleId={articleId} pollId={pollId} preview /> : <p>{t('engagement.poll.unavailable')}</p>}
       </div>

@@ -92,6 +92,7 @@ asserts the code over HTTP (the mapping test when none does).
 | 405 | `MethodNotAllowed` | Method '<METHOD>' is not supported. | MethodNotAllowedError (+ Allow) | `health-and-error.contract.test.ts` |
 | 406 | `NotAcceptable` | Acceptable representations: [text/html]. | NotAcceptableError (+ Accept; `produces` routes only) | `accept-negotiation.contract.test.ts` |
 | 409 | `AlreadySuggested` | <message> | ScheduleCorrectionError ALREADY_SUGGESTED | `correction-schedule.contract.test.ts` |
+| 409 | `ArticleNotPublished` | This article is not published yet | EngagementConflictError ARTICLE_NOT_PUBLISHED | `news-engagement-comments.contract.test.ts` |
 | 409 | `BOOKMARK_LIMIT` | <message> | BookmarkLimitError | `wiki-bookmarks.contract.test.ts` |
 | 409 | `CommentsDisabled` | Comments are turned off for this article | EngagementConflictError COMMENTS_DISABLED | `news-engagement-comments.contract.test.ts` |
 | 409 | `CommissionEnded` | <message> | ScheduleCorrectionError COMMISSION_ENDED | `correction-schedule.contract.test.ts` |

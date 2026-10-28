@@ -14,6 +14,10 @@ import * as repo from './repo';
 
 /** Reports that hide a comment until an editor restores it. */
 export const REPORT_THRESHOLD = 3;
+/** Per-user quotas (rate-limit user rules). Likes share theirs with poll votes. */
+const COMMENT_RATE_RULE = 'article-comments';
+const REPORT_RATE_RULE = 'article-comment-reports';
+export const REACTION_RATE_RULE = 'article-reactions';
 
 const now = () => toPgTimestamp(systemNowMicros());
 
@@ -43,12 +47,17 @@ export class CommentService {
   }
 
   create(articleId: string, userId: string, viewer: Viewer, req: CreateCommentRequest): Promise<CommentResponse> {
+    this.deps.userRateLimiter.consume(COMMENT_RATE_RULE, userId);
     return withTx(this.deps.db, async (tx) => {
-      const { article } = await this.gate.load(tx, articleId, viewer);
-      if (!article.commentsEnabled || article.status !== 'published') throw new EngagementConflictError('COMMENTS_DISABLED');
+      const access = await this.gate.load(tx, articleId, viewer);
+      requirePublished(access);
+      if (!access.article.commentsEnabled) throw new EngagementConflictError('COMMENTS_DISABLED');
       if (req.parentId !== null) {
         const parent = await repo.findComment(tx, articleId, req.parentId);
-        if (!parent || parent.deletedAt !== null) throw new ValidationError('parentId', req.parentId, 'must be a comment of this article');
+        // A hidden parent only exists for editors, like everywhere else.
+        if (!parent || parent.deletedAt !== null || (parent.hiddenAt !== null && !access.canModerate)) {
+          throw new ValidationError('parentId', req.parentId, 'must be a comment of this article');
+        }
         if (parent.parentId !== null) throw new ValidationError('parentId', req.parentId, 'replies can only answer a top-level comment');
       }
       const id = crypto.randomUUID();
@@ -67,10 +76,12 @@ export class CommentService {
   }
 
   like(articleId: string, commentId: string, viewer: Viewer, liked: boolean): Promise<LikeResponse> {
+    this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
       await this.requireComment(tx, access, articleId, commentId);
       if (liked) {
+        requirePublished(access);
         if (!access.article.commentsEnabled) throw new EngagementConflictError('COMMENTS_DISABLED');
         await repo.likeComment(tx, commentId, viewer.userId!, now());
       } else {
@@ -82,6 +93,7 @@ export class CommentService {
   }
 
   report(articleId: string, commentId: string, viewer: Viewer, req: ReportCommentRequest): Promise<void> {
+    this.deps.userRateLimiter.consume(REPORT_RATE_RULE, viewer.userId!);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
       const c = await this.requireComment(tx, access, articleId, commentId, true);
@@ -93,7 +105,8 @@ export class CommentService {
 
   pin(articleId: string, commentId: string, viewer: Viewer, pinned: boolean): Promise<CommentResponse> {
     return withTx(this.deps.db, async (tx) => {
-      const access = await this.moderate(tx, articleId, viewer);
+      // The article row lock serializes concurrent pins (one pinned comment per article).
+      const access = await this.moderate(tx, articleId, viewer, true);
       const c = await this.requireComment(tx, access, articleId, commentId, true);
       if (pinned && c.parentId !== null) throw new ValidationError('pinned', pinned, 'only top-level comments can be pinned');
       if (pinned) await repo.pinComment(tx, articleId, commentId);
@@ -136,6 +149,11 @@ export class CommentService {
   private async view(tx: Db, id: string, viewer: Viewer): Promise<CommentResponse> {
     return toResponse((await repo.findCommentView(tx, id, viewer.userId))!, viewer, []);
   }
+}
+
+/** Readers react only to published articles; editors' drafts gather no comments, likes or votes. */
+export function requirePublished(access: ArticleAccess): void {
+  if (access.article.status !== 'published') throw new EngagementConflictError('ARTICLE_NOT_PUBLISHED');
 }
 
 function toResponse(r: repo.CommentViewRow, viewer: Viewer, replies: CommentResponse[]): CommentResponse {

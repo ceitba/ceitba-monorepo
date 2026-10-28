@@ -124,6 +124,13 @@ describe('ArticleComments', () => {
     expect((await api.get(path())).json.total).toBe(1);
   });
 
+  test('aHiddenCommentTakesNoRepliesFromReaders', async () => {
+    const c = (await post({ body: 'spam' })).json;
+    for (const e of ['r1', 'r2', 'r3']) await api.put(path(`/${c.id}/report`), { as: await as(`${e}@itba.edu.ar`), body: {} });
+    expect((await post({ body: 'x', parentId: c.id })).status).toBe(400);
+    expect((await post({ body: 'note', parentId: c.id }, editor)).status).toBe(201);
+  });
+
   test('turningCommentsOffKeepsThemReadableAndBlocksNewOnes', async () => {
     const c = (await post({ body: 'a' })).json;
     expect((await api.put(path('/settings'), { as: await reader(), body: { enabled: false } })).status).toBe(403);
@@ -150,7 +157,9 @@ describe('ArticleComments', () => {
     expect((await api.post('/v1/articles/c-draft/comments', { as: await reader(), body: { body: 'x' } })).status).toBe(404);
     expect((await api.get('/v1/articles/c-draft/comments', { as: await editor() })).status).toBe(200);
     // Not published yet: nobody can comment.
-    expect((await api.post('/v1/articles/c-draft/comments', { as: await editor(), body: { body: 'x' } })).status).toBe(409);
+    const r = await api.post('/v1/articles/c-draft/comments', { as: await editor(), body: { body: 'x' } });
+    expect(r.status).toBe(409);
+    expect(r.json.error).toBe('ArticleNotPublished');
     expect((await api.get('/v1/articles/nope/comments')).status).toBe(404);
   });
 });

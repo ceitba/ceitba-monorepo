@@ -2,6 +2,7 @@
 
 import type { z } from 'zod';
 import { jv } from '../../http/validation';
+import { javaIsBlank } from '../../lib/javaCompat';
 
 export const COMMENT_MAX = 1000;
 export const RESULTS_VISIBILITIES = ['after_vote', 'after_close'] as const;
@@ -63,7 +64,7 @@ export interface CommentSettingsResponse { enabled: boolean }
 const optionLabels = (notNull: boolean) =>
   jv.list(jv.string({ notBlank: true, size: { max: 120 } }), { notNull, size: { min: 2, max: 6 } });
 /** In a PATCH: absent leaves it, present must not be blank. */
-const notBlankIfPresent = (v: string) => (v.trim() === '' ? 'must not be blank' : null);
+const notBlankIfPresent = (v: string) => (javaIsBlank(v) ? 'must not be blank' : null);
 
 export const CreatePollRequest = jv.object({
   question: jv.string({ notBlank: true, size: { max: 300 } }),

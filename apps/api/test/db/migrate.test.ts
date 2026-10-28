@@ -1,7 +1,9 @@
 // The Flyway-compatible runner (src/db/migrate.ts) against what Java's Flyway
 // 10.10 wrote: test/fixtures/flyway-history-java-*.json were read from
 // flyway_schema_history of databases the jar migrated (prod locations, and
-// the IT locations + target 4.52).
+// the IT locations + target 4.52). Rows after V63 / V4.52 were written by
+// this runner (the jar is gone), so for them the checksum tests only hold the
+// runner to itself.
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +15,7 @@ import prodHistory from '../fixtures/flyway-history-java-prod.json';
 import itHistory from '../fixtures/flyway-history-java-it.json';
 import { MIGRATIONS_DIR, TEST_MIGRATIONS_DIR } from '../../src/config/sections/db';
 import { check, compareVersions, flywayChecksum, flywayLockNumber, javaStringHashCode, migrate, readHistory, resolveMigrations, validate, type AppliedMigration } from '../../src/db/migrate';
-import { cloneDatabase, dropDatabase, pgServerUrl, withDatabase } from '../../contract/support/pg';
+import { IT_FLYWAY_TARGET, cloneDatabase, dropDatabase, pgServerUrl, withDatabase } from '../../contract/support/pg';
 import { TEST_JWT_SECRET } from '../../contract/support/env';
 
 const asApplied = (rows: typeof prodHistory): AppliedMigration[] => rows.map((r) => ({ ...r, installedBy: 'postgres', executionTime: 1, success: true }));
@@ -173,7 +175,7 @@ describe('against Postgres', () => {
     const db = await cloneDatabase('mig');
     const sql = postgres(withDatabase(await pgServerUrl(), db), { max: 1, onnotice: () => {} });
     try {
-      expect(await check(sql, { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: '4.52', outOfOrder: true }))
+      expect(await check(sql, { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: IT_FLYWAY_TARGET, outOfOrder: true }))
         .toEqual({ issues: [], pending: [] });
     } finally {
       await sql.end();

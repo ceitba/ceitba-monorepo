@@ -99,8 +99,9 @@ export async function softDeleteComment(db: Db, id: string, now: string): Promis
 
 /** Pins `id` and unpins every other comment of the article (one pin per article). */
 export async function pinComment(db: Db, articleId: string, id: string): Promise<void> {
-  await db.execute(sql`UPDATE public.article_comments SET pinned = (id = ${id}::uuid)
-    WHERE article_id = ${articleId} AND (pinned OR id = ${id}::uuid)`);
+  // Two statements: the one-pin unique index is checked row by row, so unpin first.
+  await db.execute(sql`UPDATE public.article_comments SET pinned = false WHERE article_id = ${articleId} AND pinned AND id <> ${id}::uuid`);
+  await db.execute(sql`UPDATE public.article_comments SET pinned = true WHERE id = ${id}::uuid`);
 }
 
 export async function unpinComment(db: Db, id: string): Promise<void> {

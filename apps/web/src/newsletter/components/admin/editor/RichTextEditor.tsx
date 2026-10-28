@@ -117,6 +117,7 @@ export default function RichTextEditor({ value, onChange, signPath, invalid, ins
   const placeholderRef = useRef(t('editor.placeholder'))
   placeholderRef.current = t('editor.placeholder')
   const sourceAtToggleRef = useRef('')
+  const sourceRef = useRef<HTMLTextAreaElement>(null)
 
   async function uploadImages(files: File[]) {
     const editor = editorRef.current
@@ -216,7 +217,9 @@ export default function RichTextEditor({ value, onChange, signPath, invalid, ins
     if (!insertPollRef) return
     insertPollRef.current = (pollId) => {
       if (mode === 'markdown') {
-        const next = `${source.trimEnd()}\n\n${pollFence(pollId)}\n`
+        // At the textarea's caret (the end when it never had focus), on its own lines.
+        const at = sourceRef.current?.selectionStart ?? source.length
+        const next = `${source.slice(0, at).trimEnd()}\n\n${pollFence(pollId)}\n\n${source.slice(at).trimStart()}`
         setSource(next)
         onChangeRef.current(next)
         return
@@ -268,6 +271,7 @@ export default function RichTextEditor({ value, onChange, signPath, invalid, ins
         <div className="px-5 sm:px-8 py-6">
           <p className="mb-3 font-mono text-label text-ink-secondary dark:text-night-muted">{t('editor.markdownHint')}</p>
           <textarea
+            ref={sourceRef}
             value={source}
             onChange={(e) => { setSource(e.target.value); onChangeRef.current(e.target.value) }}
             spellCheck

@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Badge, Button, ConfirmDialog, Field, IconButton, CloseIcon, Modal, Switch, ToggleGroup, inputClass, toast,
+  Badge, Button, ConfirmDialog, ErrorState, Field, IconButton, CloseIcon, LoadingRegion, Modal, SkeletonText, Switch, ToggleGroup, inputClass, toast,
 } from '@/components/ui'
 import { ApiError } from '@/api/client'
 import {
@@ -26,20 +26,30 @@ export default function EngagementSettings({ articleId, onInsert }: EngagementSe
   const [creating, setCreating] = useState(false)
   const [toDelete, setToDelete] = useState<Poll | null>(null)
   const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!articleId) return
     let active = true
-    fetchPolls(articleId).then((p) => { if (active) setPolls(p) }).catch(() => {})
-    fetchComments(articleId, 'new')
-      .then((th) => { if (active) { setCommentsOn(th.enabled); setCanModerate(th.canModerate) } })
-      .catch(() => {})
+    setStatus('loading')
+    Promise.all([fetchPolls(articleId), fetchComments(articleId, 'new')])
+      .then(([p, th]) => {
+        if (!active) return
+        setPolls(p)
+        setCommentsOn(th.enabled)
+        setCanModerate(th.canModerate)
+        setStatus('ready')
+      })
+      .catch(() => { if (active) setStatus('error') })
     return () => { active = false }
-  }, [articleId])
+  }, [articleId, reloadKey])
 
   if (!articleId) {
     return <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted leading-relaxed">{t('engagement.editor.saveFirst')}</p>
   }
+  if (status === 'loading') return <LoadingRegion><SkeletonText lines={3} /></LoadingRegion>
+  if (status === 'error') return <ErrorState compact title={t('engagement.editor.loadError')} onRetry={() => setReloadKey((k) => k + 1)} />
 
   const replace = (p: Poll) => setPolls((ps) => ps.map((x) => (x.id === p.id ? p : x)))
 
@@ -150,6 +160,7 @@ function PollFormModal({ onClose, onSubmit }: PollFormModalProps) {
   const [closesAt, setClosesAt] = useState('')
   const [attempted, setAttempted] = useState(false)
   const [saving, setSaving] = useState(false)
+  const optionsErrorId = useId()
 
   const filled = options.map((o) => o.trim()).filter(Boolean)
   const questionError = attempted && !question.trim() ? t('engagement.editor.form.questionRequired') : undefined
@@ -196,6 +207,8 @@ function PollFormModal({ onClose, onSubmit }: PollFormModalProps) {
                   maxLength={120}
                   onChange={(e) => setOptions((os) => os.map((x, j) => (j === i ? e.target.value : x)))}
                   aria-label={t('engagement.editor.form.optionLabel', { n: i + 1 })}
+                  aria-invalid={!!optionsError && !o.trim()}
+                  aria-describedby={optionsError ? optionsErrorId : undefined}
                   className={inputClass({ invalid: !!optionsError && !o.trim() })}
                 />
                 {options.length > POLL_MIN_OPTIONS && (
@@ -206,7 +219,7 @@ function PollFormModal({ onClose, onSubmit }: PollFormModalProps) {
               </div>
             ))}
           </div>
-          {optionsError && <p className="mt-1.5 font-body text-body-sm text-red-600 dark:text-red-400">{optionsError}</p>}
+          {optionsError && <p id={optionsErrorId} role="alert" className="mt-1.5 font-body text-body-sm text-red-600 dark:text-red-400">{optionsError}</p>}
           {options.length < POLL_MAX_OPTIONS && (
             <Button size="sm" variant="ghost" className="mt-2 -ml-3" onClick={() => setOptions((os) => [...os, ''])}>{t('engagement.editor.form.addOption')}</Button>
           )}

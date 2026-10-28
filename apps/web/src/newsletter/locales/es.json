@@ -1197,7 +1197,8 @@
       "yourVote": "Tu voto",
       "unavailable": "Encuesta no disponible",
       "voteError": "No pudimos guardar tu voto. Probá de nuevo.",
-      "closedError": "La encuesta ya cerró."
+      "closedError": "La encuesta ya cerró.",
+      "loadError": "No pudimos cargar la encuesta"
     },
     "comments": {
       "title": "Comentarios",
@@ -1213,7 +1214,7 @@
       "replySubmit": "Responder",
       "counter": "{{count}}/{{max}} · se publica con tu nombre",
       "signInPrompt": "Iniciá sesión con tu mail del ITBA para comentar.",
-      "empty": "Todavía no hay comentarios. ¡Sé el primero!",
+      "empty": "Todavía no hay comentarios. Podés ser la primera persona en comentar.",
       "closed": "Los comentarios están cerrados para esta nota.",
       "deleted": "Comentario eliminado",
       "authorBadge": "Autor",
@@ -1233,7 +1234,9 @@
       "deleteConfirm": "Sí, eliminar",
       "loadError": "No pudimos cargar los comentarios",
       "actionError": "No pudimos completar la acción. Probá de nuevo.",
-      "disabledError": "Los comentarios se cerraron para esta nota."
+      "disabledError": "Los comentarios se cerraron para esta nota.",
+      "signInToLike": "Iniciá sesión para dar me gusta",
+      "reportedLabel": "Reportado"
     },
     "editor": {
       "cardTitle": "Comentarios y encuestas",
@@ -1272,7 +1275,10 @@
         "closesAtHint": "Sin fecha queda abierta hasta que la cierres.",
         "create": "Crear e insertar",
         "invalid": "Revisá la pregunta y las opciones."
-      }
+      },
+      "loadError": "No pudimos cargar las encuestas ni la configuración de comentarios",
+      "removeBlock": "Quitar del texto",
+      "pollId": "Identificador de la encuesta"
     }
   }
 }

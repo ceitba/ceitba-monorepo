@@ -119,7 +119,11 @@ describe('ArticlePolls', () => {
     const authorId = await seedUser(api.db, 'indie@itba.edu.ar', { name: 'Indie' });
     await seedArticle(api.db, { id: 'indie', title: 'I', excerpt: 'e', body: [], category: 'tech', authors: ['I'], status: 'draft', createdBy: authorId });
     const indie = await as('indie@itba.edu.ar', 'Indie');
-    expect((await api.post('/v1/articles/indie/polls', { as: indie, body: { question: 'q', options: ['a', 'b'] } })).status).toBe(201);
+    const draftPoll = (await api.post('/v1/articles/indie/polls', { as: indie, body: { question: 'q', options: ['a', 'b'] } })).json;
+    // Nobody votes on a draft, its author included.
+    const v = await api.put(`/v1/articles/indie/polls/${draftPoll.id}/vote`, { as: indie, body: { optionId: draftPoll.options[0].id } });
+    expect(v.status).toBe(409);
+    expect(v.json.error).toBe('ArticleNotPublished');
     await api.db`UPDATE public.articles SET status = 'published' WHERE id = 'indie'`;
     expect((await api.post('/v1/articles/indie/polls', { as: indie, body: { question: 'q', options: ['a', 'b'] } })).status).toBe(403);
   });

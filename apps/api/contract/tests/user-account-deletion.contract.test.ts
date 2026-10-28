@@ -265,10 +265,11 @@ describe('AccountDeletionIT', () => {
   test('deletionTombstonesCommentsWithRepliesAndDropsTheRest', async () => {
     const db = api.db;
     await db`INSERT INTO public.articles (id, title, excerpt, body, category, authors, status) VALUES ('art', 'T', 'e', '[]', 'tech', '[]', 'published')`;
-    const [top, lone, reply] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+    const [top, lone, reply, selfTop, selfReply] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
     await db`INSERT INTO public.article_comments (id, article_id, user_id, parent_id, body, created_at) VALUES
              (${top}, 'art', ${alice}, NULL, 'top', now()), (${lone}, 'art', ${alice}, NULL, 'lone', now()),
-             (${reply}, 'art', ${bob}, ${top}, 'reply', now())`;
+             (${reply}, 'art', ${bob}, ${top}, 'reply', now()),
+             (${selfTop}, 'art', ${alice}, NULL, 'self top', now()), (${selfReply}, 'art', ${alice}, ${selfTop}, 'self reply', now())`;
     await db`INSERT INTO public.article_comment_likes (comment_id, user_id, created_at) VALUES (${reply}, ${alice}, now()), (${top}, ${bob}, now())`;
     await db`INSERT INTO public.article_comment_reports (comment_id, user_id, created_at) VALUES (${reply}, ${alice}, now())`;
     const poll = crypto.randomUUID();

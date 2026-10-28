@@ -1,6 +1,6 @@
 // One Postgres for the whole contract run, a TEMPLATE database migrated like
 // the Java ITs (apps/api/src/test/resources/application.yml:
-// locations db/migration + db/test-migration, target 4.52) with our
+// locations db/migration + db/test-migration, up to IT_FLYWAY_TARGET) with our
 // Flyway-compatible runner, and a fresh clone of it per test file.
 //
 //   CONTRACT_PG_URL=postgres://user:pass@host:port/postgres   reuse a server

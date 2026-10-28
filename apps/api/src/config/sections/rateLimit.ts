@@ -67,5 +67,8 @@ export default defineSection('rateLimit', schema, ({ env }) => ({
     'proposal-attachments': { capacity: env.int('RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD', '1h') },
     proposals: { capacity: env.int('RATE_LIMIT_PROPOSALS_CAPACITY', 10), periodMs: env.duration('RATE_LIMIT_PROPOSALS_PERIOD', '1h') },
     'proposal-comments': { capacity: env.int('RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD', '10m') },
+    'article-comments': { capacity: env.int('RATE_LIMIT_ARTICLE_COMMENTS_CAPACITY', 20), periodMs: env.duration('RATE_LIMIT_ARTICLE_COMMENTS_PERIOD', '10m') },
+    'article-comment-reports': { capacity: env.int('RATE_LIMIT_ARTICLE_COMMENT_REPORTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_ARTICLE_COMMENT_REPORTS_PERIOD', '10m') },
+    'article-reactions': { capacity: env.int('RATE_LIMIT_ARTICLE_REACTIONS_CAPACITY', 120), periodMs: env.duration('RATE_LIMIT_ARTICLE_REACTIONS_PERIOD', '10m') },
   },
 }));

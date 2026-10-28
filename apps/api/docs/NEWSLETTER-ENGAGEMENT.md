@@ -101,8 +101,19 @@ article's 👍/👎 bar.
 `PollResponse`: `{id, question, options: [{id, label, votes}], resultsVisibility, closesAt, closed, totalVotes, myVote,
 resultsVisible, canEdit}`.
 
+## Limits
+
+Per-user quotas (429 with `Retry-After` beyond), all per user rather than per IP because the campus shares one
+address: new comments and replies (`article-comments`, `RATE_LIMIT_ARTICLE_COMMENTS_*`, default 20 per 10m), reports
+(`article-comment-reports`, `RATE_LIMIT_ARTICLE_COMMENT_REPORTS_*`, 30 per 10m), and likes plus poll votes together
+(`article-reactions`, `RATE_LIMIT_ARTICLE_REACTIONS_*`, 120 per 10m).
+
+Comments, likes and votes need a **published** article: on a draft (reachable only by its editors and STAFF) they
+answer 409 `ArticleNotPublished`, so test reactions never land in the published counts.
+
 ## Account deletion
 
-`DELETE /v1/me` removes the user's likes, reports and poll votes, and turns their comments into tombstones (author
-cleared, body emptied, `deleted_at` set) so other people's replies keep their thread; tombstones without replies are
-deleted.
+`DELETE /v1/me` removes the user's likes, reports, poll votes and replies, deletes their top-level comments left
+without replies, and turns the rest into tombstones (author cleared, body emptied, `deleted_at` set) so other people's
+replies keep their thread. `article_comments.user_id` is `ON DELETE SET NULL`, so an API image older than V64 can
+still delete a commenter's account on a rollback (leaving the body without an author).

@@ -153,7 +153,8 @@ export const articleComments = pgTable("article_comments", {
 	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 }, (table) => [
-	index("article_comments_article_idx").using("btree", table.articleId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.asc().nullsLast().op("text_ops")),
+	index("article_comments_article_idx").using("btree", table.articleId.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	uniqueIndex("article_comments_one_pin_idx").using("btree", table.articleId.asc().nullsLast().op("text_ops")).where(sql`pinned`),
 	index("article_comments_parent_idx").using("btree", table.parentId.asc().nullsLast().op("uuid_ops")).where(sql`(parent_id IS NOT NULL)`),
 	index("article_comments_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(user_id IS NOT NULL)`),
 	foreignKey({
@@ -165,7 +166,7 @@ export const articleComments = pgTable("article_comments", {
 			columns: [table.userId],
 			foreignColumns: [user.id],
 			name: "article_comments_user_id_fkey"
-		}),
+		}).onDelete("set null"),
 	foreignKey({
 			columns: [table.parentId],
 			foreignColumns: [table.id],
@@ -248,6 +249,7 @@ export const articleCommentLikes = pgTable("article_comment_likes", {
 	userId: uuid("user_id").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 }, (table) => [
+	index("article_comment_likes_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.commentId],
 			foreignColumns: [articleComments.id],
@@ -281,6 +283,7 @@ export const articleCommentReports = pgTable("article_comment_reports", {
 	reason: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 }, (table) => [
+	index("article_comment_reports_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.commentId],
 			foreignColumns: [articleComments.id],
@@ -301,6 +304,7 @@ export const articlePollVotes = pgTable("article_poll_votes", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 }, (table) => [
 	index("article_poll_votes_option_idx").using("btree", table.optionId.asc().nullsLast().op("uuid_ops")),
+	index("article_poll_votes_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.pollId],
 			foreignColumns: [articlePolls.id],

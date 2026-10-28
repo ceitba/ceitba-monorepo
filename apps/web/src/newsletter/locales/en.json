@@ -1197,7 +1197,8 @@
       "yourVote": "Your vote",
       "unavailable": "Poll unavailable",
       "voteError": "We couldn't save your vote. Try again.",
-      "closedError": "This poll has closed."
+      "closedError": "This poll has closed.",
+      "loadError": "We couldn't load the poll"
     },
     "comments": {
       "title": "Comments",
@@ -1213,7 +1214,7 @@
       "replySubmit": "Reply",
       "counter": "{{count}}/{{max}} · posted with your name",
       "signInPrompt": "Sign in with your ITBA email to comment.",
-      "empty": "No comments yet. Be the first!",
+      "empty": "No comments yet. You can be the first to comment.",
       "closed": "Comments are closed for this article.",
       "deleted": "Comment deleted",
       "authorBadge": "Author",
@@ -1233,7 +1234,9 @@
       "deleteConfirm": "Yes, delete",
       "loadError": "We couldn't load the comments",
       "actionError": "We couldn't do that. Try again.",
-      "disabledError": "Comments were closed for this article."
+      "disabledError": "Comments were closed for this article.",
+      "signInToLike": "Sign in to like",
+      "reportedLabel": "Reported"
     },
     "editor": {
       "cardTitle": "Comments and polls",
@@ -1272,7 +1275,10 @@
         "closesAtHint": "Without a date it stays open until you close it.",
         "create": "Create and insert",
         "invalid": "Check the question and the options."
-      }
+      },
+      "loadError": "We couldn't load the polls or the comment settings",
+      "removeBlock": "Remove from text",
+      "pollId": "Poll identifier"
     }
   }
 }

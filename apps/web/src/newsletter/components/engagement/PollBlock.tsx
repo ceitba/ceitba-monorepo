@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Badge, Button, toast } from '@/components/ui'
+import { Badge, Button, ErrorState, LoadingRegion, toast } from '@/components/ui'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/hooks/useAuth'
 import { startGoogleSignIn } from '@/store/authStore'
@@ -22,19 +22,28 @@ export default function PollBlock({ articleId, pollId, preview = false }: PollBl
   const { profile } = useAuth()
   const location = useLocation()
   const [poll, setPoll] = useState<Poll | null>(null)
-  const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>('loading')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   const [busy, setBusy] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let active = true
     setStatus('loading')
     fetchPoll(articleId, pollId)
       .then((p) => { if (active) { setPoll(p); setStatus('ready') } })
-      .catch(() => { if (active) setStatus('missing') })
+      // Only a 404 means the poll is gone; anything else can be retried.
+      .catch((err: unknown) => { if (active) setStatus(err instanceof ApiError && err.status === 404 ? 'missing' : 'error') })
     return () => { active = false }
-  }, [articleId, pollId, profile?.id])
+  }, [articleId, pollId, profile?.id, reloadKey])
 
-  if (status === 'loading') return <div className="my-8 skeleton rounded-card h-56" aria-hidden="true" />
+  if (status === 'loading') return <LoadingRegion className="my-8"><div className="skeleton rounded-card h-56" aria-hidden="true" /></LoadingRegion>
+  if (status === 'error') {
+    return (
+      <div className="my-8 rounded-card border border-border dark:border-night-border">
+        <ErrorState compact title={t('engagement.poll.loadError')} onRetry={() => setReloadKey((k) => k + 1)} />
+      </div>
+    )
+  }
   if (status === 'missing' || !poll) {
     return (
       <p className="my-8 rounded-card border border-dashed border-border dark:border-night-border px-4 py-3 font-body text-body-sm text-ink-secondary dark:text-night-muted">
@@ -101,14 +110,14 @@ export default function PollBlock({ articleId, pollId, preview = false }: PollBl
                 {poll.resultsVisible && (
                   <span
                     aria-hidden="true"
-                    className={['absolute inset-y-0 left-0 transition-[width] duration-300', mine ? 'bg-primary-100 dark:bg-primary-900' : 'bg-primary-50 dark:bg-night-raised'].join(' ')}
+                    className={['absolute inset-y-0 left-0 transition-[width] duration-300', mine ? 'bg-primary-100 dark:bg-primary-800' : 'bg-primary-50 dark:bg-primary-900/60'].join(' ')}
                     style={{ width: `${pct}%` }}
                   />
                 )}
                 <span className="relative flex items-center justify-between gap-3">
-                  <span className={mine ? 'font-semibold text-primary dark:text-primary-200' : 'text-ink-primary dark:text-night-text'}>
+                  <span className={['inline-flex items-center gap-1.5', mine ? 'font-semibold text-primary dark:text-primary-200' : 'text-ink-primary dark:text-night-text'].join(' ')}>
                     {mine && <span className="sr-only">{t('engagement.poll.yourVote')}: </span>}
-                    {mine && '✓ '}{o.label}
+                    {mine && <CheckIcon />}{o.label}
                   </span>
                   {poll.resultsVisible && <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{pct}%</span>}
                 </span>
@@ -126,5 +135,13 @@ export default function PollBlock({ articleId, pollId, preview = false }: PollBl
         )}
       </div>
     </figure>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
   )
 }
