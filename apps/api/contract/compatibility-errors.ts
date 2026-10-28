@@ -14,6 +14,7 @@ import { REASONS as KB_PIPELINE_REASONS } from '../src/features/kb/logic/pipelin
 import { ORG_MAIL_REASONS } from '../src/features/orgmail/service';
 import { RSVP_REASONS } from '../src/features/news/events';
 import { STUDY_GROUP_CONFLICT } from '../src/features/studygroup/errors';
+import { ENGAGEMENT_REASONS } from '../src/features/engagement/errors';
 import { SCHEDULE_CORRECTION_REASONS } from '../src/features/correction/errors';
 
 export const DOC = join(import.meta.dir, 'COMPATIBILITY.md');
@@ -72,6 +73,7 @@ export function rows(): Row[] {
   for (const [r, { code, status }] of Object.entries(KB_PIPELINE_REASONS)) out.push({ source: `KbPipelineError ${r}`, status, code, message: '<message>' });
   for (const [r, [code, message]] of Object.entries(ORG_MAIL_REASONS)) out.push({ source: `OrgMailError ${r}`, status: 409, code, message });
   for (const [r, { code, message }] of Object.entries(RSVP_REASONS)) out.push({ source: `EventRsvpError ${r}`, status: 409, code, message });
+  for (const [r, { code, message }] of Object.entries(ENGAGEMENT_REASONS)) out.push({ source: `EngagementConflictError ${r}`, status: 409, code, message });
   for (const [r, code] of Object.entries(STUDY_GROUP_CONFLICT)) out.push({ source: `StudyGroupConflictError ${r}`, status: 409, code, message: '<message>' });
   for (const [r, { code, status }] of Object.entries(SCHEDULE_CORRECTION_REASONS)) out.push({ source: `ScheduleCorrectionError ${r}`, status, code, message: '<message>' });
   return out.sort((a, b) => a.status - b.status || a.code.localeCompare(b.code) || a.source.localeCompare(b.source));

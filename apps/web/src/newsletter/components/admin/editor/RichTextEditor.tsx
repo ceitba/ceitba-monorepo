@@ -13,6 +13,7 @@ import CodeBlockView from './CodeBlockView'
 import EditorToolbar from './EditorToolbar'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, uploadViaSignedUrl } from '../../../api/media'
 import { looksLikeMarkdown } from '../../../utils/articleBody'
+import { POLL_FENCE_LANGUAGE, pollFence } from '../../../api/engagement'
 import { ApiError } from '@/api/client'
 import { Alert } from '@/components/ui'
 
@@ -90,6 +91,8 @@ interface RichTextEditorProps {
   // Endpoint that signs image uploads; null = images by URL only.
   signPath: string | null
   invalid?: boolean
+  // Filled with a function that inserts a ```poll block at the cursor.
+  insertPollRef?: { current: ((pollId: string) => void) | null }
 }
 
 // WYSIWYG article body editor. The document is Markdown in and out
@@ -101,7 +104,7 @@ interface RichTextEditorProps {
 // like Markdown is parsed as Markdown. Images can be pasted, dropped or
 // picked — uploaded when the user may upload (staff, or a member of the
 // article's organization), otherwise by URL.
-export default function RichTextEditor({ value, onChange, signPath, invalid }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, signPath, invalid, insertPollRef }: RichTextEditorProps) {
   const canUpload = signPath !== null
   const { t } = useTranslation()
   const [mode, setMode] = useState<'visual' | 'markdown'>('visual')
@@ -208,6 +211,20 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
   useEffect(() => {
     if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr)
   }, [editor, t])
+
+  useEffect(() => {
+    if (!insertPollRef) return
+    insertPollRef.current = (pollId) => {
+      if (mode === 'markdown') {
+        const next = `${source.trimEnd()}\n\n${pollFence(pollId)}\n`
+        setSource(next)
+        onChangeRef.current(next)
+        return
+      }
+      editor?.chain().focus().insertContent({ type: 'codeBlock', attrs: { language: POLL_FENCE_LANGUAGE }, content: [{ type: 'text', text: pollId }] }).run()
+    }
+    return () => { insertPollRef.current = null }
+  }, [insertPollRef, editor, mode, source])
 
   const counts = useEditorState({
     editor,

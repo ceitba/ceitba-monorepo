@@ -1,0 +1,108 @@
+# Newsletter comments and polls
+
+Readers can comment on published newsletter articles, and authors can embed polls in an article's body. Code:
+`src/features/engagement/` (API), `apps/web/src/newsletter/components/engagement/` (web). Tables from V64.
+
+## Who can do what
+
+| Action | Anonymous | Signed in (USER) | Article editor | STAFF |
+|---|---|---|---|---|
+| Read comments and polls of a published article | yes | yes | yes | yes |
+| Comment, reply, like, report; vote in a poll | | yes | yes | yes |
+| Delete own comment | | yes | yes | yes |
+| Delete any comment, pin, restore a hidden comment, turn comments on/off | | | yes | yes |
+| Create, edit, close and delete polls; always see poll results | | | yes | yes |
+
+**Article editor** = a member of the article's organization (`OrganizationMembershipService.userBelongsTo`), or, for an
+independent article (no organization), its creator while it is still unpublished (polls only). STAFF comes from
+`staffPowers(c)`, so an API key without the `staff` scope is not STAFF here. These checks run in the services, not in
+`policy.ts`: every write route is an ordinary authenticated route, and the public reads are covered by the existing
+`GET /v1/articles/**` rule. A draft (non-published) article answers 404 on every route below to anyone who can't read
+its drafts (the same rule as `GET /v1/articles/{id}`).
+
+## Comments
+
+`article_comments`: one level of replies (`parent_id` must point to a top-level comment of the same article, otherwise
+400). Bodies are plain text, trimmed, 1–1000 characters, never rendered as Markdown. Comments cannot be edited.
+
+- **Author.** Always the person (their `user` name and avatar). When the author is a member of the article's
+  organization at read time, the comment carries `authorRole: "author"` (the web shows an "Autor" badge).
+- **Delete** is a soft delete (`deleted_at`): a deleted comment with replies stays in the thread as a tombstone
+  (`deleted: true`, empty body, no author); one without replies is left out of the list.
+- **Likes**: one per user (`article_comment_likes`), `PUT`/`DELETE` are idempotent.
+- **Reports**: one per user (`article_comment_reports`, re-reporting replaces the reason). At **3** reports a comment
+  is hidden (`hidden_at`): left out for readers, shown to editors and STAFF with `hidden: true`. Restore clears
+  `hidden_at` and deletes its reports.
+- **Pin**: editors pin one top-level comment per article (pinning another unpins the previous one). Pinned first,
+  then by `sort`: `top` (likes, then newest; default) or `new` (newest). Replies are always oldest first.
+- **On/off**: `articles.comments_enabled` (default true). Turned off, existing comments stay readable and new
+  comments, replies and likes answer 409 `CommentsDisabled`.
+
+### Routes (`src/features/engagement/routes.ts`)
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `/v1/articles/{id}/comments?sort=top\|new` | | `CommentThreadResponse` |
+| POST | `/v1/articles/{id}/comments` | `{body, parentId?}` | 201 `CommentResponse` |
+| DELETE | `/v1/articles/{id}/comments/{commentId}` | | 204 |
+| PUT / DELETE | `/v1/articles/{id}/comments/{commentId}/like` | | `{likes, likedByMe}` |
+| PUT | `/v1/articles/{id}/comments/{commentId}/report` | `{reason?}` (≤500) | 204 |
+| PUT | `/v1/articles/{id}/comments/{commentId}/pin` | `{pinned}` | `CommentResponse` |
+| POST | `/v1/articles/{id}/comments/{commentId}/restore` | | `CommentResponse` |
+| PUT | `/v1/articles/{id}/comments/settings` | `{enabled}` | `{enabled}` |
+
+`CommentThreadResponse`: `{enabled, canModerate, total, comments: [CommentResponse]}`, where `total` counts the
+visible, non-deleted comments and replies. `CommentResponse`: `{id, parentId, authorName, authorAvatarUrl, authorRole,
+body, createdAt, likes, likedByMe, mine, pinned, deleted, hidden, replies}` (`replies` is `[]` on replies).
+
+## Polls
+
+A poll belongs to one article (`article_polls`, `article_poll_options`, `article_poll_votes`) and has 2–6 options
+(each 1–120 characters; question 1–300). Single choice: one vote per user per poll, changeable or removable while the
+poll is open. A poll is **closed** when `closes_at` ≤ now (`deps.clock`); "close now" sets `closes_at` to now. Votes on
+a closed poll answer 409 `PollClosed`; `reopen` clears `closes_at`. Once a poll has votes its options can't change (409 `PollHasVotes`); the
+question, visibility and closing time still can.
+
+**Results visibility** (`results_visibility`), chosen by the author: `after_vote` (default; counts show once the caller
+has voted, or the poll is closed) or `after_close` (only when closed). Editors and STAFF always see them. When hidden,
+the API leaves the counts out (`votes: null` on each option, `totalVotes: null`): the browser never receives them.
+
+**Placement in the body.** The editor inserts a fenced block whose content is the poll id:
+
+````markdown
+```poll
+6f1c…-uuid
+```
+````
+
+`ArticleBody` renders the fence as the poll; a fence whose id is not a poll of that article renders "Encuesta no
+disponible". Readers that show the raw Markdown (the MCP `get_article` tool) see the fence. Removing the fence does not
+delete the poll; the editor lists the article's polls and deletes them explicitly. Polls are created once the article
+exists (saved at least once).
+
+**Web.** The article editor's "Comentarios y encuestas" card (`EngagementSettings`) turns comments on/off and
+creates polls; "Crear e insertar" / "Insertar en el texto" put the fence at the cursor, and the editor shows the
+poll in place of the fence (`CodeBlockView`). `ArticleBody` renders fences as `PollBlock` when given the article id
+(the public page and the editor preview, where polls show without voting); `CommentsSection` sits under the
+article's 👍/👎 bar.
+
+### Routes
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `/v1/articles/{id}/polls` | | `[PollResponse]` (oldest first) |
+| GET | `/v1/articles/{id}/polls/{pollId}` | | `PollResponse` |
+| POST | `/v1/articles/{id}/polls` | `{question, options: [label], resultsVisibility?, closesAt?}` | 201 `PollResponse` |
+| PATCH | `/v1/articles/{id}/polls/{pollId}` | `{question?, options?, resultsVisibility?, closesAt?, close?, reopen?}` | `PollResponse` |
+| DELETE | `/v1/articles/{id}/polls/{pollId}` | | 204 |
+| PUT | `/v1/articles/{id}/polls/{pollId}/vote` | `{optionId}` | `PollResponse` |
+| DELETE | `/v1/articles/{id}/polls/{pollId}/vote` | | `PollResponse` |
+
+`PollResponse`: `{id, question, options: [{id, label, votes}], resultsVisibility, closesAt, closed, totalVotes, myVote,
+resultsVisible, canEdit}`.
+
+## Account deletion
+
+`DELETE /v1/me` removes the user's likes, reports and poll votes, and turns their comments into tombstones (author
+cleared, body emptied, `deleted_at` set) so other people's replies keep their thread; tombstones without replies are
+deleted.

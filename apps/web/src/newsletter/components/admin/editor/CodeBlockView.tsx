@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { NodeViewContent, NodeViewWrapper, type ReactNodeViewProps } from '@tiptap/react'
 import { useTranslation } from 'react-i18next'
 import MermaidDiagram from '../../article/MermaidDiagram'
+import PollBlock from '../../engagement/PollBlock'
+import { POLL_FENCE_LANGUAGE } from '../../../api/engagement'
+import { useEditorArticleId } from '../../engagement/editorArticle'
 
 const LANGUAGES = ['', 'mermaid', 'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'bash', 'json', 'sql', 'html', 'css']
 
@@ -16,7 +19,31 @@ function useDebounced<T>(value: T, ms: number): T {
 
 // Code block with a language picker; ```mermaid blocks also show the live
 // diagram under the source, rendered the same way readers will see it.
-export default function CodeBlockView({ node, updateAttributes }: ReactNodeViewProps) {
+// ```poll blocks (inserted from the Polls card) show the poll instead.
+export default function CodeBlockView(props: ReactNodeViewProps) {
+  if ((props.node.attrs.language ?? '') === POLL_FENCE_LANGUAGE) return <PollNodeView {...props} />
+  return <CodeNodeView {...props} />
+}
+
+function PollNodeView({ node }: ReactNodeViewProps) {
+  const { t } = useTranslation()
+  const articleId = useEditorArticleId()
+  const pollId = node.textContent.trim()
+  return (
+    <NodeViewWrapper className="code-block-node">
+      <div className="code-block-node__bar" contentEditable={false}>
+        <span>{t('engagement.editor.pollBlock')}</span>
+      </div>
+      {/* The id stays editable (and in the Markdown) but out of sight. */}
+      <pre className="sr-only" aria-hidden="true"><NodeViewContent<'code'> as="code" /></pre>
+      <div className="code-block-node__preview" contentEditable={false}>
+        {articleId && pollId ? <PollBlock articleId={articleId} pollId={pollId} preview /> : <p>{t('engagement.poll.unavailable')}</p>}
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+function CodeNodeView({ node, updateAttributes }: ReactNodeViewProps) {
   const { t } = useTranslation()
   const language: string = node.attrs.language ?? ''
   const isMermaid = language === 'mermaid'

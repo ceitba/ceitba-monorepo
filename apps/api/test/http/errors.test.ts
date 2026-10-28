@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { DigestException } from '../../src/features/digest/logic/digestException';
 import { ScheduleCorrectionError } from '../../src/features/correction/errors';
 import { EventRsvpError } from '../../src/features/news/events';
+import { EngagementConflictError } from '../../src/features/engagement/errors';
 import { StudyGroupConflictError } from '../../src/features/studygroup/errors';
 import { createApp } from '../../src/http/app';
 import { testApp } from '../support/app';
@@ -59,6 +60,9 @@ const cases: [E.ApiError, number, string, string?][] = [
   [new ScheduleCorrectionError('SAME_AS_SGA', 'm'), 400, 'SameAsSga', 'm'],
   [new ScheduleCorrectionError('COMMISSION_ENDED', 'm'), 409, 'CommissionEnded'],
   [new ScheduleCorrectionError('ALREADY_SUGGESTED', 'm'), 409, 'AlreadySuggested'],
+  [new EngagementConflictError('COMMENTS_DISABLED'), 409, 'CommentsDisabled', 'Comments are turned off for this article'],
+  [new EngagementConflictError('POLL_CLOSED'), 409, 'PollClosed', 'This poll is closed'],
+  [new EngagementConflictError('POLL_HAS_VOTES'), 409, 'PollHasVotes', 'The options of a poll with votes cannot change'],
 ];
 
 test.each(cases.map((c) => [c[2], c[0], c[1], c[2], c[3] ?? ''] as const))('%s', (_n, err, status, code, message) => {

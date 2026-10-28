@@ -261,4 +261,33 @@ describe('AccountDeletionIT', () => {
     const [fresh] = await api.db`SELECT id FROM public."user" WHERE email = 'alice@itba.edu.ar'`;
     expect(fresh!.id).not.toBe(alice);
   });
+
+  test('deletionTombstonesCommentsWithRepliesAndDropsTheRest', async () => {
+    const db = api.db;
+    await db`INSERT INTO public.articles (id, title, excerpt, body, category, authors, status) VALUES ('art', 'T', 'e', '[]', 'tech', '[]', 'published')`;
+    const [top, lone, reply] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+    await db`INSERT INTO public.article_comments (id, article_id, user_id, parent_id, body, created_at) VALUES
+             (${top}, 'art', ${alice}, NULL, 'top', now()), (${lone}, 'art', ${alice}, NULL, 'lone', now()),
+             (${reply}, 'art', ${bob}, ${top}, 'reply', now())`;
+    await db`INSERT INTO public.article_comment_likes (comment_id, user_id, created_at) VALUES (${reply}, ${alice}, now()), (${top}, ${bob}, now())`;
+    await db`INSERT INTO public.article_comment_reports (comment_id, user_id, created_at) VALUES (${reply}, ${alice}, now())`;
+    const poll = crypto.randomUUID();
+    const option = crypto.randomUUID();
+    await db`INSERT INTO public.article_polls (id, article_id, question, created_at) VALUES (${poll}, 'art', 'q', now())`;
+    await db`INSERT INTO public.article_poll_options (id, poll_id, position, label) VALUES (${option}, ${poll}, 0, 'a')`;
+    await db`INSERT INTO public.article_poll_votes (poll_id, user_id, option_id, created_at) VALUES (${poll}, ${alice}, ${option}, now()), (${poll}, ${bob}, ${option}, now())`;
+
+    expect((await api.delete('/v1/me', { as: await asAlice() })).status).toBe(204);
+
+    const comments = await db`SELECT id, user_id, body, deleted_at IS NOT NULL AS deleted FROM public.article_comments ORDER BY body`;
+    expect(comments.map((c) => ({ ...c }))).toEqual([
+      { id: top, user_id: null, body: '', deleted: true },
+      { id: reply, user_id: bob, body: 'reply', deleted: false },
+    ]);
+    expect(await count('public.article_comment_likes', 'user_id', alice)).toBe(0);
+    expect(await count('public.article_comment_likes', 'user_id', bob)).toBe(1);
+    expect(await count('public.article_comment_reports', 'user_id', alice)).toBe(0);
+    expect(await count('public.article_poll_votes', 'user_id', alice)).toBe(0);
+    expect(await count('public.article_poll_votes', 'user_id', bob)).toBe(1);
+  });
 });

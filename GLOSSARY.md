@@ -73,6 +73,15 @@ _Avoid_: Org (in prose), club
 **Article**:
 A newsletter post published by an Organization or independently.
 
+**Comment**:
+A signed-in reader's plain-text reaction under a published Article; a reply answers a top-level Comment (one level
+only). See `apps/api/docs/NEWSLETTER-ENGAGEMENT.md`.
+
+**Poll**:
+A single-choice question that belongs to one Article and sits in its body as a ```` ```poll ```` block. Its results
+show after voting or only once it closes, as the author chooses.
+_Avoid_: Survey, vote (votes are the 👍/👎 on an Article)
+
 **Digest**:
 The Monday "La semana en ITBA" email: last week's Articles, next week's Events and a personal "Tu cuatrimestre"
 block. See `apps/api/docs/WEEKLY-DIGEST.md`.
