@@ -47,7 +47,6 @@ export class CommentService {
   }
 
   create(articleId: string, userId: string, viewer: Viewer, req: CreateCommentRequest): Promise<CommentResponse> {
-    this.deps.userRateLimiter.consume(COMMENT_RATE_RULE, userId);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
       requirePublished(access);
@@ -60,6 +59,7 @@ export class CommentService {
         }
         if (parent.parentId !== null) throw new ValidationError('parentId', req.parentId, 'replies can only answer a top-level comment');
       }
+      this.deps.userRateLimiter.consume(COMMENT_RATE_RULE, userId);
       const id = crypto.randomUUID();
       await repo.insertComment(tx, { id, articleId, userId, parentId: req.parentId, body: javaTrim(req.body!), createdAt: now() });
       return this.view(tx, id, viewer);
@@ -76,13 +76,13 @@ export class CommentService {
   }
 
   like(articleId: string, commentId: string, viewer: Viewer, liked: boolean): Promise<LikeResponse> {
-    this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
       await this.requireComment(tx, access, articleId, commentId);
       if (liked) {
         requirePublished(access);
         if (!access.article.commentsEnabled) throw new EngagementConflictError('COMMENTS_DISABLED');
+        this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
         await repo.likeComment(tx, commentId, viewer.userId!, now());
       } else {
         await repo.unlikeComment(tx, commentId, viewer.userId!);
@@ -93,10 +93,10 @@ export class CommentService {
   }
 
   report(articleId: string, commentId: string, viewer: Viewer, req: ReportCommentRequest): Promise<void> {
-    this.deps.userRateLimiter.consume(REPORT_RATE_RULE, viewer.userId!);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
       const c = await this.requireComment(tx, access, articleId, commentId, true);
+      this.deps.userRateLimiter.consume(REPORT_RATE_RULE, viewer.userId!);
       const reason = req.reason == null || javaIsBlank(req.reason) ? null : javaTrim(req.reason);
       const reports = await repo.upsertReport(tx, commentId, viewer.userId!, reason, now());
       if (reports >= REPORT_THRESHOLD && c.hiddenAt === null) await repo.setCommentHidden(tx, commentId, now());

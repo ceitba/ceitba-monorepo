@@ -106,7 +106,8 @@ resultsVisible, canEdit}`.
 Per-user quotas (429 with `Retry-After` beyond), all per user rather than per IP because the campus shares one
 address: new comments and replies (`article-comments`, `RATE_LIMIT_ARTICLE_COMMENTS_*`, default 20 per 10m), reports
 (`article-comment-reports`, `RATE_LIMIT_ARTICLE_COMMENT_REPORTS_*`, 30 per 10m), and likes plus poll votes together
-(`article-reactions`, `RATE_LIMIT_ARTICLE_REACTIONS_*`, 120 per 10m).
+(`article-reactions`, `RATE_LIMIT_ARTICLE_REACTIONS_*`, 120 per 10m). A token is taken only once a request passed its
+checks, and undoing (unlike, removing a vote) is free.
 
 Comments, likes and votes need a **published** article: on a draft (reachable only by its editors and STAFF) they
 answer 409 `ArticleNotPublished`, so test reactions never land in the published counts.

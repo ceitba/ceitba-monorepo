@@ -31,8 +31,8 @@ export default function PollBlock({ articleId, pollId, preview = false }: PollBl
     setStatus('loading')
     fetchPoll(articleId, pollId)
       .then((p) => { if (active) { setPoll(p); setStatus('ready') } })
-      // Only a 404 means the poll is gone; anything else can be retried.
-      .catch((err: unknown) => { if (active) setStatus(err instanceof ApiError && err.status === 404 ? 'missing' : 'error') })
+      // 404 (gone) or 400 (not a poll id) won't change on retry; network and server errors can.
+      .catch((err: unknown) => { if (active) setStatus(err instanceof ApiError && (err.status === 404 || err.status === 400) ? 'missing' : 'error') })
     return () => { active = false }
   }, [articleId, pollId, profile?.id, reloadKey])
 

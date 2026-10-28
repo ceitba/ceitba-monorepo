@@ -28,7 +28,8 @@ export default function CodeBlockView(props: ReactNodeViewProps) {
 function PollNodeView({ node, deleteNode }: ReactNodeViewProps) {
   const { t } = useTranslation()
   const articleId = useEditorArticleId()
-  const pollId = node.textContent.trim()
+  // Debounced like the Mermaid preview: editing the id doesn't refetch on every keystroke.
+  const pollId = useDebounced(node.textContent.trim(), 400)
   return (
     <NodeViewWrapper className="code-block-node">
       <div className="code-block-node__bar" contentEditable={false}>

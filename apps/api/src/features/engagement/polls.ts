@@ -72,7 +72,6 @@ export class PollService {
   }
 
   vote(articleId: string, pollId: string, viewer: Viewer, req: PollVoteRequest | null): Promise<PollResponse> {
-    this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
     return withTx(this.deps.db, async (tx) => {
       const access = await this.gate.load(tx, articleId, viewer);
       requirePublished(access);
@@ -82,6 +81,7 @@ export class PollService {
         await repo.deleteVote(tx, pollId, viewer.userId!);
       } else {
         if (!(await repo.optionBelongsTo(tx, pollId, req.optionId!))) throw new ValidationError('optionId', req.optionId, 'must be an option of this poll');
+        this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
         await repo.upsertVote(tx, pollId, viewer.userId!, req.optionId!, toPgTimestamp(systemNowMicros()));
       }
       return this.response(tx, poll, viewer, access);

@@ -24,7 +24,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
   const [confirmDelete, setConfirmDelete] = useState<Comment | null>(null)
   const [deleting, setDeleting] = useState(false)
   // The comment with an action in flight (its controls are disabled), and the ones this reader reported.
-  const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set())
   const [reported, setReported] = useState<Set<string>>(() => new Set())
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
@@ -49,16 +49,22 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
   }
 
   async function run(c: Comment, fn: () => Promise<void>) {
-    if (busyId) return
-    setBusyId(c.id)
-    try { await fn() } catch (err) { failed(err) } finally { setBusyId(null) }
+    if (busyIds.has(c.id)) return
+    setBusyIds((s) => new Set(s).add(c.id))
+    try {
+      await fn()
+    } catch (err) {
+      failed(err)
+    } finally {
+      setBusyIds((s) => { const next = new Set(s); next.delete(c.id); return next })
+    }
   }
 
   const actions: CommentActions = {
     signedIn: Boolean(profile),
     canModerate: thread?.canModerate ?? false,
     enabled: thread?.enabled ?? false,
-    busyId,
+    busyIds,
     reported,
     async reply(parent, body) {
       try { await postComment(articleId, body, parent.id); reload(); return true } catch (err) { failed(err); return false }
@@ -157,7 +163,7 @@ interface CommentActions {
   signedIn: boolean
   canModerate: boolean
   enabled: boolean
-  busyId: string | null
+  busyIds: Set<string>
   reported: Set<string>
   reply: (parent: Comment, body: string) => Promise<boolean>
   like: (c: Comment) => void
@@ -171,7 +177,7 @@ function CommentItem({ comment: c, actions, isReply = false }: { comment: Commen
   const { t, i18n } = useTranslation()
   const [replying, setReplying] = useState(false)
   const when = relativeTime(c.createdAt, i18n.language)
-  const busy = actions.busyId === c.id
+  const busy = actions.busyIds.has(c.id)
   const link = 'inline-flex items-center gap-1.5 font-mono text-label text-ink-secondary dark:text-night-muted hover:text-primary dark:hover:text-primary-300 min-h-[44px] sm:min-h-[36px] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:text-ink-secondary dark:disabled:hover:text-night-muted'
 
   return (
