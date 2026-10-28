@@ -162,6 +162,7 @@ export const planSubject = pgTable("plan_subject", {
 export const planEntryOverride = pgTable("plan_entry_override", {
 	planId: varchar("plan_id", { length: 25 }).notNull(),
 	subjectId: varchar("subject_id", { length: 32 }).notNull(),
+	added: boolean().notNull(),
 	hidden: boolean().notNull(),
 	section: varchar({ length: 255 }),
 	year: integer(),
@@ -180,7 +181,7 @@ export const planEntryOverride = pgTable("plan_entry_override", {
 ]);
 
 export const planEntry = pgTable("plan_entry", {
-	planId: varchar("plan_id", { length: 25 }).notNull(),
+	planId: varchar("plan_id", { length: 32 }).notNull(),
 	position: integer().notNull(),
 	subjectId: varchar("subject_id", { length: 32 }).notNull(),
 	section: varchar({ length: 255 }),
@@ -193,16 +194,11 @@ export const planEntry = pgTable("plan_entry", {
 	fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: 'string' }).notNull(),
 	source: varchar({ length: 16 }).notNull(),
 }, (table) => [
-	foreignKey({
-			columns: [table.planId],
-			foreignColumns: [plan.id],
-			name: "plan_entry_plan_id_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
 	primaryKey({ columns: [table.planId, table.position], name: "plan_entry_pkey"}),
 	check("plan_entry_source_check", sql`(source)::text = ANY ((ARRAY['ITBA'::character varying, 'BACKFILL'::character varying])::text[])`),
 ]);
 
-export const planEntryEffective = pgView("plan_entry_effective", {	planId: varchar("plan_id", { length: 25 }),
+export const planEntryEffective = pgView("plan_entry_effective", {	planId: varchar("plan_id"),
 	position: integer(),
 	subjectId: varchar("subject_id", { length: 32 }),
 	section: varchar({ length: 255 }),
@@ -213,4 +209,4 @@ export const planEntryEffective = pgView("plan_entry_effective", {	planId: varch
 	subjectName: varchar("subject_name", { length: 255 }),
 	subjectCredits: integer("subject_credits"),
 	source: varchar(),
-}).as(sql`SELECT e.plan_id, e."position", e.subject_id, COALESCE(o.section, e.section) AS section, COALESCE(o.year, e.year) AS year, COALESCE(o.semester, e.semester) AS semester, COALESCE(o.dependencies, e.dependencies) AS dependencies, COALESCE(o.credits_required, e.credits_required) AS credits_required, COALESCE(e.subject_name, s.name) AS subject_name, e.subject_credits, CASE WHEN o.plan_id IS NULL THEN e.source ELSE 'STAFF'::character varying END AS source FROM plan_entry e LEFT JOIN plan_entry_override o ON o.plan_id::text = e.plan_id::text AND o.subject_id::text = e.subject_id::text LEFT JOIN subject s ON s.id::text = e.subject_id::text WHERE o.hidden IS NOT TRUE AND (o.section IS NULL OR e."position" = (( SELECT min(e2."position") AS min FROM plan_entry e2 WHERE e2.plan_id::text = e.plan_id::text AND e2.subject_id::text = e.subject_id::text))) UNION ALL SELECT o.plan_id, 1000000 + row_number() OVER (PARTITION BY o.plan_id ORDER BY o.created_at, o.subject_id)::integer AS "position", o.subject_id, o.section, COALESCE(o.year, 0) AS year, COALESCE(o.semester, 0) AS semester, COALESCE(o.dependencies, '{}'::character varying[]) AS dependencies, COALESCE(o.credits_required, 0) AS credits_required, s.name AS subject_name, COALESCE(s.credits, 0) AS subject_credits, 'STAFF'::character varying AS source FROM plan_entry_override o LEFT JOIN subject s ON s.id::text = o.subject_id::text WHERE NOT o.hidden AND NOT (EXISTS ( SELECT 1 FROM plan_entry e WHERE e.plan_id::text = o.plan_id::text AND e.subject_id::text = o.subject_id::text))`);
+}).as(sql`SELECT e.plan_id, e."position", e.subject_id, COALESCE(o.section, e.section) AS section, COALESCE(o.year, e.year) AS year, COALESCE(o.semester, e.semester) AS semester, COALESCE(o.dependencies, e.dependencies) AS dependencies, COALESCE(o.credits_required, e.credits_required) AS credits_required, COALESCE(e.subject_name, s.name) AS subject_name, e.subject_credits, CASE WHEN o.plan_id IS NULL THEN e.source ELSE 'STAFF'::character varying END AS source FROM plan_entry e LEFT JOIN plan_entry_override o ON o.plan_id::text = e.plan_id::text AND o.subject_id::text = e.subject_id::text LEFT JOIN subject s ON s.id::text = e.subject_id::text WHERE o.hidden IS NOT TRUE AND (o.section IS NULL OR e."position" = (( SELECT min(e2."position") AS min FROM plan_entry e2 WHERE e2.plan_id::text = e.plan_id::text AND e2.subject_id::text = e.subject_id::text))) UNION ALL SELECT o.plan_id, 1000000 + row_number() OVER (PARTITION BY o.plan_id ORDER BY o.created_at, o.subject_id)::integer AS "position", o.subject_id, o.section, o.year, o.semester, COALESCE(o.dependencies, '{}'::character varying[]) AS dependencies, o.credits_required, s.name AS subject_name, COALESCE(s.credits, 0) AS subject_credits, 'STAFF'::character varying AS source FROM plan_entry_override o LEFT JOIN subject s ON s.id::text = o.subject_id::text WHERE o.added AND NOT o.hidden AND NOT (EXISTS ( SELECT 1 FROM plan_entry e WHERE e.plan_id::text = o.plan_id::text AND e.subject_id::text = o.subject_id::text))`);

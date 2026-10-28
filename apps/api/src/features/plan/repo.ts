@@ -174,12 +174,6 @@ export async function syncedFromItba(db: Db, planId: string): Promise<boolean> {
   return Number([...rows][0]?.n ?? 0) > 0;
 }
 
-/** Whether ITBA's copy (plan_entry, any source) lists the subject in the plan. */
-export async function itbaListsSubject(db: Db, planId: string, subjectId: string): Promise<boolean> {
-  const rows = await db.execute<{ n: number }>(sql`
-    SELECT count(*)::int AS n FROM public.plan_entry WHERE plan_id = ${planId} AND subject_id = ${subjectId}`);
-  return Number([...rows][0]?.n ?? 0) > 0;
-}
 
 /** When the plan's ITBA rows were stored (Postgres text), or null. */
 export async function planFetchedAt(db: Db, planId: string): Promise<string | null> {
@@ -205,9 +199,8 @@ export async function findItbaEntries(db: Db, planId: string): Promise<PlanEntry
   }));
 }
 
-/** A staff edit (plan_entry_override): non-null fields win over ITBA's; hidden leaves the subject out. */
-export interface PlanEntryOverride {
-  hidden: boolean;
+/** Fields a staff edit sets; null leaves the value to ITBA (or to the previous edit). */
+export interface EntryFields {
   section: string | null;
   year: number | null;
   semester: number | null;
@@ -215,18 +208,42 @@ export interface PlanEntryOverride {
   creditsRequired: number | null;
 }
 
-export async function findOverride(db: Db, planId: string, subjectId: string): Promise<PlanEntryOverride | null> {
-  const [r] = await db.select().from(planEntryOverride)
-    .where(and(eq(planEntryOverride.planId, planId), eq(planEntryOverride.subjectId, subjectId))).limit(1);
-  return r ? { hidden: r.hidden, section: r.section, year: r.year, semester: r.semester, dependencies: r.dependencies, creditsRequired: r.creditsRequired } : null;
+/** A subject staff add to the plan (added: listed after ITBA's entries with these values). */
+export async function addOverride(db: Db, planId: string, subjectId: string, f: EntryFields, now: Micros): Promise<void> {
+  const at = toPgTimestamp(now);
+  await db.insert(planEntryOverride).values({ planId, subjectId, added: true, hidden: false, ...f, createdAt: at, updatedAt: at })
+    .onConflictDoUpdate({ target: [planEntryOverride.planId, planEntryOverride.subjectId], set: { added: true, hidden: false, ...f, updatedAt: at } });
 }
 
-export async function saveOverride(db: Db, planId: string, subjectId: string, o: PlanEntryOverride, now: Micros): Promise<void> {
+/**
+ * A patch on the subject's entries, merged in one statement (concurrent patches to different fields both stay):
+ * each non-null field replaces the stored one; a hidden subject shows again.
+ */
+export async function patchOverride(db: Db, planId: string, subjectId: string, f: EntryFields, now: Micros): Promise<void> {
   const at = toPgTimestamp(now);
-  await db.insert(planEntryOverride).values({ planId, subjectId, ...o, createdAt: at, updatedAt: at })
-    .onConflictDoUpdate({ target: [planEntryOverride.planId, planEntryOverride.subjectId], set: { ...o, updatedAt: at } });
+  const keep = (col: string) => sql.raw(`COALESCE(EXCLUDED.${col}, plan_entry_override.${col})`);
+  await db.insert(planEntryOverride).values({ planId, subjectId, added: false, hidden: false, ...f, createdAt: at, updatedAt: at })
+    .onConflictDoUpdate({ target: [planEntryOverride.planId, planEntryOverride.subjectId], set: {
+      hidden: false, section: keep('section'), year: keep('year'), semester: keep('semester'),
+      dependencies: keep('dependencies'), creditsRequired: keep('credits_required'), updatedAt: at,
+    } });
+}
+
+/** Leaves the subject out of the plan, keeping any patch for when it shows again. */
+export async function hideOverride(db: Db, planId: string, subjectId: string, now: Micros): Promise<void> {
+  const at = toPgTimestamp(now);
+  await db.insert(planEntryOverride).values({ planId, subjectId, added: false, hidden: true, section: null, year: null, semester: null,
+    dependencies: null, creditsRequired: null, createdAt: at, updatedAt: at })
+    .onConflictDoUpdate({ target: [planEntryOverride.planId, planEntryOverride.subjectId], set: { hidden: true, updatedAt: at } });
 }
 
 export async function deleteOverride(db: Db, planId: string, subjectId: string): Promise<void> {
   await db.delete(planEntryOverride).where(and(eq(planEntryOverride.planId, planId), eq(planEntryOverride.subjectId, subjectId)));
+}
+
+/** The sections ITBA's copy lists the subject in (plan order). */
+export async function itbaSectionsOf(db: Db, planId: string, subjectId: string): Promise<(string | null)[]> {
+  const rows = await db.select({ section: planEntry.section }).from(planEntry)
+    .where(and(eq(planEntry.planId, planId), eq(planEntry.subjectId, subjectId))).orderBy(asc(planEntry.position));
+  return rows.map((r) => r.section);
 }

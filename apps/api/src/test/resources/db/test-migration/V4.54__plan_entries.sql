@@ -1,5 +1,5 @@
 CREATE TABLE public.plan_entry (
-    plan_id          VARCHAR(25)    NOT NULL,
+    plan_id          VARCHAR(32)    NOT NULL,
     position         INTEGER        NOT NULL,
     subject_id       VARCHAR(32)    NOT NULL,
     section          VARCHAR(255),

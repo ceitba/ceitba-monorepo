@@ -38,9 +38,10 @@ plan_subject                the old one-section-per-subject copy          still 
 (`POST /v1/sync/plan/{planId}/subjects`, SYNC key):
 
 1. `plan_entry`: the plan's rows are replaced with the fetch, in their own
-   transaction, so entries ITBA stops sending disappear and a
-   `subject`/`plan_subject` row the database rejects never keeps them stale.
-   Staff edits are never touched.
+   transaction, so entries ITBA stops sending disappear (with any staff patch
+   on them) and a `subject`/`plan_subject` row the database rejects never
+   keeps them stale. An empty answer is not stored (the plan stays as it
+   was). Staff edits are never touched.
 2. One transaction per plan for `subject` + `plan_subject` (upserted; a
    rejected row rolls the plan back, other plans are unaffected) and
    `plan_section_requirement` (replaced: groups no longer sent are deleted,
@@ -67,9 +68,9 @@ STAFF routes of `/v1/plans` (`src/features/plan/service.ts`) write it:
 
 | Route | Effect |
 |---|---|
-| `POST /v1/plans/{planId}/subject` | adds a subject the plan doesn't show (one ITBA doesn't send, or one staff hid) with the given values (no year/semester/credits = 0, no dependencies = `[]`); listed after ITBA's entries, name and credits from `public.subject`. 404 for an unknown plan or subject, 409 if the plan already shows it |
-| `PUT /v1/plans/{planId}/subject/{subjectId}` | a patch: each given field replaces ITBA's value in every entry of the subject from now on (a null field keeps the current one). Setting `section` collapses a subject that sits in several sections into its first entry. ITBA's later changes to the other fields still come through, and name/credits always come from ITBA |
-| `DELETE /v1/plans/{planId}/subject/{subjectId}` | hides a subject ITBA lists (it stays hidden across syncs, and a `POST` brings it back); removes one staff added |
+| `POST /v1/plans/{planId}/subject` | adds a subject the plan doesn't show. One ITBA doesn't send is *added* (`added`): listed after ITBA's entries with the given values (no year/semester/credits = 0, no dependencies = `[]`), name and credits from `public.subject`. One staff hid shows again with only the given fields changed (its `section` only if it isn't already one of ITBA's for it), so a core subject keeps its year. 404 for an unknown plan or subject, 409 if the plan already shows it |
+| `PUT /v1/plans/{planId}/subject/{subjectId}` | a patch, merged in one statement: each given field replaces ITBA's value in every entry of the subject from now on (a null field keeps the current one). Setting `section` collapses a subject that sits in several sections into its first entry. ITBA's later changes to the other fields still come through, and name/credits always come from ITBA. A patch only applies while ITBA lists the subject; on an added subject it edits its values |
+| `DELETE /v1/plans/{planId}/subject/{subjectId}` | hides a subject ITBA lists (it stays hidden across syncs, keeping any patch; a `POST` brings it back); removes one staff added |
 
 There is no route to drop an edit and go back to ITBA's values: delete the
 `plan_entry_override` row by hand.
@@ -88,7 +89,7 @@ readers that need one per subject take its first entry in plan order.
 | `GET /v1/plans/subjects/{subjectId}/plans` | public | every entry of the subject across plans (plan id, then plan order) |
 | `GET /v1/plans/{planId}/subject/{subjectId}` | public | the subject's first entry in the plan; 404 if the plan doesn't show it |
 | `GET /v1/plans/{planId}/requirements` | public | `[{ "section", "credits", "year", "semester" }]` ordered by year, semester, section; `[]` for a plan without groups or an unknown plan |
-| `GET /v1/subjects?plan=` | public | the plan, organized by section/year/semester in ITBA's order, with commissions. A plan the sync hasn't stored from ITBA yet (none, or only `BACKFILL` rows) is fetched live from the gateway (502 if it fails, 404 if empty) and stored, so the edits apply and the next request reads the database; a plan staff just added works before its first sync |
+| `GET /v1/subjects?plan=` | public | the plan, organized by section/year/semester in ITBA's order, with commissions. A registered plan the sync hasn't stored from ITBA yet (none, or only `BACKFILL` rows) is fetched live and stored, so the edits apply and the next request reads the database (a plan staff just added works before its first sync); if ITBA fails or answers empty, the stored copy is served (502 / 404 when there is none). A plan that isn't registered is always fetched live and never stored (the sync doesn't refresh it and staff can't edit it) |
 
 The MCP tool `get_plan_subjects` adds the requirements as `requirements`
 (filtered by its year, semester and section arguments). The web client is

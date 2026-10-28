@@ -9,14 +9,16 @@
 --     every entry of the subject (NULL = keep ITBA's); setting section
 --     collapses the subject's entries into its first one;
 --   * hidden = true: the subject is left out of the plan;
---   * a subject ITBA doesn't send: added after ITBA's entries, name and
---     credits from public.subject.
+--   * added = true: a subject staff added (one ITBA doesn't send), listed
+--     after ITBA's entries with its own values, name and credits from
+--     public.subject. A patch (added = false) on a subject ITBA stops sending
+--     goes with it.
 -- plan_entry_effective is what every reader uses.
 --
 -- Backfill: until a plan's first sync after this deploy, plan_entry has no
 -- rows for it, and the readers moved here (/v1/plans/*, commissions, Apuntes,
--- wiki relations) would see an empty plan. Copy plan_subject (registered
--- plans only) as source BACKFILL; the next sync replaces them, and
+-- wiki relations) would see an empty plan. Copy plan_subject as source
+-- BACKFILL; the next sync replaces them, and
 -- /v1/subjects?plan= still asks ITBA for a plan that only has BACKFILL rows.
 -- Every plan in plan_subject, registered or not (plan_entry has no FK).
 -- =============================================================================
@@ -24,6 +26,7 @@
 CREATE TABLE public.plan_entry_override (
     plan_id          VARCHAR(25)    NOT NULL REFERENCES public.plan (id) ON UPDATE CASCADE ON DELETE CASCADE,
     subject_id       VARCHAR(32)    NOT NULL,
+    added            BOOLEAN        NOT NULL,
     hidden           BOOLEAN        NOT NULL,
     section          VARCHAR(255),
     year             INTEGER,
@@ -59,16 +62,16 @@ SELECT o.plan_id,
        1000000 + (row_number() OVER (PARTITION BY o.plan_id ORDER BY o.created_at, o.subject_id))::int,
        o.subject_id,
        o.section,
-       COALESCE(o.year, 0),
-       COALESCE(o.semester, 0),
+       o.year,
+       o.semester,
        COALESCE(o.dependencies, '{}'),
-       COALESCE(o.credits_required, 0),
+       o.credits_required,
        s.name,
        COALESCE(s.credits, 0),
        'STAFF'
 FROM public.plan_entry_override o
 LEFT JOIN public.subject s ON s.id = o.subject_id
-WHERE NOT o.hidden
+WHERE o.added AND NOT o.hidden
   AND NOT EXISTS (SELECT 1 FROM public.plan_entry e WHERE e.plan_id = o.plan_id AND e.subject_id = o.subject_id);
 
 INSERT INTO public.plan_entry (plan_id, position, subject_id, section, year, semester, dependencies,

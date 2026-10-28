@@ -90,29 +90,38 @@ export class SubjectService {
   }
 
   private async planEntries(planId: string): Promise<planRepo.PlanEntry[]> {
-    const [synced, fetchedAt] = await withTx(this.deps.db, async (tx) =>
-      [await planRepo.syncedFromItba(tx, planId), await planRepo.planFetchedAt(tx, planId)] as const, { readOnly: true });
+    const [registered, synced, fetchedAt] = await withTx(this.deps.db, async (tx) =>
+      [await planRepo.planExists(tx, planId), await planRepo.syncedFromItba(tx, planId), await planRepo.planFetchedAt(tx, planId)] as const,
+    { readOnly: true });
+    const stored = () => withTx(this.deps.db, (tx) => planRepo.findEffectiveEntries(tx, planId), { readOnly: true });
+    // Not registered: the sync never refreshes it and staff can't edit it, so it stays live (as it always was).
+    if (!registered) return (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
     if (synced) {
       if (fetchedAt !== null && systemNowMicros() - parsePgTimestamp(fetchedAt) > STALE_AFTER_MICROS) {
         // Still served (better than nothing while ITBA fails), but its syncs are failing: say so.
         this.deps.log.warn({ plan: planId, fetchedAt }, 'Serving plan entries older than 2 days: its sync keeps failing');
       }
-      return withTx(this.deps.db, (tx) => planRepo.findEffectiveEntries(tx, planId), { readOnly: true });
+      return stored();
     }
-    const live = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
-    // An empty answer (an unknown plan) is not stored: it would wipe a BACKFILL copy the other readers use.
-    if (live.length === 0) return live;
+    let live: planRepo.PlanEntry[];
     try {
-      await withTx(this.deps.db, (tx) => planRepo.replacePlanEntries(tx, planId, live.map((e) => ({
-        subjectId: e.subjectId, section: e.section, year: e.year, semester: e.semester, dependencies: e.dependencies,
-        creditsRequired: e.creditsRequired, subjectName: e.subjectName, subjectCredits: e.subjectCredits,
-      })), systemNowMicros()));
+      live = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
     } catch (e) {
-      // A concurrent sync or request stored it first, or a row was rejected: serve what ITBA sent.
+      // A BACKFILL copy (or staff-added subjects) beats an error.
+      const fallback = await stored();
+      if (fallback.length === 0) throw e;
+      this.deps.log.warn({ err: e, plan: planId }, 'ITBA failed for an unsynced plan: serving its stored copy');
+      return fallback;
+    }
+    // An empty answer is not stored: it would wipe the BACKFILL copy the other readers use.
+    if (live.length === 0) return stored();
+    try {
+      await withTx(this.deps.db, (tx) => planRepo.replacePlanEntries(tx, planId, live, systemNowMicros()));
+    } catch (e) {
+      // A concurrent sync or request stored it first, or a row was rejected: the stored copy has the edits.
       if (sqlState(e) === undefined) throw e;
       this.deps.log.warn({ err: e, plan: planId }, 'Could not store the plan fetched live');
-      return live;
     }
-    return withTx(this.deps.db, (tx) => planRepo.findEffectiveEntries(tx, planId), { readOnly: true });
+    return stored();
   }
 }

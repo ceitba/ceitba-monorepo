@@ -6,7 +6,6 @@
 import type { Deps } from '../../deps';
 import { withTx, type Db } from '../../db/client';
 import { ResourceAlreadyExistsError, ResourceNotFoundError } from '../../http/errors';
-import { systemNowMicros } from '../../lib/time';
 import type { CreateSubjectPlanRequest, PlanSectionRequirementResponse, SubjectPlanResponse, UpdateSubjectPlanRequest } from './dto';
 import * as repo from './repo';
 
@@ -43,7 +42,9 @@ export class SubjectPlanService {
 
   /**
    * Staff edits are kept apart from ITBA's copy (plan_entry_override) and win over it: the sync never touches them.
-   * Adding a subject the plan doesn't list (or one staff hid) records it with the given values.
+   * Adds a subject the plan doesn't show: one ITBA doesn't send (listed after ITBA's, unset fields 0 / []), or one
+   * staff hid, which shows again with only the given fields changed (its section only if it isn't already one of
+   * ITBA's for it).
    */
   create(planId: string, req: CreateSubjectPlanRequest): Promise<SubjectPlanResponse> {
     return withTx(this.deps.db, async (tx) => {
@@ -51,10 +52,18 @@ export class SubjectPlanService {
       if (!(await repo.planExists(tx, planId))) throw new ResourceNotFoundError('Plan', planId);
       if (!(await repo.subjectExists(tx, subjectId))) throw new ResourceNotFoundError('Subject', subjectId);
       if (await repo.findEffectiveEntry(tx, planId, subjectId)) throw new ResourceAlreadyExistsError('SubjectPlan', `${planId}/${subjectId}`);
-      await repo.saveOverride(tx, planId, subjectId, {
-        hidden: false, section: req.section!, year: req.year ?? 0, semester: req.semester ?? 0,
-        dependencies: req.dependencies?.filter((d): d is string => d !== null) ?? [], creditsRequired: req.creditsRequired ?? 0,
-      }, systemNowMicros());
+      const deps = req.dependencies?.filter((d): d is string => d !== null) ?? null;
+      const itbaSections = await repo.itbaSectionsOf(tx, planId, subjectId);
+      if (itbaSections.length > 0) {
+        await repo.patchOverride(tx, planId, subjectId, {
+          section: itbaSections.includes(req.section!) ? null : req.section!, year: req.year, semester: req.semester,
+          dependencies: deps, creditsRequired: req.creditsRequired,
+        }, this.deps.clock.now());
+      } else {
+        await repo.addOverride(tx, planId, subjectId, {
+          section: req.section!, year: req.year ?? 0, semester: req.semester ?? 0, dependencies: deps ?? [], creditsRequired: req.creditsRequired ?? 0,
+        }, this.deps.clock.now());
+      }
       return response(await this.entry(tx, planId, subjectId));
     });
   }
@@ -63,15 +72,10 @@ export class SubjectPlanService {
   update(planId: string, subjectId: string, req: UpdateSubjectPlanRequest): Promise<SubjectPlanResponse> {
     return withTx(this.deps.db, async (tx) => {
       await this.entry(tx, planId, subjectId);
-      const prev = await repo.findOverride(tx, planId, subjectId);
-      await repo.saveOverride(tx, planId, subjectId, {
-        hidden: false,
-        section: req.section ?? prev?.section ?? null,
-        year: req.year ?? prev?.year ?? null,
-        semester: req.semester ?? prev?.semester ?? null,
-        dependencies: req.dependencies?.filter((d): d is string => d !== null) ?? prev?.dependencies ?? null,
-        creditsRequired: req.creditsRequired ?? prev?.creditsRequired ?? null,
-      }, systemNowMicros());
+      await repo.patchOverride(tx, planId, subjectId, {
+        section: req.section, year: req.year, semester: req.semester,
+        dependencies: req.dependencies?.filter((d): d is string => d !== null) ?? null, creditsRequired: req.creditsRequired,
+      }, this.deps.clock.now());
       return response(await this.entry(tx, planId, subjectId));
     });
   }
@@ -80,15 +84,8 @@ export class SubjectPlanService {
   delete(planId: string, subjectId: string): Promise<void> {
     return withTx(this.deps.db, async (tx) => {
       await this.entry(tx, planId, subjectId);
-      if (await repo.itbaListsSubject(tx, planId, subjectId)) {
-        const prev = await repo.findOverride(tx, planId, subjectId);
-        await repo.saveOverride(tx, planId, subjectId, {
-          hidden: true, section: prev?.section ?? null, year: prev?.year ?? null, semester: prev?.semester ?? null,
-          dependencies: prev?.dependencies ?? null, creditsRequired: prev?.creditsRequired ?? null,
-        }, systemNowMicros());
-      } else {
-        await repo.deleteOverride(tx, planId, subjectId);
-      }
+      if ((await repo.itbaSectionsOf(tx, planId, subjectId)).length > 0) await repo.hideOverride(tx, planId, subjectId, this.deps.clock.now());
+      else await repo.deleteOverride(tx, planId, subjectId);
     });
   }
 

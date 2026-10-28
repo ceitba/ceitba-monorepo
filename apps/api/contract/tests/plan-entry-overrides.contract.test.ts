@@ -90,4 +90,67 @@ describe('PlanEntryOverridesIT', () => {
     await api.get('/v1/subjects?plan=X-26');
     expect(itba.requests.length).toBe(1);
   });
+
+  test('aPatchGoesWithTheSubjectWhenItbaDropsIt_andAnEmptyAnswerKeepsThePlan', async () => {
+    itba.stubPlanBody('X-26', plan({ name: 'Algoritmos', code: '93.12', credits: '6' }, [{ name: 'Álgebra', code: '93.58', credits: '6' }]));
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    await api.put('/v1/plans/X-26/subject/93.58', { as: staff, body: { creditsRequired: 10 } });
+    itba.stubPlanBody('X-26', plan({ name: 'Algoritmos', code: '93.12', credits: '6' }));
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    expect((await rows()).some((r: string) => r.startsWith('93.58'))).toBe(false);
+
+    itba.stubPlanBody('X-26', { careerplan: { name: 'X', section: [] } });
+    await api.post('/v1/sync/subjects', { as: sync });
+    expect((await rows()).length).toBe(4);
+  });
+
+  test('putOnAStaffAddedSubjectEditsIt', async () => {
+    itba.stubPlanBody('X-26', plan({ name: 'Algoritmos', code: '93.12', credits: '6' }));
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    await api.post('/v1/plans/X-26/subject', { as: staff, body: { subjectId: '61.01', section: 'Extra', year: 3, semester: 1 } });
+    const r = await api.put('/v1/plans/X-26/subject/61.01', { as: staff, body: { year: 5, creditsRequired: 50 } });
+    expect(r.json).toMatchObject({ section: 'Extra', year: 5, semester: 1, creditsRequired: 50 });
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    expect((await rows()).at(-1)).toBe('61.01|Extra|5|50|Economía');
+  });
+
+  // Showing a hidden subject again changes only what was sent: a core subject stays curricular, both sections come back.
+  test('postShowsAHiddenItbaSubjectWithItsOwnValues', async () => {
+    itba.stubPlanBody('X-26', plan({ name: 'Algoritmos', code: '93.12', credits: '6', creditsRequired: '7' }));
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    const before = await rows();
+    for (const id of ['93.12', '72.27']) await api.delete(`/v1/plans/X-26/subject/${id}`, { as: staff });
+    expect((await api.post('/v1/plans/X-26/subject', { as: staff, body: { subjectId: '93.12', section: 'Básico' } })).json)
+      .toMatchObject({ section: 'Básico', year: 1, semester: 1, creditsRequired: 7 });
+    expect((await api.post('/v1/plans/X-26/subject', { as: staff, body: { subjectId: '72.27', section: 'Orientación Datos' } })).status).toBe(201);
+    expect(await rows()).toEqual(before);
+  });
+
+  test('anUnregisteredPlanStaysLive', async () => {
+    itba.stubPlanBody('Y-UNREG', plan({ name: 'Algoritmos', code: '93.12', credits: '6' }));
+    for (let i = 0; i < 2; i++) expect((await api.get('/v1/subjects?plan=Y-UNREG')).status).toBe(200);
+    expect(itba.requests.length).toBe(2);
+    expect((await api.db`SELECT count(*)::int AS n FROM public.plan_entry WHERE plan_id = 'Y-UNREG'`)[0]!.n).toBe(0);
+  });
+
+  test('aBackfilledPlanIsServedFromTheDatabaseWhenItbaFails', async () => {
+    await seedPlanEntry(api.db, { planId: 'X-26', subjectId: '93.12', section: 'Básico', year: 1, semester: 1, source: 'BACKFILL' });
+    itba.stubPlanBody('X-26', { error: 'down' }, 500);
+    const r = await api.get('/v1/subjects?plan=X-26');
+    expect(r.status).toBe(200);
+    expect(r.json['Básico']['1']['1'][0].subject_id).toBe('93.12');
+  });
+
+  // The other readers see the edits too: a hidden subject's commissions leave the plan's list.
+  test('commissionsOfTheplanFollowTheEdits', async () => {
+    itba.stubPlanBody('X-26', plan({ name: 'Algoritmos', code: '93.12', credits: '6' }));
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    await api.db`DELETE FROM public.commission WHERE id = 'X-93.99-A'`;
+    await api.db`INSERT INTO public.commission (id, subject_code, commission_name, course_start, course_end, enrolled_students, quota, subject_type)
+                 VALUES ('X-93.99-A', '93.99', 'A', now()::date - 10, now()::date + 60, 0, 30, 'SEMESTRAL')`;
+    const ids = async () => (await api.get('/v1/commissions?plan=X-26')).json.map((c: { id: string }) => c.id);
+    expect(await ids()).toContain('X-93.99-A');
+    await api.delete('/v1/plans/X-26/subject/93.99', { as: staff });
+    expect(await ids()).not.toContain('X-93.99-A');
+  });
 });

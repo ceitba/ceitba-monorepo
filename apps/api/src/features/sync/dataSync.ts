@@ -174,7 +174,8 @@ export class DataSyncService {
    */
   async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult,
     requirements: PlanSectionRequirementProjection[] = []): Promise<void> {
-    try {
+    // An empty answer is not stored: it would wipe the plan (and leave every staff patch orphaned) over an ITBA hiccup.
+    if (entries.length > 0) try {
       await withTx(this.deps.db, async (tx) => {
         await planRepo.replacePlanEntries(tx, planId, entries.map((e) => ({
           subjectId: e.subjectId, section: e.section, year: e.year, semester: e.semester, dependencies: e.dependencies,
