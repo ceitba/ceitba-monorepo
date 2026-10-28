@@ -158,3 +158,23 @@ export const planSubject = pgTable("plan_subject", {
 }, (table) => [
 	primaryKey({ columns: [table.subjectId, table.planId], name: "plan_subject_pkey"}),
 ]);
+
+export const planEntry = pgTable("plan_entry", {
+	planId: varchar("plan_id", { length: 25 }).notNull(),
+	position: integer().notNull(),
+	subjectId: varchar("subject_id", { length: 32 }).notNull(),
+	section: varchar({ length: 255 }),
+	year: integer(),
+	semester: integer(),
+	dependencies: varchar({ length: 255 }).array().notNull(),
+	creditsRequired: integer("credits_required"),
+	subjectName: varchar("subject_name", { length: 255 }),
+	subjectCredits: integer("subject_credits").notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.planId],
+			foreignColumns: [plan.id],
+			name: "plan_entry_plan_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	primaryKey({ columns: [table.planId, table.position], name: "plan_entry_pkey"}),
+]);

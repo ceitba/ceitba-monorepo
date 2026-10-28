@@ -50,6 +50,7 @@
       "paths": [
         "apps/api/src/features/plan/**",
         "apps/api/src/features/sync/**",
+        "apps/api/src/features/subject/**",
         "apps/web/src/api/plans.ts"
       ],
       "docs": [

@@ -3,7 +3,7 @@
 
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
-import { plan, planSectionRequirement, planSubject, subject } from '../../db/schema/academic';
+import { plan, planEntry, planSectionRequirement, planSubject, subject } from '../../db/schema/academic';
 import { toPgTimestamp, type Micros } from '../../lib/time';
 
 export type PlanSubjectRow = typeof planSubject.$inferSelect;
@@ -131,4 +131,32 @@ export async function replaceSectionRequirements(db: Db, planId: string, rows: P
     target: [planSectionRequirement.planId, planSectionRequirement.section],
     set: { credits: sql`excluded.credits`, year: sql`excluded.year`, semester: sql`excluded.semester` },
   });
+}
+
+/** A plan entry as fetched from ITBA (plan_entry): the plan's own values, NULL where ITBA sent none. */
+export interface PlanEntry {
+  subjectId: string;
+  section: string | null;
+  year: number | null;
+  semester: number | null;
+  dependencies: string[];
+  creditsRequired: number | null;
+  subjectName: string | null;
+  subjectCredits: number;
+}
+
+/** The plan's entries in the order they were fetched. */
+export async function findPlanEntries(db: Db, planId: string): Promise<PlanEntry[]> {
+  const rows = await db.select().from(planEntry).where(eq(planEntry.planId, planId)).orderBy(asc(planEntry.position));
+  return rows.map((r) => ({
+    subjectId: r.subjectId, section: r.section, year: r.year, semester: r.semester, dependencies: r.dependencies,
+    creditsRequired: r.creditsRequired, subjectName: r.subjectName, subjectCredits: r.subjectCredits,
+  }));
+}
+
+/** The plan's rows become exactly `entries`, positioned by their index. */
+export async function replacePlanEntries(db: Db, planId: string, entries: PlanEntry[]): Promise<void> {
+  await db.delete(planEntry).where(eq(planEntry.planId, planId));
+  if (entries.length === 0) return;
+  await db.insert(planEntry).values(entries.map((e, position) => ({ planId, position, ...e })));
 }

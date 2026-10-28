@@ -38,12 +38,15 @@ export class SubjectService {
   }
 
   /**
-   * Deliberately NOT transactional around the ITBA call (it can take the
-   * client's 30 s read timeout): the plan comes from the live ITBA API, then
-   * one read-only query hydrates the commissions cached by the sync.
+   * The plan comes from plan_entry, which the sync fills with each plan exactly
+   * as ITBA sent it (docs/PLANS.md). A plan with no stored entries (not synced
+   * yet, or not registered) falls back to the live ITBA API, deliberately NOT
+   * inside a transaction (the call can take the client's 30 s read timeout).
+   * Then read-only queries hydrate the commissions cached by the sync.
    */
   async getSubjectsByPlanOrganized(planId: string, viewerId: string | null): Promise<OrganizedSubjects> {
-    const subjectPlans = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    const stored = await withTx(this.deps.db, (tx) => planRepo.findPlanEntries(tx, planId), { readOnly: true });
+    const subjectPlans = stored.length > 0 ? stored : (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
     if (subjectPlans.length === 0) throw new ResourceNotFoundError('Plan', planId);
 
     const codes = [...new Set(subjectPlans.map((sp) => sp.subjectId).filter((c): c is string => c != null))];

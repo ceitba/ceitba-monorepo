@@ -48,7 +48,7 @@ An entry's `type` says what it is:
   year, semester }`, names trimmed). A repeated name (the first one wins) and
   a `"section"` entry outside a term are skipped; an entry without a name or
   whose `credits` is not an integer is logged and skipped. A bad group never
-  fails the plan: `GET /v1/subjects?plan=` serves the subjects live.
+  fails the plan's subjects.
 * Anything else is skipped.
 
 The sync stores the requirements in `plan_section_requirement`

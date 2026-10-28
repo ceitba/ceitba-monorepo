@@ -7,7 +7,7 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { Sql } from 'postgres';
 import { rebase, startMockItba, todayArt } from '../../test/itba/mockItba';
-import { bearer, mintJwt, seedUser, useServer } from '../support';
+import { apiKey, bearer, mintJwt, seedCareer, seedPlan, seedUser, TEST_SYNC_KEY, useServer } from '../support';
 
 const itba = startMockItba();
 const api = useServer({ env: itba.env });
@@ -168,5 +168,71 @@ describe('OrganizedSubjectsIT', () => {
     expect(r.json.message).toBe('External API error in ITBA during getSubjectsByPlan');
     const missing = await api.get('/v1/subjects');
     expect(missing.status).toBe(400);
+  });
+});
+
+// Not in the IT: once the sync stored a plan (plan_entry, docs/PLANS.md), GET /v1/subjects?plan= is served from the
+// database, byte for byte what the live gateway gave, without calling ITBA. Unsynced plans still go to the gateway.
+describe('PlanEntriesIT', () => {
+  // A subject in two sections (orientations), an elective with no year, nulls ITBA leaves out.
+  const body = { careerplan: { name: 'X', section: [
+    { name: 'Ciclo Básico', terms: { term: [
+      { year: '1', period: '1', entries: { entry: [
+        { type: 'subject', name: 'Algoritmos', code: '93.12', credits: '6' },
+        { type: 'subject', name: 'Física I', code: '93.41', credits: '6', creditsRequired: '0' },
+      ] } },
+      { year: '1', period: '2', entries: { entry: { type: 'subject', name: 'Algoritmos II', code: '93.13', credits: '6', dependencies: { dependency: '93.12' } } } },
+    ] } },
+    { name: 'Orientación Imagen', terms: { term: { year: '4', period: '1', entries: { entry: { type: 'subject', name: 'Visión', code: '72.27', credits: '3', creditsRequired: '144' } } } } },
+    { name: 'Orientación Datos', terms: { term: { year: '4', period: '2', entries: { entry: { type: 'subject', name: 'Visión (Datos)', code: '72.27', credits: '4' } } } } },
+    { name: 'Electivas', withoutTerm: { withoutTerm: [
+      { type: 'subject', name: 'Tópicos', code: '93.99', credits: '4', creditsRequired: '120' },
+      { type: 'subject', name: 'Algoritmos', code: '93.12', credits: '6' },
+    ] } },
+  ] } };
+  const sync = apiKey(TEST_SYNC_KEY);
+
+  beforeEach(async () => {
+    itba.reset();
+    await api.db`DELETE FROM public.commission`;
+    await api.db`DELETE FROM public.plan WHERE id = 'X-26'`;
+    await seedCareer(api.db, 'XC', 'Carrera X').catch(() => {});
+    await seedPlan(api.db, 'X-26', 'XC', 'Plan X');
+  });
+
+  test('servedFromTheDatabaseAfterTheSync_noGatewayCall', async () => {
+    itba.stubPlanBody('X-26', body);
+    await commission(api.db, '72.27-A', '72.27', 'A', d('2026-08-01'), d('2026-12-01'), [['MONDAY', '14:00', '102T', 'SDT', '17:00']]);
+    const live = await api.get('/v1/subjects?plan=X-26');
+    expect(live.status).toBe(200);
+    expect(itba.requests).toEqual(['/careerPlans/tok-123?plan=X-26']);
+    // Both sections of 72.27 and the electives, in ITBA's order.
+    expect(Object.keys(live.json)).toEqual(['Ciclo Básico', 'Orientación Imagen', 'Orientación Datos', 'Electivas']);
+
+    expect((await api.post('/v1/sync/subjects', { as: sync })).status).toBe(200);
+    itba.reset();
+    const stored = await api.get('/v1/subjects?plan=X-26');
+    expect(stored.status).toBe(200);
+    expect(stored.text).toBe(live.text);
+    expect(itba.requests).toEqual([]);
+  });
+
+  test('theNextSyncReplacesTheStoredPlan', async () => {
+    itba.stubPlanBody('X-26', body);
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    itba.stubPlanBody('X-26', { careerplan: { section: { name: 'Ciclo Básico', terms: { term: { year: '1', period: '1', entries: { entry: {
+      type: 'subject', name: 'Álgebra', code: '93.58', credits: '6' } } } } } } });
+    // Between syncs the stored plan is served, whatever the gateway has now.
+    expect(Object.keys((await api.get('/v1/subjects?plan=X-26')).json)).toEqual(['Ciclo Básico', 'Orientación Imagen', 'Orientación Datos', 'Electivas']);
+    await api.post('/v1/sync/plan/X-26/subjects', { as: sync });
+    const r = await api.get('/v1/subjects?plan=X-26');
+    expect(Object.keys(r.json)).toEqual(['Ciclo Básico']);
+    expect(r.json['Ciclo Básico']['1']['1'].map((s: { subject_id: string }) => s.subject_id)).toEqual(['93.58']);
+  });
+
+  test('aPlanNotYetSyncedGoesToTheGateway', async () => {
+    itba.stubPlanBody('X-26', body);
+    expect((await api.get('/v1/subjects?plan=X-26')).status).toBe(200);
+    expect(itba.requests).toEqual(['/careerPlans/tok-123?plan=X-26']);
   });
 });

@@ -67,3 +67,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.51 api_key_scopes | V62 |
 | V4.52 scheduled_job_runs | V63 |
 | V4.53 plan_section_requirements | V64 |
+| V4.54 plan_entries | V65 |
