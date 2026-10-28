@@ -366,6 +366,34 @@
       "grantsLoadFailed": "No pudimos cargar los accesos de esta capacidad.",
       "emptyHint": "Acá van a aparecer las funciones en prueba que podés habilitar para todos o para personas y organizaciones puntuales."
     },
+    "careers": {
+      "intro": "Las carreras y planes que los estudiantes eligen al registrarse. ITBA no publica este listado, así que lo cargamos acá; las materias de cada plan llegan solas en la próxima sincronización. Los códigos no se pueden cambiar una vez creados.",
+      "newCareer": "Nueva carrera",
+      "newPlan": "Agregar plan",
+      "create": "Crear",
+      "loadFailed": "No pudimos cargar las carreras.",
+      "empty": "Todavía no hay carreras",
+      "emptyHint": "Creá la primera con «Nueva carrera».",
+      "idLabel": "Código {{id}}",
+      "planCount_one": "{{count}} plan",
+      "planCount_other": "{{count}} planes",
+      "renameCareerAria": "Editar la carrera {{name}}",
+      "newPlanAria": "Agregar un plan a {{name}}",
+      "renamePlanAria": "Editar el plan {{id}}",
+      "renameCareerTitle": "Editar carrera {{id}}",
+      "newPlanTitle": "Nuevo plan de {{name}}",
+      "renamePlanTitle": "Editar plan {{id}}",
+      "idField": "Código",
+      "nameField": "Nombre",
+      "careerIdHint": "Hasta 25 caracteres, p. ej. «S». No se puede cambiar después.",
+      "planIdHint": "Escribilo exactamente como lo usa ITBA (p. ej. «S10-Rev23»): si no coincide, la sincronización no encuentra sus materias. No se puede cambiar después.",
+      "planNameHint": "Opcional: si lo dejás vacío se usa el código.",
+      "careerCreated": "Creamos la carrera {{name}}.",
+      "planCreated": "Agregamos el plan {{id}}. Sus materias llegan en la próxima sincronización.",
+      "saved": "Guardamos los cambios.",
+      "careerIdTaken": "Ya existe una carrera con el código {{id}}.",
+      "planIdTaken": "Ya existe un plan con el código {{id}} (en esta u otra carrera)."
+    },
     "errors": {
       "generic": "No pudimos completar la acción. Probá de nuevo en un rato.",
       "network": "No hay conexión con el servidor. Revisá tu conexión y probá de nuevo.",
@@ -408,6 +436,9 @@
       },
       "organizations": {
         "label": "Organizaciones"
+      },
+      "careers": {
+        "label": "Carreras y planes"
       },
       "corrections": {
         "label": "Correcciones de horario"

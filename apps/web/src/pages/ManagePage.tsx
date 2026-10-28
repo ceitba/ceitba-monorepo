@@ -7,6 +7,7 @@ import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
 import ManageCapabilitiesSection from './manage/ManageCapabilitiesSection'
+import ManageCareersSection from './manage/ManageCareersSection'
 import ManageReviewSection from './manage/review/ManageReviewSection'
 import { ReviewQueueContext, useQueue } from './manage/review/queueContext'
 import { useReviewQueue, type QueueKind } from './manage/review/useReviewQueue'
@@ -179,6 +180,8 @@ function AreaContent({ area }: { area: Area }) {
           />
         </AreaFrame>
       )
+    case 'careers':
+      return <AreaFrame area={area}><ManageCareersSection /></AreaFrame>
     case 'corrections':
       return <AreaFrame area={area}><ManageCorrectionsSection /></AreaFrame>
     case 'apuntes':
