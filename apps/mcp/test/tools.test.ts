@@ -8,6 +8,8 @@ beforeAll(() => {
   api = startFakeApi({
     "GET /v1/careers/plans": () => ({ S: { id: "S", name: "Ingeniería en Informática", plans: ["S10-Rev23"] } }),
     "GET /v1/subjects": req => (req.query.get("plan") === "S10-Rev23" ? CATALOG : {}),
+    "GET /v1/plans/:id/requirements": req => (req.path === "/v1/plans/S10-Rev23/requirements"
+      ? [{ section: "Electivas Gestíon", credits: 18, year: 3, semester: 1 }, { section: "Electivas", credits: 27, year: 4, semester: 2 }] : []),
     "GET /v1/commissions": () => [{ id: "c1", subjectCode: "93.41", subjectName: "Física I", commissionName: "A", quota: 40, enrolledStudents: 39 }],
     "GET /v1/me/schedules/:id": () => ({
       id: "11111111-1111-4111-8111-111111111111", name: "Q2", careerId: "S", plan: "S10-Rev23", isPrimary: true,
@@ -107,6 +109,18 @@ describe("tool calls", () => {
     expect(data.total).toBe(1);
     expect(data.subjects[0].id).toBe("93.41");
     expect(data.subjects[0].commissions[0].slots[0]).toBe("Lun 08:00-11:00 SDF 101");
+    await s.close();
+  });
+
+  test("get_plan_subjects adds the elective-group credits, filtered like the subjects", async () => {
+    const s = await connect({ apiUrl: api.url });
+    const all = await s.call("get_plan_subjects", { plan: "S10-Rev23" });
+    expect((all.data as { requirements: unknown[] }).requirements).toEqual([
+      { section: "Electivas Gestíon", credits: 18, year: 3, semester: 1 }, { section: "Electivas", credits: 27, year: 4, semester: 2 }]);
+    const y4 = await s.call("get_plan_subjects", { plan: "S10-Rev23", year: 4 });
+    expect((y4.data as { requirements: unknown[] }).requirements).toEqual([{ section: "Electivas", credits: 27, year: 4, semester: 2 }]);
+    const gestion = await s.call("get_plan_subjects", { plan: "S10-Rev23", section: "gestion" });
+    expect((gestion.data as { requirements: { section: string }[] }).requirements.map(r => r.section)).toEqual(["Electivas Gestíon"]);
     await s.close();
   });
 

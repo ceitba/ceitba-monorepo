@@ -101,6 +101,7 @@
     "GET /v1/organizations/{slug}/followers": "hasRole(STAFF) or @orgAccess.canViewFollowers(slug)",
     "GET /v1/organizations/{slug}/mail": "hasRole(STAFF) or @orgAccess.canManageMembers(slug)",
     "GET /v1/organizations/{slug}/members": "hasRole(STAFF) or @orgAccess.canManageMembers(slug)",
+    "GET /v1/plans/{planId}/requirements": null,
     "GET /v1/plans/{planId}/subject/{subjectId}": null,
     "GET /v1/plans/{planId}/subjects": null,
     "GET /v1/plans/subjects/{subjectId}/plans": null,

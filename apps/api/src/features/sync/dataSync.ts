@@ -5,7 +5,7 @@
 
 import type { Deps } from '../../deps';
 import { sqlState, withSavepoint, withTx, type Db } from '../../db/client';
-import type { CommissionProjection, CommissionQuery, SubjectPlanProjection } from '../../external/itba';
+import type { CommissionProjection, CommissionQuery, PlanSectionRequirementProjection, SubjectPlanProjection } from '../../external/itba';
 import { withDefaultsFilled } from '../../external/itba';
 import { javaCompareStrings, javaIsBlank } from '../../lib/javaCompat';
 import { systemNowMicros } from '../../lib/time';
@@ -80,9 +80,9 @@ export class DataSyncService {
   }
 
   async syncByPlan(planId: string): Promise<SubjectPlanProjection[]> {
-    const entries = await this.deps.itba.getSubjectsByPlan(planId);
-    await this.upsertPlanEntries(planId, entries, new DataSyncResult());
-    return entries;
+    const { subjects, requirements } = await this.deps.itba.getSubjectsByPlan(planId);
+    await this.upsertPlanEntries(planId, subjects, new DataSyncResult(), requirements);
+    return subjects;
   }
 
   async syncCommissionsBySubject(subjectCode: string, query: CommissionQuery | null): Promise<CommissionProjection[]> {
@@ -101,8 +101,8 @@ export class DataSyncService {
       const plans = await withTx(this.deps.db, (tx) => syncRepo.planIdsOfCareer(tx, careerId), { readOnly: true });
       for (const planId of plans) {
         try {
-          const entries = await this.deps.itba.getSubjectsByPlan(planId);
-          await this.upsertPlanEntries(planId, entries, result);
+          const { subjects, requirements } = await this.deps.itba.getSubjectsByPlan(planId);
+          await this.upsertPlanEntries(planId, subjects, result, requirements);
         } catch (e) {
           this.log.error({ err: e, plan: planId, career: careerId }, 'Failed to sync plan');
           result.subjectPlans.errors++;
@@ -164,9 +164,18 @@ export class DataSyncService {
    * counts one error and nothing of the plan is kept). Emulated by counting
    * before writing, running each entry's writes in a savepoint, and failing
    * the transaction at the end when a write was rejected.
+   *
+   * The plan's elective-group requirements are replaced in the same transaction (not counted in the result, whose
+   * JSON is fixed). They need the plan row (FK): a plan synced by id before staff added it keeps only its subjects.
    */
-  async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult): Promise<void> {
+  async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult,
+    requirements: PlanSectionRequirementProjection[] = []): Promise<void> {
     await withTx(this.deps.db, async (tx) => {
+      if (await planRepo.planExists(tx, planId)) {
+        await planRepo.replaceSectionRequirements(tx, planId, requirements.map((r) => ({
+          planId, section: r.section, credits: r.credits, year: r.year ?? 0, semester: r.semester ?? 0,
+        })));
+      }
       let rejected: unknown = null;
       for (const entry of entries) {
         try {

@@ -237,6 +237,27 @@ describe('DataSyncServiceIT', () => {
     expect(r.text).toMatch(/^\{"totalProcessed":8,"duration":\d+,"subjectPlans":\{"created":4,"updated":0,"errors":1\}\}$/);
   });
 
+  // Not in the IT: term entries of type "section" become the plan's requirements, replaced on every sync;
+  // the per-plan sync response stays the subjects only.
+  test('sectionEntriesAreStoredAsPlanRequirements', async () => {
+    const plan = (groups: { name: string; credits: string; year: string; period: string }[]) => ({ careerplan: { name: 'S', section: [
+      { name: 'Básico', terms: { term: groups.map((g) => ({ year: g.year, period: g.period, entries: { entry: [
+        { type: 'subject', name: 'Algoritmos', code: `93.1${g.year}${g.period}`, credits: '6' },
+        { type: 'section', name: g.name, credits: g.credits, dependencies: null },
+      ] } })) } },
+    ] } });
+    itba.stubPlanBody('S10-Rev23', plan([{ name: 'Electivas Gestíon', credits: '18', year: '3', period: '1' }, { name: 'Electivas Social', credits: '12', year: '3', period: '2' }]));
+    expect((await api.post('/v1/sync/subjects', { as: sync })).json.subjectPlans.errors).toBe(0);
+    expect((await api.get('/v1/plans/S10-Rev23/requirements')).text)
+      .toBe('[{"section":"Electivas Gestíon","credits":18,"year":3,"semester":1},{"section":"Electivas Social","credits":12,"year":3,"semester":2}]');
+
+    itba.stubPlanBody('S10-Rev23', plan([{ name: 'Electivas', credits: '27', year: '4', period: '2' }]));
+    const r = await api.post('/v1/sync/plan/S10-Rev23/subjects', { as: sync });
+    expect(r.status).toBe(200);
+    expect(r.json.map((s: { subjectId: string }) => s.subjectId)).toEqual(['93.142']);
+    expect((await api.get('/v1/plans/S10-Rev23/requirements')).text).toBe('[{"section":"Electivas","credits":27,"year":4,"semester":2}]');
+  });
+
   // Not in the IT: per-plan endpoint, wire edge cases and gateway errors.
   test('syncByPlanReturnsTheProjectionsAndGatewayErrorsAre502', async () => {
     itba.stubPlanBody('S10-Rev23', { careerplan: { name: 'S', section: { name: 'Electivas', withoutTerm: { withoutTerm: [

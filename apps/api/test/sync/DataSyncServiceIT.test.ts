@@ -58,6 +58,37 @@ describe('DataSyncServiceIT', () => {
     expect(await count('commission')).toBe(1);
   });
 
+  // Not in the Java IT: the elective-group credits (term entries of type "section") are replaced on every sync.
+  test('syncReplacesPlanSectionRequirements', async () => {
+    const req = (section: string, credits: number, year: number, semester: number) => ({ planId: 'S10-Rev23', section, credits, year, semester });
+    const rows = async () => (await t.sql`SELECT section, credits, year, semester FROM public.plan_section_requirement
+      WHERE plan_id = 'S10-Rev23' ORDER BY section`).map((r) => `${r.section}:${r.credits}@${r.year}.${r.semester}`);
+    fake.stubPlan('S10-Rev23', [sp('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)],
+      [req('Electivas Gestíon', 18, 3, 1), req('Electivas Social', 12, 3, 2)]);
+    await sync.syncSubjectsAndPlansOnly();
+    expect(await rows()).toEqual(['Electivas Gestíon:18@3.1', 'Electivas Social:12@3.2']);
+
+    fake.stubPlan('S10-Rev23', [sp('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)],
+      [req('Electivas Social', 15, 4, 1), req('Electivas', 27, 4, 2)]);
+    const second = await sync.syncSubjectsAndPlansOnly();
+    expect(second.subjectPlans.errors).toBe(0);
+    expect(await rows()).toEqual(['Electivas:27@4.2', 'Electivas Social:15@4.1']);
+
+    fake.stubPlan('S10-Rev23', [sp('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)]);
+    await sync.syncByPlan('S10-Rev23');
+    expect(await rows()).toEqual([]);
+  });
+
+  // A plan synced by id before staff added it: its subjects are kept as before, its requirements wait for the plan row.
+  test('syncByPlanOfAnUnknownPlanKeepsSubjectsAndSkipsRequirements', async () => {
+    fake.stubPlan('X-NEW', [sp('93.12', 'X-NEW', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)],
+      [{ planId: 'X-NEW', section: 'Electivas', credits: 9, year: 4, semester: 2 }]);
+    const subjects = await sync.syncByPlan('X-NEW');
+    expect(subjects.map((s) => s.subjectId)).toEqual(['93.12']);
+    expect(await count('plan_subject')).toBe(1);
+    expect(await count('plan_section_requirement')).toBe(0);
+  });
+
   test('rerunIsIdempotent_noNewCreates', async () => {
     fake.stubPlan('S10-Rev23', [sp('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)]);
     fake.stubCommissions([]);

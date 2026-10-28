@@ -4,13 +4,13 @@
 // inside a DB transaction. The recording fake checks, during the call, that no
 // session of the app's database is `idle in transaction`.
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { FakeItbaApiClient, type SubjectPlanProjection } from '../../src/external/itba';
+import { FakeItbaApiClient, type PlanProjection } from '../../src/external/itba';
 import { testApp, type TestApp } from '../support/app';
 
 class RecordingFakeItbaApiClient extends FakeItbaApiClient {
   txActiveDuringLastPlanCall: boolean | null = null;
   probe: (() => Promise<boolean>) | null = null;
-  override async getSubjectsByPlan(planId: string): Promise<SubjectPlanProjection[]> {
+  override async getSubjectsByPlan(planId: string): Promise<PlanProjection> {
     this.txActiveDuringLastPlanCall = this.probe ? await this.probe() : null;
     return super.getSubjectsByPlan(planId);
   }

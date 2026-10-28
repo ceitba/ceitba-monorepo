@@ -116,6 +116,21 @@ export const scheduleCorrectionVote = pgTable("schedule_correction_vote", {
 	check("schedule_correction_vote_type_check", sql`(type)::text = ANY ((ARRAY['CONFIRM'::character varying, 'REJECT'::character varying])::text[])`),
 ]);
 
+export const planSectionRequirement = pgTable("plan_section_requirement", {
+	planId: varchar("plan_id", { length: 25 }).notNull(),
+	section: varchar({ length: 255 }).notNull(),
+	credits: integer().notNull(),
+	year: integer().notNull(),
+	semester: integer().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.planId],
+			foreignColumns: [plan.id],
+			name: "plan_section_requirement_plan_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	primaryKey({ columns: [table.planId, table.section], name: "plan_section_requirement_pkey"}),
+]);
+
 export const commissionTime = pgTable("commission_time", {
 	courseId: varchar("course_id", { length: 20 }).notNull(),
 	day: dayOfWeek().notNull(),
