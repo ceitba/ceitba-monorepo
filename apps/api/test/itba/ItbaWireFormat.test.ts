@@ -167,8 +167,10 @@ describe('RestClientItbaApiClient mapping', () => {
         { year: '3', period: '1', entries: { entry: [
           { type: 'section', name: 'Electivas Gestíon', credits: '18' },
           { type: 'section', name: 'Electivas Informática', credits: '15' },
-          { type: 'section', name: 'Electivas Gestíon', credits: '99' },
+          { type: 'section', name: ' Electivas Gestíon ', credits: '99' },
           { type: 'section', name: null, credits: '3' },
+          { type: 'section', name: 'Electivas Rotas', credits: '12.0' },
+          { type: 'section', name: 'Electivas Sin Créditos' },
         ] } },
         { year: '3', period: '2', entries: { entry: { type: 'section', name: 'Electivas Social', credits: '12' } } },
       ] } },
@@ -186,9 +188,12 @@ describe('RestClientItbaApiClient mapping', () => {
       { planId: 'A22', section: 'Electivas Social', credits: 12, year: 3, semester: 2 },
     ]);
 
-    itba.stubPlanBody('BAD', { careerplan: { section: { name: 'x', terms: { term: { year: '1', period: '1', entries: { entry: {
-      type: 'section', name: 'Electivas', credits: 'many' } } } } } } });
-    await expect(client.getSubjectsByPlan('BAD')).rejects.toThrow('External API error in ITBA during getSubjectsByPlan');
+    // A malformed group is skipped: it never fails the subjects (GET /v1/subjects?plan= serves them live).
+    itba.stubPlanBody('BAD', { careerplan: { section: { name: 'x', terms: { term: { year: '1', period: '1', entries: { entry: [
+      { type: 'section', name: 'Electivas', credits: 'many' }, { type: 'subject', name: 'Álgebra', code: '93.58', credits: '6' }] } } } } } });
+    const bad = await client.getSubjectsByPlan('BAD');
+    expect(bad.subjects.map((s) => s.subjectId)).toEqual(['93.58']);
+    expect(bad.requirements).toEqual([]);
   });
 
   test('errorsBecomeExternalApiError', async () => {

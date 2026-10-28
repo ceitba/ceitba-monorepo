@@ -166,15 +166,22 @@ export class DataSyncService {
    * the transaction at the end when a write was rejected.
    *
    * The plan's elective-group requirements are replaced in the same transaction (not counted in the result, whose
-   * JSON is fixed). They need the plan row (FK): a plan synced by id before staff added it keeps only its subjects.
+   * JSON is fixed), in a savepoint: a rejected requirement is logged and leaves the stored ones as they were, never
+   * failing the subjects. They need the plan row (FK): a plan synced by id before staff added it keeps only its
+   * subjects.
    */
   async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult,
     requirements: PlanSectionRequirementProjection[] = []): Promise<void> {
     await withTx(this.deps.db, async (tx) => {
       if (await planRepo.planExists(tx, planId)) {
-        await planRepo.replaceSectionRequirements(tx, planId, requirements.map((r) => ({
-          planId, section: r.section, credits: r.credits, year: r.year ?? 0, semester: r.semester ?? 0,
-        })));
+        try {
+          await withSavepoint(tx, (sp) => planRepo.replaceSectionRequirements(sp, planId, requirements.map((r) => ({
+            planId, section: r.section, credits: r.credits, year: r.year ?? 0, semester: r.semester ?? 0,
+          }))));
+        } catch (e) {
+          if (sqlState(e) === undefined) throw e;
+          this.log.error({ err: e, plan: planId }, 'Failed to replace plan section requirements');
+        }
       }
       let rejected: unknown = null;
       for (const entry of entries) {

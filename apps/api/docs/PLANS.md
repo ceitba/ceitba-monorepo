@@ -20,7 +20,9 @@ a rejected row rolls the whole plan back, other plans are unaffected.
   `semester`; key `(plan_id, section)`, V64): the credits the plan asks for
   per elective group. Replaced with each fetch: groups no longer sent are
   deleted, the rest upserted. `section` matches `plan_subject.section` of the
-  group's subjects. Needs the plan row (FK, cascades on delete): syncing a
+  group's subjects. Written in a savepoint: a row the database rejects is
+  logged and the stored groups stay as they were; it never fails the plan's
+  subjects. Needs the plan row (FK, cascades on delete): syncing a
   plan id that is not registered keeps its subjects only. Not counted in the
   sync result (its JSON is fixed).
 

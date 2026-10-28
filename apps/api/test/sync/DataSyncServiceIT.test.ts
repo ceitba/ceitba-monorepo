@@ -79,6 +79,18 @@ describe('DataSyncServiceIT', () => {
     expect(await rows()).toEqual([]);
   });
 
+  // A requirement the database rejects (a name over 255 chars) is logged: the subjects sync, the stored groups stay.
+  test('aRejectedRequirementNeverFailsThePlanSubjects', async () => {
+    fake.stubPlan('S10-Rev23', [], [{ planId: 'S10-Rev23', section: 'Electivas', credits: 27, year: 4, semester: 2 }]);
+    await sync.syncSubjectsAndPlansOnly();
+    fake.stubPlan('S10-Rev23', [sp('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)],
+      [{ planId: 'S10-Rev23', section: 'x'.repeat(256), credits: 3, year: 1, semester: 1 }]);
+    const r = await sync.syncSubjectsAndPlansOnly();
+    expect(r.subjectPlans.errors).toBe(0);
+    expect(r.subjectPlans.created).toBe(1);
+    expect((await t.sql`SELECT section FROM public.plan_section_requirement`).map((x) => x.section)).toEqual(['Electivas']);
+  });
+
   // A plan synced by id before staff added it: its subjects are kept as before, its requirements wait for the plan row.
   test('syncByPlanOfAnUnknownPlanKeepsSubjectsAndSkipsRequirements', async () => {
     fake.stubPlan('X-NEW', [sp('93.12', 'X-NEW', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)],
