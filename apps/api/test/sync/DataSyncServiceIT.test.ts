@@ -38,6 +38,7 @@ describe('DataSyncServiceIT', () => {
   beforeEach(async () => {
     await t.sql`DELETE FROM public.commission`;
     await t.sql`DELETE FROM public.plan_subject`;
+    await t.sql`DELETE FROM public.plan_entry`;
     await t.sql`DELETE FROM public.subject`;
     await t.sql`DELETE FROM public.plan`;
     await t.sql`DELETE FROM public.careers`;
@@ -123,7 +124,7 @@ describe('DataSyncServiceIT', () => {
     expect((await t.sql`SELECT section FROM public.plan_section_requirement`).map((x) => x.section)).toEqual(['Electivas']);
   });
 
-  // A plan synced by id before staff added it: its subjects are kept as before, its requirements wait for the plan row.
+  // A plan synced by id before staff added it: its subjects and entries are stored, its requirements wait for the plan row.
   test('syncByPlanOfAnUnknownPlanKeepsSubjectsAndSkipsRequirements', async () => {
     fake.stubPlan('X-NEW', [sp('93.12', 'X-NEW', 'Ciclo Básico', 1, 1, [], 0, 'Algoritmos', 6)],
       [{ planId: 'X-NEW', section: 'Electivas', credits: 9, year: 4, semester: 2 }]);
@@ -131,7 +132,7 @@ describe('DataSyncServiceIT', () => {
     expect(subjects.map((s) => s.subjectId)).toEqual(['93.12']);
     expect(await count('plan_subject')).toBe(1);
     expect(await count('plan_section_requirement')).toBe(0);
-    expect(await count('plan_entry')).toBe(0);
+    expect(await count('plan_entry')).toBe(1);
   });
 
   test('rerunIsIdempotent_noNewCreates', async () => {

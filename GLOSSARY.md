@@ -21,7 +21,8 @@ _Avoid_: Curriculum
 
 **Plan entry**:
 One Subject placed in a Plan as ITBA lists it: its section, year and term, prerequisites and credits within that
-Plan (`plan_entry`). A Subject can have several entries in one Plan (orientations).
+Plan (`plan_entry`, with staff edits applied in `plan_entry_effective`). A Subject can have several entries in one
+Plan (orientations).
 _Avoid_: plan subject (the older `plan_subject` table keeps one per Subject)
 
 **Subject**:

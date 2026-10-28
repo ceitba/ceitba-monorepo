@@ -30,6 +30,8 @@ describe('OrganizedSubjectsIT', () => {
   beforeEach(async () => {
     itba.reset();
     await api.db`DELETE FROM public.commission`;
+    // A plan fetched live is stored: each test starts unsynced.
+    await api.db`DELETE FROM public.plan_entry`;
   });
 
   test('getSubjectsByPlanReturnsOrganizedNestedMap', async () => {
@@ -197,6 +199,7 @@ describe('PlanEntriesIT', () => {
   beforeEach(async () => {
     itba.reset();
     await api.db`DELETE FROM public.commission`;
+    await api.db`DELETE FROM public.plan_entry`;
     await api.db`DELETE FROM public.plan WHERE id = 'X-26'`;
     await seedCareer(api.db, 'XC', 'Carrera X').catch(() => {});
     await seedPlan(api.db, 'X-26', 'XC', 'Plan X');

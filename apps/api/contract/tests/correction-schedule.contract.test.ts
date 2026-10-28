@@ -14,7 +14,7 @@
 // In-process (test/correction/): the sync expiry tests (stubbed ITBA client),
 // the push payload test (FakePushGateway) and the account-deletion re-evaluation.
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { bearer, mintJwt, seedStaff, supports, useServer, type As } from '../support';
+import { bearer, copyPlanSubjectsToEntries, mintJwt, seedStaff, supports, useServer, type As } from '../support';
 
 const api = useServer({ env: { ITBA_API_FAKE_FROM_DB: 'true' } });
 const hasSubjects = await supports('GET /v1/subjects');
@@ -75,12 +75,13 @@ async function commission(id: string, name: string, start: string, end: string) 
 }
 
 beforeEach(async () => {
-  await api.db`TRUNCATE public.schedule_correction, public."user", public.commission_time, public.commission, public.plan_subject, public.subject, public.plan, public.careers, public.push_log CASCADE`;
+  await api.db`TRUNCATE public.schedule_correction, public."user", public.commission_time, public.commission, public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers, public.push_log CASCADE`;
   await api.db`INSERT INTO public.careers (id, name, updated_at) VALUES ('S', 'Sistemas', now())`;
   await api.db`INSERT INTO public.plan (id, career_id, name, updated_at) VALUES (${PLAN}, 'S', 'Plan 2023', now())`;
   await api.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES (${SUBJECT}, ${SUBJECT_NAME}, 3, now())`;
   await api.db`INSERT INTO public.plan_subject (dependencies, section, subject_id, plan_id, year, semester, credits_required)
                VALUES ('{}', 'Ciclo', ${SUBJECT}, ${PLAN}, 1, 1, 0)`;
+  await copyPlanSubjectsToEntries(api.db);
   await commission(COMMISSION, 'G', minusMonths(RUNNING_END, 4), RUNNING_END);
   await commission(OTHER_COMMISSION, 'B', minusMonths(RUNNING_END, 4), RUNNING_END);
   await commission(ENDED_COMMISSION, 'G', minusMonths(artDate(-69), 4), artDate(-69));

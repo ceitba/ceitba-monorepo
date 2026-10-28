@@ -2,7 +2,7 @@
 // and SubjectPlanWritesIT.java. ROLE_STAFF comes from a real ceitba_staff row.
 import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { Sql } from 'postgres';
-import { bearer, mintJwt, seedCareer, seedPlan, seedStaff, useServer, type As } from '../support';
+import { bearer, mintJwt, seedCareer, seedPlan, seedPlanEntry, seedStaff, useServer, type As } from '../support';
 
 const api = useServer();
 let user: As;
@@ -14,9 +14,9 @@ beforeAll(async () => {
   staff = bearer(await mintJwt({ email: 'boss@itba.edu.ar' }));
 });
 
+// The plan as the sync stores it (plan_entry); the routes read it with the staff edits applied.
 async function planSubject(db: Sql, subjectId: string, planId: string, section: string, year: number, semester: number, credits: number, deps: string[]) {
-  await db`INSERT INTO public.plan_subject (subject_id, plan_id, section, year, semester, credits_required, dependencies)
-           VALUES (${subjectId}, ${planId}, ${section}, ${year}, ${semester}, ${credits}, ${deps}::varchar[])`;
+  await seedPlanEntry(db, { planId, subjectId, section, year, semester, creditsRequired: credits, dependencies: deps });
 }
 async function subject(db: Sql, id: string, name: string, credits: number) {
   await db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES (${id}, ${name}, ${credits}, now())`;
@@ -24,7 +24,8 @@ async function subject(db: Sql, id: string, name: string, credits: number) {
 
 describe('SubjectPlanEndpointsIT', () => {
   beforeEach(async () => {
-    await api.db`DELETE FROM public.plan_subject`;
+    await api.db`DELETE FROM public.plan_entry`;
+    await api.db`DELETE FROM public.plan_entry_override`;
     await planSubject(api.db, '93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, 0, []);
     await planSubject(api.db, '93.13', 'S10-Rev23', 'Ciclo Básico', 1, 2, 0, ['93.12']);
     await planSubject(api.db, '93.99', 'S10-Rev23', 'Electivas', 0, 0, 120, []);
@@ -78,7 +79,8 @@ describe('SubjectPlanEndpointsIT', () => {
 
 describe('SubjectPlanWritesIT', () => {
   beforeEach(async () => {
-    await api.db`DELETE FROM public.plan_subject`;
+    await api.db`DELETE FROM public.plan_entry`;
+    await api.db`DELETE FROM public.plan_entry_override`;
     await api.db`DELETE FROM public.subject`;
     await api.db`DELETE FROM public.plan`;
     await api.db`DELETE FROM public.careers`;
@@ -146,9 +148,8 @@ describe('SubjectPlanWritesIT', () => {
     const r = await api.post('/v1/plans/S10-Rev23/subject', { as: staff, body: { subjectId: '93.13', section: 'Electivas' } });
     expect(r.status).toBe(201);
     expect(r.text).toBe('{"subjectId":"93.13","planId":"S10-Rev23","section":"Electivas","year":0,"semester":0,"dependencies":[],"creditsRequired":0,"subject":{"id":"93.13","name":"Algoritmos II","credits":6}}');
-    const [row] = await api.db`SELECT dependencies, credits_required FROM public.plan_subject WHERE subject_id = '93.13'`;
-    expect(row!.dependencies).toEqual([]);
-    expect(row!.credits_required).toBe(0);
+    const [row] = await api.db`SELECT hidden, dependencies, credits_required FROM public.plan_entry_override WHERE subject_id = '93.13'`;
+    expect(row).toEqual({ hidden: false, dependencies: [], credits_required: 0 });
   });
 
   test('createWithUnknownPlanReturns404', async () => {

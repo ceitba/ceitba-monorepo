@@ -2,7 +2,7 @@
 // (GET /v1/subjects?plan=).
 
 import type { Deps } from '../../deps';
-import { withTx } from '../../db/client';
+import { sqlState, withTx } from '../../db/client';
 import { ResourceNotFoundError } from '../../http/errors';
 import { parsePgTimestamp, systemNowMicros } from '../../lib/time';
 import { organizedCommissions, type OrganizedCommission } from '../commission/correctionOverlay';
@@ -42,19 +42,15 @@ export class SubjectService {
   }
 
   /**
-   * The plan comes from plan_entry, which the sync fills with each plan exactly
-   * as ITBA sent it (docs/PLANS.md). A plan with no stored entries (not synced
-   * yet, or not registered) falls back to the live ITBA API, deliberately NOT
-   * inside a transaction (the call can take the client's 30 s read timeout).
-   * Then read-only queries hydrate the commissions cached by the sync.
+   * The plan comes from plan_entry_effective: the sync's copy of ITBA's plan
+   * with the staff edits applied (docs/PLANS.md). A plan the sync hasn't
+   * stored from ITBA yet (only BACKFILL rows, or none) is fetched live,
+   * deliberately NOT inside a transaction (the call can take the client's
+   * 30 s read timeout), and stored, so the edits apply and the next request
+   * reads it. Then read-only queries hydrate the commissions cached by the sync.
    */
   async getSubjectsByPlanOrganized(planId: string, viewerId: string | null): Promise<OrganizedSubjects> {
-    const stored = await withTx(this.deps.db, (tx) => planRepo.findPlanEntries(tx, planId), { readOnly: true });
-    if (stored.fetchedAt !== null && systemNowMicros() - parsePgTimestamp(stored.fetchedAt) > STALE_AFTER_MICROS) {
-      // Still served (better than nothing while ITBA fails), but its syncs are failing: say so.
-      this.deps.log.warn({ plan: planId, fetchedAt: stored.fetchedAt }, 'Serving plan entries older than 2 days: its sync keeps failing');
-    }
-    const subjectPlans = stored.entries.length > 0 ? stored.entries : (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    const subjectPlans = await this.planEntries(planId);
     if (subjectPlans.length === 0) throw new ResourceNotFoundError('Plan', planId);
 
     const codes = [...new Set(subjectPlans.map((sp) => sp.subjectId).filter((c): c is string => c != null))];
@@ -91,5 +87,32 @@ export class SubjectService {
       list.push(detail);
     }
     return organized;
+  }
+
+  private async planEntries(planId: string): Promise<planRepo.PlanEntry[]> {
+    const [synced, fetchedAt] = await withTx(this.deps.db, async (tx) =>
+      [await planRepo.syncedFromItba(tx, planId), await planRepo.planFetchedAt(tx, planId)] as const, { readOnly: true });
+    if (synced) {
+      if (fetchedAt !== null && systemNowMicros() - parsePgTimestamp(fetchedAt) > STALE_AFTER_MICROS) {
+        // Still served (better than nothing while ITBA fails), but its syncs are failing: say so.
+        this.deps.log.warn({ plan: planId, fetchedAt }, 'Serving plan entries older than 2 days: its sync keeps failing');
+      }
+      return withTx(this.deps.db, (tx) => planRepo.findEffectiveEntries(tx, planId), { readOnly: true });
+    }
+    const live = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    // An empty answer (an unknown plan) is not stored: it would wipe a BACKFILL copy the other readers use.
+    if (live.length === 0) return live;
+    try {
+      await withTx(this.deps.db, (tx) => planRepo.replacePlanEntries(tx, planId, live.map((e) => ({
+        subjectId: e.subjectId, section: e.section, year: e.year, semester: e.semester, dependencies: e.dependencies,
+        creditsRequired: e.creditsRequired, subjectName: e.subjectName, subjectCredits: e.subjectCredits,
+      })), systemNowMicros()));
+    } catch (e) {
+      // A concurrent sync or request stored it first, or a row was rejected: serve what ITBA sent.
+      if (sqlState(e) === undefined) throw e;
+      this.deps.log.warn({ err: e, plan: planId }, 'Could not store the plan fetched live');
+      return live;
+    }
+    return withTx(this.deps.db, (tx) => planRepo.findEffectiveEntries(tx, planId), { readOnly: true });
   }
 }

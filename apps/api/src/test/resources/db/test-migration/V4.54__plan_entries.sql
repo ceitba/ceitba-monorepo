@@ -1,5 +1,5 @@
 CREATE TABLE public.plan_entry (
-    plan_id          VARCHAR(25)    NOT NULL REFERENCES public.plan (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    plan_id          VARCHAR(25)    NOT NULL,
     position         INTEGER        NOT NULL,
     subject_id       VARCHAR(32)    NOT NULL,
     section          VARCHAR(255),
@@ -10,5 +10,6 @@ CREATE TABLE public.plan_entry (
     subject_name     VARCHAR(255),
     subject_credits  INTEGER        NOT NULL,
     fetched_at       TIMESTAMPTZ    NOT NULL,
+    source           VARCHAR(16)    NOT NULL CHECK (source IN ('ITBA', 'BACKFILL')),
     CONSTRAINT plan_entry_pkey PRIMARY KEY (plan_id, position)
 );

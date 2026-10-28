@@ -10,6 +10,7 @@ import * as commissions from '../../src/features/commission/repo';
 import * as highlights from '../../src/features/highlight/repo';
 import * as news from '../../src/features/news/repo';
 import { formatOffsetDateTime, parsePgTimestamp } from '../../src/lib/time';
+import { copyPlanSubjectsToEntries } from '../../contract/support/identity';
 import { testApp, type TestApp } from '../support/app';
 
 let t: TestApp;
@@ -63,6 +64,7 @@ describe('LocalTemporalZoneIT', () => {
     await insertCommissionWithSql();
     await t.sql`INSERT INTO public.plan_subject (subject_id, plan_id, section, year, semester, credits_required)
                 VALUES ('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, 0)`;
+    await copyPlanSubjectsToEntries(t.sql);
     fake.stubPlan('S10-Rev23', [{ subjectId: '93.12', planId: 'S10-Rev23', section: 'Ciclo Básico', year: 1, semester: 1, dependencies: [], creditsRequired: null, subjectName: 'Análisis', subjectCredits: 6 }]);
     const c = await t.request('GET', '/v1/commissions?plan=S10-Rev23');
     expect(c.status).toBe(200);

@@ -167,16 +167,15 @@ export class DataSyncService {
    *
    * The plan as fetched (plan_entry, what GET /v1/subjects?plan= serves) is replaced first, in its own
    * transaction: a plan_subject/subject row rejected below never keeps it stale, and a rejected entry is logged
-   * and keeps the stored ones. The elective-group requirements are replaced in the plan transaction, in a
-   * savepoint (a rejected row is logged, never failing the subjects). Neither is counted in the result (its JSON
-   * is fixed), and both need the plan row (FK): a plan synced by id before staff added it keeps only its
-   * plan_subject rows.
+   * and keeps the stored ones; staff edits (plan_entry_override) are never touched. The elective-group
+   * requirements are replaced in the plan transaction, in a savepoint (a rejected row is logged, never failing
+   * the subjects); they need the plan row (FK), so a plan synced by id before staff added it has none. Neither is
+   * counted in the result (its JSON is fixed). plan_subject is still written for one release (rollback safety).
    */
   async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult,
     requirements: PlanSectionRequirementProjection[] = []): Promise<void> {
     try {
       await withTx(this.deps.db, async (tx) => {
-        if (!(await planRepo.planExists(tx, planId))) return;
         await planRepo.replacePlanEntries(tx, planId, entries.map((e) => ({
           subjectId: e.subjectId, section: e.section, year: e.year, semester: e.semester, dependencies: e.dependencies,
           creditsRequired: e.creditsRequired, subjectName: e.subjectName, subjectCredits: e.subjectCredits,

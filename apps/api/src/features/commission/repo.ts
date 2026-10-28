@@ -87,7 +87,7 @@ export async function findCurrentByPlanWithTimes(db: Db, planId: string, today: 
   const rows = (await db.execute(sql`
     SELECT DISTINCT ${COLS} FROM public.commission c
     WHERE c.course_end >= ${today}::date
-      AND c.subject_code IN (SELECT ps.subject_id FROM public.plan_subject ps WHERE ps.plan_id = ${planId})
+      AND c.subject_code IN (SELECT e.subject_id FROM public.plan_entry_effective e WHERE e.plan_id = ${planId})
     ORDER BY c.subject_code, c.commission_name, c.id`)) as unknown as Row[];
   return hydrate(db, rows.map(toCommission));
 }

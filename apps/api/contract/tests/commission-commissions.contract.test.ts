@@ -6,7 +6,7 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { Sql } from 'postgres';
 import { startMockItba, todayArt } from '../../test/itba/mockItba';
-import { useServer } from '../support';
+import { copyPlanSubjectsToEntries, useServer } from '../support';
 
 const itba = startMockItba();
 const api = useServer({ env: itba.env });
@@ -45,6 +45,7 @@ describe('CommissionsIT', () => {
     await api.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES ('93.12', 'Análisis Matemático I', 6, now()), ('72.07', 'Protocolos de Comunicación', 6, now())`;
     await api.db`INSERT INTO public.plan_subject (subject_id, plan_id, section, year, semester, credits_required, dependencies) VALUES
       ('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, 0, '{}'), ('72.07', 'S10-Rev23', 'Ciclo Profesional', 3, 2, 0, '{}'), ('99.99', 'OTHER', 'Ciclo Básico', 1, 1, 0, '{}')`;
+    await copyPlanSubjectsToEntries(api.db);
     await commission(api.db, 'C-93-A', '93.12', 'A', plusMonths(TODAY, -1), plusMonths(TODAY, 2), 25, 40, 'SEMESTRAL');
     await time(api.db, 'C-93-A', 'WEDNESDAY', '09:00', '101', 'SDF', '11:00');
     await time(api.db, 'C-93-A', 'MONDAY', '14:00', '102', 'SDF', '16:00');
