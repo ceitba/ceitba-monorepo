@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ErrorState, LoadingRegion } from '@/components/ui'
 import { ApiError } from '@/api/client'
@@ -15,6 +15,20 @@ import { articleDescription } from '../utils/seo'
 import { useCanonical, useDocumentTitle, useMetaDescription, useNoIndex } from '@/hooks/useDocumentTitle'
 import { articlePath, newsletterPath } from '@/newsletter/paths'
 import type { Article } from '../types'
+// PROTOTYPE (comments + polls): remove with the prototype.
+import EngagementPrototype from '../components/prototype/EngagementPrototype'
+
+// PROTOTYPE: lets ?variant= render without a local API.
+const PROTOTYPE_ARTICLE = {
+  id: 'prototype', title: 'Se viene la Semana de la Ingeniería 2026: votá el horario', category: 'Campus',
+  authors: ['CEITBA'], date: '2026-10-27', readingTime: '3 min', colorScheme: 'amber', coverImage: null,
+  excerpt: '', body: [
+    'Del 16 al 20 de noviembre vuelve la Semana de la Ingeniería, con charlas, talleres y la feria de proyectos de las organizaciones estudiantiles.',
+    'Este año queremos que el horario lo decidan ustedes. Abajo encontrás la encuesta: cerramos la votación el viernes y publicamos el cronograma con el resultado.',
+    '## Qué va a haber',
+    '- Charlas de egresados que trabajan en la industria.\n- Talleres de robótica, IA y finanzas.\n- Feria de proyectos y food trucks en el patio.',
+  ],
+} as unknown as Article
 
 const GEO_BG: Record<string, string> = {
   blue:   'bg-primary-500',
@@ -29,6 +43,8 @@ function formatDate(iso: string | null | undefined, lang: string) {
 
 export default function ArticleDetailPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const variant = import.meta.env.DEV ? searchParams.get('variant') : null
   const { t, i18n } = useTranslation()
   const categoryLabel = useCategoryLabel()
   const [article, setArticle] = useState<Article | null>(null)
@@ -56,11 +72,12 @@ export default function ArticleDetailPage() {
           .catch((err: unknown) => console.error(err))
       })
       .catch((err: unknown) => {
+        if (!cancelled && variant) { setArticle(PROTOTYPE_ARTICLE); setStatus('success'); return }
         if (!cancelled) setStatus(err instanceof ApiError && err.status === 404 ? 'notFound' : 'error')
       })
 
     return () => { cancelled = true }
-  }, [id, reloadKey])
+  }, [id, reloadKey, variant])
 
   // Search engines index the tags set after render. Only once the article has
   // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
@@ -122,7 +139,44 @@ export default function ArticleDetailPage() {
           </div>
         )}
 
-        {/* Content column */}
+        {variant ? (
+          <EngagementPrototype
+            variant={variant}
+            header={<>
+          {article.coverImage && (
+            <div className="mb-3">
+              <CategoryBadge category={article.category} />
+            </div>
+          )}
+
+          <h1 className="font-display text-h2 lg:text-display lg:font-extrabold lg:leading-[1.05] font-bold text-ink-primary leading-tight">
+            {article.title}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-3 mt-4 pb-6 border-b border-border dark:border-night-border">
+            <span className="font-body text-body-sm text-ink-secondary">
+              {t('articles.meta.by')}{' '}
+              <strong className="text-ink-primary font-semibold">{(article.authors ?? []).join(', ')}</strong>
+            </span>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
+            <time className="font-mono text-label text-ink-secondary" dateTime={article.date ?? undefined}>
+              {formatDate(article.date, i18n.language)}
+            </time>
+            <span className="text-border dark:text-night-muted" aria-hidden="true">·</span>
+            <span className="font-mono text-label text-ink-secondary">
+              {t('articles.meta.readingTime', { time: article.readingTime })}
+            </span>
+          </div>
+
+            </>}
+            body={<ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} className="mt-8" />}
+            votes={
+          <div className="mt-10 pt-6 border-t border-border dark:border-night-border">
+            <VoteButtons articleId={article.id} />
+          </div>
+            }
+          />
+        ) : (
         <div className="max-w-2xl">
           {article.coverImage && (
             <div className="mb-3">
@@ -157,6 +211,7 @@ export default function ArticleDetailPage() {
             <VoteButtons articleId={article.id} />
           </div>
         </div>
+        )}
 
         {/* Related */}
         {related.length > 0 && (
