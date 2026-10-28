@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Badge, Button, ConfirmDialog, ErrorState, Field, IconButton, CloseIcon, LoadingRegion, Modal, SkeletonText, Switch, ToggleGroup, inputClass, toast,
@@ -140,7 +141,7 @@ export default function EngagementSettings({ articleId, onInsert }: EngagementSe
         <Button size="sm" variant="outline" block onClick={() => setCreating(true)}>{t('engagement.editor.newPoll')}</Button>
       </div>
 
-      {creating && (
+      {creating && toBody(
         <PollFormModal
           onClose={() => setCreating(false)}
           onSubmit={async (input) => {
@@ -152,7 +153,7 @@ export default function EngagementSettings({ articleId, onInsert }: EngagementSe
         />
       )}
 
-      {toDelete && (
+      {toDelete && toBody(
         <ConfirmDialog
           title={t('engagement.editor.deleteTitle')}
           body={t('engagement.editor.deleteBody', { question: toDelete.question })}
@@ -166,6 +167,10 @@ export default function EngagementSettings({ articleId, onInsert }: EngagementSe
     </div>
   )
 }
+
+// The card lives in the editor's sticky sidebar, whose stacking context would keep a dialog
+// under the editor's sticky toolbar: dialogs render at the end of <body> instead.
+const toBody = (node: ReactNode) => createPortal(node, document.body)
 
 interface PollFormModalProps {
   onClose: () => void
