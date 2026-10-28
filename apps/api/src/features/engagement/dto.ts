@@ -2,7 +2,7 @@
 
 import type { z } from 'zod';
 import { jv } from '../../http/validation';
-import { javaIsBlank } from '../../lib/javaCompat';
+import { javaIsBlank, javaTrim } from '../../lib/javaCompat';
 
 export const COMMENT_MAX = 1000;
 export const RESULTS_VISIBILITIES = ['after_vote', 'after_close'] as const;
@@ -11,7 +11,8 @@ export type ResultsVisibility = (typeof RESULTS_VISIBILITIES)[number];
 // ---------------------------------------------------------------- comments
 
 export const CreateCommentRequest = jv.object({
-  body: jv.string({ notBlank: true, size: { max: COMMENT_MAX } }),
+  // The limit applies to the trimmed text, which is what gets stored.
+  body: jv.string({ notBlank: true, check: (v: string) => (javaTrim(v).length > COMMENT_MAX ? `size must be between 0 and ${COMMENT_MAX}` : null) }),
   parentId: jv.uuid(),
 });
 export type CreateCommentRequest = NonNullable<z.output<typeof CreateCommentRequest>>;

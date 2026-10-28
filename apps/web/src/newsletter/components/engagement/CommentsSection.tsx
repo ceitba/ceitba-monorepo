@@ -9,6 +9,7 @@ import {
   COMMENT_MAX, deleteComment, fetchComments, pinComment, postComment, reportComment, restoreComment, setCommentLike,
   type Comment, type CommentSort, type CommentThread,
 } from '../../api/engagement'
+import { localeFor } from '../../utils/dates'
 
 // Comments at the foot of an article (apps/api/docs/NEWSLETTER-ENGAGEMENT.md):
 // one level of replies, likes, reports, and pin/restore/delete for the
@@ -27,6 +28,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
   const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set())
   const [reported, setReported] = useState<Set<string>>(() => new Set())
 
+  const headingId = useId()
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
   const signIn = () => startGoogleSignIn(location.pathname + location.search)
 
@@ -48,6 +50,18 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
     else toast.error(t('engagement.comments.actionError'))
   }
 
+  // New comment or reply; true when it was posted (the composer then clears).
+  async function submit(body: string, parentId: string | null = null): Promise<boolean> {
+    try {
+      await postComment(articleId, body, parentId)
+      reload()
+      return true
+    } catch (err) {
+      failed(err)
+      return false
+    }
+  }
+
   async function run(c: Comment, fn: () => Promise<void>) {
     if (busyIds.has(c.id)) return
     setBusyIds((s) => new Set(s).add(c.id))
@@ -62,13 +76,12 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
 
   const actions: CommentActions = {
     signedIn: Boolean(profile),
+    signIn,
     canModerate: thread?.canModerate ?? false,
     enabled: thread?.enabled ?? false,
     busyIds,
     reported,
-    async reply(parent, body) {
-      try { await postComment(articleId, body, parent.id); reload(); return true } catch (err) { failed(err); return false }
-    },
+    reply: (parent, body) => submit(body, parent.id),
     like: (c) => run(c, async () => {
       const r = await setCommentLike(articleId, c.id, !c.likedByMe)
       patch(c.id, (x) => ({ ...x, likes: r.likes, likedByMe: r.likedByMe }))
@@ -98,9 +111,9 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
   }
 
   return (
-    <section aria-labelledby="comments-heading" className="mt-12 pt-8 border-t border-border dark:border-night-border">
+    <section aria-labelledby={headingId} className="mt-12 pt-8 border-t border-border dark:border-night-border">
       <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
-        <h2 id="comments-heading" className="font-display text-h3 font-bold text-ink-primary dark:text-night-text">
+        <h2 id={headingId} className="font-display text-h3 font-bold text-ink-primary dark:text-night-text">
           {thread ? t('engagement.comments.titleCount', { count: thread.total }) : t('engagement.comments.title')}
         </h2>
         {thread && thread.total > 1 && (
@@ -123,9 +136,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
             <Composer
               placeholder={t('engagement.comments.placeholder')}
               submitLabel={t('engagement.comments.submit')}
-              onSubmit={async (body) => {
-                try { await postComment(articleId, body); reload(); return true } catch (err) { failed(err); return false }
-              }}
+              onSubmit={(body) => submit(body)}
             />
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-dashed border-border dark:border-night-border px-4 py-3">
@@ -161,6 +172,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
 
 interface CommentActions {
   signedIn: boolean
+  signIn: () => void
   canModerate: boolean
   enabled: boolean
   busyIds: Set<string>
@@ -178,7 +190,6 @@ function CommentItem({ comment: c, actions, isReply = false }: { comment: Commen
   const [replying, setReplying] = useState(false)
   const when = relativeTime(c.createdAt, i18n.language)
   const busy = actions.busyIds.has(c.id)
-  const link = 'inline-flex items-center gap-1.5 font-mono text-label text-ink-secondary dark:text-night-muted hover:text-primary dark:hover:text-primary-300 min-h-[44px] sm:min-h-[36px] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:text-ink-secondary dark:disabled:hover:text-night-muted'
 
   return (
     <li className="flex gap-3">
@@ -196,42 +207,38 @@ function CommentItem({ comment: c, actions, isReply = false }: { comment: Commen
               <time dateTime={c.createdAt} className="font-mono text-label text-ink-secondary dark:text-night-muted">{when}</time>
             </div>
             <p className="mt-1 font-body text-body-sm text-ink-primary dark:text-night-text leading-relaxed whitespace-pre-line break-words">{c.body}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-              <button
-                type="button"
-                onClick={() => actions.like(c)}
-                disabled={busy || !actions.signedIn || (!actions.enabled && !c.likedByMe)}
+            <div className="mt-1 -ml-3 flex flex-wrap items-center gap-x-1 gap-y-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => (actions.signedIn ? actions.like(c) : actions.signIn())}
+                disabled={busy || (actions.signedIn && !actions.enabled && !c.likedByMe)}
                 aria-pressed={c.likedByMe}
-                aria-label={t('engagement.comments.likeAria', { count: c.likes })}
-                title={actions.signedIn ? undefined : t('engagement.comments.signInToLike')}
-                className={[link, c.likedByMe ? 'text-primary! dark:text-primary-300!' : ''].join(' ')}
+                aria-label={actions.signedIn ? t('engagement.comments.likeAria', { count: c.likes }) : t('engagement.comments.signInToLike')}
+                className={c.likedByMe ? 'text-primary! dark:text-primary-300!' : ''}
               >
                 <HeartIcon filled={c.likedByMe} /> {c.likes}
-              </button>
+              </Button>
               {!isReply && actions.signedIn && actions.enabled && (
-                <button type="button" className={link} onClick={() => setReplying((r) => !r)} aria-expanded={replying}>
+                <Button size="sm" variant="ghost" onClick={() => setReplying((r) => !r)} aria-expanded={replying}>
                   {t('engagement.comments.reply')}
-                </button>
-              )}
-              {(c.mine || actions.canModerate) && (
-                <button type="button" className={link} onClick={() => actions.askDelete(c)}>{t('engagement.comments.delete')}</button>
+                </Button>
               )}
               {actions.canModerate && !isReply && (
-                <button type="button" className={link} disabled={busy} onClick={() => actions.pin(c)}>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => actions.pin(c)}>
                   {c.pinned ? t('engagement.comments.unpin') : t('engagement.comments.pin')}
-                </button>
+                </Button>
               )}
               {actions.canModerate && c.hidden && (
-                <button type="button" className={link} disabled={busy} onClick={() => actions.restore(c)}>{t('engagement.comments.restore')}</button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => actions.restore(c)}>{t('engagement.comments.restore')}</Button>
               )}
               {actions.signedIn && !c.mine && !c.hidden && (
                 actions.reported.has(c.id)
-                  ? <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('engagement.comments.reportedLabel')}</span>
-                  : (
-                    <button type="button" className={`${link} hover:text-red-600! dark:hover:text-red-400!`} disabled={busy} onClick={() => actions.report(c)}>
-                      {t('engagement.comments.report')}
-                    </button>
-                  )
+                  ? <span className="px-3 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('engagement.comments.reportedLabel')}</span>
+                  : <Button size="sm" variant="ghost" disabled={busy} onClick={() => actions.report(c)}>{t('engagement.comments.report')}</Button>
+              )}
+              {(c.mine || actions.canModerate) && (
+                <Button size="sm" variant="dangerGhost" disabled={busy} onClick={() => actions.askDelete(c)}>{t('engagement.comments.delete')}</Button>
               )}
             </div>
           </>
@@ -333,7 +340,7 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [['year', 31536000], ['mo
 
 function relativeTime(iso: string, lang: string): string {
   const seconds = Math.round((new Date(iso).getTime() - Date.now()) / 1000)
-  const rtf = new Intl.RelativeTimeFormat(lang === 'en' ? 'en-US' : 'es-AR', { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat(localeFor(lang), { numeric: 'auto' })
   for (const [unit, size] of UNITS) {
     if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit)
   }

@@ -285,6 +285,14 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
   'PATCH /v1/news/events/{id}': or(role('STAFF'), check('orgAccess.canWriteForEvent', 'path.id', 'body.organization')),
   'POST /v1/articles': or(role('STAFF'), check('orgAccess.canWriteForOrg', 'body.organization'), and(role('USER'), check('orgAccess.isIndependent', 'body.organization'))),
   'PATCH /v1/articles/{id}': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id', 'body.organization'), check('orgAccess.canEditOwnIndependentArticle', 'path.id', 'body.organization')),
+  // Newsletter comments and polls (docs/NEWSLETTER-ENGAGEMENT.md): moderation by the article's org members, polls also by
+  // the creator of an unpublished independent article. The services re-check under their transaction.
+  'PUT /v1/articles/{id}/comments/settings': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id')),
+  'PUT /v1/articles/{id}/comments/{commentId}/pin': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id')),
+  'POST /v1/articles/{id}/comments/{commentId}/restore': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id')),
+  'POST /v1/articles/{id}/polls': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id'), check('orgAccess.canEditOwnIndependentArticle', 'path.id')),
+  'PATCH /v1/articles/{id}/polls/{pollId}': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id'), check('orgAccess.canEditOwnIndependentArticle', 'path.id')),
+  'DELETE /v1/articles/{id}/polls/{pollId}': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id'), check('orgAccess.canEditOwnIndependentArticle', 'path.id')),
   'GET /v1/digests/{id}/preview': role('STAFF'), // digest/DigestController.java#preview
 };
 

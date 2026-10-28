@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client'
 import { useAuth } from '@/hooks/useAuth'
 import { startGoogleSignIn } from '@/store/authStore'
 import { fetchPoll, votePoll, type Poll } from '../../api/engagement'
+import { localeFor } from '../../utils/dates'
 
 interface PollBlockProps {
   articleId: string
@@ -73,7 +74,7 @@ export default function PollBlock({ articleId, pollId, preview = false }: PollBl
 
   const total = poll.totalVotes ?? 0
   const closesAt = poll.closesAt
-    ? new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-US' : 'es-AR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(poll.closesAt))
+    ? new Intl.DateTimeFormat(localeFor(i18n.language), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(poll.closesAt))
     : null
 
   let footer: string

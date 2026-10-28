@@ -48,10 +48,7 @@ export default defineRoutes((r, deps) => {
 
   r.post('/v1/articles/{id}/comments', {
     tags: commentTags, summary: 'Comment on an article, or reply to a top-level comment', params: articleId, body: CreateCommentRequest, status: 201,
-  }, async ({ c, params, body }) => {
-    const v = await viewer(c, true);
-    return comments.create(params.id!, v.userId!, v, body);
-  });
+  }, async ({ c, params, body }) => comments.create(params.id!, await viewer(c, true), body));
 
   // Literal segment: wins over /comments/{commentId}.
   r.put('/v1/articles/{id}/comments/settings', {

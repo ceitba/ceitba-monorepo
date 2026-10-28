@@ -4,11 +4,10 @@ import { withTx, type Db } from '../../db/client';
 import type { Deps } from '../../deps';
 import { AccessDeniedError, ResourceNotFoundError, ValidationError } from '../../http/errors';
 import { javaTrim } from '../../lib/javaCompat';
-import { parsePgTimestamp, systemNowMicros, toPgTimestamp } from '../../lib/time';
+import { parsePgTimestamp, toPgTimestamp } from '../../lib/time';
 import type { CreatePollRequest, PollResponse, PollVoteRequest, ResultsVisibility, UpdatePollRequest } from './dto';
-import { REACTION_RATE_RULE, requirePublished } from './comments';
 import { EngagementConflictError } from './errors';
-import { dbInstant, type ArticleAccess, type ArticleGate, type Viewer } from './gate';
+import { REACTION_RATE_RULE, dbInstant, requirePublished, rowNow, type ArticleAccess, type ArticleGate, type Viewer } from './gate';
 import * as repo from './repo';
 
 export class PollService {
@@ -34,7 +33,7 @@ export class PollService {
       const id = crypto.randomUUID();
       await repo.insertPoll(tx, {
         id, articleId, question: javaTrim(req.question!), resultsVisibility: req.resultsVisibility ?? 'after_vote',
-        closesAt: req.closesAt === null ? null : toPgTimestamp(req.closesAt), createdAt: toPgTimestamp(systemNowMicros()),
+        closesAt: req.closesAt === null ? null : toPgTimestamp(req.closesAt), createdAt: rowNow(),
       });
       await repo.replaceOptions(tx, id, labels(req.options!));
       return this.response(tx, await this.requirePoll(tx, articleId, id), viewer, access);
@@ -82,7 +81,7 @@ export class PollService {
       } else {
         if (!(await repo.optionBelongsTo(tx, pollId, req.optionId!))) throw new ValidationError('optionId', req.optionId, 'must be an option of this poll');
         this.deps.userRateLimiter.consume(REACTION_RATE_RULE, viewer.userId!);
-        await repo.upsertVote(tx, pollId, viewer.userId!, req.optionId!, toPgTimestamp(systemNowMicros()));
+        await repo.upsertVote(tx, pollId, viewer.userId!, req.optionId!, rowNow());
       }
       return this.response(tx, poll, viewer, access);
     });
@@ -113,7 +112,7 @@ export class PollService {
     const options = await repo.optionsWithCounts(tx, ids);
     const mine = await repo.votesOf(tx, ids, viewer.userId);
     return polls.map((p) => {
-      const own = options.filter((o) => o.poll_id === p.id);
+      const own = options.filter((o) => o.pollId === p.id);
       const closed = this.isClosed(p);
       const myVote = mine.get(p.id) ?? null;
       const visibility = p.resultsVisibility as ResultsVisibility;

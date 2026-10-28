@@ -15,24 +15,26 @@ Readers can comment on published newsletter articles, and authors can embed poll
 
 **Article editor** = a member of the article's organization (`OrganizationMembershipService.userBelongsTo`), or, for an
 independent article (no organization), its creator while it is still unpublished (polls only). STAFF comes from
-`staffPowers(c)`, so an API key without the `staff` scope is not STAFF here. These checks run in the services, not in
-`policy.ts`: every write route is an ordinary authenticated route, and the public reads are covered by the existing
-`GET /v1/articles/**` rule. A draft (non-published) article answers 404 on every route below to anyone who can't read
+`staffPowers(c)`, so an API key without the `staff` scope is not STAFF here. The moderation routes (settings, pin,
+restore) and the poll writes have `METHOD_RULES` in `policy.ts` (`orgAccess.canWriteForArticle`, plus
+`orgAccess.canEditOwnIndependentArticle` for polls), so other callers get the empty 403 before binding; the services
+check the same rules again inside their transaction. The public reads are covered by the existing `GET /v1/articles/**`
+rule. A draft (non-published) article answers 404 on every route below to anyone who can't read
 its drafts (the same rule as `GET /v1/articles/{id}`).
 
 ## Comments
 
 `article_comments`: one level of replies (`parent_id` must point to a top-level comment of the same article, otherwise
-400). Bodies are plain text, trimmed, 1–1000 characters, never rendered as Markdown. Comments cannot be edited.
+400). Bodies are plain text, trimmed, 1–1000 characters after trimming, never rendered as Markdown. Comments cannot be edited.
 
 - **Author.** Always the person (their `user` name and avatar). When the author is a member of the article's
   organization at read time, the comment carries `authorRole: "author"` (the web shows an "Autor" badge).
 - **Delete** is a soft delete (`deleted_at`): a deleted comment with replies stays in the thread as a tombstone
   (`deleted: true`, empty body, no author); one without replies is left out of the list.
 - **Likes**: one per user (`article_comment_likes`), `PUT`/`DELETE` are idempotent.
-- **Reports**: one per user (`article_comment_reports`, re-reporting replaces the reason). At **3** reports a comment
-  is hidden (`hidden_at`): left out for readers, shown to editors and STAFF with `hidden: true`. Restore clears
-  `hidden_at` and deletes its reports.
+- **Reports**: one per user (`article_comment_reports`, re-reporting replaces the reason); nobody reports their own
+  comment (400). At **3** reports a comment is hidden (`hidden_at`): left out for readers together with its replies,
+  shown to editors and STAFF with `hidden: true`. Restore clears `hidden_at` and deletes its reports.
 - **Pin**: editors pin one top-level comment per article (pinning another unpins the previous one). Pinned first,
   then by `sort`: `top` (likes, then newest; default) or `new` (newest). Replies are always oldest first.
 - **On/off**: `articles.comments_enabled` (default true). Turned off, existing comments stay readable and new
@@ -52,7 +54,7 @@ its drafts (the same rule as `GET /v1/articles/{id}`).
 | PUT | `/v1/articles/{id}/comments/settings` | `{enabled}` | `{enabled}` |
 
 `CommentThreadResponse`: `{enabled, canModerate, total, comments: [CommentResponse]}`, where `total` counts the
-visible, non-deleted comments and replies. `CommentResponse`: `{id, parentId, authorName, authorAvatarUrl, authorRole,
+non-deleted comments and replies the caller sees (editors also see hidden ones). `CommentResponse`: `{id, parentId, authorName, authorAvatarUrl, authorRole,
 body, createdAt, likes, likedByMe, mine, pinned, deleted, hidden, replies}` (`replies` is `[]` on replies).
 
 ## Polls
@@ -115,6 +117,6 @@ answer 409 `ArticleNotPublished`, so test reactions never land in the published 
 ## Account deletion
 
 `DELETE /v1/me` removes the user's likes, reports, poll votes and replies, deletes their top-level comments left
-without replies, and turns the rest into tombstones (author cleared, body emptied, `deleted_at` set) so other people's
+without replies, and turns the rest into tombstones (author cleared, body emptied, unpinned, `deleted_at` set) so other people's
 replies keep their thread. `article_comments.user_id` is `ON DELETE SET NULL`, so an API image older than V64 can
 still delete a commenter's account on a rollback (leaving the body without an author).

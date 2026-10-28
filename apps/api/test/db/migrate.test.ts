@@ -72,9 +72,9 @@ describe('against Postgres', () => {
     await admin.unsafe(`CREATE DATABASE ${name}`);
     const sql = postgres(withDatabase(await pgServerUrl(), name), { max: 2, onnotice: () => {} });
     try {
-      const opts = { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: '4.53', outOfOrder: true };
+      const opts = { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: IT_FLYWAY_TARGET, outOfOrder: true };
       const r = await migrate(sql, opts);
-      expect(r.schemaVersion).toBe('4.53');
+      expect(r.schemaVersion).toBe(IT_FLYWAY_TARGET);
       const rows = (await readHistory(sql)).map(({ installedRank, version, description, type, script, checksum }) => ({ installedRank, version, description, type, script, checksum }));
       expect(rows).toEqual(itHistory);
       // Idempotent: a second run applies nothing.

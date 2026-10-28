@@ -45,9 +45,15 @@ describe('ArticleComments', () => {
     expect(c.createdAt).toMatch(/Z$/);
   });
 
-  test('blankOrTooLongBodyIs400', async () => {
+  test('blankOrTooLongBodyIs400_theLimitCountsTheTrimmedText', async () => {
     expect((await post({ body: '   ' })).status).toBe(400);
     expect((await post({ body: 'x'.repeat(1001) })).status).toBe(400);
+    expect((await post({ body: `  ${'x'.repeat(1000)}  ` })).status).toBe(201);
+  });
+
+  test('nobodyReportsTheirOwnComment', async () => {
+    const c = (await post({ body: 'mío' })).json;
+    expect((await api.put(path(`/${c.id}/report`), { as: await reader(), body: {} })).status).toBe(400);
   });
 
   test('orgMemberIsMarkedAsAuthorAndRepliesNestOneLevel', async () => {

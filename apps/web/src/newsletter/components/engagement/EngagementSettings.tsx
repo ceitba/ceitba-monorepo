@@ -63,6 +63,15 @@ export default function EngagementSettings({ articleId, onInsert }: EngagementSe
     }
   }
 
+  async function setVisibility(p: Poll, resultsVisibility: ResultsVisibility) {
+    if (p.resultsVisibility === resultsVisibility) return
+    try {
+      replace(await updatePoll(articleId!, p.id, { resultsVisibility }))
+    } catch {
+      toast.error(t('engagement.editor.saveError'))
+    }
+  }
+
   async function toggleClosed(p: Poll) {
     try {
       replace(await updatePoll(articleId!, p.id, p.closed ? { reopen: true } : { close: true }))
@@ -108,6 +117,17 @@ export default function EngagementSettings({ articleId, onInsert }: EngagementSe
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <Badge tone={p.closed ? 'neutral' : 'success'}>{p.closed ? t('engagement.poll.closed') : t('engagement.poll.open')}</Badge>
                 <span className="font-mono text-label text-ink-secondary dark:text-night-muted">{t('engagement.poll.votes', { count: p.totalVotes ?? 0 })}</span>
+              </div>
+              <div className="mt-2">
+                <ToggleGroup
+                  label={t('engagement.editor.form.visibility')}
+                  value={p.resultsVisibility}
+                  onChange={(v) => setVisibility(p, v)}
+                  options={[
+                    { value: 'after_vote', label: t('engagement.editor.form.afterVote') },
+                    { value: 'after_close', label: t('engagement.editor.form.afterClose') },
+                  ]}
+                />
               </div>
               <div className="mt-2 flex flex-wrap gap-1 -ml-3">
                 <Button size="sm" variant="ghost" onClick={() => onInsert(p.id)}>{t('engagement.editor.insert')}</Button>
@@ -161,6 +181,8 @@ function PollFormModal({ onClose, onSubmit }: PollFormModalProps) {
   const [attempted, setAttempted] = useState(false)
   const [saving, setSaving] = useState(false)
   const optionsErrorId = useId()
+  const formId = useId()
+  const visibilityId = useId()
 
   const filled = options.map((o) => o.trim()).filter(Boolean)
   const questionError = attempted && !question.trim() ? t('engagement.editor.form.questionRequired') : undefined
@@ -188,11 +210,11 @@ function PollFormModal({ onClose, onSubmit }: PollFormModalProps) {
       footer={(
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>{t('engagement.cancel')}</Button>
-          <Button type="submit" form="poll-form" loading={saving}>{t('engagement.editor.form.create')}</Button>
+          <Button type="submit" form={formId} loading={saving}>{t('engagement.editor.form.create')}</Button>
         </>
       )}
     >
-      <form id="poll-form" onSubmit={submit} className="flex flex-col gap-5" noValidate>
+      <form id={formId} onSubmit={submit} className="flex flex-col gap-5" noValidate>
         <Field label={t('engagement.editor.form.question')} error={questionError} required>
           {(p) => <input {...p} value={question} maxLength={300} onChange={(e) => setQuestion(e.target.value)} className={inputClass({ invalid: !!questionError })} />}
         </Field>
@@ -226,9 +248,9 @@ function PollFormModal({ onClose, onSubmit }: PollFormModalProps) {
         </fieldset>
 
         <div>
-          <p id="poll-visibility" className="mb-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('engagement.editor.form.visibility')}</p>
+          <p id={visibilityId} className="mb-1.5 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">{t('engagement.editor.form.visibility')}</p>
           <ToggleGroup
-            labelledBy="poll-visibility"
+            labelledBy={visibilityId}
             value={visibility}
             onChange={setVisibility}
             options={[

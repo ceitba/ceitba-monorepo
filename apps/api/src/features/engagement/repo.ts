@@ -38,25 +38,25 @@ export async function setCommentsEnabled(db: Db, id: string, enabled: boolean): 
 
 export interface CommentViewRow {
   id: string;
-  parent_id: string | null;
-  user_id: string | null;
+  parentId: string | null;
+  userId: string | null;
   body: string;
   pinned: boolean;
-  hidden_at: string | null;
-  deleted_at: string | null;
-  created_at: string;
-  author_name: string | null;
-  author_avatar_url: string | null;
-  is_author: boolean;
+  hiddenAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+  authorName: string | null;
+  authorAvatarUrl: string | null;
+  isAuthor: boolean;
   likes: number;
   liked: boolean;
 }
 
 const COMMENT_VIEW = (viewer: string | null) => sql`
-  SELECT c.id, c.parent_id, c.user_id, c.body, c.pinned, c.hidden_at::text AS hidden_at, c.deleted_at::text AS deleted_at,
-         c.created_at::text AS created_at, u.name AS author_name, u.avatar_url AS author_avatar_url,
+  SELECT c.id, c.parent_id AS "parentId", c.user_id AS "userId", c.body, c.pinned, c.hidden_at::text AS "hiddenAt",
+         c.deleted_at::text AS "deletedAt", c.created_at::text AS "createdAt", u.name AS "authorName", u.avatar_url AS "authorAvatarUrl",
          (a.organization IS NOT NULL AND c.user_id IS NOT NULL AND EXISTS (
-            SELECT 1 FROM public.user_organizations m WHERE m.user_id = c.user_id AND m.org_slug = a.organization)) AS is_author,
+            SELECT 1 FROM public.user_organizations m WHERE m.user_id = c.user_id AND m.org_slug = a.organization)) AS "isAuthor",
          (SELECT count(*) FROM public.article_comment_likes l WHERE l.comment_id = c.id)::int AS likes,
          EXISTS (SELECT 1 FROM public.article_comment_likes l WHERE l.comment_id = c.id AND l.user_id = ${viewer}::uuid) AS liked
   FROM public.article_comments c
@@ -152,13 +152,13 @@ export function listPolls(db: Db, articleId: string): Promise<PollRow[]> {
   return db.select().from(articlePolls).where(eq(articlePolls.articleId, articleId)).orderBy(asc(articlePolls.createdAt), asc(articlePolls.id));
 }
 
-export interface OptionCountRow { id: string; poll_id: string; label: string; votes: number }
+export interface OptionCountRow { id: string; pollId: string; label: string; votes: number }
 
 /** Options of the given polls in position order, with their vote counts. */
 export function optionsWithCounts(db: Db, pollIds: string[]): Promise<OptionCountRow[]> {
   if (pollIds.length === 0) return Promise.resolve([]);
   return rows(db, sql`
-    SELECT o.id, o.poll_id, o.label, (SELECT count(*) FROM public.article_poll_votes v WHERE v.option_id = o.id)::int AS votes
+    SELECT o.id, o.poll_id AS "pollId", o.label, (SELECT count(*) FROM public.article_poll_votes v WHERE v.option_id = o.id)::int AS votes
     FROM public.article_poll_options o
     WHERE o.poll_id IN (${sql.join(pollIds.map((id) => sql`${id}::uuid`), sql`, `)})
     ORDER BY o.poll_id, o.position`);

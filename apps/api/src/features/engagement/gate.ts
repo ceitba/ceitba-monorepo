@@ -3,8 +3,9 @@
 
 import type { Db } from '../../db/client';
 import { ResourceNotFoundError } from '../../http/errors';
-import { formatOffsetDateTime, parsePgTimestamp } from '../../lib/time';
+import { formatOffsetDateTime, parsePgTimestamp, systemNowMicros, toPgTimestamp } from '../../lib/time';
 import type { OrganizationMembershipService } from '../news/memberships';
+import { EngagementConflictError } from './errors';
 import * as repo from './repo';
 
 /** The caller: `isStaff` comes from staffPowers(c), so a key without the staff scope is not STAFF. */
@@ -23,6 +24,17 @@ export interface ArticleAccess {
 
 /** A timestamp read from the database, as the API prints it (UTC, `...Z`). */
 export const dbInstant = (pg: string): string => formatOffsetDateTime(parsePgTimestamp(pg));
+
+/** A row timestamp (created_at and the like) for now. */
+export const rowNow = (): string => toPgTimestamp(systemNowMicros());
+
+/** Per-user quota shared by comment likes and poll votes (rate-limit user rule). */
+export const REACTION_RATE_RULE = 'article-reactions';
+
+/** Readers react only to published articles; editors' drafts gather no comments, likes or votes. */
+export function requirePublished(access: ArticleAccess): void {
+  if (access.article.status !== 'published') throw new EngagementConflictError('ARTICLE_NOT_PUBLISHED');
+}
 
 export class ArticleGate {
   constructor(private readonly memberships: OrganizationMembershipService) {}
