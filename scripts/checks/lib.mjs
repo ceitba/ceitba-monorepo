@@ -33,15 +33,29 @@ export function changedFiles(base) {
 
 // Status per file vs base: A(dded), M(odified), D(eleted), R(enamed: old path reported as D).
 export function fileStatuses(base) {
-  const st = new Map();
-  const parse = (s) => s.split('\n').filter(Boolean).forEach((line) => {
-    const [code, ...paths] = line.split('\t');
-    if (code.startsWith('R')) { st.set(paths[0], 'D'); st.set(paths[1], 'A'); }
-    else st.set(paths[0], st.get(paths[0]) === 'A' ? 'A' : code[0]);
-  });
-  if (base) parse(git('diff', '--name-status', `${base}...HEAD`));
-  parse(git('diff', '--name-status', 'HEAD'));
+  const outputs = [];
+  if (base) outputs.push(git('diff', '--name-status', `${base}...HEAD`));
+  outputs.push(git('diff', '--name-status', 'HEAD'));
+  const st = mergeNameStatuses(outputs);
   git('ls-files', '--others', '--exclude-standard').split('\n').filter(Boolean).forEach((f) => st.set(f, 'A'));
+  return st;
+}
+
+// Folds `git diff --name-status` outputs (oldest first) into path -> status vs the base. A path this branch
+// added stays 'A' through later edits, and renaming it (e.g. renumbering an unmerged migration) drops the old
+// name instead of reporting it deleted: it never existed on the base.
+export function mergeNameStatuses(outputs) {
+  const st = new Map();
+  for (const out of outputs) {
+    out.split('\n').filter(Boolean).forEach((line) => {
+      const [code, ...paths] = line.split('\t');
+      if (code.startsWith('R')) {
+        if (st.get(paths[0]) === 'A') st.delete(paths[0]);
+        else st.set(paths[0], 'D');
+        st.set(paths[1], 'A');
+      } else st.set(paths[0], st.get(paths[0]) === 'A' ? 'A' : code[0]);
+    });
+  }
   return st;
 }
 

@@ -8,6 +8,7 @@ import { useCategoryLabel } from '../hooks/useCategoryLabel'
 import ArticleCard from '../components/ArticleCard'
 import ArticleBody from '../components/article/ArticleBody'
 import VoteButtons from '../components/VoteButtons'
+import CommentsSection from '../components/engagement/CommentsSection'
 import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate as formatLocalDate } from '../utils/dates'
@@ -150,12 +151,14 @@ export default function ArticleDetailPage() {
           </div>
 
           {/* Body */}
-          <ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} className="mt-8" />
+          <ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} articleId={article.id} className="mt-8" />
 
           {/* Vote bar — counts hidden from public */}
           <div className="mt-10 pt-6 border-t border-border dark:border-night-border">
             <VoteButtons articleId={article.id} />
           </div>
+
+          <CommentsSection articleId={article.id} />
         </div>
 
         {/* Related */}

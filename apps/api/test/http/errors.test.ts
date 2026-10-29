@@ -10,6 +10,7 @@ import { DigestException } from '../../src/features/digest/logic/digestException
 import { ScheduleCorrectionError } from '../../src/features/correction/errors';
 import { EventRsvpError } from '../../src/features/news/events';
 import { ReviewError } from '../../src/features/review/errors';
+import { EngagementConflictError } from '../../src/features/engagement/errors';
 import { StudyGroupConflictError } from '../../src/features/studygroup/errors';
 import { createApp } from '../../src/http/app';
 import { testApp } from '../support/app';
@@ -68,6 +69,10 @@ const cases: [E.ApiError, number, string, string?][] = [
   [new ReviewError('PROFESSOR_EMAIL_DOMAIN', 'm'), 400, 'ProfessorEmailDomain'],
   [new ReviewError('PROFESSOR_NOT_FOUND', 'm'), 404, 'ProfessorNotFound'],
   [new ReviewError('DIRECTORY_UNAVAILABLE', 'm'), 503, 'ProfessorDirectoryUnavailable'],
+  [new EngagementConflictError('ARTICLE_NOT_PUBLISHED'), 409, 'ArticleNotPublished', 'This article is not published yet'],
+  [new EngagementConflictError('COMMENTS_DISABLED'), 409, 'CommentsDisabled', 'Comments are turned off for this article'],
+  [new EngagementConflictError('POLL_CLOSED'), 409, 'PollClosed', 'This poll is closed'],
+  [new EngagementConflictError('POLL_HAS_VOTES'), 409, 'PollHasVotes', 'The options of a poll with votes cannot change'],
 ];
 
 test.each(cases.map((c) => [c[2], c[0], c[1], c[2], c[3] ?? ''] as const))('%s', (_n, err, status, code, message) => {

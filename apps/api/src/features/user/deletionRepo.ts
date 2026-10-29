@@ -75,6 +75,23 @@ export async function detachNewsletterAuthorship(db: Db, u: string): Promise<voi
   await exec(db, sql`UPDATE public.news_events SET created_by = NULL WHERE created_by = ${u}`);
 }
 
+// Newsletter comments and polls (docs/NEWSLETTER-ENGAGEMENT.md "Account deletion"): comments with
+// replies become tombstones so the other people's replies keep their thread; the rest go.
+export async function deleteNewsletterEngagement(db: Db, u: string): Promise<void> {
+  await exec(db, sql`DELETE FROM public.article_comment_likes WHERE user_id = ${u}`);
+  await exec(db, sql`DELETE FROM public.article_comment_reports WHERE user_id = ${u}`);
+  await exec(db, sql`DELETE FROM public.article_poll_votes WHERE user_id = ${u}`);
+  // Replies never have replies of their own; then top-level comments left without any.
+  await exec(db, sql`DELETE FROM public.article_comments WHERE user_id = ${u} AND parent_id IS NOT NULL`);
+  await exec(db, sql`
+    DELETE FROM public.article_comments c
+    WHERE c.user_id = ${u} AND NOT EXISTS (SELECT 1 FROM public.article_comments r WHERE r.parent_id = c.id)`);
+  await exec(db, sql`
+    UPDATE public.article_comments
+    SET user_id = NULL, body = '', pinned = false, deleted_at = coalesce(deleted_at, now())
+    WHERE user_id = ${u}`);
+}
+
 // Proposals board: counters fixed before the rows they count go away.
 export async function deleteProposalData(db: Db, u: string): Promise<void> {
   await exec(db, sql`

@@ -18,6 +18,8 @@ import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import RichTextEditor from '../../components/admin/editor/RichTextEditor'
+import EngagementSettings from '../../components/engagement/EngagementSettings'
+import { EditorArticleContext } from '../../components/engagement/editorArticle'
 import { useAdminContext } from '../../admin/adminContext'
 import { formatDate } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
@@ -165,6 +167,7 @@ export default function ArticleFormPage() {
   const [doneStatus, setDoneStatus]   = useState<ArticleStatus | null>(null) // 'published' | 'pending_review' once sent
   const [apiError, setApiError]       = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
+  const insertPollRef = useRef<((pollId: string) => void) | null>(null)
 
   // The session can arrive after the page mounted: default the byline to
   // whoever is writing, unless they already typed authors.
@@ -434,7 +437,7 @@ export default function ArticleFormPage() {
   const signPath = staff ? STAFF_SIGN_PATH
     : form.organization && allowedSlugs.has(form.organization) ? orgSignPath(form.organization)
     : null
-  const previewArticle = { ...form, readingTime, id: 'preview', body: [form.body] }
+  const previewArticle = { ...form, readingTime, id: articleId, body: [form.body] }
   const errorCount = Object.keys(errors).length
 
   const primaryAction = moderated
@@ -548,13 +551,16 @@ export default function ArticleFormPage() {
           </p>
 
           <div data-field="body">
-            <RichTextEditor
-              key={editorKey}
-              value={form.body}
-              onChange={(md) => set('body', md)}
-              signPath={signPath}
-              invalid={Boolean(errors.body)}
-            />
+            <EditorArticleContext value={articleId}>
+              <RichTextEditor
+                key={editorKey}
+                value={form.body}
+                onChange={(md) => set('body', md)}
+                signPath={signPath}
+                invalid={Boolean(errors.body)}
+                insertPollRef={insertPollRef}
+              />
+            </EditorArticleContext>
             {errors.body && <FieldError>{errors.body}</FieldError>}
           </div>
         </div>
@@ -604,6 +610,10 @@ export default function ArticleFormPage() {
                 />
               )}
             </div>
+          </SidebarCard>
+
+          <SidebarCard title={t('engagement.editor.cardTitle')}>
+            <EngagementSettings articleId={articleId} onInsert={(pollId) => insertPollRef.current?.(pollId)} />
           </SidebarCard>
 
           <SidebarCard title={t('admin.articleForm.byline')}>

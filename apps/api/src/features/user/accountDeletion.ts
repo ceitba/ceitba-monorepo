@@ -77,6 +77,7 @@ export class AccountDeletionService {
       await del.deleteStudyGroups(tx, userId);
       await del.deleteWikiPersonalData(tx, userId);
       await del.detachNewsletterAuthorship(tx, userId);
+      await del.deleteNewsletterEngagement(tx, userId);
       await del.deleteProposalData(tx, userId);
       await this.step('scheduleCorrections.withdrawVotesOf', tx, userId, afterCommit);
       await del.detachScheduleCorrections(tx, userId);
