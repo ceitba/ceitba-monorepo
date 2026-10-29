@@ -5,7 +5,7 @@ export const AREAS = [
   'review',
   'newsletter', 'benefits',
   'people', 'organizations',
-  'corrections', 'apuntes', 'wiki',
+  'careers', 'corrections', 'apuntes', 'wiki',
   'capabilities',
 ] as const
 
@@ -19,7 +19,7 @@ export const RAIL: { group: AreaGroup | null; areas: Area[] }[] = [
   { group: null, areas: ['review'] },
   { group: 'content', areas: ['newsletter', 'benefits'] },
   { group: 'community', areas: ['people', 'organizations'] },
-  { group: 'academic', areas: ['corrections', 'apuntes', 'wiki'] },
+  { group: 'academic', areas: ['careers', 'corrections', 'apuntes', 'wiki'] },
   { group: 'system', areas: ['capabilities'] },
 ]
 
