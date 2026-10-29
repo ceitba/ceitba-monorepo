@@ -153,7 +153,7 @@ export const articleComments = pgTable("article_comments", {
 	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 }, (table) => [
-	index("article_comments_article_idx").using("btree", table.articleId.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("article_comments_article_idx").using("btree", table.articleId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.asc().nullsLast().op("timestamptz_ops")),
 	uniqueIndex("article_comments_one_pin_idx").using("btree", table.articleId.asc().nullsLast().op("text_ops")).where(sql`pinned`),
 	index("article_comments_parent_idx").using("btree", table.parentId.asc().nullsLast().op("uuid_ops")).where(sql`(parent_id IS NOT NULL)`),
 	index("article_comments_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(user_id IS NOT NULL)`),

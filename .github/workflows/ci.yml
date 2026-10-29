@@ -35,7 +35,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      api: ${{ steps.filter.outputs.api }}
+      # The API's own code, or what its image installs (a root bun.lock change alone is not enough).
+      api: ${{ steps.filter.outputs.api_code == 'true' || steps.api-deps.outputs.changed == 'true' }}
       mcp: ${{ steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
@@ -49,13 +50,12 @@ jobs:
           # merge_group has no PR payload: diff the queued commit against its base.
           base: ${{ github.event.merge_group.base_sha }}
           filters: |
-            # The API is a workspace package: the root manifest and bun.lock are
-            # its dependencies too. It imports nothing from packages/.
-            api:
+            # The API's code. Its dependencies live in the shared root package.json and
+            # bun.lock: the api-deps step below decides whether those changed for it.
+            # It imports nothing from packages/.
+            api_code:
               - 'apps/api/**'
               - 'infra/**'
-              - 'package.json'
-              - 'bun.lock'
               - '.github/workflows/ci.yml'
             shared: &shared
               - 'packages/**'
@@ -72,6 +72,18 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - '.github/workflows/ci.yml'
+      # The API is a workspace package: a root package.json / bun.lock change counts only when the
+      # production dependency closure of @ceitba/api changed (scripts/checks/api-deps-changed.mjs,
+      # apps/api/docs/DEPLOY.md). Unknown or unfetchable base: true.
+      - id: api-deps
+        env:
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE" || true
+          # Anything but a clean "false" (the script failing included) builds and ships the API.
+          v=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD) || v=true
+          [ "$v" = false ] || v=true
+          echo "changed=$v" >> "$GITHUB_OUTPUT"
       - id: spas
         env:
           CHANGES: ${{ steps.filter.outputs.changes }}

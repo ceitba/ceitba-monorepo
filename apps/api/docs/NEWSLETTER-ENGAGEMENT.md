@@ -1,7 +1,7 @@
 # Newsletter comments and polls
 
 Readers can comment on published newsletter articles, and authors can embed polls in an article's body. Code:
-`src/features/engagement/` (API), `apps/web/src/newsletter/components/engagement/` (web). Tables from V64.
+`src/features/engagement/` (API), `apps/web/src/newsletter/components/engagement/` (web). Tables from V67.
 
 ## Who can do what
 
@@ -118,5 +118,5 @@ answer 409 `ArticleNotPublished`, so test reactions never land in the published 
 
 `DELETE /v1/me` removes the user's likes, reports, poll votes and replies, deletes their top-level comments left
 without replies, and turns the rest into tombstones (author cleared, body emptied, unpinned, `deleted_at` set) so other people's
-replies keep their thread. `article_comments.user_id` is `ON DELETE SET NULL`, so an API image older than V64 can
+replies keep their thread. `article_comments.user_id` is `ON DELETE SET NULL`, so an API image older than V67 can
 still delete a commenter's account on a rollback (leaving the body without an author).

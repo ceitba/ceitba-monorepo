@@ -1,9 +1,9 @@
 // The Flyway-compatible runner (src/db/migrate.ts) against what Java's Flyway
 // 10.10 wrote: test/fixtures/flyway-history-java-*.json were read from
 // flyway_schema_history of databases the jar migrated (prod locations, and
-// the IT locations + target 4.52). Rows after V63 / V4.52 were written by
-// this runner (the jar is gone), so for them the checksum tests only hold the
-// runner to itself.
+// the IT locations + target 4.52). Production migrations after LAST_JAVA_VERSION
+// never ran under Java: they are checked as our runner's own rows after the
+// Java ones, never added to the fixtures.
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -15,8 +15,14 @@ import prodHistory from '../fixtures/flyway-history-java-prod.json';
 import itHistory from '../fixtures/flyway-history-java-it.json';
 import { MIGRATIONS_DIR, TEST_MIGRATIONS_DIR } from '../../src/config/sections/db';
 import { check, compareVersions, flywayChecksum, flywayLockNumber, javaStringHashCode, migrate, readHistory, resolveMigrations, validate, type AppliedMigration } from '../../src/db/migrate';
-import { IT_FLYWAY_TARGET, cloneDatabase, dropDatabase, pgServerUrl, withDatabase } from '../../contract/support/pg';
+import { cloneDatabase, dropDatabase, pgServerUrl, withDatabase } from '../../contract/support/pg';
 import { TEST_JWT_SECRET } from '../../contract/support/env';
+
+const LAST_JAVA_VERSION = '63';
+/** The production migrations added after the Java app, in version order. */
+const postJava = () => resolveMigrations([MIGRATIONS_DIR])
+  .filter((m) => m.version !== null && compareVersions(m.version, LAST_JAVA_VERSION) > 0)
+  .sort((a, b) => compareVersions(a.version!, b.version!));
 
 const asApplied = (rows: typeof prodHistory): AppliedMigration[] => rows.map((r) => ({ ...r, installedBy: 'postgres', executionTime: 1, success: true }));
 
@@ -72,9 +78,9 @@ describe('against Postgres', () => {
     await admin.unsafe(`CREATE DATABASE ${name}`);
     const sql = postgres(withDatabase(await pgServerUrl(), name), { max: 2, onnotice: () => {} });
     try {
-      const opts = { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: IT_FLYWAY_TARGET, outOfOrder: true };
+      const opts = { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: '4.52', outOfOrder: true };
       const r = await migrate(sql, opts);
-      expect(r.schemaVersion).toBe(IT_FLYWAY_TARGET);
+      expect(r.schemaVersion).toBe('4.52');
       const rows = (await readHistory(sql)).map(({ installedRank, version, description, type, script, checksum }) => ({ installedRank, version, description, type, script, checksum }));
       expect(rows).toEqual(itHistory);
       // Idempotent: a second run applies nothing.
@@ -175,7 +181,7 @@ describe('against Postgres', () => {
     const db = await cloneDatabase('mig');
     const sql = postgres(withDatabase(await pgServerUrl(), db), { max: 1, onnotice: () => {} });
     try {
-      expect(await check(sql, { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: IT_FLYWAY_TARGET, outOfOrder: true }))
+      expect(await check(sql, { locations: [MIGRATIONS_DIR, TEST_MIGRATIONS_DIR], schemas: ['public', 'wiki'], target: '4.52', outOfOrder: true }))
         .toEqual({ issues: [], pending: [] });
     } finally {
       await sql.end();
@@ -243,7 +249,10 @@ describe('a Prisma-era database baselined at 1 (production)', () => {
       expect(r.applied[0]).toBe('V1.1__add_subject_bookmarks.sql');
       expect(r.applied).not.toContain('V1__baseline.sql');
       const rows = (await readHistory(sql)).map(({ installedRank, version, description, type, script, checksum }) => ({ installedRank, version, description, type, script, checksum }));
-      expect(rows).toEqual(javaRows);
+      expect(rows.slice(0, javaRows.length)).toEqual(javaRows);
+      expect(rows.slice(javaRows.length)).toEqual(postJava().map((m, i) => ({
+        installedRank: javaRows.length + 1 + i, version: m.version, description: m.description, type: 'SQL', script: m.script, checksum: m.checksum,
+      })));
       expect((await migrate(sql, opts)).applied).toEqual([]);
       expect(await check(sql, opts)).toEqual({ issues: [], pending: [] });
       expect(await unmappedColumns(sql)).toEqual([]);
@@ -252,7 +261,7 @@ describe('a Prisma-era database baselined at 1 (production)', () => {
     });
   }, 120_000);
 
-  test('theHistoryJavaWroteValidatesWithZeroIssuesAndZeroPending', async () => {
+  test('theHistoryJavaWroteValidatesWithZeroIssuesAndOnlyPostJavaPending', async () => {
     await withPrismaEraDatabase(async (sql) => {
       // The rows the jar wrote, then the schema it reached (our runner applies the SQL, history replaced).
       await migrate(sql, opts);
@@ -261,8 +270,9 @@ describe('a Prisma-era database baselined at 1 (production)', () => {
         await sql`INSERT INTO public.flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success)
                   VALUES (${r.installedRank}, ${r.version}, ${r.description}, ${r.type}, ${r.script}, ${r.checksum}, 'postgres', 1, true)`;
       }
-      expect(await check(sql, opts)).toEqual({ issues: [], pending: [] });
-      expect((await migrate(sql, opts)).applied).toEqual([]);
+      // The post-Java migrations are pending against the Java rows (their DDL already ran above: not re-applied).
+      expect(await check(sql, opts)).toEqual({ issues: [], pending: postJava().map((m) => m.script) });
+      expect(await check(sql, { ...opts, target: LAST_JAVA_VERSION })).toEqual({ issues: [], pending: [] });
     });
   }, 120_000);
 
@@ -299,7 +309,7 @@ describe.skipIf(!JAR || !existsSync(JAR) || !existsSync(JAVA))('against a databa
         if (ok) break;
         await Bun.sleep(250);
       }
-      expect(await check(sql, { locations: [MIGRATIONS_DIR], schemas: ['public', 'wiki'], outOfOrder: true })).toEqual({ issues: [], pending: [] });
+      expect(await check(sql, { locations: [MIGRATIONS_DIR], schemas: ['public', 'wiki'], outOfOrder: true, target: LAST_JAVA_VERSION })).toEqual({ issues: [], pending: [] });
       const rows = (await readHistory(sql)).map(({ installedRank, version, description, type, script, checksum }) => ({ installedRank, version, description, type, script, checksum }));
       expect(rows).toEqual(prodHistory);
     } finally {

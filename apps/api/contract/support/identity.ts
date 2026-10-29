@@ -130,6 +130,34 @@ export async function seedPlan(db: Sql, id: string, careerId: string, name: stri
   await db`INSERT INTO public.plan (id, career_id, name, updated_at) VALUES (${id}, ${careerId}, ${name}, now())`;
 }
 
+/**
+ * A plan's subject as the sync stores it (plan_entry, appended in plan order), what every plan reader uses. Name
+ * and credits are copied from public.subject when the row exists (seed the subject first), else NULL / 0.
+ */
+export async function seedPlanEntry(db: Sql, e: { planId: string; subjectId: string; section: string | null; year?: number | null;
+  semester?: number | null; creditsRequired?: number | null; dependencies?: string[]; source?: 'ITBA' | 'BACKFILL' }): Promise<void> {
+  await db`INSERT INTO public.plan_entry (plan_id, position, subject_id, section, year, semester, dependencies, credits_required,
+                                         subject_name, subject_credits, fetched_at, source)
+           SELECT ${e.planId}, COALESCE((SELECT max(position) + 1 FROM public.plan_entry WHERE plan_id = ${e.planId}), 0), ${e.subjectId},
+                  ${e.section}, ${e.year ?? null}, ${e.semester ?? null}, ${e.dependencies ?? []}::varchar[], ${e.creditsRequired ?? null},
+                  (SELECT name FROM public.subject WHERE id = ${e.subjectId}), COALESCE((SELECT credits FROM public.subject WHERE id = ${e.subjectId}), 0),
+                  now(), ${e.source ?? 'ITBA'}`;
+}
+
+/**
+ * Replaces plan_entry with the plan_subject rows a test seeded (the V66 backfill's conversion, as source ITBA):
+ * the readers use plan_entry, while plan_subject is only written by the sync until it is dropped.
+ */
+export async function copyPlanSubjectsToEntries(db: Sql): Promise<void> {
+  await db`DELETE FROM public.plan_entry`;
+  await db`INSERT INTO public.plan_entry (plan_id, position, subject_id, section, year, semester, dependencies, credits_required,
+                                         subject_name, subject_credits, fetched_at, source)
+           SELECT ps.plan_id, (row_number() OVER (PARTITION BY ps.plan_id ORDER BY ps.year = 0, ps.year, ps.semester, ps.section, ps.subject_id))::int - 1,
+                  ps.subject_id, ps.section, NULLIF(ps.year, 0), NULLIF(ps.semester, 0), array_remove(COALESCE(ps.dependencies, '{}'), NULL),
+                  NULLIF(ps.credits_required, 0), s.name, COALESCE(s.credits, 0), now(), 'ITBA'
+           FROM public.plan_subject ps LEFT JOIN public.subject s ON s.id = ps.subject_id`;
+}
+
 /** jdbc.execute("TRUNCATE public.\"user\" CASCADE") */
 export async function truncateUsers(db: Sql): Promise<void> {
   await db`TRUNCATE public."user" CASCADE`;

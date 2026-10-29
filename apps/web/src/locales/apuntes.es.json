@@ -732,7 +732,7 @@
       "runs": {
         "budget": {
           "title": "Presupuesto",
-          "summary": "US$ {{spent}} gastados / US$ {{limit}} de límite · estimado admitido US$ {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas (US$ {{deferredEstimated}} estimado)",
+          "summary": "{{spent}} gastados / {{limit}} de límite · estimado admitido {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas ({{deferredEstimated}} estimado)",
           "oversized": "Corrida dedicada a {{subject}}: no entraba en el presupuesto"
         },
         "runNow": "Ejecutar ahora",

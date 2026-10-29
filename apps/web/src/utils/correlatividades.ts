@@ -42,6 +42,8 @@ export function buildModel(
 ): CorrModel {
   const nodes = new Map<string, CorrNode>()
   for (const s of list) {
+    // A subject can sit in several sections of a plan (orientations): it keeps its first entry, in plan order.
+    if (nodes.has(s.subjectId)) continue
     nodes.set(s.subjectId, {
       id: s.subjectId,
       name: s.subject?.name ?? s.subjectId,

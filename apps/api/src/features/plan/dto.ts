@@ -35,3 +35,11 @@ export interface SubjectPlanResponse {
   creditsRequired: number | null;
   subject: { id: string; name: string; credits: number } | null;
 }
+
+/** PlanSectionRequirementResponse: the credits a plan asks for in one elective group, placed in a year and term. */
+export interface PlanSectionRequirementResponse {
+  section: string;
+  credits: number;
+  year: number;
+  semester: number;
+}

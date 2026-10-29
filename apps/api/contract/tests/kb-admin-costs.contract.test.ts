@@ -31,7 +31,7 @@ async function usage(model: string, stage: string, subject: string | null, cost:
 describe('KbAdminEvalIT', () => {
   beforeEach(async () => {
     await api.db`TRUNCATE wiki.kb_llm_usage, wiki.kb_run CASCADE`;
-    await api.db`TRUNCATE public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+    await api.db`TRUNCATE public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
     await api.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES ('61.12', 'Matemática Financiera', 3, now()), ('81.07', 'Contabilidad', 3, now())`;
     await seedUser(api.db, STAFF, { name: 'Staff' });
     await seedStaff(api.db, STAFF);

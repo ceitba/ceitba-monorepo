@@ -214,6 +214,16 @@ INSERT INTO plan_subject (subject_id, plan_id, section, year, semester, credits_
 ON CONFLICT (subject_id, plan_id) DO UPDATE SET section = EXCLUDED.section, year = EXCLUDED.year,
   semester = EXCLUDED.semester, credits_required = EXCLUDED.credits_required, dependencies = EXCLUDED.dependencies;
 
+-- The readers use plan_entry (docs/PLANS.md): the same plans, as the V66 backfill copies them. With
+-- ITBA_API_USE_FAKE + ITBA_API_FAKE_FROM_DB the first GET /v1/subjects?plan= replays and stores them as ITBA.
+DELETE FROM plan_entry WHERE plan_id IN (SELECT DISTINCT plan_id FROM plan_subject);
+INSERT INTO plan_entry (plan_id, position, subject_id, section, year, semester, dependencies, credits_required,
+                        subject_name, subject_credits, fetched_at, source)
+SELECT ps.plan_id, (row_number() OVER (PARTITION BY ps.plan_id ORDER BY ps.year = 0, ps.year, ps.semester, ps.section, ps.subject_id))::int - 1,
+       ps.subject_id, ps.section, NULLIF(ps.year, 0), NULLIF(ps.semester, 0), array_remove(COALESCE(ps.dependencies, '{}'), NULL),
+       NULLIF(ps.credits_required, 0), s.name, COALESCE(s.credits, 0), now(), 'BACKFILL'
+FROM plan_subject ps LEFT JOIN subject s ON s.id = ps.subject_id;
+
 -- Commissions run from a month ago to three months from now: always the
 -- current term.
 INSERT INTO commission (id, subject_code, commission_name, course_start, course_end, enrolled_students, quota, subject_type)

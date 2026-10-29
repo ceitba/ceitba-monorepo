@@ -1,4 +1,4 @@
-// Comments and polls of newsletter articles (V64). Timestamps are read as text
+// Comments and polls of newsletter articles (V67). Timestamps are read as text
 // (`::text`) and formatted by the services.
 
 import { and, asc, eq, sql, type SQL } from 'drizzle-orm';

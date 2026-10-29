@@ -4,7 +4,7 @@
 // inspected (keys, put count, fake signed URLs), DriveSyncService.syncSource /
 // runAll are called directly. The black-box half is contract/tests/drive-sync.contract.test.ts.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { mintJwt, seedStaff } from '../../contract/support/identity';
+import { copyPlanSubjectsToEntries, mintJwt, seedStaff } from '../../contract/support/identity';
 import { FakeDriveClient } from '../../src/external/drive';
 import { driveServices } from '../../src/features/drive/services';
 import type { Outcome } from '../../src/features/drive/sync';
@@ -109,7 +109,7 @@ describe('DriveSyncIT', () => {
   beforeEach(async () => {
     await svc().trigger.idle();
     await t.sql`TRUNCATE wiki.kb_page, wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file,
-                wiki.drive_source, public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+                wiki.drive_source, public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
     await t.sql`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
                 ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
     drive.reset();
@@ -380,6 +380,7 @@ describe('DriveSyncIT', () => {
                 ('71.98', 'A22', 'Electivas Social', 0, 0, 0, '{}'), ('71.97', 'A22', 'Electivas Analytics', 0, 0, 0, '{}'),
                 ('71.96', 'A22', 'Electivas Analytics', 0, 0, 0, '{}'), ('82.15', 'A22', 'Ciclo', 1, 2, 0, '{}'),
                 ('93.16', 'A22', 'Ciclo', 2, 1, 0, '{}'), ('93.24', 'A22', 'Ciclo', 2, 2, 0, '{}')`;
+    await copyPlanSubjectsToEntries(t.sql);
     drive.folder('folder-mate-00001', 'Resumen Mate', ROOT, ALUMNO)
       .doc('doc-discreta-0001', 'Teoría Matemática Discreta full', 'folder-mate-00001', ALUMNO, '<p>grafos</p>')
       .doc('doc-mate-guia-001', 'Guía 1', 'folder-mate-00001', ALUMNO, '<p>funciones</p>')

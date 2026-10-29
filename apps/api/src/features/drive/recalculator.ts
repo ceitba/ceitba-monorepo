@@ -26,7 +26,9 @@ export async function planSubjectIds(s: Session, userId: string | null): Promise
   const [u] = await s.rows(sql`SELECT plan FROM public."user" WHERE id = ${userId}`);
   const plan = (u?.plan as string | null) ?? null;
   if (plan == null || plan.trim() === '') return [];
-  const rows = await s.rows(sql`SELECT subject_id, year, semester FROM public.plan_subject WHERE plan_id = ${plan}`);
+  // A subject in several sections keeps its first entry (plan order).
+  const rows = await s.rows(sql`SELECT DISTINCT ON (subject_id) subject_id, COALESCE(year, 0) AS year, COALESCE(semester, 0) AS semester
+    FROM public.plan_entry_effective WHERE plan_id = ${plan} ORDER BY subject_id, position`);
   return rows
     .map((r) => ({ id: r.subject_id as string, year: Number(r.year), semester: Number(r.semester) }))
     .sort((a, b) => a.year - b.year || a.semester - b.semester || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))

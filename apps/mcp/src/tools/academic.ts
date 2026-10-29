@@ -38,7 +38,10 @@ export const getPlanSubjects = defineTool({
   description:
     "Materias de un plan de estudios, con año, cuatrimestre, créditos y correlativas. Filtrá por año, cuatrimestre, " +
     "sección o texto. Con includeCommissions=true agrega comisiones y horarios del cuatrimestre actual. " +
-    "EN: Subjects of a study plan (year, term, credits, prerequisites), optionally with this term's commissions and times.",
+    "requirements: créditos que el plan pide por grupo de electivas (section = la sección que lista esas materias), " +
+    "con el año y cuatrimestre en que van. " +
+    "EN: Subjects of a study plan (year, term, credits, prerequisites), optionally with this term's commissions and times; " +
+    "requirements = credits the plan asks for per elective group.",
   access: "public",
   input: {
     plan,
@@ -51,6 +54,8 @@ export const getPlanSubjects = defineTool({
   },
   async run(args, ctx) {
     const all = await sharedCatalog.planSubjects(ctx.api, args.plan);
+    const requirements = await ctx.api.get<{ section: string; credits: number; year: number; semester: number }[]>(
+      `/v1/plans/${encodeURIComponent(args.plan)}/requirements`);
     const q = args.query ? normalize(args.query) : null;
     const filtered = all.filter(s =>
       (args.year === undefined || s.year === args.year) &&
@@ -72,7 +77,12 @@ export const getPlanSubjects = defineTool({
         prerequisites: s.dependencies,
         creditsRequired: s.credits_required,
         commissions: args.includeCommissions ? s.commissions.map(commissionView) : s.commissions.length
-      }))
+      })),
+      // Text queries match subjects, not groups: the year/term/section filters apply.
+      requirements: requirements.filter(r =>
+        (args.year === undefined || r.year === args.year) &&
+        (args.semester === undefined || r.semester === args.semester) &&
+        (!args.section || normalize(r.section).includes(normalize(args.section))))
     });
   }
 });

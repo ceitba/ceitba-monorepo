@@ -42,7 +42,7 @@ async function file(id: string, source: string, name: string, subject: string, p
 describe('KbControllerContract', () => {
   beforeEach(async () => {
     await api.db`TRUNCATE wiki.kb_page, wiki.kb_subject_relation, wiki.drive_file, wiki.drive_source,
-      public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+      public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
     await api.db`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
       ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
     await api.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES

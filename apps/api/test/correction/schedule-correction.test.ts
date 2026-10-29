@@ -4,7 +4,7 @@
 // the IT's FixedClock. The rest of the IT is black-box:
 // contract/tests/correction-schedule.contract.test.ts.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { mintJwt } from '../../contract/support/identity';
+import { copyPlanSubjectsToEntries, mintJwt } from '../../contract/support/identity';
 import type { FakeItbaApiClient, TimeSlot } from '../../src/external/itba';
 import { FakePushGateway } from '../../src/infra/push';
 import { MutableClock } from '../../src/infra/clock';
@@ -59,13 +59,14 @@ async function vote(email: string, id: string, type: string) {
 const statusOf = async (id: string) => ((await t.sql`SELECT status FROM public.schedule_correction WHERE id = ${id}`)[0]!.status as string);
 
 beforeEach(async () => {
-  await t.sql`TRUNCATE public.schedule_correction, public."user", public.commission_time, public.commission, public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+  await t.sql`TRUNCATE public.schedule_correction, public."user", public.commission_time, public.commission, public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
   itba.reset();
   gateway.calls.length = 0;
   await t.sql`INSERT INTO public.careers (id, name, updated_at) VALUES ('S', 'Sistemas', now())`;
   await t.sql`INSERT INTO public.plan (id, career_id, name, updated_at) VALUES (${PLAN}, 'S', 'Plan 2023', now())`;
   await t.sql`INSERT INTO public.subject (id, name, credits, updated_at) VALUES (${SUBJECT}, ${SUBJECT_NAME}, 3, now())`;
   await t.sql`INSERT INTO public.plan_subject (dependencies, section, subject_id, plan_id, year, semester, credits_required) VALUES ('{}', 'Ciclo', ${SUBJECT}, ${PLAN}, 1, 1, 0)`;
+  await copyPlanSubjectsToEntries(t.sql);
   itba.stubPlan(PLAN, [{ subjectId: SUBJECT, planId: PLAN, section: 'Ciclo', year: 1, semester: 1, dependencies: [], creditsRequired: null, subjectName: SUBJECT_NAME, subjectCredits: 3 }]);
   for (const [id, name] of [[COMMISSION, 'G'], ['45113', 'B']] as const) {
     await t.sql`INSERT INTO public.commission (id, subject_code, commission_name, course_start, course_end, enrolled_students, quota, subject_type)

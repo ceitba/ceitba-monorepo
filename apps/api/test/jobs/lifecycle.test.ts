@@ -56,7 +56,8 @@ describe('lifecycle hooks', () => {
         ['DigestJob#onStartup', true], ['KbPipelineJob#onStartup', true], ['KbRelationJob#run', true], ['OrgMailJob#onStartup', true],
       ]);
       const phase = (p: string) => l.shutdown.filter((h) => h.phase === p).map((h) => h.name);
-      expect(phase('closing')).toEqual(['DigestSender#onShutdown', 'OrgAnnouncementSender#onShutdown']);
+      // KbRunEngine#onShutdown is TS-only: the engine stops starting work on SIGTERM (docs/SUBJECT-WIKI-PIPELINE.md).
+      expect(phase('closing')).toEqual(['DigestSender#onShutdown', 'OrgAnnouncementSender#onShutdown', 'KbRunEngine#onShutdown']);
       expect(phase('executors')).toEqual(['DigestSender (task executor)', 'OrgAnnouncementSender (task executor)', 'KbRunEngine (task executor)']);
       // Without the background flags the listeners' beans do not exist (the KB relation refresh always runs).
       const off = await discoverLifecycle(await buildDeps(await loadConfig({ ...CONTRACT_ENV, DATABASE_URL: 'jdbc:postgresql://localhost:1/x' }), { log: silentLogger, push: null }));

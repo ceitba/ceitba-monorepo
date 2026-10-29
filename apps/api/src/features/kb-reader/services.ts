@@ -22,7 +22,7 @@ import * as repo from './repo';
 import { KbSearchService } from './searchService';
 import { KbViews } from './views';
 
-/** service/kb/KbRelationService: recomputes wiki.kb_subject_relation from plan_subject.dependencies. */
+/** service/kb/KbRelationService: recomputes wiki.kb_subject_relation from the plans' prerequisites (plan_entry_effective). */
 export class KbRelationService {
   constructor(private readonly deps: Pick<Deps, 'db'>) {}
 
