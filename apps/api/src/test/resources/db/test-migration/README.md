@@ -70,3 +70,4 @@ Flyway compares versions numerically per segment, so `4.10` sorts after `4.9`.
 | V4.54 plan_entries | V65 |
 | V4.55 plan_entry_overrides | V66 |
 | V4.56 subject_reviews | V67 |
+| V4.57 newsletter_comments_polls | V68 |

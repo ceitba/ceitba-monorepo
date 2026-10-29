@@ -16,6 +16,8 @@ const GEO_BG: Record<string, string> = {
 
 // What the admin article form previews (its form state).
 interface PreviewArticle {
+  // Set once the article was saved: ```poll blocks preview its polls.
+  id?: string | null
   title?: string | null
   excerpt?: string | null
   body: string[]
@@ -182,7 +184,7 @@ function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: 
         </div>
 
         {bodyToMarkdown(article.body).trim() ? (
-          <ArticleBody body={article.body} className="mt-6" />
+          <ArticleBody body={article.body} articleId={article.id ?? null} previewPolls className="mt-6" />
         ) : (
           <p className="mt-6 font-body text-body"><Missing>{t('admin.preview.noBody')}</Missing></p>
         )}

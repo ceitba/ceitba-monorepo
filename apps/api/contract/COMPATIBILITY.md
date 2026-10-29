@@ -97,7 +97,9 @@ asserts the code over HTTP (the mapping test when none does).
 | 405 | `MethodNotAllowed` | Method '<METHOD>' is not supported. | MethodNotAllowedError (+ Allow) | `health-and-error.contract.test.ts` |
 | 406 | `NotAcceptable` | Acceptable representations: [text/html]. | NotAcceptableError (+ Accept; `produces` routes only) | `accept-negotiation.contract.test.ts` |
 | 409 | `AlreadySuggested` | <message> | ScheduleCorrectionError ALREADY_SUGGESTED | `correction-schedule.contract.test.ts` |
+| 409 | `ArticleNotPublished` | This article is not published yet | EngagementConflictError ARTICLE_NOT_PUBLISHED | `news-engagement-comments.contract.test.ts` |
 | 409 | `BOOKMARK_LIMIT` | <message> | BookmarkLimitError | `wiki-bookmarks.contract.test.ts` |
+| 409 | `CommentsDisabled` | Comments are turned off for this article | EngagementConflictError COMMENTS_DISABLED | `news-engagement-comments.contract.test.ts` |
 | 409 | `CommissionEnded` | <message> | ScheduleCorrectionError COMMISSION_ENDED | `correction-schedule.contract.test.ts` |
 | 409 | `CORRECTION_CLOSED` | <message> | DigestException CORRECTION_CLOSED | `digest-correction-vote.contract.test.ts` |
 | 409 | `DataIntegrityViolation` | Operation violates a database constraint | DataIntegrityViolationError (SQLSTATE 22/23 that escapes) | `career.contract.test.ts` |
@@ -128,6 +130,8 @@ asserts the code over HTTP (the mapping test when none does).
 | 409 | `OrgMailNotDraft` | Only drafts can be changed or sent | OrgMailError NOT_DRAFT | `orgmail-announcements.contract.test.ts` |
 | 409 | `OrgMailTestFailed` | The test email could not be sent | OrgMailError TEST_FAILED | `test/http/errors.test.ts` |
 | 409 | `OrgMailWeeklyLimit` | The organization already sent its emails for this week | OrgMailError WEEKLY_LIMIT | `orgmail-announcements.contract.test.ts` |
+| 409 | `PollClosed` | This poll is closed | EngagementConflictError POLL_CLOSED | `news-engagement-polls.contract.test.ts` |
+| 409 | `PollHasVotes` | The options of a poll with votes cannot change | EngagementConflictError POLL_HAS_VOTES | `news-engagement-polls.contract.test.ts` |
 | 409 | `ResourceAlreadyExists` | <Resource> with identifier '<id>' already exists | ResourceAlreadyExistsError | `career.contract.test.ts` |
 | 409 | `StudyGroupCapacityBelowMembers` | <message> | StudyGroupConflictError CAPACITY_BELOW_MEMBERS | `studygroup-controller.contract.test.ts` |
 | 409 | `StudyGroupFull` | <message> | StudyGroupConflictError FULL | `studygroup-controller.contract.test.ts` |
