@@ -24,7 +24,11 @@ const messages = {
     noStaffMembers: "Todavía no hay integrantes cargados.",
     noWikiResults: "No hay fragmentos de las wikis que coincidan. Probá con otras palabras o sin limitar la materia.",
     reported: "Reporte enviado. Gracias: CEITBA lo revisa, y con 3 reportes el contenido se oculta.",
-    wikiSearchUnavailable: "La búsqueda en las wikis no está disponible en este momento."
+    wikiSearchUnavailable: "La búsqueda en las wikis no está disponible en este momento.",
+    eventOrgRequired: "Indicá la organización del evento. Podés crear eventos para: {orgs}.",
+    eventOrgNotMember: "No sos integrante de \"{org}\". Podés crear eventos para: {orgs}.",
+    eventInPast: "La fecha {date} ya pasó (hoy es {today}). Revisá la fecha del evento.",
+    eventCreated: "Evento creado. Los seguidores de la organización reciben una notificación; se edita o borra desde el newsletter en la web."
   },
   en: {
     signInRequired: "This tool needs a CEITBA session. Connect with OAuth or set CEITBA_API_KEY.",
@@ -45,7 +49,11 @@ const messages = {
     noStaffMembers: "No team members have been loaded yet.",
     noWikiResults: "No wiki passages match. Try other words or drop the subject filter.",
     reported: "Report sent. Thanks: CEITBA reviews it, and 3 reports hide the content.",
-    wikiSearchUnavailable: "Wiki search is not available right now."
+    wikiSearchUnavailable: "Wiki search is not available right now.",
+    eventOrgRequired: "Say which organization the event is for. You can create events for: {orgs}.",
+    eventOrgNotMember: "You are not a member of \"{org}\". You can create events for: {orgs}.",
+    eventInPast: "{date} is in the past (today is {today}). Check the event date.",
+    eventCreated: "Event created. The organization's followers get a notification; edit or delete it from the newsletter on the website."
   }
 } as const;
 

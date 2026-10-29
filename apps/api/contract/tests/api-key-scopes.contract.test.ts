@@ -2,6 +2,7 @@
 // Keys are seeded as ApiKeyService.create would store them (seedApiKey).
 import { describe, expect, test } from 'bun:test';
 import { apiKey, bearer, mintJwt, seedApiKey, seedStaff, seedUser, supports, useServer } from '../support';
+import { seedMembership, seedOrg } from '../../test/news/support/fixtures';
 
 const api = useServer();
 const hasStaffList = await supports('GET /v1/staff');
@@ -99,6 +100,28 @@ describe('ApiKeyScopesIT', () => {
     expect(enc.json.error).toBe('INSUFFICIENT_SCOPE');
   });
 
+  // apps/mcp gives every login read, report and events: a member creates its org's events, nothing else.
+  test('anEventsKeyMayOnlyCreateEventsForItsOrganizations', async () => {
+    const org = `org-${uuid().slice(0, 8)}`;
+    await seedOrg(api.db, org, org.toUpperCase(), 'Org');
+    const u = await user(`organizer-${uuid()}@itba.edu.ar`);
+    await seedMembership(api.db, u, org, 'member');
+    const k = await key(u, 'read', 'report', 'events');
+    const event = (organization: string | null) => ({ title: 'Meetup', eventDate: '2030-05-01', startTime: '18:00', endTime: '20:00', location: 'Aula 1', category: 'Organizaciones', organization });
+    const created = await api.post('/v1/news/events', { as: apiKey(k), body: event(org) });
+    expect(created.status).toBe(201);
+    expect(created.json.organization).toBe(org);
+    expect((await api.post('/v1/news/events', { as: apiKey(k), body: event(null) })).status).toBe(403);
+    const patch = await api.patch(`/v1/news/events/${created.json.id}`, { as: apiKey(k), body: { title: 'X' } });
+    expect(patch.json.error).toBe('INSUFFICIENT_SCOPE');
+    expect((await api.delete(`/v1/news/events/${created.json.id}`, { as: apiKey(k) })).json.error).toBe('INSUFFICIENT_SCOPE');
+    expect((await api.post('/v1/auth/logout-all', { as: apiKey(k) })).json.error).toBe('INSUFFICIENT_SCOPE');
+    const enc = await api.request('POST', '/api/v1/news/even%74s', { rawPath: true, as: apiKey(k), body: event(org) });
+    expect(enc.json.error).toBe('INSUFFICIENT_SCOPE');
+    const reportOnly = await key(u, 'read', 'report');
+    expect((await api.post('/v1/news/events', { as: apiKey(reportOnly), body: event(org) })).json.error).toBe('INSUFFICIENT_SCOPE');
+  });
+
   test('anEmptyScopeListMeansReadOnly', async () => {
     const u = await user(`empty-${uuid()}@itba.edu.ar`);
     const created = await seedApiKey(api.db, u, []);
@@ -140,7 +163,7 @@ describe('ApiKeyScopesIT', () => {
     expect(r.json.scopes).toEqual(['read', 'staff']);
     const bad = await api.post('/v1/auth/api-keys', { as: alice, body: { name: 'mcp', scopes: ['admin'] } });
     expect(bad.status).toBe(400);
-    expect(bad.json.message).toBe("Validation failed for field 'scopes' with value 'admin': must be one of read, report, write, staff, keys");
+    expect(bad.json.message).toBe("Validation failed for field 'scopes' with value 'admin': must be one of read, report, events, write, staff, keys");
   });
 
   // Not in the IT: unknown keys are anonymous; revoking someone else's key is 404 with no body.

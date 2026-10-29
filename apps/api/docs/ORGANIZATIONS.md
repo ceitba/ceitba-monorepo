@@ -101,6 +101,10 @@ RSVP answers 409 `EventNotRsvp` (another mode), `EventEnded` (the date is before
 capacity check runs under the event's row lock, so the last seat can't be taken twice. Both RSVP methods share the
 votes' per-IP rate limit (rule `event-rsvp`).
 
+Creating an event (`POST /v1/news/events`) takes one token of the per-user `event-create` quota (default 30 per hour,
+`RATE_LIMIT_EVENT_CREATE_CAPACITY` / `_PERIOD`; 429 with `Retry-After` beyond it), because every event pushes to its
+organization's followers and API keys with the `events` scope (the MCP server's `create_event`) can create them too.
+
 **Reminders.** `EventReminderJob` (`src/features/news/jobs.ts`) runs hourly 18:00–23:00 ART (`EVENT_REMINDERS_ENABLED`, default true; off in
 tests). `EventReminderService` (`src/features/news/events.ts`) claims each RSVP event of tomorrow with a conditional
 `UPDATE … SET reminder_sent_at WHERE reminder_sent_at IS NULL`, then pushes "Mañana a las HH:mm · lugar" to the

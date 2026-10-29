@@ -759,6 +759,6 @@
       "revoked": "Assistant disconnected",
       "revokeError": "Could not disconnect the assistant."
     },
-    "privacy": "Your assistant can only read your data, and report Apuntes mistakes when you ask. CEITBA doesn't store your questions."
+    "privacy": "Your assistant can only read your data and, when you ask, report Apuntes mistakes or create events for your organizations. CEITBA doesn't store your questions."
   }
 }

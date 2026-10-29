@@ -47,7 +47,7 @@ describe('ApiKeyFilterTest', () => {
     expect(syncKeyMatches('', '')).toBe(false);
     expect(syncKeyMatches(null, 'anything')).toBe(false);
   });
-  const key = (...scopes: ('read' | 'report' | 'write' | 'staff' | 'keys')[]): ValidatedKey => ({ keyId: crypto.randomUUID(), user: null as never, scopes: normalizeScopes(scopes) });
+  const key = (...scopes: ('read' | 'report' | 'events' | 'write' | 'staff' | 'keys')[]): ValidatedKey => ({ keyId: crypto.randomUUID(), user: null as never, scopes: normalizeScopes(scopes) });
   test('anyKeyMayRevokeItselfButNoOtherKey', () => {
     const self = key('read');
     expect(scopeDenial(self, 'DELETE', `/v1/auth/api-keys/${self.keyId}`)).toBeNull();
@@ -61,37 +61,56 @@ describe('ApiKeyFilterTest', () => {
     for (const m of ['POST', 'PUT', 'PATCH', 'DELETE']) expect(scopeDenial(read, m, '/v1/me/schedules')).not.toBeNull();
     expect(scopeDenial(key('write'), 'POST', '/v1/me/schedules')).toBeNull();
   });
+  test('anEventsKeyMayOnlyCreateEvents', () => {
+    const k = key('read', 'events');
+    expect(scopeDenial(k, 'POST', '/v1/news/events')).toBeNull();
+    expect(scopeDenial(k, 'POST', '/v1/news/events/')).not.toBeNull();
+    expect(scopeDenial(k, 'POST', '/v1/news/%65vents')).not.toBeNull();
+    expect(scopeDenial(k, 'PATCH', `/v1/news/events/${crypto.randomUUID()}`)).not.toBeNull();
+    expect(scopeDenial(k, 'DELETE', `/v1/news/events/${crypto.randomUUID()}`)).not.toBeNull();
+    expect(scopeDenial(k, 'POST', `/v1/news/events/${crypto.randomUUID()}/rsvp`)).not.toBeNull();
+    expect(scopeDenial(k, 'POST', '/v1/articles')).not.toBeNull();
+    expect(scopeDenial(k, 'PUT', `/v1/wiki/files/${crypto.randomUUID()}/report`)).not.toBeNull();
+    expect(scopeDenial(key('read', 'report'), 'POST', '/v1/news/events')).not.toBeNull();
+  });
   test('anEncodedSelfRevokePathIsNotExempt', () => {
     const self = key('read');
     expect(scopeDenial(self, 'DELETE', `/v1/auth/api%2Dkeys/${self.keyId}`)).not.toBeNull();
   });
   test('scopesParseNormalizeAndSort', () => {
-    expect(scopeKeys(parseScopes(''))).toEqual(['read', 'report', 'write', 'staff', 'keys']);
+    expect(scopeKeys(parseScopes(''))).toEqual(['read', 'report', 'events', 'write', 'staff', 'keys']);
     expect(scopeKeys(parseScopes('staff'))).toEqual(['read', 'staff']);
-    expect(scopeKeys(normalizeScopes(['write']))).toEqual(['read', 'report', 'write']);
+    expect(scopeKeys(normalizeScopes(['write']))).toEqual(['read', 'report', 'events', 'write']);
     expect(scopeKeys(normalizeScopes([]))).toEqual(['read']);
   });
 });
 
 describe('ApiKeyScopeTest', () => {
   test('nullMeansFullPowerEmptyMeansReadOnlyAndReadIsImplied', () => {
-    expect(scopeKeys(normalizeScopes(null))).toEqual(['read', 'report', 'write', 'staff', 'keys']);
+    expect(scopeKeys(normalizeScopes(null))).toEqual(['read', 'report', 'events', 'write', 'staff', 'keys']);
     expect(scopeKeys(normalizeScopes([]))).toEqual(['read']);
     expect(scopeKeys(normalizeScopes(['staff']))).toEqual(['read', 'staff']);
   });
   test('roundTripsThroughTheColumn', () => {
     expect(serializeScopes(new Set(['read', 'staff'] as const))).toBe('read,staff');
     expect(scopeKeys(parseScopes('read,staff'))).toEqual(['read', 'staff']);
-    expect(scopeKeys(parseScopes('read,write,staff'))).toEqual(['read', 'report', 'write', 'staff']);
-    expect(scopeKeys(parseScopes('keys,read,staff,write'))).toEqual(['read', 'report', 'write', 'staff', 'keys']);
+    expect(scopeKeys(parseScopes('read,write,staff'))).toEqual(['read', 'report', 'events', 'write', 'staff']);
+    expect(scopeKeys(parseScopes('keys,read,staff,write'))).toEqual(['read', 'report', 'events', 'write', 'staff', 'keys']);
     expect(serializeScopes(normalizeScopes(null))).toBe('read,report,write,staff,keys');
+    expect(serializeScopes(normalizeScopes(['report', 'staff', 'write']))).toBe('read,report,write,staff');
+    expect(serializeScopes(normalizeScopes(['report', 'events']))).toBe('read,report,events');
+    expect(scopeKeys(parseScopes('read,events'))).toEqual(['read', 'events']);
     expect(scopeKeys(parseScopes('read,report'))).toEqual(['read', 'report']);
-    expect(scopeKeys(parseScopes(' WRITE '))).toEqual(['read', 'report', 'write']);
+    expect(scopeKeys(parseScopes(' WRITE '))).toEqual(['read', 'report', 'events', 'write']);
   });
   // apps/mcp gives staff read, report, staff and write: never full power.
   test('everyScopeButKeysIsNotFullPower', () => {
     expect(keyIsFullPower({ keyId: 'k', user: null as never, scopes: normalizeScopes(['report', 'staff', 'write']) })).toBe(false);
     expect(keyIsFullPower({ keyId: 'k', user: null as never, scopes: normalizeScopes(null) })).toBe(true);
+  });
+  // Keys stored before the events scope existed (the column default) stay full power: write implies events.
+  test('aPreEventsFullPowerKeyIsStillFullPower', () => {
+    expect(keyIsFullPower({ keyId: 'k', user: null as never, scopes: parseScopes('read,report,write,staff,keys') })).toBe(true);
   });
   test('unknownScopeIsRejected', () => {
     expect(scopeFromKey('admin')).toBeNull();

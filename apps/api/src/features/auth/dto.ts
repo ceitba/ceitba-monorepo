@@ -7,7 +7,7 @@ import { jv } from '../../http/validation';
 export const CreateApiKeyRequest = jv.object({
   name: jv.string({ notBlank: true }),
   ttlDays: jv.int({ positive: true, max: 365 }),
-  scopes: jv.list(jv.string(), { size: { max: 4 } }),
+  scopes: jv.list(jv.string(), { size: { max: 6 } }),
 });
 export type CreateApiKeyRequest = NonNullable<z.output<typeof CreateApiKeyRequest>>;
 

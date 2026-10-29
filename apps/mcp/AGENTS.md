@@ -4,8 +4,9 @@ Read `README.md` here first (dev, ops, OAuth bridge). Users connect from the web
 where opening `/mcp` in a browser lands); `CONECTAR.md` is the same guide as Markdown.
 
 - Tools live in `src/tools/*` and are declared with `defineTool` (access: public, user, staff or moderator; plus
-  `write`, `report` and `capability`). Sessions only list the tools they can use. Students only read and report:
-  `write` tools must be staff or moderator tools, and `report` tools are the only changes a student session makes.
+  `write`, `report`, `events` and `capability`). Sessions only list the tools they can use. Students read, report and
+  create events for their own organizations: `write` tools must be staff or moderator tools, and `report` tools and
+  `create_event` (`events` scope, which opens only `POST /v1/news/events`) are the only changes a student session makes.
 - Descriptions are Spanish first, then `EN:`. Return compact, trimmed JSON (`src/trim.ts`), never raw API payloads.
 - Hosted mode is stateless Streamable HTTP and acts as its own OAuth 2.1 server. It bridges Google sign-in through
   `POST /v1/auth/google/mobile` and stores only an encrypted, scoped API key per login (`src/oauth/provider.ts`).

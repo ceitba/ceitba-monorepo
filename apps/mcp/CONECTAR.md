@@ -12,8 +12,10 @@ El servidor MCP de CEITBA le da a tu asistente (Claude, ChatGPT, Cursor, VS Code
   dudas citando las páginas.
 - **Personal de CEITBA:** también la cola de correcciones de horario y de propuestas, usuarios y el resumen semanal.
 
-Para estudiantes la conexión es de **lectura**: el asistente no puede publicar, votar ni modificar nada en tu nombre.
-Lo único que puede hacer es **reportar** una página de wiki o un archivo de apuntes con errores, cuando se lo pedís.
+Para estudiantes la conexión es de **lectura**: el asistente no puede votar ni modificar nada en tu nombre.
+Lo único que puede hacer, cuando se lo pedís, es **reportar** una página de wiki o un archivo de apuntes con errores y,
+si sos integrante de una organización, **crear eventos** de esa organización (por ejemplo, a partir de la invitación
+que mandaron por WhatsApp). Antes de publicarlo te muestra cómo va a quedar.
 
 Los asistentes de IA se están habilitando de a poco: si tu cuenta todavía no los tiene, la conexión se rechaza.
 
@@ -120,6 +122,7 @@ Sin `CEITBA_API_KEY` solo aparecen las herramientas públicas.
 - "Explicame los temas de la wiki de Física I." (requiere Apuntes)
 - "¿Cómo se calcula el VAN según la wiki de Matemática Financiera?" (requiere Apuntes)
 - "La fórmula de esta página está mal, reportala." (requiere Apuntes)
+- "Cargá este evento de mi organización: <pegá la invitación de WhatsApp>" (requiere ser integrante)
 
 ## Privacidad
 
@@ -134,8 +137,8 @@ Sin `CEITBA_API_KEY` solo aparecen las herramientas públicas.
 The CEITBA MCP server gives AI assistants access to ITBA's study plans, commissions and timetables, free classrooms,
 the schedule combiner, news, events, organizations and benefits. If you sign in with your @itba.edu.ar account, it
 also reaches your saved schedules, study groups, proposals and, with Apuntes enabled, subject notes and wikis.
-Student connections can read and, when you ask, **report** a wiki page or Apuntes file with mistakes; nothing
-else. Step-by-step instructions and your connected assistants are at [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
+Student connections can read and, when you ask, **report** a wiki page or Apuntes file with mistakes and, if you
+belong to an organization, **create events** for it (e.g. from a WhatsApp invite); nothing else. Step-by-step instructions and your connected assistants are at [ceitba.org.ar/ia](https://ceitba.org.ar/ia).
 
 - **Server URL:** `https://ceitba.org.ar/mcp`. Add it as a remote / custom connector (HTTP, OAuth) in your client.
   CEITBA shows which assistant is asking and where it will send you back; if you started the connection, continue

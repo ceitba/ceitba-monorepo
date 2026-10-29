@@ -52,7 +52,7 @@ Auth: read `docs/AUTH-AND-ROLES.md` and `docs/AUTH-SETUP.md` before touching `sr
 HS256 JWTs after a server-side Google OAuth code exchange (web: HttpOnly cookie; mobile: access + rotating refresh
 token). Every route is authenticated + allowlisted unless `src/http/auth/policy.ts` says otherwise: a new public,
 STAFF, MODERATOR or SYNC route needs its rule there (see "Reference: authorization"). User API keys (`ceitba_`,
-`X-Api-Key`) carry scopes `read`/`report`/`write`/`staff`/`keys` (`docs/AUTH-SETUP.md` § Scopes). Code that grants
+`X-Api-Key`) carry scopes `read`/`report`/`events`/`write`/`staff`/`keys` (`docs/AUTH-SETUP.md` § Scopes). Code that grants
 the caller staff or moderator powers asks `staffPowers(c)` (`src/http/auth/context.ts`), never the
 `ceitba_staff`/moderator tables directly: it withholds them from a key without `staff`.
 

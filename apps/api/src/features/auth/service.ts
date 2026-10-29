@@ -106,7 +106,7 @@ export class AuthService {
       const parsed: ApiKeyScope[] = [];
       for (const k of scopeKeysIn) {
         const s = scopeFromKey(k ?? '');
-        if (!s) throw new ValidationError('scopes', k, 'must be one of read, report, write, staff, keys');
+        if (!s) throw new ValidationError('scopes', k, 'must be one of read, report, events, write, staff, keys');
         parsed.push(s);
       }
       scopes = normalizeScopes(parsed);
