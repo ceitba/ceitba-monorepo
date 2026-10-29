@@ -1,6 +1,124 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@config '../tailwind.config.js';
+
+/* Scheduler subject colors are built from an index at runtime. */
+@source inline("{,hover:,focus:}bg-subject_color_{1,2,3,4,5,6,7,8,9,10}");
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility container-content {
+  @apply max-w-content mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, #e9e9e7 25%, #f0f0ee 50%, #e9e9e7 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+@utility apunte-prose {
+  /* Editorial reading container for Google Docs rendered as (server-
+     sanitized) HTML on /apuntes/archivo/:id. Inline colours/fonts from the
+     export are neutralised so the doc follows the site's type and theme. */
+  @apply font-body text-body text-ink-primary dark:text-night-text leading-[1.75] wrap-break-word;
+  & * {
+    color: inherit !important;
+    background-color: transparent !important;
+    font-family: inherit;
+  }
+  & h1 {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  & h2 {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  & h3 {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  & h4 {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  & .title {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  & h1 {
+    @apply text-h3;
+  }
+  & .title {
+    @apply text-h3;
+  }
+  & h2 {
+    @apply text-h4;
+  }
+  & h3 {
+    @apply text-h5;
+  }
+  & h4 {
+    @apply text-body-lg;
+  }
+  & > :first-child {
+    @apply mt-0;
+  }
+  & p {
+    @apply my-3;
+  }
+  & a {
+    @apply underline underline-offset-2;
+    color: #1a3c6e !important;
+  }
+  & img {
+    @apply max-w-full h-auto my-4 rounded-xs;
+  }
+  & hr {
+    @apply my-8 border-border dark:border-night-border;
+  }
+  & code {
+    @apply font-mono text-body-sm rounded-xs bg-page-bg dark:bg-night-bg;
+    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  }
+  & pre {
+    @apply font-mono text-body-sm rounded-xs bg-page-bg dark:bg-night-bg;
+    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  }
+  & code {
+    @apply px-1 py-0.5;
+  }
+  & pre {
+    @apply p-4 my-4 overflow-x-auto;
+  }
+}
+
+@utility title {
+  .apunte-prose & {
+    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
+  }
+  .apunte-prose & {
+    @apply text-h3;
+  }
+}
 
 @layer base {
   :root {
@@ -46,54 +164,6 @@
     outline: 2px solid #F5A623;
     outline-offset: 2px;
   }
-}
-
-@layer components {
-  .container-content {
-    @apply max-w-content mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
-  .skeleton {
-    background: linear-gradient(90deg, #e9e9e7 25%, #f0f0ee 50%, #e9e9e7 75%);
-    background-size: 800px 100%;
-    animation: shimmer 1.4s infinite linear;
-  }
-
-  /* Editorial reading container for Google Docs rendered as (server-
-     sanitized) HTML on /apuntes/archivo/:id. Inline colours/fonts from the
-     export are neutralised so the doc follows the site's type and theme. */
-  .apunte-prose {
-    @apply font-body text-body text-ink-primary dark:text-night-text leading-[1.75] break-words;
-  }
-  .apunte-prose * {
-    color: inherit !important;
-    background-color: transparent !important;
-    font-family: inherit;
-  }
-  .apunte-prose h1,
-  .apunte-prose h2,
-  .apunte-prose h3,
-  .apunte-prose h4,
-  .apunte-prose .title {
-    @apply font-display font-bold text-ink-primary dark:text-night-text mt-8 mb-3;
-    font-family: 'Fraunces', 'Playfair Display', Georgia, serif !important;
-  }
-  .apunte-prose h1, .apunte-prose .title { @apply text-h3; }
-  .apunte-prose h2 { @apply text-h4; }
-  .apunte-prose h3 { @apply text-h5; }
-  .apunte-prose h4 { @apply text-body-lg; }
-  .apunte-prose > :first-child { @apply mt-0; }
-  .apunte-prose p { @apply my-3; }
-  .apunte-prose a { @apply underline underline-offset-2; color: #1A3C6E !important; }
-  .apunte-prose img { @apply max-w-full h-auto my-4 rounded-sm; }
-  .apunte-prose hr { @apply my-8 border-border dark:border-night-border; }
-  .apunte-prose code,
-  .apunte-prose pre {
-    @apply font-mono text-body-sm rounded-sm bg-page-bg dark:bg-night-bg;
-    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
-  }
-  .apunte-prose code { @apply px-1 py-0.5; }
-  .apunte-prose pre { @apply p-4 my-4 overflow-x-auto; }
 }
 
 html.dark .apunte-prose a { color: #7FA1D4 !important; }

@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /manage
+Disallow: /newsletter/mine
+Disallow: /newsletter/admin
+Disallow: /profile
+Disallow: /auth/
+Disallow: /newsletter/unsubscribe
+Disallow: /newsletter/correction
+Disallow: /dev-login
+Disallow: /apuntes/mis-apuntes
+Disallow: /app/
+Disallow: /newsletter/contribute
+Sitemap: https://ceitba.org.ar/sitemap.xml

@@ -8,11 +8,13 @@ every recipient; below it each reader gets a short personal block,
 "Tu cuatrimestre" (their subjects, wiki links and schedule corrections to
 confirm). Staff review, edit and send it from the ItbaNews admin area.
 
-Code: `service/digest/*` (selection, rendering, lifecycle, sending worker,
-`DigestTrackingService`), `service/digest/personal/*` ("Tu cuatrimestre"),
-`service/mail/*` (transports, `MailSendService` = sending-quota ledger, Gmail API sender + OAuth accounts,
-`MailLinkRewriter`, `MailClientClass`), `scheduling/DigestJob`,
-`web/digest/DigestController`, `web/mail/MailTrackingController`, `web/mail/MailAccountController`.
+Code: `src/features/digest/` (`logic/` = selection and rendering,
+`service.ts` = lifecycle, `sender.ts` = sending worker, `tracking.ts`,
+`routes.ts`, `jobs.ts` = `DigestJob#createWeeklyDraft` and `DigestJob#tick`), `src/features/digest/personal.ts` and
+`logic/personal/*` ("Tu cuatrimestre"), `src/features/mail/` (`logic/mailSendService.ts`
+= sending-quota ledger, Gmail API sender + OAuth accounts, `logic/mailLinkRewriter.ts`,
+`logic/mailClientClass.ts`, `routes.ts` = sender accounts + tracking endpoints),
+`src/infra/mail.ts` (transports).
 Schema: `V45__weekly_digest.sql`; "Tu cuatrimestre" adds only
 `V46__saved_schedules_payload_updated_at.sql`;
 `V47__mail_quota_tracking.sql` (quota ledger + open/click tracking),
@@ -62,9 +64,9 @@ domain. `recipientEstimate` in the detail is that count, computed with a
 count query and only for drafts (`null` once sending started).
 
 **Rendering.** The shared content is rendered once per issue
-(`DigestRenderer.template`); per recipient only the unsubscribe link and the
+(`digestTemplate` in `src/features/digest/logic/digestRenderer.ts`); per recipient only the unsubscribe link and the
 "Tu cuatrimestre" block are spliced in (between the content and the footer).
-The block comes from the `DigestPersonalSection` extension point, which is
+The block comes from `TuCuatrimestreSection` (`src/features/digest/personal.ts`), which is
 asked for several recipients at once (`forReaders`; a fixed number of
 queries, about ten, whatever the number of readers). The sending worker
 claims one delivery at a time, so it asks for that one reader. If loading it
@@ -73,10 +75,11 @@ caller's own block.
 
 ## "Tu cuatrimestre" (per reader)
 
-Code: `service/digest/personal/*` (`DigestTerm` = current-term rule,
-`CorrectionPrompts` = which corrections, `PersonalDigestLoader` = batch
-loading, `PersonalDigestRenderer`, `TuCuatrimestreSection` = the bean),
-`service/digest/DigestCorrectionVote*` (links and endpoints).
+Code: `src/features/digest/logic/personal/*` (`digestTerm.ts` = current-term rule,
+`correctionPrompts.ts` = which corrections, `personalDigestRenderer.ts`),
+`src/features/digest/personal.ts` (`PersonalDigestLoader` = batch loading,
+`TuCuatrimestreSection`), `src/features/digest/correctionVote.ts` and
+`logic/digestCorrectionVoteTokens.ts` (links and endpoints).
 
 **Nothing at all** is rendered between terms: when no commission is running
 or starts within 14 days (ART), the block is omitted for everyone.
@@ -106,7 +109,7 @@ Otherwise, per reader:
 The audience, the `@itba.edu.ar` guard and the opt-out are unchanged: the
 block is only ever added to an email that would be sent anyway.
 
-**What "current term" means** (`DigestTerm`). Commission rows carry no
+**What "current term" means** (`digestTerm.ts`). Commission rows carry no
 year/period, only `course_start`/`course_end`, and a saved schedule stores
 subject codes + commission **names** (`{"selectedCourses": [{"subject_id",
 "selectedCommissions": ["A"]}]}`, written by the scheduler and the app), not
@@ -114,7 +117,7 @@ commission ids. Most subjects reuse the same names every term, so:
 
 - A subject's current term = its commissions with `course_end >= today` and
   `course_start <= today + 14 days`, narrowed to the newest term with
-  `CommissionTerms` (the rule `GET /v1/subjects` uses). A term synced months
+  `src/features/commission/logic/commissionTerms.ts` (the rule `GET /v1/subjects` uses). A term synced months
   ahead is not current; the two weeks before classes start, the starting
   term is.
 - Each schedule entry keeps the current-term commissions whose name it lists
@@ -131,13 +134,13 @@ commission ids. Most subjects reuse the same names every term, so:
 **Voting from the email.** Each button links to the ItbaNews page
 `${DIGEST_PUBLIC_BASE_URL}/correction?token=…&vote=confirm|reject`. The token
 is `<userId>.<correctionId>.<expiresAtEpochSeconds>.<base64url HMAC>`, keyed
-with `ContentHmac`'s `digest-correction-vote` purpose key (same derivation as
+with `ContentHmac`'s `digest-correction-vote` purpose key (`src/features/crypto/logic/contentHmac.ts`) (same derivation as
 the unsubscribe key, its own label), valid `DIGEST_VOTE_TOKEN_TTL` (14 days).
 It says who may vote on which correction until when; the vote itself is
 never taken from the link. **Nothing changes on GET** (mail scanners follow
 links): the page loads the correction with
 `GET /v1/digests/correction-vote?token=` and only the button click POSTs
-`{token, vote}`. The vote goes through `ScheduleCorrectionService.vote` as
+`{token, vote}`. The vote goes through `ScheduleCorrectionService.vote` (`src/features/correction/service.ts`) as
 the token's user, so one vote per user, the 3-confirm rule, the commission
 lock and anonymity are exactly those of the in-app vote. A replay of the same
 vote changes nothing; a different vote replaces the previous one (as in the
@@ -158,8 +161,8 @@ Both endpoints are public, ignore the session cookie/Authorization header
 
 **Sending.** "Send" (manual or auto) locks the issue, snapshots the
 recipients into `digest_deliveries` (`pending`, one batch insert) and sets the
-issue to `sending`. A background worker (on the task executor, never the
-scheduler thread) then walks the pending rows. Delivery is **at-most-once**:
+issue to `sending`. A background worker (`sender.ts`, run detached from the
+scheduled tick) then walks the pending rows. Delivery is **at-most-once**:
 
 - *Claim, then send.* Before each SMTP call the row is claimed in its own
   committed transaction (`SELECT … FOR UPDATE SKIP LOCKED`, `status =
@@ -171,16 +174,18 @@ scheduler thread) then walks the pending rows. Delivery is **at-most-once**:
   process died around the SMTP call and nobody knows whether the email left.
   At the start of each run it is marked `failed` with the error `unknown
   outcome (interrupted)` and is **never resent**.
-- *Graceful shutdown.* `server.shutdown=graceful`, the task executor waits for
-  termination and the worker stops taking new rows on context close, so a
-  deploy finishes the email in flight (`stop_grace_period: 90s` in compose).
+- *Graceful shutdown.* On SIGTERM the worker stops taking new rows (a
+  `closing` shutdown hook) and the shutdown waits for the run in flight (an
+  `executors` hook; `src/main.ts`, `src/jobs/scheduler.ts`), so a deploy
+  finishes the email in flight (`stop_grace_period: 90s` in compose).
 - Throttled: `DIGEST_SEND_INTERVAL` (1 s) between emails.
 - Sending quota (see "Sending quota" below): every email goes through
   `MailSendService`. While the account is paused or out of quota the worker
   does not start at all (no SMTP until `resumeAt`); when the quota runs out
   mid-run it stops and a later tick resumes once capacity frees, so an
   issue with more recipients than the limit just finishes the next day(s).
-- *Who a failure blames* (`EmailSendException.Kind`, from the SMTP reply):
+- *Who a failure blames* (`EmailSendError.kind` in `src/infra/mail.ts`, from the SMTP reply,
+  classified by `src/features/mail/logic/smtpReplyClassification.ts`):
   - `RECIPIENT` (4.1.x, 4.2.x such as `452 4.2.2 mailbox over quota`, 5.1.x,
     5.2.x, rejected addresses, malformed message): that row is `failed` and
     the run goes on.
@@ -247,9 +252,9 @@ show up in an issue's stats.
 
 ## Sending quota (Gmail limits)
 
-Code: `service/mail/MailSendService` (the only `EmailSender` bean: the SMTP
-or logging transport is wrapped inside it, so no caller can bypass it),
-`MailLedger`/`JpaMailLedger`.
+Code: `src/features/mail/logic/mailSendService.ts` (the only `EmailSender` the app
+hands out: the transport is wrapped inside it, so no caller can bypass it),
+`logic/mailLedger.ts` + `DrizzleMailLedger` in `src/features/mail/service.ts`.
 
 - **Ledger.** Every SMTP attempt, whoever makes it (digest deliveries, test
   sends, later the per-org emails), is a `mail_send_log` row: `account` (the
@@ -266,8 +271,8 @@ or logging transport is wrapped inside it, so no caller can bypass it),
   waits until then; overflow rolls into the next day by itself.
 - **Limit.** `MAIL_DAILY_LIMIT` (falls back to the older
   `DIGEST_DAILY_LIMIT`; default 1500, safely under Workspace's ~2000
-  recipients per rolling 24h), per sending account; `mail.daily-limits`
-  overrides it per address (yml only).
+  recipients per rolling 24h), per sending account. Per-address overrides
+  (`dailyLimits` in `src/features/mail/settings.ts`) have no env variable and are empty.
 - **Gmail's own error is authoritative.** A `550 5.4.5 Daily user sending
   limit exceeded` (our count can be off, e.g. staff also send from the
   account by hand) pauses the account for `MAIL_QUOTA_PAUSE` (24h), or until
@@ -296,8 +301,8 @@ or logging transport is wrapped inside it, so no caller can bypass it),
 
 ## Open and click tracking
 
-Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
-`service/mail/MailClientClass`, `web/mail/MailTrackingController`.
+Code: `src/features/digest/tracking.ts`, `src/features/mail/logic/mailLinkRewriter.ts`,
+`src/features/mail/logic/mailClientClass.ts`, `src/features/mail/routes.ts`.
 
 - **Tracking id.** Each delivery gets a random 128-bit id
   (`digest_deliveries.tracking_id`, base64url, never the user id), set right
@@ -377,14 +382,14 @@ Code: `service/digest/DigestTrackingService`, `service/mail/MailLinkRewriter`,
 | POST | `/v1/digests/correction-vote` | Public; `{token, vote: confirm\|reject}` → `{correction, previousVote}`; errors in the table above |
 | GET | `/v1/mail/accounts` | Connected sender accounts: `[{id, email, ownerType, ownerRef, status, connectedAt, lastError, lastUsedAt}]`; never any token |
 | POST | `/v1/mail/accounts/ceitba/connect` | → `{authorizationUrl}`: send the browser there (Google consent for `ceitba@itba.edu.ar`) |
-| GET | `/v1/mail/accounts/oauth/callback` | Google redirects here (no session needed; authenticated by the signed `state`); 302 to `DIGEST_PUBLIC_BASE_URL/admin/digests?mail=connected` or `?mail=error&reason=<code>` |
+| GET | `/v1/mail/accounts/oauth/callback` | Google redirects here (no session needed; authenticated by the signed `state` plus the `ceitba_mail_oauth_nonce` cookie the connect call set in the same browser: HttpOnly, SameSite=Lax, 10 min, Path = the path of `GOOGLE_MAIL_REDIRECT_URI`, i.e. this callback; a state without its cookie is `invalid_state`); 302 to `DIGEST_PUBLIC_BASE_URL/admin/digests?mail=connected` or `?mail=error&reason=<code>` |
 | DELETE | `/v1/mail/accounts/{id}` | Revokes the token at Google (best effort), deletes the row; 204 |
 | GET | `/v1/mail/o/{trackingId}.gif` | Public open pixel; always a 1×1 GIF |
 | GET | `/v1/mail/c/{trackingId}/{linkId}` | Public click redirect; 302 to the stored URL, else to `DIGEST_PUBLIC_BASE_URL` |
 
 ## Retention
 
-A nightly job (03:40 ART, `MailRetentionJob`, one process at a time via `JobLock` (`DEPLOY.md`), off with `DIGEST_JOBS_ENABLED=
+A nightly job (03:40 ART, `MailRetentionJob#run` in `src/features/mail/jobs.ts`, one process at a time via `JobLock` (`DEPLOY.md`), off with `DIGEST_JOBS_ENABLED=
 false`) keeps the bookkeeping bounded:
 
 - `mail_tracking_event` rows older than `MAIL_RETENTION_TRACKING` (180 days)
@@ -393,7 +398,7 @@ false`) keeps the bookkeeping bounded:
   and the per-delivery counters `open_count`/`click_count`/... stay, so
   open and click rates survive, per-link click stats of old issues do not).
 - `mail_send_log` rows older than `MAIL_RETENTION_SEND_LOG` (30 days). The
-  sending quota only ever reads the last 24h (`MailSendService.WINDOW`), and
+  sending quota only ever reads the last 24h (`WINDOW_MS` in `mailSendService.ts`), and
   the smallest accepted value is 2 days, so nothing that is deleted is read.
 
 ## Configuration
@@ -437,28 +442,35 @@ Transport matrix:
 | `DIGEST_VOTE_TOKEN_TTL` | `P14D` | Lifetime of the correction vote links |
 | `DIGEST_MAX_WIKI_LINKS` / `DIGEST_MAX_CORRECTIONS` | `5` / `3` | Caps per email (`0` hides that part) |
 
-The transport is behind `service/mail/EmailSender` (`GmailApiEmailSender`,
-`SmtpEmailSender`, `LoggingEmailSender`), selected in `MailConfig`. Sending as
+The transport is behind the `EmailSender` interface of `src/infra/mail.ts`
+(`GmailApiEmailSender` in `src/features/mail/logic/gmailApiEmailSender.ts`,
+`SmtpEmailSender` over nodemailer, `LoggingEmailSender`), selected by
+`createMailTransport` there. Sending as
 other identities (each org's own account) would add a sender identity to
 `OutgoingEmail`; `mail_sender_account` already has `owner_type` /
 `owner_ref` for that, but only the CEITBA account is built.
-Spring Boot's mail health check is disabled so SMTP trouble never marks the
-API down.
+The health check (`/actuator/health`, `src/http/core-routes.ts`) does not
+look at mail, so SMTP trouble never marks the API down.
 
 ## Sending through the Gmail API (OAuth)
 
 The default transport. No app password and no SMTP: the API sends with
 `POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send` (scope
-`gmail.send` only) using the refresh token of the connected
-`ceitba@itba.edu.ar` account. The message is the same
+`gmail.send`) using the refresh token of the connected
+`ceitba@itba.edu.ar` account. The same account's consent also asks for
+`directory.readonly`: subject reviews name professors from the ITBA directory
+with it (`SUBJECT-REVIEWS.md` "Professors"). Sending only needs `gmail.send`;
+an account connected before that scope was added keeps sending, but has to be
+reconnected for professor lookups. The message is the same
 `multipart/alternative` HTML + text MIME with `List-Unsubscribe`,
 `List-Unsubscribe-Post`, `List-Id` and `Precedence`, sent as base64url `raw`.
-There are no google-api-client libraries: plain `RestClient`.
+There are no Google client libraries: plain `fetch`.
 
 - **Connect (STAFF).** The admin page calls
   `POST /v1/mail/accounts/ceitba/connect` and navigates to the returned
   `authorizationUrl` (`access_type=offline`, `prompt=consent`,
-  `login_hint=ceitba@itba.edu.ar`, `hd=itba.edu.ar`, a signed 10-minute
+  `login_hint=ceitba@itba.edu.ar`, `hd=itba.edu.ar`, scope `gmail.send openid
+  email directory.readonly` (organization accounts: without the directory), a signed 10-minute
   `state` that binds the staff user). Google redirects to
   `GOOGLE_MAIL_REDIRECT_URI`; the API exchanges the code, checks the id_token
   (issuer, audience = our client id, expiry, verified email) and that its
@@ -480,7 +492,7 @@ There are no google-api-client libraries: plain `RestClient`.
   `409 MAIL_SENDER_NOT_CONNECTED`.
 - **Disconnect.** `DELETE /v1/mail/accounts/{id}` revokes the token at Google
   (best effort) and deletes the row.
-- **Errors.** Mapped onto the four `EmailSendException` kinds:
+- **Errors.** Mapped onto the four `EmailSendError` kinds:
   `dailyLimitExceeded` (or a `RESOURCE_EXHAUSTED`/429 saying "daily") =
   `QUOTA` (account paused 24h, see "Sending quota");
   `rateLimitExceeded` / `userRateLimitExceeded` / plain `429` = `TRANSPORT`
@@ -506,7 +518,9 @@ There are no google-api-client libraries: plain `RestClient`.
    after 7 days. An unverified External app works for up to 100 users behind
    an "unverified app" warning screen, enough for one sender account.
 3. **Scopes.** Add `https://www.googleapis.com/auth/gmail.send` (a
-   sensitive scope; `openid` and `email` are non-sensitive). Nothing broader.
+   sensitive scope; `openid` and `email` are non-sensitive) and
+   `https://www.googleapis.com/auth/directory.readonly` (subject reviews), and
+   enable the **People API** (APIs & Services → Library). Nothing broader.
 4. **Authorized redirect URI.** On the OAuth 2.0 Web client add
    `https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback` (exactly
    `GOOGLE_MAIL_REDIRECT_URI`; for local dev

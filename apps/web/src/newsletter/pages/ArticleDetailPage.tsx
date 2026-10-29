@@ -8,10 +8,13 @@ import { useCategoryLabel } from '../hooks/useCategoryLabel'
 import ArticleCard from '../components/ArticleCard'
 import ArticleBody from '../components/article/ArticleBody'
 import VoteButtons from '../components/VoteButtons'
+import CommentsSection from '../components/engagement/CommentsSection'
 import { fetchArticleById, fetchArticles } from '../api/articles'
 import { trackEvent } from '../store/analyticsStore'
 import { formatDate as formatLocalDate } from '../utils/dates'
-import { newsletterPath } from '@/newsletter/paths'
+import { articleDescription } from '../utils/seo'
+import { useCanonical, useDocumentTitle, useMetaDescription, useNoIndex } from '@/hooks/useDocumentTitle'
+import { articlePath, newsletterPath } from '@/newsletter/paths'
 import type { Article } from '../types'
 
 const GEO_BG: Record<string, string> = {
@@ -60,6 +63,15 @@ export default function ArticleDetailPage() {
     return () => { cancelled = true }
   }, [id, reloadKey])
 
+  // Search engines index the tags set after render. Only once the article has
+  // loaded, so NewsletterApp's section title (set on mount) doesn't override it.
+  useDocumentTitle(article ? `${article.title} | ITBA News` : null)
+  useMetaDescription(article ? articleDescription(article) : null)
+  useCanonical(article ? `${window.location.origin}${articlePath(article.id)}` : null)
+  // Only a real 404: a transient API error while Googlebot renders must not
+  // deindex an existing page.
+  useNoIndex(status === 'notFound')
+
   if (status === 'loading') return <LoadingSkeleton />
   if (status === 'notFound' || status === 'error' || !article) {
     const notFound = status !== 'error'
@@ -83,7 +95,7 @@ export default function ArticleDetailPage() {
       <div className="container-content">
         <Link
           to={newsletterPath('/')}
-          className="inline-flex items-center min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 mb-6 focus-visible:rounded"
+          className="inline-flex items-center min-h-[44px] font-mono text-label text-ink-secondary hover:text-primary transition-colors duration-150 mb-6 focus-visible:rounded-sm"
         >
           {t('articles.backToArticles')}
         </Link>
@@ -104,7 +116,7 @@ export default function ArticleDetailPage() {
               <div className="absolute top-[-20%] right-[-5%] w-1/2 h-full rounded-full bg-white/30" />
               <div className="absolute bottom-[-30%] left-[-5%] w-2/3 h-2/3 rotate-12 bg-white/20" />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/30" />
+            <div className="absolute inset-0 bg-linear-to-br from-black/0 to-black/30" />
             <div className="absolute bottom-5 left-6">
               <CategoryBadge category={article.category} />
             </div>
@@ -119,7 +131,7 @@ export default function ArticleDetailPage() {
             </div>
           )}
 
-          <h1 className="font-display text-h2 lg:text-display font-bold text-ink-primary leading-tight">
+          <h1 className="font-display text-h2 lg:text-display lg:font-extrabold lg:leading-[1.05] font-bold text-ink-primary leading-tight">
             {article.title}
           </h1>
 
@@ -139,12 +151,14 @@ export default function ArticleDetailPage() {
           </div>
 
           {/* Body */}
-          <ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} className="mt-8" />
+          <ArticleBody body={article.body?.length ? article.body : [article.excerpt ?? '']} articleId={article.id} className="mt-8" />
 
           {/* Vote bar — counts hidden from public */}
           <div className="mt-10 pt-6 border-t border-border dark:border-night-border">
             <VoteButtons articleId={article.id} />
           </div>
+
+          <CommentsSection articleId={article.id} />
         </div>
 
         {/* Related */}
@@ -167,16 +181,16 @@ function LoadingSkeleton() {
   return (
     <LoadingRegion className="py-section-mobile lg:py-section">
       <div className="container-content">
-        <div className="skeleton h-4 w-32 rounded-sm mb-8" />
+        <div className="skeleton h-4 w-32 rounded-xs mb-8" />
         <div className="skeleton rounded-card h-48 lg:h-64 mb-10" />
         <div className="max-w-2xl flex flex-col gap-3">
-          <div className="skeleton h-10 w-4/5 rounded-sm" />
-          <div className="skeleton h-10 w-3/5 rounded-sm" />
+          <div className="skeleton h-10 w-4/5 rounded-xs" />
+          <div className="skeleton h-10 w-3/5 rounded-xs" />
           <div className="flex gap-4 mt-1 pb-6 border-b border-border dark:border-night-border">
-            <div className="skeleton h-3 w-24 rounded-sm" />
-            <div className="skeleton h-3 w-32 rounded-sm" />
+            <div className="skeleton h-3 w-24 rounded-xs" />
+            <div className="skeleton h-3 w-32 rounded-xs" />
           </div>
-          {[1,2,3,4].map((i) => <div key={i} className="skeleton h-4 w-full rounded-sm" />)}
+          {[1,2,3,4].map((i) => <div key={i} className="skeleton h-4 w-full rounded-xs" />)}
         </div>
       </div>
     </LoadingRegion>

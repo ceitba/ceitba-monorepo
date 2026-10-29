@@ -137,7 +137,7 @@ export function DownloadCard({ file, reason }: { file: FileDetail; reason: CardR
         <KindIcon kind={file.kind} size={30} />
       </div>
       <div className="min-w-0">
-        <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text break-words">{file.name}</p>
+        <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text wrap-break-word">{file.name}</p>
         {file.sizeBytes != null && (
           <p className="font-mono text-label text-ink-secondary dark:text-night-muted mt-1">{formatSize(file.sizeBytes)}</p>
         )}

@@ -11,10 +11,10 @@ Student and reader endpoints require the `apuntes` capability (see [CAPABILITIES
 | Env var | Default | Meaning |
 |---|---|---|
 | `DRIVE_SYNC_ENABLED` | `false` | Turns on the scheduled job |
-| `DRIVE_SYNC_INTERVAL` | `PT30M` | Delay between runs (`DriveSyncJob`; one process at a time via `JobLock`, `DEPLOY.md`) |
+| `DRIVE_SYNC_INTERVAL` | `PT30M` | Delay between runs (`DriveSyncJob#run` in `src/features/drive/jobs.ts`; one process at a time via `JobLock`, `DEPLOY.md`) |
 | `DRIVE_SYNC_RUN_BUDGET` | `PT10M` | Max wall time per run |
 | `DRIVE_SYNC_SERVICE_ACCOUNT_JSON` | — | Base64 of the service-account key JSON |
-| `DRIVE_SYNC_USE_FAKE` | `false` | Use the in-memory `FakeDriveClient` (tests / offline dev) |
+| `DRIVE_SYNC_USE_FAKE` | `false` | Use the in-memory `FakeDriveClient` (`src/external/drive.ts`; tests / offline dev) |
 | `DRIVE_SYNC_MAX_FILE_BYTES` | `52428800` | Larger files are stored as metadata only |
 | `DRIVE_SYNC_SOURCE_BUDGET` | `PT3M` | Max time slice of one source per run (min with what is left of the run budget) |
 | `DRIVE_SYNC_REFERENCE_ABOVE_BYTES` | `20971520` | Files above this are kept by reference (no stored copy), in any source |
@@ -38,8 +38,8 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
 - File `publication`: `PRIVATE` (no subject or hidden), `NEEDS_REVIEW`, `PUBLISHED`, `HIDDEN_REPORTED`, `REMOVED_BY_STAFF`, `REMOVED`.
 - Source `kind`: `STUDENT`, `COMMUNITY_ROOT`, `COMMUNITY` (see "Community sources").
 - File `kind`: `FOLDER`, `DOC`, `SLIDES`, `SHEET`, `DRAWING`, `PDF`, `IMAGE`, `OFFICE`, `OTHER`.
-- What is imported at all (`service/drive/DriveKinds`): only what the wiki pipeline can read. `OTHER` is kept only
-  for text-like files (code, notebooks, CSV, Markdown, JSON...: `DriveMedia.isTextLike`), stored as text. Everything
+- What is imported at all (`src/features/drive/logic/driveKinds.ts`): only what the wiki pipeline can read. `OTHER` is kept only
+  for text-like files (code, notebooks, CSV, Markdown, JSON...: `isTextLike` in `src/features/drive/logic/driveMedia.ts`), stored as text. Everything
   else that is not a Google Doc/Slides/Sheet/Drawing, PDF, image or Office file is skipped entirely: no row, no
   download, not counted. That includes every `video/*`, `audio/*`, archives (zip, rar, 7z), executables, disk
   images, CAD files, HTML/XML/SVG-as-text, forms, sites and maps. Images are kept in student sources (photos of
@@ -60,11 +60,11 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
 - Details: "held" files (source `PENDING_REVIEW`) are `NEEDS_REVIEW`. Folders are always `PRIVATE`. `hidden` on a
   folder hides everything below it. `BLOCKED`/`REVOKED` sources publish nothing; an approved source in `ERROR`
   keeps publishing. A staff publish ignores reports; staff `restore` clears the staff decision **and deletes the
-  file's reports** (count back to 0). Implementation: `service/drive/PublicationRule`.
+  file's reports** (count back to 0). Implementation: `src/features/drive/logic/publicationRule.ts`.
 
 ## Subject suggestions
 
-`service/drive/SubjectMatcher`, recomputed on every sync, PATCH and `POST .../recompute-suggestions`:
+`src/features/drive/logic/subjectMatcher.ts`, recomputed on every sync, PATCH and `POST .../recompute-suggestions`:
 
 - A subject code in the name (`93.41`, `93-41`, `9341`) wins.
 - Otherwise accent/case-insensitive word overlap: light stemming (Matemática ~ Matemático ~ Matemáticas), prefixes of
@@ -72,7 +72,7 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
   Filler words never count (resumen, apuntes, teoría, práctica, tp, parcial, final, guía, clase, ingreso, de, la,
   el, ...). Numerals: I-VI = 1-6; a numeral in the name that contradicts the subject's rules it out
   ("Física 2" is not Física I); none in the name is fine. Dates (`5/5/20`) are ignored.
-- The source owner's plan (`user.plan` + `plan_subject`) is tried first with threshold 0.5 (share of the subject's
+- The source owner's plan (`user.plan` + its entries in `plan_entry_effective`, `PLANS.md`) is tried first with threshold 0.5 (share of the subject's
   words found), then all subjects with 0.75. Ties: first word matched, earlier in the plan, more words, name.
 - Inheritance: an item's `suggestedSubjectId` is set only when it has no effective subject and its own match differs
   from the suggestion it inherits from its folders. `accept-suggestions` applies every suggestion, so a matched folder
@@ -99,6 +99,9 @@ Sources show the year the material was made, not their last update (notes and TP
 - Native Google files (Docs/Slides/Sheets/Drawings): `modifiedTime` is only the trigger (renames bump it too).
   When it changes the file is exported again and hashed: Docs = sanitized HTML + image bytes, Slides/Sheets =
   PDF text + page count, Drawings = PNG bytes. Same hash = metadata only (no new objects).
+  Doc HTML goes through a jsoup port over linkedom (`src/features/drive/logic/jsoup/`), PDF text through unpdf
+  (`src/features/drive/logic/pdfText.ts`), both in the content worker pool; where their output (and so the hash) can
+  differ from the Java API's, see [DRIVE-PARITY.md](DRIVE-PARITY.md).
 - Renames/moves are metadata only: path and effective subject are recomputed.
 - An item reached twice in one walk (shortcut + original, cycles) is one row; the first path (BFS) wins.
   A shortcut is followed only when its target is owned (Drive `owners`) by the source's student; shortcuts to items
@@ -119,14 +122,15 @@ Sources show the year the material was made, not their last update (notes and TP
   disconnect, block or account deletion during a running sync is never undone; objects uploaded for a row that
   vanished meanwhile are deleted. An unexpected error fails only its source (counted towards `ERROR`); the scheduled
   run carries on and the 30-day purge always runs.
-- Requested syncs (register, `POST .../sync`, staff reprocess) run on a dedicated pool of 2 threads with a bounded
-  queue (500), not on the shared task executor; when the queue is full the request is left to the scheduled run.
+- Requested syncs (register, `POST .../sync`, staff reprocess) run on their own in-process queue, 2 at a time with at
+  most 500 waiting (`DriveSyncTrigger` in `src/features/drive/sync.ts`), apart from the other background work; when
+  the queue is full the request is left to the scheduled run.
 - Whenever a file stops being `PUBLISHED` (or moves to another subject), wiki pages citing it are hidden at once
   (takedown); the next pipeline run rewrites those subjects.
 
 ## Resumable walk
 
-Every source is walked in **generations** (`wiki.drive_source_walk`, `service/drive/DriveWalker`):
+Every source is walked in **generations** (`wiki.drive_source_walk`, `src/features/drive/walker.ts`):
 
 - A generation starts at the root and is a BFS; the folders still to list (the frontier, with their depth) are
   saved after every slice. The next run continues from that frontier instead of starting over, so a huge tree
@@ -154,7 +158,7 @@ A community archive is a Drive folder shared with the bot that belongs to no stu
 (`1V3b2mlgCODmHaUh4WbvuHa4_POyvJvd1`, seeded by V42 as a `COMMUNITY_ROOT`, `ACTIVE`, label "Comunidad",
 storage `REFERENCE`). It is never walked itself:
 
-- At the start of every run (`DriveCommunityService`), its top-level folders are listed and kept as one
+- At the start of every run (`DriveCommunityService`, `src/features/drive/sync.ts`), its top-level folders are listed and kept as one
   `COMMUNITY` source each (`user_id` null, `parent_source_id` = the root, same label and storage mode), so every
   walk stays small. New folders are picked up, folders that disappear are disconnected (rows and copies deleted).
   A listing that fails changes nothing. `BLOCKED` sources are left alone.
@@ -181,7 +185,8 @@ Per source `storage_mode`: `COPY` (default for students) or `REFERENCE` (default
 above `DRIVE_SYNC_REFERENCE_ABOVE_BYTES` is handled by reference in any source.
 
 - By reference nothing goes to MinIO. Only what the wiki and search need is kept: extracted text (PDFs and the PDF
-  export of Slides/Sheets are spooled to a temp file, read and deleted; text-like files likewise) and Docs'
+  export of Slides/Sheets are read into memory, capped at `DRIVE_SYNC_MAX_FILE_BYTES`, their text extracted and the
+  bytes dropped; text-like files likewise) and Docs'
   sanitized HTML **without images** (a Doc's images and its PDF export are not stored). Images, Office files and
   Drawings are not downloaded at all during the sync. Videos and audio are never imported (see "Statuses").
 - `GET /v1/wiki/files/{id}/download` keeps its URL and parameters: for a file kept by reference it answers **200
@@ -252,7 +257,8 @@ academicYear, academicYearSource, ownAcademicYear }`
 pdfMimeType, originalMimeType, exportBlocked, driveUrl, academicYear, academicYearSource, community }`
 (`path` = folder path inside the source, e.g. `"Comunicación/Trabajo Plasticos"`).
 
-`html` is sanitized (no style/class/script/iframe) after turning the export's CSS classes into markup: real nested
+`html` is sanitized (no style/class/script/iframe; `src/features/drive/logic/docHtmlSanitizer.ts`, parity with the
+Java API's jsoup output in [DRIVE-PARITY.md](DRIVE-PARITY.md)) after turning the export's CSS classes into markup: real nested
 `<ul>`/`<ol>` (`<ol type="1|a|A|i|I" start>`), `<strong>`, `<em>`, `<u>`, `<s>`, `<sup>`, `<sub>`, indented paragraphs
 as `<blockquote>`, and `data-align="center|right"` on paragraphs/headings/cells; its `<img src>` are root-relative
 `/api/v1/wiki/files/{fileId}/assets/{name}` (an SPA on another origin must prefix the API origin, or proxy `/api`).
@@ -277,7 +283,7 @@ Only `PUBLISHED`/`HIDDEN_REPORTED` files can be reported (else 404); re-reportin
 Readers only see `PUBLISHED` files. STAFF can open any file, and the source's student can open the files of their
 source that they own in Drive (`ownedByMe`), so they can preview before publishing (`GET /v1/wiki/files/{id}` and
 downloads). A file owned by someone else that sits in the student's folder is not previewable by them. A staff
-member calling with an API key without the `staff` scope reads like a student (`DriveAccess.isStaff`, through `StaffPowers`).
+member calling with an API key without the `staff` scope reads like a student (`staffPowers(c).isStaff`, `src/http/auth/context.ts`).
 
 ### Staff (`/v1/staff/**`, STAFF role)
 

@@ -206,7 +206,7 @@ page has character.
 </time>
 
 // Category tag
-<span className="font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-sm bg-primary-100 text-primary-700">
+<span className="font-mono text-label uppercase tracking-widest px-2 py-0.5 rounded-xs bg-primary-100 text-primary-700">
   Académico
 </span>
 
@@ -304,7 +304,7 @@ overflow-hidden            ← required for rounded corners on image
 ```jsx
 <article className="rounded-card border border-border bg-white overflow-hidden shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col lg:flex-row">
   {/* Left: cover media (image or geo fill) — 50% width on desktop */}
-  <div className="h-56 lg:h-auto lg:w-1/2 flex-shrink-0">
+  <div className="h-56 lg:h-auto lg:w-1/2 shrink-0">
     {/* image or geometric fill */}
   </div>
 
@@ -363,9 +363,9 @@ const GEO_BG = {
   <div className="absolute inset-0 opacity-20">
     <div className="absolute top-[-20%] right-[-10%] w-2/3 h-2/3 rounded-full bg-white/30" />
     <div className="absolute bottom-[-15%] left-[-5%] w-1/2 h-1/2 rotate-45 bg-white/20" />
-    <div className="absolute top-1/3 left-1/4 w-1/3 h-1/3 rounded-sm rotate-12 bg-black/10" />
+    <div className="absolute top-1/3 left-1/4 w-1/3 h-1/3 rounded-xs rotate-12 bg-black/10" />
   </div>
-  <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/25" />
+  <div className="absolute inset-0 bg-linear-to-br from-black/0 to-black/25" />
 </div>
 ```
 
@@ -380,7 +380,7 @@ fill is always readable.
 
 ```
 Height: h-16 (64px)
-Background: bg-surface/95 backdrop-blur-sm (frosted glass effect)
+Background: bg-surface/95 backdrop-blur-xs (frosted glass effect)
 Border: border-b border-border
 Position: sticky top-0 z-40
 ```
@@ -462,7 +462,7 @@ with a backwards-compatible prop; don't fork it locally.
 ### Buttons
 
 Mono uppercase labels (`font-mono text-label uppercase tracking-widest`),
-`rounded-sm`, 44px tall. Variants:
+`rounded-xs`, 44px tall. Variants:
 
 | Variant | For |
 |---|---|
@@ -476,7 +476,7 @@ Mono uppercase labels (`font-mono text-label uppercase tracking-widest`),
 Rules:
 - **Minimum touch target: 44px** on all interactive elements. `size="sm"` is
   for dense admin tables and toolbars: still 44px on touch, 36px from `sm:` up.
-- Use `rounded-sm` (2px) not `rounded` (4px) or `rounded-lg`. Subtle rounding is editorial, heavy rounding is SaaS.
+- Use `rounded-xs` (2px) not `rounded-sm` (4px) or `rounded-lg`. Subtle rounding is editorial, heavy rounding is SaaS.
 - Busy buttons show "…" (`loading`) and are disabled; that's the only place a
   loading indicator isn't a skeleton.
 - A disabled button always has visible text nearby saying why (never only a
@@ -498,7 +498,7 @@ to know which input is active.
 
 ```jsx
 // Toggle group (e.g. Status: Published | Draft)
-<div className="flex rounded-sm border border-border overflow-hidden">
+<div className="flex rounded-xs border border-border overflow-hidden">
   {options.map(opt => (
     <button className={`flex-1 min-h-[36px] font-mono text-label uppercase tracking-widest transition-colors duration-150 ${active === opt ? 'bg-primary text-white' : 'text-ink-secondary hover:bg-surface'}`}>
       {opt}
@@ -677,14 +677,15 @@ in-place explanation, never a silent redirect.
 
 - **Home = Para revisar.** One queue of everything waiting on a staff
   decision, gathered from every area (articles sent for review, schedule
-  corrections, Drive folders and files, reported files, Wiki IA runs that
-  need a look), oldest first, with the decision on the row. Each source
+  corrections, Drive folders and files, reported files, subject reviews
+  hidden by reports, Wiki IA runs that need a look), oldest first, with the decision on the row. Each source
   loads on its own: one that fails shows an error with retry and never
   blanks the rest. A decision the API can take back offers "Deshacer" in
   the toast; one that can't asks first with `ConfirmDialog`.
 - **Areas by job** in the rail (§6): Newsletter (Revisión, Resumen semanal,
   Estadísticas) and Beneficios; Personas (everyone, with a Staff filter) and
-  Organizaciones; Correcciones de horario, Apuntes and Wiki IA; Capacidades.
+  Organizaciones; Carreras y planes, Correcciones de horario, Apuntes and
+  Wiki IA; Capacidades.
 
 ### Admin color shifts
 
@@ -809,7 +810,13 @@ These are failure modes that will make the design feel generic or wrong.
 
 ## 15. Complete tailwind.config.js
 
-Drop this directly into a new project and adjust the content paths:
+The app is on Tailwind CSS v4 and still keeps its theme in this JS config, which `index.css` loads with
+`@config` (§16). v4 detects content paths itself, so `content` is only kept for reference, and the
+scheduler's runtime-built `bg-subject_color_N` classes are listed with `@source inline(...)` in
+`index.css` rather than a `safelist`. Unlike v3, a plain `font-*`, `leading-*` or `tracking-*` class
+beats the weight, line height and spacing bundled into a breakpoint `sm:text-h1`-style size, so set
+them per breakpoint when a responsive heading needs the size's own values (e.g.
+`text-h2 lg:text-display font-bold lg:font-extrabold`).
 
 ```js
 /** @type {import('tailwindcss').Config} */
@@ -915,9 +922,12 @@ export default {
 ## 16. index.css baseline
 
 ```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@config '../tailwind.config.js';
+
+/* Scheduler subject colors are built from an index at runtime. */
+@source inline("{,hover:,focus:}bg-subject_color_{1,2,3,4,5,6,7,8,9,10}");
 
 @layer base {
   html {

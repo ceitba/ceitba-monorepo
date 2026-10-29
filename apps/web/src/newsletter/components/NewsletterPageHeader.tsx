@@ -33,7 +33,7 @@ export default function NewsletterPageHeader({
         <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
           {t('nav.home')}
         </p>
-        <h1 className="font-display text-h2 sm:text-h1 lg:text-display font-bold text-ink-primary dark:text-night-text [overflow-wrap:anywhere] hyphens-auto leading-tight">
+        <h1 className="font-display text-h2 sm:text-h1 lg:text-display sm:font-extrabold sm:leading-[1.1] lg:leading-[1.05] font-bold text-ink-primary dark:text-night-text wrap-anywhere hyphens-auto leading-tight">
           {title}
         </h1>
         {subtitle && (

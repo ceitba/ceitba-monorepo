@@ -18,13 +18,16 @@ import { Button, EmptyState, ErrorState, LoadingRegion, Skeleton, Tabs, ToggleGr
 import KindIcon from '../../components/apuntes/KindIcon'
 
 const SubjectGraphThumb = lazy(() => import('../../components/apuntes/graph/SubjectGraphThumb'))
+// Opiniones (subject reviews) ships its form and dialogs on demand.
+const SubjectReviews = lazy(() => import('../../components/apuntes/reviews/SubjectReviews'))
 
-type Tab = 'wiki' | 'archivos'
+type Tab = 'wiki' | 'archivos' | 'opiniones'
 
-// /apuntes/:subjectId — a subject's Apuntes, in two tabs: Wiki (the AI
+// /apuntes/:subjectId — a subject's Apuntes, in three tabs: Wiki (the AI
 // wiki's index page, its pages and related subjects; default when there is
-// an index) and Archivos (published files grouped by the student who shared
-// them). The tab lives in ?vista=.
+// an index), Archivos (published files grouped by the student who shared
+// them) and Opiniones (students' reviews, only via ?vista=opiniones). The
+// tab lives in ?vista=.
 export default function SubjectFilesPage() {
   const { subjectId = '' } = useParams()
   const { t, i18n } = useTranslation()
@@ -64,7 +67,7 @@ export default function SubjectFilesPage() {
   }, [subjectId])
 
   const requested = params.get('vista')
-  const tab: Tab | null = requested === 'wiki' || requested === 'archivos'
+  const tab: Tab | null = requested === 'wiki' || requested === 'archivos' || requested === 'opiniones'
     ? requested
     : kbLoaded ? (kb?.index ? 'wiki' : 'archivos') : null
 
@@ -105,7 +108,7 @@ export default function SubjectFilesPage() {
     .sort((a, b) => (sort === 'recent' ? byRecent(a.files[0], b.files[0]) : 0))
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <nav aria-label={t('apuntes.breadcrumbAria')} className="mb-4 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
         <Link to="/apuntes" className="hover:text-primary">{t('apuntes.title')}</Link>
         <span aria-hidden="true" className="mx-2">/</span>
@@ -124,7 +127,7 @@ export default function SubjectFilesPage() {
               {data?.subjectId ?? subjectId}
             </span>
             <div className="flex items-start gap-3 mt-1">
-              <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text min-w-0 flex-1">
+              <h1 className="font-display font-bold text-h3 lg:text-h2 lg:font-extrabold text-ink-primary dark:text-night-text min-w-0 flex-1">
                 {data?.subjectName ?? kb?.subjectName ?? (notFound ? t('apuntes.subject.notFoundTitle') : subjectId)}
               </h1>
               {!notFound && (data || kb) && (
@@ -154,8 +157,8 @@ export default function SubjectFilesPage() {
         <div className="flex items-end gap-2 border-b border-border dark:border-night-border -mt-4 mb-8">
           {tab != null && (
             <Tabs
-              className="!border-b-0 flex-1 min-w-0"
-              items={(['wiki', 'archivos'] as Tab[]).map((id) => ({
+              className="border-b-0! flex-1 min-w-0"
+              items={(['wiki', 'archivos', 'opiniones'] as Tab[]).map((id) => ({
                 id,
                 label: t(`wiki.tabs.${id}`),
                 count: id === 'archivos' && data ? totalFiles : null,
@@ -212,6 +215,12 @@ export default function SubjectFilesPage() {
         )
       )}
 
+      {tab === 'opiniones' && !notFound && (
+        <Suspense fallback={<FileListSkeleton />}>
+          <SubjectReviews subjectId={subjectId} />
+        </Suspense>
+      )}
+
       {tab === 'archivos' && error && (
         <ErrorState message={error} onRetry={() => setTick((n) => n + 1)} backTo="/apuntes" backLabel={t('apuntes.backToSearch')} />
       )}
@@ -253,7 +262,7 @@ export default function SubjectFilesPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as 'recent' | 'folder')}
-              className={selectClass({ className: '!w-auto normal-case tracking-normal' })}
+              className={selectClass({ className: 'w-auto! normal-case tracking-normal' })}
             >
               <option value="recent">{t('apuntes.year.sortRecent')}</option>
               <option value="folder">{t('apuntes.year.sortFolder')}</option>
@@ -293,21 +302,21 @@ export default function SubjectFilesPage() {
                       >
                         <KindIcon kind={f.kind} size={20} className="mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          <p className="font-body text-body text-ink-primary dark:text-night-text group-hover:text-primary break-words">
+                          <p className="font-body text-body text-ink-primary dark:text-night-text group-hover:text-primary wrap-break-word">
                             {f.name}
                             {community || f.community
                               ? f.academicYear != null && <CommunityBadge year={f.academicYear} className="ml-2 align-middle" />
                               : <YearBadge year={f.academicYear} source={f.academicYearSource} className="ml-2 align-middle" />}
                           </p>
                           {f.path && (
-                            <p className="font-mono text-label text-ink-secondary dark:text-night-muted break-words">{f.path}</p>
+                            <p className="font-mono text-label text-ink-secondary dark:text-night-muted wrap-break-word">{f.path}</p>
                           )}
                           <p className="sm:hidden font-mono text-label text-ink-secondary dark:text-night-muted">
                             {[f.driveModifiedAt ? formatDate(f.driveModifiedAt, i18n.language) : '', formatSize(f.sizeBytes)]
                               .filter(Boolean).join(' · ')}
                           </p>
                         </div>
-                        <div className="hidden sm:flex flex-col items-end gap-0.5 flex-shrink-0 font-mono text-label text-ink-secondary dark:text-night-muted">
+                        <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0 font-mono text-label text-ink-secondary dark:text-night-muted">
                           {f.driveModifiedAt && (
                             <time dateTime={f.driveModifiedAt}>{formatDate(f.driveModifiedAt, i18n.language)}</time>
                           )}
@@ -333,7 +342,7 @@ const TABS_ID = 'subject-tabs'
 function FileListSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-3">
-      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 !rounded-card" />)}
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-card!" />)}
     </LoadingRegion>
   )
 }

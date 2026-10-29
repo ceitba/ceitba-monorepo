@@ -52,7 +52,7 @@ export default function TextViewer({ blob, notebook, onError }: { blob: Blob; no
               .filter(Boolean)
             return (
               <div key={i} className="flex flex-col gap-1">
-                <pre className="overflow-x-auto p-3 rounded-sm bg-page-bg dark:bg-night-bg border border-border dark:border-night-border font-mono text-body-sm text-ink-primary dark:text-night-text whitespace-pre">{src}</pre>
+                <pre className="overflow-x-auto p-3 rounded-xs bg-page-bg dark:bg-night-bg border border-border dark:border-night-border font-mono text-body-sm text-ink-primary dark:text-night-text whitespace-pre">{src}</pre>
                 {outputs.map((out, j) => (
                   <pre key={j} className="overflow-x-auto px-3 py-2 font-mono text-label text-ink-secondary dark:text-night-muted whitespace-pre-wrap border-l-2 border-accent">{out}</pre>
                 ))}
@@ -60,7 +60,7 @@ export default function TextViewer({ blob, notebook, onError }: { blob: Blob; no
             )
           }
           return (
-            <div key={i} className="font-body text-body text-ink-primary dark:text-night-text whitespace-pre-wrap break-words">{src}</div>
+            <div key={i} className="font-body text-body text-ink-primary dark:text-night-text whitespace-pre-wrap wrap-break-word">{src}</div>
           )
         })}
       </div>

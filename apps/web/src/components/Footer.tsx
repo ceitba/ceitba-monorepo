@@ -64,7 +64,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="inline-flex items-center justify-center w-11 h-11 rounded-sm text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+                className="inline-flex items-center justify-center w-11 h-11 rounded-xs text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
               >
                 {icon}
               </a>

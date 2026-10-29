@@ -1,0 +1,6 @@
+Clase 3: Termodinámica
+Caja derecha: entropía• Primer principio
+• Segundo principio
+• Ciclo de Carnot
+Ejercicio 2 — Solución
+ΔU = Q − W ⇒ W = p·ΔV

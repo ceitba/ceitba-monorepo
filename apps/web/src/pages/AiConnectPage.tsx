@@ -45,7 +45,7 @@ function CopyBlock({ text, label }: { text: string; label: string }) {
     }
   }
   return (
-    <div className="flex items-center gap-2 rounded-sm border border-border dark:border-night-border bg-white dark:bg-night-surface p-2 pl-3">
+    <div className="flex items-center gap-2 rounded-xs border border-border dark:border-night-border bg-white dark:bg-night-surface p-2 pl-3">
       <pre className="flex-1 min-w-0 overflow-x-auto font-mono text-body-sm text-ink-primary dark:text-night-text whitespace-pre">{text}</pre>
       <Button size="sm" variant="outline" onClick={() => void copy()} aria-label={label}>
         {t('ai.copy')}
@@ -146,7 +146,7 @@ export default function AiConnectPage() {
   const code = snippet(client, url)
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <header className="mb-10 max-w-2xl">
         <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{t('ai.title')}</h1>
         <p className="font-body text-body-lg text-ink-secondary dark:text-night-muted mt-2">{t('ai.subtitle')}</p>

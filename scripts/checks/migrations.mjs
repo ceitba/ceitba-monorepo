@@ -3,7 +3,14 @@
 //  1. migrations already on the base branch are never modified, renamed or deleted;
 //  2. versions are unique and file names are V<version>__<snake_case>.sql;
 //  3. every DDL prod migration after V4.x has a test mirror listed in the mirror README;
-//  4. spring.flyway.target in the test application.yml is the highest mirror version.
+//  4. the integration-test Flyway target (IT_FLYWAY_TARGET in the API's
+//     contract/support/pg.ts, used by the contract suite and the in-process tests)
+//     is the highest mirror version.
+//
+// The SQL stays where Flyway's classpath put it (src/main/resources/db/migration,
+// src/test/resources/db/test-migration) even though the API is no longer Java:
+// rule 1 forbids renaming merged migrations, and the runner (src/db/migrate.ts)
+// only records file names, so the directory is free to stay.
 //
 //   node scripts/checks/migrations.mjs [--base <ref>]
 import { readdirSync, readFileSync } from 'node:fs';
@@ -13,7 +20,7 @@ import { ROOT, baseRef, fileStatuses, report } from './lib.mjs';
 const API = 'apps/api/src';
 const PROD = `${API}/main/resources/db/migration`;
 const MIRROR = `${API}/test/resources/db/test-migration`;
-const TEST_YML = `${API}/test/resources/application.yml`;
+const TARGET_FILE = 'apps/api/contract/support/pg.ts';
 const NAME = /^V(\d+(?:\.\d+)*)__[a-z0-9_]+\.sql$/;
 const DDL = /^\s*(create|alter|drop|rename|comment\s+on)\b/im;
 
@@ -65,8 +72,8 @@ for (const [version, file] of prod) {
 }
 
 // 4. test target
-const target = readFileSync(join(ROOT, TEST_YML), 'utf8').match(/^\s*target:\s*'?([\d.]+)'?/m)?.[1];
+const target = readFileSync(join(ROOT, TARGET_FILE), 'utf8').match(/^export const IT_FLYWAY_TARGET = '([\d.]+)'/m)?.[1];
 const highest = [...mirrors.keys()].sort(cmp).at(-1);
-if (target !== highest) errors.push(`${TEST_YML}: spring.flyway.target is '${target}' but the highest mirror is V${highest}`);
+if (target !== highest) errors.push(`${TARGET_FILE}: IT_FLYWAY_TARGET is '${target}' but the highest mirror is V${highest}`);
 
 process.exit(report('migrations', errors) ? 0 : 1);

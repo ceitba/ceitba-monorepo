@@ -45,7 +45,7 @@ interface SlotListProps {
 
 function SlotList({ title, slots, lang, emptyLabel, highlight }: SlotListProps) {
   return (
-    <div className={`rounded-sm border p-4 ${highlight ? 'border-primary bg-primary-50 dark:bg-primary-800' : 'border-border dark:border-night-border bg-surface dark:bg-night-bg'}`}>
+    <div className={`rounded-xs border p-4 ${highlight ? 'border-primary bg-primary-50 dark:bg-primary-800' : 'border-border dark:border-night-border bg-surface dark:bg-night-bg'}`}>
       <p className="font-mono text-label uppercase tracking-widest text-ink-secondary mb-2">{title}</p>
       {slots.length === 0 ? (
         <p className="font-body text-body-sm text-ink-secondary">{emptyLabel}</p>

@@ -1,3 +1,6 @@
+@reference "../index.css";
+
+
 /* Newsletter section styles, loaded with its lazy chunk: the article body
    shared by the reader, the editor preview and the editor. Dark mode is
    dark: classes in the components, like the rest of the app. */
@@ -85,6 +88,12 @@ html.dark .article-prose th, html.dark .article-prose td, html.dark .article-pro
   @apply bg-primary-900 text-primary-100 border border-primary-700 rounded-sm font-mono text-label normal-case tracking-normal;
   padding: 0.125rem 0.25rem;
 }
+.code-block-node__bar button {
+  @apply text-primary-100 hover:text-white font-mono text-label uppercase tracking-widest;
+  min-height: 2.25rem;
+}
+/* ```poll blocks: the stored poll id, small and secondary. */
+.article-editor .code-block-node pre.code-block-node__poll-id { @apply font-mono text-label; padding: 0.25rem 0.75rem; opacity: 0.7; }
 .code-block-node__preview { @apply border border-t-0 border-border rounded-b-card bg-white; padding: 1rem; }
 .code-block-node__preview > p { @apply font-mono text-label text-ink-secondary; margin: 0; }
 .code-block-node:has(.code-block-node__preview) pre { border-radius: 0; }

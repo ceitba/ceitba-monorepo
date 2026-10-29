@@ -131,7 +131,7 @@ export default function DigestSenderCard({ refreshKey = 0, onChanged }: DigestSe
               : t('admin.digests.sender.neverUsed')}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-2 sm:shrink-0">
           {broken && (
             <Button variant="accent" onClick={handleConnect} loading={connecting} loadingLabel={t('admin.digests.sender.connecting')}>
               {t('admin.digests.sender.reconnect')}

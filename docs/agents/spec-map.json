@@ -4,8 +4,11 @@
     {
       "name": "auth",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/config/SecurityConfig.java",
-        "apps/api/src/main/java/org/ceitba/api/**/auth/**"
+        "apps/api/src/http/security.ts",
+        "apps/api/src/http/auth/**",
+        "apps/api/src/features/auth/**",
+        "apps/api/src/http/ratelimit*",
+        "apps/api/src/http/ratelimit/**"
       ],
       "docs": [
         "apps/api/docs/AUTH-AND-ROLES.md",
@@ -15,7 +18,7 @@
     {
       "name": "capabilities",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/capability/**"
+        "apps/api/src/features/capability/**"
       ],
       "docs": [
         "apps/api/docs/CAPABILITIES.md"
@@ -24,8 +27,9 @@
     {
       "name": "apuntes (drive sync)",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/drive/**",
-        "apps/api/src/main/java/org/ceitba/api/scheduling/DriveSyncJob.java"
+        "apps/api/src/features/drive/**",
+        "apps/api/src/external/drive*",
+        "apps/api/src/external/drive/**"
       ],
       "docs": [
         "apps/api/docs/DRIVE-SYNC.md"
@@ -34,16 +38,31 @@
     {
       "name": "itba gateway",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/external/itba/**"
+        "apps/api/src/external/itba*",
+        "apps/api/src/external/itba/**"
       ],
       "docs": [
         "apps/api/docs/ITBA-GATEWAY.md"
       ]
     },
     {
+      "name": "plans and data sync",
+      "paths": [
+        "apps/api/src/features/plan/**",
+        "apps/api/src/features/sync/**",
+        "apps/api/src/features/subject/**",
+        "apps/web/src/api/plans.ts",
+        "apps/web/src/utils/correlatividades.ts"
+      ],
+      "docs": [
+        "apps/api/docs/PLANS.md"
+      ]
+    },
+    {
       "name": "object storage",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/media/**"
+        "apps/api/src/features/media/**",
+        "apps/api/src/infra/storage.ts"
       ],
       "docs": [
         "apps/api/docs/OBJECT-STORAGE.md"
@@ -52,7 +71,8 @@
     {
       "name": "push notifications",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/push/**"
+        "apps/api/src/features/push/**",
+        "apps/api/src/infra/push.ts"
       ],
       "docs": [
         "apps/api/docs/PUSH-NOTIFICATIONS.md"
@@ -61,7 +81,7 @@
     {
       "name": "schedule corrections",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/correction/**",
+        "apps/api/src/features/correction/**",
         "apps/web/src/scheduler/api/corrections.ts",
         "apps/web/src/api/corrections.ts"
       ],
@@ -70,11 +90,26 @@
       ]
     },
     {
+      "name": "subject reviews",
+      "paths": [
+        "apps/api/src/features/review/**",
+        "apps/api/src/external/googleDirectory.ts",
+        "apps/web/src/api/reviews.ts",
+        "apps/web/src/components/apuntes/reviews/**"
+      ],
+      "docs": [
+        "apps/api/docs/SUBJECT-REVIEWS.md"
+      ]
+    },
+    {
       "name": "subject wiki",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/kb/**",
-        "apps/api/src/main/java/org/ceitba/api/external/llm/**",
-        "apps/api/src/main/java/org/ceitba/api/scheduling/Kb*.java",
+        "apps/api/src/features/kb/**",
+        "apps/api/src/features/kb-admin/**",
+        "apps/api/src/features/kb-pipeline/**",
+        "apps/api/src/features/kb-reader/**",
+        "apps/api/src/external/llm*",
+        "apps/api/src/external/llm/**",
         "apps/api/scripts/kb/**",
         "apps/api/scripts/kb-import.sh"
       ],
@@ -87,10 +122,9 @@
     {
       "name": "weekly digest",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/**/digest/**",
-        "apps/api/src/main/java/org/ceitba/api/**/mail/**",
-        "apps/api/src/main/java/org/ceitba/api/scheduling/DigestJob.java",
-        "apps/api/src/main/java/org/ceitba/api/scheduling/MailRetentionJob.java"
+        "apps/api/src/features/digest/**",
+        "apps/api/src/features/mail/**",
+        "apps/api/src/infra/mail.ts"
       ],
       "docs": [
         "apps/api/docs/WEEKLY-DIGEST.md"
@@ -99,13 +133,26 @@
     {
       "name": "organizations",
       "paths": [
-        "apps/api/src/main/java/org/ceitba/api/web/news/OrgAccess.java",
-        "apps/api/src/main/java/org/ceitba/api/web/news/OrgMembersController.java",
-        "apps/api/src/main/java/org/ceitba/api/web/news/OrganizationController.java",
-        "apps/api/src/main/java/org/ceitba/api/**/orgmail/**"
+        "apps/api/src/features/news/access.ts",
+        "apps/api/src/features/news/memberships.ts",
+        "apps/api/src/features/news/organizations.ts",
+        "apps/api/src/features/orgmail/**"
       ],
       "docs": [
         "apps/api/docs/ORGANIZATIONS.md"
+      ]
+    },
+    {
+      "name": "newsletter comments and polls",
+      "paths": [
+        "apps/api/src/features/engagement/**",
+        "apps/web/src/newsletter/components/engagement/**",
+        "apps/web/src/newsletter/api/engagement.ts",
+        "apps/api/src/main/resources/db/migration/V67__newsletter_comments_polls.sql",
+        "apps/api/contract/tests/news-engagement-*"
+      ],
+      "docs": [
+        "apps/api/docs/NEWSLETTER-ENGAGEMENT.md"
       ]
     },
     {
@@ -113,8 +160,10 @@
       "paths": [
         "infra/scripts/**",
         "apps/api/docker-compose*.yml",
-        "apps/api/src/main/java/org/ceitba/api/scheduling/**",
-        "apps/api/src/main/java/org/ceitba/api/config/ShutdownDrain.java"
+        "apps/api/Dockerfile",
+        "apps/api/src/jobs/**",
+        "apps/api/src/main.ts",
+        "apps/api/src/db/migrate.ts"
       ],
       "docs": [
         "apps/api/docs/DEPLOY.md"

@@ -1,15 +1,22 @@
 name: CI
 
-# Checks for PRs (and pushes to dev). Only the apps a change touches run:
-#   - api: Maven unit + integration tests, on PRs into dev only. The dev -> main
-#     release is tested again by the push to main it produces (deploy.yml).
+# Checks for PRs into main and the merge queue (merge_group). Only the apps a
+# change touches run. (The `dev` triggers below are inert: there is no dev branch.)
+#   - api (apps/api, Bun): typecheck, unit + in-process tests, the contract
+#     suite, route coverage and an image build, on PRs and in the merge queue
+#     (the merged result, before it reaches main). Testcontainers starts
+#     Postgres (pgvector) and MinIO through the runner's Docker.
 #   - web (the site, scheduler and newsletter, one app): lint + production
 #     build (its only gate; there is no JS test runner).
 #   - mcp (apps/mcp + packages/scheduler-core): typecheck + bun test + image build.
+#   - ci-ok: the one required check of the main ruleset (merge queue). It passes
+#     when every job above passed or was skipped, so path-filtered jobs never
+#     block a merge by not reporting.
 # Runs with no secrets: fork PRs must never reach deploy credentials.
 on:
   pull_request:
     branches: [dev, main]
+  merge_group:
   push:
     branches: [dev]
 
@@ -28,16 +35,25 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      api: ${{ steps.filter.outputs.api }}
+      # The API's own code, or what its image installs (a root bun.lock change alone is not enough).
+      api: ${{ steps.filter.outputs.api_code == 'true' || steps.api-deps.outputs.changed == 'true' }}
       mcp: ${{ steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge queue compares against the group's base commit, so it needs history.
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          # merge_group has no PR payload: diff the queued commit against its base.
+          base: ${{ github.event.merge_group.base_sha }}
           filters: |
-            api:
+            # The API's code. Its dependencies live in the shared root package.json and
+            # bun.lock: the api-deps step below decides whether those changed for it.
+            # It imports nothing from packages/.
+            api_code:
               - 'apps/api/**'
               - 'infra/**'
               - '.github/workflows/ci.yml'
@@ -56,6 +72,18 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - '.github/workflows/ci.yml'
+      # The API is a workspace package: a root package.json / bun.lock change counts only when the
+      # production dependency closure of @ceitba/api changed (scripts/checks/api-deps-changed.mjs,
+      # apps/api/docs/DEPLOY.md). Unknown or unfetchable base: true.
+      - id: api-deps
+        env:
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE" || true
+          # Anything but a clean "false" (the script failing included) builds and ships the API.
+          v=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD) || v=true
+          [ "$v" = false ] || v=true
+          echo "changed=$v" >> "$GITHUB_OUTPUT"
       - id: spas
         env:
           CHANGES: ${{ steps.filter.outputs.changes }}
@@ -63,30 +91,34 @@ jobs:
 
   api-test:
     needs: changes
-    if: needs.changes.outputs.api == 'true' && github.event_name == 'pull_request' && github.base_ref == 'dev'
+    if: >-
+      needs.changes.outputs.api == 'true'
+      && (github.event_name == 'merge_group' || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-          cache-dependency-path: apps/api/pom.xml
-      - name: Build + run unit and integration tests
-        # Failsafe spins up Testcontainers Postgres via the host Docker socket.
-        run: ./mvnw -B -ntp verify
-      - name: Upload test reports on failure
+          bun-version-file: package.json # packageManager: the bun that writes bun.lock
+      - run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bun run --cwd apps/api build
+      - name: Unit + in-process tests
+        run: bun run --cwd apps/api test
+      - name: Contract suite (black-box, against the Bun server)
+        run: bun apps/api/contract/run.ts --target ts
+      - name: Route coverage (every OpenAPI operation has a handler and a contract hit from the run above)
+        run: bun apps/api/contract/coverage.ts --check --target ts
+      - name: Image builds
+        run: docker build -f apps/api/Dockerfile -t ceitba-api:ci .
+      - name: Upload server logs on failure
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: test-reports
-          path: |
-            apps/api/target/surefire-reports/
-            apps/api/target/failsafe-reports/
+          name: api-contract-logs
+          path: apps/api/contract/.logs/
+          include-hidden-files: true
+          if-no-files-found: ignore
 
   spa-build:
     needs: changes
@@ -98,11 +130,11 @@ jobs:
         include: ${{ fromJSON(needs.changes.outputs.spas) }}
     name: build (${{ matrix.app }})
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json # packageManager: the bun that writes bun.lock
       - run: bun install --frozen-lockfile
@@ -119,8 +151,8 @@ jobs:
     if: needs.changes.outputs.mcp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json # packageManager: the bun that writes bun.lock
       - run: bun install --frozen-lockfile
@@ -130,3 +162,17 @@ jobs:
         run: bun run --filter '@ceitba/scheduler-core' --filter '@ceitba/mcp' test
       - name: Image builds
         run: docker build -f apps/mcp/Dockerfile -t ceitba-mcp:ci .
+
+  ci-ok:
+    needs: [changes, api-test, spa-build, mcp-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed or was skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          for r in $RESULTS; do
+            case "$r" in success|skipped) ;; *) exit 1 ;; esac
+          done

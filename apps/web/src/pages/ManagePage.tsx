@@ -7,6 +7,7 @@ import ManageUsersSection from './manage/ManageUsersSection'
 import ManageCorrectionsSection from './manage/ManageCorrectionsSection'
 import ManageOrganizationsSection from './manage/ManageOrganizationsSection'
 import ManageCapabilitiesSection from './manage/ManageCapabilitiesSection'
+import ManageCareersSection from './manage/ManageCareersSection'
 import ManageReviewSection from './manage/review/ManageReviewSection'
 import { ReviewQueueContext, useQueue } from './manage/review/queueContext'
 import { useReviewQueue, type QueueKind } from './manage/review/useReviewQueue'
@@ -45,7 +46,7 @@ export default function ManagePage() {
 
   return (
     <ReviewQueueContext.Provider value={queue}>
-      <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+      <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
         <Routes>
           <Route index element={<LegacyRedirect />} />
           <Route path=":area/*" element={<AreaLayout />} />
@@ -82,7 +83,7 @@ function AreaLayout() {
     <div className="flex flex-wrap items-start gap-x-10 gap-y-8">
       {/* On phones the rail is the home's list of areas, under the queue;
           inside an area it gives way to a link back. */}
-      <div className={`${home ? 'order-2 md:order-none' : 'hidden md:block'} w-full md:w-auto md:flex-[1_1_220px] md:max-w-[250px]`}>
+      <div className={`${home ? 'order-2 md:order-0' : 'hidden md:block'} w-full md:w-auto md:flex-[1_1_220px] md:max-w-[250px]`}>
         <Rail current={area} />
       </div>
       <div className="flex-[999_1_560px] min-w-0">
@@ -129,7 +130,7 @@ function Rail({ current }: { current: Area }) {
                 to={areaPath(a)}
                 aria-current={a === current ? 'page' : undefined}
                 className={() => [
-                  'flex items-center gap-2 min-h-[44px] px-3 rounded-sm font-body text-body-sm transition-colors duration-150',
+                  'flex items-center gap-2 min-h-[44px] px-3 rounded-xs font-body text-body-sm transition-colors duration-150',
                   a === current
                     ? 'bg-primary-50 dark:bg-night-raised text-primary dark:text-primary-300 font-bold'
                     : 'text-ink-primary dark:text-night-text hover:bg-primary-50 dark:hover:bg-night-raised',
@@ -140,7 +141,7 @@ function Rail({ current }: { current: Area }) {
                   <span className="w-2 h-2 rounded-full bg-accent" role="img" aria-label={t('manage.tabs.wikiAiUnseen', { count: wikiUnseen })} />
                 )}
                 {count > 0 && (
-                  <span className="min-w-[24px] px-1.5 py-0.5 rounded-sm bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-mono text-label font-bold text-center">
+                  <span className="min-w-[24px] px-1.5 py-0.5 rounded-xs bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-mono text-label font-bold text-center">
                     <span className="sr-only">{t('manage.rail.pending', { count })}</span>
                     <span aria-hidden="true">{count}</span>
                   </span>
@@ -179,6 +180,8 @@ function AreaContent({ area }: { area: Area }) {
           />
         </AreaFrame>
       )
+    case 'careers':
+      return <AreaFrame area={area}><ManageCareersSection /></AreaFrame>
     case 'corrections':
       return <AreaFrame area={area}><ManageCorrectionsSection /></AreaFrame>
     case 'apuntes':

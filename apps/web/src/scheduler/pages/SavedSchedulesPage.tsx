@@ -147,10 +147,10 @@ export default function SavedSchedulesPage() {
 
   return (
     <div className="flex flex-col bg-surface dark:bg-night-bg">
-      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-none">
+      <main id="main-content" tabIndex={-1} className="flex-1 container-content py-section-mobile lg:py-section outline-hidden">
         <SchedulerBackLink />
         <header className="mb-6 flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[14rem]">
+          <div className="flex-1 min-w-56">
             <h1 className="font-display font-bold text-h2 text-ink-primary dark:text-night-text">{t('saved.pageTitle')}</h1>
             {list && (
               <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-1">

@@ -70,7 +70,7 @@ export default function EndpointStats({ id }: { id: string }) {
       </div>
       <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {cells.map((c) => (
-          <div key={c.label} className="px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg">
+          <div key={c.label} className="px-3 py-2 rounded-xs bg-page-bg dark:bg-night-bg">
             <dt className="font-body text-label text-ink-secondary dark:text-night-muted">{c.label}</dt>
             <dd className="font-mono text-body tabular-nums text-ink-primary dark:text-night-text">{c.value}</dd>
           </div>

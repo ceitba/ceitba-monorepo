@@ -74,7 +74,7 @@ export function Sparkline({ id, title, data, fmtDay, fmtNum, valueLabel, barClas
       <div className="flex items-end gap-1 h-20" aria-hidden="true">
         {data.map(({ date, value }) => (
           <div key={date} className="flex-1 h-full flex flex-col justify-end items-center">
-            <div className={`w-full rounded-sm ${barClass}`} style={{ height: `${Math.max(floor, (value / max) * 100)}%` }} />
+            <div className={`w-full rounded-xs ${barClass}`} style={{ height: `${Math.max(floor, (value / max) * 100)}%` }} />
           </div>
         ))}
       </div>
@@ -108,13 +108,13 @@ export function BarChart({ data, colorClass }: { data: BarDatum[]; colorClass: s
     <ul className="flex flex-col gap-3 list-none m-0 p-0">
       {data.map(({ label, value }, i) => (
         <li key={`${label}-${i}`} className="flex items-center gap-3">
-          <span className="w-36 font-body text-body-sm text-ink-secondary dark:text-night-muted text-right flex-shrink-0 break-words">
+          <span className="w-36 font-body text-body-sm text-ink-secondary dark:text-night-muted text-right shrink-0 wrap-break-word">
             {label}
           </span>
           <div className="flex-1 bg-page-bg dark:bg-night-raised rounded-full h-2.5" aria-hidden="true">
             <div className={['h-2.5 rounded-full', colorClass].join(' ')} style={{ width: `${(value / max) * 100}%` }} />
           </div>
-          <span className="w-10 font-mono text-label text-ink-secondary dark:text-night-muted text-right flex-shrink-0">{value}</span>
+          <span className="w-10 font-mono text-label text-ink-secondary dark:text-night-muted text-right shrink-0">{value}</span>
         </li>
       ))}
     </ul>

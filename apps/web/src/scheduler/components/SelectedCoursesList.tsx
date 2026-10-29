@@ -107,7 +107,7 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
       <div className="flex items-center justify-between">
         <div className="flex items-start gap-3 min-w-0">
           <div
-            className="cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5"
+            className="cursor-grab active:cursor-grabbing shrink-0 mt-0.5"
             {...attributes}
             {...listeners}
             aria-label={t('courses.reorderAria', { name: course.name })}
@@ -123,7 +123,7 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
           </div>
           <span
             role="img"
-            className={`mt-2 w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`}
+            className={`mt-2 w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[statusKey]}`}
             aria-label={statusLabel}
           />
           <div className="min-w-0">
@@ -149,7 +149,7 @@ const SortableItem = ({ course, onRemove, status }: SortableItemProps) => {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 shrink-0 ml-2">
           <span className="font-mono text-label text-ink-secondary dark:text-night-muted text-end hidden sm:block">
             {commissionLabel()}
           </span>

@@ -26,6 +26,14 @@ www.ceitba.org.ar {
 }
 
 ceitba.org.ar {
+    # Compress responses (zstd, else gzip; only text types: JSON, HTML, JS,
+    # CSS, XML, SVG). The plan catalogue (GET /api/v1/subjects?plan=) is
+    # ~70 KB of JSON and the app downloads it on mobile data. Not the MCP
+    # server: its responses stream (SSE) and must reach the client as they
+    # are written, so its paths are left out.
+    @compressible not path /mcp /mcp/* /.well-known/oauth-protected-resource/mcp /.well-known/oauth-authorization-server/mcp /.well-known/openid-configuration/mcp
+    encode @compressible zstd gzip
+
     # Hosted MCP server (apps/mcp, ~/CEITBA-MCP) at https://ceitba.org.ar/mcp.
     # It owns /mcp, /mcp/* (MCP endpoint, OAuth endpoints, Google callback)
     # and the two path-suffixed discovery documents MCP clients fetch
@@ -76,6 +84,16 @@ ceitba.org.ar {
     }
     handle @articlePreview {
         rewrite * /api/v1/articles/{re.article.1}/preview
+        reverse_proxy {
+            import api_upstreams
+        }
+    }
+
+    # sitemap.xml for search engines: the SPA can't produce it, so the API
+    # builds it from the published articles and events (NewsSitemapController).
+    # robots.txt is a static file in the web app.
+    handle /sitemap.xml {
+        rewrite * /api/v1/articles/sitemap.xml
         reverse_proxy {
             import api_upstreams
         }

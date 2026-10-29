@@ -34,9 +34,9 @@ export default function Alert({
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={`flex flex-wrap items-start gap-x-3 gap-y-2 pl-3 pr-1 py-1 rounded-sm border font-body text-body-sm ${TONES[tone]} ${className}`}
+      className={`flex flex-wrap items-start gap-x-3 gap-y-2 pl-3 pr-1 py-1 rounded-xs border font-body text-body-sm ${TONES[tone]} ${className}`}
     >
-      <div className="flex-1 min-w-[12rem] py-1.5">
+      <div className="flex-1 min-w-48 py-1.5">
         {title && <p className="font-semibold">{title}</p>}
         {children && <div>{children}</div>}
       </div>
@@ -46,7 +46,7 @@ export default function Alert({
           type="button"
           onClick={onDismiss}
           aria-label={t('errors.dismiss')}
-          className={iconButtonClass({ size: 'sm', className: '!text-current opacity-70 hover:opacity-100 hover:!bg-transparent' })}
+          className={iconButtonClass({ size: 'sm', className: 'text-current! opacity-70 hover:opacity-100 hover:bg-transparent!' })}
         >
           <CloseIcon size={16} />
         </button>

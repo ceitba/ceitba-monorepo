@@ -37,11 +37,11 @@ DigitalOcean **batch** inference. Design doc: https://claude.ai/code/artifact/fc
 - A file's digests are deleted with the file (`kb_file_digest.file_id` is `ON DELETE CASCADE` since V40; orphaned
   digests were dropped). Evals never keep a digest of a file that no longer exists.
 - When file rows are deleted (disconnect, account deletion, 30-day purge of files removed from Drive),
-  `KbModerationService.forgetFiles` hides the pages citing them, deletes their digests, redacts their `DIGEST`
+  `KbModerationService.forgetFiles` (`src/features/kb-reader/moderationService.ts`) hides the pages citing them, deletes their digests, redacts their `DIGEST`
   requests (`params` → `{}`, `result` → `NULL`; the only requests carrying raw text) and deletes the eval sets'
   frozen copies of their text (`kb/evals/sets/<set>/<file>.txt`).
 - Retention: the JSONL of finished jobs of finished runs (`kb/runs/<runId>/*`) is deleted 30 days after the job was
-  created (`KbRunRetentionService`, nightly with `KbRelationJob`); the job's `payloadKey`/`outputKey` are cleared.
+  created (`src/features/kb-pipeline/retention.ts`, nightly with `KbRelationJob` in `src/features/kb-reader/jobs.ts`); the job's `payloadKey`/`outputKey` are cleared.
   The API's MinIO service user may delete under `kb/` for this (`minio-init`).
 
 ## Stages (each LLM stage is one DO batch for all dirty subjects together)
@@ -158,7 +158,8 @@ Nothing short of a run-level failure stops a run; failures degrade per item.
   (DRY|QUEUED|SUBMITTED|COMPLETED|FAILED|CANCELLED), request_count, submitted_at, completed_at,
   output_file_url_fetched_at, error, next_attempt_at, submit_failures, do_request_id`.
   - Request payloads (JSONL) are stored in MinIO under `kb/runs/<runId>/<stage>.jsonl`, and results under `…-out.jsonl`, for audit.
-- A `KbPipelinePoller` (`@Scheduled` every 10 min, `KB_POLL_INTERVAL`) advances runs:
+- `KbPipelineJob` (`src/features/kb-pipeline/jobs.ts`: the safety sweep every `KB_POLL_INTERVAL`, 10 min, and the
+  batch poller, see "Advancing runs") advances runs:
   - submit pending stages;
   - poll DO batch status (`validating|queued|in_progress|completed|failed|cancelling|cancelled|expired`);
   - on `completed`, download the output and error files, parse them by `custom_id`, persist, and move to the next stage.
@@ -171,9 +172,10 @@ Nothing short of a run-level failure stops a run; failures degrade per item.
 - One active run at a time. A manual trigger while a run is active → 409.
 - `custom_id` format: `<runId>:<stage>:<subjectId>:<slug|fileId>:<chunk>`.
 
-## DigitalOcean batch client (`external/llm/`)
+## DigitalOcean batch client (`src/external/llm/`)
 
-- `LlmBatchClient` interface plus `DoBatchClient`, following the `external/itba` pattern:
+- `LlmBatchClient` interface (`src/features/kb/logic/external/llmApi.ts`) plus `DoBatchClient`
+  (`src/external/llm/doBatchClient.ts`, selected in `src/external/llm.ts`), following the `src/external/itba` pattern:
   - `createFile(name)` → `{fileId, uploadUrl}` (`POST /v1/batches/files`);
   - `upload(uploadUrl, bytes)`: PUT raw bytes, no extra headers;
   - `createBatch(fileId, provider="anthropic", completionWindow="24h", requestId)`: `POST /v1/batches`, no `endpoint` for Anthropic;
@@ -184,20 +186,20 @@ Nothing short of a run-level failure stops a run; failures degrade per item.
 - Parse output lines by `custom_id`; record `usage` into `kb_batch_job`/`kb_run`.
 - **Verify the exact output shape for Anthropic and the model id accepted for Haiku 4.5** with a tiny real batch before relying on it.
   The docs only show an OpenAI-shaped output example and an old model id.
-- `FakeLlmBatchClient` for tests: completes immediately with canned or scripted outputs, keyed by stage.
+- `FakeLlmBatchClient` (`src/features/kb/logic/external/fakeLlm.ts`, `KB_LLM_USE_FAKE`) for tests: completes immediately with canned or scripted outputs, keyed by stage.
 - Config: `KB_LLM_BASE_URL` (default `https://inference.do-ai.run`), `KB_LLM_API_KEY` (a DO model access key),
   `KB_MODEL`, `KB_PIPELINE_ENABLED` (default false), `KB_PIPELINE_CRON`, `KB_POLL_INTERVAL`, `KB_RUN_TOKEN_BUDGET`, `KB_RETRY_REJECTED`.
 
-## DigitalOcean quotas (`DoQuotaTracker`)
+## DigitalOcean quotas (`DoQuotaTracker`, `src/features/kb/logic/external/doQuotaTracker.ts`)
 
 Every DO response (429s included) updates an in-memory snapshot of its `x-ratelimit-limit-*`/`remaining-*` counters (no DB).
-- **Batch creations:** before creating a batch (`BatchLlmExecutor.submit`, so also the catalog's batch probe), if the snapshot
+- **Batch creations:** before creating a batch (`BatchLlmExecutor.submit` in `src/features/kb/logic/llm/batchLlmExecutor.ts`, so also the catalog's batch probe), if the snapshot
   says `batch-creations-per-hour` has 0 left and was observed under 60 min ago, DO is not called: the job stays QUEUED with
   `next_attempt_at = observedAt + 10 min` (error `QUOTA_WAIT: Esperando cupo de lotes de DigitalOcean: 0/5 esta hora`). When due,
   the free probe refreshes the snapshot (at most once a minute) and the check repeats. The 429 back-off remains the fallback.
-- **Sync daily tokens (`tokens_per_day`):** `DoChatClient` throws `DoQuotaExhaustedException` at once (no retries), and
-  `SyncLlmExecutor` also stops before a request when the snapshot (under 30 min old) has fewer daily tokens left than it
-  needs (prompt chars / 4 + `max_tokens`). `KbRunEngine` then pauses instead of failing: unanswered requests stay SUBMITTED
+- **Sync daily tokens (`tokens_per_day`):** `DoChatClient` throws `DoQuotaExhaustedError` at once (no retries), and
+  `SyncLlmExecutor` (`src/features/kb/logic/llm/syncLlmExecutor.ts`) also stops before a request when the snapshot (under 30 min old) has fewer daily tokens left than it
+  needs (prompt chars / 4 + `max_tokens`). `KbRunEngine` (`src/features/kb-pipeline/engine.ts`) then pauses instead of failing: unanswered requests stay SUBMITTED
   without answer (the state a restart resumes from, never FAILED), their job stays open, and the run goes WAITING with the
   reason until +30 min (in memory; the batch poller kicks the run when due; reset headers are 0, so a stale snapshot is
   ignored and a real request re-checks). Batch usage does not count toward `tokens_per_day`.
@@ -212,7 +214,7 @@ token budget also weighs cheap DIGEST tokens (nano, batch) like expensive WRITE 
 
 The budget is now money. `runCostBudgetUsd` (env `KB_RUN_COST_BUDGET_USD`, default 5.00, 0.10 to 100) is spent
 by **admission**, which runs in DETECT, before any LLM call:
-1. Each dirty subject's **whole** cost is estimated with the forecast heuristics (`KbForecastService.subjectEstimates`):
+1. Each dirty subject's **whole** cost is estimated with the forecast heuristics (`KbForecastService.subjectEstimates`, `src/features/kb-admin/forecast.ts`):
    DIGEST of the files **without a cached full digest** only (a subject left with cached digests by an earlier run is
    cheap now), plus PLAN, WRITE and RETRY, tokens times the per-stage model's effective price (batch discount included).
 2. Subjects are sorted **smallest estimated cost first** (ties: oldest dirty first, meaning never compiled, then oldest
@@ -247,7 +249,7 @@ which took the API down):
 
 ## Prompts
 
-Versioned resources in `src/main/resources/kb/prompts/` (`digest.v1.md`, `plan.v1.md`, `write.v1.md`, `retry.v1.md`),
+Versioned files in `src/features/kb/prompts/` (`digest`, `plan`, `write` and `retry`, each in `v1` and `v2`),
 with `prompt_version` stored on digests and runs. `write` ports the rules of the hand-written pipeline:
 - format and frontmatter;
 - citations `[[file:<id>|short name]]` at the end of sentences, never wrapping content;
@@ -262,11 +264,11 @@ with `prompt_version` stored on digests and runs. `write` ports the rules of the
 ## Custom endpoints (own GPU)
 
 Besides DigitalOcean, a stage can use a staff-registered OpenAI-compatible server (`custom:<endpoint>:<slug>`
-catalog ids, slash-free; the raw model id is `kb_model.remote_model_id`; endpoint table `kb_llm_endpoint`, staff API in `docs/SUBJECT-WIKI-ADMIN.md`). `KbLlmRouter` never
+catalog ids, slash-free; the raw model id is `kb_model.remote_model_id`; endpoint table `kb_llm_endpoint`, staff API in `docs/SUBJECT-WIKI-ADMIN.md`). `KbLlmRouter` (`src/features/kb/logic/llm/kbLlmRouter.ts`) never
 batches them (`auto`/`batch` fall back to SYNC); `SyncLlmExecutor` sends the request to the endpoint's client
-(`DoChatClient.openAiCompatible`, base URL including `/v1`, raw model id in the body, no Authorization header when
+(`DoChatClient.openAiCompatible` in `src/features/kb/logic/external/doChatClient.ts`, base URL including `/v1`, raw model id in the body, no Authorization header when
 the endpoint has no key) and bounds it with the endpoint's own semaphore (`max_concurrency`) instead of
-`KB_SYNC_CONCURRENCY`. The record lock, virtual threads and throttled cancel check are unchanged. The DO daily
+`KB_SYNC_CONCURRENCY`. The record lock, the per-request concurrency (promises under the semaphore) and the throttled cancel check are unchanged. The DO daily
 token quota check does not apply to custom models. Structured output uses tools, with the `json_object` fallback
 used directly when the catalog says `toolCalling: no` (llama.cpp without `--jinja`). The endpoint token is encrypted
 at rest (HKDF from `AUTH_JWT_SECRET`, optional `KB_SECRETS_KEY` override) and write-only.
@@ -283,6 +285,8 @@ at rest (HKDF from `AUTH_JWT_SECRET`, optional `KB_SECRETS_KEY` override) and wr
 **Dry run** builds every JSONL and stores it in MinIO but doesn't submit. Use it to inspect prompts and token estimates.
 
 ## Tests (FakeLlmBatchClient)
+
+In-process, in `test/kb-pipeline/` (`BatchPipelineIT.test.ts`, `SyncPipelineIT.test.ts`) and `test/kb/pipeline/`:
 
 - **No changes ⇒ zero requests:** a second run right after a completed one submits nothing.
 - **One file changed in one subject:** exactly its chunks are digested. PLAN contains only that subject; WRITE contains only
@@ -314,15 +318,15 @@ at rest (HKDF from `AUTH_JWT_SECRET`, optional `KB_SECRETS_KEY` override) and wr
   `supportsReasoningEffort`; `max_tokens` per stage defaults to 4000 / 6000 / 12000 / 12000.
 - **Dry run** stops after PLAN (operations are shown, nothing is written).
 - **Advancing runs:** a run or eval is advanced **as soon as it is created** (`POST /pipeline/runs`, dry runs included,
-  `POST /evals`, approve-cost), on the task executor, one task per run, so a long sync stage of one run never delays
+  `POST /evals`, approve-cost), in the background, one advance per run (`KbRunEngine.kick`), so a long sync stage of one run never delays
   another. Sync stages and the code-only steps (LINK, VALIDATE, PUBLISH) flow straight into the next stage. The
   **batch poller** (`KB_BATCH_POLL_INTERVAL`, default `PT1M`) only checks runs with a SUBMITTED DO batch or a QUEUED one
   whose `nextAttemptAt` is due (and pending batch probes). A **safety sweep** (`KB_POLL_INTERVAL`, default `PT10M`, and once at startup) kicks every active run to
   resume anything a restart interrupted. Each run has one advancer at a time: a lease on `kb_run` (`lease_owner`,
   `lease_until`, V37) taken with a conditional UPDATE and renewed every minute; a kick that finds the run busy makes the
   holder loop once more. `KB_PIPELINE_ENABLED` (or the settings' `enabled`) only gates the weekly cron.
-  `kb.pipeline.background=false` turns all background work off (tests drive the engine).
-- **Batch submission** (`KbBatchSubmitter`, V38). Idempotent and never fatal on rate limits:
+  `KB_PIPELINE_BACKGROUND=false` (`src/config/sections/kb.ts`) turns all background work off (tests drive the engine).
+- **Batch submission** (`src/features/kb/logic/pipeline/kbBatchSubmitter.ts`, V38). Idempotent and never fatal on rate limits:
   - The `kb_batch_job` row is created (`QUEUED`) in its own transaction **before** DO is called, under a unique index on
     `(run_id, stage, attempt, model)` (a stage has one job per model, e.g. per eval configuration). An advancer that
     finds the row already there never submits again. Advancing always holds the run's lease.
@@ -348,8 +352,9 @@ at rest (HKDF from `AUTH_JWT_SECRET`, optional `KB_SECRETS_KEY` override) and wr
 - **Cancel.** `cancel` cancels open DO batches, then marks the run, its jobs and active subjects `CANCELLED` with the
   run row locked (`SELECT … FOR UPDATE`). Every transition that may end or advance a run (DETECT, build, after-stage,
   each subject's PUBLISH, the final status, a failure) locks the row too and does nothing once the run is no longer
-  active; RUNNING ↔ WAITING toggles after HTTP calls are conditional updates, and `kb_run` uses dynamic updates so
-  writing totals never rewrites `status`. The sync executor stops dispatching once the run is inactive (answers already
+  active; RUNNING ↔ WAITING toggles after HTTP calls are conditional updates, and `kb_run` uses dynamic updates (the
+  pipeline's session flushes only changed columns, `src/features/kb-pipeline/db/session.ts`) so writing totals never
+  rewrites `status`. The sync executor stops dispatching once the run is inactive (answers already
   in flight are recorded in usage, they were paid for).
 - **Schedule.** The minute tick fires when the cron had a fire time since the previous check; after a restart the
   previous check is the last `SCHEDULED` run's start (at most one day back), so a restart around the fire time does not
@@ -379,41 +384,70 @@ at rest (HKDF from `AUTH_JWT_SECRET`, optional `KB_SECRETS_KEY` override) and wr
 
 ## Memory
 
-The Drive corpus (community archive included) is far larger than the heap: ~18k files, ~90 MB of `text_content` in
-Postgres, more as Java strings. Nothing in the pipeline may load every file's text at once (two dry runs died in DIGEST
-with `OutOfMemoryError` when it did).
+The Drive corpus (community archive included) is far larger than the API's memory limit allows: ~18k files, ~90 MB of
+`text_content` in Postgres, more as in-memory strings. Nothing in the pipeline may load every file's text at once (two
+dry runs of the earlier Java API died in DIGEST running out of memory when it did).
 
 - **Inputs, diffs, preview and forecast** read ids, fingerprints, names and `length(text_content)` in SQL
-  (`DriveFileRepository.pipelineInputs`); token estimates come from those lengths, never from the texts.
+  (`pipelineInputs` in `src/features/kb-pipeline/db/repo.ts`); token estimates come from those lengths, never from the texts.
 - **DIGEST build:** per subject, the files to digest are first sized in SQL; a subject that cannot fit the remaining
   `KB_RUN_TOKEN_BUDGET` is deferred without reading any text. Otherwise texts are read 20 files at a time
-  (`DriveFileRepository.textsOf`, a projection, not entities) and each page's requests are saved, flushed and detached
+  (`textsOf`, id/name/text columns only, no entities) and each page's requests are saved, flushed and detached
+  (`src/features/kb-pipeline/db/session.ts`)
   before the next; if the exact estimate ends up over budget, the subject's saved requests are deleted and it is
   deferred. A stage therefore holds at most one page of raw text plus the run's budget worth of requests.
 - **PLAN/WRITE/RETRY** read file names via a projection; WRITE reads raw text only for the changed files the
   subject's operations cite. Built requests are detached after each subject.
-- **Submit:** the stage JSONL is streamed to a temp file 50 requests per transaction, then uploaded. The batch file is
-  written to a temp file from a paged iterator (100 requests per transaction) and uploaded from disk; requests are
-  marked SUBMITTED with bulk updates (no entity loaded).
-- **Executing a stage never loads it whole.** Ids first (`KbRunRequestRepository.idsBy...`), then rows in pages of 200
+- **Submit:** the stage JSONL is read 50 requests per transaction and built in memory, then uploaded. The batch file is
+  built in memory from a paged iterator (100 requests per transaction) and uploaded; requests are marked SUBMITTED
+  with bulk updates (no entity loaded). Neither goes through a temp file, so a stage's JSONL is held whole in memory
+  while it is uploaded.
+- **Executing a stage never loads its rows whole.** Ids first (`idsBy...` in `src/features/kb-pipeline/db/repo.ts`), then rows in pages of 200
   that are flushed and detached (`KbRunEngine.forPages`), or count/aggregate queries:
   - SYNC (`runSyncJobs`): `SyncLlmExecutor.run(Iterator)` pulls the next request (a page of `2 x concurrency` params is
-    read from the DB at a time) only when a worker slot is free; the output audit copy is streamed to a temp file.
-  - BATCH (`collectBatch`): output and error files are downloaded to temp files and parsed line by line; results are
+    read from the DB at a time) only when a slot is free; the output audit copy is built in memory.
+  - BATCH (`collectBatch`): output and error files are downloaded into memory and parsed line by line; results are
     recorded 100 per transaction (idempotent: answered requests are skipped on a retry); the audit copy is stripped of
-    `reasoning_content` line by line and stored from a temp file.
+    `reasoning_content` line by line and stored from memory.
   - the cost check sums `est_tokens` and `max_tokens` per model in SQL (`pendingEstimate`); leftover/retry handling and
     `after()` page by id (DIGEST stored in id order, a file's chunks being consecutive; PLAN/WRITE/RETRY one subject's
     rows at a time).
   - Still per run (not per request): the run's subjects with their inputs/drafts. Bounded by the subject count.
 - **Dry runs** go through the same chunked build (their JSONL is what staff inspect), so their memory is bounded the
   same way; the preview/forecast estimates never touch the texts.
-- **PDF extraction** loads PDFs with a temp-file-only stream cache and keeps at most `MAX_TEXT_CHARS` (1M) of text.
-- **Restart-loop guard:** at startup `KbPipelineJob.onStartup` resumes each active run through
-  `KbRunEngine.registerResume`. A RUNNING run (one that was advancing a stage when the process stopped; WAITING and
-  BLOCKED runs are not counted) increments `kb_run.resume_count` inside a 30-minute window
-  (`resume_window_start`, V49); the counter resets when the run finishes a stage. After `MAX_RESUMES` (3) resumes in
-  the window the next startup marks the run FAILED ("detenida tras reinicios repetidos (posible falta de memoria)")
-  and its subjects failed, instead of resuming into another crash. The periodic sweep does not count.
-- **Heap:** the API container is limited to 2G and runs with `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError`
-  (`JAVA_TOOL_OPTIONS` in `docker-compose.yml`): ~1.5 GB of heap, and an OOM restarts the container.
+- **PDF extraction** (`src/features/drive/logic/pdfText.ts`, unpdf in the Drive content worker pool) stops at
+  `MAX_TEXT_CHARS` (1M) of text; the PDF itself is held in memory (`DRIVE-PARITY.md`).
+- **Restart-loop guard:** at startup `KbPipelineJob#onStartup` resumes each active run through
+  `KbRunEngine.registerResume` (`src/features/kb-pipeline/engine.ts`). It is meant for crash loops (the container
+  OOM-killed mid-stage and restarted by Docker), not for deploys or other clean restarts:
+  - A RUNNING run counts one resume (`kb_run.resume_count` inside a 30-minute window, `resume_window_start`, V49) only
+    when it is **still leased**: its advancer never released it, so that process died, or (blue/green) is still
+    running. A run with no lease (nobody was advancing it, or its advancer stopped cleanly) is resumed without
+    counting; WAITING and BLOCKED runs are never counted. The counter resets when the run finishes a stage.
+  - Every lease release (a pass that ends, or a shutdown) restores the counter to its value when the lease was taken:
+    a release proves the holder was alive, so resumes counted meanwhile by a starting process were not crashes.
+    Counts from before the lease was taken stay. A process killed without its shutdown hooks never releases.
+  - Past `MAX_RESUMES` (3) in the window the run is FAILED ("detenida tras reinicios repetidos (posible falta de
+    memoria)" plus the stage) with its subjects, instead of resuming into another crash: at startup when the leftover
+    lease already expired, otherwise when the lease is taken over (`LEASE_MS`, 3 min, after the dead holder's last
+    renewal), because a live lease may belong to a process that is still running. The periodic sweep does not count.
+  - **Shutdown** (SIGTERM, `src/main.ts`): in the `closing` phase the engine stops starting work (`beginStop`): no
+    new advances, kicks or retries, each running advance stops after its current step, and a sync pool sends no new
+    request; requests already in flight finish and their answers are recorded (paid work is kept). Unanswered
+    requests stay SUBMITTED and their sync job open (an `-out-partial-<epoch>.jsonl` audit copy), so the next process
+    resumes the same job without spending the resubmission attempt. In the `executors` phase `stop()` waits up to
+    `STOP_WAIT_MS` (45 s) for the advances to release their leases, then releases the ones still held anyway: the
+    answers of requests still in flight then are lost and asked again (paid twice). The engine's hook runs last in
+    the 60 s `executors` phase (after the digest and org mail senders), so normally it fits in the 90 s
+    `stop_grace_period`; if the phase times out first the lease is left behind (next item).
+  - **Blue/green order** (`infra/scripts/deploy-api.sh`): the new color starts and resumes runs **while the old color
+    still advances them**, so it counts one resume and its kick finds the run leased (it retries after `LEASE_MS`, or
+    the sweep/poller kicks it). Then the old color gets SIGTERM, stops and releases the lease, which undoes that resume.
+    The release only touches a lease the old color still owns, so it cannot hide crashes counted after a successor
+    took the run over. A plain restart (the old process stops first) leaves no lease, so nothing is counted.
+  - A shutdown that does not finish in time (SIGKILL after the grace period) leaves the lease behind: the next start
+    counts it like a crash.
+  - Before 2026-10-22 every startup counted RUNNING runs, so four API deploys within 24 minutes (2026-10-21, after
+    dependency-only merges) failed a sync WRITE stage with this message.
+- **Memory limit:** the API container is limited to 1G (`API_MEMORY_LIMIT` in `docker-compose.yml`); Docker kills it
+  above the limit and `restart: unless-stopped` brings it back.

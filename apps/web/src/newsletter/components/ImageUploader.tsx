@@ -90,7 +90,7 @@ export default function ImageUploader({ value, onChange, signPath, previewClassN
           <IconButton
             onClick={() => { onChange(''); setUrl('') }}
             aria-label={t('imageUploader.remove')}
-            className="absolute top-1 right-1 !bg-black/60 !text-white hover:!bg-black/75"
+            className="absolute top-1 right-1 bg-black/60! text-white! hover:bg-black/75!"
           >
             <CloseIcon size={16} />
           </IconButton>

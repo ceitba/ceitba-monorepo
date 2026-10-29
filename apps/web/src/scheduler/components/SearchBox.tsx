@@ -66,7 +66,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ subjects, onSelectSubject }) => {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={t('courses.searchPlaceholder')}
-          className="w-full pl-10 pr-4 py-2.5 rounded-sm bg-white dark:bg-night-surface font-body text-body text-ink-primary dark:text-night-text placeholder:text-ink-secondary dark:placeholder:text-night-muted border border-border dark:border-night-border focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-colors"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xs bg-white dark:bg-night-surface font-body text-body text-ink-primary dark:text-night-text placeholder:text-ink-secondary dark:placeholder:text-night-muted border border-border dark:border-night-border focus:border-primary focus:ring-1 focus:ring-primary/30 outline-hidden transition-colors"
         />
       </div>
 

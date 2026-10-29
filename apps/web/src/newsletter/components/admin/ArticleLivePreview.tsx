@@ -16,6 +16,8 @@ const GEO_BG: Record<string, string> = {
 
 // What the admin article form previews (its form state).
 interface PreviewArticle {
+  // Set once the article was saved: ```poll blocks preview its polls.
+  id?: string | null
   title?: string | null
   excerpt?: string | null
   body: string[]
@@ -49,20 +51,20 @@ interface CoverMediaProps {
 function CoverMedia({ coverImage, colorScheme, className }: CoverMediaProps) {
   if (coverImage) {
     return (
-      <div className={['overflow-hidden flex-shrink-0', className].join(' ')}>
+      <div className={['overflow-hidden shrink-0', className].join(' ')}>
         <img src={coverImage} alt="" aria-hidden="true" className="w-full h-full object-cover" />
       </div>
     )
   }
   const bg = GEO_BG[colorScheme ?? ''] ?? GEO_BG.blue
   return (
-    <div className={['relative overflow-hidden flex-shrink-0', bg, className].join(' ')} aria-hidden="true">
+    <div className={['relative overflow-hidden shrink-0', bg, className].join(' ')} aria-hidden="true">
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-[-20%] right-[-10%] w-2/3 h-2/3 rounded-full bg-white/30" />
         <div className="absolute bottom-[-15%] left-[-5%] w-1/2 h-1/2 rotate-45 bg-white/20" />
-        <div className="absolute top-1/3 left-1/4 w-1/3 h-1/3 rounded-sm rotate-12 bg-black/10" />
+        <div className="absolute top-1/3 left-1/4 w-1/3 h-1/3 rounded-xs rotate-12 bg-black/10" />
       </div>
-      <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/25" />
+      <div className="absolute inset-0 bg-linear-to-br from-black/0 to-black/25" />
     </div>
   )
 }
@@ -142,7 +144,7 @@ function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: 
             <div className="absolute top-[-20%] right-[-5%] w-1/2 h-full rounded-full bg-white/30" />
             <div className="absolute bottom-[-30%] left-[-5%] w-2/3 h-2/3 rotate-12 bg-white/20" />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-br from-black/0 to-black/30" aria-hidden="true" />
+          <div className="absolute inset-0 bg-linear-to-br from-black/0 to-black/30" aria-hidden="true" />
           <div className="absolute bottom-4 left-5">
             <CategoryBadge category={article.category} />
           </div>
@@ -182,7 +184,7 @@ function ArticleFullPreview({ article, orgs }: { article: PreviewArticle; orgs: 
         </div>
 
         {bodyToMarkdown(article.body).trim() ? (
-          <ArticleBody body={article.body} className="mt-6" />
+          <ArticleBody body={article.body} articleId={article.id ?? null} previewPolls className="mt-6" />
         ) : (
           <p className="mt-6 font-body text-body"><Missing>{t('admin.preview.noBody')}</Missing></p>
         )}

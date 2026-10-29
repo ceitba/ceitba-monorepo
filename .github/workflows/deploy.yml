@@ -31,17 +31,19 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.api }}
+      # The API's own code, or what its image installs (a root bun.lock change alone is not enough).
+      api: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.api_code == 'true' || steps.api-deps.outputs.changed == 'true' }}
       mcp: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         if: github.event_name == 'push'
         with:
           filters: |
-            api:
+            # The API's code; its dependencies (root package.json / bun.lock) are the api-deps step.
+            api_code:
               - 'apps/api/**'
               - 'infra/**'
             shared: &shared
@@ -57,6 +59,19 @@ jobs:
               - 'packages/**'
               - 'package.json'
               - 'bun.lock'
+      # A root package.json / bun.lock change redeploys the API only when the production
+      # dependency closure of @ceitba/api changed (scripts/checks/api-deps-changed.mjs,
+      # apps/api/docs/DEPLOY.md). Unknown or unfetchable base (first push): true.
+      - id: api-deps
+        if: github.event_name == 'push'
+        env:
+          BASE: ${{ github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE" || true
+          # Anything but a clean "false" (the script failing included) builds and ships the API.
+          v=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD) || v=true
+          [ "$v" = false ] || v=true
+          echo "changed=$v" >> "$GITHUB_OUTPUT"
       - id: spas
         env:
           # Manual runs deploy every app.
@@ -71,8 +86,8 @@ jobs:
     if: needs.changes.outputs.mcp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json # packageManager: the bun that writes bun.lock
       - run: bun install --frozen-lockfile
@@ -86,22 +101,22 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ghcr.io/ceitba/ceitba-mcp
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
         with:
           context: .
           file: apps/mcp/Dockerfile
@@ -123,10 +138,10 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Only the compose file is copied: ~/CEITBA-MCP/.env (secrets) lives on the VPS.
       - name: Copy MCP compose to VPS
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -135,7 +150,7 @@ jobs:
           target: "~/CEITBA-MCP/"
           strip_components: 2
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -159,25 +174,23 @@ jobs:
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-          cache-dependency-path: apps/api/pom.xml
-      - run: ./mvnw -B -ntp verify
+          bun-version-file: package.json # packageManager: the bun that writes bun.lock
+      - run: bun install --frozen-lockfile
+      - run: bun run --cwd apps/api build
+      - run: bun run --cwd apps/api test
+      - run: bun apps/api/contract/run.ts --target ts
+      - run: bun apps/api/contract/coverage.ts --check --target ts
       - if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: test-reports
-          path: |
-            apps/api/target/surefire-reports/
-            apps/api/target/failsafe-reports/
+          name: api-contract-logs
+          path: apps/api/contract/.logs/
+          include-hidden-files: true
+          if-no-files-found: ignore
 
   api-image:
     needs: api-test
@@ -186,30 +199,31 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ghcr.io/ceitba/ceitba-api
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
         with:
-          context: apps/api
-          file: apps/api/infrastructure/docker/Dockerfile
+          # The Bun image builds from the repo root (the workspace's bun.lock).
+          context: .
+          file: apps/api/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
   api-deploy:
     needs: api-image
@@ -219,7 +233,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Sync the compose files and the Caddyfile on every deploy so the VPS
       # never drifts from the repo. Only these explicit files are copied:
@@ -228,7 +242,7 @@ jobs:
       #   read-only at /etc/caddy in ceitba-caddy), ~/CEITBA-API/docker-compose.yml
       #   and ~/CEITBA-API/deploy-api.sh (blue/green, apps/api/docs/DEPLOY.md).
       - name: Copy infra config to VPS
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -238,7 +252,7 @@ jobs:
           strip_components: 2
 
       - name: Copy API compose and deploy script to VPS
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -248,7 +262,7 @@ jobs:
           strip_components: 2
 
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -305,11 +319,11 @@ jobs:
         include: ${{ fromJSON(needs.changes.outputs.spas) }}
     name: deploy (${{ matrix.app }})
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json # packageManager: the bun that writes bun.lock
       - run: bun install --frozen-lockfile
@@ -321,7 +335,7 @@ jobs:
       - run: bun run --filter '${{ matrix.package }}' build
 
       - name: Upload dist to VPS staging
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -331,7 +345,7 @@ jobs:
           strip_components: 2
 
       - name: Activate deployment
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}

@@ -135,7 +135,7 @@ export default function MyApuntesPage() {
     : t(unconfigured ? 'apuntes.mine.connectBlockedUnconfigured' : 'apuntes.mine.connectBlockedInfo')
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <nav aria-label={t('apuntes.breadcrumbAria')} className="mb-4 font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
         <Link to="/apuntes" className="hover:text-primary">{t('apuntes.title')}</Link>
         <span aria-hidden="true" className="mx-2">/</span>
@@ -144,7 +144,7 @@ export default function MyApuntesPage() {
 
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div className="max-w-2xl">
-          <h1 className="font-display font-bold text-h3 lg:text-h2 text-ink-primary dark:text-night-text">
+          <h1 className="font-display font-bold text-h3 lg:text-h2 lg:font-extrabold text-ink-primary dark:text-night-text">
             {t('apuntes.mine.title')}
           </h1>
           <p className="font-body text-body text-ink-secondary dark:text-night-muted mt-2">
@@ -208,7 +208,7 @@ export default function MyApuntesPage() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text break-words">
+                        <h2 className="font-display font-bold text-h5 text-ink-primary dark:text-night-text wrap-break-word">
                           {s.rootName}
                         </h2>
                         <SourceStatusBadge status={s.status} />
@@ -236,7 +236,7 @@ export default function MyApuntesPage() {
                         </p>
                       )}
                     </div>
-                    <dl className="grid grid-cols-3 gap-4 text-center sm:text-right flex-shrink-0">
+                    <dl className="grid grid-cols-3 gap-4 text-center sm:text-right shrink-0">
                       <Stat label={t('apuntes.mine.files')} value={s.fileCount} />
                       <Stat label={t('apuntes.mine.published')} value={s.publishedCount} />
                       <Stat label={t('apuntes.mine.inReview')} value={s.needsReviewCount} />

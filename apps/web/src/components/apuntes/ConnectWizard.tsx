@@ -103,7 +103,7 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
               <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
                 <code
                   id="apuntes-bot-email"
-                  className="flex-1 min-w-0 break-all px-3 py-2 rounded-sm bg-page-bg dark:bg-night-bg border border-border dark:border-night-border font-mono text-body-sm select-all"
+                  className="flex-1 min-w-0 break-all px-3 py-2 rounded-xs bg-page-bg dark:bg-night-bg border border-border dark:border-night-border font-mono text-body-sm select-all"
                 >
                   {info.botEmail}
                 </code>
@@ -170,7 +170,7 @@ export default function ConnectWizard({ info, onClose, onConnected }: Props) {
             <span className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
               {t('apuntes.wizard.consentTitle')}
             </span>
-            <div className="max-h-48 overflow-y-auto px-3 py-2 rounded-sm border border-border dark:border-night-border bg-page-bg dark:bg-night-bg whitespace-pre-line text-ink-secondary dark:text-night-muted">
+            <div className="max-h-48 overflow-y-auto px-3 py-2 rounded-xs border border-border dark:border-night-border bg-page-bg dark:bg-night-bg whitespace-pre-line text-ink-secondary dark:text-night-muted">
               {info.consentText}
             </div>
             <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">

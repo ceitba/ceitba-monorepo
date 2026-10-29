@@ -35,7 +35,7 @@ type Phase =
   | { kind: 'done'; message: string }
 
 // Day/time controls sit side by side, so they size to their content.
-const field = (invalid: boolean) => inputClass({ invalid, className: '!w-auto' })
+const field = (invalid: boolean) => inputClass({ invalid, className: 'w-auto!' })
 
 // Form to suggest a commission's real days/times, prefilled with what the
 // app shows now. Rooms are read-only context (v1 only corrects day/time).

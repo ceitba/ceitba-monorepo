@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 // "…" are only for buttons whose action is running.
 
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`skeleton rounded-sm ${className}`} aria-hidden="true" />
+  return <div className={`skeleton rounded-xs ${className}`} aria-hidden="true" />
 }
 
 // Wraps skeletons so assistive tech hears one "Cargando" instead of nothing.

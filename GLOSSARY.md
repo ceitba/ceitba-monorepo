@@ -8,7 +8,7 @@ the web app. Seed glossary: `/domain-modeling` and `/grill-with-docs` extend it 
 
 **SGA**:
 ITBA's academic system, the upstream source of careers, plans, subjects and commissions. Reached only through
-`ItbaApiClient`; see `apps/api/docs/ITBA-GATEWAY.md`.
+the API's ITBA client (`apps/api/src/external/itba*`); see `apps/api/docs/ITBA-GATEWAY.md`.
 _Avoid_: ITBA API (when you mean the data source)
 
 **Career**:
@@ -18,6 +18,12 @@ _Avoid_: Carrera (in code), degree
 **Plan**:
 A study plan of a Career: the set of Subjects and their requirements for one curriculum version.
 _Avoid_: Curriculum
+
+**Plan entry**:
+One Subject placed in a Plan as ITBA lists it: its section, year and term, prerequisites and credits within that
+Plan (`plan_entry`, with staff edits applied in `plan_entry_effective`). A Subject can have several entries in one
+Plan (orientations).
+_Avoid_: plan subject (the older `plan_subject` table keeps one per Subject)
 
 **Subject**:
 A course of study identified by its ITBA code (e.g. `61.12`). The unit that Apuntes, wiki pages and schedules
@@ -61,6 +67,16 @@ Subject wiki pages. See `apps/api/docs/SUBJECT-WIKI-PIPELINE.md`.
 **Study group**:
 A student-created group for a Subject with a type, locations and an optional participant cap.
 
+**Subject review**:
+A student's short opinion of a Subject they took in a term and Commission: recommend or not, difficulty, optional
+comment, and the Professors they say taught it. Anonymous to readers. See `apps/api/docs/SUBJECT-REVIEWS.md`.
+_Avoid_: Rating, opinión (in code; "Opiniones" is the UI tab)
+
+**Professor**:
+A teacher named in Subject reviews, identified by their ITBA email and named from the Google directory. ITBA's data
+has no professors: they exist only through reviews.
+_Avoid_: Docente, teacher (in code)
+
 **Proposal**:
 A student proposal ("Propuesta") to CEITBA that others vote and comment on, moderated by Moderators.
 
@@ -72,6 +88,15 @@ _Avoid_: Org (in prose), club
 
 **Article**:
 A newsletter post published by an Organization or independently.
+
+**Comment**:
+A signed-in reader's plain-text reaction under a published Article; a reply answers a top-level Comment (one level
+only). See `apps/api/docs/NEWSLETTER-ENGAGEMENT.md`.
+
+**Poll**:
+A single-choice question that belongs to one Article and sits in its body as a ```` ```poll ```` block. Its results
+show after voting or only once it closes, as the author chooses.
+_Avoid_: Survey, vote (votes are the 👍/👎 on an Article)
 
 **Digest**:
 The Monday "La semana en ITBA" email: last week's Articles, next week's Events and a personal "Tu cuatrimestre"

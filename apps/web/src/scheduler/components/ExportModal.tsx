@@ -105,7 +105,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
             }}
             className="w-full min-h-[44px] flex items-center gap-4 p-3 rounded-card border border-border dark:border-night-border hover:bg-primary-50 dark:hover:bg-primary-900 hover:border-primary transition-colors duration-150 text-left group"
           >
-            <span className="text-ink-secondary dark:text-night-muted group-hover:text-primary dark:group-hover:text-primary-300 transition-colors duration-150 flex-shrink-0">
+            <span className="text-ink-secondary dark:text-night-muted group-hover:text-primary dark:group-hover:text-primary-300 transition-colors duration-150 shrink-0">
               {option.icon}
             </span>
             <div>

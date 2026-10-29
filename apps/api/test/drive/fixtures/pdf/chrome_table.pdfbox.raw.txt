@@ -1,0 +1,6 @@
+Horarios de comisión
+Materia Día Horario Aula
+Análisis Matemático II Lunes 08:00–10:00 201F
+Física II Miércoles 14:00–16:30 Sede Distrito Financiero
+Programación Imperativa Viernes 18:00–21:00 Lab. 3
+Probabilidad y Estadística Martes 10:00–12:00 105

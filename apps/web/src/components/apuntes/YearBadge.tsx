@@ -20,7 +20,7 @@ export default function YearBadge({ year, source, variant = 'badge', className =
   return (
     <span
       title={tip}
-      className={`inline-flex items-center px-1.5 rounded-sm border border-border dark:border-night-border font-mono text-label text-ink-secondary dark:text-night-muted ${className}`}
+      className={`inline-flex items-center px-1.5 rounded-xs border border-border dark:border-night-border font-mono text-label text-ink-secondary dark:text-night-muted ${className}`}
     >
       {estimated && <span className="sr-only">{tip}: </span>}
       {text}

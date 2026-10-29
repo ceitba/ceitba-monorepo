@@ -171,7 +171,32 @@
       "addOrgTitle": "Add {{name}} to an organization",
       "addOrgField": "Organization",
       "addOrgHint": "They join as a member. You can make them an admin from their row afterwards.",
-      "addOrgConfirm": "Add"
+      "addOrgConfirm": "Add",
+      "invites": {
+        "open": "Invite by email",
+        "title": "Invite to {{org}} by email",
+        "emailsLabel": "Emails",
+        "emailsHint": "One per line or comma-separated. People who already signed in join right away; the rest join when they first sign in.",
+        "roleLabel": "Role",
+        "submit_one": "Invite {{count}}",
+        "submit_other": "Invite {{count}}",
+        "done": "Done: {{added}} added, {{pending}} pending their first sign-in.",
+        "invalidEmails": "One of the emails is invalid or isn't allowed to sign in.",
+        "tooMany": "You can invite up to {{max}} emails at a time.",
+        "pendingTitle_one": "{{count}} pending invite to {{org}}",
+        "pendingTitle_other": "{{count}} pending invites to {{org}}",
+        "pendingHint": "They join the organization the first time they sign in.",
+        "revokeAria": "Cancel the invite of {{email}} to {{org}}",
+        "revoked": "Cancelled the invite of {{email}} to {{org}}.",
+        "notFound": "{{email}} hasn't signed in yet",
+        "notFoundHint": "Invite them and they'll join {{org}} the first time they sign in.",
+        "inviteOne": "Invite {{email}}",
+        "alreadyMembers": "They were already members of the organization.",
+        "loadFailed": "Couldn't load the pending invites to {{org}}",
+        "revokeTitle": "Cancel the invite?",
+        "revokeBody": "{{email}} won't join {{org}} when they sign in. You can invite them again.",
+        "revokeConfirm": "Yes, cancel invite"
+      }
     },
     "organizations": {
       "intro": "The student organizations listed on ITBA News. Once you create one, its admins can add the logo and cover image from ITBA News.",
@@ -341,6 +366,34 @@
       "grantsLoadFailed": "We couldn't load this capability's access list.",
       "emptyHint": "Features in testing that you can enable for everyone or for specific people and organizations will appear here."
     },
+    "careers": {
+      "intro": "The careers and plans students pick when they sign up. ITBA doesn't publish this list, so we keep it here; each plan's subjects arrive on their own with the next sync. Codes can't change once created.",
+      "newCareer": "New career",
+      "newPlan": "Add plan",
+      "create": "Create",
+      "loadFailed": "We couldn't load the careers.",
+      "empty": "No careers yet",
+      "emptyHint": "Create the first one with “New career”.",
+      "idLabel": "Code {{id}}",
+      "planCount_one": "{{count}} plan",
+      "planCount_other": "{{count}} plans",
+      "renameCareerAria": "Edit the career {{name}}",
+      "newPlanAria": "Add plan to {{name}}",
+      "renamePlanAria": "Edit the plan {{id}}",
+      "renameCareerTitle": "Edit career {{id}}",
+      "newPlanTitle": "New plan for {{name}}",
+      "renamePlanTitle": "Edit plan {{id}}",
+      "idField": "Code",
+      "nameField": "Name",
+      "careerIdHint": "Up to 25 characters, e.g. “S”. It can't change later.",
+      "planIdHint": "Type it exactly as ITBA spells it (e.g. “S10-Rev23”): otherwise the sync finds no subjects for it. It can't change later.",
+      "planNameHint": "Optional: left empty, the code is used.",
+      "careerCreated": "Created the career {{name}}.",
+      "planCreated": "Added the plan {{id}}. Its subjects arrive with the next sync.",
+      "saved": "Changes saved.",
+      "careerIdTaken": "A career with the code {{id}} already exists.",
+      "planIdTaken": "A plan with the code {{id}} already exists (in this or another career)."
+    },
     "errors": {
       "generic": "We couldn't complete the action. Try again in a moment.",
       "network": "Can't reach the server. Check your connection and try again.",
@@ -384,6 +437,9 @@
       "organizations": {
         "label": "Organizations"
       },
+      "careers": {
+        "label": "Careers and plans"
+      },
       "corrections": {
         "label": "Schedule corrections"
       },
@@ -417,7 +473,8 @@
         "source": "Drive folder",
         "fileReview": "File to review",
         "fileReported": "Reported file",
-        "wiki": "AI Wiki"
+        "wiki": "AI Wiki",
+        "review": "Hidden review"
       },
       "sources": {
         "articles": "articles",
@@ -425,6 +482,7 @@
         "sources": "Drive folders",
         "needsReview": "files to review",
         "reported": "reported files",
+        "hiddenReviews": "hidden reviews",
         "wiki": "AI Wiki"
       },
       "sourceFailed": "We couldn't load: {{sources}}. Everything else is up to date.",
@@ -481,7 +539,9 @@
         "benefit": "New benefit card",
         "org": "Add someone to an organization",
         "staff": "Grant staff access"
-      }
+      },
+      "reviewReportedMeta_one": "{{comment}} · {{term}} · {{count}} report: {{reason}}",
+      "reviewReportedMeta_other": "{{comment}} · {{term}} · {{count}} reports: {{reason}}"
     }
   },
   "profile": {

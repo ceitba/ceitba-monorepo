@@ -83,7 +83,7 @@ export default function ContributorLayout() {
       {/* Top bar */}
       <header className="sticky top-0 z-20 bg-white dark:bg-night-surface border-b border-border dark:border-night-border h-14 flex items-center px-4 sm:px-6 gap-4">
         {/* Brand */}
-        <Link to={newsletterPath('/')} className="flex items-baseline gap-2 focus-visible:rounded">
+        <Link to={newsletterPath('/')} className="flex items-baseline gap-2 focus-visible:rounded-sm">
           <span className="font-display text-h5 font-bold text-primary">ITBA News</span>
           <span className="font-mono text-label text-accent-500 uppercase tracking-widest hidden sm:inline">
             {t('contributor.brand')}
@@ -152,7 +152,7 @@ export default function ContributorLayout() {
                               </p>
                             </div>
                             {!n.read && (
-                              <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-1" />
+                              <span className="w-2 h-2 rounded-full bg-accent shrink-0 mt-1" />
                             )}
                           </div>
                         </Link>
@@ -181,7 +181,7 @@ export default function ContributorLayout() {
       </header>
 
       {/* Page content */}
-      <main id="main-content" className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1120px] mx-auto w-full">
+      <main id="main-content" className="flex-1 p-4 sm:p-6 lg:p-8 max-w-content mx-auto w-full">
         <Outlet />
       </main>
     </div>
@@ -199,7 +199,7 @@ function ContribNavLink({ to, children }: ContribNavLinkProps) {
       to={to}
       end={to === newsletterPath('/contribute')}
       className={({ isActive }) => [
-        'inline-flex items-center min-h-[44px] px-3 rounded-sm font-body text-body-sm font-semibold transition-colors duration-150',
+        'inline-flex items-center min-h-[44px] px-3 rounded-xs font-body text-body-sm font-semibold transition-colors duration-150',
         isActive
           ? 'bg-primary-50 dark:bg-primary-800 text-primary'
           : 'text-ink-secondary hover:text-ink-primary hover:bg-surface dark:hover:bg-night-bg',
@@ -217,20 +217,20 @@ interface NotifIconProps {
 function NotifIcon({ type }: NotifIconProps) {
   if (type === 'approved') {
     return (
-      <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
+      <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center shrink-0">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-emerald-600 dark:text-emerald-400" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
       </span>
     )
   }
   if (type === 'rejected') {
     return (
-      <span className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center flex-shrink-0">
+      <span className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-600 dark:text-red-400" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </span>
     )
   }
   return (
-    <span className="w-6 h-6 rounded-full bg-accent-100 dark:bg-accent-900 flex items-center justify-center flex-shrink-0">
+    <span className="w-6 h-6 rounded-full bg-accent-100 dark:bg-accent-900 flex items-center justify-center shrink-0">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-amber-600 dark:text-amber-400" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     </span>
   )

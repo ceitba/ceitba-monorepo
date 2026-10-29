@@ -206,7 +206,7 @@ function SetsPanel({ sets }: { sets: ReturnType<typeof useLoad<Awaited<ReturnTyp
       actions={!creating && !sets.unavailable ? <Button variant="outline" size="sm" onClick={() => setCreating(true)}>{t('manage.wikiAi.evals.newSet')}</Button> : undefined}
     >
       {creating && (
-        <div className="flex flex-col gap-3 mb-4 p-3 rounded-sm border border-border dark:border-night-border">
+        <div className="flex flex-col gap-3 mb-4 p-3 rounded-xs border border-border dark:border-night-border">
           <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{t('manage.wikiAi.evals.frozenHint')}</p>
           <Field label={t('manage.wikiAi.evals.setName')}>
             {(p) => <input {...p} value={name} onChange={(e) => setName(e.target.value)} className={inputClass()} />}
@@ -343,7 +343,7 @@ function NewEvalPanel({ sets, models, disabled, onCreated }: {
             )}
           </Field>
           {configs.map((c, i) => (
-            <fieldset key={i} className="grid grid-cols-[auto_1fr_auto] items-start gap-2 p-2 rounded-sm border border-border dark:border-night-border min-w-0">
+            <fieldset key={i} className="grid grid-cols-[auto_1fr_auto] items-start gap-2 p-2 rounded-xs border border-border dark:border-night-border min-w-0">
               <legend className="sr-only">{t('manage.wikiAi.evals.config', { n: i + 1 })}</legend>
               <span className="font-display font-bold text-h5 self-center w-6 text-center" aria-hidden="true">{String.fromCharCode(65 + i)}</span>
               <div className="flex flex-col gap-2 min-w-0">
@@ -653,7 +653,7 @@ function ConfigsProgress({ configs }: { configs: EvalConfigResult[] }) {
                   className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-body text-label ${SUBJECT_TONE[status] ?? 'bg-accent-50 text-accent-800 border-accent-200 dark:bg-accent-900/30 dark:text-accent-200 dark:border-accent-800'}`}
                 >
                   <span className="font-mono">{s.subjectId}</span>
-                  {s.subjectName && <span className="max-w-[12rem] truncate">{s.subjectName}</span>}
+                  {s.subjectName && <span className="max-w-48 truncate">{s.subjectName}</span>}
                   <span>{t(`manage.wikiAi.progress.subject.${status}`, { defaultValue: t('manage.wikiAi.status.other') })}</span>
                   {pages && <span className="opacity-80">· {pages}</span>}
                 </li>

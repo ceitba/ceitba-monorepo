@@ -32,7 +32,7 @@ export default function Switch({
         <span className="leading-snug">{label}</span>
         <span
           aria-hidden="true"
-          className={`relative inline-flex flex-shrink-0 w-10 h-6 rounded-full transition-colors duration-150 ${
+          className={`relative inline-flex shrink-0 w-10 h-6 rounded-full transition-colors duration-150 ${
             checked ? 'bg-primary dark:bg-primary-400' : 'bg-border dark:bg-night-border'
           }`}
         >

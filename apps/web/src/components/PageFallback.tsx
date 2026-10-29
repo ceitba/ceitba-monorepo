@@ -4,7 +4,7 @@ import { LoadingRegion, Skeleton, SkeletonCards } from './ui'
 // the pages show while their data loads.
 export default function PageFallback() {
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <LoadingRegion className="flex flex-col gap-4">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-10 w-2/3" />

@@ -171,7 +171,32 @@
       "addOrgTitle": "Sumar a {{name}} a una organización",
       "addOrgField": "Organización",
       "addOrgHint": "Entra como miembro. Después podés hacerlo admin desde su fila.",
-      "addOrgConfirm": "Sumar"
+      "addOrgConfirm": "Sumar",
+      "invites": {
+        "open": "Invitar por email",
+        "title": "Invitar a {{org}} por email",
+        "emailsLabel": "Emails",
+        "emailsHint": "Uno por línea o separados por comas. Quien ya entró al sitio se suma al instante; el resto, cuando inicie sesión por primera vez.",
+        "roleLabel": "Rol",
+        "submit_one": "Invitar a {{count}}",
+        "submit_other": "Invitar a {{count}}",
+        "done": "Listo: {{added}} sumados, {{pending}} pendientes de su primer inicio de sesión.",
+        "invalidEmails": "Algún email no es válido o no puede entrar al sitio.",
+        "tooMany": "Podés invitar hasta {{max}} emails por vez.",
+        "pendingTitle_one": "{{count}} invitación pendiente a {{org}}",
+        "pendingTitle_other": "{{count}} invitaciones pendientes a {{org}}",
+        "pendingHint": "Se suman a la organización la primera vez que inicien sesión.",
+        "revokeAria": "Cancelar la invitación de {{email}} a {{org}}",
+        "revoked": "Cancelaste la invitación de {{email}} a {{org}}.",
+        "notFound": "{{email}} todavía no entró al sitio",
+        "notFoundHint": "Invitalo y se suma a {{org}} la primera vez que inicie sesión.",
+        "inviteOne": "Invitar a {{email}}",
+        "alreadyMembers": "Ya eran miembros de la organización.",
+        "loadFailed": "No pudimos cargar las invitaciones pendientes de {{org}}",
+        "revokeTitle": "¿Cancelar la invitación?",
+        "revokeBody": "{{email}} ya no se sumará a {{org}} cuando inicie sesión. Podés volver a invitarlo.",
+        "revokeConfirm": "Sí, cancelar invitación"
+      }
     },
     "organizations": {
       "intro": "Las organizaciones estudiantiles que aparecen en ITBA News. Cuando creás una, sus admins pueden completar el logo y la portada desde ITBA News.",
@@ -341,6 +366,34 @@
       "grantsLoadFailed": "No pudimos cargar los accesos de esta capacidad.",
       "emptyHint": "Acá van a aparecer las funciones en prueba que podés habilitar para todos o para personas y organizaciones puntuales."
     },
+    "careers": {
+      "intro": "Las carreras y planes que los estudiantes eligen al registrarse. ITBA no publica este listado, así que lo cargamos acá; las materias de cada plan llegan solas en la próxima sincronización. Los códigos no se pueden cambiar una vez creados.",
+      "newCareer": "Nueva carrera",
+      "newPlan": "Agregar plan",
+      "create": "Crear",
+      "loadFailed": "No pudimos cargar las carreras.",
+      "empty": "Todavía no hay carreras",
+      "emptyHint": "Creá la primera con «Nueva carrera».",
+      "idLabel": "Código {{id}}",
+      "planCount_one": "{{count}} plan",
+      "planCount_other": "{{count}} planes",
+      "renameCareerAria": "Editar la carrera {{name}}",
+      "newPlanAria": "Agregar plan a {{name}}",
+      "renamePlanAria": "Editar el plan {{id}}",
+      "renameCareerTitle": "Editar carrera {{id}}",
+      "newPlanTitle": "Nuevo plan de {{name}}",
+      "renamePlanTitle": "Editar plan {{id}}",
+      "idField": "Código",
+      "nameField": "Nombre",
+      "careerIdHint": "Hasta 25 caracteres, p. ej. «S». No se puede cambiar después.",
+      "planIdHint": "Escribilo exactamente como lo usa ITBA (p. ej. «S10-Rev23»): si no coincide, la sincronización no encuentra sus materias. No se puede cambiar después.",
+      "planNameHint": "Opcional: si lo dejás vacío se usa el código.",
+      "careerCreated": "Creamos la carrera {{name}}.",
+      "planCreated": "Agregamos el plan {{id}}. Sus materias llegan en la próxima sincronización.",
+      "saved": "Guardamos los cambios.",
+      "careerIdTaken": "Ya existe una carrera con el código {{id}}.",
+      "planIdTaken": "Ya existe un plan con el código {{id}} (en esta u otra carrera)."
+    },
     "errors": {
       "generic": "No pudimos completar la acción. Probá de nuevo en un rato.",
       "network": "No hay conexión con el servidor. Revisá tu conexión y probá de nuevo.",
@@ -384,6 +437,9 @@
       "organizations": {
         "label": "Organizaciones"
       },
+      "careers": {
+        "label": "Carreras y planes"
+      },
       "corrections": {
         "label": "Correcciones de horario"
       },
@@ -417,7 +473,8 @@
         "source": "Carpeta de Drive",
         "fileReview": "Archivo para revisar",
         "fileReported": "Archivo denunciado",
-        "wiki": "Wiki IA"
+        "wiki": "Wiki IA",
+        "review": "Reseña oculta"
       },
       "sources": {
         "articles": "artículos",
@@ -425,6 +482,7 @@
         "sources": "carpetas de Drive",
         "needsReview": "archivos para revisar",
         "reported": "archivos denunciados",
+        "hiddenReviews": "opiniones ocultas",
         "wiki": "Wiki IA"
       },
       "sourceFailed": "No pudimos cargar: {{sources}}. Lo demás está al día.",
@@ -481,7 +539,9 @@
         "benefit": "Nueva tarjeta de beneficio",
         "org": "Sumar a alguien a una organización",
         "staff": "Dar acceso de staff"
-      }
+      },
+      "reviewReportedMeta_one": "{{comment}} · {{term}} · {{count}} denuncia: {{reason}}",
+      "reviewReportedMeta_other": "{{comment}} · {{term}} · {{count}} denuncias: {{reason}}"
     }
   },
   "profile": {

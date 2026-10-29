@@ -290,7 +290,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
             <legend className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted mb-1.5">
               {t('scheduler.overlapLabel')}
             </legend>
-            <div className="inline-flex flex-wrap rounded-sm border border-border dark:border-night-border overflow-hidden">
+            <div className="inline-flex flex-wrap rounded-xs border border-border dark:border-night-border overflow-hidden">
               {OVERLAP_MODES.map((mode) => (
                 <label key={mode} className="cursor-pointer border-r last:border-r-0 border-border dark:border-night-border">
                   <input
@@ -393,7 +393,7 @@ export const SchedulerPreview: React.FC<SchedulerPreviewProps> = ({
             <>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="flex items-center gap-2 font-body text-body-sm text-ink-secondary dark:text-night-muted">
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${liveConflictCount > 0 ? 'bg-amber-500' : 'bg-primary'}`} aria-hidden="true" />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${liveConflictCount > 0 ? 'bg-amber-500' : 'bg-primary'}`} aria-hidden="true" />
                   {liveConflictCount > 0
                     ? t('scheduler.livePreviewConflicts', { count: liveConflictCount })
                     : t('scheduler.livePreviewHint')}

@@ -50,7 +50,7 @@ export default function HomeBenefitsPreview() {
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className="w-10 h-10 rounded-card flex items-center justify-center text-primary-800 flex-shrink-0"
+                      className="w-10 h-10 rounded-card flex items-center justify-center text-primary-800 shrink-0"
                       style={{ backgroundColor: `var(${cat.colorVar})` }}
                     >
                       <BenefitIcon slug={cat.slug} size={22} />

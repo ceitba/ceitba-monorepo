@@ -1,11 +1,15 @@
 # The API, shared by its two colors below (blue/green, docs/DEPLOY.md).
 x-api: &api
-  image: ghcr.io/ceitba/ceitba-api:latest
+  # API_IMAGE pins a tag: the rollback to the last Java build is
+  # API_IMAGE=ghcr.io/ceitba/ceitba-api:main-<sha> in .env (docs/DEPLOY.md "Rollback").
+  image: ${API_IMAGE:-ghcr.io/ceitba/ceitba-api:latest}
+  # Local builds only (the VPS pulls the image): the Bun image is built from the
+  # repo root, since it needs the workspace's bun.lock.
   build:
-    context: .
-    dockerfile: infrastructure/docker/Dockerfile
-  # Graceful shutdown (server.shutdown=graceful): a deploy lets the digest
-  # email in flight finish; Docker's default 10s would SIGKILL it first.
+    context: ../..
+    dockerfile: apps/api/Dockerfile
+  # Graceful shutdown (src/main.ts): a deploy lets the digest email in flight
+  # finish; Docker's default 10s would SIGKILL it first.
   stop_grace_period: 90s
   # No container_name and no published port: two colors run side by side
   # during a deploy, and Caddy reaches them by service name over the
@@ -16,7 +20,7 @@ x-api: &api
     # On stop, refuse traffic on /actuator/health/readiness and keep serving
     # this long before the graceful shutdown: more than Caddy's
     # health_interval + health_timeout (2s + 2s), so traffic has moved to the
-    # other color first (config/ShutdownDrain).
+    # other color first (src/main.ts).
     SHUTDOWN_DRAIN: ${SHUTDOWN_DRAIN:-PT5S}
     DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ceitba_db}
     POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -109,7 +113,7 @@ x-api: &api
     KB_LLM_REQUEST_TIMEOUT: ${KB_LLM_REQUEST_TIMEOUT:-PT5M}
     # Wiki page embeddings (docs/SUBJECT-WIKI.md "Embeddings"): the self-hosted
     # ceitba-embeddings service below. The fake falls back to the LLM one here (an
-    # empty env var would not fall through Spring's default).
+    # empty env var would not fall through the app's default).
     KB_EMBEDDINGS_ENABLED: ${KB_EMBEDDINGS_ENABLED:-true}
     KB_EMBEDDING_BASE_URL: ${KB_EMBEDDING_BASE_URL:-http://ceitba-embeddings:8080/v1}
     KB_EMBEDDING_API_KEY: ${KB_EMBEDDING_API_KEY:-}
@@ -160,10 +164,9 @@ x-api: &api
     DIGEST_JOBS_ENABLED: ${DIGEST_JOBS_ENABLED:-true}
     RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY:-60}
     RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD: ${RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD:-1m}
-    # Heap = 75% of the container limit (~1.5 GB of 2G; the JVM default of
-    # 25% gave ~256 MB). A real OOM exits so restart: unless-stopped brings
-    # the API back instead of leaving it half-broken.
-    JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    # Rollback to a Java image only (docs/DEPLOY.md "Rollback"): the JVM's heap
+    # flags, ignored by the Bun server. Empty by default.
+    JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
   networks:
     - ceitba-network
     - ceitba-proxy
@@ -172,21 +175,29 @@ x-api: &api
       condition: service_healthy
     minio-init:
       condition: service_completed_successfully
+  # A crash or an OOM kill exits the process: unless-stopped brings it back.
   restart: unless-stopped
+  # The Bun server idles at ~100 MB (the JVM needed a 2G limit for its
+  # heap); 1G leaves room for the Drive sync and wiki pipeline peaks (PDF text
+  # extraction, LLM payloads) and keeps both colors within the VPS during a
+  # deploy. Docker kills the container above the limit and restarts it. A
+  # rollback to a Java image raises both (docs/DEPLOY.md "Rollback").
   deploy:
     resources:
       limits:
-        memory: 2G
+        memory: ${API_MEMORY_LIMIT:-1G}
       reservations:
-        memory: 1G
+        memory: ${API_MEMORY_RESERVATION:-256M}
   # infra/scripts/deploy-api.sh waits for "healthy" before switching colors:
-  # a short interval keeps that wait close to the real boot time.
+  # a short interval keeps that wait close to the real boot time (about a
+  # second plus pending migrations; start_period covers a slow migration).
+  # wget is busybox's, in the alpine image.
   healthcheck:
     test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health || exit 1"]
     interval: 5s
     timeout: 5s
     retries: 3
-    start_period: 180s
+    start_period: ${API_HEALTH_START_PERIOD:-60s}
 
 services:
   postgres:
@@ -194,7 +205,7 @@ services:
     # postgres:16-alpine is safe on the existing volume (same PG16 format; the
     # entrypoint re-chowns the data dir) and V60 rebuilds the text indexes for
     # the glibc collation.
-    image: pgvector/pgvector:0.8.6-pg16-bookworm@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+    image: pgvector/pgvector:0.8.7-pg16-bookworm@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
     container_name: ceitba-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ceitba_db}
@@ -387,7 +398,7 @@ services:
   # Blue/green: a deploy (infra/scripts/deploy-api.sh) starts the idle color,
   # waits until it is healthy, then stops the other one. Caddy health-checks
   # both and only sends traffic to a healthy one, so the API never goes down
-  # while Spring boots and Flyway migrates. While both run, every @Scheduled
+  # while the new color boots and migrates. While both run, every scheduled
   # job takes a Postgres advisory lock (JobLock) so it runs once.
   ceitba-api-blue:
     <<: *api

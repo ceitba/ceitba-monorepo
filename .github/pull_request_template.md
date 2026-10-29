@@ -1,6 +1,6 @@
 <!--
 Title: Conventional Commits, e.g. "fix(scheduler): keep blocked times on reload" (CI checks it).
-Target: dev. Coding agents: the `pr` skill writes this body; keep these headings.
+Target: main (merge queue). Coding agents: the `pr` skill writes this body; keep these headings.
 -->
 
 Closes #

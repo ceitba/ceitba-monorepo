@@ -26,7 +26,7 @@ function SectionLinks({ className, linkClassName }: { className: string; linkCla
           key={to}
           to={to}
           className={({ isActive }) =>
-            `${linkClassName} min-h-[44px] inline-flex items-center flex-shrink-0 font-mono text-label uppercase tracking-wide md:tracking-widest transition-colors duration-150 border-b-2 ${
+            `${linkClassName} min-h-[44px] inline-flex items-center shrink-0 font-mono text-label uppercase tracking-wide md:tracking-widest transition-colors duration-150 border-b-2 ${
               isActive
                 ? 'text-primary border-accent'
                 : 'text-ink-secondary dark:text-night-muted hover:text-primary border-transparent'
@@ -56,11 +56,11 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-surface/95 dark:bg-night-bg/95 backdrop-blur-sm border-b border-border dark:border-night-border">
+      <header className="sticky top-0 z-40 bg-surface/95 dark:bg-night-bg/95 backdrop-blur-xs border-b border-border dark:border-night-border">
         <div className="h-[3px] bg-primary" aria-hidden="true" />
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-sm"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-xs"
         >
           {t('nav.skipToContent')}
         </a>
@@ -82,7 +82,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleLanguage}
-              className="min-h-[44px] min-w-[44px] px-2 rounded-sm font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
+              className="min-h-[44px] min-w-[44px] px-2 rounded-xs font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted hover:text-primary transition-colors duration-150"
               aria-label={t('nav.langToggleAria')}
             >
               {t('nav.langToggleLabel')}

@@ -22,7 +22,7 @@ export default function AuthGuard({ children }: { children: ReactElement }) {
   const devLogin = import.meta.env.DEV && import.meta.env.VITE_DEV_LOGIN === 'true'
 
   return (
-    <main id="main-content" tabIndex={-1} className="outline-none container-content py-section-mobile lg:py-section">
+    <main id="main-content" tabIndex={-1} className="outline-hidden container-content py-section-mobile lg:py-section">
       <EmptyState
         title={<span role="heading" aria-level={1}>{t('authGuard.title')}</span>}
         body={t('authGuard.body')}

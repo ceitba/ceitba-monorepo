@@ -70,8 +70,8 @@ curl -sS -X POST "https://<host>/api/v1/sync/import/firestore?dryRun=true" \
 
 The import is idempotent: re-running it updates rows in place and never
 duplicates them. Mapping rules are documented in
-`src/main/java/org/ceitba/api/service/sync/FirestoreImportService.java`
-(users, benefits) and `ProposalFirestoreImporter.java` (proposals).
+`src/features/sync/firestoreImport.ts` (users, benefits; the proposals
+importer sits next to it).
 
 `propuestas` go into the proposals board: `authorized` 0/1/2 becomes
 PENDING/APPROVED/REJECTED, `status` the lifecycle, `votes` the up/down

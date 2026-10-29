@@ -13,6 +13,7 @@ import CodeBlockView from './CodeBlockView'
 import EditorToolbar from './EditorToolbar'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, uploadViaSignedUrl } from '../../../api/media'
 import { looksLikeMarkdown } from '../../../utils/articleBody'
+import { POLL_FENCE_LANGUAGE, pollFence } from '../../../api/engagement'
 import { ApiError } from '@/api/client'
 import { Alert } from '@/components/ui'
 
@@ -90,6 +91,8 @@ interface RichTextEditorProps {
   // Endpoint that signs image uploads; null = images by URL only.
   signPath: string | null
   invalid?: boolean
+  // Filled with a function that inserts a ```poll block at the cursor.
+  insertPollRef?: { current: ((pollId: string) => void) | null }
 }
 
 // WYSIWYG article body editor. The document is Markdown in and out
@@ -101,7 +104,7 @@ interface RichTextEditorProps {
 // like Markdown is parsed as Markdown. Images can be pasted, dropped or
 // picked — uploaded when the user may upload (staff, or a member of the
 // article's organization), otherwise by URL.
-export default function RichTextEditor({ value, onChange, signPath, invalid }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, signPath, invalid, insertPollRef }: RichTextEditorProps) {
   const canUpload = signPath !== null
   const { t } = useTranslation()
   const [mode, setMode] = useState<'visual' | 'markdown'>('visual')
@@ -114,6 +117,8 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
   const placeholderRef = useRef(t('editor.placeholder'))
   placeholderRef.current = t('editor.placeholder')
   const sourceAtToggleRef = useRef('')
+  const sourceRef = useRef<HTMLTextAreaElement>(null)
+  const sourceFocusedRef = useRef(false)
 
   async function uploadImages(files: File[]) {
     const editor = editorRef.current
@@ -209,6 +214,22 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
     if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr)
   }, [editor, t])
 
+  useEffect(() => {
+    if (!insertPollRef) return
+    insertPollRef.current = (pollId) => {
+      if (mode === 'markdown') {
+        // At the textarea's caret once it had focus (a fresh textarea reports 0), else at the end; on its own lines.
+        const at = sourceFocusedRef.current ? sourceRef.current?.selectionStart ?? source.length : source.length
+        const next = `${source.slice(0, at).trimEnd()}\n\n${pollFence(pollId)}\n\n${source.slice(at).trimStart()}`
+        setSource(next)
+        onChangeRef.current(next)
+        return
+      }
+      editor?.chain().focus().insertContent({ type: 'codeBlock', attrs: { language: POLL_FENCE_LANGUAGE }, content: [{ type: 'text', text: pollId }] }).run()
+    }
+    return () => { insertPollRef.current = null }
+  }, [insertPollRef, editor, mode, source])
+
   const counts = useEditorState({
     editor,
     selector: ({ editor: ed }) => {
@@ -222,6 +243,7 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
     if (mode === 'visual') {
       const md = editor.getMarkdown()
       sourceAtToggleRef.current = md
+      sourceFocusedRef.current = false
       setSource(md)
       setMode('markdown')
     } else {
@@ -251,11 +273,13 @@ export default function RichTextEditor({ value, onChange, signPath, invalid }: R
         <div className="px-5 sm:px-8 py-6">
           <p className="mb-3 font-mono text-label text-ink-secondary dark:text-night-muted">{t('editor.markdownHint')}</p>
           <textarea
+            ref={sourceRef}
+            onFocus={() => { sourceFocusedRef.current = true }}
             value={source}
             onChange={(e) => { setSource(e.target.value); onChangeRef.current(e.target.value) }}
             spellCheck
             aria-label={t('editor.markdownSource')}
-            className="w-full min-h-[28rem] font-mono text-body-sm text-ink-primary dark:text-night-text bg-transparent focus:outline-none resize-y"
+            className="w-full min-h-112 font-mono text-body-sm text-ink-primary dark:text-night-text bg-transparent focus:outline-hidden resize-y"
           />
         </div>
       )}

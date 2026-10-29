@@ -142,9 +142,9 @@ export default function CitationMarker({ fileId, n, label, section, source }: Pr
             <span className="font-mono text-label text-ink-secondary dark:text-night-muted mt-0.5">[{n}]</span>
             {source && <KindIcon kind={source.kind} size={16} className="mt-0.5" />}
             <div className="min-w-0">
-              <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text break-words">{name}</p>
+              <p className="font-body text-body-sm font-semibold text-ink-primary dark:text-night-text wrap-break-word">{name}</p>
               {label && source?.name && label !== source.name && (
-                <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted break-words">{source.name}</p>
+                <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted wrap-break-word">{source.name}</p>
               )}
               {community ? (
                 <p className="mt-0.5"><CommunityBadge year={source?.academicYear} /></p>

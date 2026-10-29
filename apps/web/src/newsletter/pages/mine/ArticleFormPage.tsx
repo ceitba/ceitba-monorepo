@@ -18,6 +18,8 @@ import ArticleLivePreview from '../../components/admin/ArticleLivePreview'
 import ArticleStatusBadge from '../../components/admin/ArticleStatusBadge'
 import AdminSectionHeader from '../../components/admin/AdminSectionHeader'
 import RichTextEditor from '../../components/admin/editor/RichTextEditor'
+import EngagementSettings from '../../components/engagement/EngagementSettings'
+import { EditorArticleContext } from '../../components/engagement/editorArticle'
 import { useAdminContext } from '../../admin/adminContext'
 import { formatDate } from '../../utils/dates'
 import { bodyToMarkdown, markdownToPlainText, readingTimeFor } from '../../utils/articleBody'
@@ -165,6 +167,7 @@ export default function ArticleFormPage() {
   const [doneStatus, setDoneStatus]   = useState<ArticleStatus | null>(null) // 'published' | 'pending_review' once sent
   const [apiError, setApiError]       = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
+  const insertPollRef = useRef<((pollId: string) => void) | null>(null)
 
   // The session can arrive after the page mounted: default the byline to
   // whoever is writing, unless they already typed authors.
@@ -434,7 +437,7 @@ export default function ArticleFormPage() {
   const signPath = staff ? STAFF_SIGN_PATH
     : form.organization && allowedSlugs.has(form.organization) ? orgSignPath(form.organization)
     : null
-  const previewArticle = { ...form, readingTime, id: 'preview', body: [form.body] }
+  const previewArticle = { ...form, readingTime, id: articleId, body: [form.body] }
   const errorCount = Object.keys(errors).length
 
   const primaryAction = moderated
@@ -516,7 +519,7 @@ export default function ArticleFormPage() {
               placeholder={t('admin.articleForm.titlePlaceholder')}
               ariaLabel={t('admin.articleForm.title')}
               invalid={Boolean(errors.title)}
-              className="font-display text-h3 sm:text-h2 font-bold text-ink-primary dark:text-night-text leading-tight"
+              className="font-display text-h3 sm:text-h2 sm:font-extrabold sm:leading-[1.15] font-bold text-ink-primary dark:text-night-text leading-tight"
             />
             {errors.title && <FieldError>{errors.title}</FieldError>}
           </div>
@@ -548,19 +551,22 @@ export default function ArticleFormPage() {
           </p>
 
           <div data-field="body">
-            <RichTextEditor
-              key={editorKey}
-              value={form.body}
-              onChange={(md) => set('body', md)}
-              signPath={signPath}
-              invalid={Boolean(errors.body)}
-            />
+            <EditorArticleContext value={articleId}>
+              <RichTextEditor
+                key={editorKey}
+                value={form.body}
+                onChange={(md) => set('body', md)}
+                signPath={signPath}
+                invalid={Boolean(errors.body)}
+                insertPollRef={insertPollRef}
+              />
+            </EditorArticleContext>
             {errors.body && <FieldError>{errors.body}</FieldError>}
           </div>
         </div>
 
         {/* Settings */}
-        <aside className="lg:w-80 flex-shrink-0 flex flex-col gap-4 lg:sticky lg:top-24">
+        <aside className="lg:w-80 shrink-0 flex flex-col gap-4 lg:sticky lg:top-24">
           <SidebarCard title={t('admin.articleForm.publication')}>
             <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted leading-relaxed mb-3">
               {statusHelp}
@@ -604,6 +610,10 @@ export default function ArticleFormPage() {
                 />
               )}
             </div>
+          </SidebarCard>
+
+          <SidebarCard title={t('engagement.editor.cardTitle')}>
+            <EngagementSettings articleId={articleId} onInsert={(pollId) => insertPollRef.current?.(pollId)} />
           </SidebarCard>
 
           <SidebarCard title={t('admin.articleForm.byline')}>
@@ -659,7 +669,7 @@ export default function ArticleFormPage() {
                       aria-label={t(`admin.colors.${value}`)}
                       aria-pressed={form.colorScheme === value}
                       className={[
-                        'h-11 rounded-sm transition-shadow duration-150 relative',
+                        'h-11 rounded-xs transition-shadow duration-150 relative',
                         bg,
                         form.colorScheme === value ? 'ring-2 ring-offset-2 ring-primary dark:ring-primary-300 dark:ring-offset-night-surface' : '',
                       ].join(' ')}
@@ -742,17 +752,17 @@ function AuthorsInput({ inputProps, value, onChange, invalid }: AuthorsInputProp
 
   return (
     <div className={[
-      'flex flex-wrap items-center gap-1.5 p-1.5 border rounded-sm bg-white dark:bg-night-surface',
+      'flex flex-wrap items-center gap-1.5 p-1.5 border rounded-xs bg-white dark:bg-night-surface',
       invalid ? 'border-red-400 dark:border-red-500' : 'border-border dark:border-night-border focus-within:border-primary',
     ].join(' ')}>
       {value.map((name) => (
-        <span key={name} className="inline-flex items-center gap-0.5 pl-2 rounded-sm bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 font-body text-body-sm">
+        <span key={name} className="inline-flex items-center gap-0.5 pl-2 rounded-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-200 font-body text-body-sm">
           {name}
           <button
             type="button"
             onClick={() => onChange(value.filter((a) => a !== name))}
             aria-label={t('admin.articleForm.removeAuthor', { name })}
-            className={iconButtonClass({ size: 'sm', className: '!text-current hover:!bg-primary-100 dark:hover:!bg-primary-800' })}
+            className={iconButtonClass({ size: 'sm', className: 'text-current! hover:bg-primary-100! dark:hover:bg-primary-800!' })}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -769,7 +779,7 @@ function AuthorsInput({ inputProps, value, onChange, invalid }: AuthorsInputProp
         }}
         onBlur={add}
         placeholder={value.length ? t('admin.articleForm.addAuthor') : t('admin.articleForm.authorPlaceholder')}
-        className="flex-1 min-w-[8rem] min-h-[36px] px-1.5 font-body text-body-sm text-ink-primary dark:text-night-text placeholder:text-ink-secondary dark:placeholder:text-night-muted bg-transparent focus:outline-none"
+        className="flex-1 min-w-32 min-h-[36px] px-1.5 font-body text-body-sm text-ink-primary dark:text-night-text placeholder:text-ink-secondary dark:placeholder:text-night-muted bg-transparent focus:outline-hidden"
       />
     </div>
   )
@@ -801,7 +811,7 @@ function AutoGrowTextarea({ value, onChange, placeholder, ariaLabel, invalid, cl
       placeholder={placeholder}
       aria-label={ariaLabel}
       aria-invalid={invalid || undefined}
-      className={['w-full resize-none overflow-hidden bg-transparent border-0 p-0 focus:outline-none focus:ring-0 placeholder:text-ink-secondary/60 dark:placeholder:text-night-muted/70', className].join(' ')}
+      className={['w-full resize-none overflow-hidden bg-transparent border-0 p-0 focus:outline-hidden focus:ring-0 placeholder:text-ink-secondary/60 dark:placeholder:text-night-muted/70', className].join(' ')}
     />
   )
 }

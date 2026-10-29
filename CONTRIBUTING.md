@@ -4,13 +4,14 @@
 
 1. Find or open an issue. Features, schema changes, auth changes and cross-app changes need a spec issue first
    (`docs/agents/workflow.md` explains when and how; coding agents run it with the bundled skills).
-2. Branch from `dev`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>`.
+2. Branch from `main`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>`.
 3. Commit with Conventional Commits: `type(scope): imperative summary`, e.g. `fix(scheduler): keep blocked times
    on reload`. Scopes: `api`, `web`, `scheduler`, `newsletter`, `infra`, `ci`, `deps`, `agents` or a feature area.
-4. Open the PR into `dev` with a Conventional Commits title and the PR template filled in. Update the living docs
+4. Open the PR into `main` with a Conventional Commits title and the PR template filled in. Update the living docs
    (`docs/agents/spec-map.json`) in the same PR, or explain why there is no spec impact.
-5. Feature PRs merge into `dev` with a merge commit. Releases are one reviewed `dev` → `main` PR; every push to
-   `main` deploys the apps it changed.
+5. A reviewed PR merges into `main` through the merge queue ("Merge when ready"), with a merge commit; every merge
+   into `main` deploys the apps it changed, so list its deploy risks first (the `release` skill). There is no `dev`
+   branch.
 
 ## Local checks
 
@@ -23,15 +24,16 @@
 | pre-push | `bun run check` (locales, migrations, workflows, agents; living docs as a warning) |
 
 CI runs the same scripts, so skipping a hook only moves the failure to the PR. The API tests are not in a hook
-(they need Docker and take minutes): run `./mvnw -B -ntp verify` in `apps/api` before pushing API changes.
+(they need Docker and take a minute): run `bun run test && bun contract/run.ts` in `apps/api` before pushing API
+changes.
 
 ## PR checks
 
 `.github/workflows/pr-checks.yml` runs on every PR: the repo checks above, the PR title as a Conventional Commit,
-the living-docs check (into `dev` only, skipped for Dependabot; tick "No spec impact" with a reason on the same line
-to opt out) and a gitleaks scan of the PR's commits. Editing the title or body reruns only the title and living-docs
+the living-docs check (skipped for
+Dependabot; tick "No spec impact" with a reason on the same line to opt out) and a gitleaks scan of the PR's commits. Editing the title or body reruns only the title and living-docs
 checks. `ci.yml` still runs lint + build for the web app
-and the API tests when they are touched. Dependabot opens grouped weekly updates against `dev`; security updates go to `main`.
+and the API tests when they are touched. Dependabot opens grouped weekly updates (one group for the whole bun workspace) and security updates against `main`.
 
 ## Coding standards
 

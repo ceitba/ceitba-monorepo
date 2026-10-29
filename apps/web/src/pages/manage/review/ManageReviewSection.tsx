@@ -10,6 +10,7 @@ import {
   type StaffFile, type StaffSource,
 } from '../../../api/drive'
 import type { KbRun } from '../../../api/kbAdmin'
+import { deleteHiddenReview, restoreHiddenReview, type StaffReview } from '../../../api/reviews'
 import { isBlockedStatus } from '../../../api/kbAdmin'
 import type { Article } from '../../../newsletter/types'
 import { articleEditPath } from '../../../newsletter/paths'
@@ -311,6 +312,48 @@ export default function ManageReviewSection() {
     for (const f of data.needsReview) list.push(fileRow(f, 'needsReview'))
     for (const f of data.reported) list.push(fileRow(f, 'reported'))
 
+    // Subject reviews hidden by reports: restore right here, delete asks.
+    for (const r of data.hiddenReviews as StaffReview[]) {
+      const first = [...r.reports].sort((a, b) => ms(a.createdAt) - ms(b.createdAt))[0]
+      const subject = r.subjectName
+      const term = t('apuntes.reviews.term', { period: r.period, year: r.year })
+      const row: Row = {
+        key: `review-${r.id}`,
+        id: r.id,
+        source: 'hiddenReviews',
+        kind: 'apuntes',
+        typeLabel: t('manage.review.types.review'),
+        title: `${subject} · ${t('apuntes.reviews.commission', { commission: r.commission })}`,
+        meta: t('manage.review.reviewReportedMeta', {
+          comment: r.comment?.trim() ? `“${r.comment.trim().slice(0, 120)}”` : t('manage.drive.reviews.noComment'),
+          term,
+          count: r.reportCount,
+          reason: first ? t(`apuntes.report.reasons.${first.reason}`) : '',
+        }),
+        at: first ? ms(first.createdAt) : ms(r.updatedAt),
+        primary: { label: t('manage.drive.reviews.restore') },
+        secondary: { label: t('manage.drive.reviews.delete') },
+      }
+      row.primary.run = () => decide(row, async () => {
+        await restoreHiddenReview(r.id)
+        queue.remove('hiddenReviews', r.id)
+        toast.success(t('manage.drive.reviews.restored', { subject }))
+      }, apuntesErr)
+      row.secondary!.run = () => ask({
+        row,
+        title: t('manage.drive.reviews.deleteTitle'),
+        body: t('manage.drive.reviews.deleteBody', { subject, term, commission: r.commission }),
+        confirmLabel: t('manage.drive.reviews.deleteConfirm'),
+        work: async () => {
+          await deleteHiddenReview(r.id)
+          queue.remove('hiddenReviews', r.id)
+          toast.success(t('manage.drive.reviews.deleted', { subject }))
+        },
+        onError: apuntesErr,
+      })
+      list.push(row)
+    }
+
     // Wiki IA decisions need the cost context of the Wiki IA area: the row
     // says what's waiting and opens it there.
     for (const r of data.wikiRuns as KbRun[]) {
@@ -412,7 +455,7 @@ export default function ManageReviewSection() {
               >
                 <div className="flex-[1_1_320px] min-w-0 flex flex-col gap-1.5">
                   <Badge tone={KIND_TONE[r.kind]} className="self-start">{r.typeLabel}</Badge>
-                  <p className="font-body font-semibold text-body text-ink-primary dark:text-night-text leading-snug break-words">{r.title}</p>
+                  <p className="font-body font-semibold text-body text-ink-primary dark:text-night-text leading-snug wrap-break-word">{r.title}</p>
                   <p className="font-body text-body-sm text-ink-secondary dark:text-night-muted">{r.meta}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">

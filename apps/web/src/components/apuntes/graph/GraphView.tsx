@@ -523,7 +523,7 @@ export default function GraphView({
   if (mode !== 'full') {
     return (
       <div ref={wrapRef} className={`relative ${className}`}>
-        {!layout && <Skeleton className="absolute inset-0 !rounded-card" />}
+        {!layout && <Skeleton className="absolute inset-0 rounded-card!" />}
         {svg}
       </div>
     )
@@ -583,9 +583,9 @@ export default function GraphView({
         tabIndex={0}
         onKeyDown={onKeyDown}
         aria-label={t('wiki.graphUi.canvasAria')}
-        className="relative flex-1 min-h-[60vh] rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="relative flex-1 min-h-[60vh] rounded-card border border-border dark:border-night-border bg-white dark:bg-night-surface overflow-hidden focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       >
-        {!layout && <Skeleton className="absolute inset-0 !rounded-none" />}
+        {!layout && <Skeleton className="absolute inset-0 rounded-none!" />}
         {svg}
 
         <ZoomControls
@@ -607,9 +607,9 @@ export default function GraphView({
             aria-label={selectedNode.title}
           >
             <div className="flex items-start gap-2">
-              <span className="w-3 h-3 mt-1.5 rounded-full flex-shrink-0" style={{ background: selectedNode.muted ? 'var(--kbg-muted)' : colorOf(selectedNode) }} aria-hidden="true" />
+              <span className="w-3 h-3 mt-1.5 rounded-full shrink-0" style={{ background: selectedNode.muted ? 'var(--kbg-muted)' : colorOf(selectedNode) }} aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text break-words">{selectedNode.title}</p>
+                <p className="font-display font-bold text-h5 text-ink-primary dark:text-night-text wrap-break-word">{selectedNode.title}</p>
                 <p className="font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted">
                   {subjectLabel ? subjectLabel(selectedNode) : selectedNode.subjectId} · {t(`wiki.typeOne.${selectedNode.type}`)}
                 </p>

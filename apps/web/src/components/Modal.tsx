@@ -27,7 +27,7 @@ export interface ModalProps {
   busy?: boolean
   size?: keyof typeof WIDTHS
   // Element to focus when the dialog opens; defaults to the first focusable.
-  initialFocusRef?: RefObject<HTMLElement>
+  initialFocusRef?: RefObject<HTMLElement | null>
 }
 
 // The site's one modal shell (every dialog, in every section, uses it):
@@ -111,7 +111,7 @@ export default function Modal({ title, children, footer, onClose, busy = false, 
           aria-modal="true"
           aria-labelledby={titleId}
           tabIndex={-1}
-          className={`w-full ${WIDTHS[size]} my-8 bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border p-6 flex flex-col gap-4 outline-none`}
+          className={`w-full ${WIDTHS[size]} my-8 bg-white dark:bg-night-surface rounded-card border border-border dark:border-night-border p-6 flex flex-col gap-4 outline-hidden`}
         >
           <h3 id={titleId} className="font-display font-bold text-h4 text-ink-primary dark:text-night-text">
             {title}

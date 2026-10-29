@@ -21,14 +21,14 @@ export default function ScheduleGridSkeleton() {
       <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-0.5 mb-0.5">
         <div className="h-8 min-w-[50px]" />
         {Array.from({ length: days }).map((_, i) => (
-          <div key={i} className="h-8 rounded-sm skeleton" />
+          <div key={i} className="h-8 rounded-xs skeleton" />
         ))}
       </div>
       <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-0.5">
         <div className="relative min-w-[50px]">
           {Array.from({ length: hours }).map((_, i) => (
             <div key={i} className="h-12 flex items-start justify-center pt-0.5">
-              <div className="h-3 w-7 rounded-sm skeleton" />
+              <div className="h-3 w-7 rounded-xs skeleton" />
             </div>
           ))}
         </div>
@@ -46,7 +46,7 @@ export default function ScheduleGridSkeleton() {
               .map((p, i) => (
                 <div
                   key={i}
-                  className="absolute w-full skeleton rounded-sm"
+                  className="absolute w-full skeleton rounded-xs"
                   style={{
                     top: (p.topMin / 60) * hourHeight,
                     height: (p.durationMin / 60) * hourHeight,
