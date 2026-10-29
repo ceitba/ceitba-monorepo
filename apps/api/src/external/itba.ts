@@ -1,7 +1,7 @@
 // external/itba/*: every call to the upstream ITBA academic gateway goes
 // through ItbaApiClient. Selected like Java: ITBA_API_USE_FAKE=true ->
-// FakeItbaApiClient (ITBA_API_FAKE_FROM_DB=true reads unstubbed plans from the
-// local plan_subject table), else the real client.
+// FakeItbaApiClient (ITBA_API_FAKE_FROM_DB=true replays unstubbed plans from
+// the local plan_entry table), else the real client.
 //
 // The real client (RestClientItbaApiClient + wire/*) is in ./itba/restClient.ts
 // and ./itba/wire.ts.
@@ -27,6 +27,24 @@ export interface SubjectPlanProjection {
   creditsRequired: number | null;
   subjectName: string | null;
   subjectCredits: number;
+}
+
+/**
+ * The credits a plan asks for in one elective group: a term entry of type "section" whose name is the
+ * section that lists the group's subjects (docs/ITBA-GATEWAY.md "Elective groups").
+ */
+export interface PlanSectionRequirementProjection {
+  planId: string;
+  section: string;
+  credits: number;
+  year: number | null;
+  semester: number | null;
+}
+
+/** GET /careerPlans for one plan: its subjects and its elective-group requirements. */
+export interface PlanProjection {
+  subjects: SubjectPlanProjection[];
+  requirements: PlanSectionRequirementProjection[];
 }
 
 export interface TimeSlot {
@@ -73,43 +91,51 @@ export function withDefaultsFilled(q: CommissionQuery, today: string): Required<
 }
 
 export interface ItbaApiClient {
-  getSubjectsByPlan(planId: string): Promise<SubjectPlanProjection[]>;
+  getSubjectsByPlan(planId: string): Promise<PlanProjection>;
   getCommissions(query: CommissionQuery): Promise<CommissionProjection[]>;
   getCommissionsBySubject(subjectCode: string, query: CommissionQuery): Promise<CommissionProjection[]>;
 }
 
 /** FakeItbaApiClient: canned responses staged with stub*(); optional DB fallback for plans. */
 export class FakeItbaApiClient implements ItbaApiClient {
-  private readonly plans = new Map<string, SubjectPlanProjection[]>();
+  private readonly plans = new Map<string, PlanProjection>();
   private commissions: CommissionProjection[] = [];
   constructor(private readonly fallbackDb: Database | null = null) {}
 
-  stubPlan(planId: string, entries: SubjectPlanProjection[]) { this.plans.set(planId, [...entries]); }
+  stubPlan(planId: string, entries: SubjectPlanProjection[], requirements: PlanSectionRequirementProjection[] = []) {
+    this.plans.set(planId, { subjects: [...entries], requirements: [...requirements] });
+  }
   stubCommissions(entries: CommissionProjection[]) { this.commissions = [...entries]; }
   reset() { this.plans.clear(); this.commissions = []; }
 
-  async getSubjectsByPlan(planId: string): Promise<SubjectPlanProjection[]> {
+  async getSubjectsByPlan(planId: string): Promise<PlanProjection> {
     const stubbed = this.plans.get(planId);
-    if (stubbed) return stubbed;
-    if (!this.fallbackDb) return [];
+    if (stubbed) return { subjects: [...stubbed.subjects], requirements: [...stubbed.requirements] };
+    if (!this.fallbackDb) return { subjects: [], requirements: [] };
+    // Replays the stored copy of ITBA's plan (plan_entry, no staff edits: those apply on top, as with the real one).
     const rows = await this.fallbackDb.execute(sql`
-      SELECT ps.subject_id, ps.plan_id, ps.section, ps.year, ps.semester, ps.dependencies,
-             ps.credits_required, s.name, s.credits
-      FROM plan_subject ps JOIN subject s ON s.id = ps.subject_id
-      WHERE ps.plan_id = ${planId}
-      ORDER BY ps.year, ps.semester, ps.subject_id`);
-    return (rows as unknown as Record<string, unknown>[]).map((r) => ({
+      SELECT subject_id, plan_id, section, year, semester, dependencies, credits_required, subject_name, subject_credits
+      FROM plan_entry WHERE plan_id = ${planId} ORDER BY position`);
+    const subjects = (rows as unknown as Record<string, unknown>[]).map((r) => ({
       subjectId: r.subject_id as string,
       planId: r.plan_id as string,
       section: (r.section as string | null) ?? null,
       year: (r.year as number | null) ?? null,
       semester: (r.semester as number | null) ?? null,
-      // A VARCHAR[] may hold NULL elements: skip them.
       dependencies: ((r.dependencies as (string | null)[] | null) ?? []).filter((d): d is string => d !== null),
       creditsRequired: (r.credits_required as number | null) ?? null,
-      subjectName: (r.name as string | null) ?? null,
-      subjectCredits: Number(r.credits ?? 0),
+      subjectName: (r.subject_name as string | null) ?? null,
+      subjectCredits: Number(r.subject_credits ?? 0),
     }));
+    // Read back too, or a sync from the fake would wipe the stored requirements.
+    const reqRows = await this.fallbackDb.execute(sql`
+      SELECT plan_id, section, credits, year, semester FROM plan_section_requirement
+      WHERE plan_id = ${planId} ORDER BY year, semester, section`);
+    const requirements = (reqRows as unknown as Record<string, unknown>[]).map((r) => ({
+      planId: r.plan_id as string, section: r.section as string, credits: Number(r.credits),
+      year: r.year as number, semester: r.semester as number,
+    }));
+    return { subjects, requirements };
   }
 
   async getCommissions(): Promise<CommissionProjection[]> {

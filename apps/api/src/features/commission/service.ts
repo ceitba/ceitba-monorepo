@@ -16,7 +16,7 @@ export class CommissionService {
   /** @Transactional(readOnly = true) */
   currentByPlan(planId: string): Promise<CommissionResponse[]> {
     return withTx(this.deps.db, async (tx) => {
-      if (!(await planRepo.planExists(tx, planId)) && !(await planRepo.existsByPlanId(tx, planId))) {
+      if (!(await planRepo.planExists(tx, planId)) && !(await planRepo.effectiveEntriesExist(tx, planId))) {
         throw new ResourceNotFoundError('Plan', planId);
       }
       const today = this.deps.clock.today();

@@ -8,12 +8,14 @@ export interface Plan {
 }
 
 export const CAREERS: Record<string, string> = {
+  "B": "Ingeniería en Biotecnología",
   "BIO": "Bioingeniería",
   "C": "Ingeniería Civil",
   "I": "Ingeniería Industrial",
   "K": "Ingeniería Electrónica",
   "L": "Lic.en Administración y Sistemas",
   "LAES": "Licenciatura en Analítica Empresarial y Social",
+  "LCC": "Licenciatura en Ciencias del Comportamiento",
   "LN": "Licenciatura en Negocios",
   "M": "Ingeniería Mecánica",
   "N": "Ingeniería Naval",
@@ -29,12 +31,14 @@ export const EXCHANGE_CAREER = {
 };
 
 export const AVAILABLE_PLANS: Record<string, Plan[]> = {
+  'B': [{ id: "B 25" }],
   'BIO': [{ id: "BIO 22" }, { id: "Bio-13" }],
   'C': [{ id: "C23" }],
   'I': [{ id: "I22" }, { id: "I-13" }, { id: "I-13T" }],
   'K': [{ id: "K22" }, { id: "K07-Rev.18" }, { id: "K07A-Rev.18" }],
   'L': [{ id: "L09" }, { id: "L09-REV13" }, { id: "L09T" }],
   'LAES': [{ id: "A22" },{ id: "A17" } ],
+  'LCC': [{ id: "LCC 25" }],
   'LN': [{ id: "L20" }],
   'M': [{ id: "M22" }, { id: "M09 - Rev18 (Marzo)" }, { id: "M09 - Rev18 (Agosto)" }],
   'N': [{ id: "N22" }, { id: "N18 Marzo" }, { id: "N18 Agosto" }],

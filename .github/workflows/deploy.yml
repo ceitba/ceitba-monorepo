@@ -31,7 +31,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.api }}
+      # The API's own code, or what its image installs (a root bun.lock change alone is not enough).
+      api: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.api_code == 'true' || steps.api-deps.outputs.changed == 'true' }}
       mcp: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.mcp }}
       spas: ${{ steps.spas.outputs.matrix }}
     steps:
@@ -41,11 +42,10 @@ jobs:
         if: github.event_name == 'push'
         with:
           filters: |
-            api:
+            # The API's code; its dependencies (root package.json / bun.lock) are the api-deps step.
+            api_code:
               - 'apps/api/**'
               - 'infra/**'
-              - 'package.json'
-              - 'bun.lock'
             shared: &shared
               - 'packages/**'
               - 'package.json'
@@ -59,6 +59,19 @@ jobs:
               - 'packages/**'
               - 'package.json'
               - 'bun.lock'
+      # A root package.json / bun.lock change redeploys the API only when the production
+      # dependency closure of @ceitba/api changed (scripts/checks/api-deps-changed.mjs,
+      # apps/api/docs/DEPLOY.md). Unknown or unfetchable base (first push): true.
+      - id: api-deps
+        if: github.event_name == 'push'
+        env:
+          BASE: ${{ github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE" || true
+          # Anything but a clean "false" (the script failing included) builds and ships the API.
+          v=$(node scripts/checks/api-deps-changed.mjs "$BASE" HEAD) || v=true
+          [ "$v" = false ] || v=true
+          echo "changed=$v" >> "$GITHUB_OUTPUT"
       - id: spas
         env:
           # Manual runs deploy every app.
@@ -90,20 +103,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/ceitba/ceitba-mcp
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: apps/mcp/Dockerfile
@@ -188,20 +201,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/ceitba/ceitba-api
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           # The Bun image builds from the repo root (the workspace's bun.lock).
           context: .
@@ -307,7 +320,7 @@ jobs:
     name: deploy (${{ matrix.app }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 20
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0

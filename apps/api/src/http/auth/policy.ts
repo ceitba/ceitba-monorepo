@@ -43,6 +43,8 @@ export interface UrlRule {
 export const URL_RULES: readonly UrlRule[] = [
   // Local dev sign-in; otherwise the path is not even permitted.
   { method: 'POST', patterns: ['/v1/auth/dev-login'], access: 'permitAll', enabledWhen: 'devLogin' },
+  // Subject reviews name professors: ITBA session only, ahead of the public /v1/subjects/** reads below.
+  { method: 'GET', patterns: ['/v1/subjects/*/reviews'], access: 'authenticatedAllowlisted' },
   {
     method: 'GET',
     patterns: [
@@ -126,6 +128,7 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
   'POST /v1/careers': role('STAFF'), // career/CareerController.java#createCareer
   'PUT /v1/careers/{id}': role('STAFF'), // career/CareerController.java#updateCareer
   'POST /v1/careers/{id}/plans': role('STAFF'), // career/CareerController.java#addPlan
+  'PUT /v1/careers/{id}/plans/{planId}': role('STAFF'), // not in Java: rename a plan (/manage careers)
   'DELETE /v1/careers/{id}': role('STAFF'), // career/CareerController.java#deleteCareer
   'GET /v1/organizations/{slug}/mail': or(role('STAFF'), check('orgAccess.canManageMembers', 'path.slug')), // orgmail/OrgMailController.java#status
   'POST /v1/organizations/{slug}/mail/connect': check('orgAccess.canManageMembers', 'path.slug'), // orgmail/OrgMailController.java#connect
@@ -139,6 +142,9 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
   'GET /v1/staff/schedule-corrections': role('STAFF'), // correction/StaffScheduleCorrectionController.java#list
   'POST /v1/staff/schedule-corrections/{id}/apply': role('STAFF'), // correction/StaffScheduleCorrectionController.java#apply
   'POST /v1/staff/schedule-corrections/{id}/reject': role('STAFF'), // correction/StaffScheduleCorrectionController.java#reject
+  'GET /v1/staff/subject-reviews': role('STAFF'), // review/routes.ts (Bun-only)
+  'POST /v1/staff/subject-reviews/{id}/restore': role('STAFF'), // review/routes.ts (Bun-only)
+  'DELETE /v1/staff/subject-reviews/{id}': role('STAFF'), // review/routes.ts (Bun-only)
   'POST /v1/staff/kb/pipeline/runs': role('STAFF'), // kb/admin/StaffKbPipelineController.java#trigger
   'GET /v1/staff/kb/pipeline/runs': role('STAFF'), // kb/admin/StaffKbPipelineController.java#runs
   'GET /v1/staff/kb/pipeline/runs/{id}': role('STAFF'), // kb/admin/StaffKbPipelineController.java#run
@@ -285,6 +291,14 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
   'PATCH /v1/news/events/{id}': or(role('STAFF'), check('orgAccess.canWriteForEvent', 'path.id', 'body.organization')),
   'POST /v1/articles': or(role('STAFF'), check('orgAccess.canWriteForOrg', 'body.organization'), and(role('USER'), check('orgAccess.isIndependent', 'body.organization'))),
   'PATCH /v1/articles/{id}': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id', 'body.organization'), check('orgAccess.canEditOwnIndependentArticle', 'path.id', 'body.organization')),
+  // Newsletter comments and polls (docs/NEWSLETTER-ENGAGEMENT.md): moderation by the article's org members, polls also by
+  // the creator of an unpublished independent article. The services re-check under their transaction.
+  'PUT /v1/articles/{id}/comments/settings': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id')),
+  'PUT /v1/articles/{id}/comments/{commentId}/pin': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id')),
+  'POST /v1/articles/{id}/comments/{commentId}/restore': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id')),
+  'POST /v1/articles/{id}/polls': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id'), check('orgAccess.canEditOwnIndependentArticle', 'path.id')),
+  'PATCH /v1/articles/{id}/polls/{pollId}': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id'), check('orgAccess.canEditOwnIndependentArticle', 'path.id')),
+  'DELETE /v1/articles/{id}/polls/{pollId}': or(role('STAFF'), check('orgAccess.canWriteForArticle', 'path.id'), check('orgAccess.canEditOwnIndependentArticle', 'path.id')),
   'GET /v1/digests/{id}/preview': role('STAFF'), // digest/DigestController.java#preview
 };
 

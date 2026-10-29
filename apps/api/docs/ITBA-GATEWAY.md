@@ -8,12 +8,51 @@ All calls go through the ITBA client in `src/external/itba.ts` (real impl
 
 | Endpoint | Input | Used for |
 |---|---|---|
-| `GET /careerPlans/{token}?plan=<planId>` | one plan code | subjects of that plan (`getSubjectsByPlan`); the response's `careerplan` also carries `name`, `career`, `degreeLevel`, `since` |
+| `GET /careerPlans/{token}?plan=<planId>` | one plan code | subjects of that plan and the credits it asks for per elective group (`getSubjectsByPlan`, see "Plan shape"); the response's `careerplan` also carries `name`, `career`, `degreeLevel`, `since` and `informativeLevel` (not read) |
 | `GET /courseCommissions/{token}?level=&year=&period=` | level/year/period | commissions and their schedules |
 
 These (from the endpoints the old Flutter app used: `CEITBApp/README.md`,
 `lib/features/schedules/models/available_courses.dart`,
 `lib/api/itba/sga_login_api.dart`) are the only ones this API calls.
+
+## Plan shape: subjects and elective groups
+
+`careerplan.section` is a list of sections (a lone object counts as a
+one-element list, like every list in this format). A section has either
+`terms.term[]` (each with `year`, `period` and `entries.entry[]`) or
+`withoutTerm.withoutTerm[]` (entries with no place in the timeline: the
+subjects of an elective group).
+
+An entry's `type` says what it is:
+
+* `"subject"`: a subject (`code`, `name`, `credits`, `dependencies.dependency[]`,
+  `creditsRequired`). Read from both branches; outside terms its year and
+  semester are null (stored as 0).
+* `"section"`, only inside a term: an **elective group** placed in that year
+  and term. `name` is exactly the name of the sibling `withoutTerm` section
+  that lists the group's subjects (spelling included: A22 sends
+  `"Electivas Gestíon"` in both places) and `credits` is how many credits of
+  it the plan asks for; `dependencies` is null. Real examples (October 2026):
+
+  | Plan | Group | Credits | Year / term |
+  |---|---|---|---|
+  | A22 | Electivas Orientación | 18 | 1 / 2 |
+  | A22 | Electivas Gestíon | 18 | 3 / 1 |
+  | A22 | Electivas Informática | 15 | 3 / 1 |
+  | A22 | Electivas Analytics | 15 | 3 / 2 |
+  | A22 | Electivas Social | 12 | 3 / 2 |
+  | S10-Rev23 | Electivas | 27 | 4 / 2 |
+  | I22 | Gestión de datos (obligatoria) | 6 | 1 / 2 |
+
+  The client returns them as `requirements` (`{ planId, section, credits,
+  year, semester }`, names trimmed). A repeated name (the first one wins) and
+  a `"section"` entry outside a term are skipped; an entry without a name or
+  whose `credits` is not an integer is logged and skipped. A bad group never
+  fails the plan's subjects.
+* Anything else is skipped.
+
+The sync stores the requirements in `plan_section_requirement`
+(`PLANS.md`).
 
 ## Revoked: SGA student lookup (2026-09)
 
@@ -48,7 +87,9 @@ Consequences:
   subjects (`/v1/sync/all`, `/v1/sync/subjects` and the scheduled job).
 * Entrance-program plan codes change every year (e.g. `PAI` /
   `PA25 Proceso I` today, `ADM` / `Ingreso` in the old app). Never hardcode
-  them. When a new one appears, STAFF registers it without a migration:
+  them. When a new one appears, STAFF registers it without a migration,
+  from Administración → "Carreras y planes" (`/manage/careers`, which also
+  renames careers and plans; ids never change) or directly:
 
   ```
   POST /api/v1/careers/{careerId}/plans      (STAFF)
@@ -57,7 +98,9 @@ Consequences:
 
   The next scheduled sync (or `POST /api/v1/sync/plan/{planId}/subjects`
   with the SYNC key) pulls its subjects. A brand-new career goes through
-  `POST /api/v1/careers` first.
+  `POST /api/v1/careers` first. `GET /api/v1/careers/{id}/plans` lists a
+  career's plans with their names; `PUT /api/v1/careers/{id}/plans/{planId}`
+  `{ "name": "..." }` (STAFF) renames one.
 * Until a plan is registered, users cannot pick it in onboarding:
   `PATCH /v1/me/profile` only accepts plans in the catalogue.
 

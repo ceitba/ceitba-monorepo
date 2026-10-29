@@ -16,6 +16,10 @@ export default defineRoutes((r, deps) => {
     query: { year: param.int({ required: false }), semester: param.int({ required: false }), section: param.string({ required: false }), type: param.string({ required: false }) },
   }, ({ params, query }) => svc.getSubjectsByPlan(params.planId!, { year: query.year, semester: query.semester, section: query.section, type: query.type }));
 
+  r.get('/v1/plans/{planId}/requirements', {
+    tags, summary: 'Credits the plan asks for per elective group (synced from ITBA)', params: { planId: param.string() },
+  }, ({ params }) => svc.getRequirements(params.planId!));
+
   r.get('/v1/plans/subjects/{subjectId}/plans', { tags, summary: 'List every plan that contains a given subject', params: { subjectId: param.string() } },
     ({ params }) => svc.getPlansForSubject(params.subjectId!));
 

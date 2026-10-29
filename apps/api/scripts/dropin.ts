@@ -477,7 +477,7 @@ async function getCatalog(sql: Sql, ids: Identity[]): Promise<{ identity: Identi
   void kbPage;
   const fixed: Record<string, Record<string, string>> = {
     '/v1/wiki/bookmarks/{subjectId}': { subjectId: 'B0001' },
-    '/v1/plans/{planId}/subject/{subjectId}': { planId: 'BP-S-1', subjectId: (await one(sql`SELECT subject_id FROM plan_subject WHERE plan_id = 'BP-S-1' ORDER BY subject_id LIMIT 1`)) },
+    '/v1/plans/{planId}/subject/{subjectId}': { planId: 'BP-S-1', subjectId: (await one(sql`SELECT subject_id FROM plan_entry_effective WHERE plan_id = 'BP-S-1' ORDER BY subject_id LIMIT 1`)) },
     '/v1/careers/{id}': { id: 'S' },
     '/v1/users/{userId}/organizations': { userId: U(5) },
     '/v1/proposals/{id}/comments': { id: P(1) },
@@ -513,7 +513,7 @@ async function getCatalog(sql: Sql, ids: Identity[]): Promise<{ identity: Identi
     '/v1/staff/capabilities/{key}/grants': { key: 'apuntes' },
     '/v1/share/sessions/{token}': { token: SHARE_TOKEN },
     '/v1/plans/{planId}/subjects': { planId: 'BP-S-1' },
-    '/v1/plans/subjects/{subjectId}/plans': { subjectId: (await one(sql`SELECT subject_id FROM plan_subject WHERE plan_id = 'BP-S-1' ORDER BY subject_id LIMIT 1`)) },
+    '/v1/plans/subjects/{subjectId}/plans': { subjectId: (await one(sql`SELECT subject_id FROM plan_entry_effective WHERE plan_id = 'BP-S-1' ORDER BY subject_id LIMIT 1`)) },
     '/v1/organizations/{slug}/members': { slug: ORG },
     '/v1/organizations/{slug}/mail': { slug: ORG },
     '/v1/organizations/{slug}/followers': { slug: ORG },

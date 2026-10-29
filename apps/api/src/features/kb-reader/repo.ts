@@ -221,7 +221,7 @@ export async function refreshRelationsFromPlans(db: Db): Promise<number> {
   const res = await db.execute(sql`
     INSERT INTO wiki.kb_subject_relation (subject_id, related_id, reason, weight)
     SELECT ps.subject_id, d.dep, 'PREREQUISITE', count(DISTINCT ps.plan_id)
-    FROM public.plan_subject ps
+    FROM public.plan_entry_effective ps
     CROSS JOIN LATERAL unnest(ps.dependencies) AS d(dep)
     JOIN public.subject s1 ON s1.id = ps.subject_id
     JOIN public.subject s2 ON s2.id = d.dep

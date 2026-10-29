@@ -8,7 +8,7 @@
 // Deviation: the IT's @BeforeEach calls KbRelationService.refresh(); here the same
 // three statements of KbRelationRepository.refreshFromPlans run as SQL.
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { bearer, mintJwt, supports, useServer, type As } from '../support';
+import { bearer, copyPlanSubjectsToEntries, mintJwt, supports, useServer, type As } from '../support';
 
 const api = useServer();
 
@@ -44,7 +44,7 @@ async function refreshRelations() {
   await api.db`DELETE FROM wiki.kb_subject_relation WHERE reason IN ('PREREQUISITE', 'DEPENDENT')`;
   await api.db`INSERT INTO wiki.kb_subject_relation (subject_id, related_id, reason, weight)
     SELECT ps.subject_id, d.dep, 'PREREQUISITE', count(DISTINCT ps.plan_id)
-    FROM public.plan_subject ps
+    FROM public.plan_entry_effective ps
     CROSS JOIN LATERAL unnest(ps.dependencies) AS d(dep)
     JOIN public.subject s1 ON s1.id = ps.subject_id
     JOIN public.subject s2 ON s2.id = d.dep
@@ -88,7 +88,7 @@ const sorted = (xs: string[]) => [...xs].sort();
 describe('SubjectWikiIT', () => {
   beforeEach(async () => {
     await api.db`TRUNCATE wiki.kb_page, wiki.kb_subject_relation, wiki.drive_file, wiki.drive_source,
-      public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+      public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
     await api.db`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
       ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
     await api.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES
@@ -98,6 +98,7 @@ describe('SubjectWikiIT', () => {
     // 61.12 requires 81.07.
     await api.db`INSERT INTO public.plan_subject (subject_id, plan_id, section, year, semester, credits_required, dependencies)
       VALUES ('61.12', 'P1', 'Ciclo', 2, 1, 0, ARRAY['81.07']), ('81.07', 'P1', 'Ciclo', 1, 2, 0, ARRAY[]::varchar[])`;
+    await copyPlanSubjectsToEntries(api.db);
     await refreshRelations();
 
     const owner = crypto.randomUUID();

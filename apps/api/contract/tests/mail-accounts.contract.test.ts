@@ -52,10 +52,10 @@ describe('MailAccountsIT', () => {
     expect(Object.keys(r.json)).toEqual(['authorizationUrl']);
     const url: string = r.json.authorizationUrl;
     for (const s of ['https://accounts.google.com/o/oauth2/v2/auth?', 'access_type=offline', 'prompt=consent',
-      'login_hint=ceitba@itba.edu.ar', 'hd=itba.edu.ar', 'gmail.send%20openid%20email', 'state=']) expect(url).toContain(s);
+      'login_hint=ceitba@itba.edu.ar', 'hd=itba.edu.ar', 'gmail.send%20openid%20email%20https://www.googleapis.com/auth/directory.readonly', 'state=']) expect(url).toContain(s);
     expect(url).toMatch(new RegExp('^https://accounts\\.google\\.com/o/oauth2/v2/auth\\?response_type=code&client_id=test-client-id'
       + '&redirect_uri=https://ceitba\\.org\\.ar/api/v1/mail/accounts/oauth/callback'
-      + '&scope=https://www\\.googleapis\\.com/auth/gmail\\.send%20openid%20email&state=[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+'
+      + '&scope=https://www\\.googleapis\\.com/auth/gmail\\.send%20openid%20email%20https:\\/\\/www\\.googleapis\\.com\\/auth\\/directory\\.readonly&state=[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+'
       + '&access_type=offline&prompt=consent&login_hint=ceitba@itba\\.edu\\.ar&hd=itba\\.edu\\.ar$'));
     // The state binds the staff user who asked.
     const state = /state=([^&]+)/.exec(url)![1]!;

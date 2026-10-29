@@ -456,8 +456,12 @@ look at mail, so SMTP trouble never marks the API down.
 
 The default transport. No app password and no SMTP: the API sends with
 `POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send` (scope
-`gmail.send` only) using the refresh token of the connected
-`ceitba@itba.edu.ar` account. The message is the same
+`gmail.send`) using the refresh token of the connected
+`ceitba@itba.edu.ar` account. The same account's consent also asks for
+`directory.readonly`: subject reviews name professors from the ITBA directory
+with it (`SUBJECT-REVIEWS.md` "Professors"). Sending only needs `gmail.send`;
+an account connected before that scope was added keeps sending, but has to be
+reconnected for professor lookups. The message is the same
 `multipart/alternative` HTML + text MIME with `List-Unsubscribe`,
 `List-Unsubscribe-Post`, `List-Id` and `Precedence`, sent as base64url `raw`.
 There are no Google client libraries: plain `fetch`.
@@ -465,7 +469,8 @@ There are no Google client libraries: plain `fetch`.
 - **Connect (STAFF).** The admin page calls
   `POST /v1/mail/accounts/ceitba/connect` and navigates to the returned
   `authorizationUrl` (`access_type=offline`, `prompt=consent`,
-  `login_hint=ceitba@itba.edu.ar`, `hd=itba.edu.ar`, a signed 10-minute
+  `login_hint=ceitba@itba.edu.ar`, `hd=itba.edu.ar`, scope `gmail.send openid
+  email directory.readonly` (organization accounts: without the directory), a signed 10-minute
   `state` that binds the staff user). Google redirects to
   `GOOGLE_MAIL_REDIRECT_URI`; the API exchanges the code, checks the id_token
   (issuer, audience = our client id, expiry, verified email) and that its
@@ -513,7 +518,9 @@ There are no Google client libraries: plain `fetch`.
    after 7 days. An unverified External app works for up to 100 users behind
    an "unverified app" warning screen, enough for one sender account.
 3. **Scopes.** Add `https://www.googleapis.com/auth/gmail.send` (a
-   sensitive scope; `openid` and `email` are non-sensitive). Nothing broader.
+   sensitive scope; `openid` and `email` are non-sensitive) and
+   `https://www.googleapis.com/auth/directory.readonly` (subject reviews), and
+   enable the **People API** (APIs & Services → Library). Nothing broader.
 4. **Authorized redirect URI.** On the OAuth 2.0 Web client add
    `https://ceitba.org.ar/api/v1/mail/accounts/oauth/callback` (exactly
    `GOOGLE_MAIL_REDIRECT_URI`; for local dev

@@ -58,6 +58,7 @@ export default defineSection('rateLimit', schema, ({ env }) => ({
     r(env, 'digest-unsubscribe', ['/v1/digests/unsubscribe'], ['RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY', 60], ['RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD', '1m'], { methods: ['POST'] }),
     r(env, 'digest-correction-vote', ['/v1/digests/correction-vote'], ['RATE_LIMIT_DIGEST_CORRECTION_VOTE_CAPACITY', 60], ['RATE_LIMIT_DIGEST_CORRECTION_VOTE_PERIOD', '1m'], { methods: ['GET', 'POST'] }),
     r(env, 'event-rsvp', ['/v1/news/events/*/rsvp'], ['RATE_LIMIT_VOTES_CAPACITY', 60], ['RATE_LIMIT_VOTES_PERIOD', '1m'], { methods: ['POST', 'DELETE'] }),
+    r(env, 'subject-review-votes', ['/v1/subject-reviews/*/helpful', '/v1/subject-reviews/*/report'], ['RATE_LIMIT_VOTES_CAPACITY', 60], ['RATE_LIMIT_VOTES_PERIOD', '1m'], { methods: ['PUT', 'DELETE'] }),
     r(env, 'org-mail-unsubscribe', ['/v1/org-mail/unsubscribe'], ['RATE_LIMIT_DIGEST_UNSUBSCRIBE_CAPACITY', 60], ['RATE_LIMIT_DIGEST_UNSUBSCRIBE_PERIOD', '1m'], { methods: ['POST'] }),
     r(env, 'analytics', ['/v1/analytics/events'], ['RATE_LIMIT_ANALYTICS_CAPACITY', 120], ['RATE_LIMIT_ANALYTICS_PERIOD', '1m'], { methods: ['POST'] }),
   ],
@@ -67,5 +68,10 @@ export default defineSection('rateLimit', schema, ({ env }) => ({
     'proposal-attachments': { capacity: env.int('RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD', '1h') },
     proposals: { capacity: env.int('RATE_LIMIT_PROPOSALS_CAPACITY', 10), periodMs: env.duration('RATE_LIMIT_PROPOSALS_PERIOD', '1h') },
     'proposal-comments': { capacity: env.int('RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD', '10m') },
+    'subject-reviews': { capacity: env.int('RATE_LIMIT_SUBJECT_REVIEWS_CAPACITY', 20), periodMs: env.duration('RATE_LIMIT_SUBJECT_REVIEWS_PERIOD', '1h') },
+    'professor-lookups': { capacity: env.int('RATE_LIMIT_PROFESSOR_LOOKUPS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROFESSOR_LOOKUPS_PERIOD', '1h') },
+    'article-comments': { capacity: env.int('RATE_LIMIT_ARTICLE_COMMENTS_CAPACITY', 20), periodMs: env.duration('RATE_LIMIT_ARTICLE_COMMENTS_PERIOD', '10m') },
+    'article-comment-reports': { capacity: env.int('RATE_LIMIT_ARTICLE_COMMENT_REPORTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_ARTICLE_COMMENT_REPORTS_PERIOD', '10m') },
+    'article-reactions': { capacity: env.int('RATE_LIMIT_ARTICLE_REACTIONS_CAPACITY', 120), periodMs: env.duration('RATE_LIMIT_ARTICLE_REACTIONS_PERIOD', '10m') },
   },
 }));

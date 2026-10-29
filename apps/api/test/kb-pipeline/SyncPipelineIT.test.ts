@@ -97,10 +97,14 @@ describe('SyncPipelineIT', () => {
   }, 120_000);
 
   // A RUNNING run resumed by more than 3 startups inside the window without finishing a
-  // stage is failed instead of resumed into another crash.
+  // stage is failed instead of resumed into another crash. Each startup finds the lease of
+  // a process that died advancing the run (expired: nobody can still be holding it); a run
+  // nobody held is not counted (test/kb-pipeline/ResumeGuard.test.ts).
   test('resumeLoopGuardFailsTheRunAfterRepeatedRestarts', async () => {
     const started = await a.kb().pipeline.trigger('MANUAL', false);
     const id = started.id;
+    const past = odtFromMicros(systemNowMicros()).plusMinutes(-10);
+    expect(await inTx(a.t.deps.db, () => runs.takeLease(id, 'dead-process', past.plusMinutes(3), past))).toBe(1);
     for (let i = 1; i <= MAX_RESUMES; i++) expect(await a.kb().engine.registerResume(id), `resume ${i}`).toBe(true);
     expect(await a.kb().engine.registerResume(id)).toBe(false);
     const run = await a.get(id);

@@ -128,7 +128,7 @@ export class ArticleService {
           id, title: input.title, excerpt: input.excerpt, body: input.body, category: input.category, organization: org,
           authors: input.authors, publishedAt: input.publishedAt, readingTime: input.readingTime, featured: input.featured,
           colorScheme: input.colorScheme ?? 'blue', coverImage: input.coverImage, status: input.status,
-          createdAt: toPgTimestamp(createdAt), updatedAt: null, pushSentAt: null, createdBy,
+          createdAt: toPgTimestamp(createdAt), updatedAt: null, pushSentAt: null, createdBy, commentsEnabled: true,
         };
         this.dateIfPublished(row);
         await this.notifyFollowersOnce(tx, row, pushes);

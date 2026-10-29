@@ -18,7 +18,14 @@
       "DRIVE_SOURCE_BLOCKED": "Esta carpeta fue bloqueada por el equipo de CEITBA y no se puede volver a compartir ni desconectar. Escribinos si creés que es un error.",
       "DRIVE_SYNC_RATE_LIMITED": "Ya pediste una sincronización hace poco. Podés volver a pedirla en unos minutos (máximo una cada 5 minutos).",
       "DRIVE_SYNC_UNCONFIGURED": "Apuntes todavía no está disponible: falta configurar la conexión con Google Drive.",
-      "CAPABILITY_REQUIRED": "Apuntes todavía no está habilitado para tu cuenta."
+      "CAPABILITY_REQUIRED": "Apuntes todavía no está habilitado para tu cuenta.",
+      "SubjectReviewExists": "Ya tenés una reseña de esta materia para ese cuatrimestre: editala.",
+      "SubjectReviewFutureTerm": "Solo podés opinar de un cuatrimestre que ya empezó.",
+      "SubjectReviewOwn": "No podés marcar como útil tu propia reseña.",
+      "UnknownProfessor": "Uno de los profesores que marcaste ya no está disponible. Desmarcalo e intentá nuevamente.",
+      "ProfessorEmailDomain": "Tiene que ser un mail @itba.edu.ar.",
+      "ProfessorNotFound": "No encontramos ese mail en el ITBA. Revisalo e intentá nuevamente, o dejalo sin profesor.",
+      "ProfessorDirectoryUnavailable": "No pudimos consultar el directorio del ITBA. Intentá más tarde o dejalo sin profesor."
     },
     "sourceStatus": {
       "unknown": "Otro estado",
@@ -125,7 +132,9 @@
         "WRONG_SUBJECT": "Está en la materia equivocada",
         "SPAM": "Spam o contenido sin relación",
         "OTHER": "Otro motivo",
-        "CONTENT_ERROR": "Error de contenido"
+        "CONTENT_ERROR": "Error de contenido",
+        "OFFENSIVE": "Es ofensiva o agresiva",
+        "FALSE": "Tiene información falsa"
       },
       "comment": "Comentario (opcional)",
       "commentPlaceholder": "Cualquier detalle que nos ayude a revisarlo.",
@@ -298,13 +307,109 @@
       "credits_other": "requiere {{count}} créditos",
       "miniWiki": "con wiki",
       "miniFiles": "con apuntes"
+    },
+    "reviews": {
+      "term": "{{period}}C {{year}}",
+      "commission": "Comisión {{commission}}",
+      "commissions": "Comisión {{list}}",
+      "count_one": "{{count}} reseña de alumnos",
+      "count_other": "{{count}} reseñas de alumnos",
+      "filteredCount_one": "{{shown}} de {{count}} reseña, con los filtros",
+      "filteredCount_other": "{{shown}} de {{count}} reseñas, con los filtros",
+      "stats_one": "{{count}} de {{total}} la recomienda · dificultad {{difficulty}}",
+      "stats_other": "{{count}} de {{total}} la recomiendan · dificultad {{difficulty}}",
+      "noStats": "Sin reseñas todavía",
+      "difficultyWord": {
+        "1": "baja",
+        "2": "media",
+        "3": "alta"
+      },
+      "difficultyOption": {
+        "1": "Baja",
+        "2": "Media",
+        "3": "Alta"
+      },
+      "difficultyBadge": {
+        "1": "Dificultad baja",
+        "2": "Dificultad media",
+        "3": "Dificultad alta"
+      },
+      "recommends": "La recomienda",
+      "notRecommends": "No la recomienda",
+      "mine": "Tu reseña",
+      "write": "Escribir reseña",
+      "editMine": "Editar tu reseña",
+      "filters": {
+        "commissionAll": "Todas las comisiones",
+        "termAll": "Todos los cuatrimestres",
+        "commissionAria": "Filtrar por comisión",
+        "termAria": "Filtrar por cuatrimestre",
+        "remove": "Quitar filtro {{name}}",
+        "clear": "Limpiar"
+      },
+      "noMatches": "Ninguna reseña con esos filtros",
+      "noMatchesBody": "Probá sacando algún filtro.",
+      "clearFilters": "Limpiar filtros",
+      "emptyTitle": "Todavía no hay reseñas",
+      "emptyBody": "Si la cursaste, la tuya puede ser la primera.",
+      "professorsTitle": "¿Con quién la cursás?",
+      "professorsAria": "Profesores",
+      "noProfessor": "Sin profesor indicado",
+      "multiNote": "Una reseña puede contar para más de un profesor (por ejemplo, teoría y práctica), así que estos números no suman el total.",
+      "helpful": "Me sirvió · {{count}}",
+      "report": "Denunciar",
+      "reported": "Denunciada",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteTitle": "¿Eliminar tu reseña?",
+      "deleteBody": "Tu reseña del {{term}} deja de verse para todos. No se puede deshacer.",
+      "deleteConfirm": "Sí, eliminar",
+      "deleted": "Eliminaste tu reseña.",
+      "hiddenNotice": "Tu reseña está oculta porque recibió varias denuncias. El equipo de CEITBA la va a revisar; mientras tanto, solo la ves vos.",
+      "reportTitle": "Denunciar reseña",
+      "reportIntro": "Contanos qué pasa con esta reseña. Con varias denuncias se oculta hasta que CEITBA la revise.",
+      "form": {
+        "title": "Tu reseña de {{subject}}",
+        "term": "Cuatrimestre",
+        "commission": "Comisión",
+        "commissionPlaceholder": "Ej.: A",
+        "recommend": "¿La recomendás?",
+        "yes": "Sí",
+        "no": "No",
+        "difficulty": "Dificultad",
+        "professors": "¿Quién dio la clase? (opcional, podés marcar varios)",
+        "suggested": "Marcamos {{names}} según lo que indicaron otros alumnos de la comisión {{commission}}. Si no son, desmarcalos.",
+        "professorLimit": "Podés marcar hasta {{count}} profesores.",
+        "addProfessor": "+ Agregar profesor",
+        "lookupHint": "Pegá su mail del ITBA y buscamos el nombre. El mail no se muestra.",
+        "emailLabel": "Mail del profesor",
+        "emailPlaceholder": "nombre@itba.edu.ar",
+        "search": "Buscar",
+        "searching": "Buscando…",
+        "invalidEmail": "Eso no parece un mail. Revisalo e intentá nuevamente.",
+        "added": "Agregamos a {{name}}",
+        "comment": "Comentario (opcional)",
+        "commentPlaceholder": "¿Qué le dirías a alguien que la empieza?",
+        "commentHint": "Hablá de la cursada, no de la persona. Tu nombre no se muestra.",
+        "missing": "Falta indicar {{what}}.",
+        "missingParts": {
+          "commission": "la comisión",
+          "recommend": "si la recomendás",
+          "difficulty": "la dificultad"
+        },
+        "publish": "Publicar",
+        "save": "Guardar",
+        "published": "Reseña publicada correctamente",
+        "saved": "Reseña guardada correctamente"
+      }
     }
   },
   "wiki": {
     "tabsAria": "Secciones de la materia",
     "tabs": {
       "wiki": "Wiki",
-      "archivos": "Archivos"
+      "archivos": "Archivos",
+      "opiniones": "Opiniones"
     },
     "graphLink": "Ver grafo",
     "graph": "Grafo",
@@ -387,7 +492,8 @@
         "sources": "Carpetas",
         "files": "Archivos a revisar",
         "unclaimed": "Sin reclamar",
-        "wiki": "Wiki"
+        "wiki": "Wiki",
+        "reviews": "Opiniones ocultas"
       },
       "pageStatus": "Página {{page}} de {{pages}} · {{total}} {{what}}",
       "conflict": "El estado cambió mientras lo mirabas (otra persona de staff o una sincronización). Recargamos la lista.",
@@ -490,7 +596,20 @@
         }
       },
       "prev": "‹ Anterior",
-      "next": "Siguiente ›"
+      "next": "Siguiente ›",
+      "reviews": {
+        "intro": "Reseñas que se ocultaron solas al recibir denuncias. Restaurala si está bien o eliminala.",
+        "noComment": "Sin comentario",
+        "restore": "Restaurar",
+        "delete": "Eliminar",
+        "deleteTitle": "¿Eliminar la reseña?",
+        "deleteBody": "La reseña de {{subject}} ({{term}}, comisión {{commission}}) se borra para siempre. No se puede deshacer.",
+        "deleteConfirm": "Sí, eliminar",
+        "restored": "Restauraste la reseña de {{subject}}.",
+        "deleted": "Eliminaste la reseña de {{subject}}.",
+        "empty": "No hay reseñas ocultas",
+        "emptyHint": "Acá aparecen las reseñas que se ocultaron solas por acumular denuncias, para que las restaures o las elimines."
+      }
     },
     "wikiAi": {
       "intro": "Elegí los modelos de cada etapa del pipeline que escribe las wikis, mirá cuánto cuesta y compará modelos con evidencia antes de cambiarlos.",
@@ -732,7 +851,7 @@
       "runs": {
         "budget": {
           "title": "Presupuesto",
-          "summary": "US$ {{spent}} gastados / US$ {{limit}} de límite · estimado admitido US$ {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas (US$ {{deferredEstimated}} estimado)",
+          "summary": "{{spent}} gastados / {{limit}} de límite · estimado admitido {{estimated}} · {{admitted}} materias admitidas, {{deferred}} diferidas ({{deferredEstimated}} estimado)",
           "oversized": "Corrida dedicada a {{subject}}: no entraba en el presupuesto"
         },
         "runNow": "Ejecutar ahora",

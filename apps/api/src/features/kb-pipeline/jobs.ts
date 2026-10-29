@@ -12,7 +12,8 @@
 //     set (KbEvalService.ensureDefaultSet, kb-admin; not caught, as in Java), then
 //     resumes every active run a restart interrupted, counting the resumes of
 //     RUNNING ones (more than 3 in 30 minutes: the run is FAILED);
-//   - on shutdown, with the task executor: no more retries, running advances finish.
+//   - on shutdown: no new work from SIGTERM on ('closing'), then, with the task executor, running
+//     advances finish and release their leases (after STOP_WAIT_MS they are released anyway).
 // All but the shutdown off with kb.pipeline.background=false (tests drive the engine).
 
 import { defineJobs } from '../../jobs/scheduler';
@@ -90,7 +91,13 @@ export default defineJobs((deps) => {
         }
       },
     }],
-    // The engine's advances run on the task executor whether or not this bean exists.
-    shutdown: [{ name: 'KbRunEngine (task executor)', phase: 'executors', order: 30, run: () => kb().engine.stop() }],
+    // The engine's advances run on the task executor whether or not this bean exists. On SIGTERM the
+    // engine stops starting work at once ('closing': in-flight sync requests finish and are recorded),
+    // then waits for its advances and releases their leases ('executors'), so the next process does
+    // not count the stop as a crash (docs/SUBJECT-WIKI-PIPELINE.md "Restart-loop guard").
+    shutdown: [
+      { name: 'KbRunEngine#onShutdown', phase: 'closing', order: 30, run: () => kb().engine.beginStop() },
+      { name: 'KbRunEngine (task executor)', phase: 'executors', order: 30, run: () => kb().engine.stop() },
+    ],
   };
 });

@@ -418,10 +418,36 @@ dry runs of the earlier Java API died in DIGEST running out of memory when it di
 - **PDF extraction** (`src/features/drive/logic/pdfText.ts`, unpdf in the Drive content worker pool) stops at
   `MAX_TEXT_CHARS` (1M) of text; the PDF itself is held in memory (`DRIVE-PARITY.md`).
 - **Restart-loop guard:** at startup `KbPipelineJob#onStartup` resumes each active run through
-  `KbRunEngine.registerResume` (`src/features/kb-pipeline/engine.ts`). A RUNNING run (one that was advancing a stage when the process stopped; WAITING and
-  BLOCKED runs are not counted) increments `kb_run.resume_count` inside a 30-minute window
-  (`resume_window_start`, V49); the counter resets when the run finishes a stage. After `MAX_RESUMES` (3) resumes in
-  the window the next startup marks the run FAILED ("detenida tras reinicios repetidos (posible falta de memoria)")
-  and its subjects failed, instead of resuming into another crash. The periodic sweep does not count.
+  `KbRunEngine.registerResume` (`src/features/kb-pipeline/engine.ts`). It is meant for crash loops (the container
+  OOM-killed mid-stage and restarted by Docker), not for deploys or other clean restarts:
+  - A RUNNING run counts one resume (`kb_run.resume_count` inside a 30-minute window, `resume_window_start`, V49) only
+    when it is **still leased**: its advancer never released it, so that process died, or (blue/green) is still
+    running. A run with no lease (nobody was advancing it, or its advancer stopped cleanly) is resumed without
+    counting; WAITING and BLOCKED runs are never counted. The counter resets when the run finishes a stage.
+  - Every lease release (a pass that ends, or a shutdown) restores the counter to its value when the lease was taken:
+    a release proves the holder was alive, so resumes counted meanwhile by a starting process were not crashes.
+    Counts from before the lease was taken stay. A process killed without its shutdown hooks never releases.
+  - Past `MAX_RESUMES` (3) in the window the run is FAILED ("detenida tras reinicios repetidos (posible falta de
+    memoria)" plus the stage) with its subjects, instead of resuming into another crash: at startup when the leftover
+    lease already expired, otherwise when the lease is taken over (`LEASE_MS`, 3 min, after the dead holder's last
+    renewal), because a live lease may belong to a process that is still running. The periodic sweep does not count.
+  - **Shutdown** (SIGTERM, `src/main.ts`): in the `closing` phase the engine stops starting work (`beginStop`): no
+    new advances, kicks or retries, each running advance stops after its current step, and a sync pool sends no new
+    request; requests already in flight finish and their answers are recorded (paid work is kept). Unanswered
+    requests stay SUBMITTED and their sync job open (an `-out-partial-<epoch>.jsonl` audit copy), so the next process
+    resumes the same job without spending the resubmission attempt. In the `executors` phase `stop()` waits up to
+    `STOP_WAIT_MS` (45 s) for the advances to release their leases, then releases the ones still held anyway: the
+    answers of requests still in flight then are lost and asked again (paid twice). The engine's hook runs last in
+    the 60 s `executors` phase (after the digest and org mail senders), so normally it fits in the 90 s
+    `stop_grace_period`; if the phase times out first the lease is left behind (next item).
+  - **Blue/green order** (`infra/scripts/deploy-api.sh`): the new color starts and resumes runs **while the old color
+    still advances them**, so it counts one resume and its kick finds the run leased (it retries after `LEASE_MS`, or
+    the sweep/poller kicks it). Then the old color gets SIGTERM, stops and releases the lease, which undoes that resume.
+    The release only touches a lease the old color still owns, so it cannot hide crashes counted after a successor
+    took the run over. A plain restart (the old process stops first) leaves no lease, so nothing is counted.
+  - A shutdown that does not finish in time (SIGKILL after the grace period) leaves the lease behind: the next start
+    counts it like a crash.
+  - Before 2026-10-22 every startup counted RUNNING runs, so four API deploys within 24 minutes (2026-10-21, after
+    dependency-only merges) failed a sync WRITE stage with this message.
 - **Memory limit:** the API container is limited to 1G (`API_MEMORY_LIMIT` in `docker-compose.yml`); Docker kills it
   above the limit and `restart: unless-stopped` brings it back.
