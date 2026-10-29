@@ -2,12 +2,16 @@
 // (GET /v1/subjects?plan=).
 
 import type { Deps } from '../../deps';
-import { withTx } from '../../db/client';
+import { sqlState, withTx } from '../../db/client';
 import { ResourceNotFoundError } from '../../http/errors';
+import { parsePgTimestamp, systemNowMicros } from '../../lib/time';
 import { organizedCommissions, type OrganizedCommission } from '../commission/correctionOverlay';
 import { currentTermBySubject, isPastTerm } from '../commission/logic/commissionTerms';
 import * as commissionRepo from '../commission/repo';
 import * as planRepo from '../plan/repo';
+
+/** The sync runs twice a day: entries older than this mean its last four runs failed for the plan. */
+const STALE_AFTER_MICROS = 2 * 24 * 3600 * 1_000_000;
 
 /** OrganizedSubjectsResponse.SubjectDetail. */
 export interface SubjectDetail {
@@ -38,12 +42,15 @@ export class SubjectService {
   }
 
   /**
-   * Deliberately NOT transactional around the ITBA call (it can take the
-   * client's 30 s read timeout): the plan comes from the live ITBA API, then
-   * one read-only query hydrates the commissions cached by the sync.
+   * The plan comes from plan_entry_effective: the sync's copy of ITBA's plan
+   * with the staff edits applied (docs/PLANS.md). A plan the sync hasn't
+   * stored from ITBA yet (only BACKFILL rows, or none) is fetched live,
+   * deliberately NOT inside a transaction (the call can take the client's
+   * 30 s read timeout), and stored, so the edits apply and the next request
+   * reads it. Then read-only queries hydrate the commissions cached by the sync.
    */
   async getSubjectsByPlanOrganized(planId: string, viewerId: string | null): Promise<OrganizedSubjects> {
-    const subjectPlans = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    const subjectPlans = await this.planEntries(planId);
     if (subjectPlans.length === 0) throw new ResourceNotFoundError('Plan', planId);
 
     const codes = [...new Set(subjectPlans.map((sp) => sp.subjectId).filter((c): c is string => c != null))];
@@ -80,5 +87,41 @@ export class SubjectService {
       list.push(detail);
     }
     return organized;
+  }
+
+  private async planEntries(planId: string): Promise<planRepo.PlanEntry[]> {
+    const [registered, synced, fetchedAt] = await withTx(this.deps.db, async (tx) =>
+      [await planRepo.planExists(tx, planId), await planRepo.syncedFromItba(tx, planId), await planRepo.planFetchedAt(tx, planId)] as const,
+    { readOnly: true });
+    const stored = () => withTx(this.deps.db, (tx) => planRepo.findEffectiveEntries(tx, planId), { readOnly: true });
+    // Not registered: the sync never refreshes it and staff can't edit it, so it stays live (as it always was).
+    if (!registered) return (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    if (synced) {
+      if (fetchedAt !== null && systemNowMicros() - parsePgTimestamp(fetchedAt) > STALE_AFTER_MICROS) {
+        // Still served (better than nothing while ITBA fails), but its syncs are failing: say so.
+        this.deps.log.warn({ plan: planId, fetchedAt }, 'Serving plan entries older than 2 days: its sync keeps failing');
+      }
+      return stored();
+    }
+    let live: planRepo.PlanEntry[];
+    try {
+      live = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
+    } catch (e) {
+      // A BACKFILL copy (or staff-added subjects) beats an error.
+      const fallback = await stored();
+      if (fallback.length === 0) throw e;
+      this.deps.log.warn({ err: e, plan: planId }, 'ITBA failed for an unsynced plan: serving its stored copy');
+      return fallback;
+    }
+    // An empty answer is not stored: it would wipe the BACKFILL copy the other readers use.
+    if (live.length === 0) return stored();
+    try {
+      await withTx(this.deps.db, (tx) => planRepo.replacePlanEntries(tx, planId, live, systemNowMicros()));
+    } catch (e) {
+      // A concurrent sync or request stored it first, or a row was rejected: the stored copy has the edits.
+      if (sqlState(e) === undefined) throw e;
+      this.deps.log.warn({ err: e, plan: planId }, 'Could not store the plan fetched live');
+    }
+    return stored();
   }
 }

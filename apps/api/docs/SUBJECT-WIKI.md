@@ -174,7 +174,7 @@ embedding call; `501` when no embedding server is configured). It returns
   (`index | topic | concept`) everywhere. `generatedAt` is an ISO timestamp (a frontmatter date becomes midnight UTC).
 - `GET .../kb`: `pages` lists every visible page **including** the index (index, then topics, then concepts, by
   title); `index` is `null` when there is none. `related` has one entry per subject, reason priority
-  `PREREQUISITE` > `DEPENDENT` > `LINKED`; prerequisite/dependent pairs come from `plan_subject.dependencies` of every
+  `PREREQUISITE` > `DEPENDENT` > `LINKED`; prerequisite/dependent pairs come from the `dependencies` of every entry (`plan_entry_effective`, `PLANS.md`) of every
   plan (`wiki.kb_subject_relation`, refreshed on startup and nightly at 04:30); `LINKED` is computed at read time from
   `kb_link` (links from this wiki, or from published pages of other wikis into it). `hasWiki` = the subject has at least
   one `PUBLISHED` page.

@@ -4,7 +4,7 @@
 // database (ITBA_API_FAKE_FROM_DB) instead of the IT's stubbed fake. The
 // repository-level tests are in-process: test/db/local-temporal-zone.test.ts.
 import { describe, expect, test } from 'bun:test';
-import { useServer } from '../support';
+import { copyPlanSubjectsToEntries, useServer } from '../support';
 
 const api = useServer({ env: { ITBA_API_FAKE_FROM_DB: 'true', TZ: 'America/Argentina/Buenos_Aires' } });
 
@@ -19,6 +19,7 @@ describe('LocalTemporalZoneIT', () => {
                  VALUES ('C-1', 'MONDAY', '101F', 'SDF', '08:00:00', '11:00:00')`;
     await api.db`INSERT INTO public.plan_subject (subject_id, plan_id, section, year, semester, credits_required)
                  VALUES ('93.12', 'S10-Rev23', 'Ciclo Básico', 1, 1, 0)`;
+    await copyPlanSubjectsToEntries(api.db);
     const c = await api.get('/v1/commissions?plan=S10-Rev23');
     expect(c.status).toBe(200);
     expect([c.json[0].courseStart, c.json[0].times[0].hourFrom, c.json[0].times[0].hourTo]).toEqual(['2026-03-09', '08:00', '11:00']);

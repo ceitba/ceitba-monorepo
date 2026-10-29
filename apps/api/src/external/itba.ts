@@ -1,7 +1,7 @@
 // external/itba/*: every call to the upstream ITBA academic gateway goes
 // through ItbaApiClient. Selected like Java: ITBA_API_USE_FAKE=true ->
-// FakeItbaApiClient (ITBA_API_FAKE_FROM_DB=true reads unstubbed plans from the
-// local plan_subject table), else the real client.
+// FakeItbaApiClient (ITBA_API_FAKE_FROM_DB=true replays unstubbed plans from
+// the local plan_entry table), else the real client.
 //
 // The real client (RestClientItbaApiClient + wire/*) is in ./itba/restClient.ts
 // and ./itba/wire.ts.
@@ -112,23 +112,20 @@ export class FakeItbaApiClient implements ItbaApiClient {
     const stubbed = this.plans.get(planId);
     if (stubbed) return { subjects: [...stubbed.subjects], requirements: [...stubbed.requirements] };
     if (!this.fallbackDb) return { subjects: [], requirements: [] };
+    // Replays the stored copy of ITBA's plan (plan_entry, no staff edits: those apply on top, as with the real one).
     const rows = await this.fallbackDb.execute(sql`
-      SELECT ps.subject_id, ps.plan_id, ps.section, ps.year, ps.semester, ps.dependencies,
-             ps.credits_required, s.name, s.credits
-      FROM plan_subject ps JOIN subject s ON s.id = ps.subject_id
-      WHERE ps.plan_id = ${planId}
-      ORDER BY ps.year, ps.semester, ps.subject_id`);
+      SELECT subject_id, plan_id, section, year, semester, dependencies, credits_required, subject_name, subject_credits
+      FROM plan_entry WHERE plan_id = ${planId} ORDER BY position`);
     const subjects = (rows as unknown as Record<string, unknown>[]).map((r) => ({
       subjectId: r.subject_id as string,
       planId: r.plan_id as string,
       section: (r.section as string | null) ?? null,
       year: (r.year as number | null) ?? null,
       semester: (r.semester as number | null) ?? null,
-      // A VARCHAR[] may hold NULL elements: skip them.
       dependencies: ((r.dependencies as (string | null)[] | null) ?? []).filter((d): d is string => d !== null),
       creditsRequired: (r.credits_required as number | null) ?? null,
-      subjectName: (r.name as string | null) ?? null,
-      subjectCredits: Number(r.credits ?? 0),
+      subjectName: (r.subject_name as string | null) ?? null,
+      subjectCredits: Number(r.subject_credits ?? 0),
     }));
     // Read back too, or a sync from the fake would wipe the stored requirements.
     const reqRows = await this.fallbackDb.execute(sql`

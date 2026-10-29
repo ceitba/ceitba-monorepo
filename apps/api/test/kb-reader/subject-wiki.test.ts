@@ -7,7 +7,7 @@
 // POST /v1/staff/drive/files/{id}/remove and /sources/{id}/block, whose DriveRecalculator
 // calls hidePagesCiting; here hidePagesCiting is called with the same files.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { mintJwt } from '../../contract/support/identity';
+import { copyPlanSubjectsToEntries, mintJwt } from '../../contract/support/identity';
 import { kbReader } from '../../src/features/kb-reader/services';
 import { testApp, type TestApp } from '../support/app';
 
@@ -59,7 +59,7 @@ function link(page: any, raw: string): any {
 describe('SubjectWikiIT (in process, staff side through the services)', () => {
   beforeEach(async () => {
     await t.sql`TRUNCATE wiki.kb_page, wiki.kb_subject_relation, wiki.drive_file, wiki.drive_source,
-      public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+      public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
     await t.sql`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
       ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
     await t.sql`INSERT INTO public.subject (id, name, credits, updated_at) VALUES
@@ -68,6 +68,7 @@ describe('SubjectWikiIT (in process, staff side through the services)', () => {
     await t.sql`INSERT INTO public.plan (id, career_id, name, updated_at) VALUES ('P1', 'X', 'Plan', now())`;
     await t.sql`INSERT INTO public.plan_subject (subject_id, plan_id, section, year, semester, credits_required, dependencies)
       VALUES ('61.12', 'P1', 'Ciclo', 2, 1, 0, ARRAY['81.07']), ('81.07', 'P1', 'Ciclo', 1, 2, 0, ARRAY[]::varchar[])`;
+    await copyPlanSubjectsToEntries(t.sql);
     expect(await kb().relations.refresh()).toBe(1);
 
     const owner = crypto.randomUUID();
