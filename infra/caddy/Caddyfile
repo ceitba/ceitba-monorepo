@@ -26,6 +26,14 @@ www.ceitba.org.ar {
 }
 
 ceitba.org.ar {
+    # Compress responses (zstd, else gzip; only text types: JSON, HTML, JS,
+    # CSS, XML, SVG). The plan catalogue (GET /api/v1/subjects?plan=) is
+    # ~70 KB of JSON and the app downloads it on mobile data. Not the MCP
+    # server: its responses stream (SSE) and must reach the client as they
+    # are written, so its paths are left out.
+    @compressible not path /mcp /mcp/* /.well-known/oauth-protected-resource/mcp /.well-known/oauth-authorization-server/mcp /.well-known/openid-configuration/mcp
+    encode @compressible zstd gzip
+
     # Hosted MCP server (apps/mcp, ~/CEITBA-MCP) at https://ceitba.org.ar/mcp.
     # It owns /mcp, /mcp/* (MCP endpoint, OAuth endpoints, Google callback)
     # and the two path-suffixed discovery documents MCP clients fetch
