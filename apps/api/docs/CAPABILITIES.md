@@ -11,7 +11,7 @@ the tables are ignored.
 
 | Key | Label | Gates |
 |---|---|---|
-| `apuntes` | Apuntes | `/v1/me/drive/**`, `/v1/wiki/apuntes/subjects`, `/v1/wiki/subjects/{id}/files`, `/v1/wiki/files/**` (`src/features/drive/routes.ts`), `/v1/wiki/subjects/{id}/kb/**` and `/v1/wiki/kb/pages/{id}/report` (`src/features/kb-reader/routes.ts`) |
+| `apuntes` | Apuntes | `/v1/me/drive/**`, `/v1/wiki/apuntes/subjects`, `/v1/wiki/subjects/{id}/files`, `/v1/wiki/files/**` (`src/features/drive/routes.ts`), `/v1/wiki/subjects/{id}/kb/**` and `/v1/wiki/kb/pages/{id}/report` (`src/features/kb-reader/routes.ts`), the student subject-review routes `/v1/subjects/{id}/reviews`, `/v1/subject-reviews/**` and `/v1/professors/lookup` (`src/features/review/routes.ts`) |
 | `asistentes_ia` | Asistentes de IA | Signing in to the hosted MCP server (`apps/mcp`): checked at the OAuth sign-in and on every MCP request, which drops the sign-in once the capability is gone. The web app shows `/ia` and its links only with it. Enforced by the MCP server from `/auth/me`, not by an API route |
 | `resumen_semanal` | Resumen semanal | Recipients of the weekly digest "La semana en ITBA" (snapshot at send time, per-delivery re-check, draft `recipientEstimate`) and `GET`/`PUT /v1/digests/subscription`. `POST /v1/digests/unsubscribe`, the correction-vote token endpoints and the STAFF digest endpoints are not gated |
 

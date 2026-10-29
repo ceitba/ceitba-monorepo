@@ -323,7 +323,7 @@ export default function ManageReviewSection() {
         source: 'hiddenReviews',
         kind: 'apuntes',
         typeLabel: t('manage.review.types.review'),
-        title: `${subject} · ${t('apuntes.reviews.commission', { commission: r.commission })}`,
+        title: t('manage.review.reviewTitle', { subject, commission: r.commission }),
         meta: t('manage.review.reviewReportedMeta', {
           comment: r.comment?.trim() ? `“${r.comment.trim().slice(0, 120)}”` : t('manage.drive.reviews.noComment'),
           term,

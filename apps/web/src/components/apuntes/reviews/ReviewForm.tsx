@@ -225,11 +225,11 @@ export default function ReviewForm({
                 <Button
                   key={p.id}
                   size="sm"
-                  variant={on ? 'primary' : 'outline'}
-                  aria-pressed={on}
+                  variant="outline"
+                  pressed={on}
+                  textCase="text"
                   disabled={!on && atLimit}
                   onClick={() => toggle(p.id)}
-                  className="normal-case! tracking-normal! font-body!"
                 >
                   {on && <span aria-hidden="true" className="mr-1">✓</span>}
                   {p.name}

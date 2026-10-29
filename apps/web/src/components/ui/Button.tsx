@@ -1,5 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
-import { buttonClass, iconButtonClass, type ButtonSize, type ButtonVariant } from './buttonClass'
+import { buttonClass, iconButtonClass, type ButtonSize, type ButtonTextCase, type ButtonVariant } from './buttonClass'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -8,10 +8,14 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   // Shows `loadingLabel` (or "…") and disables the button while an action runs.
   loading?: boolean
   loadingLabel?: string
+  // A toggle button: sets aria-pressed and, on `outline`, the selected chip look.
+  pressed?: boolean
+  // `text` for labels that are content (names), not commands; default `label`.
+  textCase?: ButtonTextCase
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant, size, block, loading = false, loadingLabel, className, disabled, children, type = 'button', ...rest },
+  { variant, size, block, loading = false, loadingLabel, pressed, textCase, className, disabled, children, type = 'button', ...rest },
   ref,
 ) {
   return (
@@ -20,7 +24,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={buttonClass({ variant, size, block, className })}
+      aria-pressed={pressed}
+      className={buttonClass({ variant, size, block, pressed, textCase, className })}
       {...rest}
     >
       {loading ? (loadingLabel ?? '…') : children}

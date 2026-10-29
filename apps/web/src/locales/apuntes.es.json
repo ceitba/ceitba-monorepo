@@ -21,7 +21,8 @@
       "CAPABILITY_REQUIRED": "Apuntes todavía no está habilitado para tu cuenta.",
       "SubjectReviewExists": "Ya tenés una reseña de esta materia para ese cuatrimestre: editala.",
       "SubjectReviewFutureTerm": "Solo podés opinar de un cuatrimestre que ya empezó.",
-      "SubjectReviewOwn": "No podés marcar como útil tu propia reseña.",
+      "SubjectReviewOwn": "No podés marcar como útil ni denunciar tu propia reseña.",
+      "SubjectReviewHidden": "Tu reseña está oculta por denuncias: no se puede eliminar hasta que el equipo de CEITBA la revise. Podés editarla.",
       "UnknownProfessor": "Uno de los profesores que marcaste ya no está disponible. Desmarcalo e intentá nuevamente.",
       "ProfessorEmailDomain": "Tiene que ser un mail @itba.edu.ar.",
       "ProfessorNotFound": "No encontramos ese mail en el ITBA. Revisalo e intentá nuevamente, o dejalo sin profesor.",
@@ -365,7 +366,7 @@
       "deleteBody": "Tu reseña del {{term}} deja de verse para todos. No se puede deshacer.",
       "deleteConfirm": "Sí, eliminar",
       "deleted": "Eliminaste tu reseña.",
-      "hiddenNotice": "Tu reseña está oculta porque recibió varias denuncias. El equipo de CEITBA la va a revisar; mientras tanto, solo la ves vos.",
+      "hiddenNotice": "Tu reseña está oculta porque recibió varias denuncias. El equipo de CEITBA la va a revisar; mientras tanto, solo la ves vos y no se puede eliminar (sí editar).",
       "reportTitle": "Denunciar reseña",
       "reportIntro": "Contanos qué pasa con esta reseña. Con varias denuncias se oculta hasta que CEITBA la revise.",
       "form": {

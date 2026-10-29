@@ -18,7 +18,8 @@ export const MAX_COMMENT_LENGTH = 2000
 export type ReviewErrorCode =
   | 'SubjectReviewExists'            // 409: one review per subject and term
   | 'SubjectReviewFutureTerm'        // 400
-  | 'SubjectReviewOwn'               // 400: "Me sirvió" on your own review
+  | 'SubjectReviewOwn'               // 400: "Me sirvió" or a report on your own review
+  | 'SubjectReviewHidden'            // 409: the author deletes their review hidden by reports
   | 'UnknownProfessor'               // 400
   | 'ProfessorEmailDomain'           // 400
   | 'ProfessorNotFound'              // 404

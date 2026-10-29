@@ -29,6 +29,9 @@ beforeEach(async () => {
   for (const e of [ANA, BETO, CAMI, DANI]) await seedUser(api.db, e, { name: e });
   await seedStaff(api.db, STAFF);
   await api.db`INSERT INTO public.subject (id, name, updated_at) VALUES ('93.59', 'Análisis Matemático II', now())`;
+  // The Opiniones tab is part of Apuntes: every student route needs the capability.
+  await api.db`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
+    ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
 });
 
 describe('SubjectReviews', () => {
@@ -168,6 +171,34 @@ describe('SubjectReviews', () => {
     expect((await api.post('/v1/professors/lookup', { body: { email: 'mgarcia@itba.edu.ar' } })).status).toBe(401);
   });
 
+  test('studentRoutes_403WithoutTheApuntesCapability', async () => {
+    const mineId = (await post(ANA, review())).json.id;
+    await api.db`DELETE FROM public.capability_settings WHERE capability = 'apuntes'`;
+    const id = mineId as string;
+    const calls: [string, () => Promise<{ status: number; json: { error?: string; message?: string } }>][] = [
+      ['list', () => list(BETO)],
+      ['create', () => post(BETO, review())],
+      ['update', async () => api.put(`/v1/subject-reviews/${id}`, { as: await as(ANA), body: review() })],
+      ['delete', async () => api.delete(`/v1/subject-reviews/${id}`, { as: await as(ANA) })],
+      ['helpful', async () => api.put(`/v1/subject-reviews/${id}/helpful`, { as: await as(BETO) })],
+      ['unhelpful', async () => api.delete(`/v1/subject-reviews/${id}/helpful`, { as: await as(BETO) })],
+      ['report', async () => api.put(`/v1/subject-reviews/${id}/report`, { as: await as(BETO), body: { reason: 'SPAM' } })],
+      ['lookup', () => lookup(BETO, 'mgarcia@itba.edu.ar')],
+    ];
+    for (const [name, call] of calls) {
+      const r = await call();
+      expect([name, r.status, r.json.error, r.json.message]).toEqual([name, 403, 'CAPABILITY_REQUIRED', "This feature requires the 'apuntes' capability"]);
+    }
+    // Nothing happened: no professor looked up, the review untouched.
+    expect((await api.db`SELECT 1 FROM public.professor`).length).toBe(0);
+    expect((await api.db`SELECT 1 FROM public.subject_review WHERE id = ${id}`).length).toBe(1);
+    // A bad body is still a 400 first (the check runs after binding).
+    expect((await api.post('/v1/professors/lookup', { as: await as(BETO), body: { email: 'not-an-email' } })).status).toBe(400);
+    // Staff hold every capability; anonymous callers are still 401.
+    expect((await list(STAFF)).status).toBe(200);
+    expect((await api.get('/v1/subjects/93.59/reviews')).status).toBe(401);
+  });
+
   test('professorLookup', async () => {
     const r = await lookup(ANA, 'MGARCIA@itba.edu.ar');
     expect(r.status).toBe(200);
@@ -191,6 +222,8 @@ describe('SubjectReviews without a directory', () => {
 
   test('lookupOfAnUnknownProfessor_503_whenNoAccountHasTheDirectoryScope', async () => {
     await real.db`TRUNCATE public."user" CASCADE`;
+    await real.db`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
+      ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
     const r = await real.post('/v1/professors/lookup', { as: await as(ANA), body: { email: 'mgarcia@itba.edu.ar' } });
     expect(r.status).toBe(503);
     expect(r.json.error).toBe('ProfessorDirectoryUnavailable');

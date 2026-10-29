@@ -6,7 +6,7 @@
 // cannot delete their account (409 LastActiveStaff; the check locks the active
 // staff rows), nor the only admin of an organization (409 LastOrgAdmin).
 //
-// Two steps belong to other features; this service composes them from the owning features' services
+// Three steps belong to other features; this service composes them from the owning features' services
 // (accountDeletionSteps), so a deletion never depends on which routes were registered (a jobs-only
 // process, a test without routes):
 //   'scheduleCorrections.withdrawVotesOf'  ScheduleCorrectionService.withdrawVotesOf
@@ -14,9 +14,10 @@
 //       corrections that re-apply go out after commit)
 //   'drive.prepareAccountDeletion'         DriveModerationService.prepareAccountDeletionIn
 //       (withdraw the user's reports and recompute, kb.forgetFiles, stored copies deleted after commit)
+//   'reviews.deleteUserData'               SubjectReviewService.deleteUserDataIn
+//       (the user's subject reviews, votes and reports; reports recounted)
 // A step may return a function run after the deletion commits (best effort).
 
-import { deleteUserData as deleteSubjectReviewData } from '../review/repo';
 import type { Deps } from '../../deps';
 import { withTx, type Db, type Tx } from '../../db/client';
 import { LastActiveStaffError, LastOrgAdminError } from '../../http/errors';
@@ -25,9 +26,10 @@ import * as del from './deletionRepo';
 import { lockActiveStaffIds, lockOrgAdmins, isActiveStaffAt } from './repo';
 import { ScheduleCorrectionService } from '../correction/service';
 import { driveServices } from '../drive/services';
+import { SubjectReviewService } from '../review/service';
 import { firePushes } from '../news/pushTriggers';
 
-export type AccountDeletionStepName = 'scheduleCorrections.withdrawVotesOf' | 'drive.prepareAccountDeletion';
+export type AccountDeletionStepName = 'scheduleCorrections.withdrawVotesOf' | 'drive.prepareAccountDeletion' | 'reviews.deleteUserData';
 export type AccountDeletionStep = (tx: Tx, userId: string, deps: Deps) => Promise<void | (() => Promise<void>)>;
 
 export type AccountDeletionSteps = Record<AccountDeletionStepName, AccountDeletionStep>;
@@ -40,6 +42,7 @@ export function accountDeletionSteps(): AccountDeletionSteps {
       return pushes.length ? async () => firePushes(deps, pushes) : undefined;
     },
     'drive.prepareAccountDeletion': (tx, userId, deps) => driveServices(deps).moderation.prepareAccountDeletionIn(tx, userId),
+    'reviews.deleteUserData': (tx, userId, deps) => new SubjectReviewService(deps).deleteUserDataIn(tx, userId),
   };
 }
 
@@ -84,7 +87,7 @@ export class AccountDeletionService {
       await this.step('drive.prepareAccountDeletion', tx, userId, afterCommit);
       await del.deleteDriveSources(tx, userId);
       await del.deleteKbReports(tx, userId);
-      await deleteSubjectReviewData(tx, userId);
+      await this.step('reviews.deleteUserData', tx, userId, afterCommit);
       await del.deleteCapabilityGrants(tx, userId);
       await del.deleteOrgInvites(tx, userId);
 

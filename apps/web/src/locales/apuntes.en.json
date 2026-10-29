@@ -21,7 +21,8 @@
       "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet.",
       "SubjectReviewExists": "You already have a review of this subject for that term: edit it.",
       "SubjectReviewFutureTerm": "You can only review a term that has already started.",
-      "SubjectReviewOwn": "You can't mark your own review as helpful.",
+      "SubjectReviewOwn": "You can't mark your own review as helpful or report it.",
+      "SubjectReviewHidden": "Your review is hidden by reports: it can't be deleted until the CEITBA team reviews it. You can still edit it.",
       "UnknownProfessor": "One of the professors you picked is no longer available. Unselect it and try again.",
       "ProfessorEmailDomain": "It has to be an @itba.edu.ar email.",
       "ProfessorNotFound": "We couldn't find that email at ITBA. Check it and try again, or leave it without a professor.",
@@ -365,7 +366,7 @@
       "deleteBody": "Your {{term}} review stops being visible to everyone. This can't be undone.",
       "deleteConfirm": "Yes, delete",
       "deleted": "You deleted your review.",
-      "hiddenNotice": "Your review is hidden because it got several reports. The CEITBA team will review it; meanwhile only you can see it.",
+      "hiddenNotice": "Your review is hidden because it got several reports. The CEITBA team will review it; meanwhile only you can see it, and it can't be deleted (you can still edit it).",
       "reportTitle": "Report review",
       "reportIntro": "Tell us what's wrong with this review. With several reports it's hidden until CEITBA reviews it.",
       "form": {
