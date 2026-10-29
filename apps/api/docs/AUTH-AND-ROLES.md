@@ -387,6 +387,8 @@ Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`src
 | `wiki.subject_wiki_edit_proposal` with status `PENDING` | Deleted |
 | `subject_review` by the user (with its professor links, votes and reports), the user's `subject_review_helpful` and `subject_review_report` rows | Deleted, after decrementing the report counts of the reviews they reported ([SUBJECT-REVIEWS.md](SUBJECT-REVIEWS.md)) |
 | `articles.created_by`, `news_events.created_by` | Set to `NULL` (content belongs to the organization) |
+| `article_comment_likes`, `article_comment_reports`, `article_poll_votes` of the user | Deleted |
+| `article_comments` by the user | Replies and comments without replies deleted; the rest become tombstones (author `NULL`, body emptied) so others' replies keep their thread (`docs/NEWSLETTER-ENGAGEMENT.md`) |
 | `schedule_correction_vote` rows of the user | Deleted, after decrementing the corrections' counters (statuses are not re-evaluated) |
 | `schedule_correction.suggester_id` / `reviewed_by` | Set to `NULL` (corrections are crowd data and stay) |
 | `wiki.subject_note`, `wiki.career_note`, `wiki.subject_wiki_page.updated_by`, reviewed edit proposals | Kept: shared study material with a NOT NULL author FK |

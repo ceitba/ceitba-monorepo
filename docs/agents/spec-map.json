@@ -143,6 +143,19 @@
       ]
     },
     {
+      "name": "newsletter comments and polls",
+      "paths": [
+        "apps/api/src/features/engagement/**",
+        "apps/web/src/newsletter/components/engagement/**",
+        "apps/web/src/newsletter/api/engagement.ts",
+        "apps/api/src/main/resources/db/migration/V67__newsletter_comments_polls.sql",
+        "apps/api/contract/tests/news-engagement-*"
+      ],
+      "docs": [
+        "apps/api/docs/NEWSLETTER-ENGAGEMENT.md"
+      ]
+    },
+    {
       "name": "deploy (blue/green, job locks)",
       "paths": [
         "infra/scripts/**",
