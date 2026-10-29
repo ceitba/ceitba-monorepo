@@ -27,11 +27,14 @@ JSON with trimmed fields, short times (`Lun 08:00-10:00 SDF 101`), and long text
 | **Reports**: signed in + `apuntes` + `report` scope | `report_wiki_page`, `report_apuntes_file` (one report per user; 3 reports hide the content until CEITBA reviews it) |
 | Staff (`staff` scope) | `staff_list_schedule_corrections`, `staff_search_users`, `staff_list_digests`, `staff_analytics_summary` |
 | Moderator or staff (`staff` scope) | `moderation_list_proposals` |
+| **Events**: staff (`staff` scope) or a member of an organization + `events` scope | `create_event` (turns an invite, e.g. a WhatsApp message, into an event; members post only for their organizations, staff for any or none; the end time defaults to start + 2 h, capped at 23:59, and an explicit end must be after the start; notifies the organization's followers; on stdio it also needs `CEITBA_MCP_ALLOW_WRITES`) |
 | **Writes**: staff/moderator + `write` scope | `staff_review_schedule_correction` (apply/reject), `moderation_review_proposal` (approve/reject) |
 
-Students can read and report content, nothing else: their keys carry `["read", "report"]`, and the API's `report`
-scope only opens the two report endpoints. Only staff and moderators get write tools, and those tools are marked
-`destructiveHint`.
+Students can read, report content and create events for their organizations, nothing else: their keys carry
+`["read", "report", "events"]`, the API's `report` scope only opens the two report endpoints and `events` only opens
+`POST /v1/news/events`, whose policy still requires membership of the event's organization. Only staff and moderators
+get write tools, and those tools are marked `destructiveHint`. Users who connected before the `events` scope existed
+must reconnect to see `create_event`.
 
 Resources: `ceitba://plan/{planId}` (a plan's subjects) and `ceitba://wiki/{subjectId}/{slug}` (a wiki page as
 markdown, needs `apuntes`). Prompts: `planificar_cuatrimestre`, `estudiar_materia`, `que_hay_esta_semana`.
@@ -46,6 +49,7 @@ are anonymous and deduplicated by IP, so every user of the hosted server would c
 
 - `read`: GET only.
 - `report`: also the two report endpoints (wiki pages, Apuntes files); implied by `write`.
+- `events`: also `POST /v1/news/events` (create an event; the API checks the organization); implied by `write`.
 - `write`: non-safe methods.
 - `staff`: keeps STAFF/MODERATOR and every staff power services check; without it a staff member's key acts as a student's (capabilities are kept).
 - `keys`: manage API keys. This server never asks for it.
@@ -65,7 +69,7 @@ revoke. `src/oauth/provider.ts` does the CEITBA part:
    and send a student an authorize link that ends with the code, and a CEITBA API key, at their own redirect URI.
 3. `POST /api/v1/auth/google/mobile {idToken, nonce}`. The API verifies the token, the allowlist and the `hd` domain,
    then returns a short session.
-4. With that session we create a **scoped API key**: `["read","report"]` for students, `["read","report","staff","write"]` for staff and
+4. With that session we create a **scoped API key**: `["read","report","events"]` for students, `["read","report","events","staff","write"]` for staff and
    moderators (narrowed further if the client asked for fewer scopes). Then we log the session out.
 5. We store the grant and its authorization code in one transaction; if that fails, the new API key is revoked.
    Then we issue our own opaque access token (1 h) and refresh token (rotating, lives as long as the grant, 90 days

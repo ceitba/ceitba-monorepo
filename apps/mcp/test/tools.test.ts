@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { CATALOG, error, ME_STAFF, ME_STUDENT, startFakeApi, type FakeApi } from "./fakeApi";
+import { defaultEndTime, todayInArgentina } from "../src/tools/news";
 import { connect } from "./helpers";
 
 let api: FakeApi;
@@ -28,7 +29,12 @@ beforeAll(() => {
       }]
     }),
     "PUT /v1/wiki/kb/pages/:id/report": () => undefined,
-    "PUT /v1/wiki/files/:id/report": () => undefined
+    "PUT /v1/wiki/files/:id/report": () => undefined,
+    "POST /v1/news/events": req => {
+      const b = req.body as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...b, id: "33333333-3333-4333-8333-333333333333", startTime: `${b.startTime}:00`, endTime: `${b.endTime}:00`,
+        createdAt: "", coverImage: null, capacity: null, rsvpCount: 0 }), { status: 201, headers: { "Content-Type": "application/json" } });
+    }
   });
 });
 
@@ -89,12 +95,31 @@ describe("tool visibility", () => {
     await reporter.close();
   });
 
+  test("create_event is listed for staff and organization members holding the events scope, after the write opt-in", async () => {
+    const member = { ...ME_STUDENT, organizations: [{ slug: "sabf", role: "member" }] };
+    const cases: [Parameters<typeof connect>[0], boolean][] = [
+      [{ me: member, scopes: ["read", "report", "events"], allowWrites: true }, true],
+      [{ me: member, scopes: ["read", "report", "events"] }, false],
+      [{ me: member, scopes: ["read", "report"], allowWrites: true }, false],
+      [{ me: ME_STUDENT, scopes: ["read", "report", "events"], allowWrites: true }, false],
+      [{ me: ME_STAFF, scopes: ["read", "events", "staff"], allowWrites: true }, true],
+      [{ me: ME_STAFF, scopes: ["read", "events"], allowWrites: true }, false],
+      [{ me: ME_STAFF, scopes: ["read", "staff", "write"], allowWrites: true }, true],
+      [{ me: null, scopes: ["read", "events"], allowWrites: true }, false]
+    ].map(([o, v]) => [{ apiUrl: api.url, ...(o as object) }, v as boolean]);
+    for (const [o, visible] of cases) {
+      const s = await connect(o);
+      expect(s.tools.includes("create_event")).toBe(visible);
+      await s.close();
+    }
+  });
+
   test("every tool description is Spanish first with an English part", async () => {
     const s = await connect({ apiUrl: api.url, me: ME_STAFF, scopes: ["read", "staff", "write"], allowWrites: true });
     const { tools } = await s.client.listTools();
     for (const t of tools) {
       expect(t.description).toContain("EN:");
-      expect(t.annotations?.readOnlyHint).toBe(!t.name.includes("review") && !t.name.startsWith("report_"));
+      expect(t.annotations?.readOnlyHint).toBe(!t.name.includes("review") && !t.name.startsWith("report_") && t.name !== "create_event");
     }
     await s.close();
   });
@@ -217,6 +242,70 @@ describe("tool calls", () => {
     expect(call.method).toBe("PUT");
     expect(call.path).toBe("/v1/wiki/kb/pages/22222222-2222-4222-8222-222222222222/report");
     expect(call.body).toEqual({ reason: "CONTENT_ERROR", comment: "La fórmula está mal" });
+    await s.close();
+  });
+
+  test("create_event posts the event for the member's organization, ending 2 h later by default", async () => {
+    const member = { ...ME_STUDENT, organizations: [{ slug: "sabf", role: "member" }] };
+    const s = await connect({ apiUrl: api.url, me: member, scopes: ["read", "report", "events"], allowWrites: true });
+    const date = "2099-05-01";
+    const r = await s.call("create_event", {
+      organization: "sabf", title: "Charla de bienvenida", date, startTime: "18:30", location: "Aula 101",
+      category: "Organizaciones", description: "Traé amigos", signupUrl: "https://forms.example.com/x"
+    });
+    expect(r.isError).toBe(false);
+    expect((r.data as { event: unknown }).event).toEqual({
+      id: "33333333-3333-4333-8333-333333333333", title: "Charla de bienvenida", date, time: "18:30-20:30",
+      location: "Aula 101", category: "Organizaciones", organization: "sabf"
+    });
+    const call = api.calls.findLast(c => c.path === "/v1/news/events")!;
+    expect(call.method).toBe("POST");
+    expect(call.headers.get("x-api-key")).toBe("ceitba_test");
+    expect(call.body).toEqual({
+      title: "Charla de bienvenida", eventDate: date, startTime: "18:30", endTime: "20:30", location: "Aula 101",
+      category: "Organizaciones", organization: "sabf", description: "Traé amigos", onlineUrl: null,
+      signupMode: "external", signupUrl: "https://forms.example.com/x"
+    });
+    await s.close();
+  });
+
+  test("create_event refuses other organizations, a missing organization and past dates before calling the API", async () => {
+    const member = { ...ME_STUDENT, organizations: [{ slug: "sabf", role: "member" }] };
+    const s = await connect({ apiUrl: api.url, me: member, scopes: ["read", "report", "events"], allowWrites: true });
+    const before = api.calls.length;
+    const base = { title: "T", date: "2099-05-01", startTime: "10:00", location: "L", category: "General" };
+    const other = await s.call("create_event", { ...base, organization: "trama" });
+    expect(other.isError).toBe(true);
+    expect(other.text).toContain("sabf");
+    expect((await s.call("create_event", base)).text).toContain("organización");
+    const past = await s.call("create_event", { ...base, organization: "sabf", date: "2020-01-01" });
+    expect(past.isError).toBe(true);
+    expect(past.text).toContain(todayInArgentina());
+    expect(api.calls.length).toBe(before);
+    await s.close();
+  });
+
+  test("staff may create an event without an organization", async () => {
+    const s = await connect({ apiUrl: api.url, me: ME_STAFF, scopes: ["read", "staff", "write"], allowWrites: true });
+    const r = await s.call("create_event", { title: "Asamblea", date: "2099-05-01", startTime: "12:00", endTime: "14:00", location: "SDF", category: "Campus" });
+    expect(r.isError).toBe(false);
+    expect(api.calls.findLast(c => c.path === "/v1/news/events")!.body).toMatchObject({ organization: null, endTime: "14:00", signupMode: "none" });
+    await s.close();
+  });
+
+  test("defaultEndTime adds two hours, capped at 23:59 so it never wraps past midnight", () => {
+    expect(defaultEndTime("18:30")).toBe("20:30");
+    expect(defaultEndTime("21:59")).toBe("23:59");
+    expect(defaultEndTime("23:00")).toBe("23:59");
+  });
+
+  test("an end time not after the start is refused before calling the API", async () => {
+    const s = await connect({ apiUrl: api.url, me: ME_STAFF, scopes: ["read", "staff", "write"], allowWrites: true });
+    const before = api.calls.length;
+    const r = await s.call("create_event", { title: "Fiesta", date: "2099-05-01", startTime: "22:00", endTime: "01:00", location: "SDF", category: "Campus" });
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain("01:00");
+    expect(api.calls.slice(before).some(c => c.path === "/v1/news/events")).toBe(false);
     await s.close();
   });
 

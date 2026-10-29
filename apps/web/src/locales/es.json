@@ -794,6 +794,6 @@
       "revoked": "Asistente desconectado",
       "revokeError": "No se pudo desconectar el asistente."
     },
-    "privacy": "Tu asistente solo puede leer tus datos y reportar errores en Apuntes si se lo pedís. CEITBA no guarda tus preguntas."
+    "privacy": "Tu asistente solo puede leer tus datos y, si se lo pedís, reportar errores en Apuntes o crear eventos de tus organizaciones. CEITBA no guarda tus preguntas."
   }
 }

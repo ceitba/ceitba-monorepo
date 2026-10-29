@@ -326,6 +326,7 @@ enforced by `scopeDenial` in `src/http/auth/apikeys.ts` and, for staff powers de
 |---|---|
 | `read` | Always present. Safe methods (GET/HEAD) plus read-style POSTs (`/v1/classrooms/conflicts`). |
 | `report` | Also `PUT /v1/wiki/kb/pages/{id}/report` and `PUT /v1/wiki/files/{id}/report` (reporting wiki pages and Apuntes files), nothing else. Implied by `write`. |
+| `events` | Also `POST /v1/news/events` (creating an event; the route's policy still requires STAFF or membership of `body.organization`), nothing else: not editing or deleting events. Implied by `write`, so keys stored before it existed (`read,report,write,staff,keys`) stay full power, and it is only written to `api_keys.scopes` when asked for without `write` (an API image older than `events` rejects the name). |
 | `write` | Non-safe methods (POST/PUT/PATCH/DELETE). Without it they answer `403 INSUFFICIENT_SCOPE`. |
 | `staff` | Keeps the owner's staff powers: `ROLE_STAFF` / `ROLE_MODERATOR`, and the staff checks services make themselves (hidden wiki pages and unpublished Drive files, moderator status). Without it the key acts as a plain USER everywhere, except that a staff member keeps every capability (capabilities are features, not powers). |
 | `keys` | Create API keys and revoke other keys. Only a full-power key (every scope) may do either. |
@@ -342,8 +343,8 @@ enforced by `scopeDenial` in `src/http/auth/apikeys.ts` and, for staff powers de
 - The key's owner must pass the same email allowlist as a JWT session; removing an email from the allowlist also
   disables their keys (`403`).
 
-The MCP server (`apps/mcp`) mints `["read", "report"]` keys for students and `["read", "report", "staff", "write"]`
-keys for staff and moderators, one per OAuth sign-in, named `MCP · <client>`. It never asks for `keys`, so no MCP
+The MCP server (`apps/mcp`) mints `["read", "report", "events"]` keys for students and
+`["read", "report", "events", "staff", "write"]` keys for staff and moderators, one per OAuth sign-in, named `MCP · <client>`. It never asks for `keys`, so no MCP
 key is full power: none can create keys or revoke other keys. The web app's connect page (`/ia`)
 lists those sign-ins and revokes them. The hosted MCP server accepts only its own OAuth tokens, never a raw key.
 

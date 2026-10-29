@@ -136,7 +136,8 @@
         "apps/api/src/features/news/access.ts",
         "apps/api/src/features/news/memberships.ts",
         "apps/api/src/features/news/organizations.ts",
-        "apps/api/src/features/orgmail/**"
+        "apps/api/src/features/orgmail/**",
+        "apps/api/src/features/news/routes.ts"
       ],
       "docs": [
         "apps/api/docs/ORGANIZATIONS.md"
@@ -200,6 +201,16 @@
       ],
       "docs": [
         "apps/api/docs/WEEKLY-DIGEST.md"
+      ]
+    },
+    {
+      "name": "mcp",
+      "paths": [
+        "apps/mcp/src/**"
+      ],
+      "docs": [
+        "apps/mcp/README.md",
+        "apps/mcp/AGENTS.md"
       ]
     }
   ]

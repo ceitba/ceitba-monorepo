@@ -4,7 +4,7 @@ import { apiGet, apiSend } from './client'
 // "User API keys"). The MCP server's OAuth sign-ins are keys named
 // "MCP · <client>"; revoking one disconnects that assistant.
 
-export type ApiKeyScope = 'read' | 'report' | 'write' | 'staff' | 'keys'
+export type ApiKeyScope = 'read' | 'report' | 'events' | 'write' | 'staff' | 'keys'
 
 export interface ApiKey {
   id: string

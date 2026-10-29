@@ -57,7 +57,7 @@ describe('AuthIT', () => {
     expect(ok.json.key).toMatch(/^ceitba_[A-Za-z0-9_-]{43}$/);
     // OffsetDateTime.now().plusDays(365) in the JVM zone (ART).
     expect(ok.json.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?-03:00$/);
-    expect(ok.json.scopes).toEqual(['read', 'report', 'write', 'staff', 'keys']);
+    expect(ok.json.scopes).toEqual(['read', 'report', 'events', 'write', 'staff', 'keys']);
   });
 
   test.skipIf(!hasSync)('syncWithCorrectApiKeyIsAllowed', async () => {

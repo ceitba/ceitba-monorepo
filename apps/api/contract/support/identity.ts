@@ -98,14 +98,17 @@ export async function revokeModerator(db: Sql, userId: string): Promise<void> {
 
 /** ApiKeyService.create equivalent: returns {id, key}. `scopes` null = full power. */
 export async function seedApiKey(db: Sql, userId: string, scopes: string[] | null = null, ttlDays = 30): Promise<{ id: string; key: string }> {
-  const order = ['read', 'report', 'write', 'staff', 'keys'];
+  const order = ['read', 'report', 'events', 'write', 'staff', 'keys'];
   let set: Set<string>;
   if (scopes === null) set = new Set(order);
   else {
     set = new Set(['read', ...scopes]);
-    if (set.has('write')) set.add('report');
+    if (set.has('write')) {
+      set.add('report');
+      set.add('events');
+    }
   }
-  const csv = order.filter((s) => set.has(s)).join(',');
+  const csv = order.filter((s) => set.has(s) && !(s === 'events' && set.has('write'))).join(',');
   const key = `ceitba_${randomBytes(32).toString('base64url')}`;
   const id = crypto.randomUUID();
   await db`INSERT INTO public.api_keys (id, user_id, name, key_hash, created_at, expires_at, scopes)

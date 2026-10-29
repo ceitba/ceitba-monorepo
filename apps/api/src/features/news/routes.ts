@@ -196,6 +196,8 @@ export default defineRoutes((r, deps) => {
 
   r.post('/v1/news/events', { tags: eventTags, body: NewsEventInput, maxBodyBytes: CONTENT_MAX_BODY_BYTES, currentUser: true, status: 201 }, async ({ c, body: req }) => {
     const user = await currentUser(c);
+    // Every event pushes to its organization's followers; API keys (the MCP server) can create them too.
+    deps.userRateLimiter.consume('event-create', user.id);
     return s.events.create({
       id: req.id, title: req.title!, eventDate: req.eventDate!, startTime: req.startTime!, endTime: req.endTime!, location: req.location!,
       category: req.category!, description: req.description,

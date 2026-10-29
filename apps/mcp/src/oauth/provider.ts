@@ -33,13 +33,13 @@ import type { Grant, OAuthStore } from "./store";
 //      → we get the ID token.
 //   3. POST /api/v1/auth/google/mobile {idToken, nonce}: the API verifies it and
 //      the allowlist and returns a short-lived session for that user.
-//   4. With that session we mint a SCOPED API key (read, report; + staff, write for staff),
+//   4. With that session we mint a SCOPED API key (read, report, events; + staff, write for staff),
 //      then log the session out. Only the encrypted key is kept (grants table).
 //   5. We issue our own opaque access/refresh tokens to the MCP client, mapped to the grant.
 // The CEITBA JWT secret never leaves the API, and the API stays the only judge
 // of who may sign in and what a key can do.
 
-export const SUPPORTED_SCOPES: Scope[] = ["read", "report", "staff", "write"];
+export const SUPPORTED_SCOPES: Scope[] = ["read", "report", "events", "staff", "write"];
 
 export interface ProviderOptions {
   store: OAuthStore;
@@ -73,11 +73,12 @@ const PENDING_TTL_MS = 10 * 60_000;
 const CODE_TTL_MS = 5 * 60_000;
 const MAX_CLIENTS = 10_000;
 
-// Scopes a user may hold: students may read and report content; staff and
+// Scopes a user may hold: students may read, report content and create events
+// (the API only lets them post for their own organizations); staff and
 // moderators may also get "staff" and "write". Requested scopes narrow that further.
 export function decideScopes(requested: string[] | undefined, me: Pick<UserMe, "role" | "moderator">): Scope[] {
   const privileged = me.role === "staff" || Boolean(me.moderator);
-  const allowed: Scope[] = privileged ? ["read", "report", "staff", "write"] : ["read", "report"];
+  const allowed: Scope[] = privileged ? ["read", "report", "events", "staff", "write"] : ["read", "report", "events"];
   const asked = (requested ?? []).map(s => s.replace(/^ceitba[.:]/, "")).filter((s): s is Scope => SUPPORTED_SCOPES.includes(s as Scope));
   const chosen = asked.length === 0 ? allowed : allowed.filter(s => asked.includes(s));
   return Array.from(new Set<Scope>(["read", ...chosen]));

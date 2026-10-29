@@ -66,6 +66,7 @@ export default defineSection('rateLimit', schema, ({ env }) => ({
     'org-images': { capacity: env.int('RATE_LIMIT_ORG_IMAGES_CAPACITY', 60), periodMs: env.duration('RATE_LIMIT_ORG_IMAGES_PERIOD', '1h') },
     'wiki-search': { capacity: env.int('RATE_LIMIT_WIKI_SEARCH_CAPACITY', 120), periodMs: env.duration('RATE_LIMIT_WIKI_SEARCH_PERIOD', '1h') },
     'proposal-attachments': { capacity: env.int('RATE_LIMIT_PROPOSAL_ATTACHMENTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROPOSAL_ATTACHMENTS_PERIOD', '1h') },
+    'event-create': { capacity: env.int('RATE_LIMIT_EVENT_CREATE_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_EVENT_CREATE_PERIOD', '1h') },
     proposals: { capacity: env.int('RATE_LIMIT_PROPOSALS_CAPACITY', 10), periodMs: env.duration('RATE_LIMIT_PROPOSALS_PERIOD', '1h') },
     'proposal-comments': { capacity: env.int('RATE_LIMIT_PROPOSAL_COMMENTS_CAPACITY', 30), periodMs: env.duration('RATE_LIMIT_PROPOSAL_COMMENTS_PERIOD', '10m') },
     'subject-reviews': { capacity: env.int('RATE_LIMIT_SUBJECT_REVIEWS_CAPACITY', 20), periodMs: env.duration('RATE_LIMIT_SUBJECT_REVIEWS_PERIOD', '1h') },

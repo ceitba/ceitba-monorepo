@@ -6,15 +6,17 @@ import type { Logger } from "./log";
 import type { RateLimiter } from "./ratelimit";
 
 // Scopes of the credential behind a session. They mirror the API key scopes
-// (ApiKeyScope.java): read is always present, report allows reporting wiki
-// pages and Apuntes files, write allows every non-safe method (and implies
-// report), staff keeps the owner's STAFF/MODERATOR roles.
-export type Scope = "read" | "report" | "write" | "staff";
+// (apps/api src/http/auth/apikeys.ts): read is always present, report allows
+// reporting wiki pages and Apuntes files, events allows creating events (the
+// API still requires STAFF or membership of the event's organization), write
+// allows every non-safe method (and implies report and events), staff keeps the
+// owner's STAFF/MODERATOR roles.
+export type Scope = "read" | "report" | "events" | "write" | "staff";
 
 // CEITBA capability (apps/api/docs/CAPABILITIES.md) a user needs to connect an
 // assistant to the hosted server. Staff hold every capability.
 export const MCP_CAPABILITY = "asistentes_ia";
-export const ALL_SCOPES: Scope[] = ["read", "report", "write", "staff"];
+export const ALL_SCOPES: Scope[] = ["read", "report", "events", "write", "staff"];
 
 export interface Identity {
   id: string;
@@ -23,6 +25,8 @@ export interface Identity {
   staff: boolean;
   moderator: boolean;
   capabilities: string[];
+  // Slugs of the organizations the user belongs to (any role).
+  organizations: string[];
   careerId: string | null;
   plan: string | null;
   lang: Lang;
@@ -54,6 +58,7 @@ export function identityFrom(me: UserMe, fallbackLang: Lang): Identity {
     staff: me.role === "staff",
     moderator: me.role === "staff" || Boolean(me.moderator),
     capabilities: me.capabilities ?? [],
+    organizations: (me.organizations ?? []).map(o => o.slug),
     careerId: me.careerId ?? null,
     plan: me.plan ?? null,
     lang: langFrom(me.language, fallbackLang),
@@ -67,6 +72,9 @@ export function parseScopes(raw: Iterable<string>): Set<Scope> {
     const k = s.replace(/^ceitba[.:]/, "") as Scope;
     if (ALL_SCOPES.includes(k)) out.add(k);
   }
-  if (out.has("write")) out.add("report");
+  if (out.has("write")) {
+    out.add("report");
+    out.add("events");
+  }
   return out;
 }

@@ -10,7 +10,7 @@ How identity, roles, and access control work in CEITBA-API. Read this before cha
 |---|---|---|
 | **Anonymous** | nothing | Read public endpoints (health, careers, subjects, plans, classrooms, commissions, highlights, benefits, GET wiki bookmarks, POST classrooms/conflicts, GET `/v1/app/config`, GET `/v1/capabilities`, GET `/v1/articles/{id}/preview`, GET `/v1/articles/sitemap.xml` [articles and events]); call the token endpoints (`POST /v1/auth/google/mobile`, `/v1/auth/refresh`, `/v1/auth/logout`, and `/v1/auth/review-login` [while enabled](#app-store--play-review-login)) |
 | **USER** | `Authorization: Bearer <jwt>` or the web session cookie (email passes the allowlist) | Everything anonymous can do, **plus** create/delete wiki bookmarks, manage your own API keys, `POST /v1/auth/logout-all`, `DELETE /v1/me` (JWT session only, not API keys) |
-| **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER, narrowed by the key's scopes (`read` / `write` / `staff`, see [AUTH-SETUP.md § Scopes](AUTH-SETUP.md#scopes)) |
+| **USER via API key** | `X-Api-Key: ceitba_<key>` | Same as USER, narrowed by the key's scopes (`read` / `report` / `events` / `write` / `staff` / `keys`, see [AUTH-SETUP.md § Scopes](AUTH-SETUP.md#scopes)) |
 | **MODERATOR** | Same JWT or API key, plus an active `ceitba_moderators` grant (or active STAFF) | Everything USER can do, **plus** moderation endpoints that require `ROLE_MODERATOR` (`/v1/staff/proposals/**`, editing/deleting any study group) |
 | **STAFF** | Same JWT or API key, plus an active `ceitba_staff` row | Everything USER and MODERATOR can do, **plus** assign/revoke STAFF and MODERATOR on others, create users and correct a user's file number (`/v1/users/**`), keep the career/plan catalogue (`POST`/`PUT`/`DELETE /v1/careers/**`; reads are public) |
 | **SYNC** (machine, not human) | `X-Api-Key: <AUTH_SYNC_API_KEY>` | Trigger `/v1/sync/**` jobs |
@@ -238,7 +238,8 @@ API-key step (src/http/security.ts + src/http/auth/apikeys.ts)
    if X-Api-Key starts with "ceitba_":
        hash key, look up in api_keys table
        if found and not expired: mark last_used_at
-           scopes lack "write" and the method is not safe → 403 INSUFFICIENT_SCOPE (stop)
+           scopes lack "write" and the method is not safe → 403 INSUFFICIENT_SCOPE (stop),
+               except "report" + PUT .../report and "events" + POST /v1/news/events (exact raw paths)
            scopes include "staff":
                DB lookup: active ceitba_staff row? → add ROLE_STAFF (+ ROLE_MODERATOR)
                DB lookup: active ceitba_moderators grant? → add ROLE_MODERATOR
@@ -415,7 +416,7 @@ Contract tests (`contract/tests/*.contract.test.ts`, black-box over HTTP) and in
 | Protected endpoint, no token → 401 | `auth.contract.test.ts` `protectedEndpointWithoutTokenReturns401` |
 | `/sync` no/wrong/correct key → 401/401/200 | `auth.contract.test.ts` `sync*ApiKey*`, `test/auth/units.test.ts` (`ApiKeyFilterTest`) |
 | Allowlist admits ITBA domain | `test/auth/units.test.ts` `allowlistAdmitsItbaDomain` |
-| API-key scopes (read-only, `[]` = read-only, staff incl. `/auth/me` and capabilities, key minting incl. encoded paths, self-revoke, allowlisted owner) | `api-key-scopes.contract.test.ts`, `test/auth/units.test.ts` (`ApiKeyFilterTest`), `test/capability/CapabilityService.test.ts` |
+| API-key scopes (read-only, `[]` = read-only, `events` opens only event creation for the key owner's organizations, staff incl. `/auth/me` and capabilities, key minting incl. encoded paths, self-revoke, allowlisted owner) | `api-key-scopes.contract.test.ts`, `test/auth/units.test.ts` (`ApiKeyFilterTest`), `test/capability/CapabilityService.test.ts` |
 | Allowlist admits explicit external email | `test/auth/units.test.ts` `allowlistAdmitsExplicitlyListedExternalEmail` |
 | Allowlist rejects unknown domain | `test/auth/units.test.ts` `allowlistRejectsUnknownDomain` |
 | Allowlist case-insensitive | `test/auth/units.test.ts` `allowlistIsCaseInsensitive` |
@@ -458,4 +459,4 @@ Contract tests (`contract/tests/*.contract.test.ts`, black-box over HTTP) and in
 - **Enforce `iss`/`aud`** — see the dated follow-up in [§ Sessions and tokens](#sessions-and-tokens).
 - **Access-token revocation.** Access JWTs are stateless; a `token_version` column checked in `jwtRoles` (`src/http/security.ts`, which already hits the DB per request) would let logout-all and account deletion cut them off immediately. Until then a deleted account can be re-provisioned (empty) by a web cookie issued before the deletion, for up to `AUTH_JWT_TTL_DAYS`.
 - **Cache the staff and moderator lookups** if the role-detection DB hit shows up in flame graphs (it currently runs on every JWT/API-key request). An in-memory cache (e.g. `lru-cache`) with TTL ≤ minimum role-validity window would be enough.
-- **Narrower API-key scopes.** Keys carry `read` / `report` / `write` / `staff` / `keys` (V62); per-route scopes (e.g. "proposals:write") would need a scope map per feature. New code that grants staff powers asks `staffPowers(c)` (`src/http/auth/context.ts`) instead of the staff/moderator queries.
+- **Narrower API-key scopes.** Keys carry `read` / `report` / `events` / `write` / `staff` / `keys` (V62; `events` needs no migration, the column is a CSV); per-route scopes (e.g. "proposals:write") would need a scope map per feature. New code that grants staff powers asks `staffPowers(c)` (`src/http/auth/context.ts`) instead of the staff/moderator queries.

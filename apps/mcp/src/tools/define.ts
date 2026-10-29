@@ -24,8 +24,12 @@ export interface ToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   // explicit opt-in (allowWrites). Only staff/moderator tools may write.
   write?: boolean;
   // Reports content (PUT .../report): needs the "report" scope (write implies
-  // it), which students hold too. The only change a student's session can make.
+  // it), which students hold too.
   report?: boolean;
+  // Creates an event (POST /v1/news/events): needs the "events" scope (write
+  // implies it) and a user who is staff or belongs to an organization. The API
+  // checks the organization on every call.
+  events?: boolean;
   // CEITBA capability required (e.g. "apuntes"), see apps/api/docs/CAPABILITIES.md.
   capability?: string;
   input: S;
@@ -37,11 +41,16 @@ export const defineTool = <S extends z.ZodRawShape>(def: ToolDef<S>): ToolDef<S>
 
 export class ToolError extends Error {}
 
+// STAFF powers reach the API only through a credential with the "staff" scope.
+export const canActAsStaff = (ctx: SessionContext): boolean => Boolean(ctx.identity?.staff && ctx.scopes.has("staff"));
+
 export function isVisible(def: ToolDef, ctx: SessionContext): boolean {
   const id = ctx.identity;
   if (def.write && (def.access === "public" || def.access === "user")) return false; // students only ever report (def.report)
   if (def.write && !(ctx.allowWrites && ctx.scopes.has("write"))) return false;
   if (def.report && !ctx.scopes.has("report")) return false;
+  // Publishing notifies followers, so stdio keeps it behind the same opt-in as writes (hosted sessions always opt in).
+  if (def.events && !(ctx.allowWrites && ctx.scopes.has("events") && (canActAsStaff(ctx) || (id?.organizations.length ?? 0) > 0))) return false;
   switch (def.access) {
     case "public":
       break;
@@ -99,7 +108,7 @@ export function registerTools(server: McpServer, ctx: SessionContext, defs: Tool
         inputSchema: def.input,
         annotations: {
           title: def.title,
-          readOnlyHint: !def.write && !def.report,
+          readOnlyHint: !def.write && !def.report && !def.events,
           openWorldHint: false,
           ...def.annotations
         }

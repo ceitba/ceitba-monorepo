@@ -3,9 +3,9 @@ import type { UserRow } from './repo';
 
 export type Role = 'USER' | 'STAFF' | 'MODERATOR' | 'ORG_MEMBER' | 'SYNC';
 
-export type ApiKeyScope = 'read' | 'report' | 'write' | 'staff' | 'keys';
-/** EnumSet order of ApiKeyScope (READ, REPORT, WRITE, STAFF, KEYS): the API lists scopes in this order. */
-export const API_KEY_SCOPES: readonly ApiKeyScope[] = ['read', 'report', 'write', 'staff', 'keys'];
+export type ApiKeyScope = 'read' | 'report' | 'events' | 'write' | 'staff' | 'keys';
+/** EnumSet order of ApiKeyScope (READ, REPORT, EVENTS, WRITE, STAFF, KEYS): the API lists scopes in this order. */
+export const API_KEY_SCOPES: readonly ApiKeyScope[] = ['read', 'report', 'events', 'write', 'staff', 'keys'];
 
 /** ApiKeyService.ValidatedKey: a validated X-Api-Key (ceitba_*). */
 export interface ValidatedKey {

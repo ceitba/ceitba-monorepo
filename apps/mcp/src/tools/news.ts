@@ -3,7 +3,7 @@ import type { Page } from "../api/types";
 import type { Lang } from "../config";
 import { t } from "../i18n";
 import { clampLimit, compact, cut, hhmm } from "../trim";
-import { defineTool } from "./define";
+import { canActAsStaff, defineTool, ToolError } from "./define";
 
 interface Article {
   id: string; title: string; excerpt: string | null; body: string[] | null; category: string | null;
@@ -117,6 +117,75 @@ export const listEvents = defineTool({
   }
 });
 
+// The API's news categories (apps/api src/features/news/logic/newsCategories.ts).
+export const EVENT_CATEGORIES = ["Académico", "Campus", "Cultura", "Deportes", "Tecnología", "Organizaciones", "General"] as const;
+
+const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+// Invites rarely say when an event ends: start + 2 h, capped at 23:59. An event has one date and the
+// web form, digest and .ics export all expect end > start, so the end never wraps past midnight.
+export const defaultEndTime = (start: string): string => {
+  const [h, m] = start.split(":").map(Number);
+  const end = Math.min(h! * 60 + m! + 120, 23 * 60 + 59);
+  return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
+};
+
+export const createEvent = defineTool({
+  name: "create_event",
+  title: "Crear evento",
+  description:
+    "Publica un evento en la agenda de CEITBA para una organización de la que sos integrante (el staff puede publicar para " +
+    "cualquiera, u omitir la organización). Sirve para pasar una invitación (p. ej. un mensaje de WhatsApp) a la agenda: " +
+    "extraé título, fecha, horario, lugar y descripción. Si falta la hora de fin se usa inicio + 2 h (hasta las 23:59); la hora de fin debe ser posterior al inicio, el mismo día. ANTES de llamarla, " +
+    "mostrale a la persona el evento tal como se va a publicar y esperá su confirmación: se publica al instante y notifica a " +
+    "los seguidores de la organización. No reintentes si falla. " +
+    "EN: Publishes an event for an organization you belong to (staff: any, or none). Turn an invite into an event; end " +
+    "defaults to start + 2 h (capped at 23:59) and must be after the start, same day. Show the person the parsed event and get confirmation first: it is public at once and notifies " +
+    "the organization's followers. Never retry.",
+  access: "user",
+  events: true,
+  annotations: { destructiveHint: false, idempotentHint: false },
+  input: {
+    organization: z.string().min(1).optional()
+      .describe("Slug de la organización (ver whoami / list_organizations). Obligatorio salvo para staff. / Organization slug; required unless staff."),
+    title: z.string().trim().min(1).max(200),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD, hora Argentina. / Argentina date."),
+    startTime: time.describe("HH:MM (24 h)."),
+    endTime: time.optional().describe("HH:MM (24 h). Por defecto inicio + 2 h. / Defaults to start + 2 h."),
+    location: z.string().trim().min(1).max(255).describe("Lugar (aula, sede, dirección, \"Online\"). / Place."),
+    category: z.enum(EVENT_CATEGORIES).describe("Categoría. Ante la duda, Organizaciones. / Category; if unsure, Organizaciones."),
+    description: z.string().trim().max(5000).optional().describe("Detalles del evento, en el texto de la invitación. / Details."),
+    onlineUrl: z.string().url().optional().describe("Link de la transmisión o reunión. / Stream or meeting link."),
+    signupUrl: z.string().url().optional().describe("Link de inscripción externo (formulario). / External sign-up link.")
+  },
+  async run(args, ctx) {
+    const staff = canActAsStaff(ctx);
+    const mine = ctx.identity?.organizations ?? [];
+    const orgs = mine.join(", ") || "-";
+    if (!args.organization && !staff) throw new ToolError(t(ctx.lang, "eventOrgRequired", { orgs }));
+    if (args.organization && !staff && !mine.includes(args.organization)) {
+      throw new ToolError(t(ctx.lang, "eventOrgNotMember", { org: args.organization, orgs }));
+    }
+    const today = todayInArgentina();
+    if (args.date < today) throw new ToolError(t(ctx.lang, "eventInPast", { date: args.date, today }));
+    if (args.endTime && args.endTime <= args.startTime) {
+      throw new ToolError(t(ctx.lang, "eventEndBeforeStart", { start: args.startTime, end: args.endTime }));
+    }
+    const e = await ctx.api.send<NewsEvent>("POST", "/v1/news/events", {
+      title: args.title, eventDate: args.date, startTime: args.startTime, endTime: args.endTime ?? defaultEndTime(args.startTime),
+      location: args.location, category: args.category, organization: args.organization ?? null, description: args.description ?? null,
+      onlineUrl: args.onlineUrl ?? null, signupMode: args.signupUrl ? "external" : "none", signupUrl: args.signupUrl ?? null
+    });
+    return {
+      event: compact({
+        id: e.id, title: e.title, date: e.eventDate, time: `${hhmm(e.startTime)}-${hhmm(e.endTime)}`,
+        location: e.location, category: e.category, organization: e.organization
+      }),
+      note: t(ctx.lang, "eventCreated")
+    };
+  }
+});
+
 export const listOrganizations = defineTool({
   name: "list_organizations",
   title: "Organizaciones estudiantiles",
@@ -216,4 +285,4 @@ export const listHighlights = defineTool({
   }
 });
 
-export const newsTools = [listArticles, getArticle, listEvents, listOrganizations, getOrganization, listBenefits, listStaffMembers, listHighlights];
+export const newsTools = [listArticles, getArticle, listEvents, createEvent, listOrganizations, getOrganization, listBenefits, listStaffMembers, listHighlights];

@@ -20,10 +20,13 @@ export function scopeFromKey(key: string): ApiKeyScope | null {
   return (API_KEY_SCOPES as readonly string[]).includes(k) ? (k as ApiKeyScope) : null;
 }
 
-/** READ is always there and WRITE covers REPORT. */
+/** READ is always there and WRITE covers REPORT and EVENTS (so keys stored before EVENTS stay full power). */
 function implied(set: Set<ApiKeyScope>): Set<ApiKeyScope> {
   set.add('read');
-  if (set.has('write')) set.add('report');
+  if (set.has('write')) {
+    set.add('report');
+    set.add('events');
+  }
   return set;
 }
 
@@ -51,7 +54,12 @@ export function scopeKeys(scopes: Set<ApiKeyScope>): ApiKeyScope[] {
   return API_KEY_SCOPES.filter((s) => scopes.has(s));
 }
 
-export const serializeScopes = (scopes: Set<ApiKeyScope>) => scopeKeys(scopes).join(',');
+/**
+ * The api_keys.scopes CSV. EVENTS is left out when WRITE implies it, so full-power and staff keys stay
+ * readable by an API image from before EVENTS existed (its parseScopes rejects unknown names).
+ */
+export const serializeScopes = (scopes: Set<ApiKeyScope>) =>
+  scopeKeys(scopes).filter((s) => !(s === 'events' && scopes.has('write'))).join(',');
 
 /** ApiKeyService.validate: by SHA-256 hash, not expired; marks last_used_at. */
 export async function validateApiKey(db: Db, rawKey: string, now: Micros): Promise<ValidatedKey | null> {
@@ -68,6 +76,7 @@ export async function validateApiKey(db: Db, rawKey: string, now: Micros): Promi
 
 const READ_STYLE_POSTS = new Set(['/v1/classrooms/conflicts']);
 const API_KEYS_PATH = '/v1/auth/api-keys';
+const EVENTS_PATH = '/v1/news/events';
 const REPORT_PATHS = /^\/v1\/wiki\/(kb\/pages|files)\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\/report$/;
 
 const isSafe = (m: string) => ['GET', 'HEAD', 'OPTIONS'].includes(m.toUpperCase());
@@ -82,6 +91,13 @@ export function scopeDenial(k: ValidatedKey, method: string, rawPath: string): s
   if (m === 'DELETE' && rawPath === `${API_KEYS_PATH}/${k.keyId}`) return null;
   if (!keyHas(k, 'write') && !isSafe(m) && !READ_STYLE_POSTS.has(rawPath)) {
     if (keyHas(k, 'report') && m === 'PUT' && REPORT_PATHS.test(rawPath)) return null;
+    // Creating an event only; the policy still requires STAFF or membership of the event's organization.
+    if (keyHas(k, 'events') && m === 'POST' && rawPath === EVENTS_PATH) return null;
+    if (keyHas(k, 'events')) {
+      return keyHas(k, 'report')
+        ? 'This API key can only read, report content and create events (missing scope: write)'
+        : 'This API key can only read and create events (missing scope: write)';
+    }
     return keyHas(k, 'report')
       ? 'This API key can only read and report content (missing scope: write)'
       : 'This API key is read-only (missing scope: write)';
