@@ -17,6 +17,7 @@ const AREAS: Record<string, RegExp> = {
   cms: /^(staff_departments|staff_members|benefits|benefit_cards)$/,
   schedules: /^(saved_schedules|share_sessions|share_session_participants|study_groups|study_group_participants)$/,
   proposals: /^(proposal|proposal_comment|proposal_attachment|proposal_alias|proposal_vote)$/,
+  reviews: /^(professor|subject_review|subject_review_professor|subject_review_helpful|subject_review_report)$/,
   mail: /^(digest_issues|digest_issue_links|digest_deliveries|digest_delivery_links|mail_send_log|mail_account_state|mail_tracking_event|mail_sender_account|org_announcements|org_announcement_deliveries|org_mail_optouts)$/,
   wiki: /^(subject_comment|subject_note|career_note|subject_wiki_page|subject_wiki_edit_proposal|subject_comment_vote|subject_note_vote|career_note_vote|Subject_Bookmarks|subject_bookmarks|subject_difficulty|proposal_status|vote_type)$/,
   kb: /^kb_/,

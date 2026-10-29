@@ -43,6 +43,8 @@ export interface UrlRule {
 export const URL_RULES: readonly UrlRule[] = [
   // Local dev sign-in; otherwise the path is not even permitted.
   { method: 'POST', patterns: ['/v1/auth/dev-login'], access: 'permitAll', enabledWhen: 'devLogin' },
+  // Subject reviews name professors: ITBA session only, ahead of the public /v1/subjects/** reads below.
+  { method: 'GET', patterns: ['/v1/subjects/*/reviews'], access: 'authenticatedAllowlisted' },
   {
     method: 'GET',
     patterns: [
@@ -139,6 +141,9 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
   'GET /v1/staff/schedule-corrections': role('STAFF'), // correction/StaffScheduleCorrectionController.java#list
   'POST /v1/staff/schedule-corrections/{id}/apply': role('STAFF'), // correction/StaffScheduleCorrectionController.java#apply
   'POST /v1/staff/schedule-corrections/{id}/reject': role('STAFF'), // correction/StaffScheduleCorrectionController.java#reject
+  'GET /v1/staff/subject-reviews': role('STAFF'), // review/routes.ts (Bun-only)
+  'POST /v1/staff/subject-reviews/{id}/restore': role('STAFF'), // review/routes.ts (Bun-only)
+  'DELETE /v1/staff/subject-reviews/{id}': role('STAFF'), // review/routes.ts (Bun-only)
   'POST /v1/staff/kb/pipeline/runs': role('STAFF'), // kb/admin/StaffKbPipelineController.java#trigger
   'GET /v1/staff/kb/pipeline/runs': role('STAFF'), // kb/admin/StaffKbPipelineController.java#runs
   'GET /v1/staff/kb/pipeline/runs/{id}': role('STAFF'), // kb/admin/StaffKbPipelineController.java#run

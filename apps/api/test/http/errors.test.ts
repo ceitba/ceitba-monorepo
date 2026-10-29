@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { DigestException } from '../../src/features/digest/logic/digestException';
 import { ScheduleCorrectionError } from '../../src/features/correction/errors';
 import { EventRsvpError } from '../../src/features/news/events';
+import { ReviewError } from '../../src/features/review/errors';
 import { StudyGroupConflictError } from '../../src/features/studygroup/errors';
 import { createApp } from '../../src/http/app';
 import { testApp } from '../support/app';
@@ -59,6 +60,14 @@ const cases: [E.ApiError, number, string, string?][] = [
   [new ScheduleCorrectionError('SAME_AS_SGA', 'm'), 400, 'SameAsSga', 'm'],
   [new ScheduleCorrectionError('COMMISSION_ENDED', 'm'), 409, 'CommissionEnded'],
   [new ScheduleCorrectionError('ALREADY_SUGGESTED', 'm'), 409, 'AlreadySuggested'],
+  [new ReviewError('ALREADY_REVIEWED', 'm'), 409, 'SubjectReviewExists', 'm'],
+  [new ReviewError('FUTURE_TERM', 'm'), 400, 'SubjectReviewFutureTerm'],
+  [new ReviewError('HIDDEN', 'm'), 409, 'SubjectReviewHidden'],
+  [new ReviewError('OWN_REVIEW', 'm'), 400, 'SubjectReviewOwn'],
+  [new ReviewError('UNKNOWN_PROFESSOR', 'm'), 400, 'UnknownProfessor'],
+  [new ReviewError('PROFESSOR_EMAIL_DOMAIN', 'm'), 400, 'ProfessorEmailDomain'],
+  [new ReviewError('PROFESSOR_NOT_FOUND', 'm'), 404, 'ProfessorNotFound'],
+  [new ReviewError('DIRECTORY_UNAVAILABLE', 'm'), 503, 'ProfessorDirectoryUnavailable'],
 ];
 
 test.each(cases.map((c) => [c[2], c[0], c[1], c[2], c[3] ?? ''] as const))('%s', (_n, err, status, code, message) => {
