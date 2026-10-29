@@ -18,13 +18,16 @@ import { Button, EmptyState, ErrorState, LoadingRegion, Skeleton, Tabs, ToggleGr
 import KindIcon from '../../components/apuntes/KindIcon'
 
 const SubjectGraphThumb = lazy(() => import('../../components/apuntes/graph/SubjectGraphThumb'))
+// Opiniones (subject reviews) ships its form and dialogs on demand.
+const SubjectReviews = lazy(() => import('../../components/apuntes/reviews/SubjectReviews'))
 
-type Tab = 'wiki' | 'archivos'
+type Tab = 'wiki' | 'archivos' | 'opiniones'
 
-// /apuntes/:subjectId — a subject's Apuntes, in two tabs: Wiki (the AI
+// /apuntes/:subjectId — a subject's Apuntes, in three tabs: Wiki (the AI
 // wiki's index page, its pages and related subjects; default when there is
-// an index) and Archivos (published files grouped by the student who shared
-// them). The tab lives in ?vista=.
+// an index), Archivos (published files grouped by the student who shared
+// them) and Opiniones (students' reviews, only via ?vista=opiniones). The
+// tab lives in ?vista=.
 export default function SubjectFilesPage() {
   const { subjectId = '' } = useParams()
   const { t, i18n } = useTranslation()
@@ -64,7 +67,7 @@ export default function SubjectFilesPage() {
   }, [subjectId])
 
   const requested = params.get('vista')
-  const tab: Tab | null = requested === 'wiki' || requested === 'archivos'
+  const tab: Tab | null = requested === 'wiki' || requested === 'archivos' || requested === 'opiniones'
     ? requested
     : kbLoaded ? (kb?.index ? 'wiki' : 'archivos') : null
 
@@ -155,7 +158,7 @@ export default function SubjectFilesPage() {
           {tab != null && (
             <Tabs
               className="border-b-0! flex-1 min-w-0"
-              items={(['wiki', 'archivos'] as Tab[]).map((id) => ({
+              items={(['wiki', 'archivos', 'opiniones'] as Tab[]).map((id) => ({
                 id,
                 label: t(`wiki.tabs.${id}`),
                 count: id === 'archivos' && data ? totalFiles : null,
@@ -210,6 +213,12 @@ export default function SubjectFilesPage() {
             action={<Button onClick={() => selectTab('archivos')}>{t('wiki.seeFiles')}</Button>}
           />
         )
+      )}
+
+      {tab === 'opiniones' && !notFound && (
+        <Suspense fallback={<FileListSkeleton />}>
+          <SubjectReviews subjectId={subjectId} />
+        </Suspense>
       )}
 
       {tab === 'archivos' && error && (

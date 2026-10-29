@@ -473,7 +473,8 @@
         "source": "Carpeta de Drive",
         "fileReview": "Archivo para revisar",
         "fileReported": "Archivo denunciado",
-        "wiki": "Wiki IA"
+        "wiki": "Wiki IA",
+        "review": "Reseña oculta"
       },
       "sources": {
         "articles": "artículos",
@@ -481,6 +482,7 @@
         "sources": "carpetas de Drive",
         "needsReview": "archivos para revisar",
         "reported": "archivos denunciados",
+        "hiddenReviews": "opiniones ocultas",
         "wiki": "Wiki IA"
       },
       "sourceFailed": "No pudimos cargar: {{sources}}. Lo demás está al día.",
@@ -537,7 +539,9 @@
         "benefit": "Nueva tarjeta de beneficio",
         "org": "Sumar a alguien a una organización",
         "staff": "Dar acceso de staff"
-      }
+      },
+      "reviewReportedMeta_one": "{{comment}} · {{term}} · {{count}} denuncia: {{reason}}",
+      "reviewReportedMeta_other": "{{comment}} · {{term}} · {{count}} denuncias: {{reason}}"
     }
   },
   "profile": {

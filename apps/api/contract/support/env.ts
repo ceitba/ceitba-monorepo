@@ -10,6 +10,7 @@
 //   spring.flyway (pre-migrated template)  -> SPRING_FLYWAY_ENABLED=false
 //   rate-limit.enabled: false              -> RATE_LIMIT_ENABLED=false
 //   kb.llm/embeddings fakes, no background -> KB_LLM_USE_FAKE, KB_EMBEDDING_USE_FAKE, KB_EMBEDDINGS_ENABLED=false, KB_PIPELINE_BACKGROUND=false
+//   subject reviews: fake directory         -> REVIEWS_DIRECTORY_USE_FAKE=true
 //   mail.log-sends: true                   -> MAIL_LOG_SENDS=true
 //   digest.jobs-enabled false, send 0s     -> DIGEST_JOBS_ENABLED=false, DIGEST_SEND_INTERVAL=PT0S
 //   events.reminders-enabled: false        -> EVENT_REMINDERS_ENABLED=false
@@ -40,6 +41,7 @@ export const CONTRACT_ENV: Record<string, string> = {
   KB_EMBEDDING_USE_FAKE: 'true',
   KB_EMBEDDINGS_ENABLED: 'false',
   KB_PIPELINE_BACKGROUND: 'false',
+  REVIEWS_DIRECTORY_USE_FAKE: 'true',
   MAIL_LOG_SENDS: 'true',
   DIGEST_JOBS_ENABLED: 'false',
   DIGEST_SEND_INTERVAL: 'PT0S',

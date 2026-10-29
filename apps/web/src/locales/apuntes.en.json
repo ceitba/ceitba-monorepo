@@ -18,7 +18,14 @@
       "DRIVE_SOURCE_BLOCKED": "This folder was blocked by the CEITBA team and can't be shared again or disconnected. Write to us if you think this is a mistake.",
       "DRIVE_SYNC_RATE_LIMITED": "You requested a sync recently. You can request another one in a few minutes (at most one every 5 minutes).",
       "DRIVE_SYNC_UNCONFIGURED": "Notes isn't available yet: the Google Drive connection hasn't been configured.",
-      "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet."
+      "CAPABILITY_REQUIRED": "Notes isn't enabled for your account yet.",
+      "SubjectReviewExists": "You already have a review of this subject for that term: edit it.",
+      "SubjectReviewFutureTerm": "You can only review a term that has already started.",
+      "SubjectReviewOwn": "You can't mark your own review as helpful.",
+      "UnknownProfessor": "One of the professors you picked is no longer available. Unselect it and try again.",
+      "ProfessorEmailDomain": "It has to be an @itba.edu.ar email.",
+      "ProfessorNotFound": "We couldn't find that email at ITBA. Check it and try again, or leave it without a professor.",
+      "ProfessorDirectoryUnavailable": "We couldn't reach the ITBA directory. Try again later or leave it without a professor."
     },
     "sourceStatus": {
       "unknown": "Other status",
@@ -125,7 +132,9 @@
         "WRONG_SUBJECT": "Wrong subject",
         "SPAM": "Spam or unrelated content",
         "OTHER": "Something else",
-        "CONTENT_ERROR": "Content error"
+        "CONTENT_ERROR": "Content error",
+        "OFFENSIVE": "Offensive or abusive",
+        "FALSE": "Contains false information"
       },
       "comment": "Comment (optional)",
       "commentPlaceholder": "Any detail that helps us review it.",
@@ -298,13 +307,109 @@
       "credits_other": "requires {{count}} credits",
       "miniWiki": "with wiki",
       "miniFiles": "with notes"
+    },
+    "reviews": {
+      "term": "T{{period}} {{year}}",
+      "commission": "Commission {{commission}}",
+      "commissions": "Commission {{list}}",
+      "count_one": "{{count}} student review",
+      "count_other": "{{count}} student reviews",
+      "filteredCount_one": "{{shown}} of {{count}} review, with the filters",
+      "filteredCount_other": "{{shown}} of {{count}} reviews, with the filters",
+      "stats_one": "{{count}} of {{total}} recommend it · {{difficulty}} difficulty",
+      "stats_other": "{{count}} of {{total}} recommend it · {{difficulty}} difficulty",
+      "noStats": "No reviews yet",
+      "difficultyWord": {
+        "1": "low",
+        "2": "medium",
+        "3": "high"
+      },
+      "difficultyOption": {
+        "1": "Low",
+        "2": "Medium",
+        "3": "High"
+      },
+      "difficultyBadge": {
+        "1": "Low difficulty",
+        "2": "Medium difficulty",
+        "3": "High difficulty"
+      },
+      "recommends": "Recommends it",
+      "notRecommends": "Doesn't recommend it",
+      "mine": "Your review",
+      "write": "Write a review",
+      "editMine": "Edit your review",
+      "filters": {
+        "commissionAll": "All commissions",
+        "termAll": "All terms",
+        "commissionAria": "Filter by commission",
+        "termAria": "Filter by term",
+        "remove": "Remove filter {{name}}",
+        "clear": "Clear"
+      },
+      "noMatches": "No reviews match those filters",
+      "noMatchesBody": "Try removing a filter.",
+      "clearFilters": "Clear filters",
+      "emptyTitle": "No reviews yet",
+      "emptyBody": "If you took it, yours can be the first.",
+      "professorsTitle": "Who are you taking it with?",
+      "professorsAria": "Professors",
+      "noProfessor": "No professor given",
+      "multiNote": "A review can count for more than one professor (theory and practice, for example), so these numbers don't add up to the total.",
+      "helpful": "Helpful · {{count}}",
+      "report": "Report",
+      "reported": "Reported",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete your review?",
+      "deleteBody": "Your {{term}} review stops being visible to everyone. This can't be undone.",
+      "deleteConfirm": "Yes, delete",
+      "deleted": "You deleted your review.",
+      "hiddenNotice": "Your review is hidden because it got several reports. The CEITBA team will review it; meanwhile only you can see it.",
+      "reportTitle": "Report review",
+      "reportIntro": "Tell us what's wrong with this review. With several reports it's hidden until CEITBA reviews it.",
+      "form": {
+        "title": "Your review of {{subject}}",
+        "term": "Term",
+        "commission": "Commission",
+        "commissionPlaceholder": "E.g. A",
+        "recommend": "Do you recommend it?",
+        "yes": "Yes",
+        "no": "No",
+        "difficulty": "Difficulty",
+        "professors": "Who taught it? (optional, you can pick several)",
+        "suggested": "We selected {{names}} based on what other students of commission {{commission}} said. If that's wrong, unselect them.",
+        "professorLimit": "You can pick up to {{count}} professors.",
+        "addProfessor": "+ Add professor",
+        "lookupHint": "Paste their ITBA email and we'll look up the name. The email isn't shown.",
+        "emailLabel": "Professor's email",
+        "emailPlaceholder": "name@itba.edu.ar",
+        "search": "Search",
+        "searching": "Searching…",
+        "invalidEmail": "That doesn't look like an email. Check it and try again.",
+        "added": "We added {{name}}",
+        "comment": "Comment (optional)",
+        "commentPlaceholder": "What would you tell someone starting it?",
+        "commentHint": "Talk about the course, not the person. Your name isn't shown.",
+        "missing": "Still missing: {{what}}.",
+        "missingParts": {
+          "commission": "the commission",
+          "recommend": "whether you recommend it",
+          "difficulty": "the difficulty"
+        },
+        "publish": "Publish",
+        "save": "Save",
+        "published": "Review published",
+        "saved": "Review saved"
+      }
     }
   },
   "wiki": {
     "tabsAria": "Subject sections",
     "tabs": {
       "wiki": "Wiki",
-      "archivos": "Files"
+      "archivos": "Files",
+      "opiniones": "Reviews"
     },
     "graphLink": "View graph",
     "graph": "Graph",
@@ -387,7 +492,8 @@
         "sources": "Folders",
         "files": "Files to review",
         "unclaimed": "Unclaimed",
-        "wiki": "Wiki"
+        "wiki": "Wiki",
+        "reviews": "Hidden reviews"
       },
       "pageStatus": "Page {{page}} of {{pages}} · {{total}} {{what}}",
       "conflict": "The status changed while you were looking (another staff member or a sync). We reloaded the list.",
@@ -490,7 +596,20 @@
         }
       },
       "prev": "‹ Previous",
-      "next": "Next ›"
+      "next": "Next ›",
+      "reviews": {
+        "intro": "Reviews that were hidden automatically after getting reports. Restore one if it's fine, or delete it.",
+        "noComment": "No comment",
+        "restore": "Restore",
+        "delete": "Delete",
+        "deleteTitle": "Delete the review?",
+        "deleteBody": "The review of {{subject}} ({{term}}, commission {{commission}}) is deleted for good. This can't be undone.",
+        "deleteConfirm": "Yes, delete",
+        "restored": "You restored the review of {{subject}}.",
+        "deleted": "You deleted the review of {{subject}}.",
+        "empty": "No hidden reviews",
+        "emptyHint": "Reviews hidden automatically after piling up reports show up here, so you can restore or delete them."
+      }
     },
     "wikiAi": {
       "intro": "Choose the models for each stage of the pipeline that writes the wikis, see what it costs, and compare models with evidence before switching.",

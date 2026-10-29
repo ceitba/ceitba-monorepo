@@ -473,7 +473,8 @@
         "source": "Drive folder",
         "fileReview": "File to review",
         "fileReported": "Reported file",
-        "wiki": "AI Wiki"
+        "wiki": "AI Wiki",
+        "review": "Hidden review"
       },
       "sources": {
         "articles": "articles",
@@ -481,6 +482,7 @@
         "sources": "Drive folders",
         "needsReview": "files to review",
         "reported": "reported files",
+        "hiddenReviews": "hidden reviews",
         "wiki": "AI Wiki"
       },
       "sourceFailed": "We couldn't load: {{sources}}. Everything else is up to date.",
@@ -537,7 +539,9 @@
         "benefit": "New benefit card",
         "org": "Add someone to an organization",
         "staff": "Grant staff access"
-      }
+      },
+      "reviewReportedMeta_one": "{{comment}} · {{term}} · {{count}} report: {{reason}}",
+      "reviewReportedMeta_other": "{{comment}} · {{term}} · {{count}} reports: {{reason}}"
     }
   },
   "profile": {

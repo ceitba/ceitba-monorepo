@@ -3,6 +3,7 @@ import { ApiError } from '../../../api/client'
 import { fetchStaffCorrections, type StaffCorrection } from '../../../api/corrections'
 import { fetchStaffFiles, fetchStaffSources, type StaffFile, type StaffSource } from '../../../api/drive'
 import { fetchRuns, isBlockedStatus, type KbRun } from '../../../api/kbAdmin'
+import { fetchHiddenReviews, type StaffReview } from '../../../api/reviews'
 import { fetchAllArticles } from '../../../newsletter/api/articles'
 import type { Article } from '../../../newsletter/types'
 
@@ -10,7 +11,7 @@ import type { Article } from '../../../newsletter/types'
 // areas already use. Each source loads on its own, so one that fails (or
 // doesn't exist on this API build) never blanks the others.
 
-export type SourceId = 'articles' | 'corrections' | 'sources' | 'needsReview' | 'reported' | 'wiki'
+export type SourceId = 'articles' | 'corrections' | 'sources' | 'needsReview' | 'reported' | 'hiddenReviews' | 'wiki'
 export type SourceStatus = 'loading' | 'ok' | 'error' | 'unavailable'
 
 // The queue's four kinds, as the filter and the rail group them.
@@ -32,6 +33,8 @@ export interface QueueData {
   needsReviewTotal: number
   reported: StaffFile[]
   reportedTotal: number
+  // Subject reviews hidden by reports (Opiniones).
+  hiddenReviews: StaffReview[]
   // Runs that need a staff decision or look: waiting for cost approval, or
   // the latest real run when it failed.
   wikiRuns: KbRun[]
@@ -47,10 +50,11 @@ const EMPTY: QueueData = {
   needsReviewTotal: 0,
   reported: [],
   reportedTotal: 0,
+  hiddenReviews: [],
   wikiRuns: [],
 }
 
-const ALL_SOURCES: SourceId[] = ['articles', 'corrections', 'sources', 'needsReview', 'reported', 'wiki']
+const ALL_SOURCES: SourceId[] = ['articles', 'corrections', 'sources', 'needsReview', 'reported', 'hiddenReviews', 'wiki']
 
 // A feature that's off (or missing on this API build) answers 404/403/503:
 // that's "nothing to review", not an error to show.
@@ -123,6 +127,10 @@ export function useReviewQueue(): ReviewQueue {
         fetchStaffFiles({ publication: 'HIDDEN_REPORTED', limit: QUEUE_PAGE })
           .then((p) => settle({ reported: p.items, reportedTotal: p.total }, 'ok')).catch(fail)
         break
+      case 'hiddenReviews':
+        fetchHiddenReviews()
+          .then((hiddenReviews) => settle({ hiddenReviews }, 'ok')).catch(fail)
+        break
       case 'wiki':
         fetchRuns(10)
           .then((runs) => settle({ wikiRuns: wikiAttention(runs) }, 'ok')).catch(fail)
@@ -157,6 +165,7 @@ export function useReviewQueue(): ReviewQueue {
         case 'sources': return { ...d, sources: d.sources.filter((s) => s.id !== id), sourcesTotal: Math.max(0, d.sourcesTotal - 1) }
         case 'needsReview': return { ...d, needsReview: d.needsReview.filter((f) => f.id !== id), needsReviewTotal: Math.max(0, d.needsReviewTotal - 1) }
         case 'reported': return { ...d, reported: d.reported.filter((f) => f.id !== id), reportedTotal: Math.max(0, d.reportedTotal - 1) }
+        case 'hiddenReviews': return { ...d, hiddenReviews: d.hiddenReviews.filter((r) => r.id !== id) }
         case 'wiki': return { ...d, wikiRuns: d.wikiRuns.filter((r) => r.id !== id) }
       }
     })
@@ -169,6 +178,7 @@ export function useReviewQueue(): ReviewQueue {
     const apuntes = (ok('sources') ? data.sourcesTotal : 0)
       + (ok('needsReview') ? data.needsReviewTotal : 0)
       + (ok('reported') ? data.reportedTotal : 0)
+      + (ok('hiddenReviews') ? data.hiddenReviews.length : 0)
     const wiki = ok('wiki') ? data.wikiRuns.length : 0
     return { articles, corrections, apuntes, wiki, total: articles + corrections + apuntes + wiki }
   }, [data, status])

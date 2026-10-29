@@ -90,6 +90,18 @@
       ]
     },
     {
+      "name": "subject reviews",
+      "paths": [
+        "apps/api/src/features/review/**",
+        "apps/api/src/external/googleDirectory.ts",
+        "apps/web/src/api/reviews.ts",
+        "apps/web/src/components/apuntes/reviews/**"
+      ],
+      "docs": [
+        "apps/api/docs/SUBJECT-REVIEWS.md"
+      ]
+    },
+    {
       "name": "subject wiki",
       "paths": [
         "apps/api/src/features/kb/**",

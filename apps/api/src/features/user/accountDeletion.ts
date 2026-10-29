@@ -16,6 +16,7 @@
 //       (withdraw the user's reports and recompute, kb.forgetFiles, stored copies deleted after commit)
 // A step may return a function run after the deletion commits (best effort).
 
+import { deleteUserData as deleteSubjectReviewData } from '../review/repo';
 import type { Deps } from '../../deps';
 import { withTx, type Db, type Tx } from '../../db/client';
 import { LastActiveStaffError, LastOrgAdminError } from '../../http/errors';
@@ -82,6 +83,7 @@ export class AccountDeletionService {
       await this.step('drive.prepareAccountDeletion', tx, userId, afterCommit);
       await del.deleteDriveSources(tx, userId);
       await del.deleteKbReports(tx, userId);
+      await deleteSubjectReviewData(tx, userId);
       await del.deleteCapabilityGrants(tx, userId);
       await del.deleteOrgInvites(tx, userId);
 
