@@ -1,9 +1,9 @@
 // repository/PlanSubjectRepository, SubjectRepository, PlanRepository (the
 // parts the plan, subject, commission and sync features use).
 
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
-import { plan, planSubject, subject } from '../../db/schema/academic';
+import { plan, planSectionRequirement, planSubject, subject } from '../../db/schema/academic';
 import { toPgTimestamp, type Micros } from '../../lib/time';
 
 export type PlanSubjectRow = typeof planSubject.$inferSelect;
@@ -111,4 +111,24 @@ export async function insertSubject(db: Db, id: string, name: string, credits: n
 
 export async function updateSubject(db: Db, id: string, name: string, credits: number, now: Micros): Promise<void> {
   await db.update(subject).set({ name, credits, updatedAt: toPgTimestamp(now) }).where(eq(subject.id, id));
+}
+
+export interface PlanSectionRequirement { planId: string; section: string; credits: number; year: number; semester: number }
+
+export function findSectionRequirements(db: Db, planId: string): Promise<PlanSectionRequirement[]> {
+  return db.select().from(planSectionRequirement).where(eq(planSectionRequirement.planId, planId))
+    .orderBy(asc(planSectionRequirement.year), asc(planSectionRequirement.semester), asc(planSectionRequirement.section));
+}
+
+/** The plan's rows become exactly `rows` (unique sections): the ones no longer sent are deleted, the rest upserted. */
+export async function replaceSectionRequirements(db: Db, planId: string, rows: PlanSectionRequirement[]): Promise<void> {
+  const keep = rows.map((r) => r.section);
+  await db.delete(planSectionRequirement).where(keep.length === 0
+    ? eq(planSectionRequirement.planId, planId)
+    : and(eq(planSectionRequirement.planId, planId), notInArray(planSectionRequirement.section, keep)));
+  if (rows.length === 0) return;
+  await db.insert(planSectionRequirement).values(rows).onConflictDoUpdate({
+    target: [planSectionRequirement.planId, planSectionRequirement.section],
+    set: { credits: sql`excluded.credits`, year: sql`excluded.year`, semester: sql`excluded.semester` },
+  });
 }

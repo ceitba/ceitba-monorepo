@@ -5,7 +5,7 @@
 import type { Deps } from '../../deps';
 import { withTx, type Db } from '../../db/client';
 import { ResourceAlreadyExistsError, ResourceNotFoundError } from '../../http/errors';
-import type { CreateSubjectPlanRequest, SubjectPlanResponse, UpdateSubjectPlanRequest } from './dto';
+import type { CreateSubjectPlanRequest, PlanSectionRequirementResponse, SubjectPlanResponse, UpdateSubjectPlanRequest } from './dto';
 import * as repo from './repo';
 
 export interface PlanFilters { year: number | null; semester: number | null; section: string | null; type: string | null }
@@ -23,6 +23,12 @@ export class SubjectPlanService {
       else rows = await repo.findByPlanId(tx, planId);
       return this.toResponses(tx, rows);
     }, { readOnly: true });
+  }
+
+  /** The elective-group credits the sync stored for the plan; [] for a plan without them or an unknown plan. */
+  getRequirements(planId: string): Promise<PlanSectionRequirementResponse[]> {
+    return withTx(this.deps.db, async (tx) => (await repo.findSectionRequirements(tx, planId))
+      .map((r) => ({ section: r.section, credits: r.credits, year: r.year, semester: r.semester })), { readOnly: true });
   }
 
   getPlansForSubject(subjectId: string): Promise<SubjectPlanResponse[]> {

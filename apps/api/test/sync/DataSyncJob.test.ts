@@ -18,7 +18,7 @@ async function deps(env: Record<string, string>, itba: ItbaApiClient): Promise<D
   return { config, log: silentLogger, clock: new MutableClock(), itba, db: failingDb } as unknown as Deps;
 }
 const noItba: ItbaApiClient = {
-  getSubjectsByPlan: async () => [], getCommissions: async () => [], getCommissionsBySubject: async () => [],
+  getSubjectsByPlan: async () => ({ subjects: [], requirements: [] }), getCommissions: async () => [], getCommissionsBySubject: async () => [],
 };
 
 describe('DataSyncJob', () => {

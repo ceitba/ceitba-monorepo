@@ -43,7 +43,7 @@ export class SubjectService {
    * one read-only query hydrates the commissions cached by the sync.
    */
   async getSubjectsByPlanOrganized(planId: string, viewerId: string | null): Promise<OrganizedSubjects> {
-    const subjectPlans = await this.deps.itba.getSubjectsByPlan(planId);
+    const subjectPlans = (await this.deps.itba.getSubjectsByPlan(planId)).subjects;
     if (subjectPlans.length === 0) throw new ResourceNotFoundError('Plan', planId);
 
     const codes = [...new Set(subjectPlans.map((sp) => sp.subjectId).filter((c): c is string => c != null))];
