@@ -17,7 +17,7 @@ const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = 
 async function seed() {
   await api.db`TRUNCATE wiki.kb_page, wiki.kb_subject_relation, wiki.drive_file, wiki.drive_source, wiki.kb_run CASCADE`;
   await api.db`TRUNCATE wiki.kb_file_digest, wiki.kb_subject_state, wiki.kb_llm_usage, wiki.kb_pipeline_settings, wiki.kb_pipeline_settings_history CASCADE`;
-  await api.db`TRUNCATE public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+  await api.db`TRUNCATE public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
   await api.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES ('61.12', 'Matemática Financiera', 3, now()), ('81.07', 'Contabilidad', 3, now())`;
   const owner = await seedUser(api.db, 'alumna@itba.edu.ar', { name: 'Alumna' });
   const source = crypto.randomUUID();

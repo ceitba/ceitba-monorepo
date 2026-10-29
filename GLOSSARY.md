@@ -19,6 +19,12 @@ _Avoid_: Carrera (in code), degree
 A study plan of a Career: the set of Subjects and their requirements for one curriculum version.
 _Avoid_: Curriculum
 
+**Plan entry**:
+One Subject placed in a Plan as ITBA lists it: its section, year and term, prerequisites and credits within that
+Plan (`plan_entry`, with staff edits applied in `plan_entry_effective`). A Subject can have several entries in one
+Plan (orientations).
+_Avoid_: plan subject (the older `plan_subject` table keeps one per Subject)
+
 **Subject**:
 A course of study identified by its ITBA code (e.g. `61.12`). The unit that Apuntes, wiki pages and schedules
 attach to.
@@ -60,6 +66,16 @@ Subject wiki pages. See `apps/api/docs/SUBJECT-WIKI-PIPELINE.md`.
 
 **Study group**:
 A student-created group for a Subject with a type, locations and an optional participant cap.
+
+**Subject review**:
+A student's short opinion of a Subject they took in a term and Commission: recommend or not, difficulty, optional
+comment, and the Professors they say taught it. Anonymous to readers. See `apps/api/docs/SUBJECT-REVIEWS.md`.
+_Avoid_: Rating, opinión (in code; "Opiniones" is the UI tab)
+
+**Professor**:
+A teacher named in Subject reviews, identified by their ITBA email and named from the Google directory. ITBA's data
+has no professors: they exist only through reviews.
+_Avoid_: Docente, teacher (in code)
 
 **Proposal**:
 A student proposal ("Propuesta") to CEITBA that others vote and comment on, moderated by Moderators.

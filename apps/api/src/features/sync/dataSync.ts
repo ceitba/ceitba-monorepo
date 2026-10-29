@@ -4,8 +4,8 @@
 // does not roll back plan B.
 
 import type { Deps } from '../../deps';
-import { sqlState, withSavepoint, withTx, type Db } from '../../db/client';
-import type { CommissionProjection, CommissionQuery, SubjectPlanProjection } from '../../external/itba';
+import { sqlState, withSavepoint, withTx, type Db, type Tx } from '../../db/client';
+import type { CommissionProjection, CommissionQuery, PlanSectionRequirementProjection, SubjectPlanProjection } from '../../external/itba';
 import { withDefaultsFilled } from '../../external/itba';
 import { javaCompareStrings, javaIsBlank } from '../../lib/javaCompat';
 import { systemNowMicros } from '../../lib/time';
@@ -80,9 +80,9 @@ export class DataSyncService {
   }
 
   async syncByPlan(planId: string): Promise<SubjectPlanProjection[]> {
-    const entries = await this.deps.itba.getSubjectsByPlan(planId);
-    await this.upsertPlanEntries(planId, entries, new DataSyncResult());
-    return entries;
+    const { subjects, requirements } = await this.deps.itba.getSubjectsByPlan(planId);
+    await this.upsertPlanEntries(planId, subjects, new DataSyncResult(), requirements);
+    return subjects;
   }
 
   async syncCommissionsBySubject(subjectCode: string, query: CommissionQuery | null): Promise<CommissionProjection[]> {
@@ -101,8 +101,8 @@ export class DataSyncService {
       const plans = await withTx(this.deps.db, (tx) => syncRepo.planIdsOfCareer(tx, careerId), { readOnly: true });
       for (const planId of plans) {
         try {
-          const entries = await this.deps.itba.getSubjectsByPlan(planId);
-          await this.upsertPlanEntries(planId, entries, result);
+          const { subjects, requirements } = await this.deps.itba.getSubjectsByPlan(planId);
+          await this.upsertPlanEntries(planId, subjects, result, requirements);
         } catch (e) {
           this.log.error({ err: e, plan: planId, career: careerId }, 'Failed to sync plan');
           result.subjectPlans.errors++;
@@ -164,9 +164,34 @@ export class DataSyncService {
    * counts one error and nothing of the plan is kept). Emulated by counting
    * before writing, running each entry's writes in a savepoint, and failing
    * the transaction at the end when a write was rejected.
+   *
+   * The plan as fetched (plan_entry, what GET /v1/subjects?plan= serves) is replaced first, in its own
+   * transaction: a plan_subject/subject row rejected below never keeps it stale, and a rejected entry is logged
+   * and keeps the stored ones; staff edits (plan_entry_override) are never touched. The elective-group
+   * requirements are replaced in the plan transaction, in a savepoint (a rejected row is logged, never failing
+   * the subjects); they need the plan row (FK), so a plan synced by id before staff added it has none. Neither is
+   * counted in the result (its JSON is fixed). plan_subject is still written for one release (rollback safety).
    */
-  async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult): Promise<void> {
+  async upsertPlanEntries(planId: string, entries: SubjectPlanProjection[], result: DataSyncResult,
+    requirements: PlanSectionRequirementProjection[] = []): Promise<void> {
+    // An empty answer is not stored: it would wipe the plan (and leave every staff patch orphaned) over an ITBA hiccup.
+    if (entries.length > 0) try {
+      await withTx(this.deps.db, async (tx) => {
+        await planRepo.replacePlanEntries(tx, planId, entries.map((e) => ({
+          subjectId: e.subjectId, section: e.section, year: e.year, semester: e.semester, dependencies: e.dependencies,
+          creditsRequired: e.creditsRequired, subjectName: e.subjectName, subjectCredits: e.subjectCredits,
+        })), systemNowMicros());
+      });
+    } catch (e) {
+      if (sqlState(e) === undefined) throw e;
+      this.log.error({ err: e, plan: planId }, 'Failed to replace plan entries');
+    }
     await withTx(this.deps.db, async (tx) => {
+      if (await planRepo.planExists(tx, planId)) {
+        await this.replaceLogged(tx, planId, 'plan section requirements', (sp) => planRepo.replaceSectionRequirements(sp, planId, requirements.map((r) => ({
+          planId, section: r.section, credits: r.credits, year: r.year ?? 0, semester: r.semester ?? 0,
+        }))));
+      }
       let rejected: unknown = null;
       for (const entry of entries) {
         try {
@@ -188,6 +213,16 @@ export class DataSyncService {
       }
       if (rejected !== null) throw rejected;
     });
+  }
+
+  /** One replacement in a savepoint: a row the database rejects is logged, keeps the stored rows and never fails the plan. */
+  private async replaceLogged(tx: Tx, planId: string, what: string, replace: (sp: Db) => Promise<void>) {
+    try {
+      await withSavepoint(tx, replace);
+    } catch (e) {
+      if (sqlState(e) === undefined) throw e;
+      this.log.error({ err: e, plan: planId }, `Failed to replace ${what}`);
+    }
   }
 
   private async upsertSubject(tx: Db, entry: SubjectPlanProjection, result: DataSyncResult, writes: ((db: Db) => Promise<void>)[]) {

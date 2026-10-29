@@ -157,9 +157,10 @@ export const allSubjects = (s: Session): Promise<Row[]> => s.rows(sql`SELECT id,
 export const subjectExists = async (s: Session, id: string): Promise<boolean> =>
   (await count(s, sql`SELECT count(*)::int AS n FROM public.subject WHERE id = ${id}`)) > 0;
 
-/** The plan's subjects (subject_id, year, semester, section). */
+/** The plan's entries (subject_id, year, semester, section; no year/semester = 0), in plan order: a subject may repeat. */
 export const planEntries = (s: Session, planId: string): Promise<Row[]> =>
-  s.rows(sql`SELECT subject_id, year, semester, section FROM public.plan_subject WHERE plan_id = ${planId}`);
+  s.rows(sql`SELECT subject_id, COALESCE(year, 0) AS year, COALESCE(semester, 0) AS semester, section
+    FROM public.plan_entry_effective WHERE plan_id = ${planId} ORDER BY position`);
 
 /** Which of `subjectIds` have a published wiki page. */
 export const subjectsWithPublishedWiki = async (s: Session, subjectIds: string[]): Promise<Set<string>> =>

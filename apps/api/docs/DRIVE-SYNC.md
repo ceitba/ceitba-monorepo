@@ -72,7 +72,7 @@ Local stack for this feature: `docker-compose.drive.yml` + `.env.drive.example` 
   Filler words never count (resumen, apuntes, teoría, práctica, tp, parcial, final, guía, clase, ingreso, de, la,
   el, ...). Numerals: I-VI = 1-6; a numeral in the name that contradicts the subject's rules it out
   ("Física 2" is not Física I); none in the name is fine. Dates (`5/5/20`) are ignored.
-- The source owner's plan (`user.plan` + `plan_subject`) is tried first with threshold 0.5 (share of the subject's
+- The source owner's plan (`user.plan` + its entries in `plan_entry_effective`, `PLANS.md`) is tried first with threshold 0.5 (share of the subject's
   words found), then all subjects with 0.75. Ties: first word matched, earlier in the plan, more words, name.
 - Inheritance: an item's `suggestedSubjectId` is set only when it has no effective subject and its own match differs
   from the suggestion it inherits from its folders. `accept-suggestions` applies every suggestion, so a matched folder

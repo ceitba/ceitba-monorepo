@@ -4,7 +4,7 @@
 
 import { defineRoutes } from '../../http/router';
 import { param } from '../../http/validation';
-import { CreateCareerRequest, CreatePlanRequest, UpdateCareerRequest } from './dto';
+import { CreateCareerRequest, CreatePlanRequest, UpdateCareerRequest, UpdatePlanRequest } from './dto';
 import { CareerService } from './service';
 
 export default defineRoutes((r, deps) => {
@@ -21,6 +21,10 @@ export default defineRoutes((r, deps) => {
     ({ params, body }) => svc.update(params.id!, body));
   r.post('/v1/careers/{id}/plans', { tags, summary: 'Add a plan to a career (STAFF only). 409 if the plan id is already used.', params: { id: param.string() }, body: CreatePlanRequest, status: 201 },
     ({ params, body }) => svc.addPlan(params.id!, body));
+  r.get('/v1/careers/{id}/plans', { tags, summary: "Get a career's plans with their names", params: { id: param.string() } },
+    ({ params }) => svc.getPlans(params.id!));
+  r.put('/v1/careers/{id}/plans/{planId}', { tags, summary: "Rename a career's plan (STAFF only)", params: { id: param.string(), planId: param.string() }, body: UpdatePlanRequest },
+    ({ params, body }) => svc.updatePlan(params.id!, params.planId!, body));
   r.delete('/v1/careers/{id}', { tags, summary: 'Delete a career (STAFF only). Returns 409 if it has plans/notes/users.', params: { id: param.string() }, status: 204 },
     async ({ params }) => { await svc.delete(params.id!); });
 });

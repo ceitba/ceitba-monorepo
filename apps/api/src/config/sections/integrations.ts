@@ -13,7 +13,7 @@ const schema = z.object({
     /** ITBA_API_TIMEOUT, Java int millis. */
     timeoutMs: z.number().int(),
     useFake: z.boolean(),
-    /** Local dev only, with useFake: plans nobody stubbed come from plan_subject. */
+    /** Local dev only, with useFake: plans nobody stubbed are replayed from plan_entry. */
     fakeFromDb: z.boolean(),
   }),
   sync: z.object({ enabled: z.boolean() }),

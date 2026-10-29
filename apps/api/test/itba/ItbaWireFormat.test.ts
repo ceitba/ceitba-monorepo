@@ -67,6 +67,23 @@ describe('ItbaWireFormatTest', () => {
     expect(resp.courseCommissions!.courseCommission!.length).toBe(1);
   });
 
+  // A term entry of type "section" is an elective group placed in that year and term (credits = what the plan asks for).
+  test('careerPlans_sectionEntry_aloneAndInAList', () => {
+    const lone = readCareerPlans({ careerplan: { section: { name: 'Básico', terms: { term: { year: '3', period: '1', entries: { entry: {
+      type: 'section', name: 'Electivas Gestíon', credits: '18', dependencies: null } } } } } } })!;
+    const e = lone.careerPlan!.section![0]!.terms!.term![0]!.entries!.entry![0]!;
+    expect([e.type, e.name, e.credits, e.code, e.dependencies]).toEqual(['section', 'Electivas Gestíon', '18', null, null]);
+
+    const listed = readCareerPlans({ careerplan: { section: { name: 'Básico', terms: { term: { year: '3', period: '2', entries: { entry: [
+      { type: 'subject', name: 'Algoritmos', code: '93.12', credits: '6' },
+      { type: 'section', name: 'Electivas Analytics', credits: '15', dependencies: null },
+      { type: 'section', name: 'Electivas Social', credits: 12 },
+    ] } } } } } })!;
+    const entries = listed.careerPlan!.section![0]!.terms!.term![0]!.entries!.entry!;
+    expect(entries.map((x) => [x!.type, x!.name, x!.credits])).toEqual([
+      ['subject', 'Algoritmos', '6'], ['section', 'Electivas Analytics', '15'], ['section', 'Electivas Social', '12']]);
+  });
+
   // Beyond the Java test: Jackson coercions and rejections.
   test('scalarsCoerceToStringsAndWrongShapesFail', () => {
     const resp = readCareerPlans({ careerplan: { section: { name: 7, terms: { term: { year: 1, entries: { entry: { type: 'subject', credits: 6, code: true } } } } } } })!;
@@ -137,6 +154,46 @@ describe('RestClientItbaApiClient mapping', () => {
     expect(out[0]!.times).toContainEqual({ day: 'MONDAY', classroom: 'Virtual Asincrónico', building: 'Online', hourFrom: '08:00:00', hourTo: '09:00:00' });
     expect(itba.requests).toEqual([`/courseCommissions/${MOCK_TOKEN}?level=GRADUATE&year=2026&period=SecondSemester`,
       `/courseCommissions/${MOCK_TOKEN}?level=UNDERGRADUATE&year=2026&period=SecondSemester`]);
+  });
+
+  test('planSectionEntriesBecomeRequirements', async () => {
+    itba.reset();
+    itba.stubPlanBody('A22', { careerplan: { name: 'A22', section: [
+      { name: 'Básico', terms: { term: [
+        { year: '1', period: '2', entries: { entry: [
+          { type: 'subject', name: 'Álgebra', code: '93.58', credits: '6' },
+          { type: 'section', name: 'Electivas Orientación', credits: '18', dependencies: null },
+        ] } },
+        { year: '3', period: '1', entries: { entry: [
+          { type: 'section', name: 'Electivas Gestíon', credits: '18' },
+          { type: 'section', name: 'Electivas Informática', credits: '15' },
+          { type: 'section', name: ' Electivas Gestíon ', credits: '99' },
+          { type: 'section', name: null, credits: '3' },
+          { type: 'section', name: 'Electivas Rotas', credits: '12.0' },
+          { type: 'section', name: 'Electivas Sin Créditos' },
+        ] } },
+        { year: '3', period: '2', entries: { entry: { type: 'section', name: 'Electivas Social', credits: '12' } } },
+      ] } },
+      { name: 'Electivas Gestíon', withoutTerm: { withoutTerm: [
+        { type: 'subject', name: 'Finanzas', code: '11.01', credits: '3' },
+        { type: 'section', name: 'Ignored', credits: '1' },
+      ] } },
+    ] } });
+    const plan = await client.getSubjectsByPlan('A22');
+    expect(plan.subjects.map((s) => s.subjectId)).toEqual(['93.58', '11.01']);
+    expect(plan.requirements).toEqual([
+      { planId: 'A22', section: 'Electivas Orientación', credits: 18, year: 1, semester: 2 },
+      { planId: 'A22', section: 'Electivas Gestíon', credits: 18, year: 3, semester: 1 },
+      { planId: 'A22', section: 'Electivas Informática', credits: 15, year: 3, semester: 1 },
+      { planId: 'A22', section: 'Electivas Social', credits: 12, year: 3, semester: 2 },
+    ]);
+
+    // A malformed group is skipped: it never fails the subjects (GET /v1/subjects?plan= serves them live).
+    itba.stubPlanBody('BAD', { careerplan: { section: { name: 'x', terms: { term: { year: '1', period: '1', entries: { entry: [
+      { type: 'section', name: 'Electivas', credits: 'many' }, { type: 'subject', name: 'Álgebra', code: '93.58', credits: '6' }] } } } } } });
+    const bad = await client.getSubjectsByPlan('BAD');
+    expect(bad.subjects.map((s) => s.subjectId)).toEqual(['93.58']);
+    expect(bad.requirements).toEqual([]);
   });
 
   test('errorsBecomeExternalApiError', async () => {

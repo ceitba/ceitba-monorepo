@@ -3,7 +3,7 @@
 import type { Deps } from '../../deps';
 import { isUniqueViolation, withTx } from '../../db/client';
 import { ResourceAlreadyExistsError, ResourceNotFoundError } from '../../http/errors';
-import type { CareerResponse, CreateCareerRequest, CreatePlanRequest, PlanResponse, UpdateCareerRequest } from './dto';
+import type { CareerResponse, CreateCareerRequest, CreatePlanRequest, PlanResponse, UpdateCareerRequest, UpdatePlanRequest } from './dto';
 import * as repo from './repo';
 
 export class CareerService {
@@ -57,6 +57,25 @@ export class CareerService {
       if (!(await repo.findCareer(tx, id))) throw new ResourceNotFoundError('Career', id);
       const saved = await repo.updateCareerName(tx, id, req.name!, this.deps.clock.now());
       return { id: saved.id, name: saved.name, plans: [] };
+    });
+  }
+
+  /** The career's plans with their names, by id. */
+  getPlans(careerId: string): Promise<PlanResponse[]> {
+    return withTx(this.deps.db, async (tx) => {
+      if (!(await repo.careerExists(tx, careerId))) throw new ResourceNotFoundError('Career', careerId);
+      return (await repo.findPlansByCareer(tx, careerId)).map((p) => ({ id: p.id, careerId: p.careerId, name: p.name }));
+    }, { readOnly: true });
+  }
+
+  /** Renames a plan of the career (trimmed); a plan of another career is not found. */
+  updatePlan(careerId: string, planId: string, req: UpdatePlanRequest): Promise<PlanResponse> {
+    return withTx(this.deps.db, async (tx) => {
+      if (!(await repo.careerExists(tx, careerId))) throw new ResourceNotFoundError('Career', careerId);
+      const p = await repo.findPlan(tx, planId);
+      if (!p || p.careerId !== careerId) throw new ResourceNotFoundError('Plan', planId);
+      const saved = await repo.updatePlanName(tx, planId, req.name!.trim(), this.deps.clock.now());
+      return { id: saved.id, careerId: saved.careerId, name: saved.name };
     });
   }
 

@@ -69,7 +69,11 @@ asserts the code over HTTP (the mapping test when none does).
 | 400 | `INVALID_VOTE` | <message> | DigestException INVALID_VOTE | `digest-correction-vote.contract.test.ts` |
 | 400 | `INVALID_WEEK_START` | <message> | DigestException INVALID_WEEK_START | `digest-endpoints.contract.test.ts` |
 | 400 | `InvalidSlug` | <message> | InvalidBenefitSlugError | `staff-benefits.contract.test.ts` |
+| 400 | `ProfessorEmailDomain` | <message> | ReviewError PROFESSOR_EMAIL_DOMAIN | `subject-reviews.contract.test.ts` |
 | 400 | `SameAsSga` | <message> | ScheduleCorrectionError SAME_AS_SGA | `correction-schedule.contract.test.ts` |
+| 400 | `SubjectReviewFutureTerm` | <message> | ReviewError FUTURE_TERM | `subject-reviews.contract.test.ts` |
+| 400 | `SubjectReviewOwn` | <message> | ReviewError OWN_REVIEW | `subject-reviews.contract.test.ts` |
+| 400 | `UnknownProfessor` | <message> | ReviewError UNKNOWN_PROFESSOR | `subject-reviews.contract.test.ts` |
 | 400 | `ValidationError` | <field>: <message>; ... (request locale) | BeanValidationError (@Valid body) | `validation-locale.contract.test.ts` |
 | 400 | `ValidationError` | <message> | ConstraintViolationError | `auth-mobile.contract.test.ts` |
 | 400 | `ValidationError` | Validation failed for field '<field>' with value '<value>': <reason> | ValidationError | `api-key-scopes.contract.test.ts` |
@@ -88,6 +92,7 @@ asserts the code over HTTP (the mapping test when none does).
 | 404 | `KB_NO_PAIRS` | <message> | KbPipelineError NO_PAIRS | `kb-admin-evals.contract.test.ts` |
 | 404 | `NotFound` | No static resource <path>. | NoResourceFoundError (no route) | `health-and-error.contract.test.ts` |
 | 404 | `NotFound` | Not found | ReviewLoginDisabledError | `health-and-error.contract.test.ts` |
+| 404 | `ProfessorNotFound` | <message> | ReviewError PROFESSOR_NOT_FOUND | `subject-reviews.contract.test.ts` |
 | 404 | `ResourceNotFound` | <Resource> with identifier '<id>' not found | ResourceNotFoundError | `accept-negotiation.contract.test.ts` |
 | 405 | `MethodNotAllowed` | Method '<METHOD>' is not supported. | MethodNotAllowedError (+ Allow) | `health-and-error.contract.test.ts` |
 | 406 | `NotAcceptable` | Acceptable representations: [text/html]. | NotAcceptableError (+ Accept; `produces` routes only) | `accept-negotiation.contract.test.ts` |
@@ -127,6 +132,8 @@ asserts the code over HTTP (the mapping test when none does).
 | 409 | `StudyGroupCapacityBelowMembers` | <message> | StudyGroupConflictError CAPACITY_BELOW_MEMBERS | `studygroup-controller.contract.test.ts` |
 | 409 | `StudyGroupFull` | <message> | StudyGroupConflictError FULL | `studygroup-controller.contract.test.ts` |
 | 409 | `StudyGroupPastDue` | <message> | StudyGroupConflictError PAST_DUE | `studygroup-controller.contract.test.ts` |
+| 409 | `SubjectReviewExists` | <message> | ReviewError ALREADY_REVIEWED | `subject-reviews.contract.test.ts` |
+| 409 | `SubjectReviewHidden` | <message> | ReviewError HIDDEN | `subject-reviews.contract.test.ts` |
 | 410 | `TOKEN_EXPIRED` | <message> | DigestException TOKEN_EXPIRED | `digest-correction-vote.contract.test.ts` |
 | 413 | `PayloadTooLarge` | Maximum upload size exceeded | PayloadTooLargeError (body over the route cap; TS only) | `request-body-size.contract.test.ts` |
 | 415 | `UnsupportedMediaType` | Content-Type '<type>' is not supported. | UnsupportedMediaTypeError (+ Accept) | `health-and-error.contract.test.ts` |
@@ -141,6 +148,7 @@ asserts the code over HTTP (the mapping test when none does).
 | 502 | `ExternalApiError` | External API error in <service> during <operation> | ExternalApiError | `kb-admin-endpoints.contract.test.ts` |
 | 503 | `DRIVE_SYNC_UNCONFIGURED` | <message> | DriveError SYNC_UNCONFIGURED | `dev-login.contract.test.ts` |
 | 503 | `KB_LLM_UNCONFIGURED` | <message> | KbPipelineError LLM_UNCONFIGURED | `test/http/errors.test.ts` |
+| 503 | `ProfessorDirectoryUnavailable` | <message> | ReviewError DIRECTORY_UNAVAILABLE | `subject-reviews.contract.test.ts` |
 <!-- errors:end -->
 
 ## JSON output (Jackson rules)
@@ -198,3 +206,4 @@ Most were security findings on the port; the tests that pin them skip on the Jav
 | Foreign errors | (n/a) | only the app's own errors carry their message; any other error is the generic 500 | `test/http/errors.test.ts` |
 | Secrets in logs | (n/a) | the ITBA token is masked in error messages; logged errors lose URL query strings | `test/itba/ItbaTokenRedaction.test.ts` |
 | Timestamp precision | on Linux (production) the JVM clock has nanosecond resolution, so timestamps computed in memory (`Instant.now()`, `OffsetDateTime.now(clock)`) printed up to 9 fraction digits (`...05.626702593-03:00`); values read back from Postgres had at most 6; on macOS the JVM clock is microsecond, which is why local runs never showed 9 | at most 6 digits everywhere (Postgres precision). Clients already received both 3- and 6-digit forms; JS `Date` and Dart `DateTime.parse` accept any length | contract tests accept 1 to 9 digits on both targets (`health-and-error`, `media-endpoints`, `studygroup-controller`, `share-sessions`, `proposal-controller`, `correction-schedule`) |
+| Wiki pipeline restart-loop guard | every startup counted a resume of each RUNNING run, so blue/green deploys and clean restarts added up and failed a run ("detenida tras reinicios repetidos") | only a startup that finds the run still leased counts; a lease release restores the counter to its value when the lease was taken; on SIGTERM the engine stops starting work and releases its leases (`docs/SUBJECT-WIKI-PIPELINE.md` "Restart-loop guard") | `test/kb-pipeline/ResumeGuard.test.ts` |

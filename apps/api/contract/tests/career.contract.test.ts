@@ -1,7 +1,7 @@
 // Ports apps/api/src/test/java/org/ceitba/api/web/career/CareerEndpointsIT.java
 // and CareerWritesIT.java. ROLE_STAFF comes from a real ceitba_staff row.
 import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { bearer, mintJwt, seedCareer, seedPlan, seedStaff, useServer, type As } from '../support';
+import { apiKey, bearer, mintJwt, seedApiKey, seedCareer, seedPlan, seedStaff, useServer, type As } from '../support';
 
 const api = useServer();
 let user: As;
@@ -167,6 +167,61 @@ describe('CareerWritesIT', () => {
     await seedCareer(api.db, 'S', 'Sistemas');
     expect((await api.post('/v1/careers/S/plans', { as: user, body: { id: 'S30' } })).status).toBe(403);
     expect((await api.post('/v1/careers/S/plans', { body: { id: 'S30' } })).status).toBe(401);
+  });
+
+  // Not in CareerWritesIT: the plans of one career with their names (the /manage editor) and renaming a plan.
+  test('getCareerPlansListsThemWithNamesInIdOrder', async () => {
+    await seedCareer(api.db, 'S', 'Sistemas');
+    await seedCareer(api.db, 'I', 'Industrial');
+    await seedPlan(api.db, 'S10-Rev23', 'S', 'Plan 2023');
+    await seedPlan(api.db, 'S10-Rev18', 'S', null);
+    await seedPlan(api.db, 'I07-Rev22', 'I', 'Plan 2022');
+    const r = await api.get('/v1/careers/S/plans');
+    expect(r.status).toBe(200);
+    expect(r.text).toBe('[{"id":"S10-Rev18","careerId":"S","name":null},{"id":"S10-Rev23","careerId":"S","name":"Plan 2023"}]');
+    expect((await api.get('/v1/careers/I/plans', { as: user })).json.map((p: { id: string }) => p.id)).toEqual(['I07-Rev22']);
+    await seedCareer(api.db, 'E', 'Vacía');
+    expect((await api.get('/v1/careers/E/plans')).text).toBe('[]');
+    const missing = await api.get('/v1/careers/NOPE/plans');
+    expect(missing.status).toBe(404);
+    expect(missing.json.error).toBe('ResourceNotFound');
+  });
+
+  test('staffCanRenameAPlan', async () => {
+    await seedCareer(api.db, 'S', 'Sistemas');
+    await seedPlan(api.db, 'S10-Rev23', 'S', 'Plan 2023');
+    const r = await api.put('/v1/careers/S/plans/S10-Rev23', { as: staff, body: { name: '  Plan 2023 (rev.)  ' } });
+    expect(r.status).toBe(200);
+    expect(r.text).toBe('{"id":"S10-Rev23","careerId":"S","name":"Plan 2023 (rev.)"}');
+    const [row] = await api.db`SELECT name FROM public.plan WHERE id = 'S10-Rev23'`;
+    expect(row!.name).toBe('Plan 2023 (rev.)');
+  });
+
+  test('renamePlanErrors', async () => {
+    await seedCareer(api.db, 'S', 'Sistemas');
+    await seedCareer(api.db, 'I', 'Industrial');
+    await seedPlan(api.db, 'S10-Rev23', 'S', 'Plan 2023');
+    // The plan must belong to the career in the path.
+    expect((await api.put('/v1/careers/I/plans/S10-Rev23', { as: staff, body: { name: 'x' } })).status).toBe(404);
+    expect((await api.put('/v1/careers/S/plans/NOPE', { as: staff, body: { name: 'x' } })).status).toBe(404);
+    expect((await api.put('/v1/careers/NOPE/plans/S10-Rev23', { as: staff, body: { name: 'x' } })).status).toBe(404);
+    const blank = await api.put('/v1/careers/S/plans/S10-Rev23', { as: staff, body: { name: ' ' } });
+    expect(blank.status).toBe(400);
+    expect(blank.json.error).toBe('ValidationError');
+    expect((await api.put('/v1/careers/S/plans/S10-Rev23', { as: staff, body: { name: 'x'.repeat(256) } })).status).toBe(400);
+  });
+
+  test('regularUserCannotRenameAPlan', async () => {
+    await seedCareer(api.db, 'S', 'Sistemas');
+    await seedPlan(api.db, 'S10-Rev23', 'S', 'Plan 2023');
+    expect((await api.put('/v1/careers/S/plans/S10-Rev23', { as: user, body: { name: 'x' } })).status).toBe(403);
+    expect((await api.put('/v1/careers/S/plans/S10-Rev23', { body: { name: 'x' } })).status).toBe(401);
+    // A staff member's API key without the staff scope is a plain USER.
+    const staffId = await seedStaff(api.db, 'boss@itba.edu.ar');
+    const key = await seedApiKey(api.db, staffId, ['read', 'write']);
+    expect((await api.put('/v1/careers/S/plans/S10-Rev23', { as: apiKey(key.key), body: { name: 'x' } })).status).toBe(403);
+    const [row] = await api.db`SELECT name FROM public.plan WHERE id = 'S10-Rev23'`;
+    expect(row!.name).toBe('Plan 2023');
   });
 
   // Not in CareerWritesIT: Jackson scalar coercion and @PreAuthorize after validation.

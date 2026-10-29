@@ -8,7 +8,7 @@ import { javaHashCode } from '../../lib/javaCompat';
 import type { Clock } from '../../infra/clock';
 import type { Logger } from '../../infra/logger';
 import {
-  type CommissionProjection, type CommissionQuery, type DayOfWeek, type ItbaApiClient, type SubjectPlanProjection,
+  type CommissionProjection, type CommissionQuery, type DayOfWeek, type ItbaApiClient, type PlanProjection, type SubjectPlanProjection,
   type SubjectType, type TimeSlot, withDefaultsFilled,
 } from '../itba';
 import { readCareerPlans, readCourseCommissions, WireFormatError, type CourseCommission, type Section, type SubjectEntry } from './wire';
@@ -168,11 +168,11 @@ export class RestItbaApiClient implements ItbaApiClient {
     return JSON.parse(text);
   }
 
-  async getSubjectsByPlan(planId: string): Promise<SubjectPlanProjection[]> {
+  async getSubjectsByPlan(planId: string): Promise<PlanProjection> {
     try {
       const response = readCareerPlans(await this.get(this.url('/careerPlans', [['plan', planId]])));
       if (response === null || response.careerPlan === null) throw new ExternalApiError('ITBA', 'getSubjectsByPlan', null);
-      const out: SubjectPlanProjection[] = [];
+      const out: PlanProjection = { subjects: [], requirements: [] };
       for (const s of response.careerPlan.section ?? []) {
         if (s === null) throw new WireFormatError('null section');
         this.processSection(s, planId, out);
@@ -215,24 +215,45 @@ export class RestItbaApiClient implements ItbaApiClient {
     return (await this.getCommissions(query)).filter((c) => c.subjectCode === subjectCode);
   }
 
-  private processSection(section: Section, planId: string, out: SubjectPlanProjection[]) {
+  /**
+   * Subjects come from both branches. A term entry of type "section" is an elective group placed in that year and
+   * term: kept as a requirement (trimmed name, first one per name wins, so the (plan, section) key stays unique).
+   * A group without a name or with non-integer credits is logged and skipped: it never fails the plan's subjects,
+   * which existing routes serve live. Other types, and "section" entries outside terms, are skipped.
+   */
+  private processSection(section: Section, planId: string, out: PlanProjection) {
     if (section.terms !== null && section.terms.term !== null) {
       for (const term of section.terms.term) {
         if (term === null) throw new WireFormatError('null term');
         if (term.entries === null || term.entries.entry === null) continue;
         for (const entry of term.entries.entry) {
           if (entry === null) throw new WireFormatError('null entry');
+          if (entry.type === 'section') {
+            this.addRequirement(entry, planId, term.year, term.period, out);
+            continue;
+          }
           if (entry.type !== 'subject') continue;
-          out.push(this.toProjection(entry, planId, section.name, parseIntOrNull(term.year), parseIntOrNull(term.period)));
+          out.subjects.push(this.toProjection(entry, planId, section.name, parseIntOrNull(term.year), parseIntOrNull(term.period)));
         }
       }
     } else if (section.withoutTerm !== null && section.withoutTerm.entries !== null) {
       for (const entry of section.withoutTerm.entries) {
         if (entry === null) throw new WireFormatError('null entry');
         if (entry.type !== 'subject') continue;
-        out.push(this.toProjection(entry, planId, section.name, null, null));
+        out.subjects.push(this.toProjection(entry, planId, section.name, null, null));
       }
     }
+  }
+
+  private addRequirement(entry: SubjectEntry, planId: string, year: string | null, period: string | null, out: PlanProjection) {
+    const name = entry.name?.trim() ?? '';
+    const credits = parseIntOrNull(entry.credits);
+    if (name === '' || credits === null) {
+      this.log?.warn({ plan: planId, group: entry.name, credits: entry.credits }, 'Skipping elective group without name or integer credits');
+      return;
+    }
+    if (out.requirements.some((r) => r.section === name)) return;
+    out.requirements.push({ planId, section: name, credits, year: parseIntOrNull(year), semester: parseIntOrNull(period) });
   }
 
   private toProjection(entry: SubjectEntry, planId: string, section: string | null, year: number | null, semester: number | null): SubjectPlanProjection {

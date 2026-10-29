@@ -13,7 +13,7 @@
 // test/drive/DriveSyncIT.test.ts (in-process, contract/IN-PROCESS.md).
 // One demo owner per test so an async sync of one test never touches another's rows.
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
-import { bearer, mintJwt, seedStaff, supports, useServer, type As } from '../support';
+import { bearer, copyPlanSubjectsToEntries, mintJwt, seedStaff, supports, useServer, type As } from '../support';
 import { startS3Mock } from '../../test/drive/support/s3mock';
 
 const OWNERS = Array.from({ length: 12 }, (_, i) => `alumno${i + 1}@itba.edu.ar`);
@@ -52,7 +52,7 @@ type Srv = typeof api;
 
 async function seed(s: Srv) {
   await s.db`TRUNCATE wiki.kb_page, wiki.drive_unclaimed_share, wiki.drive_file_report, wiki.drive_file,
-             wiki.drive_source, public."user", public.plan_subject, public.subject, public.plan, public.careers CASCADE`;
+             wiki.drive_source, public."user", public.plan_subject, public.plan_entry, public.subject, public.plan, public.careers CASCADE`;
   await s.db`INSERT INTO public.capability_settings (capability, enabled_for_all) VALUES ('apuntes', true)
              ON CONFLICT (capability) DO UPDATE SET enabled_for_all = true`;
   await s.db`INSERT INTO public.subject (id, name, credits, updated_at) VALUES
@@ -517,6 +517,7 @@ describe('DriveSyncIT', () => {
                  ('71.98', 'A22', 'Electivas Social', 0, 0, 0, '{}'), ('71.97', 'A22', 'Electivas Analytics', 0, 0, 0, '{}'),
                  ('71.96', 'A22', 'Electivas Analytics', 0, 0, 0, '{}'), ('93.26', 'A22', 'Ciclo', 1, 2, 0, '{}'),
                  ('93.16', 'A22', 'Ciclo', 2, 1, 0, '{}'), ('93.41', 'A22', 'Ciclo', 2, 2, 0, '{}')`;
+    await copyPlanSubjectsToEntries(api.db);
 
     const sourceId = await register(api, me);
     // Without a plan: no plan flags, plan listing empty.

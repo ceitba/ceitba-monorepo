@@ -63,7 +63,7 @@ describe('MailAccountsIT (stubbed exchange)', () => {
     const r = await t.request('POST', '/v1/mail/accounts/ceitba/connect', { headers: await bearer('alice@itba.edu.ar') });
     expect(r.status).toBe(200);
     for (const s of ['https://accounts.google.com/o/oauth2/v2/auth?', 'access_type=offline', 'prompt=consent', 'login_hint=ceitba@itba.edu.ar',
-      'hd=itba.edu.ar', 'gmail.send%20openid%20email', 'state=']) expect(r.json.authorizationUrl).toContain(s);
+      'hd=itba.edu.ar', 'gmail.send%20openid%20email%20https://www.googleapis.com/auth/directory.readonly', 'state=']) expect(r.json.authorizationUrl).toContain(s);
   });
 
   test('callbackStoresTheEncryptedTokenAndListingHasNoSecrets', async () => {
@@ -117,6 +117,18 @@ describe('MailAccountsIT (stubbed exchange)', () => {
     expect(d.status).toBe(204);
     expect(revoked).toEqual([REFRESH_TOKEN]);
     expect(await t.sql`SELECT 1 FROM public.mail_sender_account`).toHaveLength(0);
+  });
+
+  // Subject reviews name professors with the CEITBA account (docs/SUBJECT-REVIEWS.md): only when the
+  // directory scope was granted, which Google's granular consent lets the staff member untick.
+  test('directoryCredentialsOnlyWithTheDirectoryScope', async () => {
+    expect(await mail.accounts.directoryCredentials()).toBeNull();
+    exchanges.set('send-only', tokensFor('ceitba@itba.edu.ar', SEND_SCOPE, REFRESH_TOKEN));
+    expect((await callback({ code: 'send-only', state: oauthStates().issue(staffId) })).headers.get('Location')).toBe(`${HOME}?mail=connected`);
+    expect(await mail.accounts.directoryCredentials()).toBeNull();
+    exchanges.set('with-dir', tokensFor('ceitba@itba.edu.ar', `${SEND_SCOPE} https://www.googleapis.com/auth/directory.readonly`, REFRESH_TOKEN));
+    expect((await callback({ code: 'with-dir', state: oauthStates().issue(staffId) })).headers.get('Location')).toBe(`${HOME}?mail=connected`);
+    expect((await mail.accounts.directoryCredentials())?.refreshToken).toBe(REFRESH_TOKEN);
   });
 
   // The read-write path (the digest worker's send transaction) does mark an undecryptable account broken.
