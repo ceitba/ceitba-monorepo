@@ -28,6 +28,7 @@ const messages = {
     eventOrgRequired: "Indicá la organización del evento. Podés crear eventos para: {orgs}.",
     eventOrgNotMember: "No sos integrante de \"{org}\". Podés crear eventos para: {orgs}.",
     eventInPast: "La fecha {date} ya pasó (hoy es {today}). Revisá la fecha del evento.",
+    eventEndBeforeStart: "La hora de fin ({end}) tiene que ser posterior a la de inicio ({start}), el mismo día.",
     eventCreated: "Evento creado. Los seguidores de la organización reciben una notificación; se edita o borra desde el newsletter en la web."
   },
   en: {
@@ -53,6 +54,7 @@ const messages = {
     eventOrgRequired: "Say which organization the event is for. You can create events for: {orgs}.",
     eventOrgNotMember: "You are not a member of \"{org}\". You can create events for: {orgs}.",
     eventInPast: "{date} is in the past (today is {today}). Check the event date.",
+    eventEndBeforeStart: "The end time ({end}) must be after the start time ({start}), on the same day.",
     eventCreated: "Event created. The organization's followers get a notification; edit or delete it from the newsletter on the website."
   }
 } as const;

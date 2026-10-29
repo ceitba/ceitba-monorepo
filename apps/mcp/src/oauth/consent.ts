@@ -90,14 +90,14 @@ export function renderConsent(v: ConsentView): string {
   <div class="card">
     <h1>¿Conectar <strong>${client}</strong> con tu cuenta de CEITBA?</h1>
     <p><strong>${client}</strong> va a poder leer tus datos de CEITBA (perfil, horarios guardados, grupos de estudio,
-      propuestas, Apuntes), reportar contenido de Apuntes y crear eventos de tus organizaciones cuando se lo pidas y,
+      propuestas, Apuntes), reportar contenido de Apuntes y crear eventos de tus organizaciones cuando se lo pidas (se publican al instante y notifican a sus seguidores) y,
       si sos staff o moderador, usar las herramientas de staff.</p>
     <p>Después de iniciar sesión con Google vas a volver a <strong>${dest}</strong>.</p>
     <p class="muted">Continuá solo si vos empezaste esta conexión desde ese asistente. Si alguien te mandó este
       link, cancelá.</p>
     <hr>
     <p lang="en"><strong>Connect ${client} to your CEITBA account?</strong> It will be able to read your CEITBA data,
-      report Apuntes content and create events for your organizations when you ask it to and, if you are staff or a moderator, use the staff tools. After signing in with Google you will be sent back to
+      report Apuntes content and create events for your organizations when you ask it to (they go public at once and notify followers) and, if you are staff or a moderator, use the staff tools. After signing in with Google you will be sent back to
       <strong>${dest}</strong>. Only continue if you started this connection yourself.</p>
     <p class="muted">Redirect URI: <code>${full}</code></p>
     <form method="post" action="${escapeHtml(v.action)}">

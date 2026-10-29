@@ -122,10 +122,12 @@ export const EVENT_CATEGORIES = ["Académico", "Campus", "Cultura", "Deportes", 
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 
-// Invites rarely say when an event ends: start + 2 h, past midnight for late events (the API stores times only).
+// Invites rarely say when an event ends: start + 2 h, capped at 23:59. An event has one date and the
+// web form, digest and .ics export all expect end > start, so the end never wraps past midnight.
 export const defaultEndTime = (start: string): string => {
   const [h, m] = start.split(":").map(Number);
-  return `${String((h! + 2) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const end = Math.min(h! * 60 + m! + 120, 23 * 60 + 59);
+  return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
 };
 
 export const createEvent = defineTool({
@@ -134,11 +136,11 @@ export const createEvent = defineTool({
   description:
     "Publica un evento en la agenda de CEITBA para una organización de la que sos integrante (el staff puede publicar para " +
     "cualquiera, u omitir la organización). Sirve para pasar una invitación (p. ej. un mensaje de WhatsApp) a la agenda: " +
-    "extraé título, fecha, horario, lugar y descripción. Si falta la hora de fin se usa inicio + 2 h. ANTES de llamarla, " +
+    "extraé título, fecha, horario, lugar y descripción. Si falta la hora de fin se usa inicio + 2 h (hasta las 23:59); la hora de fin debe ser posterior al inicio, el mismo día. ANTES de llamarla, " +
     "mostrale a la persona el evento tal como se va a publicar y esperá su confirmación: se publica al instante y notifica a " +
     "los seguidores de la organización. No reintentes si falla. " +
     "EN: Publishes an event for an organization you belong to (staff: any, or none). Turn an invite into an event; end " +
-    "defaults to start + 2 h. Show the person the parsed event and get confirmation first: it is public at once and notifies " +
+    "defaults to start + 2 h (capped at 23:59) and must be after the start, same day. Show the person the parsed event and get confirmation first: it is public at once and notifies " +
     "the organization's followers. Never retry.",
   access: "user",
   events: true,
@@ -166,6 +168,9 @@ export const createEvent = defineTool({
     }
     const today = todayInArgentina();
     if (args.date < today) throw new ToolError(t(ctx.lang, "eventInPast", { date: args.date, today }));
+    if (args.endTime && args.endTime <= args.startTime) {
+      throw new ToolError(t(ctx.lang, "eventEndBeforeStart", { start: args.startTime, end: args.endTime }));
+    }
     const e = await ctx.api.send<NewsEvent>("POST", "/v1/news/events", {
       title: args.title, eventDate: args.date, startTime: args.startTime, endTime: args.endTime ?? defaultEndTime(args.startTime),
       location: args.location, category: args.category, organization: args.organization ?? null, description: args.description ?? null,

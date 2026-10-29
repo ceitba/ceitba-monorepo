@@ -93,6 +93,11 @@ export function scopeDenial(k: ValidatedKey, method: string, rawPath: string): s
     if (keyHas(k, 'report') && m === 'PUT' && REPORT_PATHS.test(rawPath)) return null;
     // Creating an event only; the policy still requires STAFF or membership of the event's organization.
     if (keyHas(k, 'events') && m === 'POST' && rawPath === EVENTS_PATH) return null;
+    if (keyHas(k, 'events')) {
+      return keyHas(k, 'report')
+        ? 'This API key can only read, report content and create events (missing scope: write)'
+        : 'This API key can only read and create events (missing scope: write)';
+    }
     return keyHas(k, 'report')
       ? 'This API key can only read and report content (missing scope: write)'
       : 'This API key is read-only (missing scope: write)';

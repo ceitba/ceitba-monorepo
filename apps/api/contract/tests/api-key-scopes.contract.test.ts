@@ -113,7 +113,7 @@ describe('ApiKeyScopesIT', () => {
     expect(created.json.organization).toBe(org);
     expect((await api.post('/v1/news/events', { as: apiKey(k), body: event(null) })).status).toBe(403);
     const patch = await api.patch(`/v1/news/events/${created.json.id}`, { as: apiKey(k), body: { title: 'X' } });
-    expect(patch.json.error).toBe('INSUFFICIENT_SCOPE');
+    expect(patch.json).toMatchObject({ error: 'INSUFFICIENT_SCOPE', message: 'This API key can only read, report content and create events (missing scope: write)' });
     expect((await api.delete(`/v1/news/events/${created.json.id}`, { as: apiKey(k) })).json.error).toBe('INSUFFICIENT_SCOPE');
     expect((await api.post('/v1/auth/logout-all', { as: apiKey(k) })).json.error).toBe('INSUFFICIENT_SCOPE');
     const enc = await api.request('POST', '/api/v1/news/even%74s', { rawPath: true, as: apiKey(k), body: event(org) });

@@ -27,7 +27,7 @@ JSON with trimmed fields, short times (`Lun 08:00-10:00 SDF 101`), and long text
 | **Reports**: signed in + `apuntes` + `report` scope | `report_wiki_page`, `report_apuntes_file` (one report per user; 3 reports hide the content until CEITBA reviews it) |
 | Staff (`staff` scope) | `staff_list_schedule_corrections`, `staff_search_users`, `staff_list_digests`, `staff_analytics_summary` |
 | Moderator or staff (`staff` scope) | `moderation_list_proposals` |
-| **Events**: staff (`staff` scope) or a member of an organization + `events` scope | `create_event` (turns an invite, e.g. a WhatsApp message, into an event; members post only for their organizations, staff for any or none; the end time defaults to start + 2 h; notifies the organization's followers; on stdio it also needs `CEITBA_MCP_ALLOW_WRITES`) |
+| **Events**: staff (`staff` scope) or a member of an organization + `events` scope | `create_event` (turns an invite, e.g. a WhatsApp message, into an event; members post only for their organizations, staff for any or none; the end time defaults to start + 2 h, capped at 23:59, and an explicit end must be after the start; notifies the organization's followers; on stdio it also needs `CEITBA_MCP_ALLOW_WRITES`) |
 | **Writes**: staff/moderator + `write` scope | `staff_review_schedule_correction` (apply/reject), `moderation_review_proposal` (approve/reject) |
 
 Students can read, report content and create events for their organizations, nothing else: their keys carry

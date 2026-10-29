@@ -293,9 +293,20 @@ describe("tool calls", () => {
     await s.close();
   });
 
-  test("defaultEndTime adds two hours and wraps past midnight", () => {
+  test("defaultEndTime adds two hours, capped at 23:59 so it never wraps past midnight", () => {
     expect(defaultEndTime("18:30")).toBe("20:30");
-    expect(defaultEndTime("23:00")).toBe("01:00");
+    expect(defaultEndTime("21:59")).toBe("23:59");
+    expect(defaultEndTime("23:00")).toBe("23:59");
+  });
+
+  test("an end time not after the start is refused before calling the API", async () => {
+    const s = await connect({ apiUrl: api.url, me: ME_STAFF, scopes: ["read", "staff", "write"], allowWrites: true });
+    const before = api.calls.length;
+    const r = await s.call("create_event", { title: "Fiesta", date: "2099-05-01", startTime: "22:00", endTime: "01:00", location: "SDF", category: "Campus" });
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain("01:00");
+    expect(api.calls.slice(before).some(c => c.path === "/v1/news/events")).toBe(false);
+    await s.close();
   });
 
   test("API errors become friendly messages", async () => {
