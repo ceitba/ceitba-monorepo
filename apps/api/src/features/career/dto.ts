@@ -23,6 +23,12 @@ export const CreatePlanRequest = jv.object({
 });
 export type CreatePlanRequest = NonNullable<z.output<typeof CreatePlanRequest>>;
 
+/** UpdatePlanRequest: a plan's display name (its id is referenced by users, schedules and the sync, so it never changes). */
+export const UpdatePlanRequest = jv.object({
+  name: jv.string({ notBlank: true, size: { max: 255 } }),
+});
+export type UpdatePlanRequest = NonNullable<z.output<typeof UpdatePlanRequest>>;
+
 /** CareerResponse(id, name, plans): plans always present (even empty). */
 export interface CareerResponse {
   id: string;

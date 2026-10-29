@@ -366,6 +366,34 @@
       "grantsLoadFailed": "We couldn't load this capability's access list.",
       "emptyHint": "Features in testing that you can enable for everyone or for specific people and organizations will appear here."
     },
+    "careers": {
+      "intro": "The careers and plans students pick when they sign up. ITBA doesn't publish this list, so we keep it here; each plan's subjects arrive on their own with the next sync. Codes can't change once created.",
+      "newCareer": "New career",
+      "newPlan": "Add plan",
+      "create": "Create",
+      "loadFailed": "We couldn't load the careers.",
+      "empty": "No careers yet",
+      "emptyHint": "Create the first one with “New career”.",
+      "idLabel": "Code {{id}}",
+      "planCount_one": "{{count}} plan",
+      "planCount_other": "{{count}} plans",
+      "renameCareerAria": "Edit the career {{name}}",
+      "newPlanAria": "Add plan to {{name}}",
+      "renamePlanAria": "Edit the plan {{id}}",
+      "renameCareerTitle": "Edit career {{id}}",
+      "newPlanTitle": "New plan for {{name}}",
+      "renamePlanTitle": "Edit plan {{id}}",
+      "idField": "Code",
+      "nameField": "Name",
+      "careerIdHint": "Up to 25 characters, e.g. “S”. It can't change later.",
+      "planIdHint": "Type it exactly as ITBA spells it (e.g. “S10-Rev23”): otherwise the sync finds no subjects for it. It can't change later.",
+      "planNameHint": "Optional: left empty, the code is used.",
+      "careerCreated": "Created the career {{name}}.",
+      "planCreated": "Added the plan {{id}}. Its subjects arrive with the next sync.",
+      "saved": "Changes saved.",
+      "careerIdTaken": "A career with the code {{id}} already exists.",
+      "planIdTaken": "A plan with the code {{id}} already exists (in this or another career)."
+    },
     "errors": {
       "generic": "We couldn't complete the action. Try again in a moment.",
       "network": "Can't reach the server. Check your connection and try again.",
@@ -408,6 +436,9 @@
       },
       "organizations": {
         "label": "Organizations"
+      },
+      "careers": {
+        "label": "Careers and plans"
       },
       "corrections": {
         "label": "Schedule corrections"
