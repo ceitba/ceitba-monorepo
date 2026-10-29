@@ -48,7 +48,9 @@ Consequences:
   subjects (`/v1/sync/all`, `/v1/sync/subjects` and the scheduled job).
 * Entrance-program plan codes change every year (e.g. `PAI` /
   `PA25 Proceso I` today, `ADM` / `Ingreso` in the old app). Never hardcode
-  them. When a new one appears, STAFF registers it without a migration:
+  them. When a new one appears, STAFF registers it without a migration,
+  from Administración → "Carreras y planes" (`/manage/careers`, which also
+  renames careers and plans; ids never change) or directly:
 
   ```
   POST /api/v1/careers/{careerId}/plans      (STAFF)
@@ -57,7 +59,9 @@ Consequences:
 
   The next scheduled sync (or `POST /api/v1/sync/plan/{planId}/subjects`
   with the SYNC key) pulls its subjects. A brand-new career goes through
-  `POST /api/v1/careers` first.
+  `POST /api/v1/careers` first. `GET /api/v1/careers/{id}/plans` lists a
+  career's plans with their names; `PUT /api/v1/careers/{id}/plans/{planId}`
+  `{ "name": "..." }` (STAFF) renames one.
 * Until a plan is registered, users cannot pick it in onboarding:
   `PATCH /v1/me/profile` only accepts plans in the catalogue.
 

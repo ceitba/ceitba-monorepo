@@ -684,7 +684,8 @@ in-place explanation, never a silent redirect.
   the toast; one that can't asks first with `ConfirmDialog`.
 - **Areas by job** in the rail (§6): Newsletter (Revisión, Resumen semanal,
   Estadísticas) and Beneficios; Personas (everyone, with a Staff filter) and
-  Organizaciones; Correcciones de horario, Apuntes and Wiki IA; Capacidades.
+  Organizaciones; Carreras y planes, Correcciones de horario, Apuntes and
+  Wiki IA; Capacidades.
 
 ### Admin color shifts
 

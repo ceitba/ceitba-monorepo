@@ -126,6 +126,7 @@ export const METHOD_RULES: Readonly<Record<string, MethodExpr>> = {
   'POST /v1/careers': role('STAFF'), // career/CareerController.java#createCareer
   'PUT /v1/careers/{id}': role('STAFF'), // career/CareerController.java#updateCareer
   'POST /v1/careers/{id}/plans': role('STAFF'), // career/CareerController.java#addPlan
+  'PUT /v1/careers/{id}/plans/{planId}': role('STAFF'), // not in Java: rename a plan (/manage careers)
   'DELETE /v1/careers/{id}': role('STAFF'), // career/CareerController.java#deleteCareer
   'GET /v1/organizations/{slug}/mail': or(role('STAFF'), check('orgAccess.canManageMembers', 'path.slug')), // orgmail/OrgMailController.java#status
   'POST /v1/organizations/{slug}/mail/connect': check('orgAccess.canManageMembers', 'path.slug'), // orgmail/OrgMailController.java#connect
