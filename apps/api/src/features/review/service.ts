@@ -158,6 +158,14 @@ export class SubjectReviewService {
     });
   }
 
+  /**
+   * Account deletion's step, inside its transaction `tx`: the user's reviews, votes and reports, recounting the
+   * reports of the reviews they reported (repo.deleteUserData).
+   */
+  deleteUserDataIn(tx: Tx, userId: string): Promise<void> {
+    return repo.deleteUserData(tx, userId);
+  }
+
   // ------------------------------------------------------------ helpers
 
   private values(req: SaveReviewRequest): repo.ReviewValues {

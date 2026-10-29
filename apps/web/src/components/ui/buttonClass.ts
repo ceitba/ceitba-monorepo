@@ -6,9 +6,19 @@
 export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger' | 'dangerGhost' | 'accent'
 export type ButtonSize = 'md' | 'sm'
 
+export type ButtonTextCase = 'label' | 'text'
+
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-xs font-mono text-label uppercase tracking-widest whitespace-nowrap ' +
+  'inline-flex items-center justify-center gap-2 rounded-xs whitespace-nowrap ' +
   'transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
+
+// `label` is the kit's mono uppercase button label. `text` is for buttons
+// whose label is content rather than a command (a person's name, a subject),
+// which uppercase mono would garble.
+const TEXT_CASES: Record<ButtonTextCase, string> = {
+  label: 'font-mono text-label uppercase tracking-widest',
+  text: 'font-body text-body-sm',
+}
 
 // `sm` is for dense admin tables and toolbars: still 44px tall on touch
 // screens, 36px from `sm:` up where a pointer is the norm.
@@ -33,13 +43,29 @@ const VARIANTS: Record<ButtonVariant, string> = {
   accent: 'bg-accent text-ink-primary hover:bg-accent-300',
 }
 
+// A selected toggle chip (`pressed` on an outline button, e.g. a multi-select
+// of professors): marked in primary without being a filled `primary`, which
+// stays the view's one main action.
+const OUTLINE_PRESSED =
+  'border border-primary dark:border-primary-300 bg-primary-50 dark:bg-night-raised text-primary dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-night-raised'
+
 export function buttonClass({
   variant = 'primary',
   size = 'md',
   block = false,
+  pressed = false,
+  textCase = 'label',
   className = '',
-}: { variant?: ButtonVariant; size?: ButtonSize; block?: boolean; className?: string } = {}) {
-  return [BASE, SIZES[size], VARIANTS[variant], block ? 'w-full' : '', className].filter(Boolean).join(' ')
+}: {
+  variant?: ButtonVariant
+  size?: ButtonSize
+  block?: boolean
+  pressed?: boolean
+  textCase?: ButtonTextCase
+  className?: string
+} = {}) {
+  const look = pressed && variant === 'outline' ? OUTLINE_PRESSED : VARIANTS[variant]
+  return [BASE, TEXT_CASES[textCase], SIZES[size], look, block ? 'w-full' : '', className].filter(Boolean).join(' ')
 }
 
 // Square icon-only button. Always pass an aria-label, and only use it where

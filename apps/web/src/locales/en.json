@@ -540,6 +540,7 @@
         "org": "Add someone to an organization",
         "staff": "Grant staff access"
       },
+      "reviewTitle": "{{subject}} · Commission {{commission}}",
       "reviewReportedMeta_one": "{{comment}} · {{term}} · {{count}} report: {{reason}}",
       "reviewReportedMeta_other": "{{comment}} · {{term}} · {{count}} reports: {{reason}}"
     }

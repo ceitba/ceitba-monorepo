@@ -6,9 +6,11 @@ import { joinNames } from './logic'
 const LABEL = 'font-mono text-label uppercase tracking-widest text-ink-secondary dark:text-night-muted'
 
 // One review: term · commission, who taught it, difficulty and whether it's
-// recommended, the comment. "Me sirvió" and "Reportar" only when there is a
-// comment (there is nothing else to find useful or to report); the caller's
-// own review gets Editar / Eliminar instead.
+// recommended, the comment. Every review but the caller's own gets "Me
+// sirvió" and "Denunciar", with or without a comment: the professors it names
+// can be wrong too (a student added as one), and reports are the remedy. The
+// caller's own review gets Editar / Eliminar instead, without Eliminar while
+// it is hidden by reports (the API refuses it; the notice says why).
 export default function ReviewCard({
   review,
   professorName,
@@ -62,9 +64,11 @@ export default function ReviewCard({
       {review.mine ? (
         <footer className="flex flex-wrap items-center gap-1 -ml-3">
           <Button size="sm" variant="ghost" onClick={onEdit}>{t('apuntes.reviews.edit')}</Button>
-          <Button size="sm" variant="dangerGhost" onClick={onDelete}>{t('apuntes.reviews.delete')}</Button>
+          {!review.hidden && (
+            <Button size="sm" variant="dangerGhost" onClick={onDelete}>{t('apuntes.reviews.delete')}</Button>
+          )}
         </footer>
-      ) : comment && (
+      ) : (
         <footer className="flex flex-wrap items-center gap-1 -ml-3">
           <Button size="sm" variant="ghost" aria-pressed={review.helpful} disabled={busy} onClick={onHelpful}>
             {review.helpful && <span aria-hidden="true" className="mr-1">✓</span>}

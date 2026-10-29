@@ -38,7 +38,11 @@ by professor. Code: `src/features/review/` (API), `src/external/googleDirectory.
 - **Who.** Every route needs an allowlisted ITBA session (or an API key; every write, reports included, needs the
   `write` scope: the `report` scope only covers wiki pages and files). Reads are
   **not** public even though the rest of `GET /v1/subjects/**` is: `policy.ts` has a rule for
-  `GET /v1/subjects/*/reviews` ahead of the public block. No capability gate.
+  `GET /v1/subjects/*/reviews` ahead of the public block. Every student route (reads, writes, votes, reports and
+  the professor lookup) also needs the **`apuntes` capability**, the one that shows the tab in the web app:
+  without it `403 CAPABILITY_REQUIRED`, checked after the body is validated (so a bad body is still a 400) and
+  before anything else (no directory lookup, no rate-limit use). Staff hold every capability; the staff routes
+  need only STAFF.
 - **One review per student, subject and term** (`year`, `period` 1|2). A second one is `409 SubjectReviewExists`:
   edit the first instead. A term that has not started (after today's term: first semester through July, second
   from August, Argentina time) is `400 SubjectReviewFutureTerm`.
@@ -110,19 +114,21 @@ Creating and editing share the per-user limit `subject-reviews` (20/h).
 | 400 | `SubjectReviewOwn` | "Me sirvió" or a report on one's own review |
 | 400 | `UnknownProfessor` | a `professorIds` entry is not a stored professor |
 | 400 | `ProfessorEmailDomain` | lookup of an address outside the allowed domains |
+| 403 | `CAPABILITY_REQUIRED` | a student route without the `apuntes` capability |
 | 404 | `ProfessorNotFound` | nobody in the directory has that address |
 | 409 | `SubjectReviewExists` | a second review for the same subject and term (also when an edit moves a review onto it) |
 | 409 | `SubjectReviewHidden` | the author deletes a review hidden by reports |
 | 503 | `ProfessorDirectoryUnavailable` | no sender account with the directory scope, or Google failed |
 
-## Schema (`V64`)
+## Schema (`V67`)
 
 `public.professor` (`email` unique, lowercase), `public.subject_review` (unique `(subject_id, user_id, year,
 period)`, `hidden`, `report_count`), `public.subject_review_professor` (review ↔ professor), and one-per-user
 `public.subject_review_helpful` and `public.subject_review_report`, each with a `user_id` index. Deleting a subject
 deletes its reviews; deleting a review deletes its links, votes and reports. Account deletion (`DELETE /v1/me`)
 removes the user's reviews, votes and reports, recounting the reports of the reviews they reported, also when the
-account is only anonymized and the user row stays (`review/repo.ts` `deleteUserData`).
+account is only anonymized and the user row stays (the `reviews.deleteUserData` step of `user/accountDeletion.ts`,
+which calls `SubjectReviewService.deleteUserDataIn`).
 
 ## Not in this version
 

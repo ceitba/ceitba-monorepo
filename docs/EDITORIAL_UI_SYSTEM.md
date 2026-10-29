@@ -447,7 +447,7 @@ with a backwards-compatible prop; don't fork it locally.
 
 | Need | Use |
 |---|---|
-| Button / link that looks like one | `<Button variant size loading>` / `buttonClass()` |
+| Button / link that looks like one | `<Button variant size loading pressed textCase>` / `buttonClass()` |
 | Icon-only control (×, arrows, zoom) | `<IconButton aria-label>` + `CloseIcon` |
 | Form field | `<Field label hint error>` + `inputClass/selectClass/textareaClass` |
 | Inline message | `<Alert tone action onDismiss>` |
@@ -483,6 +483,11 @@ Rules:
   `title` tooltip).
 - Icon-only buttons only for universally understood icons; everything else
   carries a text label.
+- A multi-select of chips (e.g. the professors of a review) is `outline`
+  buttons with `pressed`: the selected ones get a primary border and tint,
+  never the filled `primary`, and keep a ✓ so selection isn't colour alone.
+  `textCase="text"` sets the label in body type when it is content (a name)
+  rather than a command; don't override the kit's typography with `!` classes.
 
 ### Form inputs
 

@@ -1,4 +1,4 @@
-// AccountDeletionService composes the correction and drive steps from those features'
+// AccountDeletionService composes the correction, drive and review steps from those features'
 // services itself: a deletion never depends on route registration. A deps without any
 // route (a jobs-only process) deletes an account with Apuntes data and correction votes,
 // running the real steps (before, an unregistered step made DELETE /v1/me answer 500).
@@ -13,7 +13,7 @@ beforeAll(async () => { t = await testApp(); }, 60_000);
 afterAll(() => t?.close());
 
 test('theDeletionStepsAreTheOwningFeaturesOwn', () => {
-  expect(Object.keys(accountDeletionSteps()).sort()).toEqual(['drive.prepareAccountDeletion', 'scheduleCorrections.withdrawVotesOf']);
+  expect(Object.keys(accountDeletionSteps()).sort()).toEqual(['drive.prepareAccountDeletion', 'reviews.deleteUserData', 'scheduleCorrections.withdrawVotesOf']);
 });
 
 test('anAccountWithApuntesDataIsDeletedWithoutAnyRouteRegistered', async () => {
