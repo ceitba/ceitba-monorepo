@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 
 const FOCUSABLE = [
   'a[href]',
@@ -95,7 +96,11 @@ export default function Modal({ title, children, footer, onClose, busy = false, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return (
+  // Rendered at the end of <body>: an ancestor with a transform (e.g. a finished
+  // `animate-fade-in`, whose fill mode keeps translateY(0)), a filter or a sticky
+  // stacking context would otherwise become the containing block of `fixed`
+  // and trap the dialog inside it.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 bg-black/40 overflow-y-auto"
       onMouseDown={(e) => { pressedBackdrop.current = isBackdrop(e.target, e.currentTarget) }}
@@ -120,6 +125,7 @@ export default function Modal({ title, children, footer, onClose, busy = false, 
           {footer && <div className="flex flex-wrap justify-end gap-2 pt-2">{footer}</div>}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
