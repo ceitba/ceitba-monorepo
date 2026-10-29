@@ -266,6 +266,8 @@ Bearer step (src/http/security.ts + src/http/auth/jwt.ts)
    │
    ▼
 URL_RULES (src/http/auth/policy.ts) — per-route policy, before routing
+   GET  /v1/subjects/*/reviews -> authenticated AND email in allowlist (ahead of the public
+                                /v1/subjects/** reads: reviews name professors; SUBJECT-REVIEWS.md)
    public matchers           -> permitAll (a JWT/API key whose email fails the allowlist runs
                                 as anonymous there: no STAFF/org-admin/draft reads; not in Java)
    GET  /v1/auth/google, /v1/auth/callback               -> permitAll (web OAuth flow)
@@ -276,7 +278,8 @@ URL_RULES (src/http/auth/policy.ts) — per-route policy, before routing
    /v1/sync/**               -> role SYNC
    /v1/staff/proposals/**    -> role MODERATOR AND email in allowlist
    /v1/staff/**              -> role STAFF AND email in allowlist
-                                (incl. /v1/staff/moderators, /v1/staff/schedule-corrections)
+                                (incl. /v1/staff/moderators, /v1/staff/schedule-corrections,
+                                /v1/staff/subject-reviews)
    /**                       -> authenticated AND email in allowlist (JWT email, or the
                                 API-key owner's email; allowlist + review email while
                                 review login is on)
@@ -381,6 +384,7 @@ Self-service, required by App Store rule 5.1.1(v). Runs in one transaction (`src
 | `wiki.subject_difficulty`, all wiki votes cast by the user, both bookmark tables | Deleted |
 | `wiki.subject_comment` by the user, and all votes on those comments | Deleted (personal free text) |
 | `wiki.subject_wiki_edit_proposal` with status `PENDING` | Deleted |
+| `subject_review` by the user (with its professor links, votes and reports), the user's `subject_review_helpful` and `subject_review_report` rows | Deleted, after decrementing the report counts of the reviews they reported ([SUBJECT-REVIEWS.md](SUBJECT-REVIEWS.md)) |
 | `articles.created_by`, `news_events.created_by` | Set to `NULL` (content belongs to the organization) |
 | `schedule_correction_vote` rows of the user | Deleted, after decrementing the corrections' counters (statuses are not re-evaluated) |
 | `schedule_correction.suggester_id` / `reviewed_by` | Set to `NULL` (corrections are crowd data and stay) |

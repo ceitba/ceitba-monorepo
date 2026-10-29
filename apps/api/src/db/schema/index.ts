@@ -8,5 +8,6 @@ export * from './kb';
 export * from './mail';
 export * from './news';
 export * from './proposals';
+export * from './reviews';
 export * from './schedules';
 export * from './wiki';

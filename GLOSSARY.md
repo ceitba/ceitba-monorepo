@@ -67,6 +67,16 @@ Subject wiki pages. See `apps/api/docs/SUBJECT-WIKI-PIPELINE.md`.
 **Study group**:
 A student-created group for a Subject with a type, locations and an optional participant cap.
 
+**Subject review**:
+A student's short opinion of a Subject they took in a term and Commission: recommend or not, difficulty, optional
+comment, and the Professors they say taught it. Anonymous to readers. See `apps/api/docs/SUBJECT-REVIEWS.md`.
+_Avoid_: Rating, opinión (in code; "Opiniones" is the UI tab)
+
+**Professor**:
+A teacher named in Subject reviews, identified by their ITBA email and named from the Google directory. ITBA's data
+has no professors: they exist only through reviews.
+_Avoid_: Docente, teacher (in code)
+
 **Proposal**:
 A student proposal ("Propuesta") to CEITBA that others vote and comment on, moderated by Moderators.
 

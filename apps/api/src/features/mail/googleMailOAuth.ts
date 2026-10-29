@@ -45,13 +45,16 @@ export class GoogleMailOAuthClient {
     return g != null && notBlank(g.clientId) && notBlank(g.clientSecret) && !javaIsBlank(this.redirectUri);
   }
 
-  /** access_type=offline + prompt=consent: Google always returns a refresh token. */
-  authorizationUri(state: string, loginHint: string | null, hostedDomain: string | null): string {
+  /**
+   * access_type=offline + prompt=consent: Google always returns a refresh token.
+   * extraScopes: the CEITBA account also asks for the directory (subject reviews name professors with it).
+   */
+  authorizationUri(state: string, loginHint: string | null, hostedDomain: string | null, extraScopes: string[] = []): string {
     const q: [string, string][] = [
       ['response_type', 'code'],
       ['client_id', this.config.auth.google.clientId],
       ['redirect_uri', this.redirectUri],
-      ['scope', `${SCOPE_SEND} openid email`],
+      ['scope', [SCOPE_SEND, 'openid', 'email', ...extraScopes].join(' ')],
       ['state', state],
       ['access_type', 'offline'],
       ['prompt', 'consent'],

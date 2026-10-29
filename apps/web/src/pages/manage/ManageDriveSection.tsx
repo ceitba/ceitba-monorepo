@@ -40,12 +40,13 @@ import CommunityBadge from '../../components/apuntes/CommunityBadge'
 import { formatDate, formatDateTime } from '../../utils/apuntes'
 import { apuntesAdminErrorMessage } from './adminErrors'
 import { useQueueOptional } from './review/queueContext'
+import ManageHiddenReviews from './ManageHiddenReviews'
 
 const PAGE_SIZE = 20
 const SOURCE_STATUSES: (SourceStatus | '')[] = ['PENDING_REVIEW', 'ACTIVE', 'ERROR', 'BLOCKED', 'REVOKED', 'DISCONNECTED', '']
 const FILE_QUEUES: StaffFileQueue[] = ['NEEDS_REVIEW', 'HIDDEN_REPORTED']
 
-type View = 'sources' | 'files' | 'wiki' | 'unclaimed'
+type View = 'sources' | 'files' | 'reviews' | 'wiki' | 'unclaimed'
 
 const TH = 'px-3 py-2 font-mono text-label uppercase tracking-widest'
 const TD = 'px-3 py-3'
@@ -62,6 +63,7 @@ export default function ManageDriveSection() {
   const views: { id: View; label: string }[] = [
     { id: 'sources', label: t('manage.drive.views.sources') },
     { id: 'files', label: t('manage.drive.views.files') },
+    { id: 'reviews', label: t('manage.drive.views.reviews') },
     { id: 'wiki', label: t('manage.drive.views.wiki') },
     { id: 'unclaimed', label: t('manage.drive.views.unclaimed') },
   ]
@@ -80,6 +82,7 @@ export default function ManageDriveSection() {
       <div>
         {view === 'sources' && <SourcesView />}
         {view === 'files' && <FilesView />}
+        {view === 'reviews' && <ManageHiddenReviews />}
         {view === 'wiki' && <WikiView />}
         {view === 'unclaimed' && <UnclaimedView />}
       </div>

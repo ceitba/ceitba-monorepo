@@ -677,8 +677,8 @@ in-place explanation, never a silent redirect.
 
 - **Home = Para revisar.** One queue of everything waiting on a staff
   decision, gathered from every area (articles sent for review, schedule
-  corrections, Drive folders and files, reported files, Wiki IA runs that
-  need a look), oldest first, with the decision on the row. Each source
+  corrections, Drive folders and files, reported files, subject reviews
+  hidden by reports, Wiki IA runs that need a look), oldest first, with the decision on the row. Each source
   loads on its own: one that fails shows an error with retry and never
   blanks the rest. A decision the API can take back offers "Deshacer" in
   the toast; one that can't asks first with `ConfirmDialog`.

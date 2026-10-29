@@ -26,6 +26,7 @@ import { CLEAR, mailOutcomeDb, type MailAccountState, type MailLedger, type Mail
 import { MailOAuthStateService, type MailOAuthState } from './logic/mailOAuthState';
 import { MailSendService } from './logic/mailSendService';
 import { MailTokenCipher, TokenDecryptionError } from './logic/mailTokenCipher';
+import { SCOPE_DIRECTORY } from '../../external/googleDirectory';
 import type { MailCredentials } from './logic/types';
 import * as repo from './repo';
 import {
@@ -111,7 +112,11 @@ export function isSenderAccount(claims: IdClaims | null, expectedEmail: string):
 
 export function hasSendScope(scope: string | null | undefined): boolean {
   // Arrays.asList(scope.split("\\s+")).contains(SCOPE_SEND)
-  return scope != null && scope.split(/[ \t\n\x0B\f\r]+/).includes(SCOPE_SEND);
+  return hasScope(scope, SCOPE_SEND);
+}
+
+function hasScope(scope: string | null | undefined, wanted: string): boolean {
+  return scope != null && scope.split(/[ \t\n\x0B\f\r]+/).includes(wanted);
 }
 
 function truncate500(s: string | null): string | null {
@@ -132,7 +137,7 @@ export class MailSenderAccountService implements MailSenderAccounts {
     this.requireConfigured();
     const sender = this.settings.email.account;
     const { state, nonce } = this.states.issueBound(staffUserId);
-    return { authorizationUrl: this.google.authorizationUri(state, sender, domainOf(sender)), nonce };
+    return { authorizationUrl: this.google.authorizationUri(state, sender, domainOf(sender), [SCOPE_DIRECTORY]), nonce };
   }
 
   /** An organization's admin picks any account of org-mail.allowed-domain. */
@@ -289,6 +294,17 @@ export class MailSenderAccountService implements MailSenderAccounts {
       return null;
     }
     return { accountId: a.id, email: a.email, refreshToken: token, tokenEnc: a.refreshTokenEnc };
+  }
+
+  /**
+   * The CEITBA account's credentials when it was connected with the directory
+   * scope (subject reviews look professors up with it), else null.
+   */
+  async directoryCredentials(): Promise<MailCredentials | null> {
+    const sender = this.settings.email.account;
+    const a = await withTx(ambientDb(this.deps.db), (tx) => repo.findAccountByEmailIgnoreCase(tx, sender), { readOnly: true });
+    if (a == null || !hasScope(a.scopes, SCOPE_DIRECTORY)) return null;
+    return this.credentialsFor(sender);
   }
 
   /** Why `senderEmail` cannot send right now, or null when it is usable. */
