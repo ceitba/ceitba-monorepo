@@ -44,6 +44,20 @@ export function findAllPlans(db: Db): Promise<PlanRow[]> {
   return db.select().from(plan).orderBy(asc(plan.id));
 }
 
+export function findPlansByCareer(db: Db, careerId: string): Promise<PlanRow[]> {
+  return db.select().from(plan).where(eq(plan.careerId, careerId)).orderBy(asc(plan.id));
+}
+
+export async function findPlan(db: Db, id: string): Promise<PlanRow | null> {
+  const [row] = await db.select().from(plan).where(eq(plan.id, id)).limit(1);
+  return row ?? null;
+}
+
+export async function updatePlanName(db: Db, id: string, name: string, now: Micros): Promise<PlanRow> {
+  const [row] = await db.update(plan).set({ name, updatedAt: toPgTimestamp(now) }).where(eq(plan.id, id)).returning();
+  return row!;
+}
+
 export async function planExists(db: Db, id: string): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)` }).from(plan).where(eq(plan.id, id));
   return Number(row?.n ?? 0) > 0;

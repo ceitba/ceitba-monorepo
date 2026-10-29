@@ -56,7 +56,9 @@ must be added to its `needs`.
 
 `.github/workflows/ci.yml` runs on PRs and the merge queue; `deploy.yml` runs on `main`. Both use `dorny/paths-filter`
 to run only what a change touches (`packages/**`, the root `package.json`/`bun.lock` and `.github/spa-apps.json`
-count for web and MCP). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
+count for web and MCP). The API runs on `apps/api/**` or `infra/**`, and on a root `package.json`/`bun.lock` change
+only when `scripts/checks/api-deps-changed.mjs` says the production dependency closure of `@ceitba/api` changed (a
+web-only dependency bump neither tests nor redeploys it; `apps/api/docs/DEPLOY.md`). The API deploys before the web app and the MCP server in the same push. Keep actions pinned to full commit SHAs with a
 `# vX.Y.Z` comment. `pr-checks.yml` runs on every PR: the repo checks, the Conventional Commits PR title, the
 living-docs check against the PR body and a gitleaks scan. Dependabot (`.github/dependabot.yml`) opens weekly
 version updates against `main`.
@@ -75,7 +77,8 @@ version updates against `main`.
   `/itbanews*` 301s to `/newsletter`, link-preview crawlers (WhatsApp, Telegram, Slack…) asking for
   `/newsletter/articles/{id}` → the API's Open Graph page (`GET /v1/articles/{id}/preview`),
   `/sitemap.xml` → the API (`GET /v1/articles/sitemap.xml`: newsletter home, published articles, the events list + events; `robots.txt` is a static file in `apps/web/public`),
-  everything else → `/var/www/main` with `try_files … /index.html`. `/var/www/scheduler` and `/var/www/itbanews`
+  everything else → `/var/www/main` with `try_files … /index.html`. Responses are compressed (zstd, else gzip;
+  text types only) except on the MCP paths, whose SSE must stream unbuffered. `/var/www/scheduler` and `/var/www/itbanews`
   (the old standalone builds) are no longer served. Production build env lives in `.github/spa-apps.json`.
 - **Migrations are expand/contract** (zero-downtime deploys): during a deploy the old API image keeps serving
   against the schema the new one just migrated. Additive changes (new tables, nullable or defaulted columns,

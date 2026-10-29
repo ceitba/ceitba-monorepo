@@ -27,6 +27,18 @@ const str = (v: unknown): string | null => (v == null ? null : String(v));
 
 // ---- KbRunRepository ---------------------------------------------------------------------
 
+/** kb_run.resume_count / resume_window_start (the window start as Postgres text, re-bound losslessly). */
+export interface ResumeCounter {
+  count: number;
+  windowStart: string | null;
+}
+
+export interface LeaseState extends ResumeCounter {
+  owner: string | null;
+  /** lease_until >= now (false when expired or never taken). */
+  live: boolean;
+}
+
 export const runs = {
   async findById(id: string): Promise<KbRun | null> {
     const s = session();
@@ -72,9 +84,29 @@ export const runs = {
     return session().update(sql`UPDATE wiki.kb_run SET lease_owner = ${owner}, lease_until = ${pgTime(until)}::timestamptz
       WHERE id = ${id}::uuid AND (lease_owner IS NULL OR lease_until < ${pgTime(now)}::timestamptz OR lease_owner = ${owner})`);
   },
-  releaseLease(id: string, owner: string): Promise<number> {
-    return session().update(sql`UPDATE wiki.kb_run SET lease_owner = NULL, lease_until = NULL
+  /**
+   * Releases the holder's lease. With `kept` (the resume counter as it was when the lease was
+   * taken, see leaseState), resumes counted while the holder held the lease are undone: a
+   * release proves the holder was alive meanwhile, so whoever counted a resume then (a color
+   * starting next to it) did not follow a crash. A window that started meanwhile is cleared.
+   */
+  releaseLease(id: string, owner: string, kept?: ResumeCounter): Promise<number> {
+    if (kept == null) {
+      return session().update(sql`UPDATE wiki.kb_run SET lease_owner = NULL, lease_until = NULL
+        WHERE id = ${id}::uuid AND lease_owner = ${owner}`);
+    }
+    const same = sql`resume_window_start IS NOT DISTINCT FROM ${kept.windowStart}::timestamptz`;
+    return session().update(sql`UPDATE wiki.kb_run SET lease_owner = NULL, lease_until = NULL,
+      resume_count = CASE WHEN ${same} THEN LEAST(resume_count, ${kept.count}) ELSE 0 END,
+      resume_window_start = CASE WHEN ${same} THEN resume_window_start ELSE NULL END
       WHERE id = ${id}::uuid AND lease_owner = ${owner}`);
+  },
+  /** The run's lease (holder, and whether it is still valid at `now`) and its resume counter; null when no run. */
+  async leaseState(id: string, now: Odt): Promise<LeaseState | null> {
+    const [r] = await session().query<Row>(sql`SELECT lease_owner, lease_until >= ${pgTime(now)}::timestamptz AS live,
+      resume_count, resume_window_start::text AS window_start FROM wiki.kb_run WHERE id = ${id}::uuid`);
+    if (r == null) return null;
+    return { owner: str(r.lease_owner), live: r.live === true || r.live === 't', count: num(r.resume_count), windowStart: str(r.window_start) };
   },
   countResume(id: string, now: Odt, cutoff: Odt): Promise<number> {
     const c = pgTime(cutoff);

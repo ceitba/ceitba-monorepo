@@ -16,7 +16,9 @@
 //
 // Differences from Java, by design: JSONL payloads and sync outputs are built in
 // memory instead of temp files (the storage port takes bytes); the record lock is
-// a promise mutex; Java's virtual-thread heartbeat is a timer.
+// a promise mutex; Java's virtual-thread heartbeat is a timer. The restart-loop guard counts only
+// startups that find the run still leased, a lease release undoes resumes counted while its holder
+// was alive, and shutdown releases the leases (beginStop/stop), so deploys never fail a run.
 
 import type { Database } from '../../db/client';
 import type { Logger } from '../../infra/logger';
@@ -40,7 +42,7 @@ import type { KbRunRequestStore } from '../kb/logic/ports';
 import { KbBatchJob, KbRunRequest } from '../kb/logic/types';
 import type { KbSettingsPort } from './collaborators';
 import type { KbRun } from './db/entities';
-import { jobs, requests, runs, runSubjects } from './db/repo';
+import { jobs, requests, runs, runSubjects, type ResumeCounter } from './db/repo';
 import { inTx, outsideTx, txRunner } from './db/session';
 import type { KbCostService } from './costs';
 
@@ -52,7 +54,12 @@ export const MAX_STEPS = 200;
 export const JSONL_PAGE = 50;
 /** Requests loaded per page wherever a stage's requests are walked. */
 export const PAGE = 200;
-/** Restart-loop guard: a RUNNING run resumed by more than MAX_RESUMES startups inside RESUME_WINDOW is failed. */
+/**
+ * Restart-loop guard: a RUNNING run resumed by more than MAX_RESUMES startups inside RESUME_WINDOW is failed.
+ * Only startups that find the run still leased count (its advancer never released it), and a release
+ * undoes what was counted while the holder was alive, so graceful restarts and blue/green deploys
+ * never add up (see registerResume and docs/SUBJECT-WIKI-PIPELINE.md "Restart-loop guard").
+ */
 export const MAX_RESUMES = 3;
 export const RESUME_WINDOW_MIN = 30;
 export const RESUME_LOOP_ERROR = 'detenida tras reinicios repetidos (posible falta de memoria)';
@@ -62,6 +69,11 @@ export const LEASE_MS = 3 * 60_000;
 export const CANCEL_CHECK_MS = 5_000;
 export const LEASE_RENEW_MS = 60_000;
 export const MAX_STEP_FAILURES = 4;
+/**
+ * On shutdown, how long stop() waits for running advances (in-flight sync requests) before it
+ * releases their leases anyway: under the 60 s executor phase and compose's 90 s stop_grace_period.
+ */
+export const STOP_WAIT_MS = 45_000;
 /** Batch answers recorded per transaction. */
 export const RECORD_PAGE = 100;
 
@@ -96,6 +108,13 @@ export interface KbRunHandler {
   usageStage?(stage: string): string;
   /** Whether the weekly cost limit applies (default true). */
   costLimited?(): boolean;
+}
+
+/** A lease this engine holds: its token, heartbeat and the resume counter as it was when taken. */
+interface HeldLease {
+  token: string;
+  heartbeat: ReturnType<typeof setInterval>;
+  kept: ResumeCounter;
 }
 
 interface StepFailure {
@@ -185,8 +204,11 @@ export class KbRunEngine {
   private readonly quotaPausedUntil = new Map<string, Odt>();
   private readonly stepFailures = new Map<string, StepFailure>();
   private readonly recordLock = new Mutex();
-  /** Background advances in flight (tests await them with idle()). */
+  /** Background advances in flight, and every running advance (idle() and stop() await both). */
   private readonly inFlight = new Set<Promise<unknown>>();
+  private readonly advancing = new Set<Promise<unknown>>();
+  /** Leases this engine holds, per run. */
+  private readonly leases = new Map<string, HeldLease>();
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
   private stopped = false;
 
@@ -217,29 +239,47 @@ export class KbRunEngine {
   }
 
   /**
-   * Startup resume of an active run (KbPipelineJob.onStartup). A RUNNING run counts one
-   * resume; more than MAX_RESUMES inside RESUME_WINDOW without a stage finishing fails
-   * the run. False when the run must not be resumed.
+   * Startup resume of an active run (KbPipelineJob.onStartup). False when the run must not be
+   * resumed. A RUNNING run counts one resume only when it is still leased: whoever advanced it
+   * never released it, so that process died (or, in a blue/green deploy, is still running; its
+   * release then undoes this count, see releaseLease). A run with no lease was not being advanced,
+   * or its advancer stopped cleanly: not counted. Past MAX_RESUMES inside RESUME_WINDOW without a
+   * stage finishing the run is failed: here when the lease already expired, else when the lease is
+   * taken over (takeFreshLease), since a live lease may belong to a process that is still running.
    */
   registerResume(runId: string): Promise<boolean> {
     return inTx(this.db, async () => {
       const run = await runs.lockById(runId);
       if (run == null || !run.isActive()) return false;
       if (run.status !== 'RUNNING') return true;
+      const lease = (await runs.leaseState(runId, this.now()))!;
+      if (lease.owner == null) {
+        this.log.info(`KB run ${runId} resumed after a restart (it was not being advanced or stopped cleanly: not counted)`);
+        return true;
+      }
       await runs.countResume(runId, this.now(), this.now().plusMinutes(-RESUME_WINDOW_MIN));
       const n = await runs.resumeCount(runId);
       if (n <= MAX_RESUMES) {
         this.log.warn(`KB run ${runId} resumed after a restart (${n} of ${MAX_RESUMES} allowed within PT30M)`);
         return true;
       }
-      this.log.error(`KB run ${runId} failed: ${n} startups in PT30M without finishing ${run.stage} stage`);
-      run.error = `${RESUME_LOOP_ERROR} (${run.stage})`;
-      for (const s of await runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(runId)) {
-        if (s.isActive()) s.fail(RESUME_LOOP_ERROR);
+      if (lease.live) {
+        this.log.warn(`KB run ${runId}: ${n} startups in PT30M; its lease is still held, decided when it is taken over`);
+        return true;
       }
-      run.finish('FAILED', this.now());
+      await this.failResumeLoop(run, n);
       return false;
     });
+  }
+
+  /** The restart-loop guard's verdict, inside the caller's transaction (the run row locked). */
+  private async failResumeLoop(run: KbRun, n: number): Promise<void> {
+    this.log.error(`KB run ${run.id} failed: ${n} startups in PT30M without finishing ${run.stage} stage`);
+    run.error = `${RESUME_LOOP_ERROR} (${run.stage})`;
+    for (const s of await runSubjects.findByRunIdOrderByPriorityDescSubjectIdAsc(run.id)) {
+      if (s.isActive()) s.fail(RESUME_LOOP_ERROR);
+    }
+    run.finish('FAILED', this.now());
   }
 
   activeRunIds(): Promise<string[]> {
@@ -249,32 +289,68 @@ export class KbRunEngine {
   /**
    * Advances one run as far as it can go now. One advancer per run: a DB lease
    * renewed every minute; a call that finds the run busy only asks the holder to
-   * loop once more. False when another advancer holds the run.
+   * loop once more. False when another advancer holds the run (or the engine is stopping).
    */
-  async advance(runId: string): Promise<boolean> {
+  advance(runId: string): Promise<boolean> {
+    const p = this.advanceOnce(runId);
+    this.advancing.add(p);
+    void p.finally(() => this.advancing.delete(p)).catch(() => {});
+    return p;
+  }
+
+  private async advanceOnce(runId: string): Promise<boolean> {
+    if (this.stopped) return false;
     let flag = this.again.get(runId);
     if (!flag) this.again.set(runId, (flag = { value: false }));
     flag.value = true;
     const token = crypto.randomUUID();
-    if (!(await this.takeLease(runId, token))) return false;
+    const kept = await this.takeFreshLease(runId, token);
+    if (kept === 'busy') return false;
+    if (kept === 'failed') return true;
     const heartbeat = setInterval(() => {
       this.takeLease(runId, token).catch(() => {});
     }, LEASE_RENEW_MS);
     heartbeat.unref?.();
+    const held: HeldLease = { token, heartbeat, kept };
+    this.leases.set(runId, held);
     try {
-      while (flag.value) {
+      while (flag.value && !this.stopped) {
         flag.value = false;
-        for (let i = 0; i < MAX_STEPS && (await this.step(runId)); i++) {
+        for (let i = 0; i < MAX_STEPS && !this.stopped && (await this.step(runId)); i++) {
           // keep going
         }
       }
     } finally {
       clearInterval(heartbeat);
-      await inTx(this.db, () => runs.releaseLease(runId, token));
+      if (this.leases.get(runId) === held) this.leases.delete(runId);
+      await inTx(this.db, () => runs.releaseLease(runId, token, held.kept));
     }
+    if (this.stopped) return true;
     if (flag.value) return this.advance(runId); // a kick arrived while releasing
     if (this.again.get(runId) === flag) this.again.delete(runId);
     return true;
+  }
+
+  /**
+   * Takes a free or expired lease, remembering the resume counter as it is now (the release
+   * restores it). Taking over a run that startups resumed more than MAX_RESUMES times (their
+   * previous holders died, see registerResume) fails it instead: 'failed', lease released.
+   */
+  private takeFreshLease(runId: string, token: string): Promise<ResumeCounter | 'busy' | 'failed'> {
+    const now = this.now();
+    return inTx(this.db, async () => {
+      if ((await runs.takeLease(runId, token, now.plusSeconds(LEASE_MS / 1000), now)) !== 1) return 'busy';
+      const lease = (await runs.leaseState(runId, now))!;
+      if (lease.count > MAX_RESUMES) {
+        const run = await runs.lockById(runId);
+        if (run != null && run.isActive()) {
+          await this.failResumeLoop(run, lease.count);
+          await runs.releaseLease(runId, token);
+          return 'failed';
+        }
+      }
+      return { count: lease.count, windowStart: lease.windowStart };
+    });
   }
 
   private async takeLease(runId: string, token: string): Promise<boolean> {
@@ -300,7 +376,11 @@ export class KbRunEngine {
       const stageChanged = r.stage !== stageBefore;
       const ended = !r.isActive() && statusBefore !== r.status;
       if (!stageChanged && !ended) return;
-      if (stageChanged) await runs.resetResumes(runId);
+      if (stageChanged) {
+        await runs.resetResumes(runId);
+        const held = this.leases.get(runId);
+        if (held) held.kept = { count: 0, windowStart: null };
+      }
       const at = this.now().toString();
       const logNode = (isObject(r.stageLog) ? deepCopy(r.stageLog) : {}) as JsonObject;
       if (!isObject(logNode[stageBefore])) logNode[stageBefore] = {};
@@ -663,9 +743,12 @@ export class KbRunEngine {
       });
     }, this.cancelCheck(runIds));
     const pausedRuns = new Set<string>();
+    // Stopped by a shutdown: like the quota pause, the unanswered requests stay SUBMITTED and
+    // their jobs open, so the next process resumes them (no resubmission attempt is spent).
+    const interrupted = paused || this.stopped;
     for (const job of byId.values()) {
       const out = outputs.get(job.id!);
-      const unanswered = paused && (await inTx(this.db, () => requests.countUnansweredOfJob(job.id!))) > 0;
+      const unanswered = interrupted && (await inTx(this.db, () => requests.countUnansweredOfJob(job.id!))) > 0;
       let outKey: string | null = null;
       if (out && out.length > 0) {
         outKey = job.payloadKey!.replace('.jsonl', '-out'
@@ -674,7 +757,7 @@ export class KbRunEngine {
         await this.putAudit(outKey, out.map((l) => l + '\n').join(''));
       }
       if (unanswered) {
-        pausedRuns.add(job.runId);
+        if (paused) pausedRuns.add(job.runId);
         continue;
       }
       const key = outKey;
@@ -729,6 +812,7 @@ export class KbRunEngine {
     let checkedAt = performance.now() - CANCEL_CHECK_MS;
     let checking = false;
     return () => {
+      if (this.stopped) return true; // shutdown: in-flight requests finish, no new ones start
       const t = performance.now();
       if (!stopped && !checking && t - checkedAt >= CANCEL_CHECK_MS) {
         checkedAt = t;
@@ -971,16 +1055,49 @@ export class KbRunEngine {
     void task.finally(() => this.inFlight.delete(task));
   }
 
-  /** Resolves once no background advance is running (tests, shutdown). */
+  /** Resolves once no advance is running (tests, shutdown). */
   async idle(): Promise<void> {
-    while (this.inFlight.size > 0) await Promise.allSettled([...this.inFlight]);
+    while (this.inFlight.size > 0 || this.advancing.size > 0) {
+      await Promise.allSettled([...this.inFlight, ...this.advancing]);
+    }
   }
 
-  /** Stops scheduling retries and waits for running advances. */
-  async stop(): Promise<void> {
+  /**
+   * Shutdown, first phase ('closing', on SIGTERM): no new advances or retries; running advances
+   * stop after their current step, and a sync pool starts no new request (in-flight ones finish
+   * and are recorded).
+   */
+  beginStop(): void {
     this.stopped = true;
     for (const t of this.timers) clearTimeout(t);
     this.timers.clear();
-    await this.idle();
+  }
+
+  /**
+   * Shutdown, last phase ('executors'): waits up to `waitMs` for running advances, which release
+   * their leases (undoing resumes counted meanwhile, see releaseLease). Leases still held after
+   * that (a sync request slower than the wait) are released anyway, so the next process takes the
+   * run over at once and does not count the stop as a crash; the answers of those requests are lost
+   * (they stay SUBMITTED and are sent again by the next process).
+   */
+  async stop(waitMs = STOP_WAIT_MS): Promise<void> {
+    this.beginStop();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = await Promise.race([
+      this.idle().then(() => false),
+      new Promise<boolean>((r) => { timer = setTimeout(() => r(true), waitMs); }),
+    ]);
+    clearTimeout(timer);
+    if (!timedOut) return;
+    for (const [runId, held] of [...this.leases]) {
+      clearInterval(held.heartbeat);
+      this.leases.delete(runId);
+      try {
+        await inTx(this.db, () => runs.releaseLease(runId, held.token, held.kept));
+        this.log.warn(`KB run ${runId}: stopped with requests in flight; lease released, their answers will be asked again`);
+      } catch (e) {
+        this.log.warn(`KB run ${runId}: releasing the lease on shutdown failed: ${(e as Error).message}`);
+      }
+    }
   }
 }
