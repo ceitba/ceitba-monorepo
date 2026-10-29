@@ -732,7 +732,7 @@
       "runs": {
         "budget": {
           "title": "Budget",
-          "summary": "US$ {{spent}} spent / US$ {{limit}} limit · admitted estimate US$ {{estimated}} · {{admitted}} subjects admitted, {{deferred}} deferred (US$ {{deferredEstimated}} estimated)",
+          "summary": "{{spent}} spent / {{limit}} limit · admitted estimate {{estimated}} · {{admitted}} subjects admitted, {{deferred}} deferred ({{deferredEstimated}} estimated)",
           "oversized": "Run dedicated to {{subject}}: it did not fit the budget"
         },
         "runNow": "Run now",

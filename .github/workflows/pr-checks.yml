@@ -44,6 +44,7 @@ jobs:
       - run: node scripts/checks/migrations.mjs --base "$BASE_REF"
       - run: node scripts/checks/workflows.mjs
       - run: node scripts/checks/agents.mjs
+      - run: node --test scripts/checks/*.test.mjs
 
   pr-title:
     if: github.event_name == 'pull_request'
