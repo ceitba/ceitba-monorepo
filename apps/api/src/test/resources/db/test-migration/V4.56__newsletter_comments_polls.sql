@@ -1,5 +1,5 @@
 -- =============================================================================
--- V4.53__newsletter_comments_polls.sql (mirror of V64)
+-- V4.56__newsletter_comments_polls.sql (mirror of V67)
 --
 -- Comments and polls on newsletter articles (docs/NEWSLETTER-ENGAGEMENT.md).
 -- Additive only: a defaulted column on articles and new tables.
